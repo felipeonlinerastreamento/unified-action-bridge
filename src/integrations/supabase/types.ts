@@ -231,6 +231,7 @@ export type Database = {
           id: string
           linked_at: string | null
           linked_to: string | null
+          model: string | null
           name: string
           notes: string | null
           serial_number: string | null
@@ -243,6 +244,7 @@ export type Database = {
           id?: string
           linked_at?: string | null
           linked_to?: string | null
+          model?: string | null
           name: string
           notes?: string | null
           serial_number?: string | null
@@ -255,6 +257,7 @@ export type Database = {
           id?: string
           linked_at?: string | null
           linked_to?: string | null
+          model?: string | null
           name?: string
           notes?: string | null
           serial_number?: string | null
