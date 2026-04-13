@@ -72,7 +72,10 @@ function GsystemConnectionTest() {
     setTesting(true);
     setResult(null);
     try {
-      const res = await testGsystemAuth();
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await testGsystemAuth({
+        headers: { authorization: `Bearer ${session?.access_token}` },
+      });
       setResult(res);
     } catch (err: any) {
       setResult({ success: false, message: err.message });
