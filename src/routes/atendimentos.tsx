@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Search, Filter, RefreshCw, AlertTriangle, Clock, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { getPendencias } from "@/lib/gsystem-api.functions";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Select,
   SelectContent,
