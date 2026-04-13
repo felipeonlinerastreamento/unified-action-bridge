@@ -13,7 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Trash2, Wifi, WifiOff } from "lucide-react";
+import { Plus, Trash2, Wifi, WifiOff, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { testGsystemAuth } from "@/lib/gsystem-api.functions";
 
 export const Route = createFileRoute("/configuracoes")({
   component: ConfiguracoesPage,
@@ -30,6 +31,8 @@ function ConfiguracoesPage() {
           <h1 className="text-2xl font-bold text-foreground">Configurações</h1>
           <p className="text-sm text-muted-foreground">Gerenciamento de canais, estoque e usuários</p>
         </div>
+
+        <GsystemConnectionTest />
 
         <Tabs defaultValue="channels">
           <TabsList>
@@ -58,6 +61,56 @@ function ConfiguracoesPage() {
         </Tabs>
       </div>
     </AppLayout>
+  );
+}
+
+function GsystemConnectionTest() {
+  const [testing, setTesting] = useState(false);
+  const [result, setResult] = useState<any>(null);
+
+  const handleTest = async () => {
+    setTesting(true);
+    setResult(null);
+    try {
+      const res = await testGsystemAuth();
+      setResult(res);
+    } catch (err: any) {
+      setResult({ success: false, message: err.message });
+    }
+    setTesting(false);
+  };
+
+  return (
+    <Card className="mb-6">
+      <CardHeader className="flex flex-row items-center justify-between">
+        <CardTitle className="text-base">Integração GSystem API</CardTitle>
+        <Button size="sm" onClick={handleTest} disabled={testing}>
+          {testing ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Wifi className="h-4 w-4 mr-1" />}
+          {testing ? "Testando..." : "Testar Conexão"}
+        </Button>
+      </CardHeader>
+      {result && (
+        <CardContent>
+          <div className={`flex items-start gap-2 p-3 rounded-lg border ${result.success ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-destructive/10 border-destructive/30 text-destructive"}`}>
+            {result.success ? <CheckCircle2 className="h-5 w-5 mt-0.5 shrink-0" /> : <XCircle className="h-5 w-5 mt-0.5 shrink-0" />}
+            <div className="space-y-1 text-sm">
+              <p className="font-medium">{result.message}</p>
+              {result.workingField && <p>Campo correto: <Badge variant="outline">{result.workingField}</Badge></p>}
+              {result.attempts && (
+                <div className="mt-2 space-y-1">
+                  <p className="text-xs font-medium opacity-70">Tentativas:</p>
+                  {result.attempts.map((a: any, i: number) => (
+                    <p key={i} className="text-xs font-mono">
+                      {a.success ? "✅" : "❌"} {a.field} → HTTP {a.status}: {a.message.substring(0, 100)}
+                    </p>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      )}
+    </Card>
   );
 }
 

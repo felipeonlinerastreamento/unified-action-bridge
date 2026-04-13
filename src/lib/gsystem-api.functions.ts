@@ -458,3 +458,80 @@ export const getParametros = createServerFn({ method: "POST" })
     const { gsystemApiFetch } = await import("@/lib/gsystem-api.server");
     return gsystemApiFetch("/parametros");
   });
+
+// ============================================================
+// TESTE DE AUTENTICAÇÃO
+// ============================================================
+
+export const testGsystemAuth = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => {
+    const GSYSTEM_API_BASE = "https://api.gsystem.com.br/api";
+    const cnpj = process.env.GSYSTEM_CNPJ;
+    const login = process.env.GSYSTEM_LOGIN;
+    const passwordHash = process.env.GSYSTEM_PASSWORD_HASH;
+
+    if (!cnpj || !login || !passwordHash) {
+      return {
+        success: false,
+        message: "Credenciais não configuradas. Verifique GSYSTEM_CNPJ, GSYSTEM_LOGIN e GSYSTEM_PASSWORD_HASH.",
+        details: {
+          hasCnpj: !!cnpj,
+          hasLogin: !!login,
+          hasPassword: !!passwordHash,
+        },
+      };
+    }
+
+    const results: Array<{ field: string; status: number; message: string; success: boolean }> = [];
+
+    // Attempt 1: PasswordHash
+    try {
+      const res1 = await fetch(`${GSYSTEM_API_BASE}/Auth`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ CNPJ: cnpj, Login: login, PasswordHash: passwordHash }),
+      });
+      const text1 = await res1.text();
+      results.push({ field: "PasswordHash", status: res1.status, message: text1.substring(0, 300), success: res1.ok });
+    } catch (err: any) {
+      results.push({ field: "PasswordHash", status: 0, message: err.message, success: false });
+    }
+
+    // Attempt 2: Password
+    try {
+      const res2 = await fetch(`${GSYSTEM_API_BASE}/Auth`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ CNPJ: cnpj, Login: login, Password: passwordHash }),
+      });
+      const text2 = await res2.text();
+      results.push({ field: "Password", status: res2.status, message: text2.substring(0, 300), success: res2.ok });
+    } catch (err: any) {
+      results.push({ field: "Password", status: 0, message: err.message, success: false });
+    }
+
+    // Attempt 3: Senha
+    try {
+      const res3 = await fetch(`${GSYSTEM_API_BASE}/Auth`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ CNPJ: cnpj, Login: login, Senha: passwordHash }),
+      });
+      const text3 = await res3.text();
+      results.push({ field: "Senha", status: res3.status, message: text3.substring(0, 300), success: res3.ok });
+    } catch (err: any) {
+      results.push({ field: "Senha", status: 0, message: err.message, success: false });
+    }
+
+    const successAttempt = results.find((r) => r.success);
+
+    return {
+      success: !!successAttempt,
+      workingField: successAttempt?.field || null,
+      message: successAttempt
+        ? `Autenticação bem-sucedida usando o campo "${successAttempt.field}"`
+        : "Nenhum formato de senha funcionou. Verifique o valor do secret GSYSTEM_PASSWORD_HASH.",
+      attempts: results.map((r) => ({ field: r.field, status: r.status, success: r.success, message: r.message })),
+    };
+  });
