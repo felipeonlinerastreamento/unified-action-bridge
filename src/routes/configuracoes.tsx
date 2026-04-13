@@ -13,7 +13,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Trash2, Wifi, WifiOff } from "lucide-react";
+import { Plus, Trash2, Wifi, WifiOff, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { testGsystemAuth } from "@/lib/gsystem-api.functions";
 
 export const Route = createFileRoute("/configuracoes")({
   component: ConfiguracoesPage,
@@ -30,6 +31,8 @@ function ConfiguracoesPage() {
           <h1 className="text-2xl font-bold text-foreground">Configurações</h1>
           <p className="text-sm text-muted-foreground">Gerenciamento de canais, estoque e usuários</p>
         </div>
+
+        <GsystemConnectionTest />
 
         <Tabs defaultValue="channels">
           <TabsList>
