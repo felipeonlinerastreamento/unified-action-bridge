@@ -131,6 +131,15 @@ function EstoquePage() {
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input placeholder="Buscar por nome, modelo ou serial..." className="pl-8" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
+          <Select value={modelFilter} onValueChange={setModelFilter}>
+            <SelectTrigger className="w-44"><SelectValue placeholder="Modelo" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos Modelos</SelectItem>
+              {uniqueModels.map((m) => (
+                <SelectItem key={m} value={m}>{m}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-40"><SelectValue placeholder="Status" /></SelectTrigger>
             <SelectContent>
@@ -148,17 +157,6 @@ function EstoquePage() {
               ))}
             </SelectContent>
           </Select>
-          {uniqueModels.length > 0 && (
-            <Select value={modelFilter} onValueChange={setModelFilter}>
-              <SelectTrigger className="w-40"><SelectValue placeholder="Modelo" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos Modelos</SelectItem>
-                {uniqueModels.map((m) => (
-                  <SelectItem key={m} value={m}>{m}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
         </div>
 
         {/* Table */}
