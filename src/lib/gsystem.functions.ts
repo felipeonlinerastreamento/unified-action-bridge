@@ -90,7 +90,7 @@ export const listAllOpenChats = createServerFn({ method: "POST" })
       const chats = chatResults
         .filter((r): r is PromiseFulfilledResult<any> => r.status === "fulfilled")
         .map((r) => r.value)
-        .filter((c) => c && c.attendanceId);
+        .filter((c) => c && c.attendanceId && (!c.status || c.status === "OPEN" || c.status === "PENDING"));
 
       return { chats, users: userList, total: chats.length };
     } catch (err) {
