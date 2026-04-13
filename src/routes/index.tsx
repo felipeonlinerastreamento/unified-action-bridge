@@ -1,19 +1,32 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, redirect } from "@tanstack/react-router";
+import { useAuth } from "@/hooks/use-auth";
+import { AuthForm } from "@/components/auth-form";
 
 export const Route = createFileRoute("/")({
-  component: Index,
+  component: IndexPage,
 });
 
-// IMPORTANT: Replace this placeholder. For sites with multiple pages (About, Services, Contact, etc.),
-// create separate route files (about.tsx, services.tsx, contact.tsx) — don't put all pages in this file.
-function PlaceholderIndex() {
-  return (
-    <div className="flex min-h-screen items-center justify-center" style={{ backgroundColor: '#fcfbf8' }}>
-      <img data-lovable-blank-page-placeholder="REMOVE_THIS" src="/placeholder.svg" alt="Your app will live here!" />
-    </div>
-  );
+function IndexPage() {
+  const { isAuthenticated, isLoading } = useAuth();
+
+  if (isLoading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return <AuthForm />;
+  }
+
+  // Redirect to dashboard
+  return <MetaRedirect />;
 }
 
-function Index() {
-  return <PlaceholderIndex />;
+function MetaRedirect() {
+  const navigate = Route.useNavigate();
+  navigate({ to: "/dashboard" });
+  return null;
 }
