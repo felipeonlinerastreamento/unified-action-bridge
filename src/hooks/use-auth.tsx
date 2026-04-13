@@ -103,10 +103,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
 const defaultAuthContext: AuthContextType = {
   user: null,
+  session: null,
   profile: null,
   roles: [],
   isAuthenticated: false,
   isLoading: true,
+  signIn: async () => { throw new Error("AuthProvider not mounted"); },
+  signUp: async () => { throw new Error("AuthProvider not mounted"); },
+  signOut: async () => { throw new Error("AuthProvider not mounted"); },
+  hasRole: () => false,
+};
   signIn: async () => { throw new Error("AuthProvider not mounted"); },
   signUp: async () => { throw new Error("AuthProvider not mounted"); },
   signOut: async () => { throw new Error("AuthProvider not mounted"); },
