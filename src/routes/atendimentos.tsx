@@ -8,7 +8,8 @@ import { Button } from "@/components/ui/button";
 import { Search, Filter, RefreshCw, AlertTriangle, Clock, CheckCircle2, XCircle, Loader2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { getPendencias } from "@/lib/gsystem-api.functions";
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import {
   Select,
   SelectContent,
@@ -33,9 +34,18 @@ function AtendimentosPage() {
   const [statusFilter, setStatusFilter] = useState("aberto");
   const [selected, setSelected] = useState<any>(null);
 
+  const getAuthHeaders = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    return { headers: { authorization: `Bearer ${session?.access_token}` } };
+  }, []);
+
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ["gsystem-pendencias"],
-    queryFn: () => getPendencias(),
+    queryFn: async () => {
+      return getPendencias({
+        ...await getAuthHeaders(),
+      });
+    },
     enabled: isAuthenticated,
     refetchInterval: 30000,
   });
