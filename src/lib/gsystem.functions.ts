@@ -51,6 +51,54 @@ async function gsystemFetch(endpoint: string, token: string, method = "GET", bod
   }
 }
 
+// List all open chats by fetching all users and their active attendances
+export const listAllOpenChats = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    z.object({
+      channelId: z.string().uuid(),
+    }).parse
+  )
+  .handler(async ({ data, context }): Promise<Record<string, any>> => {
+    const channel = await getChannelToken(context.supabase, data.channelId);
+    try {
+      // Get all users to find active attendance IDs
+      const users = await gsystemFetch("/users", channel.token);
+      const userList = Array.isArray(users) ? users : [];
+      const attendanceIds: string[] = [];
+      const userMap: Record<string, { name: string; status: string }> = {};
+
+      for (const u of userList) {
+        if (u.currentAttendanceId) {
+          attendanceIds.push(u.currentAttendanceId);
+          userMap[u.currentAttendanceId] = { name: u.name || "", status: u.status || "" };
+        }
+      }
+
+      if (attendanceIds.length === 0) {
+        return { chats: [], users: userList, total: 0 };
+      }
+
+      // Fetch detail for each attendance in parallel
+      const chatResults = await Promise.allSettled(
+        attendanceIds.map(async (id) => {
+          const detail = await gsystemFetch(`/chats/${id}`, channel.token);
+          return { ...detail, _agentName: userMap[id]?.name };
+        })
+      );
+
+      const chats = chatResults
+        .filter((r): r is PromiseFulfilledResult<any> => r.status === "fulfilled")
+        .map((r) => r.value)
+        .filter((c) => c && c.attendanceId);
+
+      return { chats, users: userList, total: chats.length };
+    } catch (err) {
+      console.error("[listAllOpenChats] Error:", err);
+      return { chats: [], users: [], total: 0, error: String(err) };
+    }
+  });
+
 // List chats — tries list endpoint, falls back to empty
 export const listChats = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -71,7 +119,6 @@ export const listChats = createServerFn({ method: "POST" })
       return result;
     } catch (err) {
       console.error("[listChats] Error:", err);
-      // Return empty list instead of crashing
       return { data: [], total: 0, error: String(err) };
     }
   });
