@@ -9,6 +9,73 @@ let cachedToken: string | null = null;
 let tokenExpiry = 0;
 
 /**
+ * Validate OTP code after initial authentication (2FA step)
+ * Tries common GSystem OTP endpoints. If no OTP code is configured, skips validation.
+ */
+async function validateOtp(initialToken: string): Promise<string> {
+  const otpCode = process.env.GSYSTEM_OTP_CODE;
+  if (!otpCode) {
+    console.log("[GSystem Auth] No OTP code configured, skipping validation step");
+    return initialToken;
+  }
+
+  console.log("[GSystem Auth] Attempting OTP validation...");
+
+  // Try common OTP validation endpoints
+  const endpoints = [
+    "/Auth/Validate",
+    "/Auth/ValidateOTP",
+    "/Auth/OTP",
+    "/Auth/Confirm",
+    "/Auth/TwoFactor",
+    "/Auth/2FA",
+  ];
+
+  for (const endpoint of endpoints) {
+    try {
+      const res = await fetch(`${GSYSTEM_API_BASE}${endpoint}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${initialToken}`,
+        },
+        body: JSON.stringify({ Code: otpCode, Codigo: otpCode, OTP: otpCode }),
+      });
+
+      console.log(`[GSystem OTP] ${endpoint} => ${res.status}`);
+
+      if (res.ok) {
+        const text = await res.text();
+        console.log(`[GSystem OTP] Success on ${endpoint}:`, text.substring(0, 300));
+        // Try to extract a new token from the response
+        try {
+          const data = JSON.parse(text);
+          const newToken =
+            data?.JWT?.Token ?? data?.JWT ?? data?.token ?? data?.Token ??
+            data?.accessToken ?? data?.access_token;
+          if (typeof newToken === "string" && newToken.length > 10) {
+            console.log("[GSystem OTP] Got new token from OTP validation");
+            return newToken;
+          }
+        } catch {}
+        // If no new token, the initial token is now validated
+        return initialToken;
+      }
+
+      if (res.status === 404) continue; // endpoint doesn't exist, try next
+      // Non-404 error — log and continue
+      const errText = await res.text();
+      console.log(`[GSystem OTP] ${endpoint} error [${res.status}]:`, errText.substring(0, 200));
+    } catch (err) {
+      console.log(`[GSystem OTP] ${endpoint} fetch error:`, String(err).substring(0, 200));
+    }
+  }
+
+  console.log("[GSystem Auth] No OTP endpoint found, using initial token");
+  return initialToken;
+}
+
+/**
  * Authenticate with GSystem and get a JWT token
  */
 async function authenticate(): Promise<string> {
