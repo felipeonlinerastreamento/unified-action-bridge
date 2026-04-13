@@ -546,6 +546,6 @@ export const testGsystemAuth = createServerFn({ method: "POST" })
       message: successAttempt
         ? `Autenticação bem-sucedida usando o campo "${successAttempt.field}". Chaves da resposta: ${(successAttempt.keys || []).join(", ")}`
         : "Nenhum formato de senha funcionou. Verifique o valor do secret GSYSTEM_PASSWORD_HASH.",
-      attempts: results.map((r) => ({ field: r.field, status: r.status, success: r.success, message: r.message, keys: r.keys })),
+      attempts: results.map((r) => ({ field: r.field, status: r.status, success: r.success, message: r.message, keys: r.keys, jwtInfo: r.jwtInfo })),
     };
   });
