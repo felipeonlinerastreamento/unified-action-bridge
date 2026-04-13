@@ -42,7 +42,12 @@ function AtendimentosPage() {
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ["gsystem-pendencias"],
     queryFn: async () => {
+      const now = new Date();
+      const past = new Date(now);
+      past.setDate(past.getDate() - 30);
+      const fmt = (d: Date) => d.toISOString().split("T")[0];
       return getPendencias({
+        data: { dataInicial: fmt(past), dataFinal: fmt(now) },
         ...await getAuthHeaders(),
       });
     },

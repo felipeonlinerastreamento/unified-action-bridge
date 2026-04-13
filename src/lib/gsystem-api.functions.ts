@@ -291,9 +291,23 @@ export const getFaturas = createServerFn({ method: "POST" })
 
 export const getPendencias = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async () => {
+  .inputValidator(
+    z.object({
+      dataInicial: z.string().min(1).max(20).optional(),
+      dataFinal: z.string().min(1).max(20).optional(),
+      clienteKey: z.string().max(255).optional(),
+      veiculoKey: z.string().max(255).optional(),
+    }).parse
+  )
+  .handler(async ({ data }) => {
     const { gsystemApiFetch } = await import("@/lib/gsystem-api.server");
-    return gsystemApiFetch("/pendencias");
+    const params = new URLSearchParams();
+    if (data.dataInicial) params.append("Data[Inicial]", data.dataInicial);
+    if (data.dataFinal) params.append("Data[Final]", data.dataFinal);
+    if (data.clienteKey) params.append("Cliente", data.clienteKey);
+    if (data.veiculoKey) params.append("Veiculo", data.veiculoKey);
+    const qs = params.toString();
+    return gsystemApiFetch(`/pendencias${qs ? `?${qs}` : ""}`);
   });
 
 export const getPendencia = createServerFn({ method: "POST" })
