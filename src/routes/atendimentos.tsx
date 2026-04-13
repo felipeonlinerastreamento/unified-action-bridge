@@ -34,9 +34,18 @@ function AtendimentosPage() {
   const [statusFilter, setStatusFilter] = useState("aberto");
   const [selected, setSelected] = useState<any>(null);
 
+  const getAuthHeaders = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    return { headers: { authorization: `Bearer ${session?.access_token}` } };
+  }, []);
+
   const { data, isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ["gsystem-pendencias"],
-    queryFn: () => getPendencias(),
+    queryFn: async () => {
+      return getPendencias({
+        ...await getAuthHeaders(),
+      });
+    },
     enabled: isAuthenticated,
     refetchInterval: 30000,
   });
