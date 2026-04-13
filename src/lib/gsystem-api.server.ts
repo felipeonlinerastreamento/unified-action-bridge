@@ -40,24 +40,47 @@ async function authenticate(): Promise<string> {
     throw new Error(`Falha na autenticação GSystem [${res.status}]: ${text}`);
   }
 
-  const data = await res.json();
-  const token = data.token || data.Token || data.access_token || data;
+  const text = await res.text();
+  console.log("[GSystem Auth] Raw response:", text.substring(0, 500));
 
-  if (typeof token === "string") {
+  // Try parsing as JSON first
+  let data: any;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    // Response is plain text — treat as token directly
+    if (text && text.length > 10) {
+      // Remove surrounding quotes if present
+      const cleaned = text.replace(/^["']|["']$/g, "").trim();
+      cachedToken = cleaned;
+      tokenExpiry = now + 55 * 60 * 1000;
+      return cleaned;
+    }
+    throw new Error("Formato de token inesperado do GSystem (resposta não-JSON)");
+  }
+
+  // Extract token from various possible response shapes
+  const token =
+    data?.token ?? data?.Token ?? data?.access_token ?? data?.AccessToken ??
+    data?.accessToken ?? data?.jwt ?? data?.JWT ?? data?.resultado ?? data?.Resultado ??
+    data?.data?.token ?? data?.data?.Token ?? data?.data?.access_token ??
+    data?.result ?? data?.Result;
+
+  if (typeof token === "string" && token.length > 10) {
     cachedToken = token;
-    // Cache for 55 minutes (tokens usually last 60min)
     tokenExpiry = now + 55 * 60 * 1000;
     return token;
   }
 
   // If data itself is a string token
-  if (typeof data === "string") {
+  if (typeof data === "string" && data.length > 10) {
     cachedToken = data;
     tokenExpiry = now + 55 * 60 * 1000;
     return data;
   }
 
-  throw new Error("Formato de token inesperado do GSystem");
+  console.error("[GSystem Auth] Unexpected token format. Keys:", Object.keys(data), "Data:", JSON.stringify(data).substring(0, 500));
+  throw new Error(`Formato de token inesperado do GSystem. Chaves: ${Object.keys(data).join(", ")}`);
 }
 
 /**
