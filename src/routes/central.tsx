@@ -8,17 +8,23 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
-import { listChats, getChatMessages, sendText, finalizeChat, transferChat } from "@/lib/gsystem.functions";
+import {
+  listChats,
+  getChatDetail,
+  sendText,
+  finalizeChat,
+  listGSystemUsers,
+  getChannelStatus,
+} from "@/lib/gsystem.functions";
 import { toast } from "sonner";
 import {
   Send,
   Phone,
   Search,
-  MoreVertical,
   ArrowRightLeft,
   CheckCircle2,
   MessageSquare,
@@ -26,46 +32,64 @@ import {
   Clock,
   Loader2,
   RefreshCw,
+  Wifi,
+  WifiOff,
 } from "lucide-react";
 
 export const Route = createFileRoute("/central")({
   component: CentralPage,
 });
 
-interface Chat {
-  id: string;
-  contactName?: string;
-  contactPhone?: string;
-  lastMessage?: string;
-  lastMessageAt?: string;
-  status?: string;
-  unreadCount?: number;
-  sectorName?: string;
-  userName?: string;
-  [key: string]: unknown;
-}
-
-interface Message {
-  id: string;
-  body?: string;
-  text?: string;
-  content?: string;
-  type?: string;
-  fromMe?: boolean;
-  timestamp?: number;
-  createdAt?: string;
-  senderName?: string;
-  [key: string]: unknown;
+interface ChatItem {
+  attendanceId: string;
+  protocol?: string;
+  status?: number;
+  description?: string;
+  secondaryDescription?: string;
+  linkImage?: string;
+  countUnreadMessages?: number;
+  lastSeen?: string;
+  utcDhStartChat?: string;
+  contact?: {
+    id?: string;
+    name?: string;
+    secondaryName?: string;
+    number?: string;
+    linkImage?: string;
+    tags?: Array<{ name?: string }>;
+  };
+  channel?: {
+    id?: string;
+    type?: number;
+    description?: string;
+    identifier?: string;
+  };
+  lastMessage?: {
+    id?: string;
+    text?: string;
+    sender?: {
+      id?: string;
+      name?: string;
+      isMe?: boolean;
+    };
+  };
+  sector?: {
+    id?: string;
+    name?: string;
+  };
+  user?: {
+    id?: string;
+    name?: string;
+  };
 }
 
 function CentralPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
   const [selectedChannelId, setSelectedChannelId] = useState<string>("");
   const [selectedChatId, setSelectedChatId] = useState<string>("");
-  const [selectedChat, setSelectedChat] = useState<Chat | null>(null);
+  const [selectedChat, setSelectedChat] = useState<ChatItem | null>(null);
   const [messageInput, setMessageInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
   // Load channels from DB
@@ -88,79 +112,139 @@ function CentralPage() {
     }
   }, [channels, selectedChannelId]);
 
-  // Get auth token for server fn calls
   const getAuthHeaders = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
-    return {
-      headers: { authorization: `Bearer ${session?.access_token}` },
-    };
+    return { headers: { authorization: `Bearer ${session?.access_token}` } };
   }, []);
 
-  // Fetch chats list with polling
-  const {
-    data: chatsResponse,
-    isLoading: chatsLoading,
-    refetch: refetchChats,
-  } = useQuery({
-    queryKey: ["gsystem-chats", selectedChannelId],
+  // Get channel connection status
+  const { data: channelStatus } = useQuery({
+    queryKey: ["channel-status", selectedChannelId],
     queryFn: async () => {
       if (!selectedChannelId) return null;
+      try {
+        const result = await getChannelStatus({
+          data: { channelId: selectedChannelId },
+          ...await getAuthHeaders(),
+        });
+        return result;
+      } catch {
+        return null;
+      }
+    },
+    enabled: !!selectedChannelId && isAuthenticated,
+    refetchInterval: 30000,
+  });
+
+  const isConnected = channelStatus?.status === "CONNECTED";
+
+  // Fetch GSystem users (agents) — they contain currentAttendanceId
+  const { data: gsystemUsers = [] } = useQuery({
+    queryKey: ["gsystem-users", selectedChannelId],
+    queryFn: async () => {
+      if (!selectedChannelId) return [];
+      try {
+        const result = await listGSystemUsers({
+          data: { channelId: selectedChannelId },
+          ...await getAuthHeaders(),
+        });
+        return Array.isArray(result) ? result : [];
+      } catch {
+        return [];
+      }
+    },
+    enabled: !!selectedChannelId && isAuthenticated,
+    refetchInterval: 15000,
+  });
+
+  // Get active attendance IDs from all online users
+  const activeAttendanceIds = gsystemUsers
+    .filter((u: any) => u.currentAttendanceId)
+    .map((u: any) => u.currentAttendanceId as string);
+
+  // Fetch chat details for each active attendance
+  const { data: activeChats = [], isLoading: chatsLoading, refetch: refetchChats } = useQuery({
+    queryKey: ["active-chats", selectedChannelId, activeAttendanceIds],
+    queryFn: async () => {
+      if (!selectedChannelId || activeAttendanceIds.length === 0) return [];
+      const authH = await getAuthHeaders();
+      const chatPromises = activeAttendanceIds.map(async (id: string) => {
+        try {
+          const detail = await getChatDetail({
+            data: { channelId: selectedChannelId, chatId: id },
+            ...authH,
+          });
+          return detail as ChatItem;
+        } catch {
+          return null;
+        }
+      });
+      const results = await Promise.all(chatPromises);
+      return results.filter((c): c is ChatItem => c !== null && !!c.attendanceId);
+    },
+    enabled: !!selectedChannelId && activeAttendanceIds.length > 0 && isAuthenticated,
+    refetchInterval: 10000,
+  });
+
+  // Also try the standard list endpoint (may work in the future)
+  const { data: listedChats = [] } = useQuery({
+    queryKey: ["listed-chats", selectedChannelId],
+    queryFn: async () => {
+      if (!selectedChannelId) return [];
       try {
         const result = await listChats({
           data: { channelId: selectedChannelId, limit: 50 },
           ...await getAuthHeaders(),
         });
-        return result;
-      } catch (err: any) {
-        console.error("[Central] listChats error:", err);
-        return null;
+        const items = Array.isArray(result) ? result : (result as any)?.data || [];
+        return items;
+      } catch {
+        return [];
       }
     },
     enabled: !!selectedChannelId && isAuthenticated,
-    refetchInterval: 8000, // Poll every 8s
+    refetchInterval: 15000,
   });
 
-  const chats: Chat[] = Array.isArray(chatsResponse)
-    ? chatsResponse
-    : (chatsResponse as any)?.data || (chatsResponse as any)?.chats || [];
+  // Merge chats from both sources
+  const allChats: ChatItem[] = (() => {
+    const map = new Map<string, ChatItem>();
+    for (const c of activeChats) {
+      if (c.attendanceId) map.set(c.attendanceId, c);
+    }
+    for (const c of listedChats) {
+      const id = (c as any).attendanceId || (c as any).id;
+      if (id && !map.has(id)) map.set(id, c);
+    }
+    return Array.from(map.values());
+  })();
 
-  const filteredChats = chats.filter((chat) => {
+  const filteredChats = allChats.filter((chat) => {
     if (!searchTerm) return true;
-    const name = (chat.contactName || chat.contactPhone || "").toLowerCase();
+    const name = (chat.description || chat.contact?.name || chat.contact?.number || "").toLowerCase();
     return name.includes(searchTerm.toLowerCase());
   });
 
-  // Fetch messages for selected chat
-  const {
-    data: messagesResponse,
-    isLoading: messagesLoading,
-  } = useQuery({
-    queryKey: ["gsystem-messages", selectedChannelId, selectedChatId],
+  // Fetch selected chat details
+  const { data: chatDetail } = useQuery({
+    queryKey: ["chat-detail", selectedChannelId, selectedChatId],
     queryFn: async () => {
       if (!selectedChannelId || !selectedChatId) return null;
       try {
-        const result = await getChatMessages({
+        const result = await getChatDetail({
           data: { channelId: selectedChannelId, chatId: selectedChatId },
           ...await getAuthHeaders(),
         });
-        return result;
-      } catch (err: any) {
-        console.error("[Central] getChatMessages error:", err);
+        return result as ChatItem;
+      } catch {
         return null;
       }
     },
     enabled: !!selectedChannelId && !!selectedChatId && isAuthenticated,
-    refetchInterval: 5000, // Poll every 5s for active chat
+    refetchInterval: 8000,
   });
 
-  const messages: Message[] = Array.isArray(messagesResponse)
-    ? messagesResponse
-    : (messagesResponse as any)?.data || (messagesResponse as any)?.messages || [];
-
-  // Scroll to bottom on new messages
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length]);
+  const activeChatDetail = chatDetail || selectedChat;
 
   // Send message mutation
   const sendMutation = useMutation({
@@ -172,7 +256,8 @@ function CentralPage() {
     },
     onSuccess: () => {
       setMessageInput("");
-      queryClient.invalidateQueries({ queryKey: ["gsystem-messages", selectedChannelId, selectedChatId] });
+      toast.success("Mensagem enviada");
+      queryClient.invalidateQueries({ queryKey: ["chat-detail", selectedChannelId, selectedChatId] });
     },
     onError: (err: any) => {
       toast.error(err?.message || "Erro ao enviar mensagem");
@@ -208,8 +293,8 @@ function CentralPage() {
     }
   };
 
-  const selectChat = (chat: Chat) => {
-    setSelectedChatId(chat.id);
+  const selectChat = (chat: ChatItem) => {
+    setSelectedChatId(chat.attendanceId);
     setSelectedChat(chat);
   };
 
@@ -227,6 +312,15 @@ function CentralPage() {
             <p className="text-sm text-muted-foreground">Chat bidirecional via WhatsApp</p>
           </div>
           <div className="flex items-center gap-3">
+            {isConnected ? (
+              <Badge variant="outline" className="gap-1 border-emerald-300 text-emerald-700">
+                <Wifi className="h-3 w-3" /> Conectado
+              </Badge>
+            ) : selectedChannelId ? (
+              <Badge variant="outline" className="gap-1 border-destructive text-destructive">
+                <WifiOff className="h-3 w-3" /> Desconectado
+              </Badge>
+            ) : null}
             {channels.length > 1 && (
               <Select value={selectedChannelId} onValueChange={setSelectedChannelId}>
                 <SelectTrigger className="w-48">
@@ -244,7 +338,10 @@ function CentralPage() {
             <Button
               variant="outline"
               size="sm"
-              onClick={() => refetchChats()}
+              onClick={() => {
+                refetchChats();
+                queryClient.invalidateQueries({ queryKey: ["gsystem-users"] });
+              }}
               disabled={chatsLoading}
             >
               <RefreshCw className={`h-4 w-4 ${chatsLoading ? "animate-spin" : ""}`} />
@@ -283,64 +380,80 @@ function CentralPage() {
                 </div>
               </div>
               <ScrollArea className="flex-1">
-                {chatsLoading && chats.length === 0 ? (
+                {chatsLoading && allChats.length === 0 ? (
                   <div className="flex items-center justify-center py-8">
                     <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
                   </div>
                 ) : filteredChats.length === 0 ? (
-                  <div className="p-4 text-sm text-muted-foreground text-center">
-                    {chats.length === 0 ? "Nenhum atendimento encontrado" : "Nenhum resultado"}
+                  <div className="p-4 text-sm text-muted-foreground text-center space-y-2">
+                    <p>{allChats.length === 0 ? "Nenhum atendimento ativo" : "Nenhum resultado"}</p>
+                    {allChats.length === 0 && gsystemUsers.length > 0 && (
+                      <p className="text-xs">
+                        {gsystemUsers.length} agente(s) online, sem atendimentos ativos no momento
+                      </p>
+                    )}
                   </div>
                 ) : (
-                  filteredChats.map((chat) => (
-                    <button
-                      key={chat.id}
-                      onClick={() => selectChat(chat)}
-                      className={`w-full text-left p-3 border-b hover:bg-accent/50 transition-colors ${
-                        selectedChatId === chat.id ? "bg-accent" : ""
-                      }`}
-                    >
-                      <div className="flex items-start gap-3">
-                        <Avatar className="h-10 w-10 shrink-0">
-                          <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                            {(chat.contactName || chat.contactPhone || "?")
-                              .substring(0, 2)
-                              .toUpperCase()}
-                          </AvatarFallback>
-                        </Avatar>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between">
-                            <p className="text-sm font-medium truncate text-foreground">
-                              {chat.contactName || chat.contactPhone || `Chat ${chat.id.slice(0, 6)}`}
-                            </p>
-                            {chat.unreadCount && chat.unreadCount > 0 && (
-                              <Badge variant="default" className="text-xs ml-1 shrink-0">
-                                {chat.unreadCount}
-                              </Badge>
+                  filteredChats.map((chat) => {
+                    const name = chat.description || chat.contact?.name || chat.contact?.number || `Chat ${chat.attendanceId?.slice(0, 6)}`;
+                    const phone = chat.secondaryDescription || chat.contact?.secondaryName || chat.contact?.number;
+                    const lastMsg = chat.lastMessage?.text;
+                    const initials = name.substring(0, 2).toUpperCase();
+                    const imgUrl = chat.linkImage || chat.contact?.linkImage;
+                    const isDefaultAvatar = imgUrl?.includes("avatar-default");
+
+                    return (
+                      <button
+                        key={chat.attendanceId}
+                        onClick={() => selectChat(chat)}
+                        className={`w-full text-left p-3 border-b hover:bg-accent/50 transition-colors ${
+                          selectedChatId === chat.attendanceId ? "bg-accent" : ""
+                        }`}
+                      >
+                        <div className="flex items-start gap-3">
+                          <Avatar className="h-10 w-10 shrink-0">
+                            {!isDefaultAvatar && imgUrl && <AvatarImage src={imgUrl} />}
+                            <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                              {initials}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between">
+                              <p className="text-sm font-medium truncate text-foreground">{name}</p>
+                              {(chat.countUnreadMessages ?? 0) > 0 && (
+                                <Badge variant="default" className="text-xs ml-1 shrink-0">
+                                  {chat.countUnreadMessages}
+                                </Badge>
+                              )}
+                            </div>
+                            {lastMsg && (
+                              <p className="text-xs text-muted-foreground truncate mt-0.5">
+                                {chat.lastMessage?.sender?.isMe ? "Você: " : ""}
+                                {lastMsg}
+                              </p>
                             )}
-                          </div>
-                          <p className="text-xs text-muted-foreground truncate mt-0.5">
-                            {chat.lastMessage || "Sem mensagens"}
-                          </p>
-                          <div className="flex items-center gap-2 mt-1">
-                            {chat.status && (
-                              <Badge
-                                variant="outline"
-                                className="text-[10px] px-1.5 py-0"
-                              >
-                                {chat.status}
-                              </Badge>
-                            )}
-                            {chat.lastMessageAt && (
-                              <span className="text-[10px] text-muted-foreground">
-                                {formatTime(chat.lastMessageAt)}
-                              </span>
-                            )}
+                            <div className="flex items-center gap-2 mt-1">
+                              {chat.protocol && (
+                                <span className="text-[10px] text-muted-foreground">
+                                  #{chat.protocol}
+                                </span>
+                              )}
+                              {chat.sector?.name && (
+                                <Badge variant="outline" className="text-[10px] px-1.5 py-0">
+                                  {chat.sector.name}
+                                </Badge>
+                              )}
+                              {chat.lastSeen && (
+                                <span className="text-[10px] text-muted-foreground">
+                                  {formatTime(chat.lastSeen)}
+                                </span>
+                              )}
+                            </div>
                           </div>
                         </div>
-                      </div>
-                    </button>
-                  ))
+                      </button>
+                    );
+                  })
                 )}
               </ScrollArea>
             </div>
@@ -358,19 +471,24 @@ function CentralPage() {
                   <div className="p-3 border-b flex items-center justify-between bg-muted/30">
                     <div className="flex items-center gap-3">
                       <Avatar className="h-9 w-9">
+                        {activeChatDetail?.contact?.linkImage &&
+                          !activeChatDetail.contact.linkImage.includes("avatar-default") && (
+                            <AvatarImage src={activeChatDetail.contact.linkImage} />
+                          )}
                         <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                          {(selectedChat?.contactName || selectedChat?.contactPhone || "?")
+                          {(activeChatDetail?.description || activeChatDetail?.contact?.name || "?")
                             .substring(0, 2)
                             .toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
                       <div>
                         <p className="text-sm font-medium text-foreground">
-                          {selectedChat?.contactName || selectedChat?.contactPhone || "Contato"}
+                          {activeChatDetail?.description || activeChatDetail?.contact?.name || "Contato"}
                         </p>
-                        {selectedChat?.contactPhone && selectedChat?.contactName && (
-                          <p className="text-xs text-muted-foreground">{selectedChat.contactPhone}</p>
-                        )}
+                        <p className="text-xs text-muted-foreground">
+                          {activeChatDetail?.contact?.number || activeChatDetail?.secondaryDescription}
+                          {activeChatDetail?.protocol && ` • #${activeChatDetail.protocol}`}
+                        </p>
                       </div>
                     </div>
                     <div className="flex items-center gap-1">
@@ -378,7 +496,7 @@ function CentralPage() {
                         variant="ghost"
                         size="icon"
                         title="Transferir"
-                        onClick={() => toast.info("Transferência em breve")}
+                        onClick={() => toast.info("Transferência disponível em breve")}
                       >
                         <ArrowRightLeft className="h-4 w-4" />
                       </Button>
@@ -394,65 +512,50 @@ function CentralPage() {
                     </div>
                   </div>
 
-                  {/* Messages */}
+                  {/* Chat body — shows last message info */}
                   <ScrollArea className="flex-1 p-4">
-                    {messagesLoading && messages.length === 0 ? (
-                      <div className="flex items-center justify-center py-8">
-                        <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                      </div>
-                    ) : messages.length === 0 ? (
-                      <p className="text-sm text-muted-foreground text-center py-8">
-                        Nenhuma mensagem
-                      </p>
-                    ) : (
+                    {activeChatDetail?.lastMessage ? (
                       <div className="space-y-3">
-                        {messages.map((msg, idx) => {
-                          const text = msg.body || msg.text || msg.content || "";
-                          const isFromMe = msg.fromMe === true;
-                          const time = msg.timestamp
-                            ? new Date(msg.timestamp * 1000).toLocaleTimeString("pt-BR", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })
-                            : msg.createdAt
-                            ? new Date(msg.createdAt).toLocaleTimeString("pt-BR", {
-                                hour: "2-digit",
-                                minute: "2-digit",
-                              })
-                            : "";
-
-                          return (
-                            <div
-                              key={msg.id || idx}
-                              className={`flex ${isFromMe ? "justify-end" : "justify-start"}`}
-                            >
-                              <div
-                                className={`max-w-[75%] rounded-lg px-3 py-2 text-sm ${
-                                  isFromMe
-                                    ? "bg-primary text-primary-foreground"
-                                    : "bg-muted text-foreground"
-                                }`}
-                              >
-                                {msg.senderName && !isFromMe && (
-                                  <p className="text-xs font-medium mb-1 opacity-70">
-                                    {msg.senderName}
-                                  </p>
-                                )}
-                                <p className="whitespace-pre-wrap break-words">{text}</p>
-                                {time && (
-                                  <p
-                                    className={`text-[10px] mt-1 ${
-                                      isFromMe ? "text-primary-foreground/70" : "text-muted-foreground"
-                                    }`}
-                                  >
-                                    {time}
-                                  </p>
-                                )}
-                              </div>
-                            </div>
-                          );
-                        })}
-                        <div ref={messagesEndRef} />
+                        <div className="text-center">
+                          <p className="text-xs text-muted-foreground">
+                            Atendimento iniciado em{" "}
+                            {activeChatDetail.utcDhStartChat
+                              ? new Date(activeChatDetail.utcDhStartChat).toLocaleString("pt-BR")
+                              : "—"}
+                          </p>
+                        </div>
+                        <Separator />
+                        {/* Last message */}
+                        <div
+                          className={`flex ${
+                            activeChatDetail.lastMessage.sender?.isMe ? "justify-end" : "justify-start"
+                          }`}
+                        >
+                          <div
+                            className={`max-w-[75%] rounded-lg px-3 py-2 text-sm ${
+                              activeChatDetail.lastMessage.sender?.isMe
+                                ? "bg-primary text-primary-foreground"
+                                : "bg-muted text-foreground"
+                            }`}
+                          >
+                            {activeChatDetail.lastMessage.sender?.name &&
+                              !activeChatDetail.lastMessage.sender?.isMe && (
+                                <p className="text-xs font-medium mb-1 opacity-70">
+                                  {activeChatDetail.lastMessage.sender.name}
+                                </p>
+                              )}
+                            <p className="whitespace-pre-wrap break-words">
+                              {activeChatDetail.lastMessage.text}
+                            </p>
+                          </div>
+                        </div>
+                        <p className="text-xs text-center text-muted-foreground mt-4">
+                          O histórico completo de mensagens ficará disponível quando o endpoint de listagem da API estiver operacional.
+                        </p>
+                      </div>
+                    ) : (
+                      <div className="flex items-center justify-center h-full">
+                        <p className="text-sm text-muted-foreground">Carregando detalhes...</p>
                       </div>
                     )}
                   </ScrollArea>
@@ -485,7 +588,7 @@ function CentralPage() {
 
             {/* Contact panel */}
             <div className="col-span-3 border rounded-lg bg-card overflow-hidden flex flex-col">
-              {!selectedChat ? (
+              {!activeChatDetail ? (
                 <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
                   <div className="text-center">
                     <User className="h-8 w-8 mx-auto mb-2" />
@@ -493,22 +596,26 @@ function CentralPage() {
                   </div>
                 </div>
               ) : (
-                <div className="p-4 space-y-4">
+                <div className="p-4 space-y-4 overflow-auto">
                   <div className="text-center">
                     <Avatar className="h-16 w-16 mx-auto">
+                      {activeChatDetail.contact?.linkImage &&
+                        !activeChatDetail.contact.linkImage.includes("avatar-default") && (
+                          <AvatarImage src={activeChatDetail.contact.linkImage} />
+                        )}
                       <AvatarFallback className="text-lg bg-primary/10 text-primary">
-                        {(selectedChat.contactName || selectedChat.contactPhone || "?")
+                        {(activeChatDetail.description || activeChatDetail.contact?.name || "?")
                           .substring(0, 2)
                           .toUpperCase()}
                       </AvatarFallback>
                     </Avatar>
                     <h3 className="mt-3 font-medium text-foreground">
-                      {selectedChat.contactName || "Contato"}
+                      {activeChatDetail.contact?.name || activeChatDetail.description || "Contato"}
                     </h3>
-                    {selectedChat.contactPhone && (
+                    {activeChatDetail.contact?.number && (
                       <p className="text-sm text-muted-foreground flex items-center justify-center gap-1 mt-1">
                         <Phone className="h-3 w-3" />
-                        {selectedChat.contactPhone}
+                        {activeChatDetail.contact.number}
                       </p>
                     )}
                   </div>
@@ -516,31 +623,55 @@ function CentralPage() {
                   <Separator />
 
                   <div className="space-y-3">
+                    {activeChatDetail.protocol && (
+                      <div>
+                        <p className="text-xs text-muted-foreground uppercase tracking-wider">Protocolo</p>
+                        <p className="text-sm mt-1 font-mono text-foreground">#{activeChatDetail.protocol}</p>
+                      </div>
+                    )}
                     <div>
                       <p className="text-xs text-muted-foreground uppercase tracking-wider">Status</p>
                       <Badge variant="outline" className="mt-1">
-                        {selectedChat.status || "—"}
+                        {activeChatDetail.status === 2 ? "Em andamento" : activeChatDetail.status === 1 ? "Aguardando" : `Status ${activeChatDetail.status}`}
                       </Badge>
                     </div>
-                    {selectedChat.sectorName && (
+                    {activeChatDetail.sector?.name && (
                       <div>
                         <p className="text-xs text-muted-foreground uppercase tracking-wider">Setor</p>
-                        <p className="text-sm mt-1 text-foreground">{selectedChat.sectorName}</p>
+                        <p className="text-sm mt-1 text-foreground">{activeChatDetail.sector.name}</p>
                       </div>
                     )}
-                    {selectedChat.userName && (
+                    {activeChatDetail.user?.name && (
                       <div>
                         <p className="text-xs text-muted-foreground uppercase tracking-wider">Atendente</p>
-                        <p className="text-sm mt-1 text-foreground">{selectedChat.userName}</p>
+                        <p className="text-sm mt-1 text-foreground">{activeChatDetail.user.name}</p>
                       </div>
                     )}
-                    {selectedChat.lastMessageAt && (
+                    {activeChatDetail.channel?.identifier && (
                       <div>
-                        <p className="text-xs text-muted-foreground uppercase tracking-wider">Última mensagem</p>
+                        <p className="text-xs text-muted-foreground uppercase tracking-wider">Canal</p>
+                        <p className="text-sm mt-1 text-foreground">{activeChatDetail.channel.identifier}</p>
+                      </div>
+                    )}
+                    {activeChatDetail.utcDhStartChat && (
+                      <div>
+                        <p className="text-xs text-muted-foreground uppercase tracking-wider">Início</p>
                         <p className="text-sm mt-1 flex items-center gap-1 text-foreground">
                           <Clock className="h-3 w-3" />
-                          {new Date(selectedChat.lastMessageAt).toLocaleString("pt-BR")}
+                          {new Date(activeChatDetail.utcDhStartChat).toLocaleString("pt-BR")}
                         </p>
+                      </div>
+                    )}
+                    {activeChatDetail.contact?.tags && activeChatDetail.contact.tags.length > 0 && (
+                      <div>
+                        <p className="text-xs text-muted-foreground uppercase tracking-wider">Tags</p>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {activeChatDetail.contact.tags.map((tag, i) => (
+                            <Badge key={i} variant="secondary" className="text-xs">
+                              {tag.name || String(tag)}
+                            </Badge>
+                          ))}
+                        </div>
                       </div>
                     )}
                   </div>
