@@ -113,11 +113,6 @@ const defaultAuthContext: AuthContextType = {
   signOut: async () => { throw new Error("AuthProvider not mounted"); },
   hasRole: () => false,
 };
-  signIn: async () => { throw new Error("AuthProvider not mounted"); },
-  signUp: async () => { throw new Error("AuthProvider not mounted"); },
-  signOut: async () => { throw new Error("AuthProvider not mounted"); },
-  hasRole: () => false,
-};
 
 export function useAuth() {
   const ctx = useContext(AuthContext);
