@@ -59,17 +59,44 @@ async function authenticate(): Promise<string> {
     throw new Error("Formato de token inesperado do GSystem (resposta não-JSON)");
   }
 
-  // Extract token from various possible response shapes
-  const token =
-    data?.token ?? data?.Token ?? data?.access_token ?? data?.AccessToken ??
-    data?.accessToken ?? data?.jwt ?? data?.JWT ?? data?.resultado ?? data?.Resultado ??
-    data?.data?.token ?? data?.data?.Token ?? data?.data?.access_token ??
-    data?.result ?? data?.Result;
+  console.log("[GSystem Auth] Response keys:", Object.keys(data));
 
-  if (typeof token === "string" && token.length > 10) {
-    cachedToken = token;
-    tokenExpiry = now + 55 * 60 * 1000;
-    return token;
+  // Helper: extract a JWT string from a value that may be string or object
+  function extractJwt(val: unknown): string | null {
+    if (typeof val === "string" && val.length > 10) {
+      return val.replace(/^["']|["']$/g, "").trim();
+    }
+    if (val && typeof val === "object" && !Array.isArray(val)) {
+      const obj = val as Record<string, unknown>;
+      console.log("[GSystem Auth] JWT field is object with keys:", Object.keys(obj));
+      // Try common sub-fields
+      for (const k of ["token", "Token", "accessToken", "AccessToken", "access_token", "jwt", "JWT", "value", "Value"]) {
+        if (typeof obj[k] === "string" && (obj[k] as string).length > 10) {
+          return (obj[k] as string).trim();
+        }
+      }
+      // If object has a single string value, use it
+      const vals = Object.values(obj).filter((v) => typeof v === "string" && (v as string).length > 10);
+      if (vals.length === 1) return (vals[0] as string).trim();
+    }
+    return null;
+  }
+
+  // Try known top-level fields in priority order
+  const fieldCandidates = [
+    data?.JWT, data?.jwt, data?.token, data?.Token,
+    data?.access_token, data?.AccessToken, data?.accessToken,
+    data?.resultado, data?.Resultado, data?.result, data?.Result,
+    data?.data?.token, data?.data?.Token, data?.data?.access_token,
+  ];
+
+  for (const candidate of fieldCandidates) {
+    const extracted = extractJwt(candidate);
+    if (extracted) {
+      cachedToken = extracted;
+      tokenExpiry = now + 55 * 60 * 1000;
+      return extracted;
+    }
   }
 
   // If data itself is a string token
@@ -79,7 +106,7 @@ async function authenticate(): Promise<string> {
     return data;
   }
 
-  console.error("[GSystem Auth] Unexpected token format. Keys:", Object.keys(data), "Data:", JSON.stringify(data).substring(0, 500));
+  console.error("[GSystem Auth] Could not extract token. Keys:", Object.keys(data), "Data:", JSON.stringify(data).substring(0, 500));
   throw new Error(`Formato de token inesperado do GSystem. Chaves: ${Object.keys(data).join(", ")}`);
 }
 

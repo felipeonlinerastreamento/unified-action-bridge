@@ -494,8 +494,15 @@ export const testGsystemAuth = createServerFn({ method: "POST" })
       });
       const text1 = await res1.text();
       let keys1: string[] = [];
-      try { const j = JSON.parse(text1); keys1 = typeof j === "object" && j !== null ? Object.keys(j) : []; } catch {}
-      results.push({ field: "PasswordHash", status: res1.status, message: text1.substring(0, 500), success: res1.ok, keys: keys1 });
+      let jwtInfo1 = "";
+      try {
+        const j = JSON.parse(text1);
+        keys1 = typeof j === "object" && j !== null ? Object.keys(j) : [];
+        if (j?.JWT !== undefined) {
+          jwtInfo1 = `type=${typeof j.JWT}, value=${JSON.stringify(j.JWT).substring(0, 300)}`;
+        }
+      } catch {}
+      results.push({ field: "PasswordHash", status: res1.status, message: text1.substring(0, 500), success: res1.ok, keys: keys1, jwtInfo: jwtInfo1 });
     } catch (err: any) {
       results.push({ field: "PasswordHash", status: 0, message: err.message, success: false });
     }
