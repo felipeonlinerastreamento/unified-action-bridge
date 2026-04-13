@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as RelatoriosRouteImport } from './routes/relatorios'
 import { Route as EstoqueRouteImport } from './routes/estoque'
+import { Route as EmpresasRouteImport } from './routes/empresas'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as ContatosRouteImport } from './routes/contatos'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
@@ -26,6 +27,11 @@ const RelatoriosRoute = RelatoriosRouteImport.update({
 const EstoqueRoute = EstoqueRouteImport.update({
   id: '/estoque',
   path: '/estoque',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EmpresasRoute = EmpresasRouteImport.update({
+  id: '/empresas',
+  path: '/empresas',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DashboardRoute = DashboardRouteImport.update({
@@ -66,6 +72,7 @@ export interface FileRoutesByFullPath {
   '/configuracoes': typeof ConfiguracoesRoute
   '/contatos': typeof ContatosRoute
   '/dashboard': typeof DashboardRoute
+  '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
   '/relatorios': typeof RelatoriosRoute
 }
@@ -76,6 +83,7 @@ export interface FileRoutesByTo {
   '/configuracoes': typeof ConfiguracoesRoute
   '/contatos': typeof ContatosRoute
   '/dashboard': typeof DashboardRoute
+  '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
   '/relatorios': typeof RelatoriosRoute
 }
@@ -87,6 +95,7 @@ export interface FileRoutesById {
   '/configuracoes': typeof ConfiguracoesRoute
   '/contatos': typeof ContatosRoute
   '/dashboard': typeof DashboardRoute
+  '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
   '/relatorios': typeof RelatoriosRoute
 }
@@ -99,6 +108,7 @@ export interface FileRouteTypes {
     | '/configuracoes'
     | '/contatos'
     | '/dashboard'
+    | '/empresas'
     | '/estoque'
     | '/relatorios'
   fileRoutesByTo: FileRoutesByTo
@@ -109,6 +119,7 @@ export interface FileRouteTypes {
     | '/configuracoes'
     | '/contatos'
     | '/dashboard'
+    | '/empresas'
     | '/estoque'
     | '/relatorios'
   id:
@@ -119,6 +130,7 @@ export interface FileRouteTypes {
     | '/configuracoes'
     | '/contatos'
     | '/dashboard'
+    | '/empresas'
     | '/estoque'
     | '/relatorios'
   fileRoutesById: FileRoutesById
@@ -130,6 +142,7 @@ export interface RootRouteChildren {
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   ContatosRoute: typeof ContatosRoute
   DashboardRoute: typeof DashboardRoute
+  EmpresasRoute: typeof EmpresasRoute
   EstoqueRoute: typeof EstoqueRoute
   RelatoriosRoute: typeof RelatoriosRoute
 }
@@ -148,6 +161,13 @@ declare module '@tanstack/react-router' {
       path: '/estoque'
       fullPath: '/estoque'
       preLoaderRoute: typeof EstoqueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/empresas': {
+      id: '/empresas'
+      path: '/empresas'
+      fullPath: '/empresas'
+      preLoaderRoute: typeof EmpresasRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/dashboard': {
@@ -202,6 +222,7 @@ const rootRouteChildren: RootRouteChildren = {
   ConfiguracoesRoute: ConfiguracoesRoute,
   ContatosRoute: ContatosRoute,
   DashboardRoute: DashboardRoute,
+  EmpresasRoute: EmpresasRoute,
   EstoqueRoute: EstoqueRoute,
   RelatoriosRoute: RelatoriosRoute,
 }
