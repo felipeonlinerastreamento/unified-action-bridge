@@ -483,7 +483,7 @@ export const testGsystemAuth = createServerFn({ method: "POST" })
       };
     }
 
-    const results: Array<{ field: string; status: number; message: string; success: boolean; keys?: string[] }> = [];
+    const results: Array<{ field: string; status: number; message: string; success: boolean; keys?: string[]; jwtInfo?: string }> = [];
 
     // Attempt 1: PasswordHash
     try {
