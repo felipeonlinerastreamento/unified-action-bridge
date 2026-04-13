@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { AppLayout } from "@/components/app-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Label } from "@/components/ui/label";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Package, Search, Plus, AlertTriangle } from "lucide-react";
+import { Package, Search, Plus, Filter } from "lucide-react";
 
 export const Route = createFileRoute("/estoque")({
   component: EstoquePage,
@@ -21,10 +21,12 @@ export const Route = createFileRoute("/estoque")({
 type InventoryItem = {
   id: string;
   name: string;
+  model: string | null;
   serial_number: string | null;
   status: "disponivel" | "vinculado";
   linked_to: string | null;
   category_id: string;
+  notes: string | null;
   created_at: string;
 };
 
@@ -40,6 +42,7 @@ function EstoquePage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("disponivel");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [modelFilter, setModelFilter] = useState<string>("all");
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -58,15 +61,26 @@ function EstoquePage() {
     setLoading(false);
   }
 
+  // Extract unique models for filter dropdown
+  const uniqueModels = useMemo(() => {
+    const models = new Set<string>();
+    items.forEach((item) => {
+      if (item.model) models.add(item.model);
+    });
+    return Array.from(models).sort();
+  }, [items]);
+
   if (isLoading || !isAuthenticated) return null;
 
   const filteredItems = items.filter((item) => {
     const matchesSearch = !search ||
       item.name.toLowerCase().includes(search.toLowerCase()) ||
-      (item.serial_number && item.serial_number.toLowerCase().includes(search.toLowerCase()));
+      (item.serial_number && item.serial_number.toLowerCase().includes(search.toLowerCase())) ||
+      (item.model && item.model.toLowerCase().includes(search.toLowerCase()));
     const matchesStatus = statusFilter === "all" || item.status === statusFilter;
     const matchesCategory = categoryFilter === "all" || item.category_id === categoryFilter;
-    return matchesSearch && matchesStatus && matchesCategory;
+    const matchesModel = modelFilter === "all" || item.model === modelFilter;
+    return matchesSearch && matchesStatus && matchesCategory && matchesModel;
   });
 
   const availableCount = items.filter((i) => i.status === "disponivel").length;
@@ -115,7 +129,7 @@ function EstoquePage() {
         <div className="flex items-center gap-2 flex-wrap">
           <div className="relative flex-1 max-w-sm">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Buscar por nome ou serial..." className="pl-8" value={search} onChange={(e) => setSearch(e.target.value)} />
+            <Input placeholder="Buscar por nome, modelo ou serial..." className="pl-8" value={search} onChange={(e) => setSearch(e.target.value)} />
           </div>
           <Select value={statusFilter} onValueChange={setStatusFilter}>
             <SelectTrigger className="w-40"><SelectValue placeholder="Status" /></SelectTrigger>
@@ -134,6 +148,17 @@ function EstoquePage() {
               ))}
             </SelectContent>
           </Select>
+          {uniqueModels.length > 0 && (
+            <Select value={modelFilter} onValueChange={setModelFilter}>
+              <SelectTrigger className="w-40"><SelectValue placeholder="Modelo" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos Modelos</SelectItem>
+                {uniqueModels.map((m) => (
+                  <SelectItem key={m} value={m}>{m}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
         {/* Table */}
@@ -143,6 +168,7 @@ function EstoquePage() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
+                  <TableHead>Modelo</TableHead>
                   <TableHead>Serial</TableHead>
                   <TableHead>Categoria</TableHead>
                   <TableHead>Status</TableHead>
@@ -152,18 +178,19 @@ function EstoquePage() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">Carregando...</TableCell>
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Carregando...</TableCell>
                   </TableRow>
                 ) : filteredItems.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                      Nenhum item encontrado. Cadastre itens de estoque.
+                    <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                      Nenhum item encontrado.
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredItems.map((item) => (
                     <TableRow key={item.id}>
                       <TableCell className="font-medium">{item.name}</TableCell>
+                      <TableCell className="text-sm">{item.model || "—"}</TableCell>
                       <TableCell className="font-mono text-xs">{item.serial_number || "—"}</TableCell>
                       <TableCell>{categories.find((c) => c.id === item.category_id)?.name || "—"}</TableCell>
                       <TableCell>
@@ -187,21 +214,28 @@ function EstoquePage() {
 function AddItemDialog({ categories, onSuccess }: { categories: Category[]; onSuccess: () => void }) {
   const [open, setOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [selectedCategory, setSelectedCategory] = useState("");
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
+    if (!selectedCategory) {
+      toast.error("Selecione uma categoria");
+      return;
+    }
     setSaving(true);
     const fd = new FormData(e.currentTarget);
     const { error } = await supabase.from("inventory_items").insert({
       name: fd.get("name") as string,
+      model: (fd.get("model") as string) || null,
       serial_number: (fd.get("serial") as string) || null,
-      category_id: fd.get("category") as string,
+      category_id: selectedCategory,
     });
     if (error) {
       toast.error(error.message);
     } else {
       toast.success("Item cadastrado!");
       setOpen(false);
+      setSelectedCategory("");
       onSuccess();
     }
     setSaving(false);
@@ -219,15 +253,19 @@ function AddItemDialog({ categories, onSuccess }: { categories: Category[]; onSu
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
             <Label>Nome</Label>
-            <Input name="name" required />
+            <Input name="name" required placeholder="Ex: Rastreador GT06N" />
+          </div>
+          <div className="space-y-2">
+            <Label>Modelo</Label>
+            <Input name="model" placeholder="Ex: GT06N, ST-901, Chip Vivo" />
           </div>
           <div className="space-y-2">
             <Label>Número de Série</Label>
-            <Input name="serial" />
+            <Input name="serial" placeholder="Ex: SN-001234" />
           </div>
           <div className="space-y-2">
             <Label>Categoria</Label>
-            <Select name="category" required>
+            <Select value={selectedCategory} onValueChange={setSelectedCategory}>
               <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
               <SelectContent>
                 {categories.map((c) => (
@@ -236,7 +274,7 @@ function AddItemDialog({ categories, onSuccess }: { categories: Category[]; onSu
               </SelectContent>
             </Select>
           </div>
-          <Button type="submit" className="w-full" disabled={saving}>
+          <Button type="submit" className="w-full" disabled={saving || !selectedCategory}>
             {saving ? "Salvando..." : "Cadastrar"}
           </Button>
         </form>
