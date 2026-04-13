@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { AppLayout } from "@/components/app-layout";
@@ -11,6 +11,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import {
   listAllOpenChats,
@@ -34,6 +35,11 @@ import {
   Wifi,
   WifiOff,
   Users,
+  Building2,
+  FileText,
+  History,
+  AlertCircle,
+  Link as LinkIcon,
 } from "lucide-react";
 
 export const Route = createFileRoute("/central")({
@@ -103,12 +109,30 @@ const STATUS_MAP: Record<number, { label: string; color: string }> = {
   3: { label: "Finalizado", color: "bg-muted text-muted-foreground border-border" },
 };
 
+// Brazilian plate regex: ABC-1234 or ABC1D23 (Mercosul)
+const PLATE_REGEX = /\b([A-Z]{3}[-\s]?\d{4}|[A-Z]{3}\d[A-Z]\d{2})\b/gi;
+
+function detectPlates(messages: GMessage[]): string[] {
+  const plates = new Set<string>();
+  for (const msg of messages) {
+    if (!msg.text) continue;
+    const matches = msg.text.match(PLATE_REGEX);
+    if (matches) {
+      for (const m of matches) {
+        plates.add(m.replace(/[-\s]/g, "").toUpperCase());
+      }
+    }
+  }
+  return Array.from(plates);
+}
+
 function CentralPage() {
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, session } = useAuth();
   const [selectedChannelId, setSelectedChannelId] = useState<string>("");
   const [selectedChatId, setSelectedChatId] = useState<string>("");
   const [messageInput, setMessageInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
+  const [ticketPlate, setTicketPlate] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
@@ -180,7 +204,7 @@ function CentralPage() {
     return name.includes(searchTerm.toLowerCase());
   });
 
-  // Fetch selected chat details with messages (polling for new messages)
+  // Fetch selected chat details with messages (polling)
   const { data: chatDetail } = useQuery({
     queryKey: ["chat-detail", selectedChannelId, selectedChatId],
     queryFn: async () => {
@@ -200,7 +224,163 @@ function CentralPage() {
 
   const messages = chatDetail?.messages || [];
 
-  // Auto-scroll to bottom when messages change
+  // Detect plates in messages
+  const detectedPlates = useMemo(() => detectPlates(messages), [messages]);
+
+  // Auto-set plate from detection
+  useEffect(() => {
+    if (detectedPlates.length > 0 && !ticketPlate) {
+      setTicketPlate(detectedPlates[detectedPlates.length - 1]);
+    }
+  }, [detectedPlates, ticketPlate]);
+
+  // Reset plate when changing chat
+  useEffect(() => {
+    setTicketPlate("");
+  }, [selectedChatId]);
+
+  // Company lookup by contact phone
+  const contactPhone = chatDetail?.contact?.number || chatDetail?.contact?.secondaryName || "";
+
+  const { data: companyLookup } = useQuery({
+    queryKey: ["company-lookup", contactPhone],
+    queryFn: async () => {
+      if (!contactPhone) return null;
+      // Try to match phone number (last 10-11 digits)
+      const cleanPhone = contactPhone.replace(/\D/g, "");
+      const { data: phoneLinks } = await supabase
+        .from("company_phones")
+        .select("company_id, phone_number");
+
+      if (!phoneLinks) return null;
+
+      const match = phoneLinks.find((p) => {
+        const clean = p.phone_number.replace(/\D/g, "");
+        return clean === cleanPhone || cleanPhone.endsWith(clean) || clean.endsWith(cleanPhone);
+      });
+
+      if (!match) return null;
+
+      const { data: company } = await supabase
+        .from("companies")
+        .select("*")
+        .eq("id", match.company_id)
+        .single();
+
+      return company;
+    },
+    enabled: !!contactPhone && isAuthenticated,
+  });
+
+  // Service ticket for this attendance
+  const { data: currentTicket, refetch: refetchTicket } = useQuery({
+    queryKey: ["service-ticket", selectedChatId],
+    queryFn: async () => {
+      if (!selectedChatId) return null;
+      const { data } = await supabase
+        .from("service_tickets")
+        .select("*")
+        .eq("attendance_id", selectedChatId)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      return data && data.length > 0 ? data[0] : null;
+    },
+    enabled: !!selectedChatId && isAuthenticated,
+  });
+
+  // Auto-create ticket when chat is selected and no ticket exists
+  const createTicketMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedChatId || !chatDetail) return;
+      const { data: existing } = await supabase
+        .from("service_tickets")
+        .select("id")
+        .eq("attendance_id", selectedChatId)
+        .limit(1);
+      if (existing && existing.length > 0) return;
+
+      const { data: sess } = await supabase.auth.getSession();
+      await supabase.from("service_tickets").insert({
+        attendance_id: selectedChatId,
+        channel_id: selectedChannelId || null,
+        company_id: companyLookup?.id || null,
+        contact_phone: contactPhone || null,
+        contact_name: chatDetail.contact?.name || chatDetail.description || null,
+        plate: ticketPlate || null,
+        status: "aberto" as const,
+        opened_by: sess.session?.user?.id || null,
+      });
+    },
+    onSuccess: () => refetchTicket(),
+  });
+
+  // Auto-create ticket on chat selection
+  useEffect(() => {
+    if (chatDetail && selectedChatId && !currentTicket && !createTicketMutation.isPending) {
+      createTicketMutation.mutate();
+    }
+  }, [chatDetail, selectedChatId, currentTicket]);
+
+  // Update ticket plate
+  const updatePlateMutation = useMutation({
+    mutationFn: async (plate: string) => {
+      if (!currentTicket) return;
+      await supabase
+        .from("service_tickets")
+        .update({ plate: plate || null })
+        .eq("id", currentTicket.id);
+    },
+    onSuccess: () => {
+      refetchTicket();
+      toast.success("Placa atualizada");
+    },
+  });
+
+  // Plate history: other tickets with same plate
+  const activePlate = currentTicket?.plate || ticketPlate;
+  const { data: plateHistory = [] } = useQuery({
+    queryKey: ["plate-history", activePlate],
+    queryFn: async () => {
+      if (!activePlate) return [];
+      const { data } = await supabase
+        .from("service_tickets")
+        .select("*, companies(name)")
+        .eq("plate", activePlate)
+        .neq("attendance_id", selectedChatId)
+        .order("created_at", { ascending: false })
+        .limit(20);
+      return data || [];
+    },
+    enabled: !!activePlate && isAuthenticated,
+  });
+
+  // All companies for linking
+  const { data: allCompanies = [] } = useQuery({
+    queryKey: ["companies-list"],
+    queryFn: async () => {
+      const { data } = await supabase.from("companies").select("id, name").order("name");
+      return data || [];
+    },
+    enabled: isAuthenticated,
+  });
+
+  // Link company to ticket
+  const linkCompanyMutation = useMutation({
+    mutationFn: async (companyId: string) => {
+      if (!currentTicket) return;
+      await supabase
+        .from("service_tickets")
+        .update({ company_id: companyId })
+        .eq("id", currentTicket.id);
+    },
+    onSuccess: () => {
+      refetchTicket();
+      queryClient.invalidateQueries({ queryKey: ["company-lookup"] });
+      toast.success("Empresa vinculada ao chamado");
+    },
+  });
+
+  // Auto-scroll
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length, selectedChatId]);
@@ -224,6 +404,13 @@ function CentralPage() {
   // Finalize chat
   const finalizeMutation = useMutation({
     mutationFn: async () => {
+      // Also update ticket status
+      if (currentTicket) {
+        await supabase
+          .from("service_tickets")
+          .update({ status: "finalizado" as const, closed_at: new Date().toISOString() })
+          .eq("id", currentTicket.id);
+      }
       return finalizeChat({
         data: { channelId: selectedChannelId, chatId: selectedChatId },
         ...await getAuthHeaders(),
@@ -403,7 +590,7 @@ function CentralPage() {
               </ScrollArea>
             </div>
 
-            {/* Chat area — full messages */}
+            {/* Chat area */}
             <div className="col-span-6 border rounded-lg flex flex-col bg-card overflow-hidden">
               {!selectedChatId ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3">
@@ -428,16 +615,29 @@ function CentralPage() {
                         <p className="text-sm font-medium text-foreground">
                           {chatDetail?.description || chatDetail?.contact?.name || "Contato"}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                          {chatDetail?.contact?.secondaryName || chatDetail?.contact?.number}
-                          {chatDetail?.protocol && ` • #${chatDetail.protocol}`}
-                        </p>
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs text-muted-foreground">
+                            {chatDetail?.contact?.secondaryName || chatDetail?.contact?.number}
+                            {chatDetail?.protocol && ` • #${chatDetail.protocol}`}
+                          </p>
+                          {companyLookup && (
+                            <Badge variant="secondary" className="text-[10px] gap-1">
+                              <Building2 className="h-2.5 w-2.5" />
+                              {companyLookup.name}
+                            </Badge>
+                          )}
+                        </div>
                       </div>
                     </div>
                     <div className="flex items-center gap-1">
                       {statusInfo && (
                         <Badge variant="outline" className={`text-xs mr-2 ${statusInfo.color}`}>
                           {statusInfo.label}
+                        </Badge>
+                      )}
+                      {detectedPlates.length > 0 && (
+                        <Badge variant="outline" className="text-xs mr-2 border-blue-300 text-blue-700">
+                          🚗 {detectedPlates[detectedPlates.length - 1]}
                         </Badge>
                       )}
                       <Button
@@ -555,7 +755,7 @@ function CentralPage() {
               )}
             </div>
 
-            {/* Contact details panel */}
+            {/* Right panel with tabs */}
             <div className="col-span-3 border rounded-lg bg-card overflow-hidden flex flex-col">
               {!chatDetail ? (
                 <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
@@ -565,120 +765,324 @@ function CentralPage() {
                   </div>
                 </div>
               ) : (
-                <ScrollArea className="flex-1">
-                  <div className="p-4 space-y-4">
-                    <div className="text-center">
-                      <Avatar className="h-16 w-16 mx-auto">
-                        {chatDetail.contact?.linkImage &&
-                          !chatDetail.contact.linkImage.includes("avatar-default") && (
-                            <AvatarImage src={chatDetail.contact.linkImage} />
-                          )}
-                        <AvatarFallback className="text-lg bg-primary/10 text-primary">
-                          {(chatDetail.description || chatDetail.contact?.name || "?").substring(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <h3 className="mt-3 font-medium text-foreground">
-                        {chatDetail.contact?.name || chatDetail.description || "Contato"}
-                      </h3>
-                      {chatDetail.contact?.number && (
-                        <p className="text-sm text-muted-foreground flex items-center justify-center gap-1 mt-1">
-                          <Phone className="h-3 w-3" />
-                          {chatDetail.contact.secondaryName || chatDetail.contact.number}
-                        </p>
-                      )}
-                    </div>
+                <Tabs defaultValue="empresa" className="flex flex-col flex-1 overflow-hidden">
+                  <TabsList className="w-full rounded-none border-b shrink-0">
+                    <TabsTrigger value="empresa" className="flex-1 text-xs">
+                      <Building2 className="h-3 w-3 mr-1" /> Empresa
+                    </TabsTrigger>
+                    <TabsTrigger value="contato" className="flex-1 text-xs">
+                      <User className="h-3 w-3 mr-1" /> Contato
+                    </TabsTrigger>
+                    <TabsTrigger value="historico" className="flex-1 text-xs">
+                      <History className="h-3 w-3 mr-1" /> Histórico
+                    </TabsTrigger>
+                  </TabsList>
 
-                    <Separator />
+                  {/* Empresa Tab */}
+                  <TabsContent value="empresa" className="flex-1 overflow-auto m-0">
+                    <ScrollArea className="h-full">
+                      <div className="p-4 space-y-4">
+                        {companyLookup ? (
+                          <>
+                            <div className="flex items-center gap-2">
+                              <Building2 className="h-5 w-5 text-primary" />
+                              <h3 className="font-semibold text-foreground">{companyLookup.name}</h3>
+                            </div>
 
-                    <div className="space-y-3">
-                      {chatDetail.protocol && (
-                        <DetailRow label="Protocolo" value={`#${chatDetail.protocol}`} mono />
-                      )}
-                      {statusInfo && (
-                        <div>
-                          <p className="text-xs text-muted-foreground uppercase tracking-wider">Status</p>
-                          <Badge variant="outline" className={`mt-1 ${statusInfo.color}`}>
-                            {statusInfo.label}
-                          </Badge>
-                        </div>
-                      )}
-                      {chatDetail.currentSector?.description && (
-                        <DetailRow label="Setor" value={chatDetail.currentSector.description} />
-                      )}
-                      {chatDetail.currentUser?.name && (
-                        <DetailRow label="Atendente" value={chatDetail.currentUser.name} />
-                      )}
-                      {chatDetail.currentOrganization?.description && (
-                        <DetailRow label="Organização" value={chatDetail.currentOrganization.description} />
-                      )}
-                      {chatDetail.channel?.identifier && (
-                        <DetailRow label="Canal" value={chatDetail.channel.identifier} />
-                      )}
-                      {chatDetail.utcDhStartChat && (
-                        <div>
-                          <p className="text-xs text-muted-foreground uppercase tracking-wider">Início</p>
-                          <p className="text-sm mt-1 flex items-center gap-1 text-foreground">
-                            <Clock className="h-3 w-3" />
-                            {new Date(chatDetail.utcDhStartChat).toLocaleString("pt-BR")}
-                          </p>
-                        </div>
-                      )}
-                      {chatDetail.utcDhEndChat && (
-                        <div>
-                          <p className="text-xs text-muted-foreground uppercase tracking-wider">Finalizado em</p>
-                          <p className="text-sm mt-1 text-foreground">
-                            {new Date(chatDetail.utcDhEndChat).toLocaleString("pt-BR")}
-                          </p>
-                        </div>
-                      )}
-                      {chatDetail.finalizadoPor?.name && (
-                        <DetailRow label="Finalizado por" value={chatDetail.finalizadoPor.name} />
-                      )}
+                            {companyLookup.cnpj && (
+                              <DetailRow label="CNPJ" value={companyLookup.cnpj} />
+                            )}
 
-                      {/* Time metrics */}
-                      {(chatDetail.timeInWaiting || chatDetail.timeInManual || chatDetail.timeInAutomatic) && (
-                        <>
-                          <Separator />
-                          <p className="text-xs text-muted-foreground uppercase tracking-wider">Tempos</p>
-                          <div className="grid grid-cols-2 gap-2">
-                            {chatDetail.timeInWaiting !== undefined && chatDetail.timeInWaiting > 0 && (
-                              <TimeMetric label="Espera" seconds={chatDetail.timeInWaiting} />
+                            {companyLookup.instructions && (
+                              <div>
+                                <p className="text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                                  <FileText className="h-3 w-3" /> Instruções de Atendimento
+                                </p>
+                                <div className="mt-1 p-3 bg-amber-50 border border-amber-200 rounded-md">
+                                  <p className="text-sm text-amber-900 whitespace-pre-wrap">
+                                    {companyLookup.instructions}
+                                  </p>
+                                </div>
+                              </div>
                             )}
-                            {chatDetail.timeInManual !== undefined && chatDetail.timeInManual > 0 && (
-                              <TimeMetric label="Atendimento" seconds={chatDetail.timeInManual} />
+
+                            {companyLookup.emails && (companyLookup.emails as string[]).length > 0 && (
+                              <div>
+                                <p className="text-xs text-muted-foreground uppercase tracking-wider">E-mails</p>
+                                <div className="mt-1 space-y-1">
+                                  {(companyLookup.emails as string[]).map((email: string, i: number) => (
+                                    <p key={i} className="text-sm text-foreground">{email}</p>
+                                  ))}
+                                </div>
+                              </div>
                             )}
-                            {chatDetail.timeInAutomatic !== undefined && chatDetail.timeInAutomatic > 0 && (
-                              <TimeMetric label="Automático" seconds={chatDetail.timeInAutomatic} />
+
+                            {companyLookup.contacts && (companyLookup.contacts as any[]).length > 0 && (
+                              <div>
+                                <p className="text-xs text-muted-foreground uppercase tracking-wider">Contatos da Empresa</p>
+                                <div className="mt-1 space-y-2">
+                                  {(companyLookup.contacts as any[]).map((c: any, i: number) => (
+                                    <div key={i} className="text-sm bg-muted/50 rounded p-2">
+                                      <p className="font-medium text-foreground">{c.name}</p>
+                                      {c.role && <p className="text-xs text-muted-foreground">{c.role}</p>}
+                                      {c.phone && <p className="text-xs text-muted-foreground">{c.phone}</p>}
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
                             )}
-                            {chatDetail.timeInOutOfHour !== undefined && chatDetail.timeInOutOfHour > 0 && (
-                              <TimeMetric label="Fora do horário" seconds={chatDetail.timeInOutOfHour} />
+
+                            {companyLookup.phone && (
+                              <DetailRow label="Telefone principal" value={companyLookup.phone} />
                             )}
+
+                            {companyLookup.notes && (
+                              <DetailRow label="Observações" value={companyLookup.notes} />
+                            )}
+                          </>
+                        ) : (
+                          <div className="space-y-3">
+                            <div className="flex items-center gap-2 text-muted-foreground">
+                              <AlertCircle className="h-4 w-4" />
+                              <p className="text-sm">Cliente não identificado</p>
+                            </div>
+                            <p className="text-xs text-muted-foreground">
+                              O número {contactPhone || "deste contato"} não está vinculado a nenhuma empresa.
+                            </p>
+                            <Separator />
+                            <p className="text-xs font-medium text-foreground">Vincular a uma empresa:</p>
+                            <Select
+                              onValueChange={(companyId) => linkCompanyMutation.mutate(companyId)}
+                            >
+                              <SelectTrigger className="w-full">
+                                <SelectValue placeholder="Selecionar empresa..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {allCompanies.map((c: any) => (
+                                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Button variant="outline" size="sm" className="w-full" asChild>
+                              <a href="/empresas">
+                                <Building2 className="h-3 w-3 mr-1" /> Cadastrar nova empresa
+                              </a>
+                            </Button>
                           </div>
-                        </>
-                      )}
+                        )}
 
-                      {chatDetail.contact?.tags && chatDetail.contact.tags.length > 0 && (
-                        <>
-                          <Separator />
-                          <div>
-                            <p className="text-xs text-muted-foreground uppercase tracking-wider">Tags</p>
-                            <div className="flex flex-wrap gap-1 mt-1">
-                              {chatDetail.contact.tags.map((tag, i) => (
-                                <Badge key={i} variant="secondary" className="text-xs">
-                                  {tag.name || String(tag)}
+                        {/* Plate field */}
+                        <Separator />
+                        <div className="space-y-2">
+                          <p className="text-xs text-muted-foreground uppercase tracking-wider">Placa do Veículo</p>
+                          <div className="flex gap-2">
+                            <Input
+                              value={ticketPlate}
+                              onChange={(e) => setTicketPlate(e.target.value.toUpperCase())}
+                              placeholder="ABC1D23"
+                              className="flex-1"
+                            />
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => updatePlateMutation.mutate(ticketPlate)}
+                              disabled={updatePlateMutation.isPending}
+                            >
+                              Salvar
+                            </Button>
+                          </div>
+                          {detectedPlates.length > 0 && (
+                            <div className="flex flex-wrap gap-1">
+                              <span className="text-[10px] text-muted-foreground">Detectadas:</span>
+                              {detectedPlates.map((p) => (
+                                <Badge
+                                  key={p}
+                                  variant="outline"
+                                  className="text-[10px] cursor-pointer"
+                                  onClick={() => setTicketPlate(p)}
+                                >
+                                  {p}
                                 </Badge>
                               ))}
                             </div>
-                          </div>
-                        </>
-                      )}
+                          )}
+                        </div>
+                      </div>
+                    </ScrollArea>
+                  </TabsContent>
 
-                      {/* Messages count */}
-                      <Separator />
-                      <DetailRow label="Mensagens" value={`${messages.length} mensagem(ns) neste atendimento`} />
-                    </div>
-                  </div>
-                </ScrollArea>
+                  {/* Contato Tab */}
+                  <TabsContent value="contato" className="flex-1 overflow-auto m-0">
+                    <ScrollArea className="h-full">
+                      <div className="p-4 space-y-4">
+                        <div className="text-center">
+                          <Avatar className="h-16 w-16 mx-auto">
+                            {chatDetail.contact?.linkImage &&
+                              !chatDetail.contact.linkImage.includes("avatar-default") && (
+                                <AvatarImage src={chatDetail.contact.linkImage} />
+                              )}
+                            <AvatarFallback className="text-lg bg-primary/10 text-primary">
+                              {(chatDetail.description || chatDetail.contact?.name || "?").substring(0, 2).toUpperCase()}
+                            </AvatarFallback>
+                          </Avatar>
+                          <h3 className="mt-3 font-medium text-foreground">
+                            {chatDetail.contact?.name || chatDetail.description || "Contato"}
+                          </h3>
+                          {chatDetail.contact?.number && (
+                            <p className="text-sm text-muted-foreground flex items-center justify-center gap-1 mt-1">
+                              <Phone className="h-3 w-3" />
+                              {chatDetail.contact.secondaryName || chatDetail.contact.number}
+                            </p>
+                          )}
+                        </div>
+
+                        <Separator />
+
+                        <div className="space-y-3">
+                          {chatDetail.protocol && (
+                            <DetailRow label="Protocolo" value={`#${chatDetail.protocol}`} mono />
+                          )}
+                          {statusInfo && (
+                            <div>
+                              <p className="text-xs text-muted-foreground uppercase tracking-wider">Status</p>
+                              <Badge variant="outline" className={`mt-1 ${statusInfo.color}`}>
+                                {statusInfo.label}
+                              </Badge>
+                            </div>
+                          )}
+                          {chatDetail.currentSector?.description && (
+                            <DetailRow label="Setor" value={chatDetail.currentSector.description} />
+                          )}
+                          {chatDetail.currentUser?.name && (
+                            <DetailRow label="Atendente" value={chatDetail.currentUser.name} />
+                          )}
+                          {chatDetail.currentOrganization?.description && (
+                            <DetailRow label="Organização" value={chatDetail.currentOrganization.description} />
+                          )}
+                          {chatDetail.utcDhStartChat && (
+                            <div>
+                              <p className="text-xs text-muted-foreground uppercase tracking-wider">Início</p>
+                              <p className="text-sm mt-1 flex items-center gap-1 text-foreground">
+                                <Clock className="h-3 w-3" />
+                                {new Date(chatDetail.utcDhStartChat).toLocaleString("pt-BR")}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Time metrics */}
+                          {(chatDetail.timeInWaiting || chatDetail.timeInManual || chatDetail.timeInAutomatic) && (
+                            <>
+                              <Separator />
+                              <p className="text-xs text-muted-foreground uppercase tracking-wider">Tempos</p>
+                              <div className="grid grid-cols-2 gap-2">
+                                {chatDetail.timeInWaiting !== undefined && chatDetail.timeInWaiting > 0 && (
+                                  <TimeMetric label="Espera" seconds={chatDetail.timeInWaiting} />
+                                )}
+                                {chatDetail.timeInManual !== undefined && chatDetail.timeInManual > 0 && (
+                                  <TimeMetric label="Atendimento" seconds={chatDetail.timeInManual} />
+                                )}
+                                {chatDetail.timeInAutomatic !== undefined && chatDetail.timeInAutomatic > 0 && (
+                                  <TimeMetric label="Automático" seconds={chatDetail.timeInAutomatic} />
+                                )}
+                                {chatDetail.timeInOutOfHour !== undefined && chatDetail.timeInOutOfHour > 0 && (
+                                  <TimeMetric label="Fora do horário" seconds={chatDetail.timeInOutOfHour} />
+                                )}
+                              </div>
+                            </>
+                          )}
+
+                          {chatDetail.contact?.tags && chatDetail.contact.tags.length > 0 && (
+                            <>
+                              <Separator />
+                              <div>
+                                <p className="text-xs text-muted-foreground uppercase tracking-wider">Tags</p>
+                                <div className="flex flex-wrap gap-1 mt-1">
+                                  {chatDetail.contact.tags.map((tag, i) => (
+                                    <Badge key={i} variant="secondary" className="text-xs">
+                                      {tag.name || String(tag)}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              </div>
+                            </>
+                          )}
+
+                          <Separator />
+                          <DetailRow label="Mensagens" value={`${messages.length} mensagem(ns)`} />
+                        </div>
+                      </div>
+                    </ScrollArea>
+                  </TabsContent>
+
+                  {/* Histórico Tab */}
+                  <TabsContent value="historico" className="flex-1 overflow-auto m-0">
+                    <ScrollArea className="h-full">
+                      <div className="p-4 space-y-4">
+                        <div className="flex items-center gap-2">
+                          <History className="h-4 w-4 text-primary" />
+                          <p className="text-sm font-medium text-foreground">
+                            Histórico de Atendimentos
+                          </p>
+                        </div>
+
+                        {activePlate ? (
+                          <>
+                            <p className="text-xs text-muted-foreground">
+                              Chamados com a placa <Badge variant="outline" className="text-xs">{activePlate}</Badge>
+                            </p>
+                            {plateHistory.length === 0 ? (
+                              <p className="text-sm text-muted-foreground py-4 text-center">
+                                Nenhum atendimento anterior para esta placa.
+                              </p>
+                            ) : (
+                              <div className="space-y-2">
+                                {plateHistory.map((ticket: any) => (
+                                  <div key={ticket.id} className="border rounded-md p-3 space-y-1">
+                                    <div className="flex items-center justify-between">
+                                      <p className="text-sm font-medium text-foreground">
+                                        {ticket.contact_name || "Sem nome"}
+                                      </p>
+                                      <Badge
+                                        variant="outline"
+                                        className={`text-[10px] ${
+                                          ticket.status === "finalizado"
+                                            ? "border-muted text-muted-foreground"
+                                            : ticket.status === "em_andamento"
+                                            ? "border-emerald-300 text-emerald-700"
+                                            : "border-amber-300 text-amber-700"
+                                        }`}
+                                      >
+                                        {ticket.status}
+                                      </Badge>
+                                    </div>
+                                    {ticket.companies?.name && (
+                                      <p className="text-xs text-muted-foreground flex items-center gap-1">
+                                        <Building2 className="h-3 w-3" /> {ticket.companies.name}
+                                      </p>
+                                    )}
+                                    <p className="text-xs text-muted-foreground">
+                                      {new Date(ticket.created_at).toLocaleDateString("pt-BR")} — {ticket.plate}
+                                    </p>
+                                    {ticket.notes && (
+                                      <p className="text-xs text-foreground mt-1">{ticket.notes}</p>
+                                    )}
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div className="text-center py-8 text-muted-foreground">
+                            <p className="text-sm">Nenhuma placa identificada</p>
+                            <p className="text-xs mt-1">
+                              Informe uma placa na aba "Empresa" ou aguarde a detecção automática nas mensagens.
+                            </p>
+                          </div>
+                        )}
+                      </div>
+                    </ScrollArea>
+                  </TabsContent>
+                </Tabs>
               )}
             </div>
           </div>
