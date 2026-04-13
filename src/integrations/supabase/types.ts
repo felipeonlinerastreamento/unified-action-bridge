@@ -14,16 +14,402 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json | null
+          entity_id: string | null
+          entity_type: string
+          id: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json | null
+          entity_id?: string | null
+          entity_type: string
+          id?: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json | null
+          entity_id?: string | null
+          entity_type?: string
+          id?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      auto_tickets: {
+        Row: {
+          created_at: string
+          current_quantity: number
+          id: string
+          item_name: string
+          min_quantity: number
+          resolved_at: string | null
+          rule_id: string | null
+          status: Database["public"]["Enums"]["ticket_status"]
+        }
+        Insert: {
+          created_at?: string
+          current_quantity: number
+          id?: string
+          item_name: string
+          min_quantity: number
+          resolved_at?: string | null
+          rule_id?: string | null
+          status?: Database["public"]["Enums"]["ticket_status"]
+        }
+        Update: {
+          created_at?: string
+          current_quantity?: number
+          id?: string
+          item_name?: string
+          min_quantity?: number
+          resolved_at?: string | null
+          rule_id?: string | null
+          status?: Database["public"]["Enums"]["ticket_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "auto_tickets_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_min_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      channels: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          name: string
+          organization_id: string | null
+          platform: string
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          organization_id?: string | null
+          platform?: string
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          organization_id?: string | null
+          platform?: string
+          token?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      entity_links: {
+        Row: {
+          channel_id: string | null
+          created_at: string
+          entity_type: string
+          external_id: string
+          id: string
+          local_id: string
+          metadata: Json | null
+        }
+        Insert: {
+          channel_id?: string | null
+          created_at?: string
+          entity_type: string
+          external_id: string
+          id?: string
+          local_id: string
+          metadata?: Json | null
+        }
+        Update: {
+          channel_id?: string | null
+          created_at?: string
+          entity_type?: string
+          external_id?: string
+          id?: string
+          local_id?: string
+          metadata?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entity_links_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      integration_logs: {
+        Row: {
+          channel_id: string | null
+          created_at: string
+          endpoint: string
+          error_code: string | null
+          error_message: string | null
+          id: string
+          method: string
+          response_time_ms: number | null
+          status_code: number | null
+        }
+        Insert: {
+          channel_id?: string | null
+          created_at?: string
+          endpoint: string
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          method?: string
+          response_time_ms?: number | null
+          status_code?: number | null
+        }
+        Update: {
+          channel_id?: string | null
+          created_at?: string
+          endpoint?: string
+          error_code?: string | null
+          error_message?: string | null
+          id?: string
+          method?: string
+          response_time_ms?: number | null
+          status_code?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "integration_logs_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      inventory_items: {
+        Row: {
+          category_id: string
+          created_at: string
+          id: string
+          linked_at: string | null
+          linked_to: string | null
+          name: string
+          notes: string | null
+          serial_number: string | null
+          status: Database["public"]["Enums"]["inventory_status"]
+          updated_at: string
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          id?: string
+          linked_at?: string | null
+          linked_to?: string | null
+          name: string
+          notes?: string | null
+          serial_number?: string | null
+          status?: Database["public"]["Enums"]["inventory_status"]
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          id?: string
+          linked_at?: string | null
+          linked_to?: string | null
+          name?: string
+          notes?: string | null
+          serial_number?: string | null
+          status?: Database["public"]["Enums"]["inventory_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_items_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_min_rules: {
+        Row: {
+          auto_ticket: boolean
+          category_id: string | null
+          created_at: string
+          id: string
+          item_name: string
+          min_quantity: number
+        }
+        Insert: {
+          auto_ticket?: boolean
+          category_id?: string | null
+          created_at?: string
+          id?: string
+          item_name: string
+          min_quantity?: number
+        }
+        Update: {
+          auto_ticket?: boolean
+          category_id?: string | null
+          created_at?: string
+          id?: string
+          item_name?: string
+          min_quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_min_rules_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      inventory_movements: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          item_id: string
+          notes: string | null
+          quantity: number
+          type: Database["public"]["Enums"]["movement_type"]
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          item_id: string
+          notes?: string | null
+          quantity?: number
+          type: Database["public"]["Enums"]["movement_type"]
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          item_id?: string
+          notes?: string | null
+          quantity?: number
+          type?: Database["public"]["Enums"]["movement_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inventory_movements_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          id: string
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "admin" | "gestor" | "atendente"
+      inventory_status: "disponivel" | "vinculado"
+      movement_type: "entrada" | "saida"
+      ticket_status: "aberto" | "resolvido"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +536,11 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["admin", "gestor", "atendente"],
+      inventory_status: ["disponivel", "vinculado"],
+      movement_type: ["entrada", "saida"],
+      ticket_status: ["aberto", "resolvido"],
+    },
   },
 } as const
