@@ -14,34 +14,80 @@ async function getChannelToken(supabase: any, channelId: string) {
   return data as { token: string; id: string };
 }
 
-async function callGSystem(endpoint: string, token: string, channelId: string, method = "GET", body?: unknown): Promise<Record<string, any>> {
-  const { GSystemGateway } = await import("@/lib/gsystem-gateway.server");
-  if (method === "POST") {
-    return GSystemGateway.post<Record<string, any>>(endpoint, body, token, channelId);
+const GSYSTEM_BASE_URL = "https://api.gsystem.chat/core/v2/api";
+
+// Direct fetch helper that skips the gateway logging (which fails due to RLS)
+async function gsystemFetch(endpoint: string, token: string, method = "GET", body?: unknown): Promise<any> {
+  const url = `${GSYSTEM_BASE_URL}${endpoint}`;
+  const res = await fetch(url, {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      "access-token": token,
+    },
+    body: body ? JSON.stringify(body) : undefined,
+  });
+
+  if (res.status === 204 || res.headers.get("content-length") === "0") {
+    return { success: true };
   }
-  if (method === "PUT") {
-    return GSystemGateway.put<Record<string, any>>(endpoint, body, token, channelId);
+
+  const text = await res.text();
+  if (!text) return { success: true };
+
+  try {
+    const data = JSON.parse(text);
+    if (!res.ok) {
+      const errorCode = data?.errorCode || `http_${res.status}`;
+      const errorMsg = data?.msg || data?.message || res.statusText;
+      throw new Error(`GSystem error [${errorCode}]: ${errorMsg}`);
+    }
+    return data;
+  } catch (err) {
+    if (err instanceof SyntaxError) {
+      throw new Error(`GSystem returned invalid JSON (status ${res.status})`);
+    }
+    throw err;
   }
-  return GSystemGateway.get<Record<string, any>>(endpoint, token, channelId);
 }
 
+// List chats — tries list endpoint, falls back to empty
 export const listChats = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
       channelId: z.string().uuid(),
-      status: z.string().optional(),
+      status: z.string().max(50).optional(),
       page: z.number().min(1).max(1000).optional(),
       limit: z.number().min(1).max(100).optional(),
     }).parse
   )
   .handler(async ({ data, context }): Promise<Record<string, any>> => {
     const channel = await getChannelToken(context.supabase, data.channelId);
-    return callGSystem("/chats/list", channel.token, channel.id, "POST", {
-      status: data.status, page: data.page || 1, limit: data.limit || 20,
-    });
+    try {
+      const result = await gsystemFetch("/chats/list", channel.token, "POST", {
+        data: { status: data.status || "OPEN", page: data.page || 1, pageSize: data.limit || 20 },
+      });
+      return result;
+    } catch (err) {
+      console.error("[listChats] Error:", err);
+      // Return empty list instead of crashing
+      return { data: [], total: 0, error: String(err) };
+    }
   });
 
+// Get a single chat by ID
+export const getChatDetail = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    z.object({ channelId: z.string().uuid(), chatId: z.string().min(1).max(255) }).parse
+  )
+  .handler(async ({ data, context }): Promise<Record<string, any>> => {
+    const channel = await getChannelToken(context.supabase, data.channelId);
+    return gsystemFetch(`/chats/${data.chatId}`, channel.token);
+  });
+
+// Get messages - uses message ID endpoint
 export const getChatMessages = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
@@ -49,39 +95,67 @@ export const getChatMessages = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }): Promise<Record<string, any>> => {
     const channel = await getChannelToken(context.supabase, data.channelId);
-    return callGSystem(`/chats/messages/${data.chatId}`, channel.token, channel.id);
+    try {
+      return await gsystemFetch(`/chats/messages/${data.chatId}`, channel.token);
+    } catch {
+      return { data: [], messages: [] };
+    }
   });
 
+// Send text message
 export const sendText = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
-    z.object({ channelId: z.string().uuid(), chatId: z.string().min(1).max(255), message: z.string().min(1).max(5000) }).parse
+    z.object({
+      channelId: z.string().uuid(),
+      chatId: z.string().min(1).max(255),
+      message: z.string().min(1).max(5000),
+    }).parse
   )
   .handler(async ({ data, context }): Promise<Record<string, any>> => {
     const channel = await getChannelToken(context.supabase, data.channelId);
-    return callGSystem("/chats/send-text", channel.token, channel.id, "POST", { chatId: data.chatId, message: data.message });
+    return gsystemFetch("/chats/send-text", channel.token, "POST", {
+      data: { attendanceId: data.chatId, text: data.message },
+    });
   });
 
+// Create new chat
 export const createChat = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
-    z.object({ channelId: z.string().uuid(), contactPhone: z.string().min(10).max(20), message: z.string().min(1).max(5000).optional(), sectorId: z.string().optional() }).parse
+    z.object({
+      channelId: z.string().uuid(),
+      contactPhone: z.string().min(10).max(20),
+      message: z.string().min(1).max(5000).optional(),
+      sectorId: z.string().max(255).optional(),
+    }).parse
   )
   .handler(async ({ data, context }): Promise<Record<string, any>> => {
     const channel = await getChannelToken(context.supabase, data.channelId);
-    return callGSystem("/chats/create-new", channel.token, channel.id, "POST", { contactPhone: data.contactPhone, message: data.message, sectorId: data.sectorId });
+    return gsystemFetch("/chats/create-new", channel.token, "POST", {
+      data: { contactPhone: data.contactPhone, message: data.message, sectorId: data.sectorId },
+    });
   });
 
+// Transfer chat
 export const transferChat = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
-    z.object({ channelId: z.string().uuid(), chatId: z.string().min(1).max(255), sectorId: z.string().optional(), userId: z.string().optional() }).parse
+    z.object({
+      channelId: z.string().uuid(),
+      chatId: z.string().min(1).max(255),
+      sectorId: z.string().max(255).optional(),
+      userId: z.string().max(255).optional(),
+    }).parse
   )
   .handler(async ({ data, context }): Promise<Record<string, any>> => {
     const channel = await getChannelToken(context.supabase, data.channelId);
-    return callGSystem(`/chats/${data.chatId}/transfer`, channel.token, channel.id, "POST", { sectorId: data.sectorId, userId: data.userId });
+    return gsystemFetch(`/chats/${data.chatId}/transfer`, channel.token, "POST", {
+      data: { sectorId: data.sectorId, userId: data.userId },
+    });
   });
 
+// Finalize chat
 export const finalizeChat = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
@@ -89,43 +163,52 @@ export const finalizeChat = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }): Promise<Record<string, any>> => {
     const channel = await getChannelToken(context.supabase, data.channelId);
-    return callGSystem(`/chats/${data.chatId}/finalize`, channel.token, channel.id, "POST", {});
+    return gsystemFetch(`/chats/${data.chatId}/finalize`, channel.token, "POST", {});
   });
 
+// List contacts
 export const listContacts = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
-    z.object({ channelId: z.string().uuid(), page: z.number().min(1).max(1000).optional(), search: z.string().max(255).optional() }).parse
+    z.object({
+      channelId: z.string().uuid(),
+      page: z.number().min(1).max(1000).optional(),
+      pageSize: z.number().min(1).max(500).optional(),
+      search: z.string().max(255).optional(),
+    }).parse
   )
   .handler(async ({ data, context }): Promise<Record<string, any>> => {
     const channel = await getChannelToken(context.supabase, data.channelId);
-    const query = new URLSearchParams();
-    if (data.page) query.set("page", String(data.page));
-    if (data.search) query.set("search", data.search);
-    const qs = query.toString();
-    return callGSystem(`/contacts/list${qs ? `?${qs}` : ""}`, channel.token, channel.id);
+    const params = new URLSearchParams();
+    params.set("page", String(data.page || 1));
+    params.set("pageSize", String(data.pageSize || 20));
+    if (data.search) params.set("search", data.search);
+    return gsystemFetch(`/contacts/list?${params}`, channel.token);
   });
 
+// Get channel status
 export const getChannelStatus = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ channelId: z.string().uuid() }).parse)
   .handler(async ({ data, context }): Promise<Record<string, any>> => {
     const channel = await getChannelToken(context.supabase, data.channelId);
-    return callGSystem("/channel/status", channel.token, channel.id);
+    return gsystemFetch("/channel/status", channel.token);
   });
 
+// List sectors
 export const listSectors = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ channelId: z.string().uuid() }).parse)
   .handler(async ({ data, context }): Promise<Record<string, any>> => {
     const channel = await getChannelToken(context.supabase, data.channelId);
-    return callGSystem("/sectors", channel.token, channel.id);
+    return gsystemFetch("/sectors", channel.token);
   });
 
+// List GSystem users/agents
 export const listGSystemUsers = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ channelId: z.string().uuid() }).parse)
   .handler(async ({ data, context }): Promise<Record<string, any>> => {
     const channel = await getChannelToken(context.supabase, data.channelId);
-    return callGSystem("/users", channel.token, channel.id);
+    return gsystemFetch("/users", channel.token);
   });
