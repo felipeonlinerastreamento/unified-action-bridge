@@ -93,17 +93,20 @@ async function authenticate(): Promise<string> {
   for (const candidate of fieldCandidates) {
     const extracted = extractJwt(candidate);
     if (extracted) {
-      cachedToken = extracted;
+      // Step 2: Validate OTP if configured
+      const validatedToken = await validateOtp(extracted);
+      cachedToken = validatedToken;
       tokenExpiry = now + 55 * 60 * 1000;
-      return extracted;
+      return validatedToken;
     }
   }
 
   // If data itself is a string token
   if (typeof data === "string" && data.length > 10) {
-    cachedToken = data;
+    const validatedToken = await validateOtp(data);
+    cachedToken = validatedToken;
     tokenExpiry = now + 55 * 60 * 1000;
-    return data;
+    return validatedToken;
   }
 
   console.error("[GSystem Auth] Could not extract token. Keys:", Object.keys(data), "Data:", JSON.stringify(data).substring(0, 500));
