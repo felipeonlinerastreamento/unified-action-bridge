@@ -483,7 +483,7 @@ export const testGsystemAuth = createServerFn({ method: "POST" })
       };
     }
 
-    const results: Array<{ field: string; status: number; message: string; success: boolean }> = [];
+    const results: Array<{ field: string; status: number; message: string; success: boolean; keys?: string[] }> = [];
 
     // Attempt 1: PasswordHash
     try {
@@ -493,7 +493,9 @@ export const testGsystemAuth = createServerFn({ method: "POST" })
         body: JSON.stringify({ CNPJ: cnpj, Login: login, PasswordHash: passwordHash }),
       });
       const text1 = await res1.text();
-      results.push({ field: "PasswordHash", status: res1.status, message: text1.substring(0, 300), success: res1.ok });
+      let keys1: string[] = [];
+      try { const j = JSON.parse(text1); keys1 = typeof j === "object" && j !== null ? Object.keys(j) : []; } catch {}
+      results.push({ field: "PasswordHash", status: res1.status, message: text1.substring(0, 500), success: res1.ok, keys: keys1 });
     } catch (err: any) {
       results.push({ field: "PasswordHash", status: 0, message: err.message, success: false });
     }
@@ -506,7 +508,9 @@ export const testGsystemAuth = createServerFn({ method: "POST" })
         body: JSON.stringify({ CNPJ: cnpj, Login: login, Password: passwordHash }),
       });
       const text2 = await res2.text();
-      results.push({ field: "Password", status: res2.status, message: text2.substring(0, 300), success: res2.ok });
+      let keys2: string[] = [];
+      try { const j = JSON.parse(text2); keys2 = typeof j === "object" && j !== null ? Object.keys(j) : []; } catch {}
+      results.push({ field: "Password", status: res2.status, message: text2.substring(0, 500), success: res2.ok, keys: keys2 });
     } catch (err: any) {
       results.push({ field: "Password", status: 0, message: err.message, success: false });
     }
@@ -519,7 +523,9 @@ export const testGsystemAuth = createServerFn({ method: "POST" })
         body: JSON.stringify({ CNPJ: cnpj, Login: login, Senha: passwordHash }),
       });
       const text3 = await res3.text();
-      results.push({ field: "Senha", status: res3.status, message: text3.substring(0, 300), success: res3.ok });
+      let keys3: string[] = [];
+      try { const j = JSON.parse(text3); keys3 = typeof j === "object" && j !== null ? Object.keys(j) : []; } catch {}
+      results.push({ field: "Senha", status: res3.status, message: text3.substring(0, 500), success: res3.ok, keys: keys3 });
     } catch (err: any) {
       results.push({ field: "Senha", status: 0, message: err.message, success: false });
     }
@@ -529,9 +535,10 @@ export const testGsystemAuth = createServerFn({ method: "POST" })
     return {
       success: !!successAttempt,
       workingField: successAttempt?.field || null,
+      responseKeys: successAttempt?.keys || [],
       message: successAttempt
-        ? `Autenticação bem-sucedida usando o campo "${successAttempt.field}"`
+        ? `Autenticação bem-sucedida usando o campo "${successAttempt.field}". Chaves da resposta: ${(successAttempt.keys || []).join(", ")}`
         : "Nenhum formato de senha funcionou. Verifique o valor do secret GSYSTEM_PASSWORD_HASH.",
-      attempts: results.map((r) => ({ field: r.field, status: r.status, success: r.success, message: r.message })),
+      attempts: results.map((r) => ({ field: r.field, status: r.status, success: r.success, message: r.message, keys: r.keys })),
     };
   });
