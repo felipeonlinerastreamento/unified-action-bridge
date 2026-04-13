@@ -31,8 +31,8 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     meta: [
       { charSet: "utf-8" },
       { name: "viewport", content: "width=device-width, initial-scale=1" },
-      { title: "GSystem Hub — Sistema Unificado" },
-      { name: "description", content: "Sistema unificado de chamados, atendimento, operação e estoque" },
+{ title: "GSystem Hub" },
+      { name: "description", content: "Sistema unificado de chamados, atendimento, operação e estoque — GSystem Hub" },
     ],
     links: [{ rel: "stylesheet", href: appCss }],
   }),
