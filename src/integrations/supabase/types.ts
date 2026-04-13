@@ -121,6 +121,74 @@ export type Database = {
         }
         Relationships: []
       }
+      companies: {
+        Row: {
+          cnpj: string | null
+          contacts: Json | null
+          created_at: string
+          emails: string[] | null
+          id: string
+          instructions: string | null
+          name: string
+          notes: string | null
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          cnpj?: string | null
+          contacts?: Json | null
+          created_at?: string
+          emails?: string[] | null
+          id?: string
+          instructions?: string | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cnpj?: string | null
+          contacts?: Json | null
+          created_at?: string
+          emails?: string[] | null
+          id?: string
+          instructions?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      company_phones: {
+        Row: {
+          company_id: string
+          created_at: string
+          id: string
+          phone_number: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          id?: string
+          phone_number: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          id?: string
+          phone_number?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_phones_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       entity_links: {
         Row: {
           channel_id: string | null
@@ -374,6 +442,69 @@ export type Database = {
         }
         Relationships: []
       }
+      service_tickets: {
+        Row: {
+          attendance_id: string
+          channel_id: string | null
+          closed_at: string | null
+          company_id: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          opened_by: string | null
+          plate: string | null
+          status: Database["public"]["Enums"]["service_ticket_status"]
+          updated_at: string
+        }
+        Insert: {
+          attendance_id: string
+          channel_id?: string | null
+          closed_at?: string | null
+          company_id?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          opened_by?: string | null
+          plate?: string | null
+          status?: Database["public"]["Enums"]["service_ticket_status"]
+          updated_at?: string
+        }
+        Update: {
+          attendance_id?: string
+          channel_id?: string | null
+          closed_at?: string | null
+          company_id?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          opened_by?: string | null
+          plate?: string | null
+          status?: Database["public"]["Enums"]["service_ticket_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_tickets_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_tickets_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -412,6 +543,7 @@ export type Database = {
       app_role: "admin" | "gestor" | "atendente"
       inventory_status: "disponivel" | "vinculado"
       movement_type: "entrada" | "saida"
+      service_ticket_status: "aberto" | "em_andamento" | "finalizado"
       ticket_status: "aberto" | "resolvido"
     }
     CompositeTypes: {
@@ -543,6 +675,7 @@ export const Constants = {
       app_role: ["admin", "gestor", "atendente"],
       inventory_status: ["disponivel", "vinculado"],
       movement_type: ["entrada", "saida"],
+      service_ticket_status: ["aberto", "em_andamento", "finalizado"],
       ticket_status: ["aberto", "resolvido"],
     },
   },
