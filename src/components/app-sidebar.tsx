@@ -7,6 +7,7 @@ import {
   BarChart3,
   Settings,
   LogOut,
+  Building2,
 } from "lucide-react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
@@ -30,6 +31,7 @@ const mainItems = [
   { title: "Atendimentos", url: "/atendimentos", icon: MessageSquare },
   { title: "Central", url: "/central", icon: Headphones },
   { title: "Contatos", url: "/contatos", icon: Users },
+  { title: "Empresas", url: "/empresas", icon: Building2 },
   { title: "Estoque", url: "/estoque", icon: Package },
   { title: "Relatórios", url: "/relatorios", icon: BarChart3 },
   { title: "Configurações", url: "/configuracoes", icon: Settings },
