@@ -1,49 +1,51 @@
 
 
-## Diagnostico: Autenticacao GSystem API
+## Correcao da Autenticacao GSystem - Campo JWT
 
 ### Problema Identificado
 
-O erro retornado pela API do GSystem e:
+A autenticacao com a API do GSystem esta funcionando (credenciais corretas), mas a resposta retorna um objeto JSON com a estrutura:
+
+```json
+{
+  "JWT": { ... },  // pode ser objeto ou string
+  "Database": "...",
+  "UserKey": "...",
+  "RegisterKey": "...",
+  "Logo": "...",
+  "CompanyInfo": "...",
+  "Empresa": "...",
+  "Permissions": "..."
+}
 ```
-Falha na autenticação GSystem [400]: A senha informada está inválida!
+
+O codigo atual verifica `data?.JWT` mas so aceita se for uma string. Se `JWT` for um objeto (ex: `{ token: "eyJ..." }` ou `{ accessToken: "eyJ..." }`), o token nao e extraido.
+
+### Plano
+
+**Passo 1 -- Melhorar logging para diagnostico**
+
+Em `gsystem-api.server.ts`, adicionar log do tipo e conteudo de `data.JWT` para descobrir a estrutura exata:
+
+```
+console.log("[GSystem Auth] JWT field type:", typeof data.JWT);
+console.log("[GSystem Auth] JWT field value:", JSON.stringify(data.JWT).substring(0, 500));
 ```
 
-Isso significa que a API esta recebendo a requisicao corretamente (CNPJ e Login foram aceitos), mas o campo de senha esta incorreto.
+**Passo 2 -- Tratar JWT como objeto**
 
-### Possiveis Causas
+Atualizar a funcao `authenticate()` para:
+- Se `data.JWT` for string, usar diretamente (ja funciona)
+- Se `data.JWT` for um objeto, tentar extrair o token de sub-campos comuns (`token`, `accessToken`, `access_token`, ou o proprio valor se tiver apenas uma chave string)
 
-O codigo atual envia o campo `PasswordHash`, mas a API pode esperar:
-- `Password` (senha em texto plano) em vez de `PasswordHash`
-- O valor do secret `GSYSTEM_PASSWORD_HASH` pode estar incorreto (ex: hash errado, espacos extras)
+**Passo 3 -- Atualizar testGsystemAuth**
 
-### Plano de Acao
+Melhorar a funcao de teste para mostrar o tipo e valor (truncado) do campo JWT na resposta, permitindo diagnostico visual na UI.
 
-**Passo 1 -- Criar server function de teste de autenticacao**
-
-Adicionar uma funcao `testGsystemAuth` em `src/lib/gsystem-api.functions.ts` que:
-- Tente autenticar com `PasswordHash` (formato atual)
-- Se falhar, tente com `Password` (mesmo valor)
-- Retorne o resultado detalhado (status, mensagem, campos tentados) sem expor a senha
-
-**Passo 2 -- Adicionar botao de teste na UI**
-
-Na pagina de Configuracoes (`/configuracoes`), adicionar um card "Integracao GSystem API" com:
-- Botao "Testar Conexao"
-- Exibicao do resultado (sucesso/erro)
-- Indicacao de qual campo funcionou
-
-**Passo 3 -- Corrigir o campo de autenticacao**
-
-Baseado no resultado do teste, ajustar `gsystem-api.server.ts` para usar o campo correto (`Password` ou `PasswordHash`).
-
-Se ambos falharem, o secret `GSYSTEM_PASSWORD_HASH` precisa ser atualizado com o valor correto.
-
-### Detalhes Tecnicos
+### Arquivos Alterados
 
 | Arquivo | Alteracao |
 |---------|-----------|
-| `src/lib/gsystem-api.functions.ts` | Nova funcao `testGsystemAuth` |
-| `src/lib/gsystem-api.server.ts` | Possivel ajuste do campo de senha |
-| `src/routes/configuracoes.tsx` | Card de teste de conexao |
+| `src/lib/gsystem-api.server.ts` | Tratar `data.JWT` como objeto, extrair token recursivamente |
+| `src/lib/gsystem-api.functions.ts` | Exibir tipo/valor do campo JWT no teste |
 
