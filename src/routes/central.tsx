@@ -843,7 +843,7 @@ function CentralPage() {
 
   // Finalize chat
   const finalizeMutation = useMutation({
-    mutationFn: async (notes?: string) => {
+    mutationFn: async ({ notes, status, tipoPendencia }: { notes?: string; status?: string; tipoPendencia?: string } = {}) => {
       if (currentTicket) {
         let pendenciaKey = currentTicket.pendencia_key;
 
@@ -859,6 +859,8 @@ function CentralPage() {
                 companyId: currentTicket.company_id || undefined,
                 plate: currentTicket.plate || ticketPlate || undefined,
                 notes: notes || undefined,
+                tipoPendencia: tipoPendencia || undefined,
+                status: status || undefined,
               },
               ...authHeaders,
             });
@@ -877,8 +879,8 @@ function CentralPage() {
           }
         }
 
-        // Conclude pendência in GSystem if exists
-        if (pendenciaKey) {
+        // Conclude pendência in GSystem if status is "Resolvido"
+        if (pendenciaKey && status === "Resolvido") {
           try {
             const authHeaders = await getAuthHeaders();
             await concluirPendencia({
@@ -913,9 +915,38 @@ function CentralPage() {
       setSelectedChatId("");
       setShowFinalizeConfirm(false);
       setFinalizeNotes("");
+      setFinalizeStatus("A resolver");
+      setFinalizeTipoPendencia("");
       refetchChats();
     },
     onError: (err: any) => toast.error(err?.message || "Erro ao finalizar"),
+  });
+
+  // Transfer chat mutation
+  const transferMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedChatId || (!transferSectorId && !transferUserId)) {
+        throw new Error("Selecione um setor ou usuário para transferir");
+      }
+      return transferChat({
+        data: {
+          channelId: selectedChannelId,
+          chatId: selectedChatId,
+          sectorId: transferSectorId || undefined,
+          userId: transferUserId || undefined,
+        },
+        ...await getAuthHeaders(),
+      });
+    },
+    onSuccess: () => {
+      toast.success("Chat transferido com sucesso");
+      setShowTransferModal(false);
+      setTransferSectorId("");
+      setTransferUserId("");
+      refetchChats();
+      queryClient.invalidateQueries({ queryKey: ["chat-detail", selectedChannelId, selectedChatId] });
+    },
+    onError: (err: any) => toast.error(err?.message || "Erro ao transferir"),
   });
 
   // Create new chat
