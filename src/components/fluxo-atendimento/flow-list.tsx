@@ -143,7 +143,7 @@ export function FlowList({ onSelectFlow, selectedFlowId }: Props) {
     );
   };
 
-  const filteredCategories = tiposPendencia.filter((t: any) =>
+  const filteredCategories = (Array.isArray(tiposPendencia) ? tiposPendencia : []).filter((t: any) =>
     !categorySearch || (t.Descricao || t.Key || "").toLowerCase().includes(categorySearch.toLowerCase())
   );
 
