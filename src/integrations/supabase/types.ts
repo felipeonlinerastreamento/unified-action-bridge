@@ -546,6 +546,7 @@ export type Database = {
           id: string
           notes: string | null
           opened_by: string | null
+          pendencia_key: string | null
           plate: string | null
           status: Database["public"]["Enums"]["service_ticket_status"]
           updated_at: string
@@ -561,6 +562,7 @@ export type Database = {
           id?: string
           notes?: string | null
           opened_by?: string | null
+          pendencia_key?: string | null
           plate?: string | null
           status?: Database["public"]["Enums"]["service_ticket_status"]
           updated_at?: string
@@ -576,6 +578,7 @@ export type Database = {
           id?: string
           notes?: string | null
           opened_by?: string | null
+          pendencia_key?: string | null
           plate?: string | null
           status?: Database["public"]["Enums"]["service_ticket_status"]
           updated_at?: string

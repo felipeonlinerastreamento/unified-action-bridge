@@ -1,0 +1,1 @@
+ALTER TABLE public.service_tickets ADD COLUMN pendencia_key text;
