@@ -13,6 +13,7 @@ import { Route as RelatoriosRouteImport } from './routes/relatorios'
 import { Route as EstoqueRouteImport } from './routes/estoque'
 import { Route as EmpresasRouteImport } from './routes/empresas'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as CrmRouteImport } from './routes/crm'
 import { Route as ContatosRouteImport } from './routes/contatos'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as CentralRouteImport } from './routes/central'
@@ -37,6 +38,11 @@ const EmpresasRoute = EmpresasRouteImport.update({
 const DashboardRoute = DashboardRouteImport.update({
   id: '/dashboard',
   path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrmRoute = CrmRouteImport.update({
+  id: '/crm',
+  path: '/crm',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ContatosRoute = ContatosRouteImport.update({
@@ -71,6 +77,7 @@ export interface FileRoutesByFullPath {
   '/central': typeof CentralRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/contatos': typeof ContatosRoute
+  '/crm': typeof CrmRoute
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
@@ -82,6 +89,7 @@ export interface FileRoutesByTo {
   '/central': typeof CentralRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/contatos': typeof ContatosRoute
+  '/crm': typeof CrmRoute
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
@@ -94,6 +102,7 @@ export interface FileRoutesById {
   '/central': typeof CentralRoute
   '/configuracoes': typeof ConfiguracoesRoute
   '/contatos': typeof ContatosRoute
+  '/crm': typeof CrmRoute
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
@@ -107,6 +116,7 @@ export interface FileRouteTypes {
     | '/central'
     | '/configuracoes'
     | '/contatos'
+    | '/crm'
     | '/dashboard'
     | '/empresas'
     | '/estoque'
@@ -118,6 +128,7 @@ export interface FileRouteTypes {
     | '/central'
     | '/configuracoes'
     | '/contatos'
+    | '/crm'
     | '/dashboard'
     | '/empresas'
     | '/estoque'
@@ -129,6 +140,7 @@ export interface FileRouteTypes {
     | '/central'
     | '/configuracoes'
     | '/contatos'
+    | '/crm'
     | '/dashboard'
     | '/empresas'
     | '/estoque'
@@ -141,6 +153,7 @@ export interface RootRouteChildren {
   CentralRoute: typeof CentralRoute
   ConfiguracoesRoute: typeof ConfiguracoesRoute
   ContatosRoute: typeof ContatosRoute
+  CrmRoute: typeof CrmRoute
   DashboardRoute: typeof DashboardRoute
   EmpresasRoute: typeof EmpresasRoute
   EstoqueRoute: typeof EstoqueRoute
@@ -175,6 +188,13 @@ declare module '@tanstack/react-router' {
       path: '/dashboard'
       fullPath: '/dashboard'
       preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crm': {
+      id: '/crm'
+      path: '/crm'
+      fullPath: '/crm'
+      preLoaderRoute: typeof CrmRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/contatos': {
@@ -221,6 +241,7 @@ const rootRouteChildren: RootRouteChildren = {
   CentralRoute: CentralRoute,
   ConfiguracoesRoute: ConfiguracoesRoute,
   ContatosRoute: ContatosRoute,
+  CrmRoute: CrmRoute,
   DashboardRoute: DashboardRoute,
   EmpresasRoute: EmpresasRoute,
   EstoqueRoute: EstoqueRoute,
