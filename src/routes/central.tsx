@@ -12,6 +12,15 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import {
   listAllOpenChats,
@@ -40,6 +49,8 @@ import {
   History,
   AlertCircle,
   Link as LinkIcon,
+  UserPlus,
+  Mail,
 } from "lucide-react";
 
 export const Route = createFileRoute("/central")({
@@ -270,6 +281,132 @@ function CentralPage() {
       return company;
     },
     enabled: !!contactPhone && isAuthenticated,
+  });
+
+  // Sub-client lookup by phone
+  const { data: subClientLookup } = useQuery({
+    queryKey: ["sub-client-lookup", contactPhone],
+    queryFn: async () => {
+      if (!contactPhone) return null;
+      const cleanPhone = contactPhone.replace(/\D/g, "");
+      const { data: subClients } = await supabase
+        .from("sub_clients")
+        .select("*, companies(name)");
+      if (!subClients) return null;
+      const match = subClients.find((s: any) => {
+        const clean = s.phone.replace(/\D/g, "");
+        return clean === cleanPhone || cleanPhone.endsWith(clean) || clean.endsWith(cleanPhone);
+      });
+      return match || null;
+    },
+    enabled: !!contactPhone && !companyLookup && isAuthenticated,
+  });
+
+  // CRM contact lookup by phone
+  const { data: crmContactLookup } = useQuery({
+    queryKey: ["crm-contact-lookup", contactPhone],
+    queryFn: async () => {
+      if (!contactPhone) return null;
+      const cleanPhone = contactPhone.replace(/\D/g, "");
+      const { data: contacts } = await supabase
+        .from("crm_contacts")
+        .select("*, companies(name)");
+      if (!contacts) return null;
+      const match = contacts.find((c: any) => {
+        const clean = c.phone.replace(/\D/g, "");
+        return clean === cleanPhone || cleanPhone.endsWith(clean) || clean.endsWith(cleanPhone);
+      });
+      return match || null;
+    },
+    enabled: !!contactPhone && !companyLookup && !subClientLookup && isAuthenticated,
+  });
+
+  // Identification modal state
+  const isUnidentified = !!chatDetail && !!contactPhone && !companyLookup && !subClientLookup && !crmContactLookup;
+  const [identModalDismissed, setIdentModalDismissed] = useState<Record<string, boolean>>({});
+  const showIdentModal = isUnidentified && !!selectedChatId && !identModalDismissed[selectedChatId];
+
+  // Identification modal form state
+  const [identTab, setIdentTab] = useState<"vincular" | "subcliente" | "crm">("vincular");
+  const [identForm, setIdentForm] = useState({ name: "", phone: "", email: "", notes: "", companyId: "" });
+
+  // Reset form when chat changes
+  useEffect(() => {
+    if (chatDetail) {
+      setIdentForm({
+        name: chatDetail?.contact?.name || chatDetail?.description || "",
+        phone: contactPhone,
+        email: "",
+        notes: "",
+        companyId: "",
+      });
+      setIdentTab("vincular");
+    }
+  }, [selectedChatId]);
+
+  // Create sub-client mutation
+  const createSubClientMutation = useMutation({
+    mutationFn: async () => {
+      if (!identForm.companyId || !identForm.name) throw new Error("Preencha nome e empresa");
+      const { data: sess } = await supabase.auth.getSession();
+      const { error } = await supabase.from("sub_clients").insert({
+        name: identForm.name,
+        phone: identForm.phone || contactPhone,
+        email: identForm.email || null,
+        notes: identForm.notes || "",
+        company_id: identForm.companyId,
+        created_by: sess.session?.user?.id || null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Sub-cliente cadastrado com sucesso");
+      setIdentModalDismissed((prev) => ({ ...prev, [selectedChatId]: true }));
+      queryClient.invalidateQueries({ queryKey: ["sub-client-lookup"] });
+    },
+    onError: (err: any) => toast.error(err?.message || "Erro ao cadastrar sub-cliente"),
+  });
+
+  // Create CRM contact mutation
+  const createCrmContactMutation = useMutation({
+    mutationFn: async () => {
+      if (!identForm.name) throw new Error("Preencha o nome");
+      const { data: sess } = await supabase.auth.getSession();
+      const { error } = await supabase.from("crm_contacts").insert({
+        name: identForm.name,
+        phone: identForm.phone || contactPhone,
+        email: identForm.email || null,
+        notes: identForm.notes || "",
+        company_id: identForm.companyId || null,
+        created_by: sess.session?.user?.id || null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Contato CRM cadastrado com sucesso");
+      setIdentModalDismissed((prev) => ({ ...prev, [selectedChatId]: true }));
+      queryClient.invalidateQueries({ queryKey: ["crm-contact-lookup"] });
+    },
+    onError: (err: any) => toast.error(err?.message || "Erro ao cadastrar contato CRM"),
+  });
+
+  // Link company directly (for "vincular" tab)
+  const linkCompanyDirectMutation = useMutation({
+    mutationFn: async (companyId: string) => {
+      const phone = contactPhone.replace(/\D/g, "");
+      if (phone) {
+        await supabase.from("company_phones").insert({
+          company_id: companyId,
+          phone_number: phone,
+        });
+      }
+    },
+    onSuccess: () => {
+      toast.success("Número vinculado à empresa");
+      setIdentModalDismissed((prev) => ({ ...prev, [selectedChatId]: true }));
+      queryClient.invalidateQueries({ queryKey: ["company-lookup"] });
+    },
+    onError: (err: any) => toast.error(err?.message || "Erro ao vincular"),
   });
 
   // Service ticket for this attendance
@@ -1088,6 +1225,136 @@ function CentralPage() {
           </div>
         )}
       </div>
+
+      {/* Identification Modal */}
+      <Dialog open={showIdentModal} onOpenChange={() => {}}>
+        <DialogContent className="max-w-lg" onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-amber-500" />
+              Cliente não identificado
+            </DialogTitle>
+            <DialogDescription>
+              O número <strong>{contactPhone}</strong> não está vinculado a nenhum cliente. Escolha uma ação:
+            </DialogDescription>
+          </DialogHeader>
+
+          <Tabs value={identTab} onValueChange={(v) => setIdentTab(v as any)} className="mt-2">
+            <TabsList className="w-full">
+              <TabsTrigger value="vincular" className="flex-1 text-xs">
+                <LinkIcon className="h-3 w-3 mr-1" /> Vincular
+              </TabsTrigger>
+              <TabsTrigger value="subcliente" className="flex-1 text-xs">
+                <Users className="h-3 w-3 mr-1" /> Sub-cliente
+              </TabsTrigger>
+              <TabsTrigger value="crm" className="flex-1 text-xs">
+                <UserPlus className="h-3 w-3 mr-1" /> CRM
+              </TabsTrigger>
+            </TabsList>
+
+            {/* Vincular a empresa existente */}
+            <TabsContent value="vincular" className="space-y-3 mt-3">
+              <p className="text-sm text-muted-foreground">
+                Vincule este número a uma empresa já cadastrada.
+              </p>
+              <Select onValueChange={(companyId) => linkCompanyDirectMutation.mutate(companyId)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecionar empresa..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {allCompanies.map((c: any) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {linkCompanyDirectMutation.isPending && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Vinculando...
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Criar sub-cliente */}
+            <TabsContent value="subcliente" className="space-y-3 mt-3">
+              <p className="text-sm text-muted-foreground">
+                Cadastre como sub-cliente de uma empresa existente.
+              </p>
+              <div className="space-y-2">
+                <div>
+                  <Label className="text-xs">Empresa pai *</Label>
+                  <Select value={identForm.companyId} onValueChange={(v) => setIdentForm((f) => ({ ...f, companyId: v }))}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecionar empresa..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {allCompanies.map((c: any) => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label className="text-xs">Nome *</Label>
+                  <Input value={identForm.name} onChange={(e) => setIdentForm((f) => ({ ...f, name: e.target.value }))} />
+                </div>
+                <div>
+                  <Label className="text-xs">Telefone</Label>
+                  <Input value={identForm.phone} onChange={(e) => setIdentForm((f) => ({ ...f, phone: e.target.value }))} />
+                </div>
+                <div>
+                  <Label className="text-xs">E-mail</Label>
+                  <Input type="email" value={identForm.email} onChange={(e) => setIdentForm((f) => ({ ...f, email: e.target.value }))} />
+                </div>
+                <div>
+                  <Label className="text-xs">Observações</Label>
+                  <Textarea rows={2} value={identForm.notes} onChange={(e) => setIdentForm((f) => ({ ...f, notes: e.target.value }))} />
+                </div>
+              </div>
+              <Button
+                className="w-full"
+                onClick={() => createSubClientMutation.mutate()}
+                disabled={!identForm.name || !identForm.companyId || createSubClientMutation.isPending}
+              >
+                {createSubClientMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <UserPlus className="h-4 w-4 mr-2" />}
+                Cadastrar Sub-cliente
+              </Button>
+            </TabsContent>
+
+            {/* Cadastrar no CRM */}
+            <TabsContent value="crm" className="space-y-3 mt-3">
+              <p className="text-sm text-muted-foreground">
+                Cadastre como novo contato no CRM.
+              </p>
+              <div className="space-y-2">
+                <div>
+                  <Label className="text-xs">Nome *</Label>
+                  <Input value={identForm.name} onChange={(e) => setIdentForm((f) => ({ ...f, name: e.target.value }))} />
+                </div>
+                <div>
+                  <Label className="text-xs">Telefone</Label>
+                  <Input value={identForm.phone} onChange={(e) => setIdentForm((f) => ({ ...f, phone: e.target.value }))} />
+                </div>
+                <div>
+                  <Label className="text-xs">E-mail</Label>
+                  <Input type="email" value={identForm.email} onChange={(e) => setIdentForm((f) => ({ ...f, email: e.target.value }))} />
+                </div>
+                <div>
+                  <Label className="text-xs">Observações</Label>
+                  <Textarea rows={2} value={identForm.notes} onChange={(e) => setIdentForm((f) => ({ ...f, notes: e.target.value }))} />
+                </div>
+              </div>
+              <Button
+                className="w-full"
+                onClick={() => createCrmContactMutation.mutate()}
+                disabled={!identForm.name || createCrmContactMutation.isPending}
+              >
+                {createCrmContactMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <UserPlus className="h-4 w-4 mr-2" />}
+                Cadastrar no CRM
+              </Button>
+            </TabsContent>
+          </Tabs>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }
