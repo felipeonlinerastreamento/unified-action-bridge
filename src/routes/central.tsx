@@ -649,13 +649,15 @@ function CentralPage() {
         ...await getAuthHeaders(),
       });
       const clients = Array.isArray(result) ? result : result?.data || result?.Data || [];
-      // Map to { id, name, cnpj } format for dropdowns
-      return clients.map((c: any) => ({
-        id: c.Key || c.key || c.Id || c.id || "",
-        name: c.Nome || c.nome || c.RazaoSocial || c.razaoSocial || c.NomeFantasia || c.nomeFantasia || "—",
-        cnpj: c.CpfCnpj || c.cpfCnpj || c.CNPJ || c.cnpj || "",
-        fantasia: c.NomeFantasia || c.nomeFantasia || "",
-      }));
+      // Map to { id, name, cnpj } format for dropdowns, filter out empty keys
+      return clients
+        .map((c: any) => ({
+          id: String(c.Key || c.key || c.Id || c.id || ""),
+          name: c.Nome || c.nome || c.RazaoSocial || c.razaoSocial || c.NomeFantasia || c.nomeFantasia || "—",
+          cnpj: c.CpfCnpj || c.cpfCnpj || c.CNPJ || c.cnpj || "",
+          fantasia: c.NomeFantasia || c.nomeFantasia || "",
+        }))
+        .filter((c: any) => c.id !== "" && c.id !== "undefined");
     },
     enabled: isAuthenticated,
     staleTime: 60000,
