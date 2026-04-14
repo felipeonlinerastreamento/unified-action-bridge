@@ -2086,7 +2086,7 @@ function CentralPage() {
                 </div>
                 <div>
                   <Label className="text-xs">Contato (Telefone)</Label>
-                  <Input value={identForm.phone} readOnly className="bg-muted" />
+                  <Input value={identForm.phone} onChange={(e) => setIdentForm((f) => ({ ...f, phone: e.target.value }))} placeholder="Telefone do contato" />
                 </div>
                 <div>
                   <Label className="text-xs">E-mail</Label>
