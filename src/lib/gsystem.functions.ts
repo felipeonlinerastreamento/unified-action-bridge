@@ -68,128 +68,32 @@ export const listAllOpenChats = createServerFn({ method: "POST" })
     try {
       const chatMap = new Map<string, any>();
 
-      // Helper to fetch chats using various endpoint/payload combinations
-      async function tryFetchChats() {
-        // Attempt 1: GET /chats (some API versions use this)
-        try {
-          const result = await gsystemFetch("/chats", channel.token, "GET");
-          const items = Array.isArray(result) ? result : result?.data || result?.chats || [];
-          if (items.length > 0) {
-            console.log(`[listAllOpenChats] GET /chats returned ${items.length} chats`);
-            for (const chat of items) {
-              if (chat.attendanceId) chatMap.set(chat.attendanceId, chat);
-            }
-            return true;
-          }
-        } catch (e) {
-          console.warn("[listAllOpenChats] GET /chats failed:", String(e).substring(0, 150));
+      // Try to fetch chats via /chats/list (may fail on some GSystem versions)
+      let chatListWorked = false;
+      try {
+        const result = await gsystemFetch("/chats/list", channel.token, "POST", {
+          data: { status: "OPEN", page: 1, pageSize: 200 },
+        });
+        const items = Array.isArray(result) ? result : result?.data || [];
+        for (const chat of items) {
+          if (chat.attendanceId) chatMap.set(chat.attendanceId, chat);
         }
-
-        // Attempt 2: POST /chats/list with { status, page, pageSize } (no nested data)
-        for (const status of ["OPEN", "PENDING"]) {
-          try {
-            const result = await gsystemFetch("/chats/list", channel.token, "POST", {
-              status, page: 1, pageSize: 200,
-            });
-            const items = Array.isArray(result) ? result : result?.data || [];
-            for (const chat of items) {
-              if (chat.attendanceId) chatMap.set(chat.attendanceId, chat);
-            }
-          } catch (e) {
-            // already logged via gsystemFetch
-          }
-        }
-
-        // Attempt 3: POST /chats/list with nested data
-        if (chatMap.size === 0) {
-          for (const status of ["OPEN", "PENDING"]) {
-            try {
-              const result = await gsystemFetch("/chats/list", channel.token, "POST", {
-                data: { status, page: 1, pageSize: 200 },
-              });
-              const items = Array.isArray(result) ? result : result?.data || [];
-              for (const chat of items) {
-                if (chat.attendanceId) chatMap.set(chat.attendanceId, chat);
-              }
-            } catch (e) {
-              // already logged
-            }
-          }
-        }
-
-        // Attempt 4: GET /attendances
-        if (chatMap.size === 0) {
-          try {
-            const result = await gsystemFetch("/attendances", channel.token, "GET");
-            const items = Array.isArray(result) ? result : result?.data || [];
-            if (items.length > 0) {
-              console.log(`[listAllOpenChats] GET /attendances returned ${items.length} items`);
-              for (const chat of items) {
-                if (chat.attendanceId) chatMap.set(chat.attendanceId, chat);
-              }
-            }
-          } catch (e) {
-            console.warn("[listAllOpenChats] GET /attendances failed:", String(e).substring(0, 150));
-          }
-        }
-
-        return chatMap.size > 0;
+        chatListWorked = items.length > 0;
+      } catch {
+        // /chats/list is failing with 500 on this GSystem instance
       }
 
-      // 1) Try fetching chats via API
-      const chatListWorked = await tryFetchChats();
-      console.log(`[listAllOpenChats] After tryFetchChats: ${chatMap.size} chats (worked=${chatListWorked})`);
-
-      // 1b) Try fetching chats per sector
-      if (!chatListWorked) {
-        try {
-          const sectorsResult = await gsystemFetch("/sectors", channel.token);
-          const sectorsList = Array.isArray(sectorsResult) ? sectorsResult : [];
-          if (sectorsList.length > 0) {
-            console.log(`[listAllOpenChats] Found ${sectorsList.length} sectors, trying per-sector chat fetch...`);
-            const sectorResults = await Promise.allSettled(
-              sectorsList.map(async (sector: any) => {
-                const sectorId = sector.id || sector.Id;
-                if (!sectorId) return [];
-                try {
-                  const result = await gsystemFetch(`/sectors/${sectorId}/chats`, channel.token, "GET");
-                  return Array.isArray(result) ? result : result?.data || [];
-                } catch {
-                  return [];
-                }
-              })
-            );
-            for (const r of sectorResults) {
-              if (r.status === "fulfilled") {
-                for (const chat of r.value) {
-                  if (chat.attendanceId && !chatMap.has(chat.attendanceId)) {
-                    chatMap.set(chat.attendanceId, chat);
-                  }
-                }
-              }
-            }
-            if (chatMap.size > 0) {
-              console.log(`[listAllOpenChats] Per-sector fetch found ${chatMap.size} chats`);
-            }
-          }
-        } catch (e) {
-          console.warn("[listAllOpenChats] Sector-based fetch failed:", String(e).substring(0, 150));
-        }
-      }
-
-      // 2) Also get agent-assigned chats via /users
+      // Get agent-assigned chats via /users (always works)
       const users = await gsystemFetch("/users", channel.token);
       const userList = Array.isArray(users) ? users : [];
       const agentAttendanceIds: string[] = [];
       const userMap: Record<string, { name: string; status: string }> = {};
 
       for (const u of userList) {
-        // Check currentAttendanceId
         if (u.currentAttendanceId && !chatMap.has(u.currentAttendanceId)) {
           agentAttendanceIds.push(u.currentAttendanceId);
           userMap[u.currentAttendanceId] = { name: u.name || "", status: u.status || "" };
         }
-        // Also check attendanceIds array (some agents handle multiple chats)
         if (Array.isArray(u.attendanceIds)) {
           for (const aid of u.attendanceIds) {
             if (aid && !chatMap.has(aid) && !agentAttendanceIds.includes(aid)) {
@@ -198,6 +102,36 @@ export const listAllOpenChats = createServerFn({ method: "POST" })
             }
           }
         }
+      }
+
+      // Also try to get unassigned chats via /sectors
+      try {
+        const sectorsResult = await gsystemFetch("/sectors", channel.token);
+        const sectorsList = Array.isArray(sectorsResult) ? sectorsResult : [];
+        for (const sector of sectorsList) {
+          // Check if sector has waiting/queue count and try to fetch those chats
+          const queueCount = sector.waitingCount || sector.queueCount || sector.automaticCount || 0;
+          if (queueCount > 0) {
+            const sectorId = sector.id || sector.Id;
+            // Try different endpoint patterns to get sector queue chats
+            for (const ep of [`/sectors/${sectorId}/chats`, `/chats/sector/${sectorId}`]) {
+              try {
+                const result = await gsystemFetch(ep, channel.token, "GET");
+                const items = Array.isArray(result) ? result : result?.data || [];
+                for (const chat of items) {
+                  if (chat.attendanceId && !chatMap.has(chat.attendanceId)) {
+                    chatMap.set(chat.attendanceId, chat);
+                  }
+                }
+                if (items.length > 0) break; // one endpoint worked
+              } catch {
+                // endpoint doesn't exist
+              }
+            }
+          }
+        }
+      } catch {
+        // sectors fetch failed
       }
 
       // Fetch details for agent chats not already in chatMap
