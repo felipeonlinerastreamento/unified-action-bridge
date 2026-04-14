@@ -24,11 +24,11 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { listGSystemUsers, listSectors, listAllOpenChats } from "@/lib/gsystem.functions";
-import { createUser, updateUserRole, updateUserName, deleteUser } from "@/lib/user-admin.functions";
+import { createUser, updateUserRole, updateUserName, deleteUser, resetUserPassword } from "@/lib/user-admin.functions";
 import { toast } from "sonner";
 import {
   Users, Link as LinkIcon, Unlink, Loader2, Bot, Clock, Headphones,
-  Moon, FolderTree, RefreshCw, UserPlus, Pencil, Trash2,
+  Moon, FolderTree, RefreshCw, UserPlus, Pencil, Trash2, KeyRound,
 } from "lucide-react";
 
 export const Route = createFileRoute("/configuracoes/usuarios")({
@@ -69,6 +69,11 @@ function UsuariosConfigPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
   const [deleteUserName, setDeleteUserName] = useState("");
+
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [resetUserId, setResetUserId] = useState<string | null>(null);
+  const [resetUserNameLabel, setResetUserNameLabel] = useState("");
+  const [resetPassword, setResetPassword] = useState("");
 
   // ========== Data queries ==========
   const { data: profiles = [], isLoading: profilesLoading } = useQuery({
@@ -220,6 +225,19 @@ function UsuariosConfigPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const resetMutation = useMutation({
+    mutationFn: async () => {
+      if (!resetUserId || !resetPassword) return;
+      return resetUserPassword({ data: { targetUserId: resetUserId, newPassword: resetPassword } });
+    },
+    onSuccess: () => {
+      toast.success("Senha redefinida com sucesso");
+      setResetDialogOpen(false);
+      setResetPassword("");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const linkMutation = useMutation({
     mutationFn: async ({ userId, agentId, agentName }: { userId: string; agentId: string; agentName: string }) => {
       const { error } = await supabase.from("user_gsystem_links").upsert(
@@ -271,6 +289,13 @@ function UsuariosConfigPage() {
     const roles = getRolesForUser(profile.user_id);
     setEditRole((roles[0] as any) || "atendente");
     setEditDialogOpen(true);
+  };
+
+  const handleOpenReset = (profile: { user_id: string; name: string }) => {
+    setResetUserId(profile.user_id);
+    setResetUserNameLabel(profile.name || "Sem nome");
+    setResetPassword("");
+    setResetDialogOpen(true);
   };
 
   const handleOpenDelete = (profile: { user_id: string; name: string }) => {
@@ -470,6 +495,11 @@ function UsuariosConfigPage() {
                               </Button>
                             )}
                             {!isSelf && (
+                              <Button size="sm" variant="outline" onClick={() => handleOpenReset(profile)} title="Redefinir Senha">
+                                <KeyRound className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                            {!isSelf && (
                               <Button size="sm" variant="ghost" onClick={() => handleOpenDelete(profile)} title="Excluir">
                                 <Trash2 className="h-3.5 w-3.5 text-destructive" />
                               </Button>
@@ -580,6 +610,29 @@ function UsuariosConfigPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ========== Reset Password Dialog ========== */}
+      <Dialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Redefinir Senha</DialogTitle>
+            <DialogDescription>Defina uma nova senha para <strong>{resetUserNameLabel}</strong>.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <Label>Nova Senha</Label>
+              <Input type="password" value={resetPassword} onChange={(e) => setResetPassword(e.target.value)} placeholder="Mínimo 6 caracteres" />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setResetDialogOpen(false)}>Cancelar</Button>
+              <Button onClick={() => resetMutation.mutate()} disabled={resetMutation.isPending || resetPassword.length < 6}>
+                {resetMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+                Redefinir Senha
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* ========== Link GSystem Dialog ========== */}
       <Dialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen}>
