@@ -150,7 +150,7 @@ export const listAllOpenChats = createServerFn({ method: "POST" })
         (c) => c && c.attendanceId && c.status !== 3 && c.status !== "CLOSED" && c.status !== "FINISHED"
       );
 
-      console.log(`[listAllOpenChats] Found ${chatMap.size} total, ${chats.length} after filter`);
+      console.log(`[listAllOpenChats] Found ${chatMap.size} total (before filter), ${chats.length} after filter, ${agentAttendanceIds.length} from agents`);
       return { chats, users: userList, total: chats.length };
     } catch (err) {
       console.error("[listAllOpenChats] Error:", err);
