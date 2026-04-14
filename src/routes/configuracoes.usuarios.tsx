@@ -15,16 +15,27 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
+import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
-import { listGSystemUsers } from "@/lib/gsystem.functions";
+import { listGSystemUsers, listSectors, listAllOpenChats } from "@/lib/gsystem.functions";
 import { toast } from "sonner";
-import { Users, Link as LinkIcon, Unlink, Loader2 } from "lucide-react";
+import {
+  Users, Link as LinkIcon, Unlink, Loader2, Bot, Clock, Headphones,
+  Moon, FolderTree, RefreshCw,
+} from "lucide-react";
 
 export const Route = createFileRoute("/configuracoes/usuarios")({
   component: UsuariosConfigPage,
 });
 
-type GSystemAgent = { id: string; name: string; status?: string };
+type GSystemAgent = { id: string; name: string; status?: string; currentAttendanceId?: string };
+type GSystemSector = { id: string; description?: string; name?: string };
+
+const STATUS_MAP: Record<number, { label: string; icon: typeof Bot; color: string }> = {
+  0: { label: "Automático", icon: Bot, color: "text-blue-600" },
+  1: { label: "Aguardando", icon: Clock, color: "text-amber-600" },
+  2: { label: "Em atendimento", icon: Headphones, color: "text-emerald-600" },
+};
 
 function UsuariosConfigPage() {
   const { isAuthenticated, isLoading, hasRole } = useAuth();
@@ -73,7 +84,7 @@ function UsuariosConfigPage() {
     enabled: isAuthenticated && isAdmin,
   });
 
-  // Fetch active channels to get GSystem users
+  // Fetch active channels
   const { data: channels = [] } = useQuery({
     queryKey: ["admin-channels"],
     queryFn: async () => {
@@ -87,8 +98,9 @@ function UsuariosConfigPage() {
     enabled: isAuthenticated && isAdmin,
   });
 
-  // Fetch GSystem agents from first active channel
   const firstChannelId = channels[0]?.id;
+
+  // Fetch GSystem agents
   const { data: gsystemAgents = [] } = useQuery({
     queryKey: ["gsystem-agents", firstChannelId],
     queryFn: async () => {
@@ -98,6 +110,51 @@ function UsuariosConfigPage() {
     },
     enabled: !!firstChannelId,
   });
+
+  // Fetch GSystem sectors
+  const { data: gsystemSectors = [], isLoading: sectorsLoading } = useQuery({
+    queryKey: ["gsystem-sectors-config", firstChannelId],
+    queryFn: async () => {
+      if (!firstChannelId) return [];
+      const result = await listSectors({ data: { channelId: firstChannelId } });
+      return (Array.isArray(result) ? result : []) as GSystemSector[];
+    },
+    enabled: !!firstChannelId,
+    staleTime: 60000,
+  });
+
+  // Fetch all open chats to categorize
+  const { data: chatsData, isLoading: chatsLoading, refetch: refetchChats } = useQuery({
+    queryKey: ["gsystem-chats-tree", firstChannelId],
+    queryFn: async () => {
+      if (!firstChannelId) return { chats: [], users: [] };
+      const result = await listAllOpenChats({ data: { channelId: firstChannelId } });
+      return result as { chats: any[]; users: any[]; total?: number };
+    },
+    enabled: !!firstChannelId,
+    staleTime: 30000,
+  });
+
+  const allChats = chatsData?.chats || [];
+
+  // Categorize chats
+  const automaticChats = allChats.filter((c) => c.status === 0 || c.status === "AUTOMATIC");
+  const waitingChats = allChats.filter((c) => c.status === 1 || c.status === "WAITING" || c.status === "PENDING");
+  const attendingChats = allChats.filter((c) => c.status === 2 || c.status === "OPEN");
+  const outOfHourChats = allChats.filter((c) => (c.timeInOutOfHour && c.timeInOutOfHour > 0) || c.status === "OUT_OF_HOUR");
+
+  // Group chats by sector
+  const chatsBySector = new Map<string, { name: string; count: number }>();
+  for (const chat of allChats) {
+    const sectorId = chat.currentSector?.id || "sem-setor";
+    const sectorName = chat.currentSector?.description || "Sem setor";
+    const existing = chatsBySector.get(sectorId);
+    if (existing) {
+      existing.count++;
+    } else {
+      chatsBySector.set(sectorId, { name: sectorName, count: 1 });
+    }
+  }
 
   // Link mutation
   const linkMutation = useMutation({
@@ -183,6 +240,13 @@ function UsuariosConfigPage() {
     return "secondary" as const;
   };
 
+  const categories = [
+    { label: "Automático", icon: Bot, color: "text-blue-600 bg-blue-50 border-blue-200", count: automaticChats.length },
+    { label: "Aguardando", icon: Clock, color: "text-amber-600 bg-amber-50 border-amber-200", count: waitingChats.length },
+    { label: "Em atendimento", icon: Headphones, color: "text-emerald-600 bg-emerald-50 border-emerald-200", count: attendingChats.length },
+    { label: "Fora de hora", icon: Moon, color: "text-purple-600 bg-purple-50 border-purple-200", count: outOfHourChats.length },
+  ];
+
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -193,6 +257,134 @@ function UsuariosConfigPage() {
           </p>
         </div>
 
+        {/* ========== Árvore de Atendimento ========== */}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-3">
+            <CardTitle className="text-base flex items-center gap-2">
+              <FolderTree className="h-4 w-4" /> Árvore de Atendimento — GSystem
+            </CardTitle>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => refetchChats()}
+              disabled={chatsLoading}
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${chatsLoading ? "animate-spin" : ""}`} />
+            </Button>
+          </CardHeader>
+          <CardContent>
+            {!firstChannelId ? (
+              <p className="text-sm text-muted-foreground text-center py-4">
+                Nenhum canal ativo configurado.
+              </p>
+            ) : chatsLoading ? (
+              <div className="flex items-center justify-center py-6">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {/* Status Categories */}
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                    Categorias
+                  </p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                    {categories.map((cat) => (
+                      <div
+                        key={cat.label}
+                        className={`flex items-center gap-2 rounded-lg border p-3 ${cat.color}`}
+                      >
+                        <cat.icon className="h-4 w-4 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium truncate">{cat.label}</p>
+                          <p className="text-lg font-bold leading-tight">{cat.count}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <Separator />
+
+                {/* Sectors / Groups */}
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                    Grupos (Setores)
+                  </p>
+                  {gsystemSectors.length === 0 && chatsBySector.size === 0 ? (
+                    <p className="text-sm text-muted-foreground">Nenhum setor encontrado.</p>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                      {gsystemSectors.map((sector) => {
+                        const sectorChats = chatsBySector.get(sector.id);
+                        const count = sectorChats?.count || 0;
+                        return (
+                          <div
+                            key={sector.id}
+                            className="flex items-center justify-between rounded-md border border-border bg-card p-2.5"
+                          >
+                            <span className="text-sm font-medium truncate">
+                              {sector.description || sector.name || sector.id}
+                            </span>
+                            <Badge variant={count > 0 ? "default" : "secondary"} className="text-xs ml-2 shrink-0">
+                              {count} chat{count !== 1 ? "s" : ""}
+                            </Badge>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <Separator />
+
+                {/* GSystem Agents online */}
+                <div>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
+                    Agentes Online
+                  </p>
+                  {gsystemAgents.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Nenhum agente encontrado.</p>
+                  ) : (
+                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
+                      {gsystemAgents.map((agent) => {
+                        const isOnline = agent.status === "ONLINE" || agent.status === "online";
+                        const isBusy = !!agent.currentAttendanceId;
+                        const link = gsystemLinks.find((l) => l.gsystem_user_id === agent.id);
+                        return (
+                          <div
+                            key={agent.id}
+                            className="flex items-center gap-2 rounded-md border border-border bg-card p-2.5"
+                          >
+                            <span
+                              className={`h-2 w-2 rounded-full shrink-0 ${
+                                isOnline ? (isBusy ? "bg-amber-500" : "bg-emerald-500") : "bg-muted-foreground"
+                              }`}
+                            />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium truncate">{agent.name}</p>
+                              {link && (
+                                <p className="text-xs text-muted-foreground truncate flex items-center gap-1">
+                                  <LinkIcon className="h-2.5 w-2.5" />
+                                  {profiles.find((p) => p.user_id === link.user_id)?.name || "Vinculado"}
+                                </p>
+                              )}
+                            </div>
+                            <Badge variant="outline" className="text-[10px] shrink-0">
+                              {isOnline ? (isBusy ? "Ocupado" : "Online") : "Offline"}
+                            </Badge>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* ========== Tabela de Usuários ========== */}
         <Card>
           <CardHeader>
             <CardTitle className="text-base flex items-center gap-2">
