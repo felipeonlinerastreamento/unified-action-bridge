@@ -1387,6 +1387,22 @@ function CentralPage() {
                           🚗 {detectedPlates[detectedPlates.length - 1]}
                         </Badge>
                       )}
+                      <Select value={finalizeTipoPendencia} onValueChange={setFinalizeTipoPendencia}>
+                        <SelectTrigger className="w-[180px] h-8 text-xs">
+                          <SelectValue placeholder="Categoria..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {tiposPendencia.length === 0 ? (
+                            <SelectItem value="__none" disabled>Nenhum tipo disponível</SelectItem>
+                          ) : (
+                            tiposPendencia.map((tipo: any) => (
+                              <SelectItem key={tipo.Key || tipo.key || tipo.Id || tipo.id} value={tipo.Key || tipo.key || tipo.Id || tipo.id || ""}>
+                                {tipo.Descricao || tipo.descricao || tipo.Nome || tipo.nome || tipo.Name || "Sem nome"}
+                              </SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -1402,6 +1418,10 @@ function CentralPage() {
                         onClick={() => {
                           if (isUnidentified) {
                             toast.error("É obrigatório identificar o contato antes de finalizar o atendimento.");
+                            return;
+                          }
+                          if (!finalizeTipoPendencia) {
+                            toast.error("Selecione a categoria do atendimento antes de finalizar.");
                             return;
                           }
                           setShowFinalizeConfirm(true);
@@ -2205,7 +2225,7 @@ function CentralPage() {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs font-medium">Tipo de pendência</Label>
+              <Label className="text-xs font-medium">Tipo de pendência <span className="text-destructive">*</span></Label>
               <Select value={finalizeTipoPendencia} onValueChange={setFinalizeTipoPendencia}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o tipo..." />
@@ -2239,12 +2259,18 @@ function CentralPage() {
               Cancelar
             </Button>
             <Button
-              onClick={() => finalizeMutation.mutate({
-                notes: finalizeNotes || undefined,
-                status: finalizeStatus,
-                tipoPendencia: finalizeTipoPendencia || undefined,
-              })}
-              disabled={finalizeMutation.isPending}
+              onClick={() => {
+                if (!finalizeTipoPendencia) {
+                  toast.error("Selecione o tipo de pendência antes de finalizar.");
+                  return;
+                }
+                finalizeMutation.mutate({
+                  notes: finalizeNotes || undefined,
+                  status: finalizeStatus,
+                  tipoPendencia: finalizeTipoPendencia,
+                });
+              }}
+              disabled={!finalizeTipoPendencia || finalizeMutation.isPending}
             >
               {finalizeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
               Finalizar
