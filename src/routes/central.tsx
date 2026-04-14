@@ -510,7 +510,7 @@ function CentralPage() {
       if (existing && existing.length > 0) return;
 
       const { data: sess } = await supabase.auth.getSession();
-      await supabase.from("service_tickets").insert({
+      const { data: ticket, error } = await supabase.from("service_tickets").insert({
         attendance_id: selectedChatId,
         channel_id: selectedChannelId || null,
         company_id: companyLookup?.id || null,
@@ -519,7 +519,41 @@ function CentralPage() {
         plate: ticketPlate || null,
         status: "aberto" as const,
         opened_by: sess.session?.user?.id || null,
-      });
+      }).select("id").single();
+
+      if (error) {
+        console.error("[Ticket] Error creating ticket:", error.message);
+        return;
+      }
+
+      // Create pendência in GSystem
+      try {
+        const authHeaders = await getAuthHeaders();
+        const pendResult = await createPendenciaFromAtendimento({
+          data: {
+            attendanceId: selectedChatId,
+            contactPhone: contactPhone || undefined,
+            contactName: chatDetail.contact?.name || chatDetail.description || undefined,
+            companyId: companyLookup?.id || undefined,
+            subClientId: subClientLookup?.id || undefined,
+            crmContactId: crmContactLookup?.id || undefined,
+            plate: ticketPlate || undefined,
+          },
+          ...authHeaders,
+        });
+
+        if (pendResult?.success && pendResult.pendenciaKey && ticket?.id) {
+          await supabase
+            .from("service_tickets")
+            .update({ pendencia_key: pendResult.pendenciaKey } as any)
+            .eq("id", ticket.id);
+          console.log("[Ticket] Pendência created:", pendResult.pendenciaKey);
+        } else {
+          console.warn("[Ticket] Pendência creation failed:", pendResult?.message);
+        }
+      } catch (err: any) {
+        console.error("[Ticket] Error creating pendência:", err.message);
+      }
     },
     onSuccess: () => refetchTicket(),
   });
