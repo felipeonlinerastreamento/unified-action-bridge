@@ -327,7 +327,42 @@ function CentralPage() {
   });
   const sectors = sectorsData || [];
 
-  // Filter chats
+  // Fetch tipos de pendência from GSystem
+  const { data: tiposPendencia = [] } = useQuery({
+    queryKey: ["tipos-pendencia"],
+    queryFn: async () => {
+      try {
+        const result = await getTiposPendencia({
+          ...await getAuthHeaders(),
+        });
+        return Array.isArray(result) ? result : [];
+      } catch {
+        return [];
+      }
+    },
+    enabled: isAuthenticated,
+    staleTime: 300000,
+  });
+
+  // GSystem users for transfer
+  const { data: gsystemUsersList = [] } = useQuery({
+    queryKey: ["gsystem-users-list", selectedChannelId],
+    queryFn: async () => {
+      if (!selectedChannelId) return [];
+      try {
+        const result = await listGSystemUsers({
+          data: { channelId: selectedChannelId },
+          ...await getAuthHeaders(),
+        });
+        return Array.isArray(result) ? result : [];
+      } catch {
+        return [];
+      }
+    },
+    enabled: !!selectedChannelId && isAuthenticated,
+    staleTime: 60000,
+  });
+
   const filteredChats = allChats.filter((chat) => {
     // Search filter (name + phone)
     if (searchTerm) {
