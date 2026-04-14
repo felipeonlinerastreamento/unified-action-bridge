@@ -1563,7 +1563,17 @@ function CentralPage() {
             </div>
 
             {/* Right panel with tabs */}
-            <div className="col-span-3 border rounded-lg bg-card overflow-hidden flex flex-col">
+            {showRightPanel ? (
+            <div className="w-80 shrink-0 border rounded-lg bg-card overflow-hidden flex flex-col relative">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute top-1 right-1 z-10 h-7 w-7"
+                onClick={() => setShowRightPanel(false)}
+                title="Ocultar painel de detalhes"
+              >
+                <PanelRightClose className="h-4 w-4" />
+              </Button>
               {!chatDetail ? (
                 <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
                   <div className="text-center">
@@ -2014,6 +2024,17 @@ function CentralPage() {
                 </Tabs>
               )}
             </div>
+            ) : (
+              <Button
+                variant="outline"
+                size="icon"
+                className="shrink-0 h-8 w-8 self-start mt-1"
+                onClick={() => setShowRightPanel(true)}
+                title="Mostrar painel de detalhes"
+              >
+                <PanelRightOpen className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         )}
       </div>
