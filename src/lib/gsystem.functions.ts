@@ -40,6 +40,10 @@ async function gsystemFetch(endpoint: string, token: string, method = "GET", bod
     if (!res.ok) {
       const errorCode = data?.errorCode || `http_${res.status}`;
       const errorMsg = data?.msg || data?.message || res.statusText;
+      // Log full error details for /chats/list debugging
+      if (endpoint === "/chats/list") {
+        console.error(`[gsystemFetch] /chats/list error: status=${res.status} body=${JSON.stringify(body)} response=${text.substring(0, 300)}`);
+      }
       throw new Error(`GSystem error [${errorCode}]: ${errorMsg}`);
     }
     return data;
