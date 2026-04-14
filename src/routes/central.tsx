@@ -448,12 +448,13 @@ function CentralPage() {
         ...await getAuthHeaders(),
       });
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("Sub-cliente cadastrado com sucesso");
       setIdentModalDismissed((prev) => ({ ...prev, [selectedChatId]: true }));
       queryClient.invalidateQueries({ queryKey: ["sub-client-lookup"] });
       queryClient.invalidateQueries({ queryKey: ["company-lookup"] });
-      refetchTicket();
+      await refetchTicket();
+      retryPendenciaCreation();
     },
     onError: (err: any) => toast.error(err?.message || "Erro ao cadastrar sub-cliente"),
   });
