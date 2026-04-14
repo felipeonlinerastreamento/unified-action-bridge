@@ -499,28 +499,6 @@ function CentralPage() {
     enabled: !!contactPhone && !companyLookup && isAuthenticated,
   });
 
-  // CRM contact lookup by phone (also checks ticket's corrected phone)
-  const { data: crmContactLookup } = useQuery({
-    queryKey: ["crm-contact-lookup", contactPhone, currentTicket?.contact_phone],
-    queryFn: async () => {
-      const phonesToCheck = [
-        contactPhone,
-        currentTicket?.contact_phone,
-      ].filter(Boolean).map((p) => p!.replace(/\D/g, ""));
-      if (phonesToCheck.length === 0) return null;
-      const { data: contacts } = await supabase
-        .from("crm_contacts")
-        .select("*, companies(name)");
-      if (!contacts) return null;
-      const match = contacts.find((c: any) => {
-        const clean = c.phone.replace(/\D/g, "");
-        return phonesToCheck.some((p) => clean === p || p.endsWith(clean) || clean.endsWith(p));
-      });
-      return match || null;
-    },
-    enabled: (!!contactPhone || !!currentTicket?.contact_phone) && !companyLookup && !subClientLookup && isAuthenticated,
-  });
-
   // Identification modal explicit open state
   const [identModalDismissed, setIdentModalDismissed] = useState<Record<string, boolean>>({});
   const [identModalOpen, setIdentModalOpen] = useState(false);
@@ -658,6 +636,28 @@ function CentralPage() {
       return data && data.length > 0 ? data[0] : null;
     },
     enabled: !!selectedChatId && isAuthenticated,
+  });
+
+// CRM contact lookup by phone (also checks ticket's corrected phone)
+  const { data: crmContactLookup } = useQuery({
+    queryKey: ["crm-contact-lookup", contactPhone, currentTicket?.contact_phone],
+    queryFn: async () => {
+      const phonesToCheck = [
+        contactPhone,
+        currentTicket?.contact_phone,
+      ].filter(Boolean).map((p) => p!.replace(/\D/g, ""));
+      if (phonesToCheck.length === 0) return null;
+      const { data: contacts } = await supabase
+        .from("crm_contacts")
+        .select("*, companies(name)");
+      if (!contacts) return null;
+      const match = contacts.find((c: any) => {
+        const clean = c.phone.replace(/\D/g, "");
+        return phonesToCheck.some((p) => clean === p || p.endsWith(clean) || clean.endsWith(p));
+      });
+      return match || null;
+    },
+    enabled: (!!contactPhone || !!currentTicket?.contact_phone) && !companyLookup && !subClientLookup && isAuthenticated,
   });
 
   // Identification modal — only for contacts without any existing link
