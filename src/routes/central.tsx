@@ -74,6 +74,10 @@ import {
   X,
   Bot,
   Timer,
+  PanelLeftClose,
+  PanelLeftOpen,
+  PanelRightClose,
+  PanelRightOpen,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -193,6 +197,8 @@ function CentralPage() {
   const [transferSectorId, setTransferSectorId] = useState<string>("");
   const [transferUserId, setTransferUserId] = useState<string>("");
   const [changingCompany, setChangingCompany] = useState(false);
+  const [showLeftPanel, setShowLeftPanel] = useState(true);
+  const [showRightPanel, setShowRightPanel] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const aiChatEndRef = useRef<HTMLDivElement>(null);
   const lastIdentFormSeedRef = useRef<string>("");
@@ -1180,11 +1186,34 @@ function CentralPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-12 gap-3 h-[calc(100vh-12rem)]">
+          <div className="flex gap-3 h-[calc(100vh-12rem)]">
+            {/* Toggle left panel button */}
+            {!showLeftPanel && (
+              <Button
+                variant="outline"
+                size="icon"
+                className="shrink-0 h-8 w-8 self-start mt-1"
+                onClick={() => setShowLeftPanel(true)}
+                title="Mostrar lista de conversas"
+              >
+                <PanelLeftOpen className="h-4 w-4" />
+              </Button>
+            )}
+
             {/* Chat list */}
-            <div className="col-span-3 border rounded-lg flex flex-col bg-card overflow-hidden">
+            {showLeftPanel && (
+            <div className="w-80 shrink-0 border rounded-lg flex flex-col bg-card overflow-hidden relative">
               <div className="p-3 border-b space-y-2">
                 <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0 h-7 w-7"
+                    onClick={() => setShowLeftPanel(false)}
+                    title="Ocultar lista de conversas"
+                  >
+                    <PanelLeftClose className="h-4 w-4" />
+                  </Button>
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
@@ -1338,9 +1367,10 @@ function CentralPage() {
                 )}
               </ScrollArea>
             </div>
+            )}
 
             {/* Chat area */}
-            <div className="col-span-6 border rounded-lg flex flex-col bg-card overflow-hidden">
+            <div className="flex-1 min-w-0 border rounded-lg flex flex-col bg-card overflow-hidden">
               {!selectedChatId ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3">
                   <MessageSquare className="h-12 w-12" />
@@ -1533,7 +1563,17 @@ function CentralPage() {
             </div>
 
             {/* Right panel with tabs */}
-            <div className="col-span-3 border rounded-lg bg-card overflow-hidden flex flex-col">
+            {showRightPanel ? (
+            <div className="w-80 shrink-0 border rounded-lg bg-card overflow-hidden flex flex-col relative">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute top-1 right-1 z-10 h-7 w-7"
+                onClick={() => setShowRightPanel(false)}
+                title="Ocultar painel de detalhes"
+              >
+                <PanelRightClose className="h-4 w-4" />
+              </Button>
               {!chatDetail ? (
                 <div className="flex-1 flex items-center justify-center text-sm text-muted-foreground">
                   <div className="text-center">
@@ -1984,6 +2024,17 @@ function CentralPage() {
                 </Tabs>
               )}
             </div>
+            ) : (
+              <Button
+                variant="outline"
+                size="icon"
+                className="shrink-0 h-8 w-8 self-start mt-1"
+                onClick={() => setShowRightPanel(true)}
+                title="Mostrar painel de detalhes"
+              >
+                <PanelRightOpen className="h-4 w-4" />
+              </Button>
+            )}
           </div>
         )}
       </div>
