@@ -1358,9 +1358,10 @@ function CentralPage() {
                 )}
               </ScrollArea>
             </div>
+            )}
 
             {/* Chat area */}
-            <div className="col-span-6 border rounded-lg flex flex-col bg-card overflow-hidden">
+            <div className="flex-1 min-w-0 border rounded-lg flex flex-col bg-card overflow-hidden">
               {!selectedChatId ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3">
                   <MessageSquare className="h-12 w-12" />
