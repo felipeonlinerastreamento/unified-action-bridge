@@ -235,10 +235,44 @@ function CentralPage() {
   const gsystemUsers = openChatsData?.users || [];
   const onlineAgents = gsystemUsers.filter((u: any) => u.status === "ONLINE").length;
 
+  // Fetch sectors for filters
+  const { data: sectorsData } = useQuery({
+    queryKey: ["gsystem-sectors", selectedChannelId],
+    queryFn: async () => {
+      if (!selectedChannelId) return [];
+      const result = await listSectors({
+        data: { channelId: selectedChannelId },
+        ...await getAuthHeaders(),
+      });
+      return Array.isArray(result) ? result : [];
+    },
+    enabled: !!selectedChannelId && isAuthenticated,
+    staleTime: 60000,
+  });
+  const sectors = sectorsData || [];
+
+  // Filter chats
   const filteredChats = allChats.filter((chat) => {
-    if (!searchTerm) return true;
-    const name = (chat.description || chat.contact?.name || chat.contact?.number || "").toLowerCase();
-    return name.includes(searchTerm.toLowerCase());
+    // Search filter (name + phone)
+    if (searchTerm) {
+      const name = (chat.description || chat.contact?.name || chat.contact?.number || "").toLowerCase();
+      const phone = (chat.contact?.number || chat.contact?.secondaryName || "").toLowerCase();
+      if (!name.includes(searchTerm.toLowerCase()) && !phone.includes(searchTerm.toLowerCase())) return false;
+    }
+    // Status filter
+    if (statusFilter !== "all") {
+      const statusNum = parseInt(statusFilter);
+      if (chat.status !== statusNum) return false;
+    }
+    // Sector filter
+    if (sectorFilter !== "all") {
+      if (chat.currentSector?.id !== sectorFilter && chat.currentSector?.description !== sectorFilter) return false;
+    }
+    // Agent filter
+    if (agentFilter !== "all") {
+      if (chat.currentUser?.id !== agentFilter && chat._agentName !== agentFilter) return false;
+    }
+    return true;
   });
 
   // Fetch selected chat details with messages (polling)
