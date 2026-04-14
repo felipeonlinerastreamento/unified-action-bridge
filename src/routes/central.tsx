@@ -508,6 +508,8 @@ function CentralPage() {
   // Identification modal form state
   const [identTab, setIdentTab] = useState<"vincular" | "subcliente" | "vincular-sub" | "crm">("vincular");
   const [identForm, setIdentForm] = useState({ name: "", phone: "", email: "", notes: "", companyId: "" });
+  const [companySearch, setCompanySearch] = useState("");
+  const [subClientSearch, setSubClientSearch] = useState("");
 
   // Seed identification form only once per selected chat to avoid resets during polling
   useEffect(() => {
