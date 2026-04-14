@@ -283,6 +283,132 @@ function CentralPage() {
     enabled: !!contactPhone && isAuthenticated,
   });
 
+  // Sub-client lookup by phone
+  const { data: subClientLookup } = useQuery({
+    queryKey: ["sub-client-lookup", contactPhone],
+    queryFn: async () => {
+      if (!contactPhone) return null;
+      const cleanPhone = contactPhone.replace(/\D/g, "");
+      const { data: subClients } = await supabase
+        .from("sub_clients")
+        .select("*, companies(name)");
+      if (!subClients) return null;
+      const match = subClients.find((s: any) => {
+        const clean = s.phone.replace(/\D/g, "");
+        return clean === cleanPhone || cleanPhone.endsWith(clean) || clean.endsWith(cleanPhone);
+      });
+      return match || null;
+    },
+    enabled: !!contactPhone && !companyLookup && isAuthenticated,
+  });
+
+  // CRM contact lookup by phone
+  const { data: crmContactLookup } = useQuery({
+    queryKey: ["crm-contact-lookup", contactPhone],
+    queryFn: async () => {
+      if (!contactPhone) return null;
+      const cleanPhone = contactPhone.replace(/\D/g, "");
+      const { data: contacts } = await supabase
+        .from("crm_contacts")
+        .select("*, companies(name)");
+      if (!contacts) return null;
+      const match = contacts.find((c: any) => {
+        const clean = c.phone.replace(/\D/g, "");
+        return clean === cleanPhone || cleanPhone.endsWith(clean) || clean.endsWith(cleanPhone);
+      });
+      return match || null;
+    },
+    enabled: !!contactPhone && !companyLookup && !subClientLookup && isAuthenticated,
+  });
+
+  // Identification modal state
+  const isUnidentified = !!chatDetail && !!contactPhone && !companyLookup && !subClientLookup && !crmContactLookup;
+  const [identModalDismissed, setIdentModalDismissed] = useState<Record<string, boolean>>({});
+  const showIdentModal = isUnidentified && !!selectedChatId && !identModalDismissed[selectedChatId];
+
+  // Identification modal form state
+  const [identTab, setIdentTab] = useState<"vincular" | "subcliente" | "crm">("vincular");
+  const [identForm, setIdentForm] = useState({ name: "", phone: "", email: "", notes: "", companyId: "" });
+
+  // Reset form when chat changes
+  useEffect(() => {
+    if (chatDetail) {
+      setIdentForm({
+        name: chatDetail?.contact?.name || chatDetail?.description || "",
+        phone: contactPhone,
+        email: "",
+        notes: "",
+        companyId: "",
+      });
+      setIdentTab("vincular");
+    }
+  }, [selectedChatId]);
+
+  // Create sub-client mutation
+  const createSubClientMutation = useMutation({
+    mutationFn: async () => {
+      if (!identForm.companyId || !identForm.name) throw new Error("Preencha nome e empresa");
+      const { data: sess } = await supabase.auth.getSession();
+      const { error } = await supabase.from("sub_clients").insert({
+        name: identForm.name,
+        phone: identForm.phone || contactPhone,
+        email: identForm.email || null,
+        notes: identForm.notes || "",
+        company_id: identForm.companyId,
+        created_by: sess.session?.user?.id || null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Sub-cliente cadastrado com sucesso");
+      setIdentModalDismissed((prev) => ({ ...prev, [selectedChatId]: true }));
+      queryClient.invalidateQueries({ queryKey: ["sub-client-lookup"] });
+    },
+    onError: (err: any) => toast.error(err?.message || "Erro ao cadastrar sub-cliente"),
+  });
+
+  // Create CRM contact mutation
+  const createCrmContactMutation = useMutation({
+    mutationFn: async () => {
+      if (!identForm.name) throw new Error("Preencha o nome");
+      const { data: sess } = await supabase.auth.getSession();
+      const { error } = await supabase.from("crm_contacts").insert({
+        name: identForm.name,
+        phone: identForm.phone || contactPhone,
+        email: identForm.email || null,
+        notes: identForm.notes || "",
+        company_id: identForm.companyId || null,
+        created_by: sess.session?.user?.id || null,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Contato CRM cadastrado com sucesso");
+      setIdentModalDismissed((prev) => ({ ...prev, [selectedChatId]: true }));
+      queryClient.invalidateQueries({ queryKey: ["crm-contact-lookup"] });
+    },
+    onError: (err: any) => toast.error(err?.message || "Erro ao cadastrar contato CRM"),
+  });
+
+  // Link company directly (for "vincular" tab)
+  const linkCompanyDirectMutation = useMutation({
+    mutationFn: async (companyId: string) => {
+      const phone = contactPhone.replace(/\D/g, "");
+      if (phone) {
+        await supabase.from("company_phones").insert({
+          company_id: companyId,
+          phone_number: phone,
+        });
+      }
+    },
+    onSuccess: () => {
+      toast.success("Número vinculado à empresa");
+      setIdentModalDismissed((prev) => ({ ...prev, [selectedChatId]: true }));
+      queryClient.invalidateQueries({ queryKey: ["company-lookup"] });
+    },
+    onError: (err: any) => toast.error(err?.message || "Erro ao vincular"),
+  });
+
   // Service ticket for this attendance
   const { data: currentTicket, refetch: refetchTicket } = useQuery({
     queryKey: ["service-ticket", selectedChatId],
