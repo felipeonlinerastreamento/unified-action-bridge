@@ -852,6 +852,44 @@ export type Database = {
           },
         ]
       }
+      user_gsystem_links: {
+        Row: {
+          channel_id: string | null
+          created_at: string
+          gsystem_user_id: string
+          gsystem_user_name: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          channel_id?: string | null
+          created_at?: string
+          gsystem_user_id: string
+          gsystem_user_name?: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          channel_id?: string | null
+          created_at?: string
+          gsystem_user_id?: string
+          gsystem_user_name?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_gsystem_links_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
