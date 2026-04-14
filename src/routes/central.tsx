@@ -751,18 +751,50 @@ function CentralPage() {
   const finalizeMutation = useMutation({
     mutationFn: async (notes?: string) => {
       if (currentTicket) {
-        // Conclude pendência in GSystem if exists
-        if ((currentTicket as any).pendencia_key) {
+        let pendenciaKey = currentTicket.pendencia_key;
+
+        // If no pendência exists yet, create one now before finalizing
+        if (!pendenciaKey) {
           try {
             const authHeaders = await getAuthHeaders();
-            await concluirPendencia({
+            const pendResult = await createPendenciaFromAtendimento({
               data: {
-                pendenciaKey: (currentTicket as any).pendencia_key,
+                attendanceId: selectedChatId,
+                contactPhone: contactPhone || undefined,
+                contactName: chatDetail?.contact?.name || chatDetail?.description || undefined,
+                companyId: currentTicket.company_id || undefined,
+                plate: currentTicket.plate || ticketPlate || undefined,
                 notes: notes || undefined,
               },
               ...authHeaders,
             });
-            console.log("[Finalize] Pendência concluded:", (currentTicket as any).pendencia_key);
+            if (pendResult?.success && pendResult.pendenciaKey) {
+              pendenciaKey = pendResult.pendenciaKey;
+              await supabase
+                .from("service_tickets")
+                .update({ pendencia_key: pendenciaKey } as any)
+                .eq("id", currentTicket.id);
+              console.log("[Finalize] Created missing pendência:", pendenciaKey);
+            } else {
+              console.warn("[Finalize] Could not create pendência:", pendResult?.message);
+            }
+          } catch (err: any) {
+            console.error("[Finalize] Error creating pendência on finalize:", err.message);
+          }
+        }
+
+        // Conclude pendência in GSystem if exists
+        if (pendenciaKey) {
+          try {
+            const authHeaders = await getAuthHeaders();
+            await concluirPendencia({
+              data: {
+                pendenciaKey: pendenciaKey,
+                notes: notes || undefined,
+              },
+              ...authHeaders,
+            });
+            console.log("[Finalize] Pendência concluded:", pendenciaKey);
           } catch (err: any) {
             console.warn("[Finalize] Error concluding pendência:", err.message);
           }
