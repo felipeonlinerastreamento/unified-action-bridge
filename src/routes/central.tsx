@@ -160,6 +160,16 @@ function CentralPage() {
   const [messageInput, setMessageInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [ticketPlate, setTicketPlate] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [sectorFilter, setSectorFilter] = useState<string>("all");
+  const [agentFilter, setAgentFilter] = useState<string>("all");
+  const [showFilters, setShowFilters] = useState(false);
+  const [showNewChatModal, setShowNewChatModal] = useState(false);
+  const [newChatPhone, setNewChatPhone] = useState("");
+  const [newChatMessage, setNewChatMessage] = useState("");
+  const [newChatSector, setNewChatSector] = useState("");
+  const [showFinalizeConfirm, setShowFinalizeConfirm] = useState(false);
+  const [finalizeNotes, setFinalizeNotes] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
