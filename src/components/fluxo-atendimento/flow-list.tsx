@@ -64,7 +64,7 @@ export function FlowList({ onSelectFlow, selectedFlowId }: Props) {
     queryFn: async () => {
       try {
         const result = await getTiposPendencia();
-        return (result as any[]) ?? [];
+        return Array.isArray(result) ? result : [];
       } catch {
         return [];
       }
