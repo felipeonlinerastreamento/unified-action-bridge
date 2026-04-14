@@ -450,8 +450,8 @@ function CentralPage() {
     enabled: !!contactPhone && !companyLookup && !subClientLookup && isAuthenticated,
   });
 
-  // Identification modal state
-  const isUnidentified = !!chatDetail && !!contactPhone && !companyLookup && !subClientLookup && !crmContactLookup;
+  // Identification modal state — only show for truly unlinked contacts
+  const isUnidentified = !!chatDetail && !!contactPhone && !companyLookup && !subClientLookup && !crmContactLookup && !currentTicket?.company_id;
   const [identModalDismissed, setIdentModalDismissed] = useState<Record<string, boolean>>({});
   const showIdentModal = isUnidentified && !!selectedChatId && !identModalDismissed[selectedChatId];
 
