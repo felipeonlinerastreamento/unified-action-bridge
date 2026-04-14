@@ -1952,7 +1952,7 @@ function CentralPage() {
       </div>
 
       {/* Identification Modal */}
-      <Dialog open={showIdentModal} onOpenChange={(open) => { if (!open) setIdentModalDismissed((prev) => ({ ...prev, [selectedChatId]: true })); }}>
+      <Dialog open={identModalOpen} onOpenChange={(open) => { if (!open) { setIdentModalOpen(false); setIdentModalDismissed((prev) => ({ ...prev, [selectedChatId]: true })); } }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
