@@ -567,6 +567,7 @@ function CentralPage() {
     },
     onSuccess: async () => {
       toast.success("Sub-cliente cadastrado com sucesso");
+      setIdentModalOpen(false);
       setIdentModalDismissed((prev) => ({ ...prev, [selectedChatId]: true }));
       queryClient.invalidateQueries({ queryKey: ["sub-client-lookup"] });
       queryClient.invalidateQueries({ queryKey: ["company-lookup"] });
@@ -597,6 +598,7 @@ function CentralPage() {
     },
     onSuccess: async () => {
       toast.success("Contato CRM cadastrado com sucesso");
+      setIdentModalOpen(false);
       setIdentModalDismissed((prev) => ({ ...prev, [selectedChatId]: true }));
       queryClient.invalidateQueries({ queryKey: ["crm-contact-lookup"] });
       queryClient.invalidateQueries({ queryKey: ["company-lookup"] });
@@ -624,6 +626,7 @@ function CentralPage() {
     },
     onSuccess: async () => {
       toast.success("Número vinculado à empresa");
+      setIdentModalOpen(false);
       setIdentModalDismissed((prev) => ({ ...prev, [selectedChatId]: true }));
       queryClient.invalidateQueries({ queryKey: ["company-lookup"] });
       await refetchTicket();
