@@ -390,19 +390,19 @@ function CentralPage() {
   const [identTab, setIdentTab] = useState<"vincular" | "subcliente" | "crm">("vincular");
   const [identForm, setIdentForm] = useState({ name: "", phone: "", email: "", notes: "", companyId: "" });
 
-  // Reset form when chat changes
+  // Reset form when chat changes or chatDetail loads
   useEffect(() => {
     if (chatDetail) {
       setIdentForm({
         name: chatDetail?.contact?.name || chatDetail?.description || "",
-        phone: contactPhone,
+        phone: contactPhone || "",
         email: "",
         notes: "",
         companyId: "",
       });
       setIdentTab("vincular");
     }
-  }, [selectedChatId]);
+  }, [selectedChatId, chatDetail, contactPhone]);
 
   // Create sub-client mutation
   const createSubClientMutation = useMutation({
@@ -552,7 +552,7 @@ function CentralPage() {
   });
 
   // All companies for linking
-  const { data: allCompanies = [] } = useQuery({
+  const { data: allCompanies = [], isLoading: companiesLoading } = useQuery({
     queryKey: ["companies-list"],
     queryFn: async () => {
       const { data } = await supabase.from("companies").select("id, name").order("name");
@@ -1368,15 +1368,15 @@ function CentralPage() {
       </div>
 
       {/* Identification Modal */}
-      <Dialog open={showIdentModal} onOpenChange={() => {}}>
-        <DialogContent className="max-w-lg" onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
+      <Dialog open={showIdentModal} onOpenChange={(open) => { if (!open) setIdentModalDismissed((prev) => ({ ...prev, [selectedChatId]: true })); }}>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-amber-500" />
               Cliente não identificado
             </DialogTitle>
             <DialogDescription>
-              O número <strong>{contactPhone}</strong> não está vinculado a nenhum cliente. Escolha uma ação:
+              O número <strong>{contactPhone}</strong> não está vinculado a nenhum cliente. Escolha uma ação ou feche para continuar sem identificar.
             </DialogDescription>
           </DialogHeader>
 
@@ -1398,16 +1398,24 @@ function CentralPage() {
               <p className="text-sm text-muted-foreground">
                 Vincule este número a uma empresa já cadastrada.
               </p>
-              <Select onValueChange={(companyId) => linkCompanyDirectMutation.mutate(companyId)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecionar empresa..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {allCompanies.map((c: any) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {companiesLoading ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Carregando empresas...
+                </div>
+              ) : allCompanies.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhuma empresa cadastrada.</p>
+              ) : (
+                <Select onValueChange={(companyId) => linkCompanyDirectMutation.mutate(companyId)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecionar empresa..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allCompanies.map((c: any) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
               {linkCompanyDirectMutation.isPending && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" /> Vinculando...
@@ -1423,24 +1431,37 @@ function CentralPage() {
               <div className="space-y-2">
                 <div>
                   <Label className="text-xs">Empresa pai *</Label>
-                  <Select value={identForm.companyId} onValueChange={(v) => setIdentForm((f) => ({ ...f, companyId: v }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecionar empresa..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {allCompanies.map((c: any) => (
-                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {companiesLoading ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Carregando empresas...
+                    </div>
+                  ) : allCompanies.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-2">Nenhuma empresa cadastrada.</p>
+                  ) : (
+                    <Select value={identForm.companyId} onValueChange={(v) => setIdentForm((f) => ({ ...f, companyId: v }))}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecionar empresa..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {allCompanies.map((c: any) => (
+                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  {identForm.companyId && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Empresa: <strong>{allCompanies.find((c: any) => c.id === identForm.companyId)?.name}</strong>
+                    </p>
+                  )}
                 </div>
                 <div>
                   <Label className="text-xs">Nome *</Label>
-                  <Input value={identForm.name} onChange={(e) => setIdentForm((f) => ({ ...f, name: e.target.value }))} />
+                  <Input value={identForm.name} onChange={(e) => setIdentForm((f) => ({ ...f, name: e.target.value }))} placeholder="Nome do contato" />
                 </div>
                 <div>
-                  <Label className="text-xs">Telefone</Label>
-                  <Input value={identForm.phone} onChange={(e) => setIdentForm((f) => ({ ...f, phone: e.target.value }))} />
+                  <Label className="text-xs">Contato (Telefone)</Label>
+                  <Input value={identForm.phone} readOnly className="bg-muted" />
                 </div>
                 <div>
                   <Label className="text-xs">E-mail</Label>
@@ -1469,11 +1490,11 @@ function CentralPage() {
               <div className="space-y-2">
                 <div>
                   <Label className="text-xs">Nome *</Label>
-                  <Input value={identForm.name} onChange={(e) => setIdentForm((f) => ({ ...f, name: e.target.value }))} />
+                  <Input value={identForm.name} onChange={(e) => setIdentForm((f) => ({ ...f, name: e.target.value }))} placeholder="Nome do contato" />
                 </div>
                 <div>
-                  <Label className="text-xs">Telefone</Label>
-                  <Input value={identForm.phone} onChange={(e) => setIdentForm((f) => ({ ...f, phone: e.target.value }))} />
+                  <Label className="text-xs">Contato (Telefone)</Label>
+                  <Input value={identForm.phone} readOnly className="bg-muted" />
                 </div>
                 <div>
                   <Label className="text-xs">E-mail</Label>
