@@ -105,8 +105,12 @@ function UsuariosConfigPage() {
     queryKey: ["gsystem-agents", firstChannelId],
     queryFn: async () => {
       if (!firstChannelId) return [];
-      const result = await listGSystemUsers({ data: { channelId: firstChannelId } });
-      return (result as GSystemAgent[]) || [];
+      try {
+        const result = await listGSystemUsers({ data: { channelId: firstChannelId } });
+        return Array.isArray(result) ? (result as GSystemAgent[]) : [];
+      } catch {
+        return [];
+      }
     },
     enabled: !!firstChannelId,
   });
@@ -116,8 +120,12 @@ function UsuariosConfigPage() {
     queryKey: ["gsystem-sectors-config", firstChannelId],
     queryFn: async () => {
       if (!firstChannelId) return [];
-      const result = await listSectors({ data: { channelId: firstChannelId } });
-      return (Array.isArray(result) ? result : []) as GSystemSector[];
+      try {
+        const result = await listSectors({ data: { channelId: firstChannelId } });
+        return (Array.isArray(result) ? result : []) as GSystemSector[];
+      } catch {
+        return [];
+      }
     },
     enabled: !!firstChannelId,
     staleTime: 60000,
@@ -128,8 +136,13 @@ function UsuariosConfigPage() {
     queryKey: ["gsystem-chats-tree", firstChannelId],
     queryFn: async () => {
       if (!firstChannelId) return { chats: [], users: [] };
-      const result = await listAllOpenChats({ data: { channelId: firstChannelId } });
-      return result as { chats: any[]; users: any[]; total?: number };
+      try {
+        const result = await listAllOpenChats({ data: { channelId: firstChannelId } });
+        const data = result as { chats: any[]; users: any[]; total?: number };
+        return { chats: Array.isArray(data?.chats) ? data.chats : [], users: Array.isArray(data?.users) ? data.users : [] };
+      } catch {
+        return { chats: [], users: [] };
+      }
     },
     enabled: !!firstChannelId,
     staleTime: 30000,
