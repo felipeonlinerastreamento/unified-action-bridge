@@ -1350,11 +1350,21 @@ function CentralPage() {
                   <TabsContent value="empresa" className="flex-1 overflow-auto m-0">
                     <ScrollArea className="h-full">
                       <div className="p-4 space-y-4">
-                        {companyLookup ? (
+                        {companyLookup && !changingCompany ? (
                           <>
-                            <div className="flex items-center gap-2">
-                              <Building2 className="h-5 w-5 text-primary" />
-                              <h3 className="font-semibold text-foreground">{companyLookup.name}</h3>
+                            <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2">
+                                <Building2 className="h-5 w-5 text-primary" />
+                                <h3 className="font-semibold text-foreground">{companyLookup.name}</h3>
+                              </div>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-xs h-7"
+                                onClick={() => setChangingCompany(true)}
+                              >
+                                <ArrowRightLeft className="h-3 w-3 mr-1" /> Alterar
+                              </Button>
                             </div>
 
                             {companyLookup.cnpj && (
@@ -1410,17 +1420,39 @@ function CentralPage() {
                           </>
                         ) : (
                           <div className="space-y-3">
-                            <div className="flex items-center gap-2 text-muted-foreground">
-                              <AlertCircle className="h-4 w-4" />
-                              <p className="text-sm">Cliente não identificado</p>
-                            </div>
-                            <p className="text-xs text-muted-foreground">
-                              O número {contactPhone || "deste contato"} não está vinculado a nenhuma empresa.
-                            </p>
+                            {changingCompany && companyLookup ? (
+                              <>
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2 text-muted-foreground">
+                                    <ArrowRightLeft className="h-4 w-4" />
+                                    <p className="text-sm font-medium">Alterar empresa</p>
+                                  </div>
+                                  <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => setChangingCompany(false)}>
+                                    <X className="h-3 w-3 mr-1" /> Cancelar
+                                  </Button>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                  Atualmente vinculado a <strong>{companyLookup.name}</strong>. Selecione outra empresa:
+                                </p>
+                              </>
+                            ) : (
+                              <>
+                                <div className="flex items-center gap-2 text-muted-foreground">
+                                  <AlertCircle className="h-4 w-4" />
+                                  <p className="text-sm">Cliente não identificado</p>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                  O número {contactPhone || "deste contato"} não está vinculado a nenhuma empresa.
+                                </p>
+                              </>
+                            )}
                             <Separator />
                             <p className="text-xs font-medium text-foreground">Vincular a uma empresa:</p>
                             <Select
-                              onValueChange={(companyId) => linkCompanyMutation.mutate(companyId)}
+                              onValueChange={(companyId) => {
+                                linkCompanyMutation.mutate(companyId);
+                                setChangingCompany(false);
+                              }}
                             >
                               <SelectTrigger className="w-full">
                                 <SelectValue placeholder="Selecionar empresa..." />
