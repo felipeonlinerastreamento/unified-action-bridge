@@ -600,12 +600,15 @@ function CentralPage() {
 
   // Finalize chat
   const finalizeMutation = useMutation({
-    mutationFn: async () => {
-      // Also update ticket status
+    mutationFn: async (notes?: string) => {
       if (currentTicket) {
         await supabase
           .from("service_tickets")
-          .update({ status: "finalizado" as const, closed_at: new Date().toISOString() })
+          .update({
+            status: "finalizado" as const,
+            closed_at: new Date().toISOString(),
+            notes: notes || currentTicket.notes || null,
+          })
           .eq("id", currentTicket.id);
       }
       return finalizeChat({
@@ -616,9 +619,35 @@ function CentralPage() {
     onSuccess: () => {
       toast.success("Atendimento finalizado");
       setSelectedChatId("");
+      setShowFinalizeConfirm(false);
+      setFinalizeNotes("");
       refetchChats();
     },
     onError: (err: any) => toast.error(err?.message || "Erro ao finalizar"),
+  });
+
+  // Create new chat
+  const createChatMutation = useMutation({
+    mutationFn: async () => {
+      return createChat({
+        data: {
+          channelId: selectedChannelId,
+          contactPhone: newChatPhone.replace(/\D/g, ""),
+          message: newChatMessage || undefined,
+          sectorId: newChatSector || undefined,
+        },
+        ...await getAuthHeaders(),
+      });
+    },
+    onSuccess: () => {
+      toast.success("Nova conversa criada");
+      setShowNewChatModal(false);
+      setNewChatPhone("");
+      setNewChatMessage("");
+      setNewChatSector("");
+      refetchChats();
+    },
+    onError: (err: any) => toast.error(err?.message || "Erro ao criar conversa"),
   });
 
   const handleSend = () => {
