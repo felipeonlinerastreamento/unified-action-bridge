@@ -74,6 +74,10 @@ import {
   X,
   Bot,
   Timer,
+  PanelLeftClose,
+  PanelLeftOpen,
+  PanelRightClose,
+  PanelRightOpen,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -193,6 +197,8 @@ function CentralPage() {
   const [transferSectorId, setTransferSectorId] = useState<string>("");
   const [transferUserId, setTransferUserId] = useState<string>("");
   const [changingCompany, setChangingCompany] = useState(false);
+  const [showLeftPanel, setShowLeftPanel] = useState(true);
+  const [showRightPanel, setShowRightPanel] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const aiChatEndRef = useRef<HTMLDivElement>(null);
   const lastIdentFormSeedRef = useRef<string>("");
