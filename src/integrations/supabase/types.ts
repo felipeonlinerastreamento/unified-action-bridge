@@ -62,6 +62,180 @@ export type Database = {
         }
         Relationships: []
       }
+      attendance_alert_settings: {
+        Row: {
+          created_at: string
+          enable_blink_effect: boolean
+          enable_priority_sort: boolean
+          enable_sound_alert: boolean
+          highlight_critical_conversations: boolean
+          id: string
+          notify_supervisor_on_red: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          enable_blink_effect?: boolean
+          enable_priority_sort?: boolean
+          enable_sound_alert?: boolean
+          highlight_critical_conversations?: boolean
+          id?: string
+          notify_supervisor_on_red?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          enable_blink_effect?: boolean
+          enable_priority_sort?: boolean
+          enable_sound_alert?: boolean
+          highlight_critical_conversations?: boolean
+          id?: string
+          notify_supervisor_on_red?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      attendance_metric_settings: {
+        Row: {
+          created_at: string
+          id: string
+          show_agent_productivity: boolean
+          show_attention_count: boolean
+          show_avg_interaction_time: boolean
+          show_avg_transfer_time: boolean
+          show_critical_count: boolean
+          show_first_response_time: boolean
+          show_queue_time: boolean
+          show_reopen_rate: boolean
+          show_risk_count: boolean
+          show_sector_congestion: boolean
+          show_total_service_time: boolean
+          show_transfer_rate: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          show_agent_productivity?: boolean
+          show_attention_count?: boolean
+          show_avg_interaction_time?: boolean
+          show_avg_transfer_time?: boolean
+          show_critical_count?: boolean
+          show_first_response_time?: boolean
+          show_queue_time?: boolean
+          show_reopen_rate?: boolean
+          show_risk_count?: boolean
+          show_sector_congestion?: boolean
+          show_total_service_time?: boolean
+          show_transfer_rate?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          show_agent_productivity?: boolean
+          show_attention_count?: boolean
+          show_avg_interaction_time?: boolean
+          show_avg_transfer_time?: boolean
+          show_critical_count?: boolean
+          show_first_response_time?: boolean
+          show_queue_time?: boolean
+          show_reopen_rate?: boolean
+          show_risk_count?: boolean
+          show_sector_congestion?: boolean
+          show_total_service_time?: boolean
+          show_transfer_rate?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      attendance_sla_rules: {
+        Row: {
+          created_at: string
+          green_color: string
+          green_limit_minutes: number
+          id: string
+          is_active: boolean
+          orange_color: string
+          orange_limit_minutes: number
+          red_color: string
+          red_limit_minutes: number
+          rule_name: string
+          sector_name: string
+          time_reference: string
+          updated_at: string
+          yellow_color: string
+          yellow_limit_minutes: number
+        }
+        Insert: {
+          created_at?: string
+          green_color?: string
+          green_limit_minutes?: number
+          id?: string
+          is_active?: boolean
+          orange_color?: string
+          orange_limit_minutes?: number
+          red_color?: string
+          red_limit_minutes?: number
+          rule_name: string
+          sector_name: string
+          time_reference?: string
+          updated_at?: string
+          yellow_color?: string
+          yellow_limit_minutes?: number
+        }
+        Update: {
+          created_at?: string
+          green_color?: string
+          green_limit_minutes?: number
+          id?: string
+          is_active?: boolean
+          orange_color?: string
+          orange_limit_minutes?: number
+          red_color?: string
+          red_limit_minutes?: number
+          rule_name?: string
+          sector_name?: string
+          time_reference?: string
+          updated_at?: string
+          yellow_color?: string
+          yellow_limit_minutes?: number
+        }
+        Relationships: []
+      }
+      attendance_visual_settings: {
+        Row: {
+          created_at: string
+          critical_effect: string
+          highlight_style: string
+          id: string
+          show_clock: boolean
+          show_sla_banner: boolean
+          show_status_badge: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          critical_effect?: string
+          highlight_style?: string
+          id?: string
+          show_clock?: boolean
+          show_sla_banner?: boolean
+          show_status_badge?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          critical_effect?: string
+          highlight_style?: string
+          id?: string
+          show_clock?: boolean
+          show_sla_banner?: boolean
+          show_status_badge?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       audit_logs: {
         Row: {
           action: string
