@@ -2,20 +2,19 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-const selectedCompanySchema = z.object({
+const linkPhoneToCompanySchema = z.object({
   companyName: z.string().min(1).max(255),
   companyCnpj: z.string().max(32).optional(),
-});
-
-const linkPhoneToCompanySchema = selectedCompanySchema.extend({
   phone: z.string().max(32).optional(),
   ticketId: z.string().uuid().optional(),
 });
 
-const createSubClientSchema = selectedCompanySchema.extend({
+const createSubClientSchema = z.object({
+  companyName: z.string().min(1).max(255),
+  companyCnpj: z.string().max(32).optional(),
   name: z.string().min(1).max(255),
   phone: z.string().min(1).max(32),
-  email: z.string().email().max(255).optional().or(z.literal("")),
+  email: z.string().max(255).optional(),
   notes: z.string().max(2000).optional(),
   ticketId: z.string().uuid().optional(),
 });
@@ -25,7 +24,7 @@ const createCrmContactSchema = z.object({
   companyCnpj: z.string().max(32).optional(),
   name: z.string().min(1).max(255),
   phone: z.string().min(1).max(32),
-  email: z.string().email().max(255).optional().or(z.literal("")),
+  email: z.string().max(255).optional(),
   notes: z.string().max(2000).optional(),
   ticketId: z.string().uuid().optional(),
 });
@@ -34,33 +33,34 @@ function cleanDigits(value?: string | null) {
   return value?.replace(/\D/g, "") || "";
 }
 
-async function ensureLocalCompany(companyName: string, companyCnpj?: string) {
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
+async function ensureLocalCompany(
+  supabase: any,
+  companyName: string,
+  companyCnpj?: string
+): Promise<string> {
   const normalizedName = companyName.trim();
   const normalizedCnpj = cleanDigits(companyCnpj) || null;
 
+  // Try find by CNPJ
   if (normalizedCnpj) {
-    const { data: byCnpj, error } = await supabaseAdmin
+    const { data: byCnpj } = await supabase
       .from("companies")
       .select("id")
       .eq("cnpj", normalizedCnpj)
       .limit(1);
-
-    if (error) throw new Error(error.message);
     if (byCnpj && byCnpj.length > 0) return byCnpj[0].id;
   }
 
-  const { data: byName, error: byNameError } = await supabaseAdmin
+  // Try find by name
+  const { data: byName } = await supabase
     .from("companies")
     .select("id")
     .eq("name", normalizedName)
     .limit(1);
-
-  if (byNameError) throw new Error(byNameError.message);
   if (byName && byName.length > 0) return byName[0].id;
 
-  const { data: created, error: createError } = await supabaseAdmin
+  // Create local company
+  const { data: created, error: createError } = await supabase
     .from("companies")
     .insert({
       name: normalizedName,
@@ -76,49 +76,41 @@ async function ensureLocalCompany(companyName: string, companyCnpj?: string) {
   return created.id;
 }
 
-async function updateTicketCompany(ticketId: string | undefined, companyId: string) {
+async function updateTicketCompany(supabase: any, ticketId: string | undefined, companyId: string) {
   if (!ticketId) return;
-
-  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { error } = await supabaseAdmin
+  await supabase
     .from("service_tickets")
     .update({ company_id: companyId })
     .eq("id", ticketId);
-
-  if (error) throw new Error(error.message);
 }
 
 export const linkPhoneToCompany = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(linkPhoneToCompanySchema.parse)
-  .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-    const companyId = await ensureLocalCompany(data.companyName, data.companyCnpj);
+  .handler(async ({ data, context }) => {
+    const { supabase } = context;
+    const companyId = await ensureLocalCompany(supabase, data.companyName, data.companyCnpj);
     const cleanPhone = cleanDigits(data.phone);
 
     if (cleanPhone) {
-      const { data: existingLinks, error: existingError } = await supabaseAdmin
+      // Check if phone link already exists
+      const { data: existingLinks } = await supabase
         .from("company_phones")
         .select("id")
         .eq("company_id", companyId)
         .eq("phone_number", cleanPhone)
         .limit(1);
 
-      if (existingError) throw new Error(existingError.message);
-
       if (!existingLinks || existingLinks.length === 0) {
-        const { error: insertError } = await supabaseAdmin.from("company_phones").insert({
+        const { error: insertError } = await supabase.from("company_phones").insert({
           company_id: companyId,
           phone_number: cleanPhone,
         });
-
         if (insertError) throw new Error(insertError.message);
       }
     }
 
-    await updateTicketCompany(data.ticketId, companyId);
-
+    await updateTicketCompany(supabase, data.ticketId, companyId);
     return { success: true, companyId };
   });
 
@@ -126,24 +118,22 @@ export const createSubClientWithParentCompany = createServerFn({ method: "POST" 
   .middleware([requireSupabaseAuth])
   .inputValidator(createSubClientSchema.parse)
   .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
-    const companyId = await ensureLocalCompany(data.companyName, data.companyCnpj);
+    const { supabase, userId } = context;
+    const companyId = await ensureLocalCompany(supabase, data.companyName, data.companyCnpj);
     const cleanPhone = cleanDigits(data.phone);
 
-    const { data: existingSubClients, error: existingError } = await supabaseAdmin
+    // Check if sub-client already exists
+    const { data: existing } = await supabase
       .from("sub_clients")
       .select("id")
       .eq("company_id", companyId)
       .eq("phone", cleanPhone)
       .limit(1);
 
-    if (existingError) throw new Error(existingError.message);
-
-    let subClientId = existingSubClients?.[0]?.id;
+    let subClientId = existing?.[0]?.id;
 
     if (!subClientId) {
-      const { data: created, error: createError } = await supabaseAdmin
+      const { data: created, error: createError } = await supabase
         .from("sub_clients")
         .insert({
           company_id: companyId,
@@ -151,7 +141,7 @@ export const createSubClientWithParentCompany = createServerFn({ method: "POST" 
           phone: cleanPhone,
           email: data.email || null,
           notes: data.notes || "",
-          created_by: context.userId ?? null,
+          created_by: userId ?? null,
         })
         .select("id")
         .single();
@@ -159,12 +149,10 @@ export const createSubClientWithParentCompany = createServerFn({ method: "POST" 
       if (createError || !created) {
         throw new Error(createError?.message || "Não foi possível criar o sub-cliente.");
       }
-
       subClientId = created.id;
     }
 
-    await updateTicketCompany(data.ticketId, companyId);
-
+    await updateTicketCompany(supabase, data.ticketId, companyId);
     return { success: true, companyId, subClientId };
   });
 
@@ -172,13 +160,12 @@ export const createCrmContactWithCompany = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(createCrmContactSchema.parse)
   .handler(async ({ data, context }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-
+    const { supabase, userId } = context;
     const companyId = data.companyName
-      ? await ensureLocalCompany(data.companyName, data.companyCnpj)
+      ? await ensureLocalCompany(supabase, data.companyName, data.companyCnpj)
       : null;
 
-    const { data: created, error } = await supabaseAdmin
+    const { data: created, error } = await supabase
       .from("crm_contacts")
       .insert({
         company_id: companyId,
@@ -186,7 +173,7 @@ export const createCrmContactWithCompany = createServerFn({ method: "POST" })
         phone: cleanDigits(data.phone),
         email: data.email || null,
         notes: data.notes || "",
-        created_by: context.userId ?? null,
+        created_by: userId ?? null,
       })
       .select("id")
       .single();
@@ -196,7 +183,7 @@ export const createCrmContactWithCompany = createServerFn({ method: "POST" })
     }
 
     if (companyId) {
-      await updateTicketCompany(data.ticketId, companyId);
+      await updateTicketCompany(supabase, data.ticketId, companyId);
     }
 
     return { success: true, companyId, crmContactId: created.id };
