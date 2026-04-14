@@ -517,8 +517,9 @@ function CentralPage() {
     enabled: !!contactPhone && !companyLookup && !subClientLookup && isAuthenticated,
   });
 
-  // Identification modal dismissed state
+  // Identification modal explicit open state
   const [identModalDismissed, setIdentModalDismissed] = useState<Record<string, boolean>>({});
+  const [identModalOpen, setIdentModalOpen] = useState(false);
 
 
   // Identification modal form state
@@ -566,6 +567,7 @@ function CentralPage() {
     },
     onSuccess: async () => {
       toast.success("Sub-cliente cadastrado com sucesso");
+      setIdentModalOpen(false);
       setIdentModalDismissed((prev) => ({ ...prev, [selectedChatId]: true }));
       queryClient.invalidateQueries({ queryKey: ["sub-client-lookup"] });
       queryClient.invalidateQueries({ queryKey: ["company-lookup"] });
@@ -596,6 +598,7 @@ function CentralPage() {
     },
     onSuccess: async () => {
       toast.success("Contato CRM cadastrado com sucesso");
+      setIdentModalOpen(false);
       setIdentModalDismissed((prev) => ({ ...prev, [selectedChatId]: true }));
       queryClient.invalidateQueries({ queryKey: ["crm-contact-lookup"] });
       queryClient.invalidateQueries({ queryKey: ["company-lookup"] });
@@ -623,6 +626,7 @@ function CentralPage() {
     },
     onSuccess: async () => {
       toast.success("Número vinculado à empresa");
+      setIdentModalOpen(false);
       setIdentModalDismissed((prev) => ({ ...prev, [selectedChatId]: true }));
       queryClient.invalidateQueries({ queryKey: ["company-lookup"] });
       await refetchTicket();
@@ -649,7 +653,13 @@ function CentralPage() {
 
   // Identification modal — only for contacts without any existing link
   const isUnidentified = !!chatDetail && !!contactPhone && !companyLookup && !subClientLookup && !crmContactLookup && !currentTicket?.company_id;
-  const showIdentModal = isUnidentified && !!selectedChatId && !identModalDismissed[selectedChatId];
+
+  // Auto-open identification modal when contact is unidentified
+  useEffect(() => {
+    if (isUnidentified && selectedChatId && !identModalDismissed[selectedChatId]) {
+      setIdentModalOpen(true);
+    }
+  }, [isUnidentified, selectedChatId, identModalDismissed]);
 
   const retryPendenciaCreation = useCallback(async () => {
     const ticket = currentTicket;
@@ -1945,7 +1955,7 @@ function CentralPage() {
       </div>
 
       {/* Identification Modal */}
-      <Dialog open={showIdentModal} onOpenChange={(open) => { if (!open) setIdentModalDismissed((prev) => ({ ...prev, [selectedChatId]: true })); }}>
+      <Dialog open={identModalOpen} onOpenChange={(open) => { if (!open) { setIdentModalOpen(false); setIdentModalDismissed((prev) => ({ ...prev, [selectedChatId]: true })); } }}>
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
