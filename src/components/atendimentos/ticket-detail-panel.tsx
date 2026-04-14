@@ -29,6 +29,7 @@ import {
   MessageSquare,
 } from "lucide-react";
 import { TicketReminderSection } from "./ticket-reminder-section";
+import { TicketAgentsSection } from "./ticket-agents-section";
 
 interface TicketDetailPanelProps {
   ticket: any | null;
@@ -326,6 +327,9 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
                 </Button>
               </div>
             </div>
+
+            {/* Linked agents */}
+            <TicketAgentsSection ticketId={ticket.id} userId={userId} profiles={profiles} />
 
             {/* Reminders */}
             <TicketReminderSection ticketId={ticket.id} userId={userId} />
