@@ -19,6 +19,7 @@ import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as CentralRouteImport } from './routes/central'
 import { Route as AtendimentosRouteImport } from './routes/atendimentos'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ConfiguracoesCentralAtendimentoRouteImport } from './routes/configuracoes.central-atendimento'
 import { Route as ConfiguracoesAssistenteIaRouteImport } from './routes/configuracoes.assistente-ia'
 
 const RelatoriosRoute = RelatoriosRouteImport.update({
@@ -71,6 +72,12 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ConfiguracoesCentralAtendimentoRoute =
+  ConfiguracoesCentralAtendimentoRouteImport.update({
+    id: '/central-atendimento',
+    path: '/central-atendimento',
+    getParentRoute: () => ConfiguracoesRoute,
+  } as any)
 const ConfiguracoesAssistenteIaRoute =
   ConfiguracoesAssistenteIaRouteImport.update({
     id: '/assistente-ia',
@@ -90,6 +97,7 @@ export interface FileRoutesByFullPath {
   '/estoque': typeof EstoqueRoute
   '/relatorios': typeof RelatoriosRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
+  '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -103,6 +111,7 @@ export interface FileRoutesByTo {
   '/estoque': typeof EstoqueRoute
   '/relatorios': typeof RelatoriosRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
+  '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -117,6 +126,7 @@ export interface FileRoutesById {
   '/estoque': typeof EstoqueRoute
   '/relatorios': typeof RelatoriosRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
+  '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -132,6 +142,7 @@ export interface FileRouteTypes {
     | '/estoque'
     | '/relatorios'
     | '/configuracoes/assistente-ia'
+    | '/configuracoes/central-atendimento'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -145,6 +156,7 @@ export interface FileRouteTypes {
     | '/estoque'
     | '/relatorios'
     | '/configuracoes/assistente-ia'
+    | '/configuracoes/central-atendimento'
   id:
     | '__root__'
     | '/'
@@ -158,6 +170,7 @@ export interface FileRouteTypes {
     | '/estoque'
     | '/relatorios'
     | '/configuracoes/assistente-ia'
+    | '/configuracoes/central-atendimento'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -245,6 +258,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/configuracoes/central-atendimento': {
+      id: '/configuracoes/central-atendimento'
+      path: '/central-atendimento'
+      fullPath: '/configuracoes/central-atendimento'
+      preLoaderRoute: typeof ConfiguracoesCentralAtendimentoRouteImport
+      parentRoute: typeof ConfiguracoesRoute
+    }
     '/configuracoes/assistente-ia': {
       id: '/configuracoes/assistente-ia'
       path: '/assistente-ia'
@@ -257,10 +277,12 @@ declare module '@tanstack/react-router' {
 
 interface ConfiguracoesRouteChildren {
   ConfiguracoesAssistenteIaRoute: typeof ConfiguracoesAssistenteIaRoute
+  ConfiguracoesCentralAtendimentoRoute: typeof ConfiguracoesCentralAtendimentoRoute
 }
 
 const ConfiguracoesRouteChildren: ConfiguracoesRouteChildren = {
   ConfiguracoesAssistenteIaRoute: ConfiguracoesAssistenteIaRoute,
+  ConfiguracoesCentralAtendimentoRoute: ConfiguracoesCentralAtendimentoRoute,
 }
 
 const ConfiguracoesRouteWithChildren = ConfiguracoesRoute._addFileChildren(
