@@ -10,6 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Dialog,
   DialogContent,
@@ -31,6 +32,7 @@ import {
   Building2,
   Eye,
 } from "lucide-react";
+import { SubClientsAdmin } from "@/components/contatos/sub-clients-admin";
 
 export const Route = createFileRoute("/contatos")({
   component: ContatosPage,
@@ -131,103 +133,123 @@ function ContatosPage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Clientes / Contatos</h1>
-            <p className="text-sm text-muted-foreground">
-              {clientes.length} cliente(s) no GSystem
-            </p>
           </div>
-          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={clientesLoading}>
-            <RefreshCw className={`h-4 w-4 ${clientesLoading ? "animate-spin" : ""}`} />
-          </Button>
         </div>
 
-        <div className="relative max-w-sm">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por nome, CPF/CNPJ ou fantasia..."
-            className="pl-8"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
+        <Tabs defaultValue="clientes">
+          <TabsList>
+            <TabsTrigger value="clientes" className="gap-1">
+              <Building2 className="h-4 w-4" /> Clientes GSystem
+            </TabsTrigger>
+            <TabsTrigger value="subclientes" className="gap-1">
+              <Users className="h-4 w-4" /> Sub-clientes
+            </TabsTrigger>
+          </TabsList>
 
-        {clientesError ? (
-          <Card>
-            <CardContent className="flex items-center gap-3 p-6 text-destructive">
-              <AlertCircle className="h-5 w-5" />
-              <div>
-                <p className="font-medium">Erro ao consultar clientes</p>
-                <p className="text-sm text-muted-foreground">{String(clientesError)}</p>
-              </div>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Nome / Razão Social</TableHead>
-                    <TableHead>Nome Fantasia</TableHead>
-                    <TableHead>CPF/CNPJ</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="w-16">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {clientesLoading ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8">
-                        <Loader2 className="h-5 w-5 animate-spin mx-auto" />
-                      </TableCell>
-                    </TableRow>
-                  ) : filtered.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
-                        <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                        Nenhum cliente encontrado.
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    filtered.slice(0, 100).map((client: any, i: number) => {
-                      const nome = client.Nome || client.nome || client.RazaoSocial || client.razaoSocial || "—";
-                      const fantasia = client.NomeFantasia || client.nomeFantasia || "—";
-                      const cpf = client.CpfCnpj || client.cpfCnpj || client.CNPJ || client.cnpj || "—";
-                      const status = client.Status || client.status;
-                      const isActive = status === "Ativo" || status === 1 || status === "1" || status === true;
-                      return (
-                        <TableRow key={client.Key || client.key || client.Id || client.id || i}>
-                          <TableCell className="font-medium">{nome}</TableCell>
-                          <TableCell>{fantasia}</TableCell>
-                          <TableCell className="font-mono text-sm">{cpf}</TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={isActive ? "default" : "secondary"}
-                              className={isActive
-                                ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
-                                : "bg-muted text-muted-foreground"}
-                            >
-                              {isActive ? "Ativo" : "Inativo"}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <Button variant="ghost" size="icon" onClick={() => openDetail(client)}>
-                              <Eye className="h-4 w-4" />
-                            </Button>
+          <TabsContent value="clientes" className="space-y-4 mt-4">
+            <div className="flex items-center justify-between">
+              <p className="text-sm text-muted-foreground">
+                {clientes.length} cliente(s) no GSystem
+              </p>
+              <Button variant="outline" size="sm" onClick={() => refetch()} disabled={clientesLoading}>
+                <RefreshCw className={`h-4 w-4 ${clientesLoading ? "animate-spin" : ""}`} />
+              </Button>
+            </div>
+
+            <div className="relative max-w-sm">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nome, CPF/CNPJ ou fantasia..."
+                className="pl-8"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+
+            {clientesError ? (
+              <Card>
+                <CardContent className="flex items-center gap-3 p-6 text-destructive">
+                  <AlertCircle className="h-5 w-5" />
+                  <div>
+                    <p className="font-medium">Erro ao consultar clientes</p>
+                    <p className="text-sm text-muted-foreground">{String(clientesError)}</p>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card>
+                <CardContent className="p-0">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Nome / Razão Social</TableHead>
+                        <TableHead>Nome Fantasia</TableHead>
+                        <TableHead>CPF/CNPJ</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead className="w-16">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {clientesLoading ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-8">
+                            <Loader2 className="h-5 w-5 animate-spin mx-auto" />
                           </TableCell>
                         </TableRow>
-                      );
-                    })
+                      ) : filtered.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                            <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                            Nenhum cliente encontrado.
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        filtered.slice(0, 100).map((client: any, i: number) => {
+                          const nome = client.Nome || client.nome || client.RazaoSocial || client.razaoSocial || "—";
+                          const fantasia = client.NomeFantasia || client.nomeFantasia || "—";
+                          const cpf = client.CpfCnpj || client.cpfCnpj || client.CNPJ || client.cnpj || "—";
+                          const status = client.Status || client.status;
+                          const isActive = status === "Ativo" || status === 1 || status === "1" || status === true;
+                          return (
+                            <TableRow key={client.Key || client.key || client.Id || client.id || i}>
+                              <TableCell className="font-medium">{nome}</TableCell>
+                              <TableCell>{fantasia}</TableCell>
+                              <TableCell className="font-mono text-sm">{cpf}</TableCell>
+                              <TableCell>
+                                <Badge
+                                  variant={isActive ? "default" : "secondary"}
+                                  className={isActive
+                                    ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
+                                    : "bg-muted text-muted-foreground"}
+                                >
+                                  {isActive ? "Ativo" : "Inativo"}
+                                </Badge>
+                              </TableCell>
+                              <TableCell>
+                                <Button variant="ghost" size="icon" onClick={() => openDetail(client)}>
+                                  <Eye className="h-4 w-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          );
+                        })
+                      )}
+                    </TableBody>
+                  </Table>
+                  {filtered.length > 100 && (
+                    <p className="text-xs text-muted-foreground text-center py-2">
+                      Exibindo 100 de {filtered.length} resultados. Use a busca para refinar.
+                    </p>
                   )}
-                </TableBody>
-              </Table>
-              {filtered.length > 100 && (
-                <p className="text-xs text-muted-foreground text-center py-2">
-                  Exibindo 100 de {filtered.length} resultados. Use a busca para refinar.
-                </p>
-              )}
-            </CardContent>
-          </Card>
-        )}
+                </CardContent>
+              </Card>
+            )}
+          </TabsContent>
+
+          <TabsContent value="subclientes" className="mt-4">
+            <SubClientsAdmin />
+          </TabsContent>
+        </Tabs>
       </div>
 
       {/* Client detail dialog */}
