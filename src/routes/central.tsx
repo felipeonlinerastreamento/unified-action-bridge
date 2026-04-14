@@ -1339,7 +1339,7 @@ function CentralPage() {
                               </SelectTrigger>
                               <SelectContent>
                                 {allCompanies.map((c: any) => (
-                                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                  <SelectItem key={c.id} value={c.id}>{c.name}{c.fantasia && c.fantasia !== c.name ? ` (${c.fantasia})` : ""}</SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
@@ -1700,7 +1700,7 @@ function CentralPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {allCompanies.map((c: any) => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      <SelectItem key={c.id} value={c.id}>{c.name}{c.fantasia && c.fantasia !== c.name ? ` (${c.fantasia})` : ""}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -1733,7 +1733,7 @@ function CentralPage() {
                       </SelectTrigger>
                       <SelectContent>
                         {allCompanies.map((c: any) => (
-                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                          <SelectItem key={c.id} value={c.id}>{c.name}{c.fantasia && c.fantasia !== c.name ? ` (${c.fantasia})` : ""}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
