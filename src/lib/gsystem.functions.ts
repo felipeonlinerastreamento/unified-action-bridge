@@ -137,7 +137,45 @@ export const listAllOpenChats = createServerFn({ method: "POST" })
       }
 
       // 1) Try fetching chats via API
-      await tryFetchChats();
+      const chatListWorked = await tryFetchChats();
+      console.log(`[listAllOpenChats] After tryFetchChats: ${chatMap.size} chats (worked=${chatListWorked})`);
+
+      // 1b) Try fetching chats per sector
+      if (!chatListWorked) {
+        try {
+          const sectorsResult = await gsystemFetch("/sectors", channel.token);
+          const sectorsList = Array.isArray(sectorsResult) ? sectorsResult : [];
+          if (sectorsList.length > 0) {
+            console.log(`[listAllOpenChats] Found ${sectorsList.length} sectors, trying per-sector chat fetch...`);
+            const sectorResults = await Promise.allSettled(
+              sectorsList.map(async (sector: any) => {
+                const sectorId = sector.id || sector.Id;
+                if (!sectorId) return [];
+                try {
+                  const result = await gsystemFetch(`/sectors/${sectorId}/chats`, channel.token, "GET");
+                  return Array.isArray(result) ? result : result?.data || [];
+                } catch {
+                  return [];
+                }
+              })
+            );
+            for (const r of sectorResults) {
+              if (r.status === "fulfilled") {
+                for (const chat of r.value) {
+                  if (chat.attendanceId && !chatMap.has(chat.attendanceId)) {
+                    chatMap.set(chat.attendanceId, chat);
+                  }
+                }
+              }
+            }
+            if (chatMap.size > 0) {
+              console.log(`[listAllOpenChats] Per-sector fetch found ${chatMap.size} chats`);
+            }
+          }
+        } catch (e) {
+          console.warn("[listAllOpenChats] Sector-based fetch failed:", String(e).substring(0, 150));
+        }
+      }
 
       // 2) Also get agent-assigned chats via /users
       const users = await gsystemFetch("/users", channel.token);
