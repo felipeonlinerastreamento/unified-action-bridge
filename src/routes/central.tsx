@@ -663,11 +663,12 @@ function CentralPage() {
 
   // Link company to ticket
   const linkCompanyMutation = useMutation({
-    mutationFn: async (companyId: string) => {
+    mutationFn: async (gsystemClientId: string) => {
       if (!currentTicket) return;
+      const localCompanyId = await ensureLocalCompany(gsystemClientId);
       await supabase
         .from("service_tickets")
-        .update({ company_id: companyId })
+        .update({ company_id: localCompanyId })
         .eq("id", currentTicket.id);
     },
     onSuccess: () => {
