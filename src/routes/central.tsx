@@ -1067,6 +1067,7 @@ function CentralPage() {
         } catch (err: any) {
           console.error("[Finalize] Error checking routing rules:", err.message);
         }
+      }
 
       return finalizeChat({
         data: { channelId: selectedChannelId, chatId: selectedChatId },
