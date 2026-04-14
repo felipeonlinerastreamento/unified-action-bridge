@@ -37,6 +37,7 @@ import {
   createPendenciaFromAtendimento,
   concluirPendencia,
   getClientes,
+  getTiposPendencia,
 } from "@/lib/gsystem-api.functions";
 import {
   createCrmContactWithCompany,
