@@ -350,22 +350,25 @@ export const getTiposPendencia = createServerFn({ method: "POST" })
     try {
       const cadastros = await gsystemApiFetch("/cadastros");
       if (Array.isArray(cadastros)) {
-        // Filter cadastros by Tipo or Subcategoria related to pendência
-        const tiposCadastro = cadastros.filter((c: any) =>
-          (c.Tipo || "").toLowerCase().includes("pendencia") ||
-          (c.Tipo || "").toLowerCase().includes("pendência")
-        );
+        // Filter cadastros by Tipo = "Tipos_de_Pendência"
+        const tiposCadastro = cadastros.filter((c: any) => {
+          const tipo = (c.Tipo || "").replace(/_/g, " ").toLowerCase();
+          return tipo === "tipos de pendência" || tipo === "tipos de pendencia" ||
+                 (c.Tipo || "") === "Tipos_de_Pendência";
+        });
 
         // Log all unique Tipo values for debugging
         const allTipos = [...new Set(cadastros.map((c: any) => c.Tipo).filter(Boolean))];
         console.log("[getTiposPendencia] Available cadastro Tipo values:", allTipos.join(", "));
         
         if (tiposCadastro.length > 0) {
-          console.log(`[getTiposPendencia] Found ${tiposCadastro.length} tipos from cadastros (Tipo contains pendencia)`);
-          return tiposCadastro.map((c: any) => ({
-            Key: String(c.Codigo || c.DisplayName),
-            Descricao: c.DisplayName || c.Texto || String(c.Codigo),
-          }));
+          console.log(`[getTiposPendencia] Found ${tiposCadastro.length} tipos de pendência from cadastros`);
+          return tiposCadastro
+            .filter((c: any) => c.Ativado !== false)
+            .map((c: any) => ({
+              Key: String(c.Codigo || c.DisplayName),
+              Descricao: c.DisplayName || c.Texto || String(c.Codigo),
+            }));
         }
 
         // Also log unique Subcategoria values
