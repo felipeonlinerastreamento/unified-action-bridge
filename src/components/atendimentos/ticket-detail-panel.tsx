@@ -27,8 +27,6 @@ import {
   ArrowRight,
   Clock,
   MessageSquare,
-  User,
-  Building2,
 } from "lucide-react";
 
 interface TicketDetailPanelProps {
@@ -57,80 +55,125 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   const [forwardSector, setForwardSector] = useState("");
   const [forwardUser, setForwardUser] = useState("");
 
-  const { data: comments = [] } = useQuery({
+  // Get current user
+  const { data: currentUser } = useQuery({
+    queryKey: ["current-user"],
+    queryFn: async () => {
+      const { data } = await supabase.auth.getUser();
+      return data?.user ?? null;
+    },
+  });
+
+  const { data: comments = [], refetch: refetchComments } = useQuery({
     queryKey: ["ticket-comments", ticket?.id],
     queryFn: async () => {
       if (!ticket?.id) return [];
-      const { data } = await supabase
+      const { data, error } = await supabase
         .from("ticket_comments")
         .select("*")
         .eq("ticket_id", ticket.id)
         .order("created_at", { ascending: true });
+      if (error) {
+        console.error("Error loading comments:", error);
+        return [];
+      }
       return data || [];
     },
     enabled: !!ticket?.id,
   });
 
+  const userId = currentUser?.id ?? null;
+
   const addComment = async () => {
     if (!comment.trim() || !ticket?.id) return;
-    await supabase.from("ticket_comments").insert({
+    const { error } = await supabase.from("ticket_comments").insert({
       ticket_id: ticket.id,
+      user_id: userId,
       content: comment,
       comment_type: "comentario",
     });
+    if (error) {
+      console.error("Error adding comment:", error);
+      toast.error("Erro ao adicionar comentário: " + error.message);
+      return;
+    }
     setComment("");
-    queryClient.invalidateQueries({ queryKey: ["ticket-comments", ticket.id] });
+    refetchComments();
     toast.success("Comentário adicionado");
+  };
+
+  const insertSystemComment = async (ticketId: string, content: string, type: string) => {
+    const { error } = await supabase.from("ticket_comments").insert({
+      ticket_id: ticketId,
+      user_id: userId,
+      content,
+      comment_type: type,
+    });
+    if (error) console.error("Error inserting system comment:", error);
   };
 
   const updateStatus = async (newStatus: string) => {
     if (!ticket?.id) return;
-    const update: any = { status: newStatus, updated_at: new Date().toISOString() };
+    const update: Record<string, any> = {
+      status: newStatus as any,
+      updated_at: new Date().toISOString(),
+    };
     if (newStatus === "finalizado") update.closed_at = new Date().toISOString();
     if (newStatus === "reaberto") {
       update.reopened_at = new Date().toISOString();
       update.closed_at = null;
     }
+    if (newStatus === "aberto" || newStatus === "em_andamento") {
+      update.closed_at = null;
+    }
 
-    await supabase.from("service_tickets").update(update).eq("id", ticket.id);
-    await supabase.from("ticket_comments").insert({
-      ticket_id: ticket.id,
-      content: `Status alterado para ${newStatus}`,
-      comment_type: "status_change",
-    });
+    const { error } = await supabase.from("service_tickets").update(update).eq("id", ticket.id);
+    if (error) {
+      console.error("Error updating status:", error);
+      toast.error("Erro ao atualizar status: " + error.message);
+      return;
+    }
 
-    queryClient.invalidateQueries({ queryKey: ["ticket-comments", ticket.id] });
+    await insertSystemComment(ticket.id, `Status alterado para ${newStatus}`, "status_change");
+    refetchComments();
     onRefetch();
-    toast.success(`Ticket ${newStatus === "finalizado" ? "finalizado" : "reaberto"}`);
+    toast.success(`Ticket ${newStatus === "finalizado" ? "finalizado" : newStatus === "reaberto" ? "reaberto" : "atualizado"}`);
   };
 
   const updatePriority = async (priority: string) => {
     if (!ticket?.id) return;
-    await supabase.from("service_tickets").update({ priority: priority as "baixa" | "media" | "alta" | "urgente", updated_at: new Date().toISOString() }).eq("id", ticket.id);
-    await supabase.from("ticket_comments").insert({
-      ticket_id: ticket.id,
-      content: `Prioridade alterada para ${getPriorityLabel(priority)}`,
-      comment_type: "status_change",
-    });
-    queryClient.invalidateQueries({ queryKey: ["ticket-comments", ticket.id] });
+    const { error } = await supabase
+      .from("service_tickets")
+      .update({ priority: priority as "baixa" | "media" | "alta" | "urgente", updated_at: new Date().toISOString() })
+      .eq("id", ticket.id);
+    if (error) {
+      toast.error("Erro ao atualizar prioridade: " + error.message);
+      return;
+    }
+    await insertSystemComment(ticket.id, `Prioridade alterada para ${getPriorityLabel(priority)}`, "status_change");
+    refetchComments();
     onRefetch();
     toast.success("Prioridade atualizada");
   };
 
   const forwardToSector = async () => {
     if (!forwardSector.trim() || !ticket?.id) return;
-    await supabase.from("service_tickets").update({ sector: forwardSector, updated_at: new Date().toISOString() }).eq("id", ticket.id);
-    await supabase.from("ticket_comments").insert({
-      ticket_id: ticket.id,
-      content: `Encaminhado para setor: ${forwardSector}`,
-      comment_type: "encaminhamento",
-    });
+    const { error } = await supabase
+      .from("service_tickets")
+      .update({ sector: forwardSector, updated_at: new Date().toISOString() })
+      .eq("id", ticket.id);
+    if (error) {
+      toast.error("Erro ao encaminhar: " + error.message);
+      return;
+    }
+    await insertSystemComment(ticket.id, `Encaminhado para setor: ${forwardSector}`, "encaminhamento");
     await supabase.from("ticket_assignments").insert({
       ticket_id: ticket.id,
+      assigned_by: userId,
       sector_name: forwardSector,
     });
     setForwardSector("");
-    queryClient.invalidateQueries({ queryKey: ["ticket-comments", ticket.id] });
+    refetchComments();
     onRefetch();
     toast.success("Encaminhado para setor");
   };
@@ -138,18 +181,22 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   const forwardToUser = async () => {
     if (!forwardUser || !ticket?.id) return;
     const profile = profiles.find((p) => p.user_id === forwardUser);
-    await supabase.from("service_tickets").update({ assigned_to: forwardUser, updated_at: new Date().toISOString() }).eq("id", ticket.id);
-    await supabase.from("ticket_comments").insert({
-      ticket_id: ticket.id,
-      content: `Encaminhado para usuário: ${profile?.name || forwardUser}`,
-      comment_type: "encaminhamento",
-    });
+    const { error } = await supabase
+      .from("service_tickets")
+      .update({ assigned_to: forwardUser, updated_at: new Date().toISOString() })
+      .eq("id", ticket.id);
+    if (error) {
+      toast.error("Erro ao encaminhar: " + error.message);
+      return;
+    }
+    await insertSystemComment(ticket.id, `Encaminhado para usuário: ${profile?.name || forwardUser}`, "encaminhamento");
     await supabase.from("ticket_assignments").insert({
       ticket_id: ticket.id,
       assigned_to: forwardUser,
+      assigned_by: userId,
     });
     setForwardUser("");
-    queryClient.invalidateQueries({ queryKey: ["ticket-comments", ticket.id] });
+    refetchComments();
     onRefetch();
     toast.success("Encaminhado para usuário");
   };
@@ -226,7 +273,17 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
             {/* Status actions */}
             <div className="space-y-2">
               <label className="text-xs font-medium text-muted-foreground">Status</label>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
+                {ticket.status === "aberto" && (
+                  <Button size="sm" variant="outline" onClick={() => updateStatus("em_andamento")} className="gap-1">
+                    <Clock className="h-3.5 w-3.5" /> Iniciar Atendimento
+                  </Button>
+                )}
+                {ticket.status === "reaberto" && (
+                  <Button size="sm" variant="outline" onClick={() => updateStatus("em_andamento")} className="gap-1">
+                    <Clock className="h-3.5 w-3.5" /> Iniciar Atendimento
+                  </Button>
+                )}
                 {canFinalize && (
                   <Button size="sm" variant="default" onClick={() => updateStatus("finalizado")} className="gap-1">
                     <CheckCircle className="h-3.5 w-3.5" /> Finalizar
@@ -235,11 +292,6 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
                 {canReopen && (
                   <Button size="sm" variant="outline" onClick={() => updateStatus("reaberto")} className="gap-1">
                     <RotateCcw className="h-3.5 w-3.5" /> Reabrir
-                  </Button>
-                )}
-                {ticket.status === "aberto" && (
-                  <Button size="sm" variant="outline" onClick={() => updateStatus("em_andamento")} className="gap-1">
-                    <Clock className="h-3.5 w-3.5" /> Iniciar
                   </Button>
                 )}
               </div>
