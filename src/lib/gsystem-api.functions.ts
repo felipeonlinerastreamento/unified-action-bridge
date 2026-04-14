@@ -345,30 +345,45 @@ export const getTiposPendencia = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async () => {
     const { gsystemApiFetch } = await import("@/lib/gsystem-api.server");
-    const result = await gsystemApiFetch("/pendencias/tipos");
-    console.log("[getTiposPendencia] Raw result type:", typeof result, "isArray:", Array.isArray(result));
-    console.log("[getTiposPendencia] Raw result:", JSON.stringify(result).substring(0, 1000));
 
-    // Normalize: the API may return the array directly, or wrapped in an object
-    if (Array.isArray(result)) return result;
-    if (result && typeof result === "object") {
-      // Try common wrapper keys
-      for (const key of ["Items", "items", "Resultado", "resultado", "Data", "data", "Tipos", "tipos", "Result", "result", "Records", "records"]) {
-        if (Array.isArray(result[key])) {
-          console.log(`[getTiposPendencia] Found array in result.${key} with ${result[key].length} items`);
-          return result[key];
+    // Try multiple possible endpoints for pendência types
+    const endpoints = [
+      "/pendencias/tipos",
+      "/tipospendencia",
+      "/tipos-pendencia",
+      "/pendencia/tipos",
+      "/tipo-pendencia",
+    ];
+
+    for (const endpoint of endpoints) {
+      try {
+        const result = await gsystemApiFetch(endpoint);
+        console.log(`[getTiposPendencia] ${endpoint} =>`, typeof result, Array.isArray(result), JSON.stringify(result).substring(0, 500));
+
+        // Extract array from result
+        const arr = extractArray(result);
+        if (arr && arr.length > 0) {
+          console.log(`[getTiposPendencia] Found ${arr.length} tipos from ${endpoint}`);
+          return arr;
         }
-      }
-      // If object has numeric keys or is iterable, try Object.values
-      const values = Object.values(result);
-      if (values.length > 0 && values.every((v: any) => v && typeof v === "object" && !Array.isArray(v))) {
-        console.log(`[getTiposPendencia] Treating object values as array, ${values.length} items`);
-        return values;
+      } catch (err) {
+        console.log(`[getTiposPendencia] ${endpoint} failed:`, String(err).substring(0, 200));
       }
     }
-    console.warn("[getTiposPendencia] Could not extract array from result, returning empty");
+
+    console.warn("[getTiposPendencia] No endpoint returned tipos data");
     return [];
   });
+
+function extractArray(result: any): any[] | null {
+  if (Array.isArray(result)) return result;
+  if (result && typeof result === "object") {
+    for (const key of ["Items", "items", "Resultado", "resultado", "Data", "data", "Tipos", "tipos", "Result", "result", "Records", "records"]) {
+      if (Array.isArray(result[key]) && result[key].length > 0) return result[key];
+    }
+  }
+  return null;
+}
 
 // PLANOS
 // ============================================================
