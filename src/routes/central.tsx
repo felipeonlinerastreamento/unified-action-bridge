@@ -36,6 +36,7 @@ import {
 import {
   createPendenciaFromAtendimento,
   concluirPendencia,
+  getClientes,
 } from "@/lib/gsystem-api.functions";
 import { toast } from "sonner";
 import {
