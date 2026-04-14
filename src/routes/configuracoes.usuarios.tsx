@@ -6,6 +6,8 @@ import { AppLayout } from "@/components/app-layout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -15,13 +17,18 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from "@/components/ui/dialog";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { listGSystemUsers, listSectors, listAllOpenChats } from "@/lib/gsystem.functions";
+import { createUser, updateUserRole, updateUserName, deleteUser } from "@/lib/user-admin.functions";
 import { toast } from "sonner";
 import {
   Users, Link as LinkIcon, Unlink, Loader2, Bot, Clock, Headphones,
-  Moon, FolderTree, RefreshCw,
+  Moon, FolderTree, RefreshCw, UserPlus, Pencil, Trash2,
 } from "lucide-react";
 
 export const Route = createFileRoute("/configuracoes/usuarios")({
@@ -31,22 +38,39 @@ export const Route = createFileRoute("/configuracoes/usuarios")({
 type GSystemAgent = { id: string; name: string; status?: string; currentAttendanceId?: string };
 type GSystemSector = { id: string; description?: string; name?: string };
 
-const STATUS_MAP: Record<number, { label: string; icon: typeof Bot; color: string }> = {
-  0: { label: "Automático", icon: Bot, color: "text-blue-600" },
-  1: { label: "Aguardando", icon: Clock, color: "text-amber-600" },
-  2: { label: "Em atendimento", icon: Headphones, color: "text-emerald-600" },
+const ROLE_LABEL: Record<string, string> = { admin: "Admin", gestor: "Gestor", atendente: "Atendente" };
+const ROLE_VARIANT = (role: string) => {
+  if (role === "admin") return "destructive" as const;
+  if (role === "gestor") return "default" as const;
+  return "secondary" as const;
 };
 
 function UsuariosConfigPage() {
-  const { isAuthenticated, isLoading, hasRole } = useAuth();
+  const { isAuthenticated, isLoading, hasRole, user: currentUser } = useAuth();
   const isAdmin = hasRole("admin");
   const queryClient = useQueryClient();
 
+  // Dialog states
   const [linkDialogOpen, setLinkDialogOpen] = useState(false);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [selectedAgentId, setSelectedAgentId] = useState("");
 
-  // Fetch profiles
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [newEmail, setNewEmail] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [newName, setNewName] = useState("");
+  const [newRole, setNewRole] = useState<"admin" | "gestor" | "atendente">("atendente");
+
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
+  const [editUserId, setEditUserId] = useState<string | null>(null);
+  const [editName, setEditName] = useState("");
+  const [editRole, setEditRole] = useState<"admin" | "gestor" | "atendente">("atendente");
+
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
+  const [deleteUserName, setDeleteUserName] = useState("");
+
+  // ========== Data queries ==========
   const { data: profiles = [], isLoading: profilesLoading } = useQuery({
     queryKey: ["admin-profiles"],
     queryFn: async () => {
@@ -60,7 +84,6 @@ function UsuariosConfigPage() {
     enabled: isAuthenticated && isAdmin,
   });
 
-  // Fetch user roles
   const { data: userRoles = [] } = useQuery({
     queryKey: ["admin-user-roles"],
     queryFn: async () => {
@@ -71,20 +94,16 @@ function UsuariosConfigPage() {
     enabled: isAuthenticated && isAdmin,
   });
 
-  // Fetch existing gsystem links
   const { data: gsystemLinks = [] } = useQuery({
     queryKey: ["admin-gsystem-links"],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from("user_gsystem_links")
-        .select("*");
+      const { data, error } = await supabase.from("user_gsystem_links").select("*");
       if (error) throw error;
       return data || [];
     },
     enabled: isAuthenticated && isAdmin,
   });
 
-  // Fetch active channels
   const { data: channels = [] } = useQuery({
     queryKey: ["admin-channels"],
     queryFn: async () => {
@@ -100,7 +119,6 @@ function UsuariosConfigPage() {
 
   const firstChannelId = channels[0]?.id;
 
-  // Fetch GSystem agents
   const { data: gsystemAgents = [] } = useQuery({
     queryKey: ["gsystem-agents", firstChannelId],
     queryFn: async () => {
@@ -108,30 +126,24 @@ function UsuariosConfigPage() {
       try {
         const result = await listGSystemUsers({ data: { channelId: firstChannelId } });
         return Array.isArray(result) ? (result as GSystemAgent[]) : [];
-      } catch {
-        return [];
-      }
+      } catch { return []; }
     },
     enabled: !!firstChannelId,
   });
 
-  // Fetch GSystem sectors
-  const { data: gsystemSectors = [], isLoading: sectorsLoading } = useQuery({
+  const { data: gsystemSectors = [] } = useQuery({
     queryKey: ["gsystem-sectors-config", firstChannelId],
     queryFn: async () => {
       if (!firstChannelId) return [];
       try {
         const result = await listSectors({ data: { channelId: firstChannelId } });
         return (Array.isArray(result) ? result : []) as GSystemSector[];
-      } catch {
-        return [];
-      }
+      } catch { return []; }
     },
     enabled: !!firstChannelId,
     staleTime: 60000,
   });
 
-  // Fetch all open chats to categorize
   const { data: chatsData, isLoading: chatsLoading, refetch: refetchChats } = useQuery({
     queryKey: ["gsystem-chats-tree", firstChannelId],
     queryFn: async () => {
@@ -140,45 +152,78 @@ function UsuariosConfigPage() {
         const result = await listAllOpenChats({ data: { channelId: firstChannelId } });
         const data = result as { chats: any[]; users: any[]; total?: number };
         return { chats: Array.isArray(data?.chats) ? data.chats : [], users: Array.isArray(data?.users) ? data.users : [] };
-      } catch {
-        return { chats: [], users: [] };
-      }
+      } catch { return { chats: [], users: [] }; }
     },
     enabled: !!firstChannelId,
     staleTime: 30000,
   });
 
   const allChats = chatsData?.chats || [];
-
-  // Categorize chats
   const automaticChats = allChats.filter((c) => c.status === 0 || c.status === "AUTOMATIC");
   const waitingChats = allChats.filter((c) => c.status === 1 || c.status === "WAITING" || c.status === "PENDING");
   const attendingChats = allChats.filter((c) => c.status === 2 || c.status === "OPEN");
   const outOfHourChats = allChats.filter((c) => (c.timeInOutOfHour && c.timeInOutOfHour > 0) || c.status === "OUT_OF_HOUR");
 
-  // Group chats by sector
   const chatsBySector = new Map<string, { name: string; count: number }>();
   for (const chat of allChats) {
     const sectorId = chat.currentSector?.id || "sem-setor";
     const sectorName = chat.currentSector?.description || "Sem setor";
     const existing = chatsBySector.get(sectorId);
-    if (existing) {
-      existing.count++;
-    } else {
-      chatsBySector.set(sectorId, { name: sectorName, count: 1 });
-    }
+    if (existing) existing.count++;
+    else chatsBySector.set(sectorId, { name: sectorName, count: 1 });
   }
 
-  // Link mutation
+  // ========== Mutations ==========
+  const invalidateAll = () => {
+    queryClient.invalidateQueries({ queryKey: ["admin-profiles"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-user-roles"] });
+    queryClient.invalidateQueries({ queryKey: ["admin-gsystem-links"] });
+  };
+
+  const createMutation = useMutation({
+    mutationFn: async () => {
+      return createUser({ data: { email: newEmail, password: newPassword, name: newName, role: newRole } });
+    },
+    onSuccess: () => {
+      toast.success("Usuário criado com sucesso");
+      invalidateAll();
+      setCreateDialogOpen(false);
+      setNewEmail(""); setNewPassword(""); setNewName(""); setNewRole("atendente");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const editMutation = useMutation({
+    mutationFn: async () => {
+      if (!editUserId) return;
+      await updateUserName({ data: { targetUserId: editUserId, name: editName } });
+      await updateUserRole({ data: { targetUserId: editUserId, role: editRole } });
+    },
+    onSuccess: () => {
+      toast.success("Usuário atualizado");
+      invalidateAll();
+      setEditDialogOpen(false);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: async () => {
+      if (!deleteUserId) return;
+      return deleteUser({ data: { targetUserId: deleteUserId } });
+    },
+    onSuccess: () => {
+      toast.success("Usuário excluído");
+      invalidateAll();
+      setDeleteDialogOpen(false);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const linkMutation = useMutation({
     mutationFn: async ({ userId, agentId, agentName }: { userId: string; agentId: string; agentName: string }) => {
       const { error } = await supabase.from("user_gsystem_links").upsert(
-        {
-          user_id: userId,
-          gsystem_user_id: agentId,
-          gsystem_user_name: agentName,
-          channel_id: firstChannelId || null,
-        },
+        { user_id: userId, gsystem_user_id: agentId, gsystem_user_name: agentName, channel_id: firstChannelId || null },
         { onConflict: "user_id,channel_id" }
       );
       if (error) throw error;
@@ -187,13 +232,10 @@ function UsuariosConfigPage() {
       toast.success("Agente vinculado com sucesso");
       queryClient.invalidateQueries({ queryKey: ["admin-gsystem-links"] });
       setLinkDialogOpen(false);
-      setSelectedUserId(null);
-      setSelectedAgentId("");
     },
     onError: (e: Error) => toast.error(`Erro ao vincular: ${e.message}`),
   });
 
-  // Unlink mutation
   const unlinkMutation = useMutation({
     mutationFn: async (linkId: string) => {
       const { error } = await supabase.from("user_gsystem_links").delete().eq("id", linkId);
@@ -206,11 +248,9 @@ function UsuariosConfigPage() {
     onError: (e: Error) => toast.error(`Erro ao desvincular: ${e.message}`),
   });
 
-  const getRolesForUser = (userId: string) =>
-    userRoles.filter((r) => r.user_id === userId).map((r) => r.role);
-
-  const getLinkForUser = (userId: string) =>
-    gsystemLinks.find((l) => l.user_id === userId);
+  // ========== Helpers ==========
+  const getRolesForUser = (userId: string) => userRoles.filter((r) => r.user_id === userId).map((r) => r.role);
+  const getLinkForUser = (userId: string) => gsystemLinks.find((l) => l.user_id === userId);
 
   const handleOpenLink = (userId: string) => {
     setSelectedUserId(userId);
@@ -222,15 +262,24 @@ function UsuariosConfigPage() {
   const handleSaveLink = () => {
     if (!selectedUserId || !selectedAgentId) return;
     const agent = gsystemAgents.find((a) => a.id === selectedAgentId);
-    linkMutation.mutate({
-      userId: selectedUserId,
-      agentId: selectedAgentId,
-      agentName: agent?.name || selectedAgentId,
-    });
+    linkMutation.mutate({ userId: selectedUserId, agentId: selectedAgentId, agentName: agent?.name || selectedAgentId });
+  };
+
+  const handleOpenEdit = (profile: { user_id: string; name: string }) => {
+    setEditUserId(profile.user_id);
+    setEditName(profile.name || "");
+    const roles = getRolesForUser(profile.user_id);
+    setEditRole((roles[0] as any) || "atendente");
+    setEditDialogOpen(true);
+  };
+
+  const handleOpenDelete = (profile: { user_id: string; name: string }) => {
+    setDeleteUserId(profile.user_id);
+    setDeleteUserName(profile.name || "Sem nome");
+    setDeleteDialogOpen(true);
   };
 
   if (isLoading || !isAuthenticated) return null;
-
   if (!isAdmin) {
     return (
       <AppLayout>
@@ -240,18 +289,6 @@ function UsuariosConfigPage() {
       </AppLayout>
     );
   }
-
-  const roleLabel: Record<string, string> = {
-    admin: "Admin",
-    gestor: "Gestor",
-    atendente: "Atendente",
-  };
-
-  const roleVariant = (role: string) => {
-    if (role === "admin") return "destructive" as const;
-    if (role === "gestor") return "default" as const;
-    return "secondary" as const;
-  };
 
   const categories = [
     { label: "Automático", icon: Bot, color: "text-blue-600 bg-blue-50 border-blue-200", count: automaticChats.length },
@@ -276,37 +313,24 @@ function UsuariosConfigPage() {
             <CardTitle className="text-base flex items-center gap-2">
               <FolderTree className="h-4 w-4" /> Árvore de Atendimento — GSystem
             </CardTitle>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => refetchChats()}
-              disabled={chatsLoading}
-            >
+            <Button size="sm" variant="ghost" onClick={() => refetchChats()} disabled={chatsLoading}>
               <RefreshCw className={`h-3.5 w-3.5 ${chatsLoading ? "animate-spin" : ""}`} />
             </Button>
           </CardHeader>
           <CardContent>
             {!firstChannelId ? (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                Nenhum canal ativo configurado.
-              </p>
+              <p className="text-sm text-muted-foreground text-center py-4">Nenhum canal ativo configurado.</p>
             ) : chatsLoading ? (
               <div className="flex items-center justify-center py-6">
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
             ) : (
               <div className="space-y-4">
-                {/* Status Categories */}
                 <div>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                    Categorias
-                  </p>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Categorias</p>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
                     {categories.map((cat) => (
-                      <div
-                        key={cat.label}
-                        className={`flex items-center gap-2 rounded-lg border p-3 ${cat.color}`}
-                      >
+                      <div key={cat.label} className={`flex items-center gap-2 rounded-lg border p-3 ${cat.color}`}>
                         <cat.icon className="h-4 w-4 shrink-0" />
                         <div className="min-w-0">
                           <p className="text-xs font-medium truncate">{cat.label}</p>
@@ -319,26 +343,17 @@ function UsuariosConfigPage() {
 
                 <Separator />
 
-                {/* Sectors / Groups */}
                 <div>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                    Grupos (Setores)
-                  </p>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Grupos (Setores)</p>
                   {gsystemSectors.length === 0 && chatsBySector.size === 0 ? (
                     <p className="text-sm text-muted-foreground">Nenhum setor encontrado.</p>
                   ) : (
                     <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
                       {gsystemSectors.map((sector) => {
-                        const sectorChats = chatsBySector.get(sector.id);
-                        const count = sectorChats?.count || 0;
+                        const count = chatsBySector.get(sector.id)?.count || 0;
                         return (
-                          <div
-                            key={sector.id}
-                            className="flex items-center justify-between rounded-md border border-border bg-card p-2.5"
-                          >
-                            <span className="text-sm font-medium truncate">
-                              {sector.description || sector.name || sector.id}
-                            </span>
+                          <div key={sector.id} className="flex items-center justify-between rounded-md border border-border bg-card p-2.5">
+                            <span className="text-sm font-medium truncate">{sector.description || sector.name || sector.id}</span>
                             <Badge variant={count > 0 ? "default" : "secondary"} className="text-xs ml-2 shrink-0">
                               {count} chat{count !== 1 ? "s" : ""}
                             </Badge>
@@ -351,11 +366,8 @@ function UsuariosConfigPage() {
 
                 <Separator />
 
-                {/* GSystem Agents online */}
                 <div>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">
-                    Agentes Online
-                  </p>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Agentes Online</p>
                   {gsystemAgents.length === 0 ? (
                     <p className="text-sm text-muted-foreground">Nenhum agente encontrado.</p>
                   ) : (
@@ -365,15 +377,8 @@ function UsuariosConfigPage() {
                         const isBusy = !!agent.currentAttendanceId;
                         const link = gsystemLinks.find((l) => l.gsystem_user_id === agent.id);
                         return (
-                          <div
-                            key={agent.id}
-                            className="flex items-center gap-2 rounded-md border border-border bg-card p-2.5"
-                          >
-                            <span
-                              className={`h-2 w-2 rounded-full shrink-0 ${
-                                isOnline ? (isBusy ? "bg-amber-500" : "bg-emerald-500") : "bg-muted-foreground"
-                              }`}
-                            />
+                          <div key={agent.id} className="flex items-center gap-2 rounded-md border border-border bg-card p-2.5">
+                            <span className={`h-2 w-2 rounded-full shrink-0 ${isOnline ? (isBusy ? "bg-amber-500" : "bg-emerald-500") : "bg-muted-foreground"}`} />
                             <div className="min-w-0 flex-1">
                               <p className="text-sm font-medium truncate">{agent.name}</p>
                               {link && (
@@ -399,10 +404,13 @@ function UsuariosConfigPage() {
 
         {/* ========== Tabela de Usuários ========== */}
         <Card>
-          <CardHeader>
+          <CardHeader className="flex flex-row items-center justify-between">
             <CardTitle className="text-base flex items-center gap-2">
               <Users className="h-4 w-4" /> Usuários do Sistema
             </CardTitle>
+            <Button size="sm" onClick={() => setCreateDialogOpen(true)}>
+              <UserPlus className="h-4 w-4 mr-1" /> Novo Usuário
+            </Button>
           </CardHeader>
           <CardContent>
             {profilesLoading ? (
@@ -410,9 +418,7 @@ function UsuariosConfigPage() {
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
             ) : profiles.length === 0 ? (
-              <p className="text-sm text-muted-foreground text-center py-4">
-                Nenhum usuário cadastrado.
-              </p>
+              <p className="text-sm text-muted-foreground text-center py-4">Nenhum usuário cadastrado.</p>
             ) : (
               <Table>
                 <TableHeader>
@@ -420,27 +426,22 @@ function UsuariosConfigPage() {
                     <TableHead>Nome</TableHead>
                     <TableHead>Papéis</TableHead>
                     <TableHead>Agente GSystem</TableHead>
-                    <TableHead className="w-[120px]">Ações</TableHead>
+                    <TableHead className="w-[180px]">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {profiles.map((profile) => {
                     const roles = getRolesForUser(profile.user_id);
                     const link = getLinkForUser(profile.user_id);
+                    const isSelf = profile.user_id === currentUser?.id;
                     return (
                       <TableRow key={profile.user_id}>
-                        <TableCell className="font-medium">
-                          {profile.name || "Sem nome"}
-                        </TableCell>
+                        <TableCell className="font-medium">{profile.name || "Sem nome"}</TableCell>
                         <TableCell>
                           <div className="flex gap-1 flex-wrap">
-                            {roles.length > 0 ? (
-                              roles.map((r) => (
-                                <Badge key={r} variant={roleVariant(r)} className="text-xs">
-                                  {roleLabel[r] || r}
-                                </Badge>
-                              ))
-                            ) : (
+                            {roles.length > 0 ? roles.map((r) => (
+                              <Badge key={r} variant={ROLE_VARIANT(r)} className="text-xs">{ROLE_LABEL[r] || r}</Badge>
+                            )) : (
                               <span className="text-xs text-muted-foreground">—</span>
                             )}
                           </div>
@@ -457,21 +458,20 @@ function UsuariosConfigPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-1">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => handleOpenLink(profile.user_id)}
-                            >
+                            <Button size="sm" variant="outline" onClick={() => handleOpenEdit(profile)} title="Editar">
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button size="sm" variant="outline" onClick={() => handleOpenLink(profile.user_id)} title="Vincular GSystem">
                               <LinkIcon className="h-3.5 w-3.5" />
                             </Button>
                             {link && (
-                              <Button
-                                size="sm"
-                                variant="ghost"
-                                onClick={() => unlinkMutation.mutate(link.id)}
-                                disabled={unlinkMutation.isPending}
-                              >
+                              <Button size="sm" variant="ghost" onClick={() => unlinkMutation.mutate(link.id)} disabled={unlinkMutation.isPending} title="Desvincular">
                                 <Unlink className="h-3.5 w-3.5 text-destructive" />
+                              </Button>
+                            )}
+                            {!isSelf && (
+                              <Button size="sm" variant="ghost" onClick={() => handleOpenDelete(profile)} title="Excluir">
+                                <Trash2 className="h-3.5 w-3.5 text-destructive" />
                               </Button>
                             )}
                           </div>
@@ -486,14 +486,107 @@ function UsuariosConfigPage() {
         </Card>
       </div>
 
-      {/* Link Dialog */}
+      {/* ========== Create User Dialog ========== */}
+      <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Novo Usuário</DialogTitle>
+            <DialogDescription>Crie um novo usuário de acesso ao sistema. Ele já poderá fazer login imediatamente.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <Label>Nome</Label>
+              <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nome completo" />
+            </div>
+            <div className="space-y-2">
+              <Label>E-mail</Label>
+              <Input type="email" value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="email@exemplo.com" />
+            </div>
+            <div className="space-y-2">
+              <Label>Senha</Label>
+              <Input type="password" value={newPassword} onChange={(e) => setNewPassword(e.target.value)} placeholder="Mínimo 6 caracteres" />
+            </div>
+            <div className="space-y-2">
+              <Label>Papel</Label>
+              <Select value={newRole} onValueChange={(v) => setNewRole(v as any)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="atendente">Atendente</SelectItem>
+                  <SelectItem value="gestor">Gestor</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>Cancelar</Button>
+              <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending || !newEmail || !newPassword || !newName}>
+                {createMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+                Criar Usuário
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ========== Edit User Dialog ========== */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Editar Usuário</DialogTitle>
+            <DialogDescription>Altere o nome e o papel do usuário no sistema.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <Label>Nome</Label>
+              <Input value={editName} onChange={(e) => setEditName(e.target.value)} />
+            </div>
+            <div className="space-y-2">
+              <Label>Papel</Label>
+              <Select value={editRole} onValueChange={(v) => setEditRole(v as any)}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="atendente">Atendente</SelectItem>
+                  <SelectItem value="gestor">Gestor</SelectItem>
+                  <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancelar</Button>
+              <Button onClick={() => editMutation.mutate()} disabled={editMutation.isPending || !editName}>
+                {editMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+                Salvar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ========== Delete Confirm Dialog ========== */}
+      <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Usuário</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir <strong>{deleteUserName}</strong>? Esta ação é irreversível e removerá o acesso deste usuário ao sistema.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deleteMutation.mutate()} disabled={deleteMutation.isPending} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              {deleteMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* ========== Link GSystem Dialog ========== */}
       <Dialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Vincular Agente GSystem</DialogTitle>
-            <DialogDescription>
-              Selecione o agente do GSystem para vincular a este usuário do sistema.
-            </DialogDescription>
+            <DialogDescription>Selecione o agente do GSystem para vincular a este usuário. Isso garante que as interações no chat e chamados sejam exibidas com o nome correto.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-2">
             <div>
@@ -505,32 +598,21 @@ function UsuariosConfigPage() {
             <div>
               <p className="text-sm font-medium mb-1">Agente GSystem</p>
               {gsystemAgents.length === 0 ? (
-                <p className="text-sm text-muted-foreground">
-                  Nenhum canal ativo ou agentes encontrados.
-                </p>
+                <p className="text-sm text-muted-foreground">Nenhum canal ativo ou agentes encontrados.</p>
               ) : (
                 <Select value={selectedAgentId} onValueChange={setSelectedAgentId}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione um agente" />
-                  </SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Selecione um agente" /></SelectTrigger>
                   <SelectContent>
                     {gsystemAgents.map((agent) => (
-                      <SelectItem key={agent.id} value={agent.id}>
-                        {agent.name}
-                      </SelectItem>
+                      <SelectItem key={agent.id} value={agent.id}>{agent.name}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               )}
             </div>
             <div className="flex justify-end gap-2">
-              <Button variant="outline" onClick={() => setLinkDialogOpen(false)}>
-                Cancelar
-              </Button>
-              <Button
-                onClick={handleSaveLink}
-                disabled={!selectedAgentId || linkMutation.isPending}
-              >
+              <Button variant="outline" onClick={() => setLinkDialogOpen(false)}>Cancelar</Button>
+              <Button onClick={handleSaveLink} disabled={!selectedAgentId || linkMutation.isPending}>
                 {linkMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
                 Vincular
               </Button>
