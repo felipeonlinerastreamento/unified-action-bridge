@@ -19,6 +19,7 @@ import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as CentralRouteImport } from './routes/central'
 import { Route as AtendimentosRouteImport } from './routes/atendimentos'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ConfiguracoesAssistenteIaRouteImport } from './routes/configuracoes.assistente-ia'
 
 const RelatoriosRoute = RelatoriosRouteImport.update({
   id: '/relatorios',
@@ -70,43 +71,52 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ConfiguracoesAssistenteIaRoute =
+  ConfiguracoesAssistenteIaRouteImport.update({
+    id: '/assistente-ia',
+    path: '/assistente-ia',
+    getParentRoute: () => ConfiguracoesRoute,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/atendimentos': typeof AtendimentosRoute
   '/central': typeof CentralRoute
-  '/configuracoes': typeof ConfiguracoesRoute
+  '/configuracoes': typeof ConfiguracoesRouteWithChildren
   '/contatos': typeof ContatosRoute
   '/crm': typeof CrmRoute
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
   '/relatorios': typeof RelatoriosRoute
+  '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/atendimentos': typeof AtendimentosRoute
   '/central': typeof CentralRoute
-  '/configuracoes': typeof ConfiguracoesRoute
+  '/configuracoes': typeof ConfiguracoesRouteWithChildren
   '/contatos': typeof ContatosRoute
   '/crm': typeof CrmRoute
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
   '/relatorios': typeof RelatoriosRoute
+  '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/atendimentos': typeof AtendimentosRoute
   '/central': typeof CentralRoute
-  '/configuracoes': typeof ConfiguracoesRoute
+  '/configuracoes': typeof ConfiguracoesRouteWithChildren
   '/contatos': typeof ContatosRoute
   '/crm': typeof CrmRoute
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
   '/relatorios': typeof RelatoriosRoute
+  '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -121,6 +131,7 @@ export interface FileRouteTypes {
     | '/empresas'
     | '/estoque'
     | '/relatorios'
+    | '/configuracoes/assistente-ia'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -133,6 +144,7 @@ export interface FileRouteTypes {
     | '/empresas'
     | '/estoque'
     | '/relatorios'
+    | '/configuracoes/assistente-ia'
   id:
     | '__root__'
     | '/'
@@ -145,13 +157,14 @@ export interface FileRouteTypes {
     | '/empresas'
     | '/estoque'
     | '/relatorios'
+    | '/configuracoes/assistente-ia'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AtendimentosRoute: typeof AtendimentosRoute
   CentralRoute: typeof CentralRoute
-  ConfiguracoesRoute: typeof ConfiguracoesRoute
+  ConfiguracoesRoute: typeof ConfiguracoesRouteWithChildren
   ContatosRoute: typeof ContatosRoute
   CrmRoute: typeof CrmRoute
   DashboardRoute: typeof DashboardRoute
@@ -232,14 +245,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/configuracoes/assistente-ia': {
+      id: '/configuracoes/assistente-ia'
+      path: '/assistente-ia'
+      fullPath: '/configuracoes/assistente-ia'
+      preLoaderRoute: typeof ConfiguracoesAssistenteIaRouteImport
+      parentRoute: typeof ConfiguracoesRoute
+    }
   }
 }
+
+interface ConfiguracoesRouteChildren {
+  ConfiguracoesAssistenteIaRoute: typeof ConfiguracoesAssistenteIaRoute
+}
+
+const ConfiguracoesRouteChildren: ConfiguracoesRouteChildren = {
+  ConfiguracoesAssistenteIaRoute: ConfiguracoesAssistenteIaRoute,
+}
+
+const ConfiguracoesRouteWithChildren = ConfiguracoesRoute._addFileChildren(
+  ConfiguracoesRouteChildren,
+)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AtendimentosRoute: AtendimentosRoute,
   CentralRoute: CentralRoute,
-  ConfiguracoesRoute: ConfiguracoesRoute,
+  ConfiguracoesRoute: ConfiguracoesRouteWithChildren,
   ContatosRoute: ContatosRoute,
   CrmRoute: CrmRoute,
   DashboardRoute: DashboardRoute,
