@@ -1,41 +1,46 @@
 
 
-## Problem Diagnosis
+## Diagnóstico
 
-1. **Data IS loading** from GSystem API -- the response contains pendencias with statuses like "Resolvida", "Aberta", etc.
-2. **Client-side filter mismatch**: The default filter is "aberto" and the code checks if `status.toLowerCase().includes("aberto")`. But the GSystem API uses "Aberta" (not "Aberto"), so open items may not match.
-3. **Only 30-day window**: The query hardcodes a 30-day lookback, which may miss older open pendencias.
-4. **Limited filters**: User wants more search/filter options beyond just text search and status.
+O problema principal é que `listAllOpenChats` busca conversas apenas através dos `currentAttendanceId` dos agentes online. Chats na fila de espera, em modo automático, ou sem agente atribuído não são encontrados. Além disso, o endpoint `/chats/list` (que lista todas as conversas) existe mas é usado apenas como fallback e não está integrado na UI.
 
-## Plan
+## Plano de Implementação
 
-### 1. Fix status filter matching
-- Update the status filter values to match actual GSystem statuses: "Aberta", "Resolvida", "Em Andamento", "Cancelada"
-- Add "aberta" as a match term (the API uses "Aberta" not "Aberto")
+### 1. Corrigir carregamento de conversas
+- **Alterar `listAllOpenChats`** em `src/lib/gsystem.functions.ts` para usar uma abordagem combinada:
+  - Primeiro tentar `/chats/list` com status "OPEN" e "PENDING"
+  - Complementar com as conversas dos `currentAttendanceId` dos agentes
+  - Fazer merge sem duplicatas por `attendanceId`
+- Adicionar suporte a paginação no endpoint
 
-### 2. Add date range filter
-- Add date pickers for "Data Inicial" and "Data Final" so the user can control the query period
-- Default to last 90 days instead of 30
-- Pass user-selected dates to the `getPendencias` server function
+### 2. Adicionar filtros de busca avançados
+- **Filtro por status**: Automático, Aguardando, Em Atendimento, Finalizado (todos, ou específico)
+- **Filtro por setor**: Dropdown dinâmico populado pelos setores do GSystem
+- **Filtro por agente**: Dropdown dinâmico dos agentes/usuários
+- **Busca por telefone**: Além de nome, buscar por número do contato
+- Criar painel de filtros colapsável acima da lista de chats
 
-### 3. Add more filter options
-- **Tipo** (type) filter: e.g. "Agendamento", "Liberação de Equipamento", "Cadastrar/Atualizar acessos"
-- **Cliente** filter: text input to filter by client name
-- **Prioridade** filter: filter by priority level
-- **Ramal** (operator) filter: filter by who handled the item
+### 3. Opção de abrir nova conversa
+- Adicionar botão "Nova Conversa" no header da lista de chats
+- Criar modal/dialog com:
+  - Campo de telefone (obrigatório, formato brasileiro)
+  - Mensagem inicial (opcional)
+  - Seletor de setor (opcional)
+- Usar a server function `createChat` já existente
 
-### 4. Improve the filter UI layout
-- Create a collapsible filter panel with all filter options organized in a grid
-- Show active filter count as a badge
-- Add "Limpar filtros" (clear filters) button
+### 4. Opção de finalizar conversa
+- Tornar o botão de finalizar mais visível (com texto, não só ícone)
+- Adicionar dialog de confirmação antes de finalizar
+- Mostrar opção de adicionar nota de encerramento
+- Atualizar o `service_ticket` associado ao finalizar
 
-### Files to modify
-- `src/routes/atendimentos.tsx` -- Rework filters UI, fix status matching, add date pickers, add new filter fields
-- `src/lib/gsystem-api.functions.ts` -- Update `getPendencias` input validator to accept wider date range params (already supports `clienteKey`/`veiculoKey`)
+### Arquivos a modificar
+- `src/lib/gsystem.functions.ts` — melhorar `listAllOpenChats` para buscar via `/chats/list` + agentes
+- `src/routes/central.tsx` — adicionar filtros, modal de nova conversa, confirmação de finalização
 
-### Technical Details
-- Use the existing Shadcn `Calendar`/`Popover` for date pickers with `date-fns` formatting
-- Extract unique Tipo/Ramal values from the response data dynamically to populate filter dropdowns
-- The `getPendencias` server function already supports `clienteKey` and `veiculoKey` params -- wire those up
-- Keep the 30-second auto-refresh (`refetchInterval`) but use the user-selected date range
+### Detalhes técnicos
+- Usar `listSectors` e `listGSystemUsers` (já existentes) para popular filtros dinâmicos
+- O `createChat` já está implementado no server — só precisa da UI
+- Filtros de status/setor/agente são aplicados client-side sobre os dados já carregados
+- Manter polling de 10s para atualização automática
 
