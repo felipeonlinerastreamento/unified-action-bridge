@@ -220,26 +220,15 @@ export function AtendimentosContent() {
       ) : (
         <div className="grid gap-3">
           {pendencias.map((p: any, idx: number) => {
-            const key = p.Id ?? p.id ?? p.Codigo ?? idx;
-            const title =
-              p.Descricao ??
-              p.descricao ??
-              p.Titulo ??
-              p.titulo ??
-              p.Description ??
-              `Pendência #${key}`;
+            const key = p.Codigo ?? p.Id ?? p.id ?? idx;
+            const situacao = (p.Situacao ?? p.situacao ?? "").toString().split("\\r\\n")[0].substring(0, 120);
+            const title = situacao || p.Descricao ?? p.descricao ?? p.Defeito ?? `Pendência #${key}`;
             const status = p.Status ?? p.status ?? "Aberta";
-            const client =
-              p.Cliente ?? p.cliente ?? p.NomeCliente ?? p.nomeCliente ?? "";
-            const date =
-              p.DataCriacao ??
-              p.dataCriacao ??
-              p.Data ??
-              p.data ??
-              p.CreatedAt ??
-              "";
+            const client = p.Cliente ?? p.cliente ?? p.NomeCliente ?? "";
+            const date = p.DataOcorrencia ?? p.Data ?? p.DataCriacao ?? p.data ?? "";
             const plate = p.Placa ?? p.placa ?? "";
             const tipo = p.Tipo ?? p.tipo ?? p.TipoPendencia ?? "";
+            const ramal = p.Ramal ?? p.ramal ?? "";
 
             return (
               <Card
