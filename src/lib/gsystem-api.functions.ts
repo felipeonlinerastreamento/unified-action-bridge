@@ -588,6 +588,14 @@ export const createPendenciaFromAtendimento = createServerFn({ method: "POST" })
         ].filter(Boolean).join("\n"),
       };
 
+      if (data.tipoPendencia) {
+        pendenciaBody.TipoPendencia = data.tipoPendencia;
+      }
+
+      if (data.status) {
+        pendenciaBody.Situacao = data.status;
+      }
+
       if (clienteKey) {
         pendenciaBody.Cliente = clienteKey;
       }
