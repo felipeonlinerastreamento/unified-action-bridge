@@ -38,6 +38,11 @@ import {
   concluirPendencia,
   getClientes,
 } from "@/lib/gsystem-api.functions";
+import {
+  createCrmContactWithCompany,
+  createSubClientWithParentCompany,
+  linkPhoneToCompany,
+} from "@/lib/company-sync.functions";
 import { toast } from "sonner";
 import {
   Send,
@@ -418,61 +423,36 @@ function CentralPage() {
     }
   }, [selectedChatId, chatDetail, contactPhone]);
 
-  // Helper: ensure a local company exists for a GSystem client
-  const ensureLocalCompany = async (gsystemClientId: string): Promise<string> => {
-    const gsClient = allCompanies.find((c: any) => c.id === gsystemClientId);
-    if (!gsClient) throw new Error("Cliente GSystem não encontrado");
-
-    // Check if local company exists by CNPJ or name
-    if (gsClient.cnpj) {
-      const { data: existing } = await supabase
-        .from("companies")
-        .select("id")
-        .eq("cnpj", gsClient.cnpj)
-        .limit(1);
-      if (existing && existing.length > 0) return existing[0].id;
-    }
-
-    const { data: byName } = await supabase
-      .from("companies")
-      .select("id")
-      .eq("name", gsClient.name)
-      .limit(1);
-    if (byName && byName.length > 0) return byName[0].id;
-
-    // Create local company
-    const { data: created, error } = await supabase
-      .from("companies")
-      .insert({
-        name: gsClient.name,
-        cnpj: gsClient.cnpj || null,
-      })
-      .select("id")
-      .single();
-    if (error) throw error;
-    return created.id;
+  const getSelectedCompany = (selectedValue: string) => {
+    return allCompanies.find((company: any) => company.value === selectedValue) ?? null;
   };
 
   // Create sub-client mutation
   const createSubClientMutation = useMutation({
     mutationFn: async () => {
       if (!identForm.companyId || !identForm.name) throw new Error("Preencha nome e empresa");
-      const localCompanyId = await ensureLocalCompany(identForm.companyId);
-      const { data: sess } = await supabase.auth.getSession();
-      const { error } = await supabase.from("sub_clients").insert({
-        name: identForm.name,
-        phone: identForm.phone || contactPhone,
-        email: identForm.email || null,
-        notes: identForm.notes || "",
-        company_id: localCompanyId,
-        created_by: sess.session?.user?.id || null,
+      const selectedCompany = getSelectedCompany(identForm.companyId);
+      if (!selectedCompany) throw new Error("Empresa pai não encontrada");
+
+      await createSubClientWithParentCompany({
+        data: {
+          companyName: selectedCompany.name,
+          companyCnpj: selectedCompany.cnpj || undefined,
+          name: identForm.name,
+          phone: identForm.phone || contactPhone,
+          email: identForm.email || undefined,
+          notes: identForm.notes || undefined,
+          ticketId: currentTicket?.id,
+        },
+        ...await getAuthHeaders(),
       });
-      if (error) throw error;
     },
     onSuccess: () => {
       toast.success("Sub-cliente cadastrado com sucesso");
       setIdentModalDismissed((prev) => ({ ...prev, [selectedChatId]: true }));
       queryClient.invalidateQueries({ queryKey: ["sub-client-lookup"] });
+      queryClient.invalidateQueries({ queryKey: ["company-lookup"] });
+      refetchTicket();
     },
     onError: (err: any) => toast.error(err?.message || "Erro ao cadastrar sub-cliente"),
   });
@@ -481,45 +461,52 @@ function CentralPage() {
   const createCrmContactMutation = useMutation({
     mutationFn: async () => {
       if (!identForm.name) throw new Error("Preencha o nome");
-      const { data: sess } = await supabase.auth.getSession();
-      let localCompanyId: string | null = null;
-      if (identForm.companyId) {
-        localCompanyId = await ensureLocalCompany(identForm.companyId);
-      }
-      const { error } = await supabase.from("crm_contacts").insert({
-        name: identForm.name,
-        phone: identForm.phone || contactPhone,
-        email: identForm.email || null,
-        notes: identForm.notes || "",
-        company_id: localCompanyId,
-        created_by: sess.session?.user?.id || null,
+      const selectedCompany = identForm.companyId ? getSelectedCompany(identForm.companyId) : null;
+
+      await createCrmContactWithCompany({
+        data: {
+          companyName: selectedCompany?.name || undefined,
+          companyCnpj: selectedCompany?.cnpj || undefined,
+          name: identForm.name,
+          phone: identForm.phone || contactPhone,
+          email: identForm.email || undefined,
+          notes: identForm.notes || undefined,
+          ticketId: currentTicket?.id,
+        },
+        ...await getAuthHeaders(),
       });
-      if (error) throw error;
     },
     onSuccess: () => {
       toast.success("Contato CRM cadastrado com sucesso");
       setIdentModalDismissed((prev) => ({ ...prev, [selectedChatId]: true }));
       queryClient.invalidateQueries({ queryKey: ["crm-contact-lookup"] });
+      queryClient.invalidateQueries({ queryKey: ["company-lookup"] });
+      refetchTicket();
     },
     onError: (err: any) => toast.error(err?.message || "Erro ao cadastrar contato CRM"),
   });
 
   // Link company directly (for "vincular" tab)
   const linkCompanyDirectMutation = useMutation({
-    mutationFn: async (gsystemClientId: string) => {
-      const localCompanyId = await ensureLocalCompany(gsystemClientId);
-      const phone = contactPhone.replace(/\D/g, "");
-      if (phone) {
-        await supabase.from("company_phones").insert({
-          company_id: localCompanyId,
-          phone_number: phone,
-        });
-      }
+    mutationFn: async (selectedValue: string) => {
+      const selectedCompany = getSelectedCompany(selectedValue);
+      if (!selectedCompany) throw new Error("Empresa não encontrada");
+
+      await linkPhoneToCompany({
+        data: {
+          companyName: selectedCompany.name,
+          companyCnpj: selectedCompany.cnpj || undefined,
+          phone: contactPhone,
+          ticketId: currentTicket?.id,
+        },
+        ...await getAuthHeaders(),
+      });
     },
     onSuccess: () => {
       toast.success("Número vinculado à empresa");
       setIdentModalDismissed((prev) => ({ ...prev, [selectedChatId]: true }));
       queryClient.invalidateQueries({ queryKey: ["company-lookup"] });
+      refetchTicket();
     },
     onError: (err: any) => toast.error(err?.message || "Erro ao vincular"),
   });
@@ -649,15 +636,23 @@ function CentralPage() {
         ...await getAuthHeaders(),
       });
       const clients = Array.isArray(result) ? result : result?.data || result?.Data || [];
-      // Map to { id, name, cnpj } format for dropdowns, filter out empty keys
+
       return clients
-        .map((c: any) => ({
-          id: String(c.Key || c.key || c.Id || c.id || ""),
-          name: c.Nome || c.nome || c.RazaoSocial || c.razaoSocial || c.NomeFantasia || c.nomeFantasia || "—",
-          cnpj: c.CpfCnpj || c.cpfCnpj || c.CNPJ || c.cnpj || "",
-          fantasia: c.NomeFantasia || c.nomeFantasia || "",
-        }))
-        .filter((c: any) => c.id !== "" && c.id !== "undefined");
+        .map((c: any) => {
+          const name = String(c.Nome || c.nome || c.RazaoSocial || c.razaoSocial || c.NomeFantasia || c.nomeFantasia || "").trim();
+          const cnpj = String(c.CpfCnpj || c.cpfCnpj || c.CNPJ || c.cnpj || "").replace(/\D/g, "");
+          const fantasia = String(c.NomeFantasia || c.nomeFantasia || "").trim();
+          const value = cnpj ? `cnpj:${cnpj}` : name ? `nome:${name.toLowerCase()}` : "";
+
+          return {
+            value,
+            name: name || fantasia,
+            cnpj,
+            fantasia,
+          };
+        })
+        .filter((c: any) => c.value && c.name)
+        .filter((company: any, index: number, arr: any[]) => arr.findIndex((item) => item.value === company.value) === index);
     },
     enabled: isAuthenticated,
     staleTime: 60000,
@@ -665,19 +660,26 @@ function CentralPage() {
 
   // Link company to ticket
   const linkCompanyMutation = useMutation({
-    mutationFn: async (gsystemClientId: string) => {
-      if (!currentTicket) return;
-      const localCompanyId = await ensureLocalCompany(gsystemClientId);
-      await supabase
-        .from("service_tickets")
-        .update({ company_id: localCompanyId })
-        .eq("id", currentTicket.id);
+    mutationFn: async (selectedValue: string) => {
+      const selectedCompany = getSelectedCompany(selectedValue);
+      if (!selectedCompany) throw new Error("Empresa não encontrada");
+
+      await linkPhoneToCompany({
+        data: {
+          companyName: selectedCompany.name,
+          companyCnpj: selectedCompany.cnpj || undefined,
+          phone: contactPhone,
+          ticketId: currentTicket?.id,
+        },
+        ...await getAuthHeaders(),
+      });
     },
     onSuccess: () => {
       refetchTicket();
       queryClient.invalidateQueries({ queryKey: ["company-lookup"] });
       toast.success("Empresa vinculada ao chamado");
     },
+    onError: (err: any) => toast.error(err?.message || "Erro ao vincular empresa"),
   });
 
   // Auto-scroll
@@ -1341,7 +1343,7 @@ function CentralPage() {
                               </SelectTrigger>
                               <SelectContent>
                                 {allCompanies.map((c: any) => (
-                                  <SelectItem key={c.id} value={c.id}>{c.name}{c.fantasia && c.fantasia !== c.name ? ` (${c.fantasia})` : ""}</SelectItem>
+                                  <SelectItem key={c.value} value={c.value}>{c.name}{c.fantasia && c.fantasia !== c.name ? ` (${c.fantasia})` : ""}</SelectItem>
                                 ))}
                               </SelectContent>
                             </Select>
@@ -1702,7 +1704,7 @@ function CentralPage() {
                   </SelectTrigger>
                   <SelectContent>
                     {allCompanies.map((c: any) => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}{c.fantasia && c.fantasia !== c.name ? ` (${c.fantasia})` : ""}</SelectItem>
+                      <SelectItem key={c.value} value={c.value}>{c.name}{c.fantasia && c.fantasia !== c.name ? ` (${c.fantasia})` : ""}</SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
@@ -1735,14 +1737,14 @@ function CentralPage() {
                       </SelectTrigger>
                       <SelectContent>
                         {allCompanies.map((c: any) => (
-                          <SelectItem key={c.id} value={c.id}>{c.name}{c.fantasia && c.fantasia !== c.name ? ` (${c.fantasia})` : ""}</SelectItem>
+                          <SelectItem key={c.value} value={c.value}>{c.name}{c.fantasia && c.fantasia !== c.name ? ` (${c.fantasia})` : ""}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   )}
                   {identForm.companyId && (
                     <p className="text-xs text-muted-foreground mt-1">
-                      Empresa: <strong>{allCompanies.find((c: any) => c.id === identForm.companyId)?.name}</strong>
+                      Empresa: <strong>{allCompanies.find((c: any) => c.value === identForm.companyId)?.name}</strong>
                     </p>
                   )}
                 </div>
