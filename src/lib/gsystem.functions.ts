@@ -106,9 +106,19 @@ export const listAllOpenChats = createServerFn({ method: "POST" })
       const userMap: Record<string, { name: string; status: string }> = {};
 
       for (const u of userList) {
+        // Check currentAttendanceId
         if (u.currentAttendanceId && !chatMap.has(u.currentAttendanceId)) {
           agentAttendanceIds.push(u.currentAttendanceId);
           userMap[u.currentAttendanceId] = { name: u.name || "", status: u.status || "" };
+        }
+        // Also check attendanceIds array (some agents handle multiple chats)
+        if (Array.isArray(u.attendanceIds)) {
+          for (const aid of u.attendanceIds) {
+            if (aid && !chatMap.has(aid) && !agentAttendanceIds.includes(aid)) {
+              agentAttendanceIds.push(aid);
+              userMap[aid] = { name: u.name || "", status: u.status || "" };
+            }
+          }
         }
       }
 
