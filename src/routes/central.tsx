@@ -58,6 +58,8 @@ import {
   Plus,
   Filter,
   X,
+  Bot,
+  Timer,
 } from "lucide-react";
 import {
   AlertDialog,
