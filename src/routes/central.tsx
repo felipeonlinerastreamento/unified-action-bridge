@@ -418,17 +418,53 @@ function CentralPage() {
     }
   }, [selectedChatId, chatDetail, contactPhone]);
 
+  // Helper: ensure a local company exists for a GSystem client
+  const ensureLocalCompany = async (gsystemClientId: string): Promise<string> => {
+    const gsClient = allCompanies.find((c: any) => c.id === gsystemClientId);
+    if (!gsClient) throw new Error("Cliente GSystem não encontrado");
+
+    // Check if local company exists by CNPJ or name
+    if (gsClient.cnpj) {
+      const { data: existing } = await supabase
+        .from("companies")
+        .select("id")
+        .eq("cnpj", gsClient.cnpj)
+        .limit(1);
+      if (existing && existing.length > 0) return existing[0].id;
+    }
+
+    const { data: byName } = await supabase
+      .from("companies")
+      .select("id")
+      .eq("name", gsClient.name)
+      .limit(1);
+    if (byName && byName.length > 0) return byName[0].id;
+
+    // Create local company
+    const { data: created, error } = await supabase
+      .from("companies")
+      .insert({
+        name: gsClient.name,
+        cnpj: gsClient.cnpj || null,
+      })
+      .select("id")
+      .single();
+    if (error) throw error;
+    return created.id;
+  };
+
   // Create sub-client mutation
   const createSubClientMutation = useMutation({
     mutationFn: async () => {
       if (!identForm.companyId || !identForm.name) throw new Error("Preencha nome e empresa");
+      const localCompanyId = await ensureLocalCompany(identForm.companyId);
       const { data: sess } = await supabase.auth.getSession();
       const { error } = await supabase.from("sub_clients").insert({
         name: identForm.name,
         phone: identForm.phone || contactPhone,
         email: identForm.email || null,
         notes: identForm.notes || "",
-        company_id: identForm.companyId,
+        company_id: localCompanyId,
         created_by: sess.session?.user?.id || null,
       });
       if (error) throw error;
@@ -446,12 +482,16 @@ function CentralPage() {
     mutationFn: async () => {
       if (!identForm.name) throw new Error("Preencha o nome");
       const { data: sess } = await supabase.auth.getSession();
+      let localCompanyId: string | null = null;
+      if (identForm.companyId) {
+        localCompanyId = await ensureLocalCompany(identForm.companyId);
+      }
       const { error } = await supabase.from("crm_contacts").insert({
         name: identForm.name,
         phone: identForm.phone || contactPhone,
         email: identForm.email || null,
         notes: identForm.notes || "",
-        company_id: identForm.companyId || null,
+        company_id: localCompanyId,
         created_by: sess.session?.user?.id || null,
       });
       if (error) throw error;
@@ -466,11 +506,12 @@ function CentralPage() {
 
   // Link company directly (for "vincular" tab)
   const linkCompanyDirectMutation = useMutation({
-    mutationFn: async (companyId: string) => {
+    mutationFn: async (gsystemClientId: string) => {
+      const localCompanyId = await ensureLocalCompany(gsystemClientId);
       const phone = contactPhone.replace(/\D/g, "");
       if (phone) {
         await supabase.from("company_phones").insert({
-          company_id: companyId,
+          company_id: localCompanyId,
           phone_number: phone,
         });
       }
