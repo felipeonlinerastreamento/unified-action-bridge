@@ -44,7 +44,6 @@ const mainItems = [
   { title: "CRM", url: "/crm", icon: UserPlus },
   { title: "Contatos", url: "/contatos", icon: Users },
   { title: "Empresas", url: "/empresas", icon: Building2 },
-  { title: "Estoque", url: "/estoque", icon: Package },
   { title: "Relatórios", url: "/relatorios", icon: BarChart3 },
 ];
 
