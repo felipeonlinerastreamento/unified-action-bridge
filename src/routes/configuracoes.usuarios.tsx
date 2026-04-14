@@ -225,6 +225,19 @@ function UsuariosConfigPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const resetMutation = useMutation({
+    mutationFn: async () => {
+      if (!resetUserId || !resetPassword) return;
+      return resetUserPassword({ data: { targetUserId: resetUserId, newPassword: resetPassword } });
+    },
+    onSuccess: () => {
+      toast.success("Senha redefinida com sucesso");
+      setResetDialogOpen(false);
+      setResetPassword("");
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const linkMutation = useMutation({
     mutationFn: async ({ userId, agentId, agentName }: { userId: string; agentId: string; agentName: string }) => {
       const { error } = await supabase.from("user_gsystem_links").upsert(
