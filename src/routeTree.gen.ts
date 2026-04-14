@@ -19,6 +19,7 @@ import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as CentralRouteImport } from './routes/central'
 import { Route as AtendimentosRouteImport } from './routes/atendimentos'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ConfiguracoesIndexRouteImport } from './routes/configuracoes.index'
 import { Route as ConfiguracoesUsuariosRouteImport } from './routes/configuracoes.usuarios'
 import { Route as ConfiguracoesEstoqueRouteImport } from './routes/configuracoes.estoque'
 import { Route as ConfiguracoesCentralAtendimentoRouteImport } from './routes/configuracoes.central-atendimento'
@@ -74,6 +75,11 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ConfiguracoesIndexRoute = ConfiguracoesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => ConfiguracoesRoute,
+} as any)
 const ConfiguracoesUsuariosRoute = ConfiguracoesUsuariosRouteImport.update({
   id: '/usuarios',
   path: '/usuarios',
@@ -112,12 +118,12 @@ export interface FileRoutesByFullPath {
   '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
+  '/configuracoes/': typeof ConfiguracoesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/atendimentos': typeof AtendimentosRoute
   '/central': typeof CentralRoute
-  '/configuracoes': typeof ConfiguracoesRouteWithChildren
   '/contatos': typeof ContatosRoute
   '/crm': typeof CrmRoute
   '/dashboard': typeof DashboardRoute
@@ -128,6 +134,7 @@ export interface FileRoutesByTo {
   '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
+  '/configuracoes': typeof ConfiguracoesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -145,6 +152,7 @@ export interface FileRoutesById {
   '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
+  '/configuracoes/': typeof ConfiguracoesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -163,12 +171,12 @@ export interface FileRouteTypes {
     | '/configuracoes/central-atendimento'
     | '/configuracoes/estoque'
     | '/configuracoes/usuarios'
+    | '/configuracoes/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
     | '/atendimentos'
     | '/central'
-    | '/configuracoes'
     | '/contatos'
     | '/crm'
     | '/dashboard'
@@ -179,6 +187,7 @@ export interface FileRouteTypes {
     | '/configuracoes/central-atendimento'
     | '/configuracoes/estoque'
     | '/configuracoes/usuarios'
+    | '/configuracoes'
   id:
     | '__root__'
     | '/'
@@ -195,6 +204,7 @@ export interface FileRouteTypes {
     | '/configuracoes/central-atendimento'
     | '/configuracoes/estoque'
     | '/configuracoes/usuarios'
+    | '/configuracoes/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -282,6 +292,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/configuracoes/': {
+      id: '/configuracoes/'
+      path: '/'
+      fullPath: '/configuracoes/'
+      preLoaderRoute: typeof ConfiguracoesIndexRouteImport
+      parentRoute: typeof ConfiguracoesRoute
+    }
     '/configuracoes/usuarios': {
       id: '/configuracoes/usuarios'
       path: '/usuarios'
@@ -318,6 +335,7 @@ interface ConfiguracoesRouteChildren {
   ConfiguracoesCentralAtendimentoRoute: typeof ConfiguracoesCentralAtendimentoRoute
   ConfiguracoesEstoqueRoute: typeof ConfiguracoesEstoqueRoute
   ConfiguracoesUsuariosRoute: typeof ConfiguracoesUsuariosRoute
+  ConfiguracoesIndexRoute: typeof ConfiguracoesIndexRoute
 }
 
 const ConfiguracoesRouteChildren: ConfiguracoesRouteChildren = {
@@ -325,6 +343,7 @@ const ConfiguracoesRouteChildren: ConfiguracoesRouteChildren = {
   ConfiguracoesCentralAtendimentoRoute: ConfiguracoesCentralAtendimentoRoute,
   ConfiguracoesEstoqueRoute: ConfiguracoesEstoqueRoute,
   ConfiguracoesUsuariosRoute: ConfiguracoesUsuariosRoute,
+  ConfiguracoesIndexRoute: ConfiguracoesIndexRoute,
 }
 
 const ConfiguracoesRouteWithChildren = ConfiguracoesRoute._addFileChildren(
