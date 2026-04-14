@@ -1,55 +1,64 @@
 
 
-## Plano: Vínculo Fluxo ↔ Categoria + Ativação Automática na Finalização
+# Plano: Encaminhamento Automático por Categoria
 
-### Resumo
-Adicionar coluna `trigger_categories` na tabela `service_flows` para vincular categorias do GSystem a fluxos. No dialog de criar/editar fluxo, exibir seletor multi-select com os tipos de pendência. Na finalização da Central, verificar se a categoria selecionada possui fluxo ativo e criar automaticamente uma instância do fluxo.
+## Contexto atual
+O sistema ja exige seleção de categoria antes de finalizar e já possui um mecanismo de fluxos (`service_flows` com `trigger_categories`). Porém o usuário quer um menu de configuração dedicado e simples para definir: "quando a categoria for X, encaminhar para o setor Y".
 
-### 1. Migração SQL
-- Adicionar coluna `trigger_categories text[] default '{}'` na tabela `service_flows`
+## O que será feito
 
-### 2. FlowList — Seletor de categorias vinculadas
-**Arquivo:** `src/components/fluxo-atendimento/flow-list.tsx`
+### 1. Nova tabela: `category_routing_rules`
+Tabela para armazenar regras de encaminhamento por categoria:
+- `id` (uuid, PK)
+- `category_key` (text) — chave da categoria do GSystem (ex: "Manutenção")
+- `category_label` (text) — nome exibido
+- `target_sector_name` (text) — setor de destino (ex: "ADM")
+- `target_sector_id` (text) — ID do setor no GSystem
+- `auto_create_ticket` (boolean, default true) — criar atendimento automático
+- `is_active` (boolean, default true)
+- `created_at`, `updated_at`
+- RLS: Admin/Gestor gerencia, autenticados visualizam
 
-- Importar `getTiposPendencia` do GSystem para buscar a lista de categorias
-- No dialog de criar/editar fluxo, adicionar campo multi-select (checkboxes) com as categorias disponíveis
-- State `triggerCategories: string[]` para armazenar os Keys selecionados
-- Salvar no `insert`/`update` da mutation junto com os outros campos
-- Na tabela de fluxos, exibir badges com as categorias vinculadas
-- Atualizar o tipo `Flow` para incluir `trigger_categories: string[]`
+### 2. Nova página de configuração: Encaminhamento por Categoria
+**Arquivo:** `src/routes/configuracoes.encaminhamento.tsx`
 
-### 3. Central — Ativação automática do fluxo na finalização
+- Tabela listando as regras existentes (Categoria → Setor destino → Ativo/Inativo)
+- Dialog para criar/editar regra:
+  - Seletor de categoria (busca do GSystem via `getTiposPendencia`)
+  - Seletor de setor destino (busca do GSystem via `listSectors`)
+  - Toggle ativo/inativo
+- Botões de editar e excluir
+
+### 3. Adicionar link no menu lateral
+**Arquivo:** `src/components/app-sidebar.tsx`
+
+- Adicionar item "Encaminhamento" dentro do submenu de Configurações, com ícone `ArrowRightLeft`
+
+### 4. Lógica na finalização da Central
 **Arquivo:** `src/routes/central.tsx`
 
-- Na `finalizeMutation`, após finalizar o ticket, consultar `service_flows` filtrando onde `trigger_categories` contém o `tipoPendencia` selecionado e `is_active = true`
-- Se encontrar um fluxo correspondente:
-  - Buscar a primeira etapa (`service_flow_steps` com `step_order` mínimo)
-  - Criar registro em `attendance_flow_instances` com `flow_id`, `attendance_id`, `current_step_id` e `status = 'em_andamento'`
-  - Criar registro em `attendance_flow_history` para registrar o início
-  - Exibir toast informando: "Fluxo '{nome}' ativado — encaminhado para {setor}"
-- Se não encontrar fluxo, finalizar normalmente como já funciona
+- Na `finalizeMutation`, após finalizar o chat, consultar `category_routing_rules` onde `category_key` = categoria selecionada e `is_active = true`
+- Se encontrar regra, criar novo chat no GSystem via `createChat` para o setor de destino configurado
+- Criar registro em `service_tickets` vinculado ao novo atendimento
+- Toast: "Atendimento encaminhado para o setor {setor}"
 
-### 4. Fluxo visual
+### 5. Fluxo visual
 
 ```text
-Operador finaliza → Categoria: "Manutenção"
+Operador finaliza chat → Categoria: "Manutenção"
         │
         ▼
-  service_flows WHERE 'Manutenção' = ANY(trigger_categories) AND is_active
+  category_routing_rules WHERE category_key = 'Manutenção' AND is_active
         │
-   ┌────┴────┐
-   │ Encontrou│ → Cria flow_instance + history → Toast "Fluxo ativado"
-   └────┬────┘
+   ┌────┴────────┐
+   │ Encontrou   │ → Cria novo chat no setor ADM + ticket → Toast
+   └────┬────────┘
    │ Não encontrou │ → Finalização normal
 ```
 
 ### Arquivos modificados
-- **Migração SQL** — `ALTER TABLE service_flows ADD COLUMN trigger_categories`
-- `src/components/fluxo-atendimento/flow-list.tsx` — multi-select de categorias no dialog + badges na tabela
-- `src/routes/central.tsx` — lógica de verificação e ativação de fluxo na finalização
-
-### Detalhes técnicos
-- A query do fluxo usará `.contains('trigger_categories', [tipoPendencia])` do Supabase JS
-- O `getTiposPendencia` será chamado via `useQuery` no FlowList para popular o seletor
-- O tipo `Flow` e o tipo do Supabase serão atualizados automaticamente após a migração
+- **Migração SQL** — criar tabela `category_routing_rules` com RLS
+- `src/routes/configuracoes.encaminhamento.tsx` — nova página de configuração (CRUD)
+- `src/components/app-sidebar.tsx` — novo item no menu
+- `src/routes/central.tsx` — lógica de encaminhamento automático na finalização
 
