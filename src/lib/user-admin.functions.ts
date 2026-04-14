@@ -106,6 +106,26 @@ export const updateUserName = createServerFn({ method: "POST" })
     return { success: true };
   });
 
+// Reset user password
+export const resetUserPassword = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    z.object({
+      targetUserId: z.string().uuid(),
+      newPassword: z.string().min(6).max(128),
+    }).parse
+  )
+  .handler(async ({ data, context }): Promise<{ success: boolean }> => {
+    await requireAdmin(context.supabase, context.userId);
+
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(data.targetUserId, {
+      password: data.newPassword,
+    });
+
+    if (error) throw new Error(`Erro ao redefinir senha: ${error.message}`);
+    return { success: true };
+  });
+
 // Delete user
 export const deleteUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
