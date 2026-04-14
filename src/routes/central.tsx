@@ -1186,9 +1186,23 @@ function CentralPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-12 gap-3 h-[calc(100vh-12rem)]">
+          <div className="flex gap-3 h-[calc(100vh-12rem)]">
+            {/* Toggle left panel button */}
+            {!showLeftPanel && (
+              <Button
+                variant="outline"
+                size="icon"
+                className="shrink-0 h-8 w-8 self-start mt-1"
+                onClick={() => setShowLeftPanel(true)}
+                title="Mostrar lista de conversas"
+              >
+                <PanelLeftOpen className="h-4 w-4" />
+              </Button>
+            )}
+
             {/* Chat list */}
-            <div className="col-span-3 border rounded-lg flex flex-col bg-card overflow-hidden">
+            {showLeftPanel && (
+            <div className="w-80 shrink-0 border rounded-lg flex flex-col bg-card overflow-hidden relative">
               <div className="p-3 border-b space-y-2">
                 <div className="flex items-center gap-2">
                   <div className="relative flex-1">
