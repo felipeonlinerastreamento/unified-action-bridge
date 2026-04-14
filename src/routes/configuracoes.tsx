@@ -7,13 +7,11 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Trash2, Wifi, WifiOff, Loader2, CheckCircle2, XCircle } from "lucide-react";
+import { Plus, Wifi, WifiOff, Loader2, CheckCircle2, XCircle } from "lucide-react";
 import { testGsystemAuth } from "@/lib/gsystem-api.functions";
 
 export const Route = createFileRoute("/configuracoes")({
