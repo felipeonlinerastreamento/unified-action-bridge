@@ -1391,11 +1391,11 @@ function CentralPage() {
                       )}
                       <Select value={finalizeTipoPendencia} onValueChange={setFinalizeTipoPendencia}>
                         <SelectTrigger className="w-[180px] h-8 text-xs">
-                          <SelectValue placeholder="Categoria..." />
+                          <SelectValue placeholder={tiposPendenciaError ? "Erro ao carregar" : "Categoria..."} />
                         </SelectTrigger>
                         <SelectContent>
                           {tiposPendencia.length === 0 ? (
-                            <SelectItem value="__none" disabled>Nenhum tipo disponível</SelectItem>
+                            <SelectItem value="__none" disabled>{tiposPendenciaError ? "Erro ao carregar tipos" : "Nenhum tipo disponível"}</SelectItem>
                           ) : (
                             tiposPendencia.map((tipo: any) => (
                               <SelectItem key={tipo.Key || tipo.key || tipo.Id || tipo.id} value={tipo.Key || tipo.key || tipo.Id || tipo.id || ""}>
