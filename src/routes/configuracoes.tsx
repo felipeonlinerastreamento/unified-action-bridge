@@ -67,6 +67,7 @@ function ConfiguracoesPage() {
 function GsystemConnectionTest() {
   const [testing, setTesting] = useState(false);
   const [result, setResult] = useState<any>(null);
+  const [autoTested, setAutoTested] = useState(false);
 
   const handleTest = async () => {
     setTesting(true);
@@ -83,28 +84,71 @@ function GsystemConnectionTest() {
     setTesting(false);
   };
 
+  useEffect(() => {
+    if (!autoTested) {
+      setAutoTested(true);
+      handleTest();
+    }
+  }, []);
+
+  const statusColor = testing
+    ? "border-muted bg-muted/30"
+    : result?.success
+      ? "border-emerald-200 bg-emerald-50"
+      : result
+        ? "border-destructive/30 bg-destructive/10"
+        : "border-muted";
+
+  const statusIcon = testing ? (
+    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+  ) : result?.success ? (
+    <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+  ) : result ? (
+    <XCircle className="h-5 w-5 text-destructive" />
+  ) : (
+    <WifiOff className="h-5 w-5 text-muted-foreground" />
+  );
+
+  const statusLabel = testing
+    ? "Verificando..."
+    : result?.success
+      ? "Conectado"
+      : result
+        ? "Falha na conexão"
+        : "Não verificado";
+
   return (
-    <Card className="mb-6">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="text-base">Integração GSystem API</CardTitle>
-        <Button size="sm" onClick={handleTest} disabled={testing}>
+    <Card className={`mb-6 transition-colors ${statusColor}`}>
+      <CardHeader className="flex flex-row items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          {statusIcon}
+          <div>
+            <CardTitle className="text-base">Integração GSystem API</CardTitle>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {statusLabel}
+              {result?.success && result?.workingField && (
+                <> · Campo: <Badge variant="outline" className="ml-1 text-xs">{result.workingField}</Badge></>
+              )}
+            </p>
+          </div>
+        </div>
+        <Button size="sm" variant="outline" onClick={handleTest} disabled={testing}>
           {testing ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Wifi className="h-4 w-4 mr-1" />}
           {testing ? "Testando..." : "Testar Conexão"}
         </Button>
       </CardHeader>
-      {result && (
+      {result && !result.success && (
         <CardContent>
-          <div className={`flex items-start gap-2 p-3 rounded-lg border ${result.success ? "bg-emerald-50 border-emerald-200 text-emerald-800" : "bg-destructive/10 border-destructive/30 text-destructive"}`}>
-            {result.success ? <CheckCircle2 className="h-5 w-5 mt-0.5 shrink-0" /> : <XCircle className="h-5 w-5 mt-0.5 shrink-0" />}
+          <div className="flex items-start gap-2 p-3 rounded-lg border border-destructive/30 bg-destructive/10 text-destructive">
+            <XCircle className="h-5 w-5 mt-0.5 shrink-0" />
             <div className="space-y-1 text-sm">
               <p className="font-medium">{result.message}</p>
-              {result.workingField && <p>Campo correto: <Badge variant="outline">{result.workingField}</Badge></p>}
               {result.attempts && (
                 <div className="mt-2 space-y-1">
                   <p className="text-xs font-medium opacity-70">Tentativas:</p>
                   {result.attempts.map((a: any, i: number) => (
                     <p key={i} className="text-xs font-mono">
-                      {a.success ? "✅" : "❌"} {a.field} → HTTP {a.status}: {a.message.substring(0, 100)}
+                      {a.success ? "✅" : "❌"} {a.field} → HTTP {a.status}
                     </p>
                   ))}
                 </div>
