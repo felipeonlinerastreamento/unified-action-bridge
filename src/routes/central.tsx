@@ -505,7 +505,7 @@ function CentralPage() {
 
 
   // Identification modal form state
-  const [identTab, setIdentTab] = useState<"vincular" | "subcliente" | "crm">("vincular");
+  const [identTab, setIdentTab] = useState<"vincular" | "subcliente" | "vincular-sub" | "crm">("vincular");
   const [identForm, setIdentForm] = useState({ name: "", phone: "", email: "", notes: "", companyId: "" });
 
   // Seed identification form only once per selected chat to avoid resets during polling
@@ -1981,8 +1981,11 @@ function CentralPage() {
               <TabsTrigger value="vincular" className="flex-1 text-xs">
                 <LinkIcon className="h-3 w-3 mr-1" /> Vincular
               </TabsTrigger>
+              <TabsTrigger value="vincular-sub" className="flex-1 text-xs">
+                <LinkIcon className="h-3 w-3 mr-1" /> Vincular Sub
+              </TabsTrigger>
               <TabsTrigger value="subcliente" className="flex-1 text-xs">
-                <Users className="h-3 w-3 mr-1" /> Sub-cliente
+                <UserPlus className="h-3 w-3 mr-1" /> Novo Sub
               </TabsTrigger>
               <TabsTrigger value="crm" className="flex-1 text-xs">
                 <UserPlus className="h-3 w-3 mr-1" /> CRM
@@ -2017,6 +2020,26 @@ function CentralPage() {
                   <Loader2 className="h-4 w-4 animate-spin" /> Vinculando...
                 </div>
               )}
+            </TabsContent>
+
+
+            {/* Vincular a sub-cliente existente */}
+            <TabsContent value="vincular-sub" className="space-y-3 mt-3">
+              <p className="text-sm text-muted-foreground">
+                Vincule este número a um sub-cliente já cadastrado.
+              </p>
+              <SubClientLinker
+                contactPhone={contactPhone}
+                ticketId={currentTicket?.id}
+                onSuccess={async () => {
+                  setIdentModalOpen(false);
+                  setIdentModalDismissed((prev) => ({ ...prev, [selectedChatId]: true }));
+                  queryClient.invalidateQueries({ queryKey: ["sub-client-lookup"] });
+                  queryClient.invalidateQueries({ queryKey: ["company-lookup"] });
+                  await refetchTicket();
+                  retryPendenciaCreation();
+                }}
+              />
             </TabsContent>
 
             {/* Criar sub-cliente */}
