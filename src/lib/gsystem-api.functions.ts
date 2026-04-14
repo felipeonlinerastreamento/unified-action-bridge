@@ -475,6 +475,205 @@ export const getParametros = createServerFn({ method: "POST" })
   });
 
 // ============================================================
+// PENDÊNCIAS - ORQUESTRAÇÃO DE ATENDIMENTO
+// ============================================================
+
+/**
+ * Creates a pendência in GSystem from a service ticket.
+ * Handles client lookup/creation and sub-client mapping.
+ */
+export const createPendenciaFromAtendimento = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    z.object({
+      attendanceId: z.string().min(1).max(255),
+      contactPhone: z.string().max(30).optional(),
+      contactName: z.string().max(255).optional(),
+      companyId: z.string().max(255).optional(),
+      subClientId: z.string().max(255).optional(),
+      crmContactId: z.string().max(255).optional(),
+      plate: z.string().max(20).optional(),
+      notes: z.string().max(2000).optional(),
+    }).parse
+  )
+  .handler(async ({ data, context }) => {
+    const { gsystemApiFetch } = await import("@/lib/gsystem-api.server");
+    const { supabase } = context;
+
+    let clienteKey: string | null = null;
+    let observacao = "";
+    let companyName = "";
+
+    try {
+      // 1. Sub-client flow: find parent company, use parent as GSystem client
+      if (data.subClientId) {
+        const { data: subClient } = await supabase
+          .from("sub_clients")
+          .select("*, companies(name, cnpj)")
+          .eq("id", data.subClientId)
+          .single();
+
+        if (subClient) {
+          const company = subClient.companies as any;
+          companyName = company?.name || "";
+          observacao = `Sub-cliente: ${subClient.name} | Tel: ${subClient.phone}${subClient.notes ? ` | ${subClient.notes}` : ""}`;
+
+          if (company?.cnpj) {
+            clienteKey = await findOrCreateGSystemClient(gsystemApiFetch, company.cnpj, company.name, subClient.phone);
+          }
+        }
+      }
+
+      // 2. Direct company flow
+      if (!clienteKey && data.companyId) {
+        const { data: company } = await supabase
+          .from("companies")
+          .select("name, cnpj, phone")
+          .eq("id", data.companyId)
+          .single();
+
+        if (company) {
+          companyName = company.name;
+          const phone = company.phone || data.contactPhone || "";
+          if (company.cnpj) {
+            clienteKey = await findOrCreateGSystemClient(gsystemApiFetch, company.cnpj, company.name, phone);
+          }
+        }
+      }
+
+      // 3. CRM contact flow (lead without company)
+      if (!clienteKey && data.crmContactId) {
+        const { data: contact } = await supabase
+          .from("crm_contacts")
+          .select("name, phone, company_id, companies(name, cnpj)")
+          .eq("id", data.crmContactId)
+          .single();
+
+        if (contact) {
+          const company = contact.companies as any;
+          if (company?.cnpj) {
+            companyName = company.name;
+            clienteKey = await findOrCreateGSystemClient(gsystemApiFetch, company.cnpj, company.name, contact.phone);
+          } else {
+            // Create basic client from CRM contact
+            clienteKey = await findOrCreateGSystemClient(gsystemApiFetch, null, contact.name, contact.phone);
+          }
+        }
+      }
+
+      // 4. Fallback: create basic client from contact info
+      if (!clienteKey && (data.contactName || data.contactPhone)) {
+        clienteKey = await findOrCreateGSystemClient(gsystemApiFetch, null, data.contactName || "Contato", data.contactPhone || "");
+      }
+
+      // Build pendência body
+      const now = new Date();
+      const pendenciaBody: Record<string, unknown> = {
+        Descricao: `Atendimento via chat - ${companyName || data.contactName || data.contactPhone || "Contato"}`,
+        DataAbertura: now.toISOString().split("T")[0],
+        Observacao: [
+          observacao,
+          data.plate ? `Placa: ${data.plate}` : "",
+          data.notes || "",
+          `Atendimento ID: ${data.attendanceId}`,
+          `Contato: ${data.contactName || ""} ${data.contactPhone || ""}`.trim(),
+        ].filter(Boolean).join("\n"),
+      };
+
+      if (clienteKey) {
+        pendenciaBody.Cliente = clienteKey;
+      }
+
+      console.log("[Pendencia] Creating pendência:", JSON.stringify(pendenciaBody).substring(0, 500));
+
+      const result = await gsystemApiFetch("/pendencias", "POST", pendenciaBody);
+
+      // Extract the key from the result
+      const pendenciaKey = result?.Key || result?.key || result?.Id || result?.id || null;
+
+      return {
+        success: true,
+        pendenciaKey: typeof pendenciaKey === "string" ? pendenciaKey : pendenciaKey ? String(pendenciaKey) : null,
+        clienteKey,
+        message: "Pendência criada com sucesso",
+      };
+    } catch (err: any) {
+      console.error("[Pendencia] Error creating pendência:", err.message);
+      return {
+        success: false,
+        pendenciaKey: null,
+        clienteKey: null,
+        message: `Erro ao criar pendência: ${err.message}`,
+      };
+    }
+  });
+
+/**
+ * Conclude (cancel) a pendência in GSystem when chat is finalized.
+ */
+export const concluirPendencia = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    z.object({
+      pendenciaKey: z.string().min(1).max(255),
+      notes: z.string().max(2000).optional(),
+    }).parse
+  )
+  .handler(async ({ data }) => {
+    const { gsystemApiFetch } = await import("@/lib/gsystem-api.server");
+    try {
+      await gsystemApiFetch(`/pendencias/${encodeURIComponent(data.pendenciaKey)}/cancelar`, "PUT");
+      return { success: true, message: "Pendência concluída" };
+    } catch (err: any) {
+      console.error("[Pendencia] Error concluding pendência:", err.message);
+      return { success: false, message: `Erro ao concluir pendência: ${err.message}` };
+    }
+  });
+
+/**
+ * Helper: find a client in GSystem by CNPJ or create a basic one.
+ */
+async function findOrCreateGSystemClient(
+  gsystemApiFetch: (endpoint: string, method?: string, body?: unknown) => Promise<any>,
+  cnpj: string | null,
+  name: string,
+  phone: string
+): Promise<string | null> {
+  // Try to find by CNPJ
+  if (cnpj) {
+    try {
+      const cleanCnpj = cnpj.replace(/\D/g, "");
+      const result = await gsystemApiFetch(`/clientes/${encodeURIComponent(cleanCnpj)}`);
+      if (result) {
+        const key = Array.isArray(result)
+          ? result[0]?.Key || result[0]?.key
+          : result?.Key || result?.key;
+        if (key) return String(key);
+      }
+    } catch (err: any) {
+      console.log("[Pendencia] Client not found by CNPJ, will create:", err.message);
+    }
+  }
+
+  // Create basic client
+  try {
+    const clientBody: Record<string, unknown> = {
+      Nome: name,
+      Telefone: phone,
+    };
+    if (cnpj) clientBody.CNPJ = cnpj.replace(/\D/g, "");
+
+    const created = await gsystemApiFetch("/clientes", "POST", clientBody);
+    const key = created?.Key || created?.key || created?.Id || created?.id;
+    if (key) return String(key);
+  } catch (err: any) {
+    console.error("[Pendencia] Error creating client:", err.message);
+  }
+
+  return null;
+}
+
+// ============================================================
 // TESTE DE AUTENTICAÇÃO
 // ============================================================
 
