@@ -19,6 +19,8 @@ import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as CentralRouteImport } from './routes/central'
 import { Route as AtendimentosRouteImport } from './routes/atendimentos'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ConfiguracoesUsuariosRouteImport } from './routes/configuracoes.usuarios'
+import { Route as ConfiguracoesEstoqueRouteImport } from './routes/configuracoes.estoque'
 import { Route as ConfiguracoesCentralAtendimentoRouteImport } from './routes/configuracoes.central-atendimento'
 import { Route as ConfiguracoesAssistenteIaRouteImport } from './routes/configuracoes.assistente-ia'
 
@@ -72,6 +74,16 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ConfiguracoesUsuariosRoute = ConfiguracoesUsuariosRouteImport.update({
+  id: '/usuarios',
+  path: '/usuarios',
+  getParentRoute: () => ConfiguracoesRoute,
+} as any)
+const ConfiguracoesEstoqueRoute = ConfiguracoesEstoqueRouteImport.update({
+  id: '/estoque',
+  path: '/estoque',
+  getParentRoute: () => ConfiguracoesRoute,
+} as any)
 const ConfiguracoesCentralAtendimentoRoute =
   ConfiguracoesCentralAtendimentoRouteImport.update({
     id: '/central-atendimento',
@@ -98,6 +110,8 @@ export interface FileRoutesByFullPath {
   '/relatorios': typeof RelatoriosRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
   '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
+  '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
+  '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -112,6 +126,8 @@ export interface FileRoutesByTo {
   '/relatorios': typeof RelatoriosRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
   '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
+  '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
+  '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -127,6 +143,8 @@ export interface FileRoutesById {
   '/relatorios': typeof RelatoriosRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
   '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
+  '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
+  '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -143,6 +161,8 @@ export interface FileRouteTypes {
     | '/relatorios'
     | '/configuracoes/assistente-ia'
     | '/configuracoes/central-atendimento'
+    | '/configuracoes/estoque'
+    | '/configuracoes/usuarios'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -157,6 +177,8 @@ export interface FileRouteTypes {
     | '/relatorios'
     | '/configuracoes/assistente-ia'
     | '/configuracoes/central-atendimento'
+    | '/configuracoes/estoque'
+    | '/configuracoes/usuarios'
   id:
     | '__root__'
     | '/'
@@ -171,6 +193,8 @@ export interface FileRouteTypes {
     | '/relatorios'
     | '/configuracoes/assistente-ia'
     | '/configuracoes/central-atendimento'
+    | '/configuracoes/estoque'
+    | '/configuracoes/usuarios'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -258,6 +282,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/configuracoes/usuarios': {
+      id: '/configuracoes/usuarios'
+      path: '/usuarios'
+      fullPath: '/configuracoes/usuarios'
+      preLoaderRoute: typeof ConfiguracoesUsuariosRouteImport
+      parentRoute: typeof ConfiguracoesRoute
+    }
+    '/configuracoes/estoque': {
+      id: '/configuracoes/estoque'
+      path: '/estoque'
+      fullPath: '/configuracoes/estoque'
+      preLoaderRoute: typeof ConfiguracoesEstoqueRouteImport
+      parentRoute: typeof ConfiguracoesRoute
+    }
     '/configuracoes/central-atendimento': {
       id: '/configuracoes/central-atendimento'
       path: '/central-atendimento'
@@ -278,11 +316,15 @@ declare module '@tanstack/react-router' {
 interface ConfiguracoesRouteChildren {
   ConfiguracoesAssistenteIaRoute: typeof ConfiguracoesAssistenteIaRoute
   ConfiguracoesCentralAtendimentoRoute: typeof ConfiguracoesCentralAtendimentoRoute
+  ConfiguracoesEstoqueRoute: typeof ConfiguracoesEstoqueRoute
+  ConfiguracoesUsuariosRoute: typeof ConfiguracoesUsuariosRoute
 }
 
 const ConfiguracoesRouteChildren: ConfiguracoesRouteChildren = {
   ConfiguracoesAssistenteIaRoute: ConfiguracoesAssistenteIaRoute,
   ConfiguracoesCentralAtendimentoRoute: ConfiguracoesCentralAtendimentoRoute,
+  ConfiguracoesEstoqueRoute: ConfiguracoesEstoqueRoute,
+  ConfiguracoesUsuariosRoute: ConfiguracoesUsuariosRoute,
 }
 
 const ConfiguracoesRouteWithChildren = ConfiguracoesRoute._addFileChildren(
