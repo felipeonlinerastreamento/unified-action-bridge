@@ -2,6 +2,7 @@ import { Outlet, Link, createRootRouteWithContext, HeadContent, Scripts } from "
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/hooks/use-auth";
 import { Toaster } from "@/components/ui/sonner";
+import { AiFloatingAssistant } from "@/components/ai-floating-assistant";
 
 import appCss from "../styles.css?url";
 
@@ -63,6 +64,7 @@ function RootComponent() {
       <AuthProvider>
         <Outlet />
         <Toaster />
+        <AiFloatingAssistant />
       </AuthProvider>
     </QueryClientProvider>
   );
