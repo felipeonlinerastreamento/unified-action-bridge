@@ -301,12 +301,13 @@ export const getPendencias = createServerFn({ method: "POST" })
   )
   .handler(async ({ data }) => {
     const { gsystemApiFetch } = await import("@/lib/gsystem-api.server");
-    const params = new URLSearchParams();
-    if (data.dataInicial) params.append("Data[Inicial]", data.dataInicial);
-    if (data.dataFinal) params.append("Data[Final]", data.dataFinal);
-    if (data.clienteKey) params.append("Cliente", data.clienteKey);
-    if (data.veiculoKey) params.append("Veiculo", data.veiculoKey);
-    const qs = params.toString();
+    const parts: string[] = [];
+    if (data.dataInicial) parts.push(`Data[Inicial]=${encodeURIComponent(data.dataInicial)}`);
+    if (data.dataFinal) parts.push(`Data[Final]=${encodeURIComponent(data.dataFinal)}`);
+    if (data.clienteKey) parts.push(`Cliente=${encodeURIComponent(data.clienteKey)}`);
+    if (data.veiculoKey) parts.push(`Veiculo=${encodeURIComponent(data.veiculoKey)}`);
+    const qs = parts.join("&");
+    console.log("[GSystem Pendencias] Requesting /pendencias with query:", qs);
     return gsystemApiFetch(`/pendencias${qs ? `?${qs}` : ""}`);
   });
 
