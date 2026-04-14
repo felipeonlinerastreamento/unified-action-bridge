@@ -1161,8 +1161,28 @@ function CentralPage() {
                             </AvatarFallback>
                           </Avatar>
                           <div className="flex-1 min-w-0">
+                            {/* Time badge above name */}
+                            {(() => {
+                              const sla = getSlaColor(chat);
+                              const time = formatServiceTime(chat);
+                              return (
+                                <div className="flex items-center gap-1.5 mb-0.5">
+                                  <span
+                                    className="text-[10px] font-semibold px-1.5 py-0 rounded-full text-white leading-4"
+                                    style={{ backgroundColor: sla.bg }}
+                                  >
+                                    ⏱ {time}
+                                  </span>
+                                </div>
+                              );
+                            })()}
                             <div className="flex items-center justify-between">
-                              <p className="text-sm font-medium truncate text-foreground">{name}</p>
+                              <p
+                                className="text-sm font-medium truncate"
+                                style={{ color: getSlaColor(chat).bg }}
+                              >
+                                {name}
+                              </p>
                               {(chat.countUnreadMessages ?? 0) > 0 && (
                                 <Badge variant="default" className="text-xs ml-1 shrink-0">
                                   {chat.countUnreadMessages}
