@@ -114,20 +114,17 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
 
   const updateStatus = async (newStatus: string) => {
     if (!ticket?.id) return;
-    const update: Record<string, any> = {
-      status: newStatus as any,
-      updated_at: new Date().toISOString(),
-    };
-    if (newStatus === "finalizado") update.closed_at = new Date().toISOString();
-    if (newStatus === "reaberto") {
-      update.reopened_at = new Date().toISOString();
-      update.closed_at = null;
-    }
-    if (newStatus === "aberto" || newStatus === "em_andamento") {
-      update.closed_at = null;
-    }
 
-    const { error } = await supabase.from("service_tickets").update(update).eq("id", ticket.id);
+    const baseUpdate = {
+      status: newStatus as "aberto" | "em_andamento" | "finalizado" | "reaberto",
+      updated_at: new Date().toISOString(),
+      closed_at: null as string | null,
+      reopened_at: ticket.reopened_at as string | null,
+    };
+    if (newStatus === "finalizado") baseUpdate.closed_at = new Date().toISOString();
+    if (newStatus === "reaberto") baseUpdate.reopened_at = new Date().toISOString();
+
+    const { error } = await supabase.from("service_tickets").update(baseUpdate).eq("id", ticket.id);
     if (error) {
       console.error("Error updating status:", error);
       toast.error("Erro ao atualizar status: " + error.message);
