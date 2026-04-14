@@ -21,43 +21,18 @@ export const Route = createFileRoute("/configuracoes")({
 });
 
 function ConfiguracoesPage() {
-  const { isAuthenticated, isLoading, hasRole } = useAuth();
+  const { isAuthenticated, isLoading } = useAuth();
   if (isLoading || !isAuthenticated) return null;
 
   return (
     <AppLayout>
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Configurações</h1>
-          <p className="text-sm text-muted-foreground">Gerenciamento de canais, estoque, integrações e usuários</p>
+          <h1 className="text-2xl font-bold text-foreground">Integrações</h1>
+          <p className="text-sm text-muted-foreground">Gerenciamento de canais e integrações com sistemas externos</p>
         </div>
-
-        <Tabs defaultValue="integracoes">
-          <TabsList>
-            <TabsTrigger value="integracoes">Integrações</TabsTrigger>
-            <TabsTrigger value="stock-rules">Estoque Mínimo</TabsTrigger>
-            <TabsTrigger value="categories">Categorias</TabsTrigger>
-            <TabsTrigger value="users">Usuários</TabsTrigger>
-          </TabsList>
-
-          <TabsContent value="integracoes" className="mt-4 space-y-4">
-            <GsystemConnectionTest />
-            <ChannelsConfig />
-          </TabsContent>
-          <TabsContent value="stock-rules" className="mt-4">
-            <StockRulesConfig />
-          </TabsContent>
-          <TabsContent value="categories" className="mt-4">
-            <CategoriesConfig />
-          </TabsContent>
-          <TabsContent value="users" className="mt-4">
-            <Card>
-              <CardContent className="p-6">
-                <p className="text-sm text-muted-foreground">Gestão de usuários e papéis — disponível para administradores.</p>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        </Tabs>
+        <GsystemConnectionTest />
+        <ChannelsConfig />
       </div>
     </AppLayout>
   );
