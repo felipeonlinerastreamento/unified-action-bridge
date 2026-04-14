@@ -15,6 +15,7 @@ import {
   ChevronDown,
   Boxes,
   UserCog,
+  GitBranch,
 } from "lucide-react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
@@ -50,6 +51,7 @@ const mainItems = [
 const configSubItems = [
   { title: "Integrações", url: "/configuracoes", icon: Plug },
   { title: "Central de Atendimento", url: "/configuracoes/central-atendimento", icon: PhoneCall },
+  { title: "Fluxo de Atendimento", url: "/configuracoes/fluxo-atendimento", icon: GitBranch },
   { title: "Estoque", url: "/configuracoes/estoque", icon: Boxes },
   { title: "Assistente IA", url: "/configuracoes/assistente-ia", icon: Bot },
   { title: "Usuários", url: "/configuracoes/usuarios", icon: UserCog },

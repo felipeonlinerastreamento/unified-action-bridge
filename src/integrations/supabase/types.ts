@@ -95,6 +95,106 @@ export type Database = {
         }
         Relationships: []
       }
+      attendance_flow_history: {
+        Row: {
+          attendance_flow_instance_id: string
+          created_at: string
+          decision_value: string | null
+          from_step_id: string | null
+          id: string
+          moved_by_user_id: string | null
+          movement_reason: string | null
+          to_step_id: string | null
+        }
+        Insert: {
+          attendance_flow_instance_id: string
+          created_at?: string
+          decision_value?: string | null
+          from_step_id?: string | null
+          id?: string
+          moved_by_user_id?: string | null
+          movement_reason?: string | null
+          to_step_id?: string | null
+        }
+        Update: {
+          attendance_flow_instance_id?: string
+          created_at?: string
+          decision_value?: string | null
+          from_step_id?: string | null
+          id?: string
+          moved_by_user_id?: string | null
+          movement_reason?: string | null
+          to_step_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_flow_history_attendance_flow_instance_id_fkey"
+            columns: ["attendance_flow_instance_id"]
+            isOneToOne: false
+            referencedRelation: "attendance_flow_instances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_flow_history_from_step_id_fkey"
+            columns: ["from_step_id"]
+            isOneToOne: false
+            referencedRelation: "service_flow_steps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_flow_history_to_step_id_fkey"
+            columns: ["to_step_id"]
+            isOneToOne: false
+            referencedRelation: "service_flow_steps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      attendance_flow_instances: {
+        Row: {
+          attendance_id: string
+          current_step_id: string | null
+          finished_at: string | null
+          flow_id: string
+          id: string
+          started_at: string
+          status: Database["public"]["Enums"]["flow_instance_status"]
+        }
+        Insert: {
+          attendance_id: string
+          current_step_id?: string | null
+          finished_at?: string | null
+          flow_id: string
+          id?: string
+          started_at?: string
+          status?: Database["public"]["Enums"]["flow_instance_status"]
+        }
+        Update: {
+          attendance_id?: string
+          current_step_id?: string | null
+          finished_at?: string | null
+          flow_id?: string
+          id?: string
+          started_at?: string
+          status?: Database["public"]["Enums"]["flow_instance_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "attendance_flow_instances_current_step_id_fkey"
+            columns: ["current_step_id"]
+            isOneToOne: false
+            referencedRelation: "service_flow_steps"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "attendance_flow_instances_flow_id_fkey"
+            columns: ["flow_id"]
+            isOneToOne: false
+            referencedRelation: "service_flows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       attendance_metric_settings: {
         Row: {
           created_at: string
@@ -742,6 +842,133 @@ export type Database = {
         }
         Relationships: []
       }
+      service_flow_step_rules: {
+        Row: {
+          allowed_roles: string[] | null
+          can_finalize: boolean
+          created_at: string
+          decision_options: string[] | null
+          finalization_requires_decision: boolean
+          id: string
+          required_fields: string[] | null
+          step_id: string
+          updated_at: string
+        }
+        Insert: {
+          allowed_roles?: string[] | null
+          can_finalize?: boolean
+          created_at?: string
+          decision_options?: string[] | null
+          finalization_requires_decision?: boolean
+          id?: string
+          required_fields?: string[] | null
+          step_id: string
+          updated_at?: string
+        }
+        Update: {
+          allowed_roles?: string[] | null
+          can_finalize?: boolean
+          created_at?: string
+          decision_options?: string[] | null
+          finalization_requires_decision?: boolean
+          id?: string
+          required_fields?: string[] | null
+          step_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_flow_step_rules_step_id_fkey"
+            columns: ["step_id"]
+            isOneToOne: false
+            referencedRelation: "service_flow_steps"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_flow_steps: {
+        Row: {
+          allow_return: boolean
+          allow_skip: boolean
+          auto_advance: boolean
+          created_at: string
+          expected_time_minutes: number | null
+          flow_id: string
+          id: string
+          is_required: boolean
+          requires_assignment: boolean
+          sector_name: string
+          step_name: string
+          step_order: number
+          updated_at: string
+        }
+        Insert: {
+          allow_return?: boolean
+          allow_skip?: boolean
+          auto_advance?: boolean
+          created_at?: string
+          expected_time_minutes?: number | null
+          flow_id: string
+          id?: string
+          is_required?: boolean
+          requires_assignment?: boolean
+          sector_name?: string
+          step_name: string
+          step_order?: number
+          updated_at?: string
+        }
+        Update: {
+          allow_return?: boolean
+          allow_skip?: boolean
+          auto_advance?: boolean
+          created_at?: string
+          expected_time_minutes?: number | null
+          flow_id?: string
+          id?: string
+          is_required?: boolean
+          requires_assignment?: boolean
+          sector_name?: string
+          step_name?: string
+          step_order?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_flow_steps_flow_id_fkey"
+            columns: ["flow_id"]
+            isOneToOne: false
+            referencedRelation: "service_flows"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      service_flows: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       service_tickets: {
         Row: {
           attendance_id: string
@@ -926,6 +1153,7 @@ export type Database = {
     }
     Enums: {
       app_role: "admin" | "gestor" | "atendente"
+      flow_instance_status: "em_andamento" | "pausado" | "finalizado"
       inventory_status: "disponivel" | "vinculado"
       movement_type: "entrada" | "saida"
       service_ticket_status: "aberto" | "em_andamento" | "finalizado"
@@ -1058,6 +1286,7 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["admin", "gestor", "atendente"],
+      flow_instance_status: ["em_andamento", "pausado", "finalizado"],
       inventory_status: ["disponivel", "vinculado"],
       movement_type: ["entrada", "saida"],
       service_ticket_status: ["aberto", "em_andamento", "finalizado"],
