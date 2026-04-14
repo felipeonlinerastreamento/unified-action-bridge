@@ -47,6 +47,7 @@ export function AtendimentosContent() {
     tipo: "todos",
     cliente: "",
     ramal: "todos",
+    setor: "todos",
     dataInicial: defaultStart,
     dataFinal: defaultEnd,
   });
