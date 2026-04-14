@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { AppLayout } from "@/components/app-layout";
@@ -13,7 +13,7 @@ import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import {
   MessageSquare, Clock, CheckCircle, AlertTriangle, Package, Headphones,
-  Users, BarChart3, TrendingUp, Activity, Monitor,
+  Users, BarChart3, TrendingUp, Activity, Monitor, Timer, AlertOctagon,
 } from "lucide-react";
 
 export const Route = createFileRoute("/dashboard")({
