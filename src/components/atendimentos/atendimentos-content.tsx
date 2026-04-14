@@ -226,7 +226,8 @@ export function AtendimentosContent() {
             const status = p.Status ?? p.status ?? "Aberta";
             const client = p.Cliente ?? p.cliente ?? p.NomeCliente ?? "";
             const date = p.DataOcorrencia ?? p.Data ?? p.DataCriacao ?? p.data ?? "";
-            const plate = p.Placa ?? p.placa ?? "";
+            const veiculos = Array.isArray(p.Veiculos) ? p.Veiculos.filter(Boolean) : [];
+            const plate = veiculos.length > 0 ? veiculos.join(", ") : (p.Placa ?? p.placa ?? "");
             const tipo = p.Tipo ?? p.tipo ?? p.TipoPendencia ?? "";
             const ramal = p.Ramal ?? p.ramal ?? "";
 
