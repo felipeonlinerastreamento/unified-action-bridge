@@ -223,7 +223,8 @@ export const sendText = createServerFn({ method: "POST" })
     const text = (data.message || "").trim();
     if (!text) throw new Error("Mensagem não pode estar vazia");
     return gsystemFetch("/chats/send-text", channel.token, "POST", {
-      data: { attendanceId: data.chatId, text },
+      attendanceId: data.chatId,
+      data: { text },
     });
   });
 
