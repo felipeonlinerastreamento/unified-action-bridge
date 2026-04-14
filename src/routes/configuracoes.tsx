@@ -66,7 +66,6 @@ function ConfiguracoesPage() {
 function GsystemConnectionTest() {
   const [testing, setTesting] = useState(false);
   const [result, setResult] = useState<any>(null);
-  const [autoTested, setAutoTested] = useState(false);
 
   const handleTest = async () => {
     setTesting(true);
