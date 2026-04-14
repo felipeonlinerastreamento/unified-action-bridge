@@ -353,23 +353,20 @@ export const getTiposPendencia = createServerFn({ method: "POST" })
         // Filter cadastros by Tipo or Subcategoria related to pendência
         const tiposCadastro = cadastros.filter((c: any) =>
           (c.Tipo || "").toLowerCase().includes("pendencia") ||
-          (c.Tipo || "").toLowerCase().includes("pendência") ||
-          (c.Subcategoria || "").toLowerCase().includes("pendencia") ||
-          (c.Subcategoria || "").toLowerCase().includes("pendência") ||
-          (c.Tipo || "").toLowerCase().includes("tipo") ||
-          (c.Subcategoria || "").toLowerCase().includes("tipo")
+          (c.Tipo || "").toLowerCase().includes("pendência")
         );
+
+        // Log all unique Tipo values for debugging
+        const allTipos = [...new Set(cadastros.map((c: any) => c.Tipo).filter(Boolean))];
+        console.log("[getTiposPendencia] Available cadastro Tipo values:", allTipos.join(", "));
+        
         if (tiposCadastro.length > 0) {
-          console.log(`[getTiposPendencia] Found ${tiposCadastro.length} tipos from cadastros`);
+          console.log(`[getTiposPendencia] Found ${tiposCadastro.length} tipos from cadastros (Tipo contains pendencia)`);
           return tiposCadastro.map((c: any) => ({
             Key: String(c.Codigo || c.DisplayName),
             Descricao: c.DisplayName || c.Texto || String(c.Codigo),
           }));
         }
-
-        // Log all unique Tipo values for debugging
-        const tipos = [...new Set(cadastros.map((c: any) => c.Tipo).filter(Boolean))];
-        console.log("[getTiposPendencia] Available cadastro Tipo values:", tipos.join(", "));
 
         // Also log unique Subcategoria values
         const subcategorias = [...new Set(cadastros.map((c: any) => c.Subcategoria).filter(Boolean))];
