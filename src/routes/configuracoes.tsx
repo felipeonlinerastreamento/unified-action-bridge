@@ -29,20 +29,19 @@ function ConfiguracoesPage() {
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Configurações</h1>
-          <p className="text-sm text-muted-foreground">Gerenciamento de canais, estoque e usuários</p>
+          <p className="text-sm text-muted-foreground">Gerenciamento de canais, estoque, integrações e usuários</p>
         </div>
 
-        <GsystemConnectionTest />
-
-        <Tabs defaultValue="channels">
+        <Tabs defaultValue="integracoes">
           <TabsList>
-            <TabsTrigger value="channels">Canais</TabsTrigger>
+            <TabsTrigger value="integracoes">Integrações</TabsTrigger>
             <TabsTrigger value="stock-rules">Estoque Mínimo</TabsTrigger>
             <TabsTrigger value="categories">Categorias</TabsTrigger>
             <TabsTrigger value="users">Usuários</TabsTrigger>
           </TabsList>
 
-          <TabsContent value="channels" className="mt-4">
+          <TabsContent value="integracoes" className="mt-4 space-y-4">
+            <GsystemConnectionTest />
             <ChannelsConfig />
           </TabsContent>
           <TabsContent value="stock-rules" className="mt-4">
@@ -67,7 +66,6 @@ function ConfiguracoesPage() {
 function GsystemConnectionTest() {
   const [testing, setTesting] = useState(false);
   const [result, setResult] = useState<any>(null);
-  const [autoTested, setAutoTested] = useState(false);
 
   const handleTest = async () => {
     setTesting(true);
@@ -83,13 +81,6 @@ function GsystemConnectionTest() {
     }
     setTesting(false);
   };
-
-  useEffect(() => {
-    if (!autoTested) {
-      setAutoTested(true);
-      handleTest();
-    }
-  }, []);
 
   const statusColor = testing
     ? "border-muted bg-muted/30"
@@ -134,7 +125,7 @@ function GsystemConnectionTest() {
         </div>
         <Button size="sm" variant="outline" onClick={handleTest} disabled={testing}>
           {testing ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Wifi className="h-4 w-4 mr-1" />}
-          {testing ? "Testando..." : "Testar Conexão"}
+          {testing ? "Testando..." : "Testar Agora"}
         </Button>
       </CardHeader>
       {result && !result.success && (
