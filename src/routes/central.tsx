@@ -1205,6 +1205,15 @@ function CentralPage() {
             <div className="w-80 shrink-0 border rounded-lg flex flex-col bg-card overflow-hidden relative">
               <div className="p-3 border-b space-y-2">
                 <div className="flex items-center gap-2">
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="shrink-0 h-7 w-7"
+                    onClick={() => setShowLeftPanel(false)}
+                    title="Ocultar lista de conversas"
+                  >
+                    <PanelLeftClose className="h-4 w-4" />
+                  </Button>
                   <div className="relative flex-1">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input
