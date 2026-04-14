@@ -24,11 +24,11 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { listGSystemUsers, listSectors, listAllOpenChats } from "@/lib/gsystem.functions";
-import { createUser, updateUserRole, updateUserName, deleteUser } from "@/lib/user-admin.functions";
+import { createUser, updateUserRole, updateUserName, deleteUser, resetUserPassword } from "@/lib/user-admin.functions";
 import { toast } from "sonner";
 import {
   Users, Link as LinkIcon, Unlink, Loader2, Bot, Clock, Headphones,
-  Moon, FolderTree, RefreshCw, UserPlus, Pencil, Trash2,
+  Moon, FolderTree, RefreshCw, UserPlus, Pencil, Trash2, KeyRound,
 } from "lucide-react";
 
 export const Route = createFileRoute("/configuracoes/usuarios")({
@@ -69,6 +69,11 @@ function UsuariosConfigPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
   const [deleteUserName, setDeleteUserName] = useState("");
+
+  const [resetDialogOpen, setResetDialogOpen] = useState(false);
+  const [resetUserId, setResetUserId] = useState<string | null>(null);
+  const [resetUserNameLabel, setResetUserNameLabel] = useState("");
+  const [resetPassword, setResetPassword] = useState("");
 
   // ========== Data queries ==========
   const { data: profiles = [], isLoading: profilesLoading } = useQuery({
