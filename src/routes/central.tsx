@@ -2074,27 +2074,44 @@ function CentralPage() {
               <div className="space-y-2">
                 <div>
                   <Label className="text-xs">Empresa pai *</Label>
-                  {companiesLoading ? (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
-                      <Loader2 className="h-4 w-4 animate-spin" /> Carregando empresas...
-                    </div>
-                  ) : allCompanies.length === 0 ? (
-                    <p className="text-sm text-muted-foreground py-2">Nenhuma empresa cadastrada.</p>
-                  ) : (
-                    <Select value={identForm.companyId} onValueChange={(v) => setIdentForm((f) => ({ ...f, companyId: v }))}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecionar empresa..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {allCompanies.map((c: any) => (
-                          <SelectItem key={c.value} value={c.value}>{c.name}{c.fantasia && c.fantasia !== c.name ? ` (${c.fantasia})` : ""}</SelectItem>
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar empresa..."
+                      className="pl-8"
+                      value={identForm.companyId ? (allCompanies.find((c: any) => c.value === identForm.companyId)?.name || "") : companySearch}
+                      onChange={(e) => {
+                        setCompanySearch(e.target.value);
+                        if (identForm.companyId) setIdentForm((f) => ({ ...f, companyId: "" }));
+                      }}
+                    />
+                  </div>
+                  {!identForm.companyId && companySearch && !companiesLoading && (
+                    <div className="max-h-32 overflow-y-auto space-y-0.5 border rounded-md p-1 mt-1">
+                      {allCompanies
+                        .filter((c: any) => {
+                          const term = companySearch.toLowerCase();
+                          return c.name?.toLowerCase().includes(term) || c.fantasia?.toLowerCase().includes(term);
+                        })
+                        .slice(0, 30)
+                        .map((c: any) => (
+                          <button
+                            key={c.value}
+                            onClick={() => {
+                              setIdentForm((f) => ({ ...f, companyId: c.value }));
+                              setCompanySearch("");
+                            }}
+                            className="w-full text-left p-1.5 rounded text-xs hover:bg-accent/50 transition-colors"
+                          >
+                            {c.name}{c.fantasia && c.fantasia !== c.name ? ` (${c.fantasia})` : ""}
+                          </button>
                         ))}
-                      </SelectContent>
-                    </Select>
+                    </div>
                   )}
                   {identForm.companyId && (
                     <p className="text-xs text-muted-foreground mt-1">
-                      Empresa: <strong>{allCompanies.find((c: any) => c.value === identForm.companyId)?.name}</strong>
+                      ✓ <strong>{allCompanies.find((c: any) => c.value === identForm.companyId)?.name}</strong>
+                      <button className="ml-2 text-xs underline" onClick={() => setIdentForm((f) => ({ ...f, companyId: "" }))}>trocar</button>
                     </p>
                   )}
                 </div>
