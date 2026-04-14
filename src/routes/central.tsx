@@ -174,7 +174,13 @@ function CentralPage() {
   const [showFinalizeConfirm, setShowFinalizeConfirm] = useState(false);
   const [finalizeNotes, setFinalizeNotes] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const aiChatEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
+
+  // AI Assistant state
+  const [aiMessages, setAiMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
+  const [aiInput, setAiInput] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
 
   // Load channels from DB
   const { data: channels = [] } = useQuery({
