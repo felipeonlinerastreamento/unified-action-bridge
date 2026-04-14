@@ -1130,8 +1130,14 @@ function CentralPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        title="Finalizar"
-                        onClick={() => setShowFinalizeConfirm(true)}
+                        title={isUnidentified ? "Identifique o contato antes de finalizar" : "Finalizar"}
+                        onClick={() => {
+                          if (isUnidentified) {
+                            toast.error("É obrigatório identificar o contato antes de finalizar o atendimento.");
+                            return;
+                          }
+                          setShowFinalizeConfirm(true);
+                        }}
                         disabled={finalizeMutation.isPending}
                         className="gap-1"
                       >
