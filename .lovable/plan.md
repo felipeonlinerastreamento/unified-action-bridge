@@ -1,72 +1,60 @@
 
 
-## Plano: Integrar Atendimentos com Pendências do GSystem
+## Diagnóstico: Vínculo entre Usuários do Sistema e Agentes do GSystem
 
-### Objetivo
-Todo atendimento na Central deve automaticamente criar uma pendência na API de Gestão do GSystem. Sub-clientes devem gerar pendências no nome do cliente pai, com dados do sub-cliente na observação. Ao finalizar o chat, a pendência correspondente é marcada como concluída.
+### Situação Atual
 
-### 1. Criar Server Function para orquestrar criação de pendência com lookup de cliente
+Existem **dois sistemas de usuários completamente independentes**:
 
-**Arquivo: `src/lib/gsystem-api.functions.ts`**
+1. **Usuários do sistema (Lovable Cloud)**: autenticados via email/senha, armazenados nas tabelas `profiles` e `user_roles`. Identificados por `user_id` (UUID).
 
-Adicionar uma nova server function `createPendenciaFromAtendimento` que:
-- Recebe: `attendanceId`, `contactPhone`, `contactName`, `companyId?`, `subClientId?`, `crmContactId?`, `plate?`, `notes?`
-- No handler (server-side):
-  1. Busca o cliente no GSystem via `getClientes` usando dados da empresa (CNPJ ou nome)
-  2. Se não encontrar, cria um cliente básico via `createCliente` com dados mínimos (nome, telefone)
-  3. Se for sub-cliente, busca a `company_id` pai no Supabase, usa o cliente da empresa pai no GSystem, e coloca nome/telefone do sub-cliente na observação
-  4. Cria a pendência via `POST /pendencias` com: cliente, descrição do atendimento, observação, data
-- Retorna a key da pendência criada
+2. **Agentes do GSystem**: retornados pela API externa `/users`, com `id`, `name` e `status`. Não possuem nenhuma relação com os usuários do sistema.
 
-### 2. Armazenar referência da pendência no service_ticket
+**Impacto atual:**
+- O campo `opened_by` em `service_tickets` salva o `user_id` do sistema, mas o agente real que atende no chat (`currentUser`) vem do GSystem
+- No dashboard, "Performance por Atendente" usa `opened_by` (quem abriu o ticket no sistema), não quem realmente atendeu no GSystem
+- Não é possível saber qual usuário do sistema corresponde a qual agente no GSystem
+- Filtros por agente na Central usam IDs do GSystem, sem relação com perfis internos
 
-**Migração SQL:**
-- Adicionar coluna `pendencia_key text` na tabela `service_tickets` para rastrear a pendência GSystem vinculada
+### Plano de Implementação
 
-### 3. Integrar criação automática no fluxo de atendimento
+#### 1. Criar tabela de mapeamento `user_gsystem_links`
 
-**Arquivo: `src/routes/central.tsx`**
-
-- Modificar o `createTicketMutation` (que já roda automaticamente ao selecionar um chat) para, após criar o `service_ticket`, chamar `createPendenciaFromAtendimento`
-- Salvar o `pendencia_key` retornado no `service_ticket`
-- Se for sub-cliente: passar `subClientId` para que a server function monte a observação corretamente
-- Se for CRM contact sem empresa: criar pendência com dados básicos do contato
-
-### 4. Finalizar pendência ao encerrar chat
-
-**Arquivo: `src/routes/central.tsx`**
-
-- No `finalizeMutation`, após finalizar o chat no GSystem:
-  - Se o `currentTicket` tiver `pendencia_key`, chamar `cancelarPendencia` (ou um novo endpoint para concluir) para marcar como concluída no GSystem
-  - Atualizar o `service_ticket` com status "finalizado"
-
-### 5. Lógica de mapeamento sub-cliente → cliente pai
-
-Na server function `createPendenciaFromAtendimento`:
 ```text
-Se subClientId presente:
-  → Buscar sub_client no Supabase (com company_id)
-  → Buscar empresa pai (companies) → usar CNPJ/nome para localizar cliente GSystem
-  → Observação = "Sub-cliente: {nome} | Tel: {telefone} | {notas}"
-  → Pendência criada no nome do cliente pai
-
-Se companyId presente (cliente direto):
-  → Buscar empresa → localizar cliente GSystem pelo CNPJ/nome
-  → Pendência criada diretamente
-
-Se crmContactId (lead sem empresa):
-  → Criar cliente básico no GSystem se necessário
-  → Pendência com dados do CRM contact
+user_gsystem_links
+├── id (uuid, PK)
+├── user_id (uuid, FK profiles) — usuário do sistema
+├── gsystem_user_id (text) — ID do agente no GSystem
+├── gsystem_user_name (text) — nome no GSystem (cache)
+├── channel_id (uuid) — canal associado
+├── created_at (timestamp)
+└── updated_at (timestamp)
 ```
 
-### Arquivos a modificar
-- `src/lib/gsystem-api.functions.ts` — nova server function `createPendenciaFromAtendimento` + `concluirPendencia`
-- `src/routes/central.tsx` — integrar criação/finalização de pendência nos mutations existentes
-- Migração SQL — adicionar `pendencia_key` em `service_tickets`
+Com RLS: admins gerenciam, autenticados visualizam.
 
-### Detalhes técnicos
-- A busca de cliente no GSystem usa `getClientes` passando CNPJ como identifier
-- `createPendencia` já existe e faz `POST /pendencias` — a nova function orquestra os lookups antes de chamar
-- `cancelarPendencia` já existe (`PUT /pendencias/{key}/cancelar`) — verificar se é o endpoint correto para concluir, ou se existe outro endpoint de conclusão
-- Toda lógica de lookup GSystem roda server-side para não expor tokens
+#### 2. Tela de vinculação em Configurações > Usuários
+
+Na página `configuracoes.usuarios.tsx`, adicionar:
+- Tabela mostrando todos os perfis do sistema com colunas: Nome, Email, Role, Agente GSystem vinculado
+- Botão para vincular/desvincular: abre um select com a lista de agentes GSystem (buscados via `listGSystemUsers`)
+- Indicador visual de quem está vinculado e quem não está
+
+#### 3. Usar o vínculo na Central de Atendimento
+
+- Ao criar `service_tickets`, além de `opened_by`, salvar também o `gsystem_user_id` do agente atual do chat
+- Nos filtros de agente, mostrar o nome do perfil do sistema quando houver vínculo
+- No detalhe do chat, exibir o nome do perfil do sistema vinculado ao agente
+
+#### 4. Usar o vínculo no Dashboard/Relatórios
+
+- Métricas de "Performance por Atendente" passam a correlacionar dados do GSystem com perfis do sistema
+- Permite relatórios unificados
+
+### Arquivos Afetados
+
+- **Nova migração**: criar tabela `user_gsystem_links`
+- **`src/routes/configuracoes.usuarios.tsx`**: tela de gestão com vinculação
+- **`src/routes/central.tsx`**: usar vínculo para enriquecer dados de agente
+- **`src/routes/dashboard.tsx`**: usar vínculo nas métricas de performance
 
