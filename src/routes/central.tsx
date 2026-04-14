@@ -422,6 +422,7 @@ function CentralPage() {
         companyId: "",
       });
       setIdentTab("vincular");
+      setChangingCompany(false);
     }
   }, [selectedChatId, chatDetail, contactPhone]);
 
