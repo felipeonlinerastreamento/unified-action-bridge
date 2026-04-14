@@ -955,12 +955,20 @@ function CentralPage() {
           }
         }
 
+        // Resolve category label from tipoPendencia key
+        let categoryLabel: string | null = null;
+        if (tipoPendencia) {
+          const found = tiposPendencia.find((t) => t.Key === tipoPendencia);
+          categoryLabel = found?.Descricao || tipoPendencia;
+        }
+
         await supabase
           .from("service_tickets")
           .update({
             status: "finalizado" as const,
             closed_at: new Date().toISOString(),
             notes: notes || currentTicket.notes || null,
+            category: categoryLabel || currentTicket.category || null,
           })
           .eq("id", currentTicket.id);
       }
