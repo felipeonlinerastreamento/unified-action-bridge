@@ -11,6 +11,8 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
@@ -78,6 +80,8 @@ import {
   PanelLeftOpen,
   PanelRightClose,
   PanelRightOpen,
+  ChevronsUpDown,
+  Check,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -1434,22 +1438,44 @@ function CentralPage() {
                           🚗 {detectedPlates[detectedPlates.length - 1]}
                         </Badge>
                       )}
-                      <Select value={finalizeTipoPendencia} onValueChange={setFinalizeTipoPendencia}>
-                        <SelectTrigger className="w-[180px] h-8 text-xs">
-                          <SelectValue placeholder={tiposPendenciaError ? "Erro ao carregar" : "Categoria..."} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {tiposPendencia.length === 0 ? (
-                            <SelectItem value="__none" disabled>{tiposPendenciaError ? "Erro ao carregar tipos" : "Nenhum tipo disponível"}</SelectItem>
-                          ) : (
-                            tiposPendencia.map((tipo: any) => (
-                              <SelectItem key={tipo.Key || tipo.key || tipo.Id || tipo.id} value={tipo.Key || tipo.key || tipo.Id || tipo.id || ""}>
-                                {tipo.Descricao || tipo.descricao || tipo.Nome || tipo.nome || tipo.Name || "Sem nome"}
-                              </SelectItem>
-                            ))
-                          )}
-                        </SelectContent>
-                      </Select>
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button variant="outline" role="combobox" className="w-[180px] h-8 text-xs justify-between">
+                            {finalizeTipoPendencia
+                              ? (() => {
+                                  const found = tiposPendencia.find((t) => t.Key === finalizeTipoPendencia);
+                                  return found ? (found.Descricao || "Sem nome") : "Categoria...";
+                                })()
+                              : (tiposPendenciaError ? "Erro ao carregar" : "Categoria...")}
+                            <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[220px] p-0" align="start">
+                          <Command>
+                            <CommandInput placeholder="Buscar categoria..." className="text-xs h-8" />
+                            <CommandList>
+                              <CommandEmpty className="text-xs py-3 text-center">Nenhuma categoria encontrada</CommandEmpty>
+                              <CommandGroup>
+                                {tiposPendencia.map((tipo) => {
+                                  const key = tipo.Key || "";
+                                  const label = tipo.Descricao || "Sem nome";
+                                  return (
+                                    <CommandItem
+                                      key={key}
+                                      value={label}
+                                      onSelect={() => setFinalizeTipoPendencia(key)}
+                                      className="text-xs"
+                                    >
+                                      <Check className={`mr-2 h-3 w-3 ${finalizeTipoPendencia === key ? "opacity-100" : "opacity-0"}`} />
+                                      {label}
+                                    </CommandItem>
+                                  );
+                                })}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -2294,22 +2320,39 @@ function CentralPage() {
 
             <div className="space-y-2">
               <Label className="text-xs font-medium">Tipo de pendência <span className="text-destructive">*</span></Label>
-              <Select value={finalizeTipoPendencia} onValueChange={setFinalizeTipoPendencia}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o tipo..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {tiposPendencia.length === 0 ? (
-                    <SelectItem value="__none" disabled>Nenhum tipo disponível</SelectItem>
-                  ) : (
-                    tiposPendencia.map((tipo: any) => (
-                      <SelectItem key={tipo.Key || tipo.key || tipo.Id || tipo.id} value={tipo.Key || tipo.key || tipo.Id || tipo.id || ""}>
-                        {tipo.Descricao || tipo.descricao || tipo.Nome || tipo.nome || tipo.Name || "Sem nome"}
-                      </SelectItem>
-                    ))
-                  )}
-                </SelectContent>
-              </Select>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" role="combobox" className="w-full justify-between">
+                    {finalizeTipoPendencia
+                      ? (() => {
+                          const found = tiposPendencia.find((t) => t.Key === finalizeTipoPendencia);
+                          return found ? (found.Descricao || "Sem nome") : "Selecione o tipo...";
+                        })()
+                      : "Selecione o tipo..."}
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                  <Command>
+                    <CommandInput placeholder="Buscar tipo..." />
+                    <CommandList>
+                      <CommandEmpty>Nenhum tipo encontrado</CommandEmpty>
+                      <CommandGroup>
+                        {tiposPendencia.map((tipo) => (
+                          <CommandItem
+                            key={tipo.Key}
+                            value={tipo.Descricao || ""}
+                            onSelect={() => setFinalizeTipoPendencia(tipo.Key)}
+                          >
+                            <Check className={`mr-2 h-4 w-4 ${finalizeTipoPendencia === tipo.Key ? "opacity-100" : "opacity-0"}`} />
+                            {tipo.Descricao || "Sem nome"}
+                          </CommandItem>
+                        ))}
+                      </CommandGroup>
+                    </CommandList>
+                  </Command>
+                </PopoverContent>
+              </Popover>
             </div>
 
             <div className="space-y-2">
