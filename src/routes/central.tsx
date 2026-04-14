@@ -1496,6 +1496,93 @@ function CentralPage() {
           </Tabs>
         </DialogContent>
       </Dialog>
+
+      {/* Finalize Confirmation Dialog */}
+      <AlertDialog open={showFinalizeConfirm} onOpenChange={setShowFinalizeConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Finalizar atendimento</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja finalizar este atendimento? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <Label className="text-xs">Nota de encerramento (opcional)</Label>
+            <Textarea
+              rows={3}
+              placeholder="Ex: Cliente solicitou suporte para instalação..."
+              value={finalizeNotes}
+              onChange={(e) => setFinalizeNotes(e.target.value)}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => finalizeMutation.mutate(finalizeNotes || undefined)}
+              disabled={finalizeMutation.isPending}
+            >
+              {finalizeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+              Finalizar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* New Chat Modal */}
+      <Dialog open={showNewChatModal} onOpenChange={setShowNewChatModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5" />
+              Nova Conversa
+            </DialogTitle>
+            <DialogDescription>
+              Inicie uma nova conversa informando o telefone do contato.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <div>
+              <Label className="text-xs">Telefone *</Label>
+              <Input
+                placeholder="5531999999999"
+                value={newChatPhone}
+                onChange={(e) => setNewChatPhone(e.target.value)}
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">Formato: código do país + DDD + número</p>
+            </div>
+            <div>
+              <Label className="text-xs">Mensagem inicial (opcional)</Label>
+              <Textarea
+                rows={3}
+                placeholder="Olá, como posso ajudar?"
+                value={newChatMessage}
+                onChange={(e) => setNewChatMessage(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Setor (opcional)</Label>
+              <Select value={newChatSector} onValueChange={setNewChatSector}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecionar setor..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {sectors.map((s: any) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name || s.description}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              className="w-full"
+              onClick={() => createChatMutation.mutate()}
+              disabled={!newChatPhone || newChatPhone.replace(/\D/g, "").length < 10 || createChatMutation.isPending}
+            >
+              {createChatMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+              Iniciar Conversa
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }
