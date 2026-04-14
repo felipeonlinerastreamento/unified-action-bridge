@@ -341,7 +341,13 @@ export const cancelarPendencia = createServerFn({ method: "POST" })
     return gsystemApiFetch(`/pendencias/${encodeURIComponent(data.key)}/cancelar`, "PUT");
   });
 
-// ============================================================
+export const getTiposPendencia = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => {
+    const { gsystemApiFetch } = await import("@/lib/gsystem-api.server");
+    return gsystemApiFetch("/pendencias/tipos");
+  });
+
 // PLANOS
 // ============================================================
 
@@ -494,6 +500,8 @@ export const createPendenciaFromAtendimento = createServerFn({ method: "POST" })
       crmContactId: z.string().max(255).optional(),
       plate: z.string().max(20).optional(),
       notes: z.string().max(2000).optional(),
+      tipoPendencia: z.string().max(255).optional(),
+      status: z.string().max(50).optional(),
     }).parse
   )
   .handler(async ({ data, context }) => {
@@ -579,6 +587,14 @@ export const createPendenciaFromAtendimento = createServerFn({ method: "POST" })
           `Contato: ${data.contactName || ""} ${data.contactPhone || ""}`.trim(),
         ].filter(Boolean).join("\n"),
       };
+
+      if (data.tipoPendencia) {
+        pendenciaBody.TipoPendencia = data.tipoPendencia;
+      }
+
+      if (data.status) {
+        pendenciaBody.Situacao = data.status;
+      }
 
       if (clienteKey) {
         pendenciaBody.Cliente = clienteKey;

@@ -32,11 +32,13 @@ import {
   getChannelStatus,
   listSectors,
   listGSystemUsers,
+  transferChat,
 } from "@/lib/gsystem.functions";
 import {
   createPendenciaFromAtendimento,
   concluirPendencia,
   getClientes,
+  getTiposPendencia,
 } from "@/lib/gsystem-api.functions";
 import {
   createCrmContactWithCompany,
@@ -183,6 +185,11 @@ function CentralPage() {
   const [newChatSector, setNewChatSector] = useState("");
   const [showFinalizeConfirm, setShowFinalizeConfirm] = useState(false);
   const [finalizeNotes, setFinalizeNotes] = useState("");
+  const [finalizeStatus, setFinalizeStatus] = useState<string>("A resolver");
+  const [finalizeTipoPendencia, setFinalizeTipoPendencia] = useState<string>("");
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [transferSectorId, setTransferSectorId] = useState<string>("");
+  const [transferUserId, setTransferUserId] = useState<string>("");
   const [changingCompany, setChangingCompany] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const aiChatEndRef = useRef<HTMLDivElement>(null);
@@ -320,7 +327,42 @@ function CentralPage() {
   });
   const sectors = sectorsData || [];
 
-  // Filter chats
+  // Fetch tipos de pendência from GSystem
+  const { data: tiposPendencia = [] } = useQuery({
+    queryKey: ["tipos-pendencia"],
+    queryFn: async () => {
+      try {
+        const result = await getTiposPendencia({
+          ...await getAuthHeaders(),
+        });
+        return Array.isArray(result) ? result : [];
+      } catch {
+        return [];
+      }
+    },
+    enabled: isAuthenticated,
+    staleTime: 300000,
+  });
+
+  // GSystem users for transfer
+  const { data: gsystemUsersList = [] } = useQuery({
+    queryKey: ["gsystem-users-list", selectedChannelId],
+    queryFn: async () => {
+      if (!selectedChannelId) return [];
+      try {
+        const result = await listGSystemUsers({
+          data: { channelId: selectedChannelId },
+          ...await getAuthHeaders(),
+        });
+        return Array.isArray(result) ? result : [];
+      } catch {
+        return [];
+      }
+    },
+    enabled: !!selectedChannelId && isAuthenticated,
+    staleTime: 60000,
+  });
+
   const filteredChats = allChats.filter((chat) => {
     // Search filter (name + phone)
     if (searchTerm) {
@@ -801,7 +843,7 @@ function CentralPage() {
 
   // Finalize chat
   const finalizeMutation = useMutation({
-    mutationFn: async (notes?: string) => {
+    mutationFn: async ({ notes, status, tipoPendencia }: { notes?: string; status?: string; tipoPendencia?: string } = {}) => {
       if (currentTicket) {
         let pendenciaKey = currentTicket.pendencia_key;
 
@@ -817,6 +859,8 @@ function CentralPage() {
                 companyId: currentTicket.company_id || undefined,
                 plate: currentTicket.plate || ticketPlate || undefined,
                 notes: notes || undefined,
+                tipoPendencia: tipoPendencia || undefined,
+                status: status || undefined,
               },
               ...authHeaders,
             });
@@ -835,8 +879,8 @@ function CentralPage() {
           }
         }
 
-        // Conclude pendência in GSystem if exists
-        if (pendenciaKey) {
+        // Conclude pendência in GSystem if status is "Resolvido"
+        if (pendenciaKey && status === "Resolvido") {
           try {
             const authHeaders = await getAuthHeaders();
             await concluirPendencia({
@@ -871,9 +915,38 @@ function CentralPage() {
       setSelectedChatId("");
       setShowFinalizeConfirm(false);
       setFinalizeNotes("");
+      setFinalizeStatus("A resolver");
+      setFinalizeTipoPendencia("");
       refetchChats();
     },
     onError: (err: any) => toast.error(err?.message || "Erro ao finalizar"),
+  });
+
+  // Transfer chat mutation
+  const transferMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedChatId || (!transferSectorId && !transferUserId)) {
+        throw new Error("Selecione um setor ou usuário para transferir");
+      }
+      return transferChat({
+        data: {
+          channelId: selectedChannelId,
+          chatId: selectedChatId,
+          sectorId: transferSectorId || undefined,
+          userId: transferUserId || undefined,
+        },
+        ...await getAuthHeaders(),
+      });
+    },
+    onSuccess: () => {
+      toast.success("Chat transferido com sucesso");
+      setShowTransferModal(false);
+      setTransferSectorId("");
+      setTransferUserId("");
+      refetchChats();
+      queryClient.invalidateQueries({ queryKey: ["chat-detail", selectedChannelId, selectedChatId] });
+    },
+    onError: (err: any) => toast.error(err?.message || "Erro ao transferir"),
   });
 
   // Create new chat
@@ -1271,7 +1344,7 @@ function CentralPage() {
                         variant="ghost"
                         size="icon"
                         title="Transferir"
-                        onClick={() => toast.info("Transferência disponível em breve")}
+                        onClick={() => setShowTransferModal(true)}
                       >
                         <ArrowRightLeft className="h-4 w-4" />
                       </Button>
@@ -1998,35 +2071,139 @@ function CentralPage() {
       </Dialog>
 
       {/* Finalize Confirmation Dialog */}
-      <AlertDialog open={showFinalizeConfirm} onOpenChange={setShowFinalizeConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Finalizar atendimento</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja finalizar este atendimento? Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="space-y-2">
-            <Label className="text-xs">Nota de encerramento (opcional)</Label>
-            <Textarea
-              rows={3}
-              placeholder="Ex: Cliente solicitou suporte para instalação..."
-              value={finalizeNotes}
-              onChange={(e) => setFinalizeNotes(e.target.value)}
-            />
+      <Dialog open={showFinalizeConfirm} onOpenChange={setShowFinalizeConfirm}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5" />
+              Finalizar atendimento
+            </DialogTitle>
+            <DialogDescription>
+              Defina o status da pendência e finalize o atendimento.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">Status da pendência</Label>
+              <Select value={finalizeStatus} onValueChange={setFinalizeStatus}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o status..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="A resolver">A resolver</SelectItem>
+                  <SelectItem value="Resolvido">Resolvido</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">Tipo de pendência</Label>
+              <Select value={finalizeTipoPendencia} onValueChange={setFinalizeTipoPendencia}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o tipo..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {tiposPendencia.length === 0 ? (
+                    <SelectItem value="__none" disabled>Nenhum tipo disponível</SelectItem>
+                  ) : (
+                    tiposPendencia.map((tipo: any) => (
+                      <SelectItem key={tipo.Key || tipo.key || tipo.Id || tipo.id} value={tipo.Key || tipo.key || tipo.Id || tipo.id || ""}>
+                        {tipo.Descricao || tipo.descricao || tipo.Nome || tipo.nome || tipo.Name || "Sem nome"}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">Observação (opcional)</Label>
+              <Textarea
+                rows={2}
+                placeholder="Ex: Cliente solicitou suporte..."
+                value={finalizeNotes}
+                onChange={(e) => setFinalizeNotes(e.target.value)}
+              />
+            </div>
           </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => finalizeMutation.mutate(finalizeNotes || undefined)}
+          <div className="flex justify-end gap-2 mt-2">
+            <Button variant="outline" onClick={() => setShowFinalizeConfirm(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => finalizeMutation.mutate({
+                notes: finalizeNotes || undefined,
+                status: finalizeStatus,
+                tipoPendencia: finalizeTipoPendencia || undefined,
+              })}
               disabled={finalizeMutation.isPending}
             >
               {finalizeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
               Finalizar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Transfer Chat Modal */}
+      <Dialog open={showTransferModal} onOpenChange={setShowTransferModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ArrowRightLeft className="h-5 w-5" />
+              Transferir atendimento
+            </DialogTitle>
+            <DialogDescription>
+              Transfira este chat para outro setor ou usuário.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">Setor</Label>
+              <Select value={transferSectorId} onValueChange={(v) => { setTransferSectorId(v); setTransferUserId(""); }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um setor..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {sectors.map((s: any) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name || s.description}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">Usuário (opcional)</Label>
+              <Select value={transferUserId} onValueChange={setTransferUserId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um usuário..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {gsystemUsersList.map((u: any) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.name} {u.status === "ONLINE" ? "🟢" : "⚪"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-2">
+            <Button variant="outline" onClick={() => setShowTransferModal(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => transferMutation.mutate()}
+              disabled={transferMutation.isPending || (!transferSectorId && !transferUserId)}
+            >
+              {transferMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ArrowRightLeft className="h-4 w-4 mr-2" />}
+              Transferir
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* New Chat Modal */}
       <Dialog open={showNewChatModal} onOpenChange={setShowNewChatModal}>
