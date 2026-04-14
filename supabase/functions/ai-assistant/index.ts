@@ -1,0 +1,149 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+};
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  try {
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY is not configured");
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    const { chatMessages, contactPhone, contactName, attendanceStartTime, userMessage, mode } = await req.json();
+
+    // Fetch AI config (system prompt)
+    const { data: configRows } = await supabase
+      .from("ai_assistant_config")
+      .select("system_prompt")
+      .limit(1);
+    const systemPrompt = configRows?.[0]?.system_prompt || "Você é um assistente comercial.";
+
+    // Fetch previous service tickets for this contact
+    let previousTicketsContext = "";
+    if (contactPhone) {
+      const { data: tickets } = await supabase
+        .from("service_tickets")
+        .select("attendance_id, contact_name, status, notes, created_at, closed_at, company_id")
+        .eq("contact_phone", contactPhone)
+        .order("created_at", { ascending: false })
+        .limit(10);
+
+      if (tickets && tickets.length > 0) {
+        previousTicketsContext = "\n\n## Histórico de atendimentos anteriores deste contato:\n" +
+          tickets.map((t, i) => {
+            const duration = t.closed_at
+              ? `Duração: ${Math.round((new Date(t.closed_at).getTime() - new Date(t.created_at).getTime()) / 60000)} min`
+              : "Em andamento";
+            return `${i + 1}. [${t.status}] ${t.created_at} — ${duration}\n   Notas: ${t.notes || "Sem notas"}`;
+          }).join("\n");
+      }
+    }
+
+    // Fetch knowledge docs content hints
+    const { data: knowledgeDocs } = await supabase
+      .from("ai_knowledge_docs")
+      .select("file_name")
+      .limit(20);
+    const docsContext = knowledgeDocs && knowledgeDocs.length > 0
+      ? "\n\nDocumentos de referência disponíveis: " + knowledgeDocs.map(d => d.file_name).join(", ")
+      : "";
+
+    // Calculate service time
+    let serviceTimeContext = "";
+    if (attendanceStartTime) {
+      const startTime = new Date(attendanceStartTime);
+      const now = new Date();
+      const diffMinutes = Math.round((now.getTime() - startTime.getTime()) / 60000);
+      serviceTimeContext = `\n\nTempo de atendimento atual: ${diffMinutes} minutos.`;
+      if (diffMinutes > 15) {
+        serviceTimeContext += " ⚠️ Atendimento já ultrapassou 15 minutos, considere sugerir encerramento ou escalação.";
+      }
+    }
+
+    // Build the full system message
+    const fullSystemPrompt = `${systemPrompt}${previousTicketsContext}${docsContext}${serviceTimeContext}
+
+## Contexto do atendimento atual:
+- Contato: ${contactName || "Desconhecido"} (${contactPhone || "Sem telefone"})
+- Modo: Você está auxiliando o operador. Suas respostas são sugestões para o operador, NÃO mensagens diretas ao cliente.
+- Sempre inclua o tempo de atendimento nas suas respostas quando relevante.
+- Seja objetivo e direto.`;
+
+    // Build messages array
+    const messages: any[] = [
+      { role: "system", content: fullSystemPrompt },
+    ];
+
+    // If mode is "analyze" (config page), use a different approach
+    if (mode === "analyze") {
+      messages.push({ role: "user", content: userMessage });
+    } else {
+      // Add chat context as a summary
+      if (chatMessages && chatMessages.length > 0) {
+        const chatSummary = chatMessages
+          .slice(-30)
+          .map((m: any) => `${m.isSentByMe ? "Operador" : "Cliente"}: ${m.text || "[mídia]"}`)
+          .join("\n");
+        messages.push({
+          role: "user",
+          content: `Conversa atual:\n${chatSummary}\n\n${userMessage || "Com base na conversa acima, forneça sugestões de como o operador deve proceder."}`,
+        });
+      } else if (userMessage) {
+        messages.push({ role: "user", content: userMessage });
+      }
+    }
+
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        model: "google/gemini-3-flash-preview",
+        messages,
+        stream: true,
+      }),
+    });
+
+    if (!response.ok) {
+      if (response.status === 429) {
+        return new Response(JSON.stringify({ error: "Limite de requisições excedido. Tente novamente em alguns instantes." }), {
+          status: 429,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      if (response.status === 402) {
+        return new Response(JSON.stringify({ error: "Créditos de IA esgotados. Adicione créditos nas configurações." }), {
+          status: 402,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const errorText = await response.text();
+      console.error("AI gateway error:", response.status, errorText);
+      return new Response(JSON.stringify({ error: "Erro no serviço de IA" }), {
+        status: 500,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    return new Response(response.body, {
+      headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
+    });
+  } catch (e) {
+    console.error("ai-assistant error:", e);
+    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Erro desconhecido" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});

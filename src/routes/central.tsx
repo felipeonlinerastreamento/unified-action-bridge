@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import ReactMarkdown from "react-markdown";
 import { useAuth } from "@/hooks/use-auth";
 import { AppLayout } from "@/components/app-layout";
 import { Card, CardContent } from "@/components/ui/card";
@@ -57,6 +58,8 @@ import {
   Plus,
   Filter,
   X,
+  Bot,
+  Timer,
 } from "lucide-react";
 import {
   AlertDialog,
@@ -171,7 +174,13 @@ function CentralPage() {
   const [showFinalizeConfirm, setShowFinalizeConfirm] = useState(false);
   const [finalizeNotes, setFinalizeNotes] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const aiChatEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
+
+  // AI Assistant state
+  const [aiMessages, setAiMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
+  const [aiInput, setAiInput] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
 
   // Load channels from DB
   const { data: channels = [] } = useQuery({
@@ -662,6 +671,87 @@ function CentralPage() {
     }
   };
 
+  // AI Assistant send
+  const handleAiSend = async (autoMessage?: string) => {
+    const msg = autoMessage || aiInput.trim();
+    if (!msg || aiLoading) return;
+    const userMsg = { role: "user" as const, content: msg };
+    const newMsgs = [...aiMessages, userMsg];
+    setAiMessages(newMsgs);
+    if (!autoMessage) setAiInput("");
+    setAiLoading(true);
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-assistant`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${sess.session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({
+            chatMessages: messages,
+            contactPhone,
+            contactName: chatDetail?.contact?.name || chatDetail?.description || "",
+            attendanceStartTime: chatDetail?.utcDhStartChat || null,
+            userMessage: msg,
+          }),
+        }
+      );
+      if (!resp.ok) {
+        const errData = await resp.json().catch(() => ({}));
+        throw new Error(errData.error || `Erro ${resp.status}`);
+      }
+      const reader = resp.body?.getReader();
+      if (!reader) throw new Error("No stream");
+      const decoder = new TextDecoder();
+      let assistantContent = "";
+      let textBuffer = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        textBuffer += decoder.decode(value, { stream: true });
+        let newlineIndex: number;
+        while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
+          let line = textBuffer.slice(0, newlineIndex);
+          textBuffer = textBuffer.slice(newlineIndex + 1);
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (line.startsWith(":") || line.trim() === "") continue;
+          if (!line.startsWith("data: ")) continue;
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") break;
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const ct = parsed.choices?.[0]?.delta?.content;
+            if (ct) {
+              assistantContent += ct;
+              setAiMessages([...newMsgs, { role: "assistant", content: assistantContent }]);
+            }
+          } catch {
+            textBuffer = line + "\n" + textBuffer;
+            break;
+          }
+        }
+      }
+      if (!assistantContent) {
+        setAiMessages([...newMsgs, { role: "assistant", content: "Sem resposta." }]);
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao consultar IA");
+      setAiMessages([...newMsgs, { role: "assistant", content: `Erro: ${err.message}` }]);
+    }
+    setAiLoading(false);
+  };
+
+  useEffect(() => {
+    aiChatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [aiMessages]);
+
+  const serviceTimeMinutes = chatDetail?.utcDhStartChat
+    ? Math.round((Date.now() - new Date(chatDetail.utcDhStartChat).getTime()) / 60000)
+    : null;
+
   if (authLoading || !isAuthenticated) return null;
 
   const noChannels = channels.length === 0;
@@ -1054,6 +1144,9 @@ function CentralPage() {
                     <TabsTrigger value="historico" className="flex-1 text-xs">
                       <History className="h-3 w-3 mr-1" /> Histórico
                     </TabsTrigger>
+                    <TabsTrigger value="ia" className="flex-1 text-xs">
+                      <Bot className="h-3 w-3 mr-1" /> IA
+                    </TabsTrigger>
                   </TabsList>
 
                   {/* Empresa Tab */}
@@ -1359,6 +1452,93 @@ function CentralPage() {
                         )}
                       </div>
                     </ScrollArea>
+                  </TabsContent>
+
+                  {/* IA Tab */}
+                  <TabsContent value="ia" className="flex-1 overflow-hidden m-0 flex flex-col">
+                    {/* Service time badge */}
+                    {serviceTimeMinutes !== null && (
+                      <div className={`px-3 py-2 border-b flex items-center gap-2 text-xs ${serviceTimeMinutes > 15 ? "bg-destructive/10 text-destructive" : "bg-muted"}`}>
+                        <Timer className="h-3 w-3" />
+                        <span className="font-medium">Tempo de atendimento: {serviceTimeMinutes} min</span>
+                        {serviceTimeMinutes > 15 && <span>⚠️ Acima do ideal</span>}
+                      </div>
+                    )}
+
+                    {/* AI Messages */}
+                    <ScrollArea className="flex-1">
+                      <div className="p-3 space-y-3">
+                        {aiMessages.length === 0 && (
+                          <div className="text-center py-8 text-muted-foreground">
+                            <Bot className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                            <p className="text-xs">Assistente IA comercial</p>
+                            <p className="text-[10px] mt-1">
+                              Clique em "Sugerir" ou pergunte sobre a conversa
+                            </p>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="mt-3 text-xs"
+                              onClick={() => handleAiSend("Com base na conversa atual, forneça sugestões de como devo proceder comercialmente.")}
+                              disabled={aiLoading || messages.length === 0}
+                            >
+                              <Bot className="h-3 w-3 mr-1" /> Pedir Sugestão
+                            </Button>
+                          </div>
+                        )}
+                        {aiMessages.map((msg, i) => (
+                          <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                            <div className={`max-w-[90%] rounded-lg px-3 py-2 text-xs ${msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+                              {msg.role === "assistant" ? (
+                                <div className="prose prose-xs max-w-none dark:prose-invert [&_p]:text-xs [&_li]:text-xs [&_h1]:text-sm [&_h2]:text-xs [&_h3]:text-xs">
+                                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+                                </div>
+                              ) : (
+                                <p>{msg.content}</p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                        {aiLoading && (
+                          <div className="flex justify-start">
+                            <div className="bg-muted rounded-lg px-3 py-2">
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            </div>
+                          </div>
+                        )}
+                        <div ref={aiChatEndRef} />
+                      </div>
+                    </ScrollArea>
+
+                    {/* AI Input */}
+                    <div className="border-t p-2 shrink-0 space-y-1">
+                      <div className="flex gap-1">
+                        <Input
+                          value={aiInput}
+                          onChange={(e) => setAiInput(e.target.value)}
+                          placeholder="Pergunte à IA..."
+                          className="text-xs h-8"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                              e.preventDefault();
+                              handleAiSend();
+                            }
+                          }}
+                        />
+                        <Button size="icon" className="h-8 w-8 shrink-0" onClick={() => handleAiSend()} disabled={aiLoading || !aiInput.trim()}>
+                          <Send className="h-3 w-3" />
+                        </Button>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="w-full text-[10px] h-6"
+                        onClick={() => handleAiSend("Com base na conversa atual, forneça sugestões de como devo proceder comercialmente.")}
+                        disabled={aiLoading || messages.length === 0}
+                      >
+                        <Bot className="h-3 w-3 mr-1" /> Sugerir abordagem
+                      </Button>
+                    </div>
                   </TabsContent>
                 </Tabs>
               )}

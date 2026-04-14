@@ -9,6 +9,7 @@ import {
   LogOut,
   Building2,
   UserPlus,
+  Bot,
 } from "lucide-react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
@@ -36,6 +37,7 @@ const mainItems = [
   { title: "Empresas", url: "/empresas", icon: Building2 },
   { title: "Estoque", url: "/estoque", icon: Package },
   { title: "Relatórios", url: "/relatorios", icon: BarChart3 },
+  { title: "Assistente IA", url: "/configuracoes/assistente-ia", icon: Bot },
   { title: "Configurações", url: "/configuracoes", icon: Settings },
 ];
 
