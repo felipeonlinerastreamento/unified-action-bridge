@@ -16,6 +16,7 @@ import {
   Boxes,
   UserCog,
   GitBranch,
+  ArrowRightLeft,
 } from "lucide-react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
