@@ -2000,24 +2000,45 @@ function CentralPage() {
               <p className="text-sm text-muted-foreground">
                 Vincule este número a uma empresa já cadastrada.
               </p>
+              <div className="relative">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input
+                  placeholder="Buscar empresa por nome..."
+                  className="pl-8"
+                  value={companySearch}
+                  onChange={(e) => setCompanySearch(e.target.value)}
+                />
+              </div>
               {companiesLoading ? (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" /> Carregando empresas...
                 </div>
-              ) : allCompanies.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Nenhuma empresa cadastrada.</p>
-              ) : (
-                <Select onValueChange={(companyId) => linkCompanyDirectMutation.mutate(companyId)}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecionar empresa..." />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {allCompanies.map((c: any) => (
-                      <SelectItem key={c.value} value={c.value}>{c.name}{c.fantasia && c.fantasia !== c.name ? ` (${c.fantasia})` : ""}</SelectItem>
+              ) : (() => {
+                const filtered = allCompanies.filter((c: any) => {
+                  if (!companySearch) return true;
+                  const term = companySearch.toLowerCase();
+                  return c.name?.toLowerCase().includes(term) || c.fantasia?.toLowerCase().includes(term) || c.cnpj?.includes(term);
+                });
+                return filtered.length === 0 ? (
+                  <p className="text-sm text-muted-foreground py-2">Nenhuma empresa encontrada.</p>
+                ) : (
+                  <div className="max-h-48 overflow-y-auto space-y-1 border rounded-md p-1">
+                    {filtered.slice(0, 50).map((c: any) => (
+                      <button
+                        key={c.value}
+                        onClick={() => linkCompanyDirectMutation.mutate(c.value)}
+                        disabled={linkCompanyDirectMutation.isPending}
+                        className="w-full text-left p-2 rounded text-sm hover:bg-accent/50 transition-colors"
+                      >
+                        <p className="font-medium">{c.name}</p>
+                        {c.fantasia && c.fantasia !== c.name && (
+                          <p className="text-xs text-muted-foreground">{c.fantasia}</p>
+                        )}
+                      </button>
                     ))}
-                  </SelectContent>
-                </Select>
-              )}
+                  </div>
+                );
+              })()}
               {linkCompanyDirectMutation.isPending && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" /> Vinculando...
