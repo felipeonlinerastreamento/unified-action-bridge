@@ -1431,24 +1431,37 @@ function CentralPage() {
               <div className="space-y-2">
                 <div>
                   <Label className="text-xs">Empresa pai *</Label>
-                  <Select value={identForm.companyId} onValueChange={(v) => setIdentForm((f) => ({ ...f, companyId: v }))}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecionar empresa..." />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {allCompanies.map((c: any) => (
-                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  {companiesLoading ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Carregando empresas...
+                    </div>
+                  ) : allCompanies.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-2">Nenhuma empresa cadastrada.</p>
+                  ) : (
+                    <Select value={identForm.companyId} onValueChange={(v) => setIdentForm((f) => ({ ...f, companyId: v }))}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecionar empresa..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {allCompanies.map((c: any) => (
+                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  )}
+                  {identForm.companyId && (
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Empresa: <strong>{allCompanies.find((c: any) => c.id === identForm.companyId)?.name}</strong>
+                    </p>
+                  )}
                 </div>
                 <div>
                   <Label className="text-xs">Nome *</Label>
-                  <Input value={identForm.name} onChange={(e) => setIdentForm((f) => ({ ...f, name: e.target.value }))} />
+                  <Input value={identForm.name} onChange={(e) => setIdentForm((f) => ({ ...f, name: e.target.value }))} placeholder="Nome do contato" />
                 </div>
                 <div>
-                  <Label className="text-xs">Telefone</Label>
-                  <Input value={identForm.phone} onChange={(e) => setIdentForm((f) => ({ ...f, phone: e.target.value }))} />
+                  <Label className="text-xs">Contato (Telefone)</Label>
+                  <Input value={identForm.phone} readOnly className="bg-muted" />
                 </div>
                 <div>
                   <Label className="text-xs">E-mail</Label>
@@ -1477,11 +1490,11 @@ function CentralPage() {
               <div className="space-y-2">
                 <div>
                   <Label className="text-xs">Nome *</Label>
-                  <Input value={identForm.name} onChange={(e) => setIdentForm((f) => ({ ...f, name: e.target.value }))} />
+                  <Input value={identForm.name} onChange={(e) => setIdentForm((f) => ({ ...f, name: e.target.value }))} placeholder="Nome do contato" />
                 </div>
                 <div>
-                  <Label className="text-xs">Telefone</Label>
-                  <Input value={identForm.phone} onChange={(e) => setIdentForm((f) => ({ ...f, phone: e.target.value }))} />
+                  <Label className="text-xs">Contato (Telefone)</Label>
+                  <Input value={identForm.phone} readOnly className="bg-muted" />
                 </div>
                 <div>
                   <Label className="text-xs">E-mail</Label>
