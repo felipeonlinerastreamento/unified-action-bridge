@@ -1368,15 +1368,15 @@ function CentralPage() {
       </div>
 
       {/* Identification Modal */}
-      <Dialog open={showIdentModal} onOpenChange={() => {}}>
-        <DialogContent className="max-w-lg" onPointerDownOutside={(e) => e.preventDefault()} onEscapeKeyDown={(e) => e.preventDefault()}>
+      <Dialog open={showIdentModal} onOpenChange={(open) => { if (!open) setIdentModalDismissed((prev) => ({ ...prev, [selectedChatId]: true })); }}>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <AlertCircle className="h-5 w-5 text-amber-500" />
               Cliente não identificado
             </DialogTitle>
             <DialogDescription>
-              O número <strong>{contactPhone}</strong> não está vinculado a nenhum cliente. Escolha uma ação:
+              O número <strong>{contactPhone}</strong> não está vinculado a nenhum cliente. Escolha uma ação ou feche para continuar sem identificar.
             </DialogDescription>
           </DialogHeader>
 
