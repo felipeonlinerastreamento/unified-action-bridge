@@ -6,7 +6,18 @@ import type { Database } from './types'
 
 
 
-export const requireSupabaseAuth = createMiddleware({ type: 'function' }).server(
+export const requireSupabaseAuth = createMiddleware({ type: 'function' })
+  .client(async ({ next }) => {
+    // Dynamically import the browser client to inject the auth token
+    const { supabase } = await import('@/integrations/supabase/client');
+    const { data: { session } } = await supabase.auth.getSession();
+    return next({
+      headers: session?.access_token
+        ? { Authorization: `Bearer ${session.access_token}` }
+        : {},
+    });
+  })
+  .server(
   async ({ next }) => {
     
     const SUPABASE_URL = process.env.SUPABASE_URL;
