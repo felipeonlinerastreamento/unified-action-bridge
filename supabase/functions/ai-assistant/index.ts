@@ -20,12 +20,21 @@ serve(async (req) => {
 
     const { chatMessages, contactPhone, contactName, attendanceStartTime, userMessage, mode } = await req.json();
 
-    // Fetch AI config (system prompt)
+    // Fetch AI config (system prompt / knowledge base)
     const { data: configRows } = await supabase
       .from("ai_assistant_config")
       .select("system_prompt")
       .limit(1);
-    const systemPrompt = configRows?.[0]?.system_prompt || "Você é um assistente comercial.";
+    const knowledgeBase = configRows?.[0]?.system_prompt || "";
+
+    // Fetch knowledge docs file names for context
+    const { data: knowledgeDocs } = await supabase
+      .from("ai_knowledge_docs")
+      .select("file_name")
+      .limit(20);
+    const docsContext = knowledgeDocs && knowledgeDocs.length > 0
+      ? "\n\nDocumentos de referência na base de conhecimento: " + knowledgeDocs.map(d => d.file_name).join(", ")
+      : "";
 
     // Fetch previous service tickets for this contact
     let previousTicketsContext = "";
@@ -48,46 +57,47 @@ serve(async (req) => {
       }
     }
 
-    // Fetch knowledge docs content hints
-    const { data: knowledgeDocs } = await supabase
-      .from("ai_knowledge_docs")
-      .select("file_name")
-      .limit(20);
-    const docsContext = knowledgeDocs && knowledgeDocs.length > 0
-      ? "\n\nDocumentos de referência disponíveis: " + knowledgeDocs.map(d => d.file_name).join(", ")
-      : "";
-
     // Calculate service time
     let serviceTimeContext = "";
     if (attendanceStartTime) {
       const startTime = new Date(attendanceStartTime);
       const now = new Date();
       const diffMinutes = Math.round((now.getTime() - startTime.getTime()) / 60000);
-      serviceTimeContext = `\n\nTempo de atendimento atual: ${diffMinutes} minutos.`;
+      serviceTimeContext = `\nTempo de atendimento atual: ${diffMinutes} minutos.`;
       if (diffMinutes > 15) {
-        serviceTimeContext += " ⚠️ Atendimento já ultrapassou 15 minutos, considere sugerir encerramento ou escalação.";
+        serviceTimeContext += " ⚠️ ATENÇÃO: Atendimento já ultrapassou 15 minutos. Oriente o operador a concluir ou escalar.";
       }
     }
 
-    // Build the full system message
-    const fullSystemPrompt = `${systemPrompt}${previousTicketsContext}${docsContext}${serviceTimeContext}
+    // Build the supervisor system prompt
+    const supervisorPrompt = `Você é um SUPERVISOR DE ATENDIMENTO. Seu papel é instruir o operador de forma direta, objetiva e prática sobre como conduzir o atendimento atual.
 
-## Contexto do atendimento atual:
-- Contato: ${contactName || "Desconhecido"} (${contactPhone || "Sem telefone"})
-- Modo: Você está auxiliando o operador. Suas respostas são sugestões para o operador, NÃO mensagens diretas ao cliente.
-- Sempre inclua o tempo de atendimento nas suas respostas quando relevante.
-- Seja objetivo e direto.`;
+## REGRAS DE COMPORTAMENTO:
+1. Seja DIRETO e OBJETIVO — dê instruções claras, não faça perguntas retóricas.
+2. Use frases curtas e imperativas: "Faça X", "Pergunte Y", "Ofereça Z".
+3. Analise a conversa e identifique: o que o cliente precisa, qual o próximo passo, e possíveis riscos.
+4. Se o cliente está insatisfeito, instrua o operador sobre como reverter a situação.
+5. Se o atendimento está demorando, sugira encerramento ou escalação.
+6. Sempre considere o histórico do cliente para personalizar a instrução.
+7. NÃO escreva mensagens para enviar ao cliente — escreva instruções PARA O OPERADOR.
+8. Formate suas respostas com bullet points para facilitar a leitura rápida.
+
+## BASE DE CONHECIMENTO E APRENDIZAGEM:
+${knowledgeBase || "(Nenhuma base de conhecimento configurada)"}
+${docsContext}
+
+## CONTEXTO DO ATENDIMENTO:
+- Contato: ${contactName || "Desconhecido"} (${contactPhone || "Sem telefone"})${serviceTimeContext}
+${previousTicketsContext}`;
 
     // Build messages array
     const messages: any[] = [
-      { role: "system", content: fullSystemPrompt },
+      { role: "system", content: supervisorPrompt },
     ];
 
-    // If mode is "analyze" (config page), use a different approach
     if (mode === "analyze") {
       messages.push({ role: "user", content: userMessage });
     } else {
-      // Add chat context as a summary
       if (chatMessages && chatMessages.length > 0) {
         const chatSummary = chatMessages
           .slice(-30)
@@ -95,7 +105,7 @@ serve(async (req) => {
           .join("\n");
         messages.push({
           role: "user",
-          content: `Conversa atual:\n${chatSummary}\n\n${userMessage || "Com base na conversa acima, forneça sugestões de como o operador deve proceder."}`,
+          content: `Conversa atual:\n${chatSummary}\n\n${userMessage || "Analise a conversa acima e dê instruções diretas ao operador sobre como proceder agora."}`,
         });
       } else if (userMessage) {
         messages.push({ role: "user", content: userMessage });
