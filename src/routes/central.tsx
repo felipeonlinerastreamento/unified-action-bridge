@@ -598,14 +598,25 @@ function CentralPage() {
     enabled: !!activePlate && isAuthenticated,
   });
 
-  // All companies for linking
+  // All companies: GSystem clients (synced with Contatos menu)
   const { data: allCompanies = [], isLoading: companiesLoading } = useQuery({
-    queryKey: ["companies-list"],
+    queryKey: ["gsystem-clientes-for-linking"],
     queryFn: async () => {
-      const { data } = await supabase.from("companies").select("id, name").order("name");
-      return data || [];
+      const result = await getClientes({
+        data: {},
+        ...await getAuthHeaders(),
+      });
+      const clients = Array.isArray(result) ? result : result?.data || result?.Data || [];
+      // Map to { id, name, cnpj } format for dropdowns
+      return clients.map((c: any) => ({
+        id: c.Key || c.key || c.Id || c.id || "",
+        name: c.Nome || c.nome || c.RazaoSocial || c.razaoSocial || c.NomeFantasia || c.nomeFantasia || "—",
+        cnpj: c.CpfCnpj || c.cpfCnpj || c.CNPJ || c.cnpj || "",
+        fantasia: c.NomeFantasia || c.nomeFantasia || "",
+      }));
     },
     enabled: isAuthenticated,
+    staleTime: 60000,
   });
 
   // Link company to ticket
