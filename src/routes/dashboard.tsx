@@ -83,6 +83,19 @@ function DashboardPage() {
     enabled: isAuthenticated,
   });
 
+  // SLA rules for breach detection
+  const { data: slaRules = [] } = useQuery({
+    queryKey: ["dashboard-sla-rules"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("attendance_sla_rules")
+        .select("*")
+        .eq("is_active", true);
+      return data || [];
+    },
+    enabled: isAuthenticated,
+  });
+
   if (isLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
