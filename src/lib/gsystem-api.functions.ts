@@ -346,23 +346,17 @@ export const getTiposPendencia = createServerFn({ method: "POST" })
   .handler(async () => {
     const { gsystemApiFetch } = await import("@/lib/gsystem-api.server");
 
-    // Strategy 1: Check cadastros for TipoPendencia entries
+    // Tipos de pendência are stored as cadastros with Tipo = "Tipos_de_Pendência"
     try {
       const cadastros = await gsystemApiFetch("/cadastros");
       if (Array.isArray(cadastros)) {
-        // Filter cadastros by Tipo = "Tipos_de_Pendência"
         const tiposCadastro = cadastros.filter((c: any) => {
           const tipo = (c.Tipo || "").replace(/_/g, " ").toLowerCase();
-          return tipo === "tipos de pendência" || tipo === "tipos de pendencia" ||
-                 (c.Tipo || "") === "Tipos_de_Pendência";
+          return tipo === "tipos de pendência" || tipo === "tipos de pendencia";
         });
 
-        // Log all unique Tipo values for debugging
-        const allTipos = [...new Set(cadastros.map((c: any) => c.Tipo).filter(Boolean))];
-        console.log("[getTiposPendencia] Available cadastro Tipo values:", allTipos.join(", "));
-        
         if (tiposCadastro.length > 0) {
-          console.log(`[getTiposPendencia] Found ${tiposCadastro.length} tipos de pendência from cadastros`);
+          console.log(`[getTiposPendencia] Found ${tiposCadastro.length} tipos de pendência`);
           return tiposCadastro
             .filter((c: any) => c.Ativado !== false)
             .map((c: any) => ({
@@ -370,71 +364,14 @@ export const getTiposPendencia = createServerFn({ method: "POST" })
               Descricao: c.DisplayName || c.Texto || String(c.Codigo),
             }));
         }
-
-        // Also log unique Subcategoria values
-        const subcategorias = [...new Set(cadastros.map((c: any) => c.Subcategoria).filter(Boolean))];
-        console.log("[getTiposPendencia] Available cadastro Subcategoria values:", subcategorias.join(", "));
       }
     } catch (err) {
-      console.log("[getTiposPendencia] /cadastros failed:", String(err).substring(0, 200));
+      console.error("[getTiposPendencia] /cadastros failed:", String(err).substring(0, 200));
     }
 
-    // Strategy 2: Fetch recent pendências to extract TipoPendencia values
-    try {
-      const now = new Date();
-      const monthAgo = new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000);
-      const dataInicial = monthAgo.toISOString().split("T")[0];
-      const dataFinal = now.toISOString().split("T")[0];
-      const pendencias = await gsystemApiFetch(`/pendencias?Data[Inicial]=${dataInicial}&Data[Final]=${dataFinal}`);
-      const arr = Array.isArray(pendencias) ? pendencias : extractArray(pendencias) || [];
-
-      if (arr.length > 0) {
-        // Log a sample to find the right field
-        console.log("[getTiposPendencia] Sample pendencia keys:", Object.keys(arr[0]).join(", "));
-        const sampleFields = ["TipoPendencia", "tipoPendencia", "Tipo", "tipo", "Categoria", "categoria", "TipoPendenciaDescricao", "Subcategoria"];
-        for (const f of sampleFields) {
-          if (arr[0][f] !== undefined) {
-            console.log(`[getTiposPendencia] Sample field ${f}:`, JSON.stringify(arr[0][f]).substring(0, 200));
-          }
-        }
-
-        const tipos = new Map<string, any>();
-        for (const p of arr) {
-          // Try multiple field names
-          for (const f of ["TipoPendencia", "tipoPendencia", "Tipo", "tipo", "Categoria", "categoria"]) {
-            const key = p[f];
-            if (!key) continue;
-            if (typeof key === "string" && key.trim()) {
-              tipos.set(key, { Key: key, Descricao: key });
-            } else if (key && typeof key === "object") {
-              const k = key.Key || key.key || key.Id || key.id || key.Codigo;
-              const d = key.Descricao || key.descricao || key.Nome || key.nome || key.DisplayName;
-              if (k) tipos.set(String(k), { Key: String(k), Descricao: d || String(k) });
-            }
-          }
-        }
-        if (tipos.size > 0) {
-          console.log(`[getTiposPendencia] Extracted ${tipos.size} tipos from ${arr.length} pendências`);
-          return Array.from(tipos.values());
-        }
-      }
-    } catch (err) {
-      console.log("[getTiposPendencia] /pendencias fallback failed:", String(err).substring(0, 200));
-    }
-
-    console.warn("[getTiposPendencia] No tipos data found");
+    console.warn("[getTiposPendencia] No tipos de pendência found in cadastros");
     return [];
   });
-
-function extractArray(result: any): any[] | null {
-  if (Array.isArray(result)) return result;
-  if (result && typeof result === "object") {
-    for (const key of ["Items", "items", "Resultado", "resultado", "Data", "data", "Tipos", "tipos", "Result", "result", "Records", "records"]) {
-      if (Array.isArray(result[key]) && result[key].length > 0) return result[key];
-    }
-  }
-  return null;
-}
 
 // PLANOS
 // ============================================================
