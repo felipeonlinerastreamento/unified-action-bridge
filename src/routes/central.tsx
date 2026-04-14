@@ -499,23 +499,26 @@ function CentralPage() {
     enabled: !!contactPhone && !companyLookup && isAuthenticated,
   });
 
-  // CRM contact lookup by phone
+  // CRM contact lookup by phone (also checks ticket's corrected phone)
   const { data: crmContactLookup } = useQuery({
-    queryKey: ["crm-contact-lookup", contactPhone],
+    queryKey: ["crm-contact-lookup", contactPhone, currentTicket?.contact_phone],
     queryFn: async () => {
-      if (!contactPhone) return null;
-      const cleanPhone = contactPhone.replace(/\D/g, "");
+      const phonesToCheck = [
+        contactPhone,
+        currentTicket?.contact_phone,
+      ].filter(Boolean).map((p) => p!.replace(/\D/g, ""));
+      if (phonesToCheck.length === 0) return null;
       const { data: contacts } = await supabase
         .from("crm_contacts")
         .select("*, companies(name)");
       if (!contacts) return null;
       const match = contacts.find((c: any) => {
         const clean = c.phone.replace(/\D/g, "");
-        return clean === cleanPhone || cleanPhone.endsWith(clean) || clean.endsWith(cleanPhone);
+        return phonesToCheck.some((p) => clean === p || p.endsWith(clean) || clean.endsWith(p));
       });
       return match || null;
     },
-    enabled: !!contactPhone && !companyLookup && !subClientLookup && isAuthenticated,
+    enabled: (!!contactPhone || !!currentTicket?.contact_phone) && !companyLookup && !subClientLookup && isAuthenticated,
   });
 
   // Identification modal explicit open state
@@ -566,6 +569,7 @@ function CentralPage() {
           email: identForm.email || undefined,
           notes: identForm.notes || undefined,
           ticketId: currentTicket?.id,
+          originalPhone: contactPhone || undefined,
         },
         ...await getAuthHeaders(),
       });
