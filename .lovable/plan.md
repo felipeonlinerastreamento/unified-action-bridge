@@ -1,60 +1,52 @@
 
 
-## Diagnóstico: Vínculo entre Usuários do Sistema e Agentes do GSystem
+## Plano: Filtros Acessíveis no Menu de Atendimentos
 
-### Situação Atual
+### Problema Atual
+Os filtros de Status, Tipo, Cliente e Ramal estão escondidos dentro de um painel colapsável ("Collapsible"), exigindo um clique extra para acessá-los. O usuário precisa de filtros rápidos e visíveis — especialmente para filtrar por **atendimentos em aberto**, **por setor** e **por operador**.
 
-Existem **dois sistemas de usuários completamente independentes**:
+### Solução
+Substituir o layout colapsável por filtros sempre visíveis em uma barra horizontal com chips/botões rápidos para os filtros mais usados, mantendo os filtros avançados acessíveis.
 
-1. **Usuários do sistema (Lovable Cloud)**: autenticados via email/senha, armazenados nas tabelas `profiles` e `user_roles`. Identificados por `user_id` (UUID).
+### Mudanças
 
-2. **Agentes do GSystem**: retornados pela API externa `/users`, com `id`, `name` e `status`. Não possuem nenhuma relação com os usuários do sistema.
+**1. Redesenhar `atendimentos-filters.tsx`**
+- Remover o `Collapsible` — todos os filtros ficam visíveis por padrão
+- Adicionar uma linha de **chips rápidos de status** (Todos, Em Aberto, Em Andamento, Resolvido, Cancelado) como botões toggle clicáveis acima dos selects
+- Extrair o campo "Setor" dos dados GSystem (campo `Setor` ou `setor` das pendências) e adicioná-lo como novo filtro `Select`
+- Reorganizar layout: linha 1 = busca + datas; linha 2 = chips de status; linha 3 = selects (Setor, Operador, Tipo, Cliente)
+- Adicionar `setor` ao interface `Filters`
 
-**Impacto atual:**
-- O campo `opened_by` em `service_tickets` salva o `user_id` do sistema, mas o agente real que atende no chat (`currentUser`) vem do GSystem
-- No dashboard, "Performance por Atendente" usa `opened_by` (quem abriu o ticket no sistema), não quem realmente atendeu no GSystem
-- Não é possível saber qual usuário do sistema corresponde a qual agente no GSystem
-- Filtros por agente na Central usam IDs do GSystem, sem relação com perfis internos
+**2. Atualizar `atendimentos-content.tsx`**
+- Extrair `availableSetores` dos dados (campo `Setor`/`setor` das pendências GSystem e setor dos tickets locais se disponível)
+- Adicionar campo `setor` no item normalizado
+- Aplicar filtro de setor na lógica de `filteredItems`
+- Passar `availableSetores` para o componente de filtros
 
-### Plano de Implementação
+### Detalhes Técnicos
 
-#### 1. Criar tabela de mapeamento `user_gsystem_links`
-
-```text
-user_gsystem_links
-├── id (uuid, PK)
-├── user_id (uuid, FK profiles) — usuário do sistema
-├── gsystem_user_id (text) — ID do agente no GSystem
-├── gsystem_user_name (text) — nome no GSystem (cache)
-├── channel_id (uuid) — canal associado
-├── created_at (timestamp)
-└── updated_at (timestamp)
+Interface `Filters` atualizada:
+```typescript
+export interface Filters {
+  search: string;
+  status: string;
+  tipo: string;
+  cliente: string;
+  ramal: string;
+  setor: string;      // novo
+  dataInicial: Date;
+  dataFinal: Date;
+}
 ```
 
-Com RLS: admins gerenciam, autenticados visualizam.
+Layout dos filtros (sempre visíveis):
+```
+[Busca_______________] [Data Inicial] [Data Final]
+[Todos] [Em Aberto] [Em Andamento] [Resolvido] [Cancelado]  ← chips toggle
+[Setor ▼] [Operador ▼] [Tipo ▼] [Cliente______]  [Limpar]
+```
 
-#### 2. Tela de vinculação em Configurações > Usuários
-
-Na página `configuracoes.usuarios.tsx`, adicionar:
-- Tabela mostrando todos os perfis do sistema com colunas: Nome, Email, Role, Agente GSystem vinculado
-- Botão para vincular/desvincular: abre um select com a lista de agentes GSystem (buscados via `listGSystemUsers`)
-- Indicador visual de quem está vinculado e quem não está
-
-#### 3. Usar o vínculo na Central de Atendimento
-
-- Ao criar `service_tickets`, além de `opened_by`, salvar também o `gsystem_user_id` do agente atual do chat
-- Nos filtros de agente, mostrar o nome do perfil do sistema quando houver vínculo
-- No detalhe do chat, exibir o nome do perfil do sistema vinculado ao agente
-
-#### 4. Usar o vínculo no Dashboard/Relatórios
-
-- Métricas de "Performance por Atendente" passam a correlacionar dados do GSystem com perfis do sistema
-- Permite relatórios unificados
-
-### Arquivos Afetados
-
-- **Nova migração**: criar tabela `user_gsystem_links`
-- **`src/routes/configuracoes.usuarios.tsx`**: tela de gestão com vinculação
-- **`src/routes/central.tsx`**: usar vínculo para enriquecer dados de agente
-- **`src/routes/dashboard.tsx`**: usar vínculo nas métricas de performance
+### Arquivos Modificados
+- `src/components/atendimentos/atendimentos-filters.tsx` — redesenho completo
+- `src/components/atendimentos/atendimentos-content.tsx` — adicionar setor nos dados e filtros
 
