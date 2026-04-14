@@ -195,7 +195,9 @@ export const createCrmContactWithCompany = createServerFn({ method: "POST" })
       throw new Error(error?.message || "Não foi possível criar o contato.");
     }
 
-    await updateTicketCompany(data.ticketId, companyId ?? "").catch(() => undefined);
+    if (companyId) {
+      await updateTicketCompany(data.ticketId, companyId);
+    }
 
     return { success: true, companyId, crmContactId: created.id };
   });
