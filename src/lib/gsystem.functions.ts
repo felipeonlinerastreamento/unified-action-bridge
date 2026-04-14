@@ -244,7 +244,8 @@ export const transferChat = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<Record<string, any>> => {
     const channel = await getChannelToken(context.supabase, data.channelId);
     return gsystemFetch(`/chats/${data.chatId}/transfer`, channel.token, "POST", {
-      data: { sectorId: data.sectorId, userId: data.userId },
+      sectorId: data.sectorId,
+      userId: data.userId,
     });
   });
 
