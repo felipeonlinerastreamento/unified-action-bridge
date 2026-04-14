@@ -194,14 +194,13 @@ export const createCrmContactWithCompany = createServerFn({ method: "POST" })
 
     // Update ticket with contact info
     if (data.ticketId) {
-      const updatePayload: Record<string, any> = {
-        contact_name: data.name.trim(),
-        contact_phone: cleanPhone,
-      };
-      if (companyId) updatePayload.company_id = companyId;
       await supabase
         .from("service_tickets")
-        .update(updatePayload)
+        .update({
+          contact_name: data.name.trim(),
+          contact_phone: cleanPhone,
+          company_id: companyId,
+        })
         .eq("id", data.ticketId);
     }
 
