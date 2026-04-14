@@ -528,7 +528,47 @@ function CentralPage() {
     enabled: !!selectedChatId && isAuthenticated,
   });
 
-  // Auto-create ticket when chat is selected and no ticket exists
+  // Helper: retry pendência creation after client identification
+  const retryPendenciaCreation = useCallback(async () => {
+    const ticket = currentTicket;
+    if (!ticket || ticket.pendencia_key || !selectedChatId) return;
+    try {
+      const authHeaders = await getAuthHeaders();
+      const { data: freshTicket } = await supabase
+        .from("service_tickets")
+        .select("*")
+        .eq("id", ticket.id)
+        .single();
+      if (!freshTicket || freshTicket.pendencia_key) return;
+
+      const pendResult = await createPendenciaFromAtendimento({
+        data: {
+          attendanceId: selectedChatId,
+          contactPhone: contactPhone || undefined,
+          contactName: chatDetail?.contact?.name || chatDetail?.description || undefined,
+          companyId: freshTicket.company_id || undefined,
+          plate: freshTicket.plate || ticketPlate || undefined,
+        },
+        ...authHeaders,
+      });
+
+      if (pendResult?.success && pendResult.pendenciaKey) {
+        await supabase
+          .from("service_tickets")
+          .update({ pendencia_key: pendResult.pendenciaKey } as any)
+          .eq("id", ticket.id);
+        console.log("[Retry] Pendência created:", pendResult.pendenciaKey);
+        toast.success("Pendência criada no GSystem");
+        refetchTicket();
+      } else {
+        console.warn("[Retry] Pendência creation failed:", pendResult?.message);
+      }
+    } catch (err: any) {
+      console.error("[Retry] Error creating pendência:", err.message);
+    }
+  }, [currentTicket, selectedChatId, contactPhone, chatDetail, ticketPlate, getAuthHeaders, refetchTicket]);
+
+
   const createTicketMutation = useMutation({
     mutationFn: async () => {
       if (!selectedChatId || !chatDetail) return;
