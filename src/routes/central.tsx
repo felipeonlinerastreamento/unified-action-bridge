@@ -1016,6 +1016,58 @@ function CentralPage() {
         }
       }
 
+      // Check category routing rules for auto-forwarding
+      if (tipoPendencia) {
+        try {
+          const { data: routingRules } = await supabase
+            .from("category_routing_rules")
+            .select("*")
+            .eq("category_key", tipoPendencia)
+            .eq("is_active", true);
+
+          if (routingRules && routingRules.length > 0) {
+            const rule = routingRules[0];
+            const phone = contactPhone?.replace(/\D/g, "") || "";
+            if (phone && rule.target_sector_id) {
+              try {
+                const authH = await getAuthHeaders();
+                const newChat = await createChat({
+                  data: {
+                    channelId: selectedChannelId,
+                    contactPhone: phone,
+                    message: `Encaminhamento automático — Categoria: ${rule.category_label || tipoPendencia}`,
+                    sectorId: rule.target_sector_id,
+                  },
+                  ...authH,
+                });
+
+                // Create service ticket for the new attendance if configured
+                if (rule.auto_create_ticket && newChat?.attendanceId) {
+                  await supabase.from("service_tickets").insert({
+                    attendance_id: newChat.attendanceId,
+                    contact_phone: phone,
+                    contact_name: chatDetail?.contact?.name || chatDetail?.description || null,
+                    company_id: currentTicket?.company_id || null,
+                    channel_id: selectedChannelId,
+                    opened_by: session?.user?.id || null,
+                    notes: `Encaminhado automaticamente do atendimento ${selectedChatId} — ${rule.category_label}`,
+                  });
+                }
+
+                toast.success(
+                  `Atendimento encaminhado para o setor ${rule.target_sector_name || rule.target_sector_id}`,
+                  { duration: 5000 }
+                );
+              } catch (routeErr: any) {
+                console.error("[Finalize] Error creating routed chat:", routeErr.message);
+                toast.error(`Erro ao encaminhar para ${rule.target_sector_name}: ${routeErr.message}`);
+              }
+            }
+          }
+        } catch (err: any) {
+          console.error("[Finalize] Error checking routing rules:", err.message);
+        }
+
       return finalizeChat({
         data: { channelId: selectedChannelId, chatId: selectedChatId },
         ...await getAuthHeaders(),
