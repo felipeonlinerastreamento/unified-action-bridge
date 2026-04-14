@@ -252,6 +252,7 @@ export function AtendimentosContent() {
                       </div>
                       <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
                         {client && <span>Cliente: {client}</span>}
+                        {ramal && <span>Ramal: {ramal}</span>}
                         {plate && <span>Placa: {plate}</span>}
                         {date && (
                           <span className="flex items-center gap-1">
