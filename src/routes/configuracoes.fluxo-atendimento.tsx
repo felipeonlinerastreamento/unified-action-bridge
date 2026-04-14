@@ -15,6 +15,7 @@ type SelectedFlow = {
   name: string;
   description: string;
   is_active: boolean;
+  trigger_categories: string[];
   created_at: string;
 };
 
