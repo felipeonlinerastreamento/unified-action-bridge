@@ -220,11 +220,21 @@ export const sendText = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }): Promise<Record<string, any>> => {
     const channel = await getChannelToken(context.supabase, data.channelId);
-    const text = (data.message || "").trim();
-    if (!text) throw new Error("Mensagem não pode estar vazia");
+    const message = (data.message || "").trim();
+    if (!message) throw new Error("Mensagem não pode estar vazia");
+
+    const chat = await gsystemFetch(`/chats/${data.chatId}`, channel.token);
+    const contactNumber = String(
+      chat?.contact?.number || chat?.contact?.secondaryName || chat?.secondaryDescription || ""
+    ).replace(/\D/g, "");
+
+    if (!contactNumber) {
+      throw new Error("Número do contato não encontrado para este chat");
+    }
+
     return gsystemFetch("/chats/send-text", channel.token, "POST", {
-      attendanceId: data.chatId,
-      data: { text },
+      number: contactNumber,
+      message,
     });
   });
 
