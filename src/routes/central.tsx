@@ -552,7 +552,7 @@ function CentralPage() {
   });
 
   // All companies for linking
-  const { data: allCompanies = [] } = useQuery({
+  const { data: allCompanies = [], isLoading: companiesLoading } = useQuery({
     queryKey: ["companies-list"],
     queryFn: async () => {
       const { data } = await supabase.from("companies").select("id, name").order("name");
