@@ -1,46 +1,72 @@
 
 
-## Diagnóstico
+## Plano: Integrar Atendimentos com Pendências do GSystem
 
-O problema principal é que `listAllOpenChats` busca conversas apenas através dos `currentAttendanceId` dos agentes online. Chats na fila de espera, em modo automático, ou sem agente atribuído não são encontrados. Além disso, o endpoint `/chats/list` (que lista todas as conversas) existe mas é usado apenas como fallback e não está integrado na UI.
+### Objetivo
+Todo atendimento na Central deve automaticamente criar uma pendência na API de Gestão do GSystem. Sub-clientes devem gerar pendências no nome do cliente pai, com dados do sub-cliente na observação. Ao finalizar o chat, a pendência correspondente é marcada como concluída.
 
-## Plano de Implementação
+### 1. Criar Server Function para orquestrar criação de pendência com lookup de cliente
 
-### 1. Corrigir carregamento de conversas
-- **Alterar `listAllOpenChats`** em `src/lib/gsystem.functions.ts` para usar uma abordagem combinada:
-  - Primeiro tentar `/chats/list` com status "OPEN" e "PENDING"
-  - Complementar com as conversas dos `currentAttendanceId` dos agentes
-  - Fazer merge sem duplicatas por `attendanceId`
-- Adicionar suporte a paginação no endpoint
+**Arquivo: `src/lib/gsystem-api.functions.ts`**
 
-### 2. Adicionar filtros de busca avançados
-- **Filtro por status**: Automático, Aguardando, Em Atendimento, Finalizado (todos, ou específico)
-- **Filtro por setor**: Dropdown dinâmico populado pelos setores do GSystem
-- **Filtro por agente**: Dropdown dinâmico dos agentes/usuários
-- **Busca por telefone**: Além de nome, buscar por número do contato
-- Criar painel de filtros colapsável acima da lista de chats
+Adicionar uma nova server function `createPendenciaFromAtendimento` que:
+- Recebe: `attendanceId`, `contactPhone`, `contactName`, `companyId?`, `subClientId?`, `crmContactId?`, `plate?`, `notes?`
+- No handler (server-side):
+  1. Busca o cliente no GSystem via `getClientes` usando dados da empresa (CNPJ ou nome)
+  2. Se não encontrar, cria um cliente básico via `createCliente` com dados mínimos (nome, telefone)
+  3. Se for sub-cliente, busca a `company_id` pai no Supabase, usa o cliente da empresa pai no GSystem, e coloca nome/telefone do sub-cliente na observação
+  4. Cria a pendência via `POST /pendencias` com: cliente, descrição do atendimento, observação, data
+- Retorna a key da pendência criada
 
-### 3. Opção de abrir nova conversa
-- Adicionar botão "Nova Conversa" no header da lista de chats
-- Criar modal/dialog com:
-  - Campo de telefone (obrigatório, formato brasileiro)
-  - Mensagem inicial (opcional)
-  - Seletor de setor (opcional)
-- Usar a server function `createChat` já existente
+### 2. Armazenar referência da pendência no service_ticket
 
-### 4. Opção de finalizar conversa
-- Tornar o botão de finalizar mais visível (com texto, não só ícone)
-- Adicionar dialog de confirmação antes de finalizar
-- Mostrar opção de adicionar nota de encerramento
-- Atualizar o `service_ticket` associado ao finalizar
+**Migração SQL:**
+- Adicionar coluna `pendencia_key text` na tabela `service_tickets` para rastrear a pendência GSystem vinculada
+
+### 3. Integrar criação automática no fluxo de atendimento
+
+**Arquivo: `src/routes/central.tsx`**
+
+- Modificar o `createTicketMutation` (que já roda automaticamente ao selecionar um chat) para, após criar o `service_ticket`, chamar `createPendenciaFromAtendimento`
+- Salvar o `pendencia_key` retornado no `service_ticket`
+- Se for sub-cliente: passar `subClientId` para que a server function monte a observação corretamente
+- Se for CRM contact sem empresa: criar pendência com dados básicos do contato
+
+### 4. Finalizar pendência ao encerrar chat
+
+**Arquivo: `src/routes/central.tsx`**
+
+- No `finalizeMutation`, após finalizar o chat no GSystem:
+  - Se o `currentTicket` tiver `pendencia_key`, chamar `cancelarPendencia` (ou um novo endpoint para concluir) para marcar como concluída no GSystem
+  - Atualizar o `service_ticket` com status "finalizado"
+
+### 5. Lógica de mapeamento sub-cliente → cliente pai
+
+Na server function `createPendenciaFromAtendimento`:
+```text
+Se subClientId presente:
+  → Buscar sub_client no Supabase (com company_id)
+  → Buscar empresa pai (companies) → usar CNPJ/nome para localizar cliente GSystem
+  → Observação = "Sub-cliente: {nome} | Tel: {telefone} | {notas}"
+  → Pendência criada no nome do cliente pai
+
+Se companyId presente (cliente direto):
+  → Buscar empresa → localizar cliente GSystem pelo CNPJ/nome
+  → Pendência criada diretamente
+
+Se crmContactId (lead sem empresa):
+  → Criar cliente básico no GSystem se necessário
+  → Pendência com dados do CRM contact
+```
 
 ### Arquivos a modificar
-- `src/lib/gsystem.functions.ts` — melhorar `listAllOpenChats` para buscar via `/chats/list` + agentes
-- `src/routes/central.tsx` — adicionar filtros, modal de nova conversa, confirmação de finalização
+- `src/lib/gsystem-api.functions.ts` — nova server function `createPendenciaFromAtendimento` + `concluirPendencia`
+- `src/routes/central.tsx` — integrar criação/finalização de pendência nos mutations existentes
+- Migração SQL — adicionar `pendencia_key` em `service_tickets`
 
 ### Detalhes técnicos
-- Usar `listSectors` e `listGSystemUsers` (já existentes) para popular filtros dinâmicos
-- O `createChat` já está implementado no server — só precisa da UI
-- Filtros de status/setor/agente são aplicados client-side sobre os dados já carregados
-- Manter polling de 10s para atualização automática
+- A busca de cliente no GSystem usa `getClientes` passando CNPJ como identifier
+- `createPendencia` já existe e faz `POST /pendencias` — a nova function orquestra os lookups antes de chamar
+- `cancelarPendencia` já existe (`PUT /pendencias/{key}/cancelar`) — verificar se é o endpoint correto para concluir, ou se existe outro endpoint de conclusão
+- Toda lógica de lookup GSystem roda server-side para não expor tokens
 
