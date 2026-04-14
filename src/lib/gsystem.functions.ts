@@ -89,10 +89,14 @@ export const listAllOpenChats = createServerFn({ method: "POST" })
         }
       }
 
-      // 1) Fetch all pages for OPEN and PENDING statuses
+      // 1) Fetch all pages for all active statuses
       await Promise.allSettled([
         fetchAllPages("OPEN"),
         fetchAllPages("PENDING"),
+        fetchAllPages("IN_PROGRESS"),
+        fetchAllPages("MANUAL"),
+        fetchAllPages("WAITING"),
+        fetchAllPages("AUTOMATIC"),
       ]);
 
       // 2) Also get agent-assigned chats via /users
@@ -102,9 +106,19 @@ export const listAllOpenChats = createServerFn({ method: "POST" })
       const userMap: Record<string, { name: string; status: string }> = {};
 
       for (const u of userList) {
+        // Check currentAttendanceId
         if (u.currentAttendanceId && !chatMap.has(u.currentAttendanceId)) {
           agentAttendanceIds.push(u.currentAttendanceId);
           userMap[u.currentAttendanceId] = { name: u.name || "", status: u.status || "" };
+        }
+        // Also check attendanceIds array (some agents handle multiple chats)
+        if (Array.isArray(u.attendanceIds)) {
+          for (const aid of u.attendanceIds) {
+            if (aid && !chatMap.has(aid) && !agentAttendanceIds.includes(aid)) {
+              agentAttendanceIds.push(aid);
+              userMap[aid] = { name: u.name || "", status: u.status || "" };
+            }
+          }
         }
       }
 
@@ -136,7 +150,7 @@ export const listAllOpenChats = createServerFn({ method: "POST" })
         (c) => c && c.attendanceId && c.status !== 3 && c.status !== "CLOSED" && c.status !== "FINISHED"
       );
 
-      console.log(`[listAllOpenChats] Found ${chatMap.size} total, ${chats.length} after filter`);
+      console.log(`[listAllOpenChats] Found ${chatMap.size} total (before filter), ${chats.length} after filter, ${agentAttendanceIds.length} from agents`);
       return { chats, users: userList, total: chats.length };
     } catch (err) {
       console.error("[listAllOpenChats] Error:", err);
