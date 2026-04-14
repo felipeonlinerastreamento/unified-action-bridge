@@ -27,6 +27,7 @@ const createCrmContactSchema = z.object({
   email: z.string().max(255).optional(),
   notes: z.string().max(2000).optional(),
   ticketId: z.string().uuid().optional(),
+  originalPhone: z.string().max(32).optional(),
 });
 
 function cleanDigits(value?: string | null) {
@@ -165,14 +166,23 @@ export const createCrmContactWithCompany = createServerFn({ method: "POST" })
       ? await ensureLocalCompany(supabase, data.companyName, data.companyCnpj)
       : null;
 
+    const cleanPhone = cleanDigits(data.phone);
+    const cleanOriginal = cleanDigits(data.originalPhone);
+
+    // If user corrected the phone, store both in notes for traceability
+    const notesWithOriginal =
+      cleanOriginal && cleanOriginal !== cleanPhone
+        ? `${data.notes || ""}${data.notes ? "\n" : ""}Telefone original: ${cleanOriginal}`
+        : data.notes || "";
+
     const { data: created, error } = await supabase
       .from("crm_contacts")
       .insert({
         company_id: companyId,
         name: data.name.trim(),
-        phone: cleanDigits(data.phone),
+        phone: cleanPhone,
         email: data.email || null,
-        notes: data.notes || "",
+        notes: notesWithOriginal,
         created_by: userId ?? null,
       })
       .select("id")
@@ -182,8 +192,16 @@ export const createCrmContactWithCompany = createServerFn({ method: "POST" })
       throw new Error(error?.message || "Não foi possível criar o contato.");
     }
 
-    if (companyId) {
-      await updateTicketCompany(supabase, data.ticketId, companyId);
+    // Update ticket with contact info
+    if (data.ticketId) {
+      await supabase
+        .from("service_tickets")
+        .update({
+          contact_name: data.name.trim(),
+          contact_phone: cleanPhone,
+          company_id: companyId,
+        })
+        .eq("id", data.ticketId);
     }
 
     return { success: true, companyId, crmContactId: created.id };
