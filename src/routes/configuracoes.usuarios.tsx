@@ -291,6 +291,13 @@ function UsuariosConfigPage() {
     setEditDialogOpen(true);
   };
 
+  const handleOpenReset = (profile: { user_id: string; name: string }) => {
+    setResetUserId(profile.user_id);
+    setResetUserNameLabel(profile.name || "Sem nome");
+    setResetPassword("");
+    setResetDialogOpen(true);
+  };
+
   const handleOpenDelete = (profile: { user_id: string; name: string }) => {
     setDeleteUserId(profile.user_id);
     setDeleteUserName(profile.name || "Sem nome");
