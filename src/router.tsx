@@ -33,17 +33,6 @@ export const getRouter = () => {
     scrollRestoration: true,
     defaultPreloadStaleTime: 0,
     defaultErrorComponent: DefaultErrorComponent,
-    defaultServerFnFetchInit: async () => {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (session?.access_token) {
-        return {
-          headers: {
-            Authorization: `Bearer ${session.access_token}`,
-          },
-        };
-      }
-      return {};
-    },
   });
   return router;
 };
