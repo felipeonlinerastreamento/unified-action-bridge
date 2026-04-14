@@ -1398,16 +1398,24 @@ function CentralPage() {
               <p className="text-sm text-muted-foreground">
                 Vincule este número a uma empresa já cadastrada.
               </p>
-              <Select onValueChange={(companyId) => linkCompanyDirectMutation.mutate(companyId)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecionar empresa..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {allCompanies.map((c: any) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              {companiesLoading ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" /> Carregando empresas...
+                </div>
+              ) : allCompanies.length === 0 ? (
+                <p className="text-sm text-muted-foreground">Nenhuma empresa cadastrada.</p>
+              ) : (
+                <Select onValueChange={(companyId) => linkCompanyDirectMutation.mutate(companyId)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecionar empresa..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {allCompanies.map((c: any) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
               {linkCompanyDirectMutation.isPending && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Loader2 className="h-4 w-4 animate-spin" /> Vinculando...
