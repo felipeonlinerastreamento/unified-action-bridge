@@ -1,64 +1,87 @@
 
 
-# Plano: Encaminhamento Automático por Categoria
+# Plano: Gestão Completa de Tickets de Atendimento
 
-## Contexto atual
-O sistema ja exige seleção de categoria antes de finalizar e já possui um mecanismo de fluxos (`service_flows` com `trigger_categories`). Porém o usuário quer um menu de configuração dedicado e simples para definir: "quando a categoria for X, encaminhar para o setor Y".
+## Resumo
+Transformar a tela de Atendimentos em um sistema completo de gestão de tickets com visualizações Kanban e Calendário, comentários, encaminhamento entre setores/usuários, finalização e reabertura.
 
 ## O que será feito
 
-### 1. Nova tabela: `category_routing_rules`
-Tabela para armazenar regras de encaminhamento por categoria:
-- `id` (uuid, PK)
-- `category_key` (text) — chave da categoria do GSystem (ex: "Manutenção")
-- `category_label` (text) — nome exibido
-- `target_sector_name` (text) — setor de destino (ex: "ADM")
-- `target_sector_id` (text) — ID do setor no GSystem
-- `auto_create_ticket` (boolean, default true) — criar atendimento automático
-- `is_active` (boolean, default true)
-- `created_at`, `updated_at`
-- RLS: Admin/Gestor gerencia, autenticados visualizam
+### 1. Evolução do Schema (Migração SQL)
 
-### 2. Nova página de configuração: Encaminhamento por Categoria
-**Arquivo:** `src/routes/configuracoes.encaminhamento.tsx`
+**Novas tabelas:**
+- `ticket_comments` — comentários/histórico do ticket
+  - `id`, `ticket_id` (FK service_tickets), `user_id`, `content`, `type` (comentario|encaminhamento|status_change|sistema), `created_at`
+  - RLS: autenticados leem e criam
 
-- Tabela listando as regras existentes (Categoria → Setor destino → Ativo/Inativo)
-- Dialog para criar/editar regra:
-  - Seletor de categoria (busca do GSystem via `getTiposPendencia`)
-  - Seletor de setor destino (busca do GSystem via `listSectors`)
-  - Toggle ativo/inativo
-- Botões de editar e excluir
+- `ticket_assignments` — responsáveis pelo ticket
+  - `id`, `ticket_id`, `assigned_to` (user_id), `assigned_by`, `sector_name`, `created_at`
+  - RLS: autenticados gerenciam
 
-### 3. Adicionar link no menu lateral
-**Arquivo:** `src/components/app-sidebar.tsx`
+**Alterações em `service_tickets`:**
+- Adicionar coluna `priority` (enum: baixa, media, alta, urgente, default media)
+- Adicionar coluna `category` (text, nullable)
+- Adicionar coluna `assigned_to` (uuid, nullable — usuário responsável atual)
+- Adicionar coluna `sector` (text, nullable — setor atual)
+- Adicionar coluna `reopened_at` (timestamptz, nullable)
+- Adicionar novo valor ao enum `service_ticket_status`: `reaberto`
 
-- Adicionar item "Encaminhamento" dentro do submenu de Configurações, com ícone `ArrowRightLeft`
+### 2. Componentes de Visualização
 
-### 4. Lógica na finalização da Central
-**Arquivo:** `src/routes/central.tsx`
+**`src/components/atendimentos/ticket-kanban-view.tsx`**
+- Colunas: Aberto → Em Andamento → Finalizado (+ Reaberto)
+- Drag-and-drop entre colunas atualiza status
+- Card compacto com nome, cliente, prioridade, responsável, SLA
 
-- Na `finalizeMutation`, após finalizar o chat, consultar `category_routing_rules` onde `category_key` = categoria selecionada e `is_active = true`
-- Se encontrar regra, criar novo chat no GSystem via `createChat` para o setor de destino configurado
-- Criar registro em `service_tickets` vinculado ao novo atendimento
-- Toast: "Atendimento encaminhado para o setor {setor}"
+**`src/components/atendimentos/ticket-calendar-view.tsx`**
+- Calendário mensal mostrando tickets por data de criação
+- Click no dia abre lista dos tickets daquele dia
+- Indicadores visuais de status por cor
 
-### 5. Fluxo visual
+**`src/components/atendimentos/ticket-list-view.tsx`**
+- Refatoração da listagem atual (cards) como componente separado
 
-```text
-Operador finaliza chat → Categoria: "Manutenção"
-        │
-        ▼
-  category_routing_rules WHERE category_key = 'Manutenção' AND is_active
-        │
-   ┌────┴────────┐
-   │ Encontrou   │ → Cria novo chat no setor ADM + ticket → Toast
-   └────┬────────┘
-   │ Não encontrou │ → Finalização normal
-```
+**`src/components/atendimentos/ticket-detail-panel.tsx`**
+- Painel lateral (Sheet) ao clicar em um ticket
+- Abas: Detalhes | Comentários | Histórico
+- Ações: Finalizar, Reabrir, Encaminhar (setor/usuário), Alterar Prioridade
+- Timeline de comentários com tipo (comentário, encaminhamento, mudança de status)
+- Campo para adicionar comentário
 
-### Arquivos modificados
-- **Migração SQL** — criar tabela `category_routing_rules` com RLS
-- `src/routes/configuracoes.encaminhamento.tsx` — nova página de configuração (CRUD)
-- `src/components/app-sidebar.tsx` — novo item no menu
-- `src/routes/central.tsx` — lógica de encaminhamento automático na finalização
+### 3. Refatoração da Página Principal
+
+**`src/components/atendimentos/atendimentos-content.tsx`**
+- Tabs de visualização: Lista | Kanban | Calendário (além das tabs existentes de fonte)
+- KPIs no topo: Total Abertos, Em Andamento, Finalizados Hoje, Tempo Médio
+- Botão "Novo Ticket" para criação manual
+
+### 4. Ações nos Tickets
+
+- **Finalizar**: Muda status para `finalizado`, registra `closed_at`, cria comentário automático
+- **Reabrir**: Muda status para `reaberto`, limpa `closed_at`, registra `reopened_at`, cria comentário
+- **Encaminhar para Setor**: Atualiza `sector`, cria comentário tipo `encaminhamento`
+- **Encaminhar para Usuário**: Atualiza `assigned_to`, cria comentário tipo `encaminhamento`
+- **Comentar**: Insere em `ticket_comments` com tipo `comentario`
+
+### 5. Sugestoes Adicionais Incluídas
+
+- **Prioridade visual** (cores: verde/amarelo/laranja/vermelho)
+- **KPIs resumo** no topo da página
+- **Filtro por responsável** e por prioridade
+- **Histórico/timeline** completo de cada ticket (quem fez o quê e quando)
+- **Criação manual de ticket** (não apenas automática pela Central)
+
+## Arquivos
+
+| Ação | Arquivo |
+|------|---------|
+| Migração | SQL: enum priority, colunas em service_tickets, tabelas ticket_comments e ticket_assignments |
+| Criar | `src/components/atendimentos/ticket-kanban-view.tsx` |
+| Criar | `src/components/atendimentos/ticket-calendar-view.tsx` |
+| Criar | `src/components/atendimentos/ticket-list-view.tsx` |
+| Criar | `src/components/atendimentos/ticket-detail-panel.tsx` |
+| Criar | `src/components/atendimentos/ticket-kpis.tsx` |
+| Criar | `src/components/atendimentos/ticket-create-dialog.tsx` |
+| Editar | `src/components/atendimentos/atendimentos-content.tsx` — reestruturar com visualizações |
+| Editar | `src/components/atendimentos/atendimentos-filters.tsx` — adicionar filtros de prioridade e responsável |
 
