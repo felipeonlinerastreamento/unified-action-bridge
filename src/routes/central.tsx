@@ -478,12 +478,13 @@ function CentralPage() {
         ...await getAuthHeaders(),
       });
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("Contato CRM cadastrado com sucesso");
       setIdentModalDismissed((prev) => ({ ...prev, [selectedChatId]: true }));
       queryClient.invalidateQueries({ queryKey: ["crm-contact-lookup"] });
       queryClient.invalidateQueries({ queryKey: ["company-lookup"] });
-      refetchTicket();
+      await refetchTicket();
+      retryPendenciaCreation();
     },
     onError: (err: any) => toast.error(err?.message || "Erro ao cadastrar contato CRM"),
   });
@@ -504,11 +505,12 @@ function CentralPage() {
         ...await getAuthHeaders(),
       });
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("Número vinculado à empresa");
       setIdentModalDismissed((prev) => ({ ...prev, [selectedChatId]: true }));
       queryClient.invalidateQueries({ queryKey: ["company-lookup"] });
-      refetchTicket();
+      await refetchTicket();
+      retryPendenciaCreation();
     },
     onError: (err: any) => toast.error(err?.message || "Erro ao vincular"),
   });
