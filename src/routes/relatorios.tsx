@@ -371,7 +371,7 @@ function RelatoriosPage() {
                         {ticketsByStatus.length > 0 ? (
                           <ChartContainer config={{}} className="h-[280px] w-full">
                             <PieChart>
-                              <Pie data={ticketsByStatus} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}>
+                              <Pie data={ticketsByStatus} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label={({ name, percent }: any) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}>
                                 {ticketsByStatus.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                               </Pie>
                               <ChartTooltip content={<ChartTooltipContent />} />
@@ -521,7 +521,7 @@ function RelatoriosPage() {
                     {inventoryByStatus.length > 0 ? (
                       <ChartContainer config={{}} className="h-[280px] w-full">
                         <PieChart>
-                          <Pie data={inventoryByStatus} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}>
+                          <Pie data={inventoryByStatus} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label={({ name, percent }: any) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}>
                             {inventoryByStatus.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                           </Pie>
                           <ChartTooltip content={<ChartTooltipContent />} />
@@ -619,7 +619,7 @@ function RelatoriosPage() {
                     {flowsByStatus.length > 0 ? (
                       <ChartContainer config={{}} className="h-[280px] w-full">
                         <PieChart>
-                          <Pie data={flowsByStatus} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label={({ name, percent }) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}>
+                          <Pie data={flowsByStatus} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label={({ name, percent }: any) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}>
                             {flowsByStatus.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                           </Pie>
                           <ChartTooltip content={<ChartTooltipContent />} />

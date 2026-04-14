@@ -26,6 +26,7 @@ import { supabase } from "@/integrations/supabase/client";
 import {
   listAllOpenChats,
   getChatDetail,
+  getChatMessages,
   sendText,
   finalizeChat,
   createChat,
@@ -404,7 +405,31 @@ function CentralPage() {
     refetchInterval: 5000,
   });
 
-  const messages = chatDetail?.messages || [];
+  // Fetch ALL messages via dedicated messages endpoint
+  const { data: fullMessages } = useQuery({
+    queryKey: ["chat-messages", selectedChannelId, selectedChatId],
+    queryFn: async () => {
+      if (!selectedChannelId || !selectedChatId) return [];
+      try {
+        const result = await getChatMessages({
+          data: { channelId: selectedChannelId, chatId: selectedChatId },
+          ...await getAuthHeaders(),
+        });
+        // API may return { data: [...] }, { messages: [...] }, or array directly
+        const msgs = Array.isArray(result) ? result : (result?.data || result?.messages || []);
+        return Array.isArray(msgs) ? msgs as GMessage[] : [];
+      } catch {
+        return [];
+      }
+    },
+    enabled: !!selectedChannelId && !!selectedChatId && isAuthenticated,
+    refetchInterval: 5000,
+  });
+
+  // Use dedicated messages endpoint; fall back to chatDetail.messages
+  const messages = (fullMessages && fullMessages.length > 0)
+    ? fullMessages
+    : (chatDetail?.messages || []);
 
   // Detect plates in messages
   const detectedPlates = useMemo(() => detectPlates(messages), [messages]);
