@@ -51,7 +51,7 @@ async function gsystemFetch(endpoint: string, token: string, method = "GET", bod
   }
 }
 
-// List all open chats by fetching all users and their active attendances
+// List all open chats using combined approach: /chats/list + agent attendances
 export const listAllOpenChats = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
@@ -62,35 +62,68 @@ export const listAllOpenChats = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<Record<string, any>> => {
     const channel = await getChannelToken(context.supabase, data.channelId);
     try {
-      // Get all users to find active attendance IDs
+      const chatMap = new Map<string, any>();
+
+      // 1) Try /chats/list for OPEN and PENDING statuses
+      const [openResult, pendingResult] = await Promise.allSettled([
+        gsystemFetch("/chats/list", channel.token, "POST", {
+          data: { status: "OPEN", page: 1, pageSize: 100 },
+        }),
+        gsystemFetch("/chats/list", channel.token, "POST", {
+          data: { status: "PENDING", page: 1, pageSize: 100 },
+        }),
+      ]);
+
+      for (const result of [openResult, pendingResult]) {
+        if (result.status === "fulfilled" && result.value) {
+          const items = Array.isArray(result.value) ? result.value : result.value.data || [];
+          for (const chat of items) {
+            if (chat.attendanceId) {
+              chatMap.set(chat.attendanceId, chat);
+            }
+          }
+        }
+      }
+
+      // 2) Also get agent-assigned chats via /users
       const users = await gsystemFetch("/users", channel.token);
       const userList = Array.isArray(users) ? users : [];
-      const attendanceIds: string[] = [];
+      const agentAttendanceIds: string[] = [];
       const userMap: Record<string, { name: string; status: string }> = {};
 
       for (const u of userList) {
-        if (u.currentAttendanceId) {
-          attendanceIds.push(u.currentAttendanceId);
+        if (u.currentAttendanceId && !chatMap.has(u.currentAttendanceId)) {
+          agentAttendanceIds.push(u.currentAttendanceId);
           userMap[u.currentAttendanceId] = { name: u.name || "", status: u.status || "" };
         }
       }
 
-      if (attendanceIds.length === 0) {
-        return { chats: [], users: userList, total: 0 };
+      // Fetch details for agent chats not already in chatMap
+      if (agentAttendanceIds.length > 0) {
+        const agentResults = await Promise.allSettled(
+          agentAttendanceIds.map(async (id) => {
+            const detail = await gsystemFetch(`/chats/${id}`, channel.token);
+            return { ...detail, _agentName: userMap[id]?.name };
+          })
+        );
+        for (const r of agentResults) {
+          if (r.status === "fulfilled" && r.value?.attendanceId) {
+            chatMap.set(r.value.attendanceId, r.value);
+          }
+        }
       }
 
-      // Fetch detail for each attendance in parallel
-      const chatResults = await Promise.allSettled(
-        attendanceIds.map(async (id) => {
-          const detail = await gsystemFetch(`/chats/${id}`, channel.token);
-          return { ...detail, _agentName: userMap[id]?.name };
-        })
-      );
+      // Enrich chats with agent names from user list
+      for (const u of userList) {
+        if (u.currentAttendanceId && chatMap.has(u.currentAttendanceId)) {
+          const chat = chatMap.get(u.currentAttendanceId);
+          if (!chat._agentName) chat._agentName = u.name;
+        }
+      }
 
-      const chats = chatResults
-        .filter((r): r is PromiseFulfilledResult<any> => r.status === "fulfilled")
-        .map((r) => r.value)
-        .filter((c) => c && c.attendanceId && (!c.status || c.status === "OPEN" || c.status === "PENDING"));
+      const chats = Array.from(chatMap.values()).filter(
+        (c) => c && c.attendanceId && (c.status === undefined || c.status === 0 || c.status === 1 || c.status === 2 || c.status === "OPEN" || c.status === "PENDING")
+      );
 
       return { chats, users: userList, total: chats.length };
     } catch (err) {

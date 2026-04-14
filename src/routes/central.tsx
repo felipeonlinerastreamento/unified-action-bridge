@@ -27,7 +27,10 @@ import {
   getChatDetail,
   sendText,
   finalizeChat,
+  createChat,
   getChannelStatus,
+  listSectors,
+  listGSystemUsers,
 } from "@/lib/gsystem.functions";
 import { toast } from "sonner";
 import {
@@ -51,7 +54,20 @@ import {
   Link as LinkIcon,
   UserPlus,
   Mail,
+  Plus,
+  Filter,
+  X,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/central")({
   component: CentralPage,
@@ -144,6 +160,16 @@ function CentralPage() {
   const [messageInput, setMessageInput] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [ticketPlate, setTicketPlate] = useState("");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [sectorFilter, setSectorFilter] = useState<string>("all");
+  const [agentFilter, setAgentFilter] = useState<string>("all");
+  const [showFilters, setShowFilters] = useState(false);
+  const [showNewChatModal, setShowNewChatModal] = useState(false);
+  const [newChatPhone, setNewChatPhone] = useState("");
+  const [newChatMessage, setNewChatMessage] = useState("");
+  const [newChatSector, setNewChatSector] = useState("");
+  const [showFinalizeConfirm, setShowFinalizeConfirm] = useState(false);
+  const [finalizeNotes, setFinalizeNotes] = useState("");
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const queryClient = useQueryClient();
 
@@ -209,10 +235,44 @@ function CentralPage() {
   const gsystemUsers = openChatsData?.users || [];
   const onlineAgents = gsystemUsers.filter((u: any) => u.status === "ONLINE").length;
 
+  // Fetch sectors for filters
+  const { data: sectorsData } = useQuery({
+    queryKey: ["gsystem-sectors", selectedChannelId],
+    queryFn: async () => {
+      if (!selectedChannelId) return [];
+      const result = await listSectors({
+        data: { channelId: selectedChannelId },
+        ...await getAuthHeaders(),
+      });
+      return Array.isArray(result) ? result : [];
+    },
+    enabled: !!selectedChannelId && isAuthenticated,
+    staleTime: 60000,
+  });
+  const sectors = sectorsData || [];
+
+  // Filter chats
   const filteredChats = allChats.filter((chat) => {
-    if (!searchTerm) return true;
-    const name = (chat.description || chat.contact?.name || chat.contact?.number || "").toLowerCase();
-    return name.includes(searchTerm.toLowerCase());
+    // Search filter (name + phone)
+    if (searchTerm) {
+      const name = (chat.description || chat.contact?.name || chat.contact?.number || "").toLowerCase();
+      const phone = (chat.contact?.number || chat.contact?.secondaryName || "").toLowerCase();
+      if (!name.includes(searchTerm.toLowerCase()) && !phone.includes(searchTerm.toLowerCase())) return false;
+    }
+    // Status filter
+    if (statusFilter !== "all") {
+      const statusNum = parseInt(statusFilter);
+      if (chat.status !== statusNum) return false;
+    }
+    // Sector filter
+    if (sectorFilter !== "all") {
+      if (chat.currentSector?.id !== sectorFilter && chat.currentSector?.description !== sectorFilter) return false;
+    }
+    // Agent filter
+    if (agentFilter !== "all") {
+      if (chat.currentUser?.id !== agentFilter && chat._agentName !== agentFilter) return false;
+    }
+    return true;
   });
 
   // Fetch selected chat details with messages (polling)
@@ -540,12 +600,15 @@ function CentralPage() {
 
   // Finalize chat
   const finalizeMutation = useMutation({
-    mutationFn: async () => {
-      // Also update ticket status
+    mutationFn: async (notes?: string) => {
       if (currentTicket) {
         await supabase
           .from("service_tickets")
-          .update({ status: "finalizado" as const, closed_at: new Date().toISOString() })
+          .update({
+            status: "finalizado" as const,
+            closed_at: new Date().toISOString(),
+            notes: notes || currentTicket.notes || null,
+          })
           .eq("id", currentTicket.id);
       }
       return finalizeChat({
@@ -556,9 +619,35 @@ function CentralPage() {
     onSuccess: () => {
       toast.success("Atendimento finalizado");
       setSelectedChatId("");
+      setShowFinalizeConfirm(false);
+      setFinalizeNotes("");
       refetchChats();
     },
     onError: (err: any) => toast.error(err?.message || "Erro ao finalizar"),
+  });
+
+  // Create new chat
+  const createChatMutation = useMutation({
+    mutationFn: async () => {
+      return createChat({
+        data: {
+          channelId: selectedChannelId,
+          contactPhone: newChatPhone.replace(/\D/g, ""),
+          message: newChatMessage || undefined,
+          sectorId: newChatSector || undefined,
+        },
+        ...await getAuthHeaders(),
+      });
+    },
+    onSuccess: () => {
+      toast.success("Nova conversa criada");
+      setShowNewChatModal(false);
+      setNewChatPhone("");
+      setNewChatMessage("");
+      setNewChatSector("");
+      refetchChats();
+    },
+    onError: (err: any) => toast.error(err?.message || "Erro ao criar conversa"),
   });
 
   const handleSend = () => {
@@ -641,16 +730,66 @@ function CentralPage() {
           <div className="grid grid-cols-12 gap-3 h-[calc(100vh-12rem)]">
             {/* Chat list */}
             <div className="col-span-3 border rounded-lg flex flex-col bg-card overflow-hidden">
-              <div className="p-3 border-b">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar conversa..."
-                    className="pl-9"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
+              <div className="p-3 border-b space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar nome ou telefone..."
+                      className="pl-9"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                  <Button variant="outline" size="icon" onClick={() => setShowFilters(!showFilters)} className={showFilters ? "bg-accent" : ""}>
+                    <Filter className="h-4 w-4" />
+                  </Button>
+                  <Button size="icon" onClick={() => setShowNewChatModal(true)} title="Nova conversa">
+                    <Plus className="h-4 w-4" />
+                  </Button>
                 </div>
+                {showFilters && (
+                  <div className="space-y-2 pt-1">
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos os status</SelectItem>
+                        <SelectItem value="0">Automático</SelectItem>
+                        <SelectItem value="1">Aguardando</SelectItem>
+                        <SelectItem value="2">Em atendimento</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={sectorFilter} onValueChange={setSectorFilter}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Setor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos os setores</SelectItem>
+                        {sectors.map((s: any) => (
+                          <SelectItem key={s.id} value={s.id}>{s.name || s.description}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select value={agentFilter} onValueChange={setAgentFilter}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Agente" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos os agentes</SelectItem>
+                        {gsystemUsers.map((u: any) => (
+                          <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {(statusFilter !== "all" || sectorFilter !== "all" || agentFilter !== "all") && (
+                      <Button variant="ghost" size="sm" className="w-full text-xs h-7" onClick={() => { setStatusFilter("all"); setSectorFilter("all"); setAgentFilter("all"); }}>
+                        <X className="h-3 w-3 mr-1" /> Limpar filtros
+                      </Button>
+                    )}
+                  </div>
+                )}
               </div>
               <ScrollArea className="flex-1">
                 {chatsLoading && allChats.length === 0 ? (
@@ -786,13 +925,15 @@ function CentralPage() {
                         <ArrowRightLeft className="h-4 w-4" />
                       </Button>
                       <Button
-                        variant="ghost"
-                        size="icon"
+                        variant="outline"
+                        size="sm"
                         title="Finalizar"
-                        onClick={() => finalizeMutation.mutate()}
+                        onClick={() => setShowFinalizeConfirm(true)}
                         disabled={finalizeMutation.isPending}
+                        className="gap-1"
                       >
                         <CheckCircle2 className="h-4 w-4" />
+                        Finalizar
                       </Button>
                     </div>
                   </div>
@@ -1353,6 +1494,93 @@ function CentralPage() {
               </Button>
             </TabsContent>
           </Tabs>
+        </DialogContent>
+      </Dialog>
+
+      {/* Finalize Confirmation Dialog */}
+      <AlertDialog open={showFinalizeConfirm} onOpenChange={setShowFinalizeConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Finalizar atendimento</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja finalizar este atendimento? Esta ação não pode ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="space-y-2">
+            <Label className="text-xs">Nota de encerramento (opcional)</Label>
+            <Textarea
+              rows={3}
+              placeholder="Ex: Cliente solicitou suporte para instalação..."
+              value={finalizeNotes}
+              onChange={(e) => setFinalizeNotes(e.target.value)}
+            />
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => finalizeMutation.mutate(finalizeNotes || undefined)}
+              disabled={finalizeMutation.isPending}
+            >
+              {finalizeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+              Finalizar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* New Chat Modal */}
+      <Dialog open={showNewChatModal} onOpenChange={setShowNewChatModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5" />
+              Nova Conversa
+            </DialogTitle>
+            <DialogDescription>
+              Inicie uma nova conversa informando o telefone do contato.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 mt-2">
+            <div>
+              <Label className="text-xs">Telefone *</Label>
+              <Input
+                placeholder="5531999999999"
+                value={newChatPhone}
+                onChange={(e) => setNewChatPhone(e.target.value)}
+              />
+              <p className="text-[10px] text-muted-foreground mt-1">Formato: código do país + DDD + número</p>
+            </div>
+            <div>
+              <Label className="text-xs">Mensagem inicial (opcional)</Label>
+              <Textarea
+                rows={3}
+                placeholder="Olá, como posso ajudar?"
+                value={newChatMessage}
+                onChange={(e) => setNewChatMessage(e.target.value)}
+              />
+            </div>
+            <div>
+              <Label className="text-xs">Setor (opcional)</Label>
+              <Select value={newChatSector} onValueChange={setNewChatSector}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecionar setor..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {sectors.map((s: any) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name || s.description}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <Button
+              className="w-full"
+              onClick={() => createChatMutation.mutate()}
+              disabled={!newChatPhone || newChatPhone.replace(/\D/g, "").length < 10 || createChatMutation.isPending}
+            >
+              {createChatMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+              Iniciar Conversa
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </AppLayout>
