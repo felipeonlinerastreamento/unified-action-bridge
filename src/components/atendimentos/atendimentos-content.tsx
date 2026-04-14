@@ -222,7 +222,7 @@ export function AtendimentosContent() {
           {pendencias.map((p: any, idx: number) => {
             const key = p.Codigo ?? p.Id ?? p.id ?? idx;
             const situacao = (p.Situacao ?? p.situacao ?? "").toString().split("\\r\\n")[0].substring(0, 120);
-            const title = situacao || p.Descricao ?? p.descricao ?? p.Defeito ?? `Pendência #${key}`;
+            const title = situacao || (p.Descricao ?? p.descricao ?? p.Defeito ?? `Pendência #${key}`);
             const status = p.Status ?? p.status ?? "Aberta";
             const client = p.Cliente ?? p.cliente ?? p.NomeCliente ?? "";
             const date = p.DataOcorrencia ?? p.Data ?? p.DataCriacao ?? p.data ?? "";
