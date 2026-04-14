@@ -1,52 +1,35 @@
 
 
-## Plano: Filtros Acessíveis no Menu de Atendimentos
+## Plano: Categoria obrigatória ao finalizar atendimento (sincronizada com GSystem)
 
-### Problema Atual
-Os filtros de Status, Tipo, Cliente e Ramal estão escondidos dentro de um painel colapsável ("Collapsible"), exigindo um clique extra para acessá-los. O usuário precisa de filtros rápidos e visíveis — especialmente para filtrar por **atendimentos em aberto**, **por setor** e **por operador**.
+### Situação atual
+O dialog de finalização já possui o campo "Tipo de pendência" buscando os tipos do GSystem via `getTiposPendencia`. Porém:
+1. Não há um seletor de categoria visível no header do chat (ao lado do botão Finalizar)
+2. A seleção do tipo de pendência **não é obrigatória** — o operador pode finalizar sem selecionar
+3. O tipo não é exibido como contexto durante o atendimento
 
-### Solução
-Substituir o layout colapsável por filtros sempre visíveis em uma barra horizontal com chips/botões rápidos para os filtros mais usados, mantendo os filtros avançados acessíveis.
+### O que será feito
 
-### Mudanças
+**1. Seletor de categoria no header do chat**
+- Adicionar um `Select` compacto ao lado do botão "Finalizar" no header da conversa (linha ~1390 de `central.tsx`)
+- Alimentado pela mesma query `tiposPendencia` já existente do GSystem
+- O valor selecionado será armazenado no state `finalizeTipoPendencia` já existente, pré-preenchendo o dialog de finalização
 
-**1. Redesenhar `atendimentos-filters.tsx`**
-- Remover o `Collapsible` — todos os filtros ficam visíveis por padrão
-- Adicionar uma linha de **chips rápidos de status** (Todos, Em Aberto, Em Andamento, Resolvido, Cancelado) como botões toggle clicáveis acima dos selects
-- Extrair o campo "Setor" dos dados GSystem (campo `Setor` ou `setor` das pendências) e adicioná-lo como novo filtro `Select`
-- Reorganizar layout: linha 1 = busca + datas; linha 2 = chips de status; linha 3 = selects (Setor, Operador, Tipo, Cliente)
-- Adicionar `setor` ao interface `Filters`
+**2. Tornar a categoria obrigatória na finalização**
+- No botão "Finalizar" do dialog (linha ~2241), adicionar `disabled` quando `finalizeTipoPendencia` estiver vazio
+- Adicionar indicador visual `*` no label do campo "Tipo de pendência"
+- Se o operador clicar em Finalizar sem categoria, exibir toast de erro
 
-**2. Atualizar `atendimentos-content.tsx`**
-- Extrair `availableSetores` dos dados (campo `Setor`/`setor` das pendências GSystem e setor dos tickets locais se disponível)
-- Adicionar campo `setor` no item normalizado
-- Aplicar filtro de setor na lógica de `filteredItems`
-- Passar `availableSetores` para o componente de filtros
+**3. Sincronização visual**
+- Se o operador selecionar a categoria no header, ela já vem preenchida no dialog
+- Se alterar no dialog, o header reflete a mudança (mesmo state)
 
-### Detalhes Técnicos
+### Arquivo modificado
+- `src/routes/central.tsx`
 
-Interface `Filters` atualizada:
-```typescript
-export interface Filters {
-  search: string;
-  status: string;
-  tipo: string;
-  cliente: string;
-  ramal: string;
-  setor: string;      // novo
-  dataInicial: Date;
-  dataFinal: Date;
-}
-```
-
-Layout dos filtros (sempre visíveis):
-```
-[Busca_______________] [Data Inicial] [Data Final]
-[Todos] [Em Aberto] [Em Andamento] [Resolvido] [Cancelado]  ← chips toggle
-[Setor ▼] [Operador ▼] [Tipo ▼] [Cliente______]  [Limpar]
-```
-
-### Arquivos Modificados
-- `src/components/atendimentos/atendimentos-filters.tsx` — redesenho completo
-- `src/components/atendimentos/atendimentos-content.tsx` — adicionar setor nos dados e filtros
+### Detalhes técnicos
+- State `finalizeTipoPendencia` já existe — será reutilizado para o seletor inline no header
+- Query `tiposPendencia` já existe e busca de `/pendencias/tipos` do GSystem
+- O botão Finalizar no dialog receberá `disabled={!finalizeTipoPendencia || finalizeMutation.isPending}`
+- O seletor inline terá `className="w-[180px] h-8"` para caber no header sem quebrar layout
 
