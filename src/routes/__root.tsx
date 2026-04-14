@@ -64,6 +64,7 @@ function RootComponent() {
       <AuthProvider>
         <Outlet />
         <Toaster />
+        <AiFloatingAssistant />
       </AuthProvider>
     </QueryClientProvider>
   );
