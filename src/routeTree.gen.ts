@@ -21,6 +21,7 @@ import { Route as AtendimentosRouteImport } from './routes/atendimentos'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ConfiguracoesIndexRouteImport } from './routes/configuracoes.index'
 import { Route as ConfiguracoesUsuariosRouteImport } from './routes/configuracoes.usuarios'
+import { Route as ConfiguracoesFluxoAtendimentoRouteImport } from './routes/configuracoes.fluxo-atendimento'
 import { Route as ConfiguracoesEstoqueRouteImport } from './routes/configuracoes.estoque'
 import { Route as ConfiguracoesCentralAtendimentoRouteImport } from './routes/configuracoes.central-atendimento'
 import { Route as ConfiguracoesAssistenteIaRouteImport } from './routes/configuracoes.assistente-ia'
@@ -85,6 +86,12 @@ const ConfiguracoesUsuariosRoute = ConfiguracoesUsuariosRouteImport.update({
   path: '/usuarios',
   getParentRoute: () => ConfiguracoesRoute,
 } as any)
+const ConfiguracoesFluxoAtendimentoRoute =
+  ConfiguracoesFluxoAtendimentoRouteImport.update({
+    id: '/fluxo-atendimento',
+    path: '/fluxo-atendimento',
+    getParentRoute: () => ConfiguracoesRoute,
+  } as any)
 const ConfiguracoesEstoqueRoute = ConfiguracoesEstoqueRouteImport.update({
   id: '/estoque',
   path: '/estoque',
@@ -117,6 +124,7 @@ export interface FileRoutesByFullPath {
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
   '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
+  '/configuracoes/fluxo-atendimento': typeof ConfiguracoesFluxoAtendimentoRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
   '/configuracoes/': typeof ConfiguracoesIndexRoute
 }
@@ -133,6 +141,7 @@ export interface FileRoutesByTo {
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
   '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
+  '/configuracoes/fluxo-atendimento': typeof ConfiguracoesFluxoAtendimentoRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
   '/configuracoes': typeof ConfiguracoesIndexRoute
 }
@@ -151,6 +160,7 @@ export interface FileRoutesById {
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
   '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
+  '/configuracoes/fluxo-atendimento': typeof ConfiguracoesFluxoAtendimentoRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
   '/configuracoes/': typeof ConfiguracoesIndexRoute
 }
@@ -170,6 +180,7 @@ export interface FileRouteTypes {
     | '/configuracoes/assistente-ia'
     | '/configuracoes/central-atendimento'
     | '/configuracoes/estoque'
+    | '/configuracoes/fluxo-atendimento'
     | '/configuracoes/usuarios'
     | '/configuracoes/'
   fileRoutesByTo: FileRoutesByTo
@@ -186,6 +197,7 @@ export interface FileRouteTypes {
     | '/configuracoes/assistente-ia'
     | '/configuracoes/central-atendimento'
     | '/configuracoes/estoque'
+    | '/configuracoes/fluxo-atendimento'
     | '/configuracoes/usuarios'
     | '/configuracoes'
   id:
@@ -203,6 +215,7 @@ export interface FileRouteTypes {
     | '/configuracoes/assistente-ia'
     | '/configuracoes/central-atendimento'
     | '/configuracoes/estoque'
+    | '/configuracoes/fluxo-atendimento'
     | '/configuracoes/usuarios'
     | '/configuracoes/'
   fileRoutesById: FileRoutesById
@@ -306,6 +319,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConfiguracoesUsuariosRouteImport
       parentRoute: typeof ConfiguracoesRoute
     }
+    '/configuracoes/fluxo-atendimento': {
+      id: '/configuracoes/fluxo-atendimento'
+      path: '/fluxo-atendimento'
+      fullPath: '/configuracoes/fluxo-atendimento'
+      preLoaderRoute: typeof ConfiguracoesFluxoAtendimentoRouteImport
+      parentRoute: typeof ConfiguracoesRoute
+    }
     '/configuracoes/estoque': {
       id: '/configuracoes/estoque'
       path: '/estoque'
@@ -334,6 +354,7 @@ interface ConfiguracoesRouteChildren {
   ConfiguracoesAssistenteIaRoute: typeof ConfiguracoesAssistenteIaRoute
   ConfiguracoesCentralAtendimentoRoute: typeof ConfiguracoesCentralAtendimentoRoute
   ConfiguracoesEstoqueRoute: typeof ConfiguracoesEstoqueRoute
+  ConfiguracoesFluxoAtendimentoRoute: typeof ConfiguracoesFluxoAtendimentoRoute
   ConfiguracoesUsuariosRoute: typeof ConfiguracoesUsuariosRoute
   ConfiguracoesIndexRoute: typeof ConfiguracoesIndexRoute
 }
@@ -342,6 +363,7 @@ const ConfiguracoesRouteChildren: ConfiguracoesRouteChildren = {
   ConfiguracoesAssistenteIaRoute: ConfiguracoesAssistenteIaRoute,
   ConfiguracoesCentralAtendimentoRoute: ConfiguracoesCentralAtendimentoRoute,
   ConfiguracoesEstoqueRoute: ConfiguracoesEstoqueRoute,
+  ConfiguracoesFluxoAtendimentoRoute: ConfiguracoesFluxoAtendimentoRoute,
   ConfiguracoesUsuariosRoute: ConfiguracoesUsuariosRoute,
   ConfiguracoesIndexRoute: ConfiguracoesIndexRoute,
 }
