@@ -390,19 +390,19 @@ function CentralPage() {
   const [identTab, setIdentTab] = useState<"vincular" | "subcliente" | "crm">("vincular");
   const [identForm, setIdentForm] = useState({ name: "", phone: "", email: "", notes: "", companyId: "" });
 
-  // Reset form when chat changes
+  // Reset form when chat changes or chatDetail loads
   useEffect(() => {
     if (chatDetail) {
       setIdentForm({
         name: chatDetail?.contact?.name || chatDetail?.description || "",
-        phone: contactPhone,
+        phone: contactPhone || "",
         email: "",
         notes: "",
         companyId: "",
       });
       setIdentTab("vincular");
     }
-  }, [selectedChatId]);
+  }, [selectedChatId, chatDetail, contactPhone]);
 
   // Create sub-client mutation
   const createSubClientMutation = useMutation({
