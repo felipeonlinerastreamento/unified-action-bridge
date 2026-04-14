@@ -37,9 +37,9 @@ export function AlertSettingsConfig() {
 
   const handleToggle = async (key: keyof Omit<AlertSettings, "id">) => {
     if (!settings) return;
-    const updated = { ...settings, [key]: !settings[key] };
-    setSettings(updated);
-    const { error } = await supabase.from("attendance_alert_settings").update({ [key]: updated[key] }).eq("id", settings.id);
+    const newValue = !(settings as any)[key];
+    setSettings({ ...settings, [key]: newValue } as AlertSettings);
+    const { error } = await supabase.from("attendance_alert_settings").update({ [key]: newValue } as any).eq("id", settings.id);
     if (error) { toast.error(error.message); load(); }
     else toast.success("Configuração salva!");
   };

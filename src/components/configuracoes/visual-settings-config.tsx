@@ -28,18 +28,17 @@ export function VisualSettingsConfig() {
 
   const handleToggle = async (key: string) => {
     if (!settings) return;
-    const updated = { ...settings, [key]: !(settings as any)[key] };
-    setSettings(updated);
-    const { error } = await supabase.from("attendance_visual_settings").update({ [key]: (updated as any)[key] }).eq("id", settings.id);
+    const newValue = !(settings as any)[key];
+    setSettings({ ...settings, [key]: newValue } as VisualSettings);
+    const { error } = await supabase.from("attendance_visual_settings").update({ [key]: newValue } as any).eq("id", settings.id);
     if (error) { toast.error(error.message); load(); }
     else toast.success("Configuração salva!");
   };
 
   const handleSelect = async (key: string, value: string) => {
     if (!settings) return;
-    const updated = { ...settings, [key]: value };
-    setSettings(updated);
-    const { error } = await supabase.from("attendance_visual_settings").update({ [key]: value }).eq("id", settings.id);
+    setSettings({ ...settings, [key]: value } as VisualSettings);
+    const { error } = await supabase.from("attendance_visual_settings").update({ [key]: value } as any).eq("id", settings.id);
     if (error) { toast.error(error.message); load(); }
     else toast.success("Configuração salva!");
   };
