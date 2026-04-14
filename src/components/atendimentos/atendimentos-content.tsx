@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,11 +12,14 @@ import { TicketCalendarView } from "./ticket-calendar-view";
 import { TicketDetailPanel } from "./ticket-detail-panel";
 import { TicketCreateDialog } from "./ticket-create-dialog";
 import { TicketReminderNotifications } from "./ticket-reminder-notifications";
+import { TicketFiltersBar, applyTicketFilters, defaultFilters, type TicketFilters } from "./ticket-filters";
 
 export function AtendimentosContent() {
   const [viewMode, setViewMode] = useState<"lista" | "kanban" | "calendario">("lista");
   const [selected, setSelected] = useState<any>(null);
   const [createOpen, setCreateOpen] = useState(false);
+  const [filters, setFilters] = useState<TicketFilters>(defaultFilters);
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const { data: tickets = [], isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ["service-tickets"],
@@ -38,6 +41,11 @@ export function AtendimentosContent() {
     },
   });
 
+  const filteredTickets = useMemo(
+    () => applyTicketFilters(tickets, filters),
+    [tickets, filters]
+  );
+
   return (
     <div className="space-y-6">
       <TicketReminderNotifications />
@@ -45,7 +53,9 @@ export function AtendimentosContent() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Atendimentos</h1>
-          <p className="text-sm text-muted-foreground">{tickets.length} ticket(s)</p>
+          <p className="text-sm text-muted-foreground">
+            {filteredTickets.length} de {tickets.length} ticket(s)
+          </p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
@@ -58,8 +68,18 @@ export function AtendimentosContent() {
         </div>
       </div>
 
+      {/* Filters */}
+      <TicketFiltersBar
+        filters={filters}
+        onChange={setFilters}
+        tickets={tickets}
+        profiles={profiles}
+        open={filtersOpen}
+        onToggle={() => setFiltersOpen(!filtersOpen)}
+      />
+
       {/* KPIs */}
-      <TicketKpis tickets={tickets} />
+      <TicketKpis tickets={filteredTickets} />
 
       {/* View mode tabs */}
       <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)}>
@@ -93,13 +113,13 @@ export function AtendimentosContent() {
         ) : (
           <>
             <TabsContent value="lista" className="mt-4">
-              <TicketListView tickets={tickets} onSelect={setSelected} />
+              <TicketListView tickets={filteredTickets} onSelect={setSelected} />
             </TabsContent>
             <TabsContent value="kanban" className="mt-4">
-              <TicketKanbanView tickets={tickets} onSelect={setSelected} onRefetch={refetch} />
+              <TicketKanbanView tickets={filteredTickets} onSelect={setSelected} onRefetch={refetch} />
             </TabsContent>
             <TabsContent value="calendario" className="mt-4">
-              <TicketCalendarView tickets={tickets} onSelect={setSelected} />
+              <TicketCalendarView tickets={filteredTickets} onSelect={setSelected} />
             </TabsContent>
           </>
         )}
