@@ -500,6 +500,8 @@ export const createPendenciaFromAtendimento = createServerFn({ method: "POST" })
       crmContactId: z.string().max(255).optional(),
       plate: z.string().max(20).optional(),
       notes: z.string().max(2000).optional(),
+      tipoPendencia: z.string().max(255).optional(),
+      status: z.string().max(50).optional(),
     }).parse
   )
   .handler(async ({ data, context }) => {
