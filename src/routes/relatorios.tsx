@@ -14,7 +14,7 @@ import { ReportFilters } from "@/components/relatorios/report-filters";
 import { ReportKpiCard } from "@/components/relatorios/report-kpi-card";
 import { exportToCSV, exportToPDF } from "@/components/relatorios/export-utils";
 import {
-  ChartContainer, ChartTooltip, ChartTooltipContent, ChartLegend, ChartLegendContent,
+  ChartContainer, ChartTooltip, ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
 import {
@@ -353,7 +353,7 @@ function RelatoriosPage() {
                               <XAxis dataKey="date" tick={{ fontSize: 10 }} />
                               <YAxis tick={{ fontSize: 10 }} />
                               <ChartTooltip content={<ChartTooltipContent />} />
-                              <ChartLegend content={<ChartLegendContent />} />
+                              
                               <Bar dataKey="aberto" fill="var(--color-aberto)" radius={[2, 2, 0, 0]} />
                               <Bar dataKey="em_andamento" fill="var(--color-em_andamento)" radius={[2, 2, 0, 0]} />
                               <Bar dataKey="finalizado" fill="var(--color-finalizado)" radius={[2, 2, 0, 0]} />
@@ -559,7 +559,7 @@ function RelatoriosPage() {
                         <XAxis dataKey="date" tick={{ fontSize: 10 }} />
                         <YAxis tick={{ fontSize: 10 }} />
                         <ChartTooltip content={<ChartTooltipContent />} />
-                        <ChartLegend content={<ChartLegendContent />} />
+                        
                         <Bar dataKey="entrada" fill="var(--color-entrada)" radius={[2, 2, 0, 0]} />
                         <Bar dataKey="saida" fill="var(--color-saida)" radius={[2, 2, 0, 0]} />
                       </BarChart>
