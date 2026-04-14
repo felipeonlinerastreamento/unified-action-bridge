@@ -1117,6 +1117,21 @@ function CentralPage() {
     aiChatEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [aiMessages]);
 
+  // Auto-trigger AI supervisor analysis when chat changes and has messages
+  const lastAutoAnalyzedChat = useRef<string>("");
+  useEffect(() => {
+    if (
+      selectedChatId &&
+      messages.length > 0 &&
+      !aiLoading &&
+      lastAutoAnalyzedChat.current !== selectedChatId
+    ) {
+      lastAutoAnalyzedChat.current = selectedChatId;
+      setAiMessages([]);
+      handleAiSend("Analise a conversa atual e dê instruções diretas sobre como o operador deve proceder agora.");
+    }
+  }, [selectedChatId, messages.length > 0]);
+
   const serviceTimeMinutes = chatDetail?.utcDhStartChat
     ? Math.round((Date.now() - new Date(chatDetail.utcDhStartChat).getTime()) / 60000)
     : null;
