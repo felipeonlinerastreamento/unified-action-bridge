@@ -16,6 +16,7 @@ import {
   Boxes,
   UserCog,
   GitBranch,
+  ArrowRightLeft,
 } from "lucide-react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
@@ -54,6 +55,7 @@ const configSubItems = [
   { title: "Fluxo de Atendimento", url: "/configuracoes/fluxo-atendimento", icon: GitBranch },
   { title: "Estoque", url: "/configuracoes/estoque", icon: Boxes },
   { title: "Assistente IA", url: "/configuracoes/assistente-ia", icon: Bot },
+  { title: "Encaminhamento", url: "/configuracoes/encaminhamento", icon: ArrowRightLeft },
   { title: "Usuários", url: "/configuracoes/usuarios", icon: UserCog },
 ];
 

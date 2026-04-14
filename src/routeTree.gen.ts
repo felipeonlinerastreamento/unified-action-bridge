@@ -23,6 +23,7 @@ import { Route as ConfiguracoesIndexRouteImport } from './routes/configuracoes.i
 import { Route as ConfiguracoesUsuariosRouteImport } from './routes/configuracoes.usuarios'
 import { Route as ConfiguracoesFluxoAtendimentoRouteImport } from './routes/configuracoes.fluxo-atendimento'
 import { Route as ConfiguracoesEstoqueRouteImport } from './routes/configuracoes.estoque'
+import { Route as ConfiguracoesEncaminhamentoRouteImport } from './routes/configuracoes.encaminhamento'
 import { Route as ConfiguracoesCentralAtendimentoRouteImport } from './routes/configuracoes.central-atendimento'
 import { Route as ConfiguracoesAssistenteIaRouteImport } from './routes/configuracoes.assistente-ia'
 
@@ -97,6 +98,12 @@ const ConfiguracoesEstoqueRoute = ConfiguracoesEstoqueRouteImport.update({
   path: '/estoque',
   getParentRoute: () => ConfiguracoesRoute,
 } as any)
+const ConfiguracoesEncaminhamentoRoute =
+  ConfiguracoesEncaminhamentoRouteImport.update({
+    id: '/encaminhamento',
+    path: '/encaminhamento',
+    getParentRoute: () => ConfiguracoesRoute,
+  } as any)
 const ConfiguracoesCentralAtendimentoRoute =
   ConfiguracoesCentralAtendimentoRouteImport.update({
     id: '/central-atendimento',
@@ -123,6 +130,7 @@ export interface FileRoutesByFullPath {
   '/relatorios': typeof RelatoriosRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
   '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
+  '/configuracoes/encaminhamento': typeof ConfiguracoesEncaminhamentoRoute
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
   '/configuracoes/fluxo-atendimento': typeof ConfiguracoesFluxoAtendimentoRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
@@ -140,6 +148,7 @@ export interface FileRoutesByTo {
   '/relatorios': typeof RelatoriosRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
   '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
+  '/configuracoes/encaminhamento': typeof ConfiguracoesEncaminhamentoRoute
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
   '/configuracoes/fluxo-atendimento': typeof ConfiguracoesFluxoAtendimentoRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
@@ -159,6 +168,7 @@ export interface FileRoutesById {
   '/relatorios': typeof RelatoriosRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
   '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
+  '/configuracoes/encaminhamento': typeof ConfiguracoesEncaminhamentoRoute
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
   '/configuracoes/fluxo-atendimento': typeof ConfiguracoesFluxoAtendimentoRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
@@ -179,6 +189,7 @@ export interface FileRouteTypes {
     | '/relatorios'
     | '/configuracoes/assistente-ia'
     | '/configuracoes/central-atendimento'
+    | '/configuracoes/encaminhamento'
     | '/configuracoes/estoque'
     | '/configuracoes/fluxo-atendimento'
     | '/configuracoes/usuarios'
@@ -196,6 +207,7 @@ export interface FileRouteTypes {
     | '/relatorios'
     | '/configuracoes/assistente-ia'
     | '/configuracoes/central-atendimento'
+    | '/configuracoes/encaminhamento'
     | '/configuracoes/estoque'
     | '/configuracoes/fluxo-atendimento'
     | '/configuracoes/usuarios'
@@ -214,6 +226,7 @@ export interface FileRouteTypes {
     | '/relatorios'
     | '/configuracoes/assistente-ia'
     | '/configuracoes/central-atendimento'
+    | '/configuracoes/encaminhamento'
     | '/configuracoes/estoque'
     | '/configuracoes/fluxo-atendimento'
     | '/configuracoes/usuarios'
@@ -333,6 +346,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConfiguracoesEstoqueRouteImport
       parentRoute: typeof ConfiguracoesRoute
     }
+    '/configuracoes/encaminhamento': {
+      id: '/configuracoes/encaminhamento'
+      path: '/encaminhamento'
+      fullPath: '/configuracoes/encaminhamento'
+      preLoaderRoute: typeof ConfiguracoesEncaminhamentoRouteImport
+      parentRoute: typeof ConfiguracoesRoute
+    }
     '/configuracoes/central-atendimento': {
       id: '/configuracoes/central-atendimento'
       path: '/central-atendimento'
@@ -353,6 +373,7 @@ declare module '@tanstack/react-router' {
 interface ConfiguracoesRouteChildren {
   ConfiguracoesAssistenteIaRoute: typeof ConfiguracoesAssistenteIaRoute
   ConfiguracoesCentralAtendimentoRoute: typeof ConfiguracoesCentralAtendimentoRoute
+  ConfiguracoesEncaminhamentoRoute: typeof ConfiguracoesEncaminhamentoRoute
   ConfiguracoesEstoqueRoute: typeof ConfiguracoesEstoqueRoute
   ConfiguracoesFluxoAtendimentoRoute: typeof ConfiguracoesFluxoAtendimentoRoute
   ConfiguracoesUsuariosRoute: typeof ConfiguracoesUsuariosRoute
@@ -362,6 +383,7 @@ interface ConfiguracoesRouteChildren {
 const ConfiguracoesRouteChildren: ConfiguracoesRouteChildren = {
   ConfiguracoesAssistenteIaRoute: ConfiguracoesAssistenteIaRoute,
   ConfiguracoesCentralAtendimentoRoute: ConfiguracoesCentralAtendimentoRoute,
+  ConfiguracoesEncaminhamentoRoute: ConfiguracoesEncaminhamentoRoute,
   ConfiguracoesEstoqueRoute: ConfiguracoesEstoqueRoute,
   ConfiguracoesFluxoAtendimentoRoute: ConfiguracoesFluxoAtendimentoRoute,
   ConfiguracoesUsuariosRoute: ConfiguracoesUsuariosRoute,

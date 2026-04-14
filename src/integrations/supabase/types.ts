@@ -407,6 +407,42 @@ export type Database = {
           },
         ]
       }
+      category_routing_rules: {
+        Row: {
+          auto_create_ticket: boolean
+          category_key: string
+          category_label: string
+          created_at: string
+          id: string
+          is_active: boolean
+          target_sector_id: string
+          target_sector_name: string
+          updated_at: string
+        }
+        Insert: {
+          auto_create_ticket?: boolean
+          category_key: string
+          category_label?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          target_sector_id?: string
+          target_sector_name?: string
+          updated_at?: string
+        }
+        Update: {
+          auto_create_ticket?: boolean
+          category_key?: string
+          category_label?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          target_sector_id?: string
+          target_sector_name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       channels: {
         Row: {
           created_at: string
