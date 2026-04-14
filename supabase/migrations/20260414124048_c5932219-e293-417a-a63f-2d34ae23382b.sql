@@ -1,0 +1,1 @@
+ALTER TABLE public.service_flows ADD COLUMN trigger_categories text[] NOT NULL DEFAULT '{}';

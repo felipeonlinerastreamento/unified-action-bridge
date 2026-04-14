@@ -964,6 +964,58 @@ function CentralPage() {
           })
           .eq("id", currentTicket.id);
       }
+      // Check if this category triggers a service flow
+      if (tipoPendencia) {
+        try {
+          const { data: matchingFlows } = await supabase
+            .from("service_flows")
+            .select("id, name")
+            .eq("is_active", true)
+            .contains("trigger_categories", [tipoPendencia]);
+
+          if (matchingFlows && matchingFlows.length > 0) {
+            const flow = matchingFlows[0];
+            // Get the first step of this flow
+            const { data: steps } = await supabase
+              .from("service_flow_steps")
+              .select("id, step_name, sector_name")
+              .eq("flow_id", flow.id)
+              .order("step_order", { ascending: true })
+              .limit(1);
+
+            const firstStep = steps?.[0];
+
+            // Create flow instance
+            const { data: instance } = await supabase
+              .from("attendance_flow_instances")
+              .insert({
+                flow_id: flow.id,
+                attendance_id: selectedChatId,
+                current_step_id: firstStep?.id || null,
+                status: "em_andamento" as const,
+              })
+              .select("id")
+              .single();
+
+            // Create history entry
+            if (instance) {
+              await supabase.from("attendance_flow_history").insert({
+                attendance_flow_instance_id: instance.id,
+                to_step_id: firstStep?.id || null,
+                movement_reason: `Fluxo ativado automaticamente pela categoria "${tipoPendencia}"`,
+              });
+            }
+
+            toast.success(
+              `Fluxo "${flow.name}" ativado — encaminhado para ${firstStep?.sector_name || "próximo setor"}`,
+              { duration: 5000 }
+            );
+          }
+        } catch (err: any) {
+          console.error("[Finalize] Error checking/creating flow:", err.message);
+        }
+      }
+
       return finalizeChat({
         data: { channelId: selectedChannelId, chatId: selectedChatId },
         ...await getAuthHeaders(),
