@@ -39,6 +39,7 @@ const mainItems = [
   { title: "Estoque", url: "/estoque", icon: Package },
   { title: "Relatórios", url: "/relatorios", icon: BarChart3 },
   { title: "Assistente IA", url: "/configuracoes/assistente-ia", icon: Bot },
+  { title: "Central Config", url: "/configuracoes/central-atendimento", icon: PhoneCall },
   { title: "Configurações", url: "/configuracoes", icon: Settings },
 ];
 
