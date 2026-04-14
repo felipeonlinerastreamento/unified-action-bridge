@@ -1025,6 +1025,8 @@ export type Database = {
           pendencia_key: string | null
           plate: string | null
           priority: Database["public"]["Enums"]["ticket_priority"]
+          reminder_date: string | null
+          reminder_note: string | null
           reopened_at: string | null
           sector: string | null
           status: Database["public"]["Enums"]["service_ticket_status"]
@@ -1046,6 +1048,8 @@ export type Database = {
           pendencia_key?: string | null
           plate?: string | null
           priority?: Database["public"]["Enums"]["ticket_priority"]
+          reminder_date?: string | null
+          reminder_note?: string | null
           reopened_at?: string | null
           sector?: string | null
           status?: Database["public"]["Enums"]["service_ticket_status"]
@@ -1067,6 +1071,8 @@ export type Database = {
           pendencia_key?: string | null
           plate?: string | null
           priority?: Database["public"]["Enums"]["ticket_priority"]
+          reminder_date?: string | null
+          reminder_note?: string | null
           reopened_at?: string | null
           sector?: string | null
           status?: Database["public"]["Enums"]["service_ticket_status"]
@@ -1196,6 +1202,44 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "ticket_comments_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "service_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ticket_reminders: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_dismissed: boolean
+          reminder_date: string
+          reminder_note: string | null
+          ticket_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_dismissed?: boolean
+          reminder_date: string
+          reminder_note?: string | null
+          ticket_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_dismissed?: boolean
+          reminder_date?: string
+          reminder_note?: string | null
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_reminders_ticket_id_fkey"
             columns: ["ticket_id"]
             isOneToOne: false
             referencedRelation: "service_tickets"
