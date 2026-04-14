@@ -649,6 +649,23 @@ function CentralPage() {
   const finalizeMutation = useMutation({
     mutationFn: async (notes?: string) => {
       if (currentTicket) {
+        // Conclude pendência in GSystem if exists
+        if ((currentTicket as any).pendencia_key) {
+          try {
+            const authHeaders = await getAuthHeaders();
+            await concluirPendencia({
+              data: {
+                pendenciaKey: (currentTicket as any).pendencia_key,
+                notes: notes || undefined,
+              },
+              ...authHeaders,
+            });
+            console.log("[Finalize] Pendência concluded:", (currentTicket as any).pendencia_key);
+          } catch (err: any) {
+            console.warn("[Finalize] Error concluding pendência:", err.message);
+          }
+        }
+
         await supabase
           .from("service_tickets")
           .update({
