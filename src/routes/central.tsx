@@ -27,7 +27,10 @@ import {
   getChatDetail,
   sendText,
   finalizeChat,
+  createChat,
   getChannelStatus,
+  listSectors,
+  listGSystemUsers,
 } from "@/lib/gsystem.functions";
 import { toast } from "sonner";
 import {
@@ -51,7 +54,20 @@ import {
   Link as LinkIcon,
   UserPlus,
   Mail,
+  Plus,
+  Filter,
+  X,
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/central")({
   component: CentralPage,
