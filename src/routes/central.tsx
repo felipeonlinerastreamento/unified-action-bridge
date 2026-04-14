@@ -671,6 +671,87 @@ function CentralPage() {
     }
   };
 
+  // AI Assistant send
+  const handleAiSend = async (autoMessage?: string) => {
+    const msg = autoMessage || aiInput.trim();
+    if (!msg || aiLoading) return;
+    const userMsg = { role: "user" as const, content: msg };
+    const newMsgs = [...aiMessages, userMsg];
+    setAiMessages(newMsgs);
+    if (!autoMessage) setAiInput("");
+    setAiLoading(true);
+    try {
+      const { data: sess } = await supabase.auth.getSession();
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/ai-assistant`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${sess.session?.access_token || import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
+          },
+          body: JSON.stringify({
+            chatMessages: messages,
+            contactPhone,
+            contactName: chatDetail?.contact?.name || chatDetail?.description || "",
+            attendanceStartTime: chatDetail?.utcDhStartChat || null,
+            userMessage: msg,
+          }),
+        }
+      );
+      if (!resp.ok) {
+        const errData = await resp.json().catch(() => ({}));
+        throw new Error(errData.error || `Erro ${resp.status}`);
+      }
+      const reader = resp.body?.getReader();
+      if (!reader) throw new Error("No stream");
+      const decoder = new TextDecoder();
+      let assistantContent = "";
+      let textBuffer = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        textBuffer += decoder.decode(value, { stream: true });
+        let newlineIndex: number;
+        while ((newlineIndex = textBuffer.indexOf("\n")) !== -1) {
+          let line = textBuffer.slice(0, newlineIndex);
+          textBuffer = textBuffer.slice(newlineIndex + 1);
+          if (line.endsWith("\r")) line = line.slice(0, -1);
+          if (line.startsWith(":") || line.trim() === "") continue;
+          if (!line.startsWith("data: ")) continue;
+          const jsonStr = line.slice(6).trim();
+          if (jsonStr === "[DONE]") break;
+          try {
+            const parsed = JSON.parse(jsonStr);
+            const ct = parsed.choices?.[0]?.delta?.content;
+            if (ct) {
+              assistantContent += ct;
+              setAiMessages([...newMsgs, { role: "assistant", content: assistantContent }]);
+            }
+          } catch {
+            textBuffer = line + "\n" + textBuffer;
+            break;
+          }
+        }
+      }
+      if (!assistantContent) {
+        setAiMessages([...newMsgs, { role: "assistant", content: "Sem resposta." }]);
+      }
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao consultar IA");
+      setAiMessages([...newMsgs, { role: "assistant", content: `Erro: ${err.message}` }]);
+    }
+    setAiLoading(false);
+  };
+
+  useEffect(() => {
+    aiChatEndRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [aiMessages]);
+
+  const serviceTimeMinutes = chatDetail?.utcDhStartChat
+    ? Math.round((Date.now() - new Date(chatDetail.utcDhStartChat).getTime()) / 60000)
+    : null;
+
   if (authLoading || !isAuthenticated) return null;
 
   const noChannels = channels.length === 0;
