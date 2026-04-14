@@ -2071,35 +2071,139 @@ function CentralPage() {
       </Dialog>
 
       {/* Finalize Confirmation Dialog */}
-      <AlertDialog open={showFinalizeConfirm} onOpenChange={setShowFinalizeConfirm}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Finalizar atendimento</AlertDialogTitle>
-            <AlertDialogDescription>
-              Tem certeza que deseja finalizar este atendimento? Esta ação não pode ser desfeita.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <div className="space-y-2">
-            <Label className="text-xs">Nota de encerramento (opcional)</Label>
-            <Textarea
-              rows={3}
-              placeholder="Ex: Cliente solicitou suporte para instalação..."
-              value={finalizeNotes}
-              onChange={(e) => setFinalizeNotes(e.target.value)}
-            />
+      <Dialog open={showFinalizeConfirm} onOpenChange={setShowFinalizeConfirm}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5" />
+              Finalizar atendimento
+            </DialogTitle>
+            <DialogDescription>
+              Defina o status da pendência e finalize o atendimento.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">Status da pendência</Label>
+              <Select value={finalizeStatus} onValueChange={setFinalizeStatus}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o status..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="A resolver">A resolver</SelectItem>
+                  <SelectItem value="Resolvido">Resolvido</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">Tipo de pendência</Label>
+              <Select value={finalizeTipoPendencia} onValueChange={setFinalizeTipoPendencia}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o tipo..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {tiposPendencia.length === 0 ? (
+                    <SelectItem value="__none" disabled>Nenhum tipo disponível</SelectItem>
+                  ) : (
+                    tiposPendencia.map((tipo: any) => (
+                      <SelectItem key={tipo.Key || tipo.key || tipo.Id || tipo.id} value={tipo.Key || tipo.key || tipo.Id || tipo.id || ""}>
+                        {tipo.Descricao || tipo.descricao || tipo.Nome || tipo.nome || tipo.Name || "Sem nome"}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">Observação (opcional)</Label>
+              <Textarea
+                rows={2}
+                placeholder="Ex: Cliente solicitou suporte..."
+                value={finalizeNotes}
+                onChange={(e) => setFinalizeNotes(e.target.value)}
+              />
+            </div>
           </div>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => finalizeMutation.mutate(finalizeNotes || undefined)}
+          <div className="flex justify-end gap-2 mt-2">
+            <Button variant="outline" onClick={() => setShowFinalizeConfirm(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => finalizeMutation.mutate({
+                notes: finalizeNotes || undefined,
+                status: finalizeStatus,
+                tipoPendencia: finalizeTipoPendencia || undefined,
+              })}
               disabled={finalizeMutation.isPending}
             >
               {finalizeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
               Finalizar
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Transfer Chat Modal */}
+      <Dialog open={showTransferModal} onOpenChange={setShowTransferModal}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ArrowRightLeft className="h-5 w-5" />
+              Transferir atendimento
+            </DialogTitle>
+            <DialogDescription>
+              Transfira este chat para outro setor ou usuário.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">Setor</Label>
+              <Select value={transferSectorId} onValueChange={(v) => { setTransferSectorId(v); setTransferUserId(""); }}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um setor..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {sectors.map((s: any) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name || s.description}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">Usuário (opcional)</Label>
+              <Select value={transferUserId} onValueChange={setTransferUserId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um usuário..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {gsystemUsersList.map((u: any) => (
+                    <SelectItem key={u.id} value={u.id}>
+                      {u.name} {u.status === "ONLINE" ? "🟢" : "⚪"}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-2">
+            <Button variant="outline" onClick={() => setShowTransferModal(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => transferMutation.mutate()}
+              disabled={transferMutation.isPending || (!transferSectorId && !transferUserId)}
+            >
+              {transferMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <ArrowRightLeft className="h-4 w-4 mr-2" />}
+              Transferir
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* New Chat Modal */}
       <Dialog open={showNewChatModal} onOpenChange={setShowNewChatModal}>
