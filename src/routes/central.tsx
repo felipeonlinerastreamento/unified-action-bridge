@@ -517,8 +517,9 @@ function CentralPage() {
     enabled: !!contactPhone && !companyLookup && !subClientLookup && isAuthenticated,
   });
 
-  // Identification modal dismissed state
+  // Identification modal explicit open state
   const [identModalDismissed, setIdentModalDismissed] = useState<Record<string, boolean>>({});
+  const [identModalOpen, setIdentModalOpen] = useState(false);
 
 
   // Identification modal form state
@@ -649,7 +650,13 @@ function CentralPage() {
 
   // Identification modal — only for contacts without any existing link
   const isUnidentified = !!chatDetail && !!contactPhone && !companyLookup && !subClientLookup && !crmContactLookup && !currentTicket?.company_id;
-  const showIdentModal = isUnidentified && !!selectedChatId && !identModalDismissed[selectedChatId];
+
+  // Auto-open identification modal when contact is unidentified
+  useEffect(() => {
+    if (isUnidentified && selectedChatId && !identModalDismissed[selectedChatId]) {
+      setIdentModalOpen(true);
+    }
+  }, [isUnidentified, selectedChatId, identModalDismissed]);
 
   const retryPendenciaCreation = useCallback(async () => {
     const ticket = currentTicket;
