@@ -220,9 +220,11 @@ export const sendText = createServerFn({ method: "POST" })
   )
   .handler(async ({ data, context }): Promise<Record<string, any>> => {
     const channel = await getChannelToken(context.supabase, data.channelId);
+    const text = (data.message || "").trim();
+    if (!text) throw new Error("Mensagem não pode estar vazia");
     return gsystemFetch("/chats/send-text", channel.token, "POST", {
       attendanceId: data.chatId,
-      text: data.message,
+      text,
     });
   });
 
