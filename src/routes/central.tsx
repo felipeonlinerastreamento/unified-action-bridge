@@ -1344,7 +1344,7 @@ function CentralPage() {
                         variant="ghost"
                         size="icon"
                         title="Transferir"
-                        onClick={() => toast.info("Transferência disponível em breve")}
+                        onClick={() => setShowTransferModal(true)}
                       >
                         <ArrowRightLeft className="h-4 w-4" />
                       </Button>
