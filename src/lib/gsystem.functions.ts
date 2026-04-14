@@ -235,6 +235,7 @@ export const sendText = createServerFn({ method: "POST" })
     return gsystemFetch("/chats/send-text", channel.token, "POST", {
       number: contactNumber,
       message,
+      forceSend: true,
     });
   });
 
