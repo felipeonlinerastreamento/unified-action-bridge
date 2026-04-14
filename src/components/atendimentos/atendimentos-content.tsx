@@ -1,4 +1,4 @@
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo } from "react";
 import { format } from "date-fns";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -220,26 +220,16 @@ export function AtendimentosContent() {
       ) : (
         <div className="grid gap-3">
           {pendencias.map((p: any, idx: number) => {
-            const key = p.Id ?? p.id ?? p.Codigo ?? idx;
-            const title =
-              p.Descricao ??
-              p.descricao ??
-              p.Titulo ??
-              p.titulo ??
-              p.Description ??
-              `Pendência #${key}`;
+            const key = p.Codigo ?? p.Id ?? p.id ?? idx;
+            const situacao = (p.Situacao ?? p.situacao ?? "").toString().split("\\r\\n")[0].substring(0, 120);
+            const title = situacao || p.Descricao ?? p.descricao ?? p.Defeito ?? `Pendência #${key}`;
             const status = p.Status ?? p.status ?? "Aberta";
-            const client =
-              p.Cliente ?? p.cliente ?? p.NomeCliente ?? p.nomeCliente ?? "";
-            const date =
-              p.DataCriacao ??
-              p.dataCriacao ??
-              p.Data ??
-              p.data ??
-              p.CreatedAt ??
-              "";
-            const plate = p.Placa ?? p.placa ?? "";
+            const client = p.Cliente ?? p.cliente ?? p.NomeCliente ?? "";
+            const date = p.DataOcorrencia ?? p.Data ?? p.DataCriacao ?? p.data ?? "";
+            const veiculos = Array.isArray(p.Veiculos) ? p.Veiculos.filter(Boolean) : [];
+            const plate = veiculos.length > 0 ? veiculos.join(", ") : (p.Placa ?? p.placa ?? "");
             const tipo = p.Tipo ?? p.tipo ?? p.TipoPendencia ?? "";
+            const ramal = p.Ramal ?? p.ramal ?? "";
 
             return (
               <Card
@@ -263,6 +253,7 @@ export function AtendimentosContent() {
                       </div>
                       <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
                         {client && <span>Cliente: {client}</span>}
+                        {ramal && <span>Ramal: {ramal}</span>}
                         {plate && <span>Placa: {plate}</span>}
                         {date && (
                           <span className="flex items-center gap-1">
