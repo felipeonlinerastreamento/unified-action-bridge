@@ -106,7 +106,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
 
   const updatePriority = async (priority: string) => {
     if (!ticket?.id) return;
-    await supabase.from("service_tickets").update({ priority, updated_at: new Date().toISOString() }).eq("id", ticket.id);
+    await supabase.from("service_tickets").update({ priority: priority as "baixa" | "media" | "alta" | "urgente", updated_at: new Date().toISOString() }).eq("id", ticket.id);
     await supabase.from("ticket_comments").insert({
       ticket_id: ticket.id,
       content: `Prioridade alterada para ${getPriorityLabel(priority)}`,
