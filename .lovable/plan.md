@@ -1,35 +1,31 @@
 
 
-## Plano: Categoria obrigatória ao finalizar atendimento (sincronizada com GSystem)
+## Plano: Diagnóstico e correção do campo de categoria (sincronização com GSystem)
 
-### Situação atual
-O dialog de finalização já possui o campo "Tipo de pendência" buscando os tipos do GSystem via `getTiposPendencia`. Porém:
-1. Não há um seletor de categoria visível no header do chat (ao lado do botão Finalizar)
-2. A seleção do tipo de pendência **não é obrigatória** — o operador pode finalizar sem selecionar
-3. O tipo não é exibido como contexto durante o atendimento
+### Problema
+O seletor de categoria está vazio porque a chamada a `/pendencias/tipos` na API de Gestão do GSystem (`api.gsystem.com.br`) está falhando silenciosamente — o `catch` retorna `[]` sem exibir erro.
 
 ### O que será feito
 
-**1. Seletor de categoria no header do chat**
-- Adicionar um `Select` compacto ao lado do botão "Finalizar" no header da conversa (linha ~1390 de `central.tsx`)
-- Alimentado pela mesma query `tiposPendencia` já existente do GSystem
-- O valor selecionado será armazenado no state `finalizeTipoPendencia` já existente, pré-preenchendo o dialog de finalização
+**1. Adicionar logging para diagnóstico**
+- No handler `getTiposPendencia` em `gsystem-api.functions.ts`, adicionar `console.log` do resultado e `console.error` em caso de falha, para identificar se o endpoint retorna dados, retorna vazio, ou dá erro de autenticação.
 
-**2. Tornar a categoria obrigatória na finalização**
-- No botão "Finalizar" do dialog (linha ~2241), adicionar `disabled` quando `finalizeTipoPendencia` estiver vazio
-- Adicionar indicador visual `*` no label do campo "Tipo de pendência"
-- Se o operador clicar em Finalizar sem categoria, exibir toast de erro
+**2. Melhorar tratamento de erro no useQuery**
+- No `central.tsx`, ao invés de silenciar o erro com `catch { return [] }`, exibir o erro no console para facilitar diagnóstico.
+- Adicionar um indicador visual no Select quando a lista está vazia (ex: "Erro ao carregar tipos" ao invés de "Nenhum tipo disponível").
 
-**3. Sincronização visual**
-- Se o operador selecionar a categoria no header, ela já vem preenchida no dialog
-- Se alterar no dialog, o header reflete a mudança (mesmo state)
+**3. Normalizar resposta da API**
+- A API do GSystem pode retornar os tipos em formatos variados (array direto, objeto com propriedade `Items`, `Resultado`, etc.). Adicionar normalização robusta no handler para extrair o array correto, similar ao que já é feito em outros endpoints.
 
-### Arquivo modificado
-- `src/routes/central.tsx`
+**4. Retry automático**
+- Adicionar `retry: 2` na configuração do `useQuery` de `tipos-pendencia` para tentar novamente em caso de falha transitória de autenticação.
+
+### Arquivos modificados
+- `src/lib/gsystem-api.functions.ts` — logging e normalização de resposta em `getTiposPendencia`
+- `src/routes/central.tsx` — melhor tratamento de erro e retry no useQuery
 
 ### Detalhes técnicos
-- State `finalizeTipoPendencia` já existe — será reutilizado para o seletor inline no header
-- Query `tiposPendencia` já existe e busca de `/pendencias/tipos` do GSystem
-- O botão Finalizar no dialog receberá `disabled={!finalizeTipoPendencia || finalizeMutation.isPending}`
-- O seletor inline terá `className="w-[180px] h-8"` para caber no header sem quebrar layout
+- O endpoint `/pendencias/tipos` é chamado via `gsystemApiFetch` que faz autenticação JWT automática
+- Se a autenticação OTP estiver falhando, o token pode estar inválido — o logging ajudará a identificar
+- A normalização verificará `result`, `result.Items`, `result.Resultado`, `result.Data` antes de retornar
 
