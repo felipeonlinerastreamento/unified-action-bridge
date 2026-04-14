@@ -47,6 +47,7 @@ export function AtendimentosContent() {
     tipo: "todos",
     cliente: "",
     ramal: "todos",
+    setor: "todos",
     dataInicial: defaultStart,
     dataFinal: defaultEnd,
   });
@@ -136,6 +137,7 @@ export function AtendimentosContent() {
         pendenciaKey: pKey,
         tipo: p.Tipo ?? p.tipo ?? p.TipoPendencia ?? "",
         ramal: p.Ramal ?? p.ramal ?? "",
+        setor: p.Setor ?? p.setor ?? "",
         raw: p,
       });
     }
@@ -165,6 +167,15 @@ export function AtendimentosContent() {
     gsPendencias.forEach((p: any) => {
       const r = p.Ramal ?? p.ramal ?? p.Operador ?? p.operador ?? "";
       if (r) set.add(String(r));
+    });
+    return Array.from(set).sort();
+  }, [gsPendencias]);
+
+  const availableSetores = useMemo(() => {
+    const set = new Set<string>();
+    gsPendencias.forEach((p: any) => {
+      const s = p.Setor ?? p.setor ?? "";
+      if (s) set.add(String(s));
     });
     return Array.from(set).sort();
   }, [gsPendencias]);
@@ -202,6 +213,11 @@ export function AtendimentosContent() {
       // Ramal
       if (filters.ramal !== "todos" && item._source === "gsystem") {
         if (item.ramal !== filters.ramal) return false;
+      }
+
+      // Setor
+      if (filters.setor !== "todos" && item._source === "gsystem") {
+        if (item.setor !== filters.setor) return false;
       }
 
       return true;
@@ -273,6 +289,7 @@ export function AtendimentosContent() {
         onChange={setFilters}
         availableTipos={availableTipos}
         availableRamais={availableRamais}
+        availableSetores={availableSetores}
         onRefetch={refetchAll}
       />
 
