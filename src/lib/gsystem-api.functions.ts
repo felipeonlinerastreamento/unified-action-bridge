@@ -345,7 +345,32 @@ export const getTiposPendencia = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async () => {
     const { gsystemApiFetch } = await import("@/lib/gsystem-api.server");
-    return gsystemApiFetch("/pendencias/tipos");
+
+    // Tipos de pendência are stored as cadastros with Tipo = "Tipos_de_Pendência"
+    try {
+      const cadastros = await gsystemApiFetch("/cadastros");
+      if (Array.isArray(cadastros)) {
+        const tiposCadastro = cadastros.filter((c: any) => {
+          const tipo = (c.Tipo || "").replace(/_/g, " ").toLowerCase();
+          return tipo === "tipos de pendência" || tipo === "tipos de pendencia";
+        });
+
+        if (tiposCadastro.length > 0) {
+          console.log(`[getTiposPendencia] Found ${tiposCadastro.length} tipos de pendência`);
+          return tiposCadastro
+            .filter((c: any) => c.Ativado !== false)
+            .map((c: any) => ({
+              Key: String(c.Codigo || c.DisplayName),
+              Descricao: c.DisplayName || c.Texto || String(c.Codigo),
+            }));
+        }
+      }
+    } catch (err) {
+      console.error("[getTiposPendencia] /cadastros failed:", String(err).substring(0, 200));
+    }
+
+    console.warn("[getTiposPendencia] No tipos de pendência found in cadastros");
+    return [];
   });
 
 // PLANOS

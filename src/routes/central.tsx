@@ -331,20 +331,22 @@ function CentralPage() {
   const sectors = sectorsData || [];
 
   // Fetch tipos de pendência from GSystem
-  const { data: tiposPendencia = [] } = useQuery({
+  const { data: tiposPendencia = [], isError: tiposPendenciaError } = useQuery({
     queryKey: ["tipos-pendencia"],
     queryFn: async () => {
-      try {
-        const result = await getTiposPendencia({
-          ...await getAuthHeaders(),
-        });
-        return Array.isArray(result) ? result : [];
-      } catch {
+      const result = await getTiposPendencia({
+        ...await getAuthHeaders(),
+      });
+      console.log("[central] tiposPendencia result:", result);
+      if (!Array.isArray(result)) {
+        console.warn("[central] tiposPendencia não retornou array:", result);
         return [];
       }
+      return result;
     },
     enabled: isAuthenticated,
     staleTime: 300000,
+    retry: 2,
   });
 
   // GSystem users for transfer
@@ -1389,11 +1391,11 @@ function CentralPage() {
                       )}
                       <Select value={finalizeTipoPendencia} onValueChange={setFinalizeTipoPendencia}>
                         <SelectTrigger className="w-[180px] h-8 text-xs">
-                          <SelectValue placeholder="Categoria..." />
+                          <SelectValue placeholder={tiposPendenciaError ? "Erro ao carregar" : "Categoria..."} />
                         </SelectTrigger>
                         <SelectContent>
                           {tiposPendencia.length === 0 ? (
-                            <SelectItem value="__none" disabled>Nenhum tipo disponível</SelectItem>
+                            <SelectItem value="__none" disabled>{tiposPendenciaError ? "Erro ao carregar tipos" : "Nenhum tipo disponível"}</SelectItem>
                           ) : (
                             tiposPendencia.map((tipo: any) => (
                               <SelectItem key={tipo.Key || tipo.key || tipo.Id || tipo.id} value={tipo.Key || tipo.key || tipo.Id || tipo.id || ""}>
