@@ -350,9 +350,10 @@ export const getTiposPendencia = createServerFn({ method: "POST" })
     const endpoints = [
       "/pendencias/tipos",
       "/tipospendencia",
-      "/tipos-pendencia",
-      "/pendencia/tipos",
-      "/tipo-pendencia",
+      "/cadastros/tipopendencia",
+      "/cadastros/TipoPendencia",
+      "/cadastros/tipos-pendencia",
+      "/cadastros/tipo-pendencia",
     ];
 
     for (const endpoint of endpoints) {
@@ -360,7 +361,6 @@ export const getTiposPendencia = createServerFn({ method: "POST" })
         const result = await gsystemApiFetch(endpoint);
         console.log(`[getTiposPendencia] ${endpoint} =>`, typeof result, Array.isArray(result), JSON.stringify(result).substring(0, 500));
 
-        // Extract array from result
         const arr = extractArray(result);
         if (arr && arr.length > 0) {
           console.log(`[getTiposPendencia] Found ${arr.length} tipos from ${endpoint}`);
@@ -369,6 +369,42 @@ export const getTiposPendencia = createServerFn({ method: "POST" })
       } catch (err) {
         console.log(`[getTiposPendencia] ${endpoint} failed:`, String(err).substring(0, 200));
       }
+    }
+
+    // Fallback: try listing all cadastros and look for tipo pendencia
+    try {
+      const cadastros = await gsystemApiFetch("/cadastros");
+      console.log("[getTiposPendencia] /cadastros result:", JSON.stringify(cadastros).substring(0, 1000));
+    } catch (err) {
+      console.log("[getTiposPendencia] /cadastros failed:", String(err).substring(0, 200));
+    }
+
+    // Fallback: try fetching recent pendências and extract unique TipoPendencia values
+    try {
+      const pendencias = await gsystemApiFetch("/pendencias");
+      const arr = Array.isArray(pendencias) ? pendencias : extractArray(pendencias) || [];
+      if (arr.length > 0) {
+        const tipos = new Map<string, any>();
+        for (const p of arr) {
+          const key = p.TipoPendencia || p.tipoPendencia || p.Tipo || p.tipo;
+          if (key && typeof key === "string") {
+            tipos.set(key, { Key: key, Descricao: key });
+          } else if (key && typeof key === "object") {
+            const k = key.Key || key.key || key.Id || key.id || key.Codigo;
+            const d = key.Descricao || key.descricao || key.Nome || key.nome || key.DisplayName;
+            if (k) tipos.set(String(k), { Key: String(k), Descricao: d || String(k) });
+          }
+        }
+        if (tipos.size > 0) {
+          console.log(`[getTiposPendencia] Extracted ${tipos.size} tipos from existing pendências`);
+          return Array.from(tipos.values());
+        }
+        // Log sample pendencia structure for debugging
+        console.log("[getTiposPendencia] Sample pendencia keys:", Object.keys(arr[0]));
+        console.log("[getTiposPendencia] Sample pendencia:", JSON.stringify(arr[0]).substring(0, 1000));
+      }
+    } catch (err) {
+      console.log("[getTiposPendencia] /pendencias fallback failed:", String(err).substring(0, 200));
     }
 
     console.warn("[getTiposPendencia] No endpoint returned tipos data");
