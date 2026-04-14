@@ -237,8 +237,33 @@ export type Database = {
           },
         ]
       }
+      crm_categories: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       crm_contacts: {
         Row: {
+          category_id: string | null
           company_id: string | null
           created_at: string
           created_by: string | null
@@ -250,6 +275,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          category_id?: string | null
           company_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -261,6 +287,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          category_id?: string | null
           company_id?: string | null
           created_at?: string
           created_by?: string | null
@@ -272,6 +299,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "crm_contacts_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "crm_categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "crm_contacts_company_id_fkey"
             columns: ["company_id"]
