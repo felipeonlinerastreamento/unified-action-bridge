@@ -1,31 +1,55 @@
 
 
-## Plano: Diagnóstico e correção do campo de categoria (sincronização com GSystem)
+## Plano: Vínculo Fluxo ↔ Categoria + Ativação Automática na Finalização
 
-### Problema
-O seletor de categoria está vazio porque a chamada a `/pendencias/tipos` na API de Gestão do GSystem (`api.gsystem.com.br`) está falhando silenciosamente — o `catch` retorna `[]` sem exibir erro.
+### Resumo
+Adicionar coluna `trigger_categories` na tabela `service_flows` para vincular categorias do GSystem a fluxos. No dialog de criar/editar fluxo, exibir seletor multi-select com os tipos de pendência. Na finalização da Central, verificar se a categoria selecionada possui fluxo ativo e criar automaticamente uma instância do fluxo.
 
-### O que será feito
+### 1. Migração SQL
+- Adicionar coluna `trigger_categories text[] default '{}'` na tabela `service_flows`
 
-**1. Adicionar logging para diagnóstico**
-- No handler `getTiposPendencia` em `gsystem-api.functions.ts`, adicionar `console.log` do resultado e `console.error` em caso de falha, para identificar se o endpoint retorna dados, retorna vazio, ou dá erro de autenticação.
+### 2. FlowList — Seletor de categorias vinculadas
+**Arquivo:** `src/components/fluxo-atendimento/flow-list.tsx`
 
-**2. Melhorar tratamento de erro no useQuery**
-- No `central.tsx`, ao invés de silenciar o erro com `catch { return [] }`, exibir o erro no console para facilitar diagnóstico.
-- Adicionar um indicador visual no Select quando a lista está vazia (ex: "Erro ao carregar tipos" ao invés de "Nenhum tipo disponível").
+- Importar `getTiposPendencia` do GSystem para buscar a lista de categorias
+- No dialog de criar/editar fluxo, adicionar campo multi-select (checkboxes) com as categorias disponíveis
+- State `triggerCategories: string[]` para armazenar os Keys selecionados
+- Salvar no `insert`/`update` da mutation junto com os outros campos
+- Na tabela de fluxos, exibir badges com as categorias vinculadas
+- Atualizar o tipo `Flow` para incluir `trigger_categories: string[]`
 
-**3. Normalizar resposta da API**
-- A API do GSystem pode retornar os tipos em formatos variados (array direto, objeto com propriedade `Items`, `Resultado`, etc.). Adicionar normalização robusta no handler para extrair o array correto, similar ao que já é feito em outros endpoints.
+### 3. Central — Ativação automática do fluxo na finalização
+**Arquivo:** `src/routes/central.tsx`
 
-**4. Retry automático**
-- Adicionar `retry: 2` na configuração do `useQuery` de `tipos-pendencia` para tentar novamente em caso de falha transitória de autenticação.
+- Na `finalizeMutation`, após finalizar o ticket, consultar `service_flows` filtrando onde `trigger_categories` contém o `tipoPendencia` selecionado e `is_active = true`
+- Se encontrar um fluxo correspondente:
+  - Buscar a primeira etapa (`service_flow_steps` com `step_order` mínimo)
+  - Criar registro em `attendance_flow_instances` com `flow_id`, `attendance_id`, `current_step_id` e `status = 'em_andamento'`
+  - Criar registro em `attendance_flow_history` para registrar o início
+  - Exibir toast informando: "Fluxo '{nome}' ativado — encaminhado para {setor}"
+- Se não encontrar fluxo, finalizar normalmente como já funciona
+
+### 4. Fluxo visual
+
+```text
+Operador finaliza → Categoria: "Manutenção"
+        │
+        ▼
+  service_flows WHERE 'Manutenção' = ANY(trigger_categories) AND is_active
+        │
+   ┌────┴────┐
+   │ Encontrou│ → Cria flow_instance + history → Toast "Fluxo ativado"
+   └────┬────┘
+   │ Não encontrou │ → Finalização normal
+```
 
 ### Arquivos modificados
-- `src/lib/gsystem-api.functions.ts` — logging e normalização de resposta em `getTiposPendencia`
-- `src/routes/central.tsx` — melhor tratamento de erro e retry no useQuery
+- **Migração SQL** — `ALTER TABLE service_flows ADD COLUMN trigger_categories`
+- `src/components/fluxo-atendimento/flow-list.tsx` — multi-select de categorias no dialog + badges na tabela
+- `src/routes/central.tsx` — lógica de verificação e ativação de fluxo na finalização
 
 ### Detalhes técnicos
-- O endpoint `/pendencias/tipos` é chamado via `gsystemApiFetch` que faz autenticação JWT automática
-- Se a autenticação OTP estiver falhando, o token pode estar inválido — o logging ajudará a identificar
-- A normalização verificará `result`, `result.Items`, `result.Resultado`, `result.Data` antes de retornar
+- A query do fluxo usará `.contains('trigger_categories', [tipoPendencia])` do Supabase JS
+- O `getTiposPendencia` será chamado via `useQuery` no FlowList para popular o seletor
+- O tipo `Flow` e o tipo do Supabase serão atualizados automaticamente após a migração
 
