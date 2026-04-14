@@ -255,6 +255,55 @@ function CentralPage() {
   const gsystemUsers = openChatsData?.users || [];
   const onlineAgents = gsystemUsers.filter((u: any) => u.status === "ONLINE").length;
 
+  // Fetch SLA rules for time-based coloring
+  const { data: slaRules = [] } = useQuery({
+    queryKey: ["sla-rules"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("attendance_sla_rules")
+        .select("*")
+        .eq("is_active", true);
+      return data || [];
+    },
+    enabled: isAuthenticated,
+    staleTime: 60000,
+  });
+
+  // Helper to get SLA color based on total service time in minutes
+  const getSlaColor = useCallback((chat: ChatItem) => {
+    const totalSeconds = (chat.timeInManual || 0) + (chat.timeInWaiting || 0) + (chat.timeInAutomatic || 0) + (chat.timeInOutOfHour || 0);
+    const totalMinutes = totalSeconds / 60;
+
+    // Find matching SLA rule for the chat's sector
+    const sectorName = chat.currentSector?.description || "";
+    const rule = slaRules.find((r) => r.sector_name === sectorName) || slaRules[0];
+
+    if (!rule) {
+      // Default colors if no rule configured
+      if (totalMinutes <= 5) return { bg: "#22c55e", text: "text-green-700", label: "green" };
+      if (totalMinutes <= 15) return { bg: "#eab308", text: "text-yellow-700", label: "yellow" };
+      if (totalMinutes <= 30) return { bg: "#f97316", text: "text-orange-700", label: "orange" };
+      return { bg: "#ef4444", text: "text-red-700", label: "red" };
+    }
+
+    if (totalMinutes <= rule.green_limit_minutes) return { bg: rule.green_color, text: "", label: "green" };
+    if (totalMinutes <= rule.yellow_limit_minutes) return { bg: rule.yellow_color, text: "", label: "yellow" };
+    if (totalMinutes <= rule.orange_limit_minutes) return { bg: rule.orange_color, text: "", label: "orange" };
+    return { bg: rule.red_color, text: "", label: "red" };
+  }, [slaRules]);
+
+  const formatServiceTime = (chat: ChatItem) => {
+    const totalSeconds = (chat.timeInManual || 0) + (chat.timeInWaiting || 0) + (chat.timeInAutomatic || 0) + (chat.timeInOutOfHour || 0);
+    const mins = Math.floor(totalSeconds / 60);
+    const secs = Math.round(totalSeconds % 60);
+    if (mins >= 60) {
+      const hrs = Math.floor(mins / 60);
+      const remMins = mins % 60;
+      return `${hrs}h${remMins > 0 ? ` ${remMins}m` : ""}`;
+    }
+    return mins > 0 ? `${mins}m ${secs}s` : `${secs}s`;
+  };
+
   // Fetch sectors for filters
   const { data: sectorsData } = useQuery({
     queryKey: ["gsystem-sectors", selectedChannelId],
