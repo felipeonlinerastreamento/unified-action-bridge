@@ -10,6 +10,7 @@ import {
   Building2,
   UserPlus,
   Bot,
+  PhoneCall,
 } from "lucide-react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
