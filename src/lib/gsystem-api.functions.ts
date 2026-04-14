@@ -613,9 +613,8 @@ export const createPendenciaFromAtendimento = createServerFn({ method: "POST" })
         ].filter(Boolean).join("\n"),
       };
 
-      if (data.tipoPendencia) {
-        pendenciaBody.TipoPendencia = data.tipoPendencia;
-      }
+      // TipoPendencia is required by GSystem API - default to "186" (Assuntos Diversos) if not provided
+      pendenciaBody.TipoPendencia = data.tipoPendencia || "186";
 
       if (data.status) {
         pendenciaBody.Situacao = data.status;
