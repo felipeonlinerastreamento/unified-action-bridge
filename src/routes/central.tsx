@@ -194,6 +194,7 @@ function CentralPage() {
   const [changingCompany, setChangingCompany] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const aiChatEndRef = useRef<HTMLDivElement>(null);
+  const lastIdentFormSeedRef = useRef<string>("");
   const queryClient = useQueryClient();
 
   // AI Assistant state
@@ -526,19 +527,23 @@ function CentralPage() {
   const [identTab, setIdentTab] = useState<"vincular" | "subcliente" | "crm">("vincular");
   const [identForm, setIdentForm] = useState({ name: "", phone: "", email: "", notes: "", companyId: "" });
 
-  // Reset form when chat changes or chatDetail loads
+  // Seed identification form only once per selected chat to avoid resets during polling
   useEffect(() => {
-    if (chatDetail) {
-      setIdentForm({
-        name: chatDetail?.contact?.name || chatDetail?.description || "",
-        phone: contactPhone || "",
-        email: "",
-        notes: "",
-        companyId: "",
-      });
-      setIdentTab("vincular");
-      setChangingCompany(false);
-    }
+    if (!selectedChatId || !chatDetail) return;
+
+    const seedKey = `${selectedChatId}:${contactPhone}`;
+    if (lastIdentFormSeedRef.current === seedKey) return;
+
+    setIdentForm({
+      name: chatDetail.contact?.name || chatDetail.description || "",
+      phone: contactPhone || "",
+      email: "",
+      notes: "",
+      companyId: "",
+    });
+    setIdentTab("vincular");
+    setChangingCompany(false);
+    lastIdentFormSeedRef.current = seedKey;
   }, [selectedChatId, chatDetail, contactPhone]);
 
   const getSelectedCompany = (selectedValue: string) => {
