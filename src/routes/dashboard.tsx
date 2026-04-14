@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
+import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { AppLayout } from "@/components/app-layout";
@@ -9,7 +9,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Progress } from "@/components/ui/progress";
 import { supabase } from "@/integrations/supabase/client";
 import {
   MessageSquare, Clock, CheckCircle, AlertTriangle, Package, Headphones,
@@ -24,7 +23,6 @@ function DashboardPage() {
   const { isAuthenticated, isLoading, hasRole } = useAuth();
   const isAdmin = hasRole("admin") || hasRole("gestor");
 
-  // Tickets data
   const { data: ticketStats } = useQuery({
     queryKey: ["dashboard-ticket-stats"],
     queryFn: async () => {
@@ -37,7 +35,6 @@ function DashboardPage() {
     refetchInterval: 30000,
   });
 
-  // Profiles for operator names
   const { data: profiles = [] } = useQuery({
     queryKey: ["dashboard-profiles"],
     queryFn: async () => {
@@ -47,7 +44,6 @@ function DashboardPage() {
     enabled: isAuthenticated && isAdmin,
   });
 
-  // Inventory data
   const { data: inventoryStats } = useQuery({
     queryKey: ["dashboard-inventory"],
     queryFn: async () => {
@@ -59,7 +55,6 @@ function DashboardPage() {
     enabled: isAuthenticated,
   });
 
-  // Inventory categories
   const { data: invCategories = [] } = useQuery({
     queryKey: ["dashboard-inv-categories"],
     queryFn: async () => {
@@ -69,7 +64,6 @@ function DashboardPage() {
     enabled: isAuthenticated,
   });
 
-  // Auto tickets (stock alerts)
   const { data: stockAlerts = [] } = useQuery({
     queryKey: ["dashboard-stock-alerts"],
     queryFn: async () => {
@@ -83,7 +77,6 @@ function DashboardPage() {
     enabled: isAuthenticated,
   });
 
-  // SLA rules for breach detection
   const { data: slaRules = [] } = useQuery({
     queryKey: ["dashboard-sla-rules"],
     queryFn: async () => {
@@ -96,9 +89,40 @@ function DashboardPage() {
     enabled: isAuthenticated,
   });
 
+  const tickets = ticketStats || [];
+  const inventory = inventoryStats || [];
+
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+
+  const openTickets = tickets.filter((t) => t.status === "aberto");
+  const inProgressTickets = tickets.filter((t) => t.status === "em_andamento");
+  const closedToday = tickets.filter(
+    (t) => t.status === "finalizado" && t.closed_at && new Date(t.closed_at) >= today
+  );
+  const allClosed = tickets.filter((t) => t.status === "finalizado" && t.closed_at);
+
+  const avgTime = allClosed.length > 0
+    ? allClosed.reduce((acc, t) => {
+        const start = new Date(t.created_at).getTime();
+        const end = new Date(t.closed_at!).getTime();
+        return acc + (end - start) / 60000;
+      }, 0) / allClosed.length
+    : 0;
+
+  const formatDuration = (mins: number) => {
+    if (mins < 1) return "< 1 min";
+    if (mins < 60) return `${Math.round(mins)} min`;
+    const h = Math.floor(mins / 60);
+    const m = Math.round(mins % 60);
+    return `${h}h ${m}m`;
+  };
+
   const profileMap = Object.fromEntries(profiles.map((p) => [p.user_id, p.name]));
   const operatorStats = getOperatorStats(tickets, profileMap);
 
+  const availableItems = inventory.filter((i) => i.status === "disponivel");
+  const linkedItems = inventory.filter((i) => i.status === "vinculado");
   const catMap = Object.fromEntries(invCategories.map((c) => [c.id, c.name]));
   const inventoryByCategory = getInventoryByCategory(inventory, catMap);
 
@@ -157,92 +181,6 @@ function DashboardPage() {
 
   if (!isAuthenticated) return null;
 
-  const tickets = ticketStats || [];
-  const inventory = inventoryStats || [];
-
-  // Compute metrics
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-
-  const openTickets = tickets.filter((t) => t.status === "aberto");
-  const inProgressTickets = tickets.filter((t) => t.status === "em_andamento");
-  const closedToday = tickets.filter(
-    (t) => t.status === "finalizado" && t.closed_at && new Date(t.closed_at) >= today
-  );
-  const allClosed = tickets.filter((t) => t.status === "finalizado" && t.closed_at);
-
-  // Avg service time (minutes)
-  const avgTime = allClosed.length > 0
-    ? allClosed.reduce((acc, t) => {
-        const start = new Date(t.created_at).getTime();
-        const end = new Date(t.closed_at!).getTime();
-        return acc + (end - start) / 60000;
-      }, 0) / allClosed.length
-    : 0;
-
-  const formatDuration = (mins: number) => {
-    if (mins < 1) return "< 1 min";
-    if (mins < 60) return `${Math.round(mins)} min`;
-    const h = Math.floor(mins / 60);
-    const m = Math.round(mins % 60);
-    return `${h}h ${m}m`;
-  };
-
-  // Operator stats
-  const profileMap = Object.fromEntries(profiles.map((p) => [p.user_id, p.name]));
-  const operatorStats = getOperatorStats(tickets, profileMap);
-
-  // Inventory stats
-  const availableItems = inventory.filter((i) => i.status === "disponivel");
-  const linkedItems = inventory.filter((i) => i.status === "vinculado");
-  const catMap = Object.fromEntries(invCategories.map((c) => [c.id, c.name]));
-  const inventoryByCategory = getInventoryByCategory(inventory, catMap);
-
-  // Operator with longest average service time
-  const operatorLongestTime = useMemo(() => {
-    if (operatorStats.length === 0) return null;
-    return operatorStats.reduce((a, b) => a.avgTime > b.avgTime ? a : b);
-  }, [operatorStats]);
-
-  // SLA breach analysis
-  const slaBreach = useMemo(() => {
-    const defaultLimitMinutes = 60;
-    const sectorLimits: Record<string, number> = {};
-    for (const rule of slaRules) {
-      sectorLimits[rule.sector_name] = rule.red_limit_minutes;
-    }
-    const breached: any[] = [];
-    const onTime: any[] = [];
-    for (const t of tickets) {
-      if (!t.closed_at) continue;
-      const durationMins = (new Date(t.closed_at).getTime() - new Date(t.created_at).getTime()) / 60000;
-      const limit = (t.sector && sectorLimits[t.sector]) ? sectorLimits[t.sector] : defaultLimitMinutes;
-      if (durationMins > limit) {
-        breached.push({ ...t, durationMins, limitMins: limit });
-      } else {
-        onTime.push(t);
-      }
-    }
-    const byOperator: Record<string, number> = {};
-    for (const b of breached) {
-      const uid = b.opened_by || "sem_operador";
-      const name = profileMap[uid] || uid.slice(0, 8);
-      byOperator[name] = (byOperator[name] || 0) + 1;
-    }
-    const byCategory: Record<string, number> = {};
-    for (const b of breached) {
-      const cat = b.category || "Sem categoria";
-      byCategory[cat] = (byCategory[cat] || 0) + 1;
-    }
-    return {
-      breached,
-      onTime,
-      totalClosed: breached.length + onTime.length,
-      byOperator: Object.entries(byOperator).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
-      byCategory: Object.entries(byCategory).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
-    };
-  }, [tickets, slaRules, profileMap]);
-
   return (
     <AppLayout>
       <div className="space-y-6">
@@ -290,6 +228,9 @@ function DashboardPage() {
               </TabsTrigger>
               <TabsTrigger value="operadores" className="gap-1">
                 <Users className="h-4 w-4" /> Operadores
+              </TabsTrigger>
+              <TabsTrigger value="sla" className="gap-1">
+                <AlertOctagon className="h-4 w-4" /> SLA
               </TabsTrigger>
               <TabsTrigger value="equipamentos" className="gap-1">
                 <Monitor className="h-4 w-4" /> Equipamentos
@@ -387,30 +328,191 @@ function DashboardPage() {
                 </CardContent>
               </Card>
 
-              {operatorStats.length > 0 && (
+              <div className="grid gap-4 md:grid-cols-2">
+                {/* Operator Highlight - best efficiency */}
+                {operatorStats.length > 0 && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <TrendingUp className="h-4 w-4" /> Operador Destaque
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      {(() => {
+                        const best = operatorStats.reduce((a, b) => a.efficiency > b.efficiency ? a : b);
+                        return (
+                          <div className="flex items-center gap-4">
+                            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-lg">
+                              {best.name.charAt(0).toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="font-semibold text-foreground">{best.name}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {best.closed} finalizados · {best.efficiency}% eficiência · Média {formatDuration(best.avgTime)}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                      })()}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Operator with longest avg time */}
+                {operatorLongestTime && operatorLongestTime.avgTime > 0 && (
+                  <Card className="border-destructive/30">
+                    <CardHeader>
+                      <CardTitle className="text-base flex items-center gap-2">
+                        <Timer className="h-4 w-4 text-destructive" /> Maior Tempo Médio
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex items-center gap-4">
+                        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive font-bold text-lg">
+                          {operatorLongestTime.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-foreground">{operatorLongestTime.name}</p>
+                          <p className="text-sm text-muted-foreground">
+                            Tempo médio: <span className="font-semibold text-destructive">{formatDuration(operatorLongestTime.avgTime)}</span>
+                            {" · "}{operatorLongestTime.closed} finalizados · {operatorLongestTime.efficiency}% eficiência
+                          </p>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </TabsContent>
+
+            {/* SLA Tab */}
+            <TabsContent value="sla" className="space-y-4 mt-4">
+              <div className="grid gap-4 md:grid-cols-3">
+                <MetricCard
+                  label="Dentro do SLA"
+                  value={String(slaBreach.onTime.length)}
+                  icon={CheckCircle}
+                />
+                <MetricCard
+                  label="Estourou SLA"
+                  value={String(slaBreach.breached.length)}
+                  icon={AlertOctagon}
+                />
+                <MetricCard
+                  label="Taxa de Estouro"
+                  value={slaBreach.totalClosed > 0
+                    ? `${Math.round((slaBreach.breached.length / slaBreach.totalClosed) * 100)}%`
+                    : "—"}
+                  icon={AlertTriangle}
+                />
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                {/* SLA breach by operator - bar chart */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-base flex items-center gap-2">
-                      <TrendingUp className="h-4 w-4" /> Operador Destaque
+                      <AlertOctagon className="h-4 w-4 text-destructive" /> Estouros por Operador
                     </CardTitle>
+                    <CardDescription>Atendimentos que ultrapassaram o tempo limite do SLA</CardDescription>
                   </CardHeader>
                   <CardContent>
-                    {(() => {
-                      const best = operatorStats.reduce((a, b) => a.efficiency > b.efficiency ? a : b);
-                      return (
-                        <div className="flex items-center gap-4">
-                          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary font-bold text-lg">
-                            {best.name.charAt(0).toUpperCase()}
-                          </div>
-                          <div>
-                            <p className="font-semibold text-foreground">{best.name}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {best.closed} finalizados · {best.efficiency}% eficiência · Média {formatDuration(best.avgTime)}
-                            </p>
-                          </div>
-                        </div>
-                      );
-                    })()}
+                    {slaBreach.byOperator.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-6">Nenhum estouro de SLA registrado.</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {slaBreach.byOperator.map((op) => {
+                          const maxCount = slaBreach.byOperator[0]?.count || 1;
+                          const pct = Math.round((op.count / maxCount) * 100);
+                          return (
+                            <div key={op.name} className="space-y-1">
+                              <div className="flex justify-between text-sm">
+                                <span className="font-medium">{op.name}</span>
+                                <span className="text-destructive font-semibold">{op.count} estouro(s)</span>
+                              </div>
+                              <div className="h-2 rounded-full bg-muted overflow-hidden">
+                                <div className="h-full rounded-full bg-destructive" style={{ width: `${pct}%` }} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                {/* SLA breach by category */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <BarChart3 className="h-4 w-4 text-destructive" /> Estouros por Categoria
+                    </CardTitle>
+                    <CardDescription>Distribuição por tipo de atendimento</CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {slaBreach.byCategory.length === 0 ? (
+                      <p className="text-sm text-muted-foreground text-center py-6">Nenhum estouro de SLA registrado.</p>
+                    ) : (
+                      <div className="space-y-3">
+                        {slaBreach.byCategory.map((cat) => {
+                          const maxCount = slaBreach.byCategory[0]?.count || 1;
+                          const pct = Math.round((cat.count / maxCount) * 100);
+                          return (
+                            <div key={cat.name} className="space-y-1">
+                              <div className="flex justify-between text-sm">
+                                <span className="font-medium">{cat.name}</span>
+                                <span className="text-destructive font-semibold">{cat.count}</span>
+                              </div>
+                              <div className="h-2 rounded-full bg-muted overflow-hidden">
+                                <div className="h-full rounded-full bg-destructive/80" style={{ width: `${pct}%` }} />
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Recent SLA breaches table */}
+              {slaBreach.breached.length > 0 && (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-base">Últimos Estouros de SLA</CardTitle>
+                    <CardDescription>Atendimentos finalizados acima do tempo limite</CardDescription>
+                  </CardHeader>
+                  <CardContent className="p-0">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Contato</TableHead>
+                          <TableHead>Categoria</TableHead>
+                          <TableHead className="text-center">Limite</TableHead>
+                          <TableHead className="text-center">Duração Real</TableHead>
+                          <TableHead className="text-center">Excedido</TableHead>
+                          <TableHead>Operador</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {slaBreach.breached.slice(0, 15).map((b: any) => (
+                          <TableRow key={b.id}>
+                            <TableCell className="font-medium text-sm">{b.contact_name || b.attendance_id}</TableCell>
+                            <TableCell className="text-sm">{b.category || "—"}</TableCell>
+                            <TableCell className="text-center text-sm">{formatDuration(b.limitMins)}</TableCell>
+                            <TableCell className="text-center text-sm font-medium text-destructive">
+                              {formatDuration(b.durationMins)}
+                            </TableCell>
+                            <TableCell className="text-center text-sm">
+                              <Badge variant="destructive" className="text-xs">
+                                +{formatDuration(b.durationMins - b.limitMins)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-sm">{profileMap[b.opened_by] || "—"}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   </CardContent>
                 </Card>
               )}
