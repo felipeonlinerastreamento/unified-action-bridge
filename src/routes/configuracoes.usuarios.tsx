@@ -611,6 +611,29 @@ function UsuariosConfigPage() {
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* ========== Reset Password Dialog ========== */}
+      <Dialog open={resetDialogOpen} onOpenChange={setResetDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Redefinir Senha</DialogTitle>
+            <DialogDescription>Defina uma nova senha para <strong>{resetUserNameLabel}</strong>.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <Label>Nova Senha</Label>
+              <Input type="password" value={resetPassword} onChange={(e) => setResetPassword(e.target.value)} placeholder="Mínimo 6 caracteres" />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setResetDialogOpen(false)}>Cancelar</Button>
+              <Button onClick={() => resetMutation.mutate()} disabled={resetMutation.isPending || resetPassword.length < 6}>
+                {resetMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+                Redefinir Senha
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* ========== Link GSystem Dialog ========== */}
       <Dialog open={linkDialogOpen} onOpenChange={setLinkDialogOpen}>
         <DialogContent>
