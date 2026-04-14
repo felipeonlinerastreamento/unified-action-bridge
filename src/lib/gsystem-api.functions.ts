@@ -341,7 +341,13 @@ export const cancelarPendencia = createServerFn({ method: "POST" })
     return gsystemApiFetch(`/pendencias/${encodeURIComponent(data.key)}/cancelar`, "PUT");
   });
 
-// ============================================================
+export const getTiposPendencia = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => {
+    const { gsystemApiFetch } = await import("@/lib/gsystem-api.server");
+    return gsystemApiFetch("/pendencias/tipos");
+  });
+
 // PLANOS
 // ============================================================
 
