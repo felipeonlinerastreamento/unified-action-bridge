@@ -55,6 +55,7 @@ const configSubItems = [
   { title: "Fluxo de Atendimento", url: "/configuracoes/fluxo-atendimento", icon: GitBranch },
   { title: "Estoque", url: "/configuracoes/estoque", icon: Boxes },
   { title: "Assistente IA", url: "/configuracoes/assistente-ia", icon: Bot },
+  { title: "Encaminhamento", url: "/configuracoes/encaminhamento", icon: ArrowRightLeft },
   { title: "Usuários", url: "/configuracoes/usuarios", icon: UserCog },
 ];
 
