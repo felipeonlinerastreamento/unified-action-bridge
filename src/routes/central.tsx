@@ -405,6 +405,7 @@ function CentralPage() {
   const [identModalDismissed, setIdentModalDismissed] = useState<Record<string, boolean>>({});
   const showIdentModal = isUnidentified && !!selectedChatId && !identModalDismissed[selectedChatId];
 
+
   // Identification modal form state
   const [identTab, setIdentTab] = useState<"vincular" | "subcliente" | "crm">("vincular");
   const [identForm, setIdentForm] = useState({ name: "", phone: "", email: "", notes: "", companyId: "" });
@@ -447,12 +448,13 @@ function CentralPage() {
         ...await getAuthHeaders(),
       });
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("Sub-cliente cadastrado com sucesso");
       setIdentModalDismissed((prev) => ({ ...prev, [selectedChatId]: true }));
       queryClient.invalidateQueries({ queryKey: ["sub-client-lookup"] });
       queryClient.invalidateQueries({ queryKey: ["company-lookup"] });
-      refetchTicket();
+      await refetchTicket();
+      retryPendenciaCreation();
     },
     onError: (err: any) => toast.error(err?.message || "Erro ao cadastrar sub-cliente"),
   });
@@ -476,12 +478,13 @@ function CentralPage() {
         ...await getAuthHeaders(),
       });
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("Contato CRM cadastrado com sucesso");
       setIdentModalDismissed((prev) => ({ ...prev, [selectedChatId]: true }));
       queryClient.invalidateQueries({ queryKey: ["crm-contact-lookup"] });
       queryClient.invalidateQueries({ queryKey: ["company-lookup"] });
-      refetchTicket();
+      await refetchTicket();
+      retryPendenciaCreation();
     },
     onError: (err: any) => toast.error(err?.message || "Erro ao cadastrar contato CRM"),
   });
@@ -502,11 +505,12 @@ function CentralPage() {
         ...await getAuthHeaders(),
       });
     },
-    onSuccess: () => {
+    onSuccess: async () => {
       toast.success("Número vinculado à empresa");
       setIdentModalDismissed((prev) => ({ ...prev, [selectedChatId]: true }));
       queryClient.invalidateQueries({ queryKey: ["company-lookup"] });
-      refetchTicket();
+      await refetchTicket();
+      retryPendenciaCreation();
     },
     onError: (err: any) => toast.error(err?.message || "Erro ao vincular"),
   });
@@ -527,7 +531,47 @@ function CentralPage() {
     enabled: !!selectedChatId && isAuthenticated,
   });
 
-  // Auto-create ticket when chat is selected and no ticket exists
+  // Helper: retry pendência creation after client identification
+  const retryPendenciaCreation = useCallback(async () => {
+    const ticket = currentTicket;
+    if (!ticket || ticket.pendencia_key || !selectedChatId) return;
+    try {
+      const authHeaders = await getAuthHeaders();
+      const { data: freshTicket } = await supabase
+        .from("service_tickets")
+        .select("*")
+        .eq("id", ticket.id)
+        .single();
+      if (!freshTicket || freshTicket.pendencia_key) return;
+
+      const pendResult = await createPendenciaFromAtendimento({
+        data: {
+          attendanceId: selectedChatId,
+          contactPhone: contactPhone || undefined,
+          contactName: chatDetail?.contact?.name || chatDetail?.description || undefined,
+          companyId: freshTicket.company_id || undefined,
+          plate: freshTicket.plate || ticketPlate || undefined,
+        },
+        ...authHeaders,
+      });
+
+      if (pendResult?.success && pendResult.pendenciaKey) {
+        await supabase
+          .from("service_tickets")
+          .update({ pendencia_key: pendResult.pendenciaKey } as any)
+          .eq("id", ticket.id);
+        console.log("[Retry] Pendência created:", pendResult.pendenciaKey);
+        toast.success("Pendência criada no GSystem");
+        refetchTicket();
+      } else {
+        console.warn("[Retry] Pendência creation failed:", pendResult?.message);
+      }
+    } catch (err: any) {
+      console.error("[Retry] Error creating pendência:", err.message);
+    }
+  }, [currentTicket, selectedChatId, contactPhone, chatDetail, ticketPlate, getAuthHeaders, refetchTicket]);
+
+
   const createTicketMutation = useMutation({
     mutationFn: async () => {
       if (!selectedChatId || !chatDetail) return;
@@ -707,18 +751,50 @@ function CentralPage() {
   const finalizeMutation = useMutation({
     mutationFn: async (notes?: string) => {
       if (currentTicket) {
-        // Conclude pendência in GSystem if exists
-        if ((currentTicket as any).pendencia_key) {
+        let pendenciaKey = currentTicket.pendencia_key;
+
+        // If no pendência exists yet, create one now before finalizing
+        if (!pendenciaKey) {
           try {
             const authHeaders = await getAuthHeaders();
-            await concluirPendencia({
+            const pendResult = await createPendenciaFromAtendimento({
               data: {
-                pendenciaKey: (currentTicket as any).pendencia_key,
+                attendanceId: selectedChatId,
+                contactPhone: contactPhone || undefined,
+                contactName: chatDetail?.contact?.name || chatDetail?.description || undefined,
+                companyId: currentTicket.company_id || undefined,
+                plate: currentTicket.plate || ticketPlate || undefined,
                 notes: notes || undefined,
               },
               ...authHeaders,
             });
-            console.log("[Finalize] Pendência concluded:", (currentTicket as any).pendencia_key);
+            if (pendResult?.success && pendResult.pendenciaKey) {
+              pendenciaKey = pendResult.pendenciaKey;
+              await supabase
+                .from("service_tickets")
+                .update({ pendencia_key: pendenciaKey } as any)
+                .eq("id", currentTicket.id);
+              console.log("[Finalize] Created missing pendência:", pendenciaKey);
+            } else {
+              console.warn("[Finalize] Could not create pendência:", pendResult?.message);
+            }
+          } catch (err: any) {
+            console.error("[Finalize] Error creating pendência on finalize:", err.message);
+          }
+        }
+
+        // Conclude pendência in GSystem if exists
+        if (pendenciaKey) {
+          try {
+            const authHeaders = await getAuthHeaders();
+            await concluirPendencia({
+              data: {
+                pendenciaKey: pendenciaKey,
+                notes: notes || undefined,
+              },
+              ...authHeaders,
+            });
+            console.log("[Finalize] Pendência concluded:", pendenciaKey);
           } catch (err: any) {
             console.warn("[Finalize] Error concluding pendência:", err.message);
           }
