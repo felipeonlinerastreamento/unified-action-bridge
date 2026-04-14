@@ -1,0 +1,125 @@
+import { useMemo } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Building2, Clock } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+
+interface TicketKanbanViewProps {
+  tickets: any[];
+  onSelect: (ticket: any) => void;
+  onRefetch: () => void;
+}
+
+const COLUMNS = [
+  { key: "aberto", label: "Aberto", color: "border-t-amber-500" },
+  { key: "em_andamento", label: "Em Andamento", color: "border-t-blue-500" },
+  { key: "reaberto", label: "Reaberto", color: "border-t-orange-500" },
+  { key: "finalizado", label: "Finalizado", color: "border-t-emerald-500" },
+];
+
+function getPriorityColor(p: string) {
+  if (p === "urgente") return "bg-red-500";
+  if (p === "alta") return "bg-orange-500";
+  if (p === "media") return "bg-amber-500";
+  return "bg-emerald-500";
+}
+
+export function TicketKanbanView({ tickets, onSelect, onRefetch }: TicketKanbanViewProps) {
+  const grouped = useMemo(() => {
+    const map: Record<string, any[]> = {};
+    for (const col of COLUMNS) map[col.key] = [];
+    for (const t of tickets) {
+      const s = t.status || "aberto";
+      if (map[s]) map[s].push(t);
+      else if (map["aberto"]) map["aberto"].push(t);
+    }
+    return map;
+  }, [tickets]);
+
+  const handleDrop = async (ticketId: string, newStatus: string) => {
+    const update: any = { status: newStatus, updated_at: new Date().toISOString() };
+    if (newStatus === "finalizado") update.closed_at = new Date().toISOString();
+    if (newStatus === "reaberto") {
+      update.reopened_at = new Date().toISOString();
+      update.closed_at = null;
+    }
+    if (newStatus === "aberto" || newStatus === "em_andamento") {
+      update.closed_at = null;
+    }
+
+    const { error } = await supabase.from("service_tickets").update(update).eq("id", ticketId);
+    if (error) {
+      toast.error("Erro ao atualizar status");
+      return;
+    }
+
+    await supabase.from("ticket_comments").insert({
+      ticket_id: ticketId,
+      content: `Status alterado para ${newStatus}`,
+      comment_type: "status_change",
+    });
+
+    toast.success("Status atualizado");
+    onRefetch();
+  };
+
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      {COLUMNS.map((col) => (
+        <div
+          key={col.key}
+          className="space-y-2"
+          onDragOver={(e) => e.preventDefault()}
+          onDrop={(e) => {
+            e.preventDefault();
+            const ticketId = e.dataTransfer.getData("ticketId");
+            if (ticketId) handleDrop(ticketId, col.key);
+          }}
+        >
+          <Card className={`border-t-4 ${col.color}`}>
+            <CardHeader className="p-3 pb-1">
+              <CardTitle className="text-sm flex items-center justify-between">
+                {col.label}
+                <Badge variant="secondary" className="text-xs">{grouped[col.key]?.length || 0}</Badge>
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-2 space-y-2 min-h-[100px]">
+              {(grouped[col.key] || []).map((t: any) => (
+                <Card
+                  key={t.id}
+                  draggable
+                  onDragStart={(e) => e.dataTransfer.setData("ticketId", t.id)}
+                  className="cursor-grab hover:bg-accent/50 transition-colors active:cursor-grabbing"
+                  onClick={() => onSelect(t)}
+                >
+                  <CardContent className="p-3 space-y-1">
+                    <div className="flex items-center gap-2">
+                      <div className={`w-2 h-2 rounded-full ${getPriorityColor(t.priority || "media")}`} />
+                      <span className="text-xs font-medium truncate flex-1">
+                        {t.contact_name || t.attendance_id || "Ticket"}
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      {t.companies?.name && (
+                        <span className="flex items-center gap-1 truncate">
+                          <Building2 className="h-3 w-3" /> {t.companies.name}
+                        </span>
+                      )}
+                    </div>
+                    {t.created_at && (
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Clock className="h-3 w-3" />
+                        {new Date(t.created_at).toLocaleDateString("pt-BR")}
+                      </span>
+                    )}
+                  </CardContent>
+                </Card>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
+      ))}
+    </div>
+  );
+}

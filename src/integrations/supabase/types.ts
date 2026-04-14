@@ -1010,7 +1010,9 @@ export type Database = {
       }
       service_tickets: {
         Row: {
+          assigned_to: string | null
           attendance_id: string
+          category: string | null
           channel_id: string | null
           closed_at: string | null
           company_id: string | null
@@ -1022,11 +1024,16 @@ export type Database = {
           opened_by: string | null
           pendencia_key: string | null
           plate: string | null
+          priority: Database["public"]["Enums"]["ticket_priority"]
+          reopened_at: string | null
+          sector: string | null
           status: Database["public"]["Enums"]["service_ticket_status"]
           updated_at: string
         }
         Insert: {
+          assigned_to?: string | null
           attendance_id: string
+          category?: string | null
           channel_id?: string | null
           closed_at?: string | null
           company_id?: string | null
@@ -1038,11 +1045,16 @@ export type Database = {
           opened_by?: string | null
           pendencia_key?: string | null
           plate?: string | null
+          priority?: Database["public"]["Enums"]["ticket_priority"]
+          reopened_at?: string | null
+          sector?: string | null
           status?: Database["public"]["Enums"]["service_ticket_status"]
           updated_at?: string
         }
         Update: {
+          assigned_to?: string | null
           attendance_id?: string
+          category?: string | null
           channel_id?: string | null
           closed_at?: string | null
           company_id?: string | null
@@ -1054,6 +1066,9 @@ export type Database = {
           opened_by?: string | null
           pendencia_key?: string | null
           plate?: string | null
+          priority?: Database["public"]["Enums"]["ticket_priority"]
+          reopened_at?: string | null
+          sector?: string | null
           status?: Database["public"]["Enums"]["service_ticket_status"]
           updated_at?: string
         }
@@ -1114,6 +1129,76 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ticket_assignments: {
+        Row: {
+          assigned_by: string | null
+          assigned_to: string | null
+          created_at: string
+          id: string
+          sector_name: string | null
+          ticket_id: string
+        }
+        Insert: {
+          assigned_by?: string | null
+          assigned_to?: string | null
+          created_at?: string
+          id?: string
+          sector_name?: string | null
+          ticket_id: string
+        }
+        Update: {
+          assigned_by?: string | null
+          assigned_to?: string | null
+          created_at?: string
+          id?: string
+          sector_name?: string | null
+          ticket_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_assignments_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "service_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ticket_comments: {
+        Row: {
+          comment_type: string
+          content: string
+          created_at: string
+          id: string
+          ticket_id: string
+          user_id: string | null
+        }
+        Insert: {
+          comment_type?: string
+          content?: string
+          created_at?: string
+          id?: string
+          ticket_id: string
+          user_id?: string | null
+        }
+        Update: {
+          comment_type?: string
+          content?: string
+          created_at?: string
+          id?: string
+          ticket_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_comments_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "service_tickets"
             referencedColumns: ["id"]
           },
         ]
@@ -1195,7 +1280,12 @@ export type Database = {
       flow_instance_status: "em_andamento" | "pausado" | "finalizado"
       inventory_status: "disponivel" | "vinculado"
       movement_type: "entrada" | "saida"
-      service_ticket_status: "aberto" | "em_andamento" | "finalizado"
+      service_ticket_status:
+        | "aberto"
+        | "em_andamento"
+        | "finalizado"
+        | "reaberto"
+      ticket_priority: "baixa" | "media" | "alta" | "urgente"
       ticket_status: "aberto" | "resolvido"
     }
     CompositeTypes: {
@@ -1328,7 +1418,13 @@ export const Constants = {
       flow_instance_status: ["em_andamento", "pausado", "finalizado"],
       inventory_status: ["disponivel", "vinculado"],
       movement_type: ["entrada", "saida"],
-      service_ticket_status: ["aberto", "em_andamento", "finalizado"],
+      service_ticket_status: [
+        "aberto",
+        "em_andamento",
+        "finalizado",
+        "reaberto",
+      ],
+      ticket_priority: ["baixa", "media", "alta", "urgente"],
       ticket_status: ["aberto", "resolvido"],
     },
   },
