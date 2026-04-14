@@ -1453,6 +1453,93 @@ function CentralPage() {
                       </div>
                     </ScrollArea>
                   </TabsContent>
+
+                  {/* IA Tab */}
+                  <TabsContent value="ia" className="flex-1 overflow-hidden m-0 flex flex-col">
+                    {/* Service time badge */}
+                    {serviceTimeMinutes !== null && (
+                      <div className={`px-3 py-2 border-b flex items-center gap-2 text-xs ${serviceTimeMinutes > 15 ? "bg-destructive/10 text-destructive" : "bg-muted"}`}>
+                        <Timer className="h-3 w-3" />
+                        <span className="font-medium">Tempo de atendimento: {serviceTimeMinutes} min</span>
+                        {serviceTimeMinutes > 15 && <span>⚠️ Acima do ideal</span>}
+                      </div>
+                    )}
+
+                    {/* AI Messages */}
+                    <ScrollArea className="flex-1">
+                      <div className="p-3 space-y-3">
+                        {aiMessages.length === 0 && (
+                          <div className="text-center py-8 text-muted-foreground">
+                            <Bot className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                            <p className="text-xs">Assistente IA comercial</p>
+                            <p className="text-[10px] mt-1">
+                              Clique em "Sugerir" ou pergunte sobre a conversa
+                            </p>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="mt-3 text-xs"
+                              onClick={() => handleAiSend("Com base na conversa atual, forneça sugestões de como devo proceder comercialmente.")}
+                              disabled={aiLoading || messages.length === 0}
+                            >
+                              <Bot className="h-3 w-3 mr-1" /> Pedir Sugestão
+                            </Button>
+                          </div>
+                        )}
+                        {aiMessages.map((msg, i) => (
+                          <div key={i} className={`flex ${msg.role === "user" ? "justify-end" : "justify-start"}`}>
+                            <div className={`max-w-[90%] rounded-lg px-3 py-2 text-xs ${msg.role === "user" ? "bg-primary text-primary-foreground" : "bg-muted"}`}>
+                              {msg.role === "assistant" ? (
+                                <div className="prose prose-xs max-w-none dark:prose-invert [&_p]:text-xs [&_li]:text-xs [&_h1]:text-sm [&_h2]:text-xs [&_h3]:text-xs">
+                                  <ReactMarkdown>{msg.content}</ReactMarkdown>
+                                </div>
+                              ) : (
+                                <p>{msg.content}</p>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                        {aiLoading && (
+                          <div className="flex justify-start">
+                            <div className="bg-muted rounded-lg px-3 py-2">
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                            </div>
+                          </div>
+                        )}
+                        <div ref={aiChatEndRef} />
+                      </div>
+                    </ScrollArea>
+
+                    {/* AI Input */}
+                    <div className="border-t p-2 shrink-0 space-y-1">
+                      <div className="flex gap-1">
+                        <Input
+                          value={aiInput}
+                          onChange={(e) => setAiInput(e.target.value)}
+                          placeholder="Pergunte à IA..."
+                          className="text-xs h-8"
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter" && !e.shiftKey) {
+                              e.preventDefault();
+                              handleAiSend();
+                            }
+                          }}
+                        />
+                        <Button size="icon" className="h-8 w-8 shrink-0" onClick={() => handleAiSend()} disabled={aiLoading || !aiInput.trim()}>
+                          <Send className="h-3 w-3" />
+                        </Button>
+                      </div>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="w-full text-[10px] h-6"
+                        onClick={() => handleAiSend("Com base na conversa atual, forneça sugestões de como devo proceder comercialmente.")}
+                        disabled={aiLoading || messages.length === 0}
+                      >
+                        <Bot className="h-3 w-3 mr-1" /> Sugerir abordagem
+                      </Button>
+                    </div>
+                  </TabsContent>
                 </Tabs>
               )}
             </div>
