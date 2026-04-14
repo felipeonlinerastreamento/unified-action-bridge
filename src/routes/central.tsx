@@ -730,16 +730,66 @@ function CentralPage() {
           <div className="grid grid-cols-12 gap-3 h-[calc(100vh-12rem)]">
             {/* Chat list */}
             <div className="col-span-3 border rounded-lg flex flex-col bg-card overflow-hidden">
-              <div className="p-3 border-b">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    placeholder="Buscar conversa..."
-                    className="pl-9"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
-                  />
+              <div className="p-3 border-b space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar nome ou telefone..."
+                      className="pl-9"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+                  <Button variant="outline" size="icon" onClick={() => setShowFilters(!showFilters)} className={showFilters ? "bg-accent" : ""}>
+                    <Filter className="h-4 w-4" />
+                  </Button>
+                  <Button size="icon" onClick={() => setShowNewChatModal(true)} title="Nova conversa">
+                    <Plus className="h-4 w-4" />
+                  </Button>
                 </div>
+                {showFilters && (
+                  <div className="space-y-2 pt-1">
+                    <Select value={statusFilter} onValueChange={setStatusFilter}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Status" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos os status</SelectItem>
+                        <SelectItem value="0">Automático</SelectItem>
+                        <SelectItem value="1">Aguardando</SelectItem>
+                        <SelectItem value="2">Em atendimento</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={sectorFilter} onValueChange={setSectorFilter}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Setor" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos os setores</SelectItem>
+                        {sectors.map((s: any) => (
+                          <SelectItem key={s.id} value={s.id}>{s.name || s.description}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <Select value={agentFilter} onValueChange={setAgentFilter}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder="Agente" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos os agentes</SelectItem>
+                        {gsystemUsers.map((u: any) => (
+                          <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    {(statusFilter !== "all" || sectorFilter !== "all" || agentFilter !== "all") && (
+                      <Button variant="ghost" size="sm" className="w-full text-xs h-7" onClick={() => { setStatusFilter("all"); setSectorFilter("all"); setAgentFilter("all"); }}>
+                        <X className="h-3 w-3 mr-1" /> Limpar filtros
+                      </Button>
+                    )}
+                  </div>
+                )}
               </div>
               <ScrollArea className="flex-1">
                 {chatsLoading && allChats.length === 0 ? (
