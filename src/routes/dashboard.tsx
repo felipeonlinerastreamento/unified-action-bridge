@@ -30,7 +30,7 @@ function DashboardPage() {
     queryFn: async () => {
       const { data: tickets } = await supabase
         .from("service_tickets")
-        .select("id, status, created_at, closed_at, opened_by, company_id, contact_name, attendance_id");
+        .select("id, status, created_at, closed_at, opened_by, assigned_to, sector, company_id, contact_name, attendance_id, category");
       return tickets || [];
     },
     enabled: isAuthenticated,
