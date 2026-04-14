@@ -450,10 +450,8 @@ function CentralPage() {
     enabled: !!contactPhone && !companyLookup && !subClientLookup && isAuthenticated,
   });
 
-  // Identification modal state
-  const isUnidentified = !!chatDetail && !!contactPhone && !companyLookup && !subClientLookup && !crmContactLookup;
+  // Identification modal dismissed state
   const [identModalDismissed, setIdentModalDismissed] = useState<Record<string, boolean>>({});
-  const showIdentModal = isUnidentified && !!selectedChatId && !identModalDismissed[selectedChatId];
 
 
   // Identification modal form state
@@ -582,7 +580,10 @@ function CentralPage() {
     enabled: !!selectedChatId && isAuthenticated,
   });
 
-  // Helper: retry pendência creation after client identification
+  // Identification modal — only for contacts without any existing link
+  const isUnidentified = !!chatDetail && !!contactPhone && !companyLookup && !subClientLookup && !crmContactLookup && !currentTicket?.company_id;
+  const showIdentModal = isUnidentified && !!selectedChatId && !identModalDismissed[selectedChatId];
+
   const retryPendenciaCreation = useCallback(async () => {
     const ticket = currentTicket;
     if (!ticket || ticket.pendencia_key || !selectedChatId) return;
