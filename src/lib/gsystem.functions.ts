@@ -89,10 +89,14 @@ export const listAllOpenChats = createServerFn({ method: "POST" })
         }
       }
 
-      // 1) Fetch all pages for OPEN and PENDING statuses
+      // 1) Fetch all pages for all active statuses
       await Promise.allSettled([
         fetchAllPages("OPEN"),
         fetchAllPages("PENDING"),
+        fetchAllPages("IN_PROGRESS"),
+        fetchAllPages("MANUAL"),
+        fetchAllPages("WAITING"),
+        fetchAllPages("AUTOMATIC"),
       ]);
 
       // 2) Also get agent-assigned chats via /users
