@@ -147,6 +147,51 @@ function DashboardPage() {
   const catMap = Object.fromEntries(invCategories.map((c) => [c.id, c.name]));
   const inventoryByCategory = getInventoryByCategory(inventory, catMap);
 
+  // Operator with longest average service time
+  const operatorLongestTime = useMemo(() => {
+    if (operatorStats.length === 0) return null;
+    return operatorStats.reduce((a, b) => a.avgTime > b.avgTime ? a : b);
+  }, [operatorStats]);
+
+  // SLA breach analysis
+  const slaBreach = useMemo(() => {
+    const defaultLimitMinutes = 60;
+    const sectorLimits: Record<string, number> = {};
+    for (const rule of slaRules) {
+      sectorLimits[rule.sector_name] = rule.red_limit_minutes;
+    }
+    const breached: any[] = [];
+    const onTime: any[] = [];
+    for (const t of tickets) {
+      if (!t.closed_at) continue;
+      const durationMins = (new Date(t.closed_at).getTime() - new Date(t.created_at).getTime()) / 60000;
+      const limit = (t.sector && sectorLimits[t.sector]) ? sectorLimits[t.sector] : defaultLimitMinutes;
+      if (durationMins > limit) {
+        breached.push({ ...t, durationMins, limitMins: limit });
+      } else {
+        onTime.push(t);
+      }
+    }
+    const byOperator: Record<string, number> = {};
+    for (const b of breached) {
+      const uid = b.opened_by || "sem_operador";
+      const name = profileMap[uid] || uid.slice(0, 8);
+      byOperator[name] = (byOperator[name] || 0) + 1;
+    }
+    const byCategory: Record<string, number> = {};
+    for (const b of breached) {
+      const cat = b.category || "Sem categoria";
+      byCategory[cat] = (byCategory[cat] || 0) + 1;
+    }
+    return {
+      breached,
+      onTime,
+      totalClosed: breached.length + onTime.length,
+      byOperator: Object.entries(byOperator).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
+      byCategory: Object.entries(byCategory).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
+    };
+  }, [tickets, slaRules, profileMap]);
+
   return (
     <AppLayout>
       <div className="space-y-6">
