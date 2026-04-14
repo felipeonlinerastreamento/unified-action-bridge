@@ -875,13 +875,15 @@ function CentralPage() {
                         <ArrowRightLeft className="h-4 w-4" />
                       </Button>
                       <Button
-                        variant="ghost"
-                        size="icon"
+                        variant="outline"
+                        size="sm"
                         title="Finalizar"
-                        onClick={() => finalizeMutation.mutate()}
+                        onClick={() => setShowFinalizeConfirm(true)}
                         disabled={finalizeMutation.isPending}
+                        className="gap-1"
                       >
                         <CheckCircle2 className="h-4 w-4" />
+                        Finalizar
                       </Button>
                     </div>
                   </div>
