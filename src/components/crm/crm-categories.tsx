@@ -12,13 +12,14 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2, Loader2, Tag } from "lucide-react";
+import { Plus, Edit, Trash2, Loader2, Tag, Search } from "lucide-react";
 
 export function CrmCategories() {
   const queryClient = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState({ name: "", description: "" });
+  const [searchTerm, setSearchTerm] = useState("");
 
   const { data: categories = [], isLoading } = useQuery({
     queryKey: ["crm-categories"],
@@ -84,11 +85,25 @@ export function CrmCategories() {
     setDialogOpen(true);
   };
 
+  const filteredCategories = categories.filter((cat: any) =>
+    cat.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    cat.description?.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
+        <div className="relative flex-1 max-w-xs">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Buscar categoria..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="pl-8"
+          />
+        </div>
         <p className="text-sm text-muted-foreground">
-          {categories.length} categoria(s) cadastrada(s)
+          {filteredCategories.length} categoria(s)
         </p>
         <Button onClick={openNew} size="sm">
           <Plus className="h-4 w-4 mr-1" /> Nova Categoria
@@ -112,15 +127,15 @@ export function CrmCategories() {
                     <Loader2 className="h-5 w-5 animate-spin mx-auto" />
                   </TableCell>
                 </TableRow>
-              ) : categories.length === 0 ? (
+              ) : filteredCategories.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
                     <Tag className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                    Nenhuma categoria cadastrada.
+                    {searchTerm ? "Nenhuma categoria encontrada." : "Nenhuma categoria cadastrada."}
                   </TableCell>
                 </TableRow>
               ) : (
-                categories.map((cat: any) => (
+                filteredCategories.map((cat: any) => (
                   <TableRow key={cat.id}>
                     <TableCell className="font-medium">{cat.name}</TableCell>
                     <TableCell className="text-sm text-muted-foreground">{cat.description || "—"}</TableCell>
