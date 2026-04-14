@@ -1609,7 +1609,7 @@ function CentralPage() {
                       <History className="h-3 w-3 mr-1" /> Histórico
                     </TabsTrigger>
                     <TabsTrigger value="ia" className="flex-1 text-xs">
-                      <Bot className="h-3 w-3 mr-1" /> IA
+                      <Bot className="h-3 w-3 mr-1" /> Supervisor IA
                     </TabsTrigger>
                   </TabsList>
 
@@ -1964,21 +1964,21 @@ function CentralPage() {
                     {/* AI Messages */}
                     <ScrollArea className="flex-1">
                       <div className="p-3 space-y-3">
-                        {aiMessages.length === 0 && (
+                        {aiMessages.length === 0 && !aiLoading && (
                           <div className="text-center py-8 text-muted-foreground">
                             <Bot className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                            <p className="text-xs">Assistente IA comercial</p>
+                            <p className="text-xs font-medium">Supervisor IA</p>
                             <p className="text-[10px] mt-1">
-                              Clique em "Sugerir" ou pergunte sobre a conversa
+                              A IA analisa automaticamente a conversa e instrui você sobre como proceder.
                             </p>
                             <Button
                               size="sm"
                               variant="outline"
                               className="mt-3 text-xs"
-                              onClick={() => handleAiSend("Com base na conversa atual, forneça sugestões de como devo proceder comercialmente.")}
+                              onClick={() => handleAiSend("Analise a conversa atual e dê instruções diretas sobre como devo proceder agora.")}
                               disabled={aiLoading || messages.length === 0}
                             >
-                              <Bot className="h-3 w-3 mr-1" /> Pedir Sugestão
+                              <Bot className="h-3 w-3 mr-1" /> Analisar Conversa
                             </Button>
                           </div>
                         )}
@@ -2029,10 +2029,10 @@ function CentralPage() {
                         size="sm"
                         variant="ghost"
                         className="w-full text-[10px] h-6"
-                        onClick={() => handleAiSend("Com base na conversa atual, forneça sugestões de como devo proceder comercialmente.")}
+                        onClick={() => handleAiSend("Reavalie a conversa atualizada e dê novas instruções diretas sobre como proceder.")}
                         disabled={aiLoading || messages.length === 0}
                       >
-                        <Bot className="h-3 w-3 mr-1" /> Sugerir abordagem
+                        <Bot className="h-3 w-3 mr-1" /> Reanalisar conversa
                       </Button>
                     </div>
                   </TabsContent>
