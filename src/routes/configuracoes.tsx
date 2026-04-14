@@ -82,13 +82,6 @@ function GsystemConnectionTest() {
     setTesting(false);
   };
 
-  useEffect(() => {
-    if (!autoTested) {
-      setAutoTested(true);
-      handleTest();
-    }
-  }, []);
-
   const statusColor = testing
     ? "border-muted bg-muted/30"
     : result?.success
