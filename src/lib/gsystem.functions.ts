@@ -83,21 +83,73 @@ export const listAllOpenChats = createServerFn({ method: "POST" })
             if (items.length < 200) break;
             page++;
           } catch (e) {
-            console.warn(`[listAllOpenChats] Failed fetching ${status} page ${page}:`, e);
+            console.warn(`[listAllOpenChats] Failed fetching status=${status} page ${page}:`, String(e).substring(0, 150));
             break;
           }
         }
       }
 
-      // 1) Fetch all pages for all active statuses
-      await Promise.allSettled([
+      // Try multiple payload formats - the API may accept status as top-level or inside data
+      async function fetchAllPagesAlt(statusValue: number | string) {
+        let page = 1;
+        const maxPages = 10;
+        while (page <= maxPages) {
+          try {
+            // Try sending status at top level (not inside data)
+            const result = await gsystemFetch("/chats/list", channel.token, "POST", {
+              status: statusValue,
+              page,
+              pageSize: 200,
+            });
+            const items = Array.isArray(result) ? result : result?.data || [];
+            for (const chat of items) {
+              if (chat.attendanceId) {
+                chatMap.set(chat.attendanceId, chat);
+              }
+            }
+            if (items.length < 200) break;
+            page++;
+          } catch (e) {
+            console.warn(`[listAllOpenChats] Alt fetch status=${statusValue} page ${page}:`, String(e).substring(0, 150));
+            break;
+          }
+        }
+      }
+
+      // 1) Try with nested data format first (original)
+      const nestedResults = await Promise.allSettled([
         fetchAllPages("OPEN"),
         fetchAllPages("PENDING"),
-        fetchAllPages("IN_PROGRESS"),
-        fetchAllPages("MANUAL"),
-        fetchAllPages("WAITING"),
-        fetchAllPages("AUTOMATIC"),
       ]);
+
+      // If nested format returned nothing, try flat payload with numeric statuses
+      if (chatMap.size === 0) {
+        console.log("[listAllOpenChats] Nested format returned 0 chats, trying flat payload with numeric statuses...");
+        await Promise.allSettled([
+          fetchAllPagesAlt(0), // Automático
+          fetchAllPagesAlt(1), // Aguardando
+          fetchAllPagesAlt(2), // Em atendimento
+        ]);
+      }
+
+      // Also try fetching without any status filter as a fallback
+      if (chatMap.size === 0) {
+        console.log("[listAllOpenChats] Still 0 chats, trying without status filter...");
+        try {
+          const result = await gsystemFetch("/chats/list", channel.token, "POST", {
+            page: 1,
+            pageSize: 200,
+          });
+          const items = Array.isArray(result) ? result : result?.data || [];
+          for (const chat of items) {
+            if (chat.attendanceId) {
+              chatMap.set(chat.attendanceId, chat);
+            }
+          }
+        } catch (e) {
+          console.warn("[listAllOpenChats] No-filter fetch failed:", String(e).substring(0, 150));
+        }
+      }
 
       // 2) Also get agent-assigned chats via /users
       const users = await gsystemFetch("/users", channel.token);
