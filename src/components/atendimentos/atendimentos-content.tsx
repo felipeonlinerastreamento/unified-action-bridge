@@ -11,6 +11,7 @@ import { TicketKanbanView } from "./ticket-kanban-view";
 import { TicketCalendarView } from "./ticket-calendar-view";
 import { TicketDetailPanel } from "./ticket-detail-panel";
 import { TicketCreateDialog } from "./ticket-create-dialog";
+import { TicketReminderNotifications } from "./ticket-reminder-notifications";
 
 export function AtendimentosContent() {
   const [viewMode, setViewMode] = useState<"lista" | "kanban" | "calendario">("lista");
@@ -39,6 +40,7 @@ export function AtendimentosContent() {
 
   return (
     <div className="space-y-6">
+      <TicketReminderNotifications />
       {/* Header */}
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>

@@ -28,6 +28,7 @@ import {
   Clock,
   MessageSquare,
 } from "lucide-react";
+import { TicketReminderSection } from "./ticket-reminder-section";
 
 interface TicketDetailPanelProps {
   ticket: any | null;
@@ -325,6 +326,9 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
                 </Button>
               </div>
             </div>
+
+            {/* Reminders */}
+            <TicketReminderSection ticketId={ticket.id} userId={userId} />
 
             {/* Forward to user */}
             <div className="space-y-2">
