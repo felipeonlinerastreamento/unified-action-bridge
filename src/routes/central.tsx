@@ -33,6 +33,10 @@ import {
   listSectors,
   listGSystemUsers,
 } from "@/lib/gsystem.functions";
+import {
+  createPendenciaFromAtendimento,
+  concluirPendencia,
+} from "@/lib/gsystem-api.functions";
 import { toast } from "sonner";
 import {
   Send,
