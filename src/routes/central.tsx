@@ -32,6 +32,7 @@ import {
   getChannelStatus,
   listSectors,
   listGSystemUsers,
+  transferChat,
 } from "@/lib/gsystem.functions";
 import {
   createPendenciaFromAtendimento,
