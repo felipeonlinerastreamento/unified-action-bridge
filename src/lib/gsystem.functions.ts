@@ -207,7 +207,8 @@ export const sendText = createServerFn({ method: "POST" })
   .handler(async ({ data, context }): Promise<Record<string, any>> => {
     const channel = await getChannelToken(context.supabase, data.channelId);
     return gsystemFetch("/chats/send-text", channel.token, "POST", {
-      data: { attendanceId: data.chatId, text: data.message },
+      attendanceId: data.chatId,
+      text: data.message,
     });
   });
 
