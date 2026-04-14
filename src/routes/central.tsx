@@ -41,6 +41,7 @@ import {
   getClientes,
   getTiposPendencia,
 } from "@/lib/gsystem-api.functions";
+import { SubClientLinker } from "@/components/central/sub-client-linker";
 import {
   createCrmContactWithCompany,
   createSubClientWithParentCompany,
