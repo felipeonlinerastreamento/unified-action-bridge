@@ -64,26 +64,36 @@ export const listAllOpenChats = createServerFn({ method: "POST" })
     try {
       const chatMap = new Map<string, any>();
 
-      // 1) Try /chats/list for OPEN and PENDING statuses
-      const [openResult, pendingResult] = await Promise.allSettled([
-        gsystemFetch("/chats/list", channel.token, "POST", {
-          data: { status: "OPEN", page: 1, pageSize: 100 },
-        }),
-        gsystemFetch("/chats/list", channel.token, "POST", {
-          data: { status: "PENDING", page: 1, pageSize: 100 },
-        }),
-      ]);
-
-      for (const result of [openResult, pendingResult]) {
-        if (result.status === "fulfilled" && result.value) {
-          const items = Array.isArray(result.value) ? result.value : result.value.data || [];
-          for (const chat of items) {
-            if (chat.attendanceId) {
-              chatMap.set(chat.attendanceId, chat);
+      // Helper to fetch all pages of a given status
+      async function fetchAllPages(status: string) {
+        let page = 1;
+        const maxPages = 10;
+        while (page <= maxPages) {
+          try {
+            const result = await gsystemFetch("/chats/list", channel.token, "POST", {
+              data: { status, page, pageSize: 200 },
+            });
+            const items = Array.isArray(result) ? result : result?.data || [];
+            for (const chat of items) {
+              if (chat.attendanceId) {
+                chatMap.set(chat.attendanceId, chat);
+              }
             }
+            // If fewer items than page size, no more pages
+            if (items.length < 200) break;
+            page++;
+          } catch (e) {
+            console.warn(`[listAllOpenChats] Failed fetching ${status} page ${page}:`, e);
+            break;
           }
         }
       }
+
+      // 1) Fetch all pages for OPEN and PENDING statuses
+      await Promise.allSettled([
+        fetchAllPages("OPEN"),
+        fetchAllPages("PENDING"),
+      ]);
 
       // 2) Also get agent-assigned chats via /users
       const users = await gsystemFetch("/users", channel.token);
@@ -121,10 +131,12 @@ export const listAllOpenChats = createServerFn({ method: "POST" })
         }
       }
 
+      // Keep all non-finalized chats (don't filter by numeric status since API may return different formats)
       const chats = Array.from(chatMap.values()).filter(
-        (c) => c && c.attendanceId && (c.status === undefined || c.status === 0 || c.status === 1 || c.status === 2 || c.status === "OPEN" || c.status === "PENDING")
+        (c) => c && c.attendanceId && c.status !== 3 && c.status !== "CLOSED" && c.status !== "FINISHED"
       );
 
+      console.log(`[listAllOpenChats] Found ${chatMap.size} total, ${chats.length} after filter`);
       return { chats, users: userList, total: chats.length };
     } catch (err) {
       console.error("[listAllOpenChats] Error:", err);
