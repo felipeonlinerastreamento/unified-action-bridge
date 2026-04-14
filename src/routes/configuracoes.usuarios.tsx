@@ -495,6 +495,11 @@ function UsuariosConfigPage() {
                               </Button>
                             )}
                             {!isSelf && (
+                              <Button size="sm" variant="outline" onClick={() => handleOpenReset(profile)} title="Redefinir Senha">
+                                <KeyRound className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                            {!isSelf && (
                               <Button size="sm" variant="ghost" onClick={() => handleOpenDelete(profile)} title="Excluir">
                                 <Trash2 className="h-3.5 w-3.5 text-destructive" />
                               </Button>
