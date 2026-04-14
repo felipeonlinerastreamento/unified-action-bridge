@@ -185,6 +185,11 @@ function CentralPage() {
   const [newChatSector, setNewChatSector] = useState("");
   const [showFinalizeConfirm, setShowFinalizeConfirm] = useState(false);
   const [finalizeNotes, setFinalizeNotes] = useState("");
+  const [finalizeStatus, setFinalizeStatus] = useState<string>("A resolver");
+  const [finalizeTipoPendencia, setFinalizeTipoPendencia] = useState<string>("");
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [transferSectorId, setTransferSectorId] = useState<string>("");
+  const [transferUserId, setTransferUserId] = useState<string>("");
   const [changingCompany, setChangingCompany] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const aiChatEndRef = useRef<HTMLDivElement>(null);
