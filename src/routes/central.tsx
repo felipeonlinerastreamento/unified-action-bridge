@@ -331,20 +331,22 @@ function CentralPage() {
   const sectors = sectorsData || [];
 
   // Fetch tipos de pendência from GSystem
-  const { data: tiposPendencia = [] } = useQuery({
+  const { data: tiposPendencia = [], isError: tiposPendenciaError } = useQuery({
     queryKey: ["tipos-pendencia"],
     queryFn: async () => {
-      try {
-        const result = await getTiposPendencia({
-          ...await getAuthHeaders(),
-        });
-        return Array.isArray(result) ? result : [];
-      } catch {
+      const result = await getTiposPendencia({
+        ...await getAuthHeaders(),
+      });
+      console.log("[central] tiposPendencia result:", result);
+      if (!Array.isArray(result)) {
+        console.warn("[central] tiposPendencia não retornou array:", result);
         return [];
       }
+      return result;
     },
     enabled: isAuthenticated,
     staleTime: 300000,
+    retry: 2,
   });
 
   // GSystem users for transfer

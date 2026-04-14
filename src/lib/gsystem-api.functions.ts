@@ -345,7 +345,29 @@ export const getTiposPendencia = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async () => {
     const { gsystemApiFetch } = await import("@/lib/gsystem-api.server");
-    return gsystemApiFetch("/pendencias/tipos");
+    const result = await gsystemApiFetch("/pendencias/tipos");
+    console.log("[getTiposPendencia] Raw result type:", typeof result, "isArray:", Array.isArray(result));
+    console.log("[getTiposPendencia] Raw result:", JSON.stringify(result).substring(0, 1000));
+
+    // Normalize: the API may return the array directly, or wrapped in an object
+    if (Array.isArray(result)) return result;
+    if (result && typeof result === "object") {
+      // Try common wrapper keys
+      for (const key of ["Items", "items", "Resultado", "resultado", "Data", "data", "Tipos", "tipos", "Result", "result", "Records", "records"]) {
+        if (Array.isArray(result[key])) {
+          console.log(`[getTiposPendencia] Found array in result.${key} with ${result[key].length} items`);
+          return result[key];
+        }
+      }
+      // If object has numeric keys or is iterable, try Object.values
+      const values = Object.values(result);
+      if (values.length > 0 && values.every((v: any) => v && typeof v === "object" && !Array.isArray(v))) {
+        console.log(`[getTiposPendencia] Treating object values as array, ${values.length} items`);
+        return values;
+      }
+    }
+    console.warn("[getTiposPendencia] Could not extract array from result, returning empty");
+    return [];
   });
 
 // PLANOS
