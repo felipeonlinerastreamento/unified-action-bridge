@@ -303,9 +303,29 @@ function UsuariosConfigPage() {
     onError: (e: Error) => toast.error(`Erro ao desvincular: ${e.message}`),
   });
 
+  const sectorAssignMutation = useMutation({
+    mutationFn: async ({ userId, sectorIds }: { userId: string; sectorIds: string[] }) => {
+      // Remove all existing assignments
+      await supabase.from("user_sector_assignments").delete().eq("user_id", userId);
+      // Insert new ones
+      if (sectorIds.length > 0) {
+        const rows = sectorIds.map((sid) => ({ user_id: userId, sector_id: sid }));
+        const { error } = await supabase.from("user_sector_assignments").insert(rows);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      toast.success("Setores do usuário atualizados");
+      queryClient.invalidateQueries({ queryKey: ["user-sector-assignments"] });
+      setSectorDialogOpen(false);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   // ========== Helpers ==========
   const getRolesForUser = (userId: string) => userRoles.filter((r) => r.user_id === userId).map((r) => r.role);
   const getLinkForUser = (userId: string) => gsystemLinks.find((l) => l.user_id === userId);
+  const getSectorsForUser = (userId: string) => userSectorAssignments.filter((a) => a.user_id === userId).map((a) => a.sector_id);
 
   const handleOpenLink = (userId: string) => {
     setSelectedUserId(userId);
