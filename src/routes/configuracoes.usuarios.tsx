@@ -128,6 +128,37 @@ function UsuariosConfigPage() {
     enabled: isAuthenticated && isAdmin,
   });
 
+  // Local sectors and assignments
+  const { data: localSectors = [] } = useQuery({
+    queryKey: ["local-sectors-active"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("sectors").select("id, name, group_id").eq("is_active", true).order("name");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: isAuthenticated && isAdmin,
+  });
+
+  const { data: sectorGroups = [] } = useQuery({
+    queryKey: ["sector-groups"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("sector_groups").select("id, name").eq("is_active", true).order("name");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: isAuthenticated && isAdmin,
+  });
+
+  const { data: userSectorAssignments = [] } = useQuery({
+    queryKey: ["user-sector-assignments"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("user_sector_assignments").select("*");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: isAuthenticated && isAdmin,
+  });
+
   const firstChannelId = channels[0]?.id;
 
   const { data: gsystemAgents = [] } = useQuery({
