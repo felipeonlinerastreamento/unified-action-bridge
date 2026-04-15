@@ -31,6 +31,7 @@ import {
   Moon, FolderTree, RefreshCw, UserPlus, Pencil, Trash2, KeyRound, Building2,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { SectorGroupsManagement } from "@/components/configuracoes/sector-groups-management";
 
 export const Route = createFileRoute("/configuracoes/usuarios")({
   component: UsuariosConfigPage,
@@ -87,7 +88,7 @@ function UsuariosConfigPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("user_id, name, avatar_url")
+        .select("user_id, name, avatar_url, group_id")
         .order("name");
       if (error) throw error;
       return data || [];
@@ -322,6 +323,18 @@ function UsuariosConfigPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const groupAssignMutation = useMutation({
+    mutationFn: async ({ userId, groupId }: { userId: string; groupId: string | null }) => {
+      const { error } = await supabase.from("profiles").update({ group_id: groupId }).eq("user_id", userId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Grupo do usuário atualizado");
+      queryClient.invalidateQueries({ queryKey: ["admin-profiles"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   // ========== Helpers ==========
   const getRolesForUser = (userId: string) => userRoles.filter((r) => r.user_id === userId).map((r) => r.role);
   const getLinkForUser = (userId: string) => gsystemLinks.find((l) => l.user_id === userId);
@@ -514,6 +527,7 @@ function UsuariosConfigPage() {
                   <TableRow>
                     <TableHead>Nome</TableHead>
                     <TableHead>Papéis</TableHead>
+                    <TableHead>Grupo</TableHead>
                     <TableHead>Setores</TableHead>
                     <TableHead>Agente GSystem</TableHead>
                     <TableHead className="w-[200px]">Ações</TableHead>
@@ -536,6 +550,22 @@ function UsuariosConfigPage() {
                               <span className="text-xs text-muted-foreground">—</span>
                             )}
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          <Select
+                            value={profile.group_id || "none"}
+                            onValueChange={(v) => groupAssignMutation.mutate({ userId: profile.user_id, groupId: v === "none" ? null : v })}
+                          >
+                            <SelectTrigger className="h-8 w-[140px] text-xs">
+                              <SelectValue placeholder="Sem grupo" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none">Sem grupo</SelectItem>
+                              {sectorGroups.map((g) => (
+                                <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-1 flex-wrap">
@@ -593,6 +623,8 @@ function UsuariosConfigPage() {
             )}
           </CardContent>
         </Card>
+
+        <SectorGroupsManagement />
       </div>
 
       {/* ========== Create User Dialog ========== */}

@@ -855,6 +855,7 @@ export type Database = {
         Row: {
           avatar_url: string | null
           created_at: string
+          group_id: string | null
           id: string
           name: string
           updated_at: string
@@ -863,6 +864,7 @@ export type Database = {
         Insert: {
           avatar_url?: string | null
           created_at?: string
+          group_id?: string | null
           id?: string
           name?: string
           updated_at?: string
@@ -871,12 +873,21 @@ export type Database = {
         Update: {
           avatar_url?: string | null
           created_at?: string
+          group_id?: string | null
           id?: string
           name?: string
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "profiles_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "sector_groups"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       sector_groups: {
         Row: {
