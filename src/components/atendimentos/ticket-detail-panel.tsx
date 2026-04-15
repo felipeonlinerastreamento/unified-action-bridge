@@ -230,6 +230,11 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
             <DetailRow label="Empresa" value={ticket.companies?.name} />
             <DetailRow label="Placa" value={ticket.plate} />
             <DetailRow label="Setor" value={ticket.sector} />
+            <DetailRow label="Responsável" value={
+              ticket.assigned_to
+                ? (profiles.find((p) => p.user_id === ticket.assigned_to)?.name || "Atribuído")
+                : null
+            } />
             <DetailRow label="Categoria" value={ticket.category} />
             <DetailRow label="Observações" value={ticket.notes} />
             <DetailRow label="Criado em" value={ticket.created_at ? new Date(ticket.created_at).toLocaleString("pt-BR") : null} />
