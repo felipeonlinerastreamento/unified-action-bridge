@@ -566,6 +566,7 @@ function UsuariosConfigPage() {
                               ))}
                             </SelectContent>
                           </Select>
+                        </TableCell>
                         <TableCell>
                           <div className="flex gap-1 flex-wrap">
                             {userSectors.length > 0 ? userSectors.map((sid) => {
