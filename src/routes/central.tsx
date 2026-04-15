@@ -464,29 +464,57 @@ function CentralPage() {
   // Company lookup by contact phone
   const contactPhone = chatDetail?.contact?.number || chatDetail?.contact?.secondaryName || "";
 
+  // Helper: normalize phone to last 10-11 digits for reliable matching
+  const normalizePhone = useCallback((phone: string) => {
+    const digits = phone.replace(/\D/g, "");
+    // Brazilian phones: 10 or 11 digits (DDD + number), possibly prefixed with country code 55
+    return digits.length > 11 ? digits.slice(-11) : digits;
+  }, []);
+
+  const phonesMatch = useCallback((a: string, b: string) => {
+    const na = normalizePhone(a);
+    const nb = normalizePhone(b);
+    if (!na || !nb) return false;
+    return na === nb || na.endsWith(nb) || nb.endsWith(na);
+  }, [normalizePhone]);
+
   const { data: companyLookup } = useQuery({
     queryKey: ["company-lookup", contactPhone],
     queryFn: async () => {
       if (!contactPhone) return null;
-      // Try to match phone number (last 10-11 digits)
-      const cleanPhone = contactPhone.replace(/\D/g, "");
+      const cleanPhone = normalizePhone(contactPhone);
+
+      // 1. Check company_phones table
       const { data: phoneLinks } = await supabase
         .from("company_phones")
         .select("company_id, phone_number");
 
-      if (!phoneLinks) return null;
+      const phoneMatch = phoneLinks?.find((p) => phonesMatch(p.phone_number, contactPhone));
 
-      const match = phoneLinks.find((p) => {
-        const clean = p.phone_number.replace(/\D/g, "");
-        return clean === cleanPhone || cleanPhone.endsWith(clean) || clean.endsWith(cleanPhone);
-      });
+      // 2. If no phone link, check previous tickets with same contact_phone that have a company_id
+      let companyId = phoneMatch?.company_id;
 
-      if (!match) return null;
+      if (!companyId) {
+        const { data: prevTickets } = await supabase
+          .from("service_tickets")
+          .select("company_id, contact_phone")
+          .not("company_id", "is", null)
+          .not("contact_phone", "is", null)
+          .order("created_at", { ascending: false })
+          .limit(200);
+
+        const ticketMatch = prevTickets?.find((t) =>
+          t.contact_phone && t.company_id && phonesMatch(t.contact_phone, contactPhone)
+        );
+        companyId = ticketMatch?.company_id ?? undefined;
+      }
+
+      if (!companyId) return null;
 
       const { data: company } = await supabase
         .from("companies")
         .select("*")
-        .eq("id", match.company_id)
+        .eq("id", companyId)
         .single();
 
       return company;
@@ -499,15 +527,11 @@ function CentralPage() {
     queryKey: ["sub-client-lookup", contactPhone],
     queryFn: async () => {
       if (!contactPhone) return null;
-      const cleanPhone = contactPhone.replace(/\D/g, "");
       const { data: subClients } = await supabase
         .from("sub_clients")
         .select("*, companies(name)");
       if (!subClients) return null;
-      const match = subClients.find((s: any) => {
-        const clean = s.phone.replace(/\D/g, "");
-        return clean === cleanPhone || cleanPhone.endsWith(clean) || clean.endsWith(cleanPhone);
-      });
+      const match = subClients.find((s: any) => phonesMatch(s.phone, contactPhone));
       return match || null;
     },
     enabled: !!contactPhone && !companyLookup && isAuthenticated,
@@ -658,19 +682,15 @@ function CentralPage() {
   const { data: crmContactLookup } = useQuery({
     queryKey: ["crm-contact-lookup", contactPhone, currentTicket?.contact_phone],
     queryFn: async () => {
-      const phonesToCheck = [
-        contactPhone,
-        currentTicket?.contact_phone,
-      ].filter(Boolean).map((p) => p!.replace(/\D/g, ""));
-      if (phonesToCheck.length === 0) return null;
+      const phones = [contactPhone, currentTicket?.contact_phone].filter(Boolean) as string[];
+      if (phones.length === 0) return null;
       const { data: contacts } = await supabase
         .from("crm_contacts")
         .select("*, companies(name)");
       if (!contacts) return null;
-      const match = contacts.find((c: any) => {
-        const clean = c.phone.replace(/\D/g, "");
-        return phonesToCheck.some((p) => clean === p || p.endsWith(clean) || clean.endsWith(p));
-      });
+      const match = contacts.find((c: any) =>
+        phones.some((p) => phonesMatch(c.phone, p))
+      );
       return match || null;
     },
     enabled: (!!contactPhone || !!currentTicket?.contact_phone) && !companyLookup && !subClientLookup && isAuthenticated,
