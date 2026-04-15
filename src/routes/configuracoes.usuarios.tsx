@@ -226,13 +226,20 @@ function UsuariosConfigPage() {
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      return createUser({ data: { email: newEmail, password: newPassword, name: newName, role: newRole } });
+      const result = await createUser({ data: { email: newEmail, password: newPassword, name: newName, role: newRole } });
+      // Assign group if selected
+      if (newGroupId && newGroupId !== "none") {
+        // Wait a moment for the profile trigger to create the profile row
+        await new Promise((r) => setTimeout(r, 500));
+        await supabase.from("profiles").update({ group_id: newGroupId }).eq("user_id", (result as any)?.userId || "");
+      }
+      return result;
     },
     onSuccess: () => {
       toast.success("Usuário criado com sucesso");
       invalidateAll();
       setCreateDialogOpen(false);
-      setNewEmail(""); setNewPassword(""); setNewName(""); setNewRole("atendente");
+      setNewEmail(""); setNewPassword(""); setNewName(""); setNewRole("atendente"); setNewGroupId("none");
     },
     onError: (e: Error) => toast.error(e.message),
   });
