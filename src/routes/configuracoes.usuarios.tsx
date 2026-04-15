@@ -327,8 +327,7 @@ function UsuariosConfigPage() {
 
   const groupAssignMutation = useMutation({
     mutationFn: async ({ userId, groupId }: { userId: string; groupId: string | null }) => {
-      const { error } = await supabase.from("profiles").update({ group_id: groupId }).eq("user_id", userId);
-      if (error) throw error;
+      await updateUserGroup({ data: { targetUserId: userId, groupId } });
     },
     onSuccess: () => {
       toast.success("Grupo do usuário atualizado");
