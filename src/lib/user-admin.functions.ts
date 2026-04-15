@@ -23,12 +23,12 @@ export const createUser = createServerFn({ method: "POST" })
       password: z.string().min(6).max(128),
       name: z.string().min(1).max(255),
       role: z.enum(["admin", "gestor", "atendente"]),
+      groupId: z.string().uuid().nullable().optional(),
     }).parse
   )
   .handler(async ({ data, context }): Promise<{ userId: string }> => {
     await requireAdmin(context.supabase, context.userId);
 
-    // Create user via admin API (bypasses email confirmation)
     const { data: newUser, error } = await supabaseAdmin.auth.admin.createUser({
       email: data.email,
       password: data.password,
@@ -40,13 +40,21 @@ export const createUser = createServerFn({ method: "POST" })
     if (!newUser.user) throw new Error("Falha ao criar usuário");
 
     // The handle_new_user trigger creates profile + default 'atendente' role
-    // If the requested role is different, update it
+    // Wait for trigger to complete
+    await new Promise((r) => setTimeout(r, 500));
+
     if (data.role !== "atendente") {
-      // Wait a moment for trigger to complete
-      await new Promise((r) => setTimeout(r, 500));
       await supabaseAdmin
         .from("user_roles")
         .update({ role: data.role })
+        .eq("user_id", newUser.user.id);
+    }
+
+    // Assign group if provided
+    if (data.groupId) {
+      await supabaseAdmin
+        .from("profiles")
+        .update({ group_id: data.groupId })
         .eq("user_id", newUser.user.id);
     }
 
