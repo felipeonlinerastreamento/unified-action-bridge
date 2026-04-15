@@ -28,8 +28,9 @@ import { createUser, updateUserRole, updateUserName, deleteUser, resetUserPasswo
 import { toast } from "sonner";
 import {
   Users, Link as LinkIcon, Unlink, Loader2, Bot, Clock, Headphones,
-  Moon, FolderTree, RefreshCw, UserPlus, Pencil, Trash2, KeyRound,
+  Moon, FolderTree, RefreshCw, UserPlus, Pencil, Trash2, KeyRound, Building2,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export const Route = createFileRoute("/configuracoes/usuarios")({
   component: UsuariosConfigPage,
