@@ -666,6 +666,18 @@ function UsuariosConfigPage() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label>Grupo de Setor</Label>
+              <Select value={newGroupId} onValueChange={setNewGroupId}>
+                <SelectTrigger><SelectValue placeholder="Selecionar grupo" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sem grupo</SelectItem>
+                  {sectorGroups.map((g) => (
+                    <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>Cancelar</Button>
               <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending || !newEmail || !newPassword || !newName}>
