@@ -40,6 +40,7 @@ import { getTiposPendencia } from "@/lib/gsystem-api.functions";
 import { listSectors } from "@/lib/gsystem.functions";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, ArrowRightLeft, Loader2 } from "lucide-react";
+import { SectorsManagement } from "@/components/configuracoes/sectors-management";
 
 export const Route = createFileRoute("/configuracoes/encaminhamento")({
   component: EncaminhamentoPage,
@@ -112,7 +113,7 @@ function EncaminhamentoPage() {
   });
 
   // Fetch sectors from GSystem
-  const { data: sectors = [] } = useQuery({
+  const { data: gsystemSectors = [] } = useQuery({
     queryKey: ["sectors-config", channelId],
     queryFn: async () => {
       if (!channelId) return [];
@@ -122,6 +123,23 @@ function EncaminhamentoPage() {
     },
     enabled: isAuthenticated && !!channelId,
   });
+
+  // Fetch local sectors
+  const { data: localSectors = [] } = useQuery({
+    queryKey: ["local-sectors"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("sectors").select("*").eq("is_active", true).order("name");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: isAuthenticated,
+  });
+
+  // Merge GSystem + local sectors
+  const allSectors = [
+    ...gsystemSectors.map((s: any) => ({ id: s.id || s.Id, name: s.description || s.name || s.Description, source: "gsystem" })),
+    ...localSectors.map((s: any) => ({ id: s.id, name: s.name, source: "local" })),
+  ];
 
   const resetForm = () => {
     setCategoryKey("");
@@ -216,8 +234,8 @@ function EncaminhamentoPage() {
 
   const handleSectorChange = (sectorId: string) => {
     setTargetSectorId(sectorId);
-    const found = sectors.find((s: any) => (s.id || s.Id) === sectorId);
-    setTargetSectorName(found?.description || found?.name || found?.Description || sectorId);
+    const found = allSectors.find((s) => s.id === sectorId);
+    setTargetSectorName(found?.name || sectorId);
   };
 
   return (
@@ -306,6 +324,8 @@ function EncaminhamentoPage() {
           </CardContent>
         </Card>
 
+        <SectorsManagement />
+
         {/* Create/Edit Dialog */}
         <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) { setDialogOpen(false); resetForm(); } else setDialogOpen(true); }}>
           <DialogContent>
@@ -339,9 +359,9 @@ function EncaminhamentoPage() {
                     <SelectValue placeholder="Selecione o setor..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {sectors.map((s: any) => (
-                      <SelectItem key={s.id || s.Id} value={s.id || s.Id}>
-                        {s.description || s.name || s.Description}
+                    {allSectors.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name} {s.source === "local" ? "(Local)" : "(GSystem)"}
                       </SelectItem>
                     ))}
                   </SelectContent>
