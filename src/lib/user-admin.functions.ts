@@ -134,6 +134,27 @@ export const resetUserPassword = createServerFn({ method: "POST" })
     return { success: true };
   });
 
+// Update user group
+export const updateUserGroup = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    z.object({
+      targetUserId: z.string().uuid(),
+      groupId: z.string().uuid().nullable(),
+    }).parse
+  )
+  .handler(async ({ data, context }): Promise<{ success: boolean }> => {
+    await requireAdmin(context.supabase, context.userId);
+
+    const { error } = await supabaseAdmin
+      .from("profiles")
+      .update({ group_id: data.groupId })
+      .eq("user_id", data.targetUserId);
+
+    if (error) throw new Error(`Erro ao atualizar grupo: ${error.message}`);
+    return { success: true };
+  });
+
 // Delete user
 export const deleteUser = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

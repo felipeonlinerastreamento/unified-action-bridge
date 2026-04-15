@@ -24,7 +24,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { listGSystemUsers, listSectors, listAllOpenChats } from "@/lib/gsystem.functions";
-import { createUser, updateUserRole, updateUserName, deleteUser, resetUserPassword } from "@/lib/user-admin.functions";
+import { createUser, updateUserRole, updateUserName, deleteUser, resetUserPassword, updateUserGroup } from "@/lib/user-admin.functions";
 import { toast } from "sonner";
 import {
   Users, Link as LinkIcon, Unlink, Loader2, Bot, Clock, Headphones,
@@ -327,8 +327,7 @@ function UsuariosConfigPage() {
 
   const groupAssignMutation = useMutation({
     mutationFn: async ({ userId, groupId }: { userId: string; groupId: string | null }) => {
-      const { error } = await supabase.from("profiles").update({ group_id: groupId }).eq("user_id", userId);
-      if (error) throw error;
+      await updateUserGroup({ data: { targetUserId: userId, groupId } });
     },
     onSuccess: () => {
       toast.success("Grupo do usuário atualizado");
