@@ -234,8 +234,8 @@ function EncaminhamentoPage() {
 
   const handleSectorChange = (sectorId: string) => {
     setTargetSectorId(sectorId);
-    const found = sectors.find((s: any) => (s.id || s.Id) === sectorId);
-    setTargetSectorName(found?.description || found?.name || found?.Description || sectorId);
+    const found = allSectors.find((s) => s.id === sectorId);
+    setTargetSectorName(found?.name || sectorId);
   };
 
   return (
@@ -357,9 +357,9 @@ function EncaminhamentoPage() {
                     <SelectValue placeholder="Selecione o setor..." />
                   </SelectTrigger>
                   <SelectContent>
-                    {sectors.map((s: any) => (
-                      <SelectItem key={s.id || s.Id} value={s.id || s.Id}>
-                        {s.description || s.name || s.Description}
+                    {allSectors.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name} {s.source === "local" ? "(Local)" : "(GSystem)"}
                       </SelectItem>
                     ))}
                   </SelectContent>
