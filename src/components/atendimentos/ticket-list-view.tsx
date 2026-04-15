@@ -55,9 +55,9 @@ export function TicketListView({ tickets, onSelect }: TicketListViewProps) {
                   <span className="font-medium text-sm truncate">
                     {t.contact_name || t.attendance_id || "Ticket"}
                   </span>
+                  {t.category && <Badge className="text-xs bg-violet-600 text-white">{t.category}</Badge>}
                   {getStatusBadge(t.status)}
                   {getPriorityBadge(t.priority || "media")}
-                  {t.category && <Badge variant="outline" className="text-xs">{t.category}</Badge>}
                 </div>
                 <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
                   {t.companies?.name && (
