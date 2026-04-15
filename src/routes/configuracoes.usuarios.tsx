@@ -538,6 +538,15 @@ function UsuariosConfigPage() {
                           </div>
                         </TableCell>
                         <TableCell>
+                          <div className="flex gap-1 flex-wrap">
+                            {userSectors.length > 0 ? userSectors.map((sid) => {
+                              const sec = localSectors.find((s) => s.id === sid);
+                              return <Badge key={sid} variant="outline" className="text-xs">{sec?.name || "?"}</Badge>;
+                            }) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                          </div>
+                        <TableCell>
                           {link ? (
                             <div className="flex items-center gap-1.5">
                               <LinkIcon className="h-3.5 w-3.5 text-primary" />
