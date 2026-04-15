@@ -31,6 +31,7 @@ import {
   Moon, FolderTree, RefreshCw, UserPlus, Pencil, Trash2, KeyRound, Building2,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { SectorGroupsManagement } from "@/components/configuracoes/sector-groups-management";
 
 export const Route = createFileRoute("/configuracoes/usuarios")({
   component: UsuariosConfigPage,
