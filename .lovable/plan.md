@@ -1,87 +1,50 @@
 
 
-# Plano: Gestão Completa de Tickets de Atendimento
+# Plano: Replicar Fila de Atendimento do GChat
 
 ## Resumo
-Transformar a tela de Atendimentos em um sistema completo de gestão de tickets com visualizações Kanban e Calendário, comentários, encaminhamento entre setores/usuários, finalização e reabertura.
+Reformular a lista de chats na Central de Atendimento para replicar o layout do GChat, agrupando atendimentos por categoria (Automático, Aguardando, Fora de hora, Manual, Grupo) com contadores, e exibindo cada chat com avatar, nome, telefone, setor, agente responsável, horário, tags do contato, e última mensagem.
 
 ## O que será feito
 
-### 1. Evolução do Schema (Migração SQL)
+### 1. Agrupar chats por status (como no GChat)
+Os chats já possuem `status` (0=Automático, 1=Aguardando, 2=Em atendimento/Manual). Vamos criar seções colapsáveis para cada grupo:
+- **Automático** (status 0) — ícone de bot, fundo azul
+- **Aguardando** (status 1) — ícone de clock, fundo âmbar  
+- **Fora de hora** — baseado em `timeInOutOfHour > 0` e status específico
+- **Manual** (status 2) — ícone de headset, contagem de atendimentos
+- **Grupo** — chats de grupo (se disponível na API)
 
-**Novas tabelas:**
-- `ticket_comments` — comentários/histórico do ticket
-  - `id`, `ticket_id` (FK service_tickets), `user_id`, `content`, `type` (comentario|encaminhamento|status_change|sistema), `created_at`
-  - RLS: autenticados leem e criam
+Cada seção terá header clicável com ícone, nome, badge de contagem, e seta para expandir/colapsar.
 
-- `ticket_assignments` — responsáveis pelo ticket
-  - `id`, `ticket_id`, `assigned_to` (user_id), `assigned_by`, `sector_name`, `created_at`
-  - RLS: autenticados gerenciam
+### 2. Layout de cada item de chat (replicando o screenshot)
+Cada chat mostrará:
+- **Avatar** do contato (foto ou iniciais)
+- **Ícone WhatsApp** ao lado do avatar
+- **Nome do contato** + telefone formatado
+- **Setor** (badge como "Suporte", "Agendamento")
+- **Badge do agente** responsável (nome colorido à direita)
+- **Horário** da última mensagem (formato HH:mm à direita)
+- **Última mensagem** com prefixo do remetente (ex: "Paulo: aguardando*")
+- **Tags do contato** (badges como "Em Testes", "Veículo Sem Comunicação", "Outros Assuntos")
+- **Indicador de mensagens não lidas** (badge numérico)
 
-**Alterações em `service_tickets`:**
-- Adicionar coluna `priority` (enum: baixa, media, alta, urgente, default media)
-- Adicionar coluna `category` (text, nullable)
-- Adicionar coluna `assigned_to` (uuid, nullable — usuário responsável atual)
-- Adicionar coluna `sector` (text, nullable — setor atual)
-- Adicionar coluna `reopened_at` (timestamptz, nullable)
-- Adicionar novo valor ao enum `service_ticket_status`: `reaberto`
+### 3. Componente separado
+Extrair a lista de chats para `src/components/central/chat-queue-list.tsx` para manter o `central.tsx` mais organizado. O componente receberá os dados já existentes (filteredChats, gsystemUsers, etc.) via props.
 
-### 2. Componentes de Visualização
-
-**`src/components/atendimentos/ticket-kanban-view.tsx`**
-- Colunas: Aberto → Em Andamento → Finalizado (+ Reaberto)
-- Drag-and-drop entre colunas atualiza status
-- Card compacto com nome, cliente, prioridade, responsável, SLA
-
-**`src/components/atendimentos/ticket-calendar-view.tsx`**
-- Calendário mensal mostrando tickets por data de criação
-- Click no dia abre lista dos tickets daquele dia
-- Indicadores visuais de status por cor
-
-**`src/components/atendimentos/ticket-list-view.tsx`**
-- Refatoração da listagem atual (cards) como componente separado
-
-**`src/components/atendimentos/ticket-detail-panel.tsx`**
-- Painel lateral (Sheet) ao clicar em um ticket
-- Abas: Detalhes | Comentários | Histórico
-- Ações: Finalizar, Reabrir, Encaminhar (setor/usuário), Alterar Prioridade
-- Timeline de comentários com tipo (comentário, encaminhamento, mudança de status)
-- Campo para adicionar comentário
-
-### 3. Refatoração da Página Principal
-
-**`src/components/atendimentos/atendimentos-content.tsx`**
-- Tabs de visualização: Lista | Kanban | Calendário (além das tabs existentes de fonte)
-- KPIs no topo: Total Abertos, Em Andamento, Finalizados Hoje, Tempo Médio
-- Botão "Novo Ticket" para criação manual
-
-### 4. Ações nos Tickets
-
-- **Finalizar**: Muda status para `finalizado`, registra `closed_at`, cria comentário automático
-- **Reabrir**: Muda status para `reaberto`, limpa `closed_at`, registra `reopened_at`, cria comentário
-- **Encaminhar para Setor**: Atualiza `sector`, cria comentário tipo `encaminhamento`
-- **Encaminhar para Usuário**: Atualiza `assigned_to`, cria comentário tipo `encaminhamento`
-- **Comentar**: Insere em `ticket_comments` com tipo `comentario`
-
-### 5. Sugestoes Adicionais Incluídas
-
-- **Prioridade visual** (cores: verde/amarelo/laranja/vermelho)
-- **KPIs resumo** no topo da página
-- **Filtro por responsável** e por prioridade
-- **Histórico/timeline** completo de cada ticket (quem fez o quê e quando)
-- **Criação manual de ticket** (não apenas automática pela Central)
+### 4. Cores dos agentes
+Atribuir cores automáticas aos agentes para diferenciar visualmente (similar ao GChat onde cada agente tem cor distinta no badge).
 
 ## Arquivos
 
 | Ação | Arquivo |
 |------|---------|
-| Migração | SQL: enum priority, colunas em service_tickets, tabelas ticket_comments e ticket_assignments |
-| Criar | `src/components/atendimentos/ticket-kanban-view.tsx` |
-| Criar | `src/components/atendimentos/ticket-calendar-view.tsx` |
-| Criar | `src/components/atendimentos/ticket-list-view.tsx` |
-| Criar | `src/components/atendimentos/ticket-detail-panel.tsx` |
-| Criar | `src/components/atendimentos/ticket-kpis.tsx` |
-| Criar | `src/components/atendimentos/ticket-create-dialog.tsx` |
-| Editar | `src/components/atendimentos/atendimentos-content.tsx` — reestruturar com visualizações |
-| Editar | `src/components/atendimentos/atendimentos-filters.tsx` — adicionar filtros de prioridade e responsável |
+| Criar | `src/components/central/chat-queue-list.tsx` — novo componente da fila agrupada |
+| Editar | `src/routes/central.tsx` — substituir lista inline pelo novo componente |
+
+## Detalhes técnicos
+- Os dados já estão disponíveis no `ChatItem`: `status`, `contact.tags`, `currentUser`, `currentSector`, `lastMessage`, `contact.linkImage`, `contact.number`
+- O agrupamento será feito com `useMemo` filtrando `filteredChats` por `status`
+- Tags do contato vêm de `chat.contact?.tags[]`
+- Seções colapsáveis usando estado local (`expandedGroups`)
 
