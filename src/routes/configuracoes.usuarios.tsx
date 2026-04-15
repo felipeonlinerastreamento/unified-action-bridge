@@ -28,8 +28,9 @@ import { createUser, updateUserRole, updateUserName, deleteUser, resetUserPasswo
 import { toast } from "sonner";
 import {
   Users, Link as LinkIcon, Unlink, Loader2, Bot, Clock, Headphones,
-  Moon, FolderTree, RefreshCw, UserPlus, Pencil, Trash2, KeyRound,
+  Moon, FolderTree, RefreshCw, UserPlus, Pencil, Trash2, KeyRound, Building2,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 
 export const Route = createFileRoute("/configuracoes/usuarios")({
   component: UsuariosConfigPage,
@@ -75,6 +76,11 @@ function UsuariosConfigPage() {
   const [resetUserNameLabel, setResetUserNameLabel] = useState("");
   const [resetPassword, setResetPassword] = useState("");
 
+  const [sectorDialogOpen, setSectorDialogOpen] = useState(false);
+  const [sectorUserId, setSectorUserId] = useState<string | null>(null);
+  const [sectorUserName, setSectorUserName] = useState("");
+  const [selectedSectorIds, setSelectedSectorIds] = useState<string[]>([]);
+
   // ========== Data queries ==========
   const { data: profiles = [], isLoading: profilesLoading } = useQuery({
     queryKey: ["admin-profiles"],
@@ -116,6 +122,37 @@ function UsuariosConfigPage() {
         .from("channels")
         .select("id, name")
         .eq("is_active", true);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: isAuthenticated && isAdmin,
+  });
+
+  // Local sectors and assignments
+  const { data: localSectors = [] } = useQuery({
+    queryKey: ["local-sectors-active"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("sectors").select("id, name, group_id").eq("is_active", true).order("name");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: isAuthenticated && isAdmin,
+  });
+
+  const { data: sectorGroups = [] } = useQuery({
+    queryKey: ["sector-groups"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("sector_groups").select("id, name").eq("is_active", true).order("name");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: isAuthenticated && isAdmin,
+  });
+
+  const { data: userSectorAssignments = [] } = useQuery({
+    queryKey: ["user-sector-assignments"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("user_sector_assignments").select("*");
       if (error) throw error;
       return data || [];
     },
@@ -266,9 +303,29 @@ function UsuariosConfigPage() {
     onError: (e: Error) => toast.error(`Erro ao desvincular: ${e.message}`),
   });
 
+  const sectorAssignMutation = useMutation({
+    mutationFn: async ({ userId, sectorIds }: { userId: string; sectorIds: string[] }) => {
+      // Remove all existing assignments
+      await supabase.from("user_sector_assignments").delete().eq("user_id", userId);
+      // Insert new ones
+      if (sectorIds.length > 0) {
+        const rows = sectorIds.map((sid) => ({ user_id: userId, sector_id: sid }));
+        const { error } = await supabase.from("user_sector_assignments").insert(rows);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      toast.success("Setores do usuário atualizados");
+      queryClient.invalidateQueries({ queryKey: ["user-sector-assignments"] });
+      setSectorDialogOpen(false);
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   // ========== Helpers ==========
   const getRolesForUser = (userId: string) => userRoles.filter((r) => r.user_id === userId).map((r) => r.role);
   const getLinkForUser = (userId: string) => gsystemLinks.find((l) => l.user_id === userId);
+  const getSectorsForUser = (userId: string) => userSectorAssignments.filter((a) => a.user_id === userId).map((a) => a.sector_id);
 
   const handleOpenLink = (userId: string) => {
     setSelectedUserId(userId);
@@ -281,6 +338,13 @@ function UsuariosConfigPage() {
     if (!selectedUserId || !selectedAgentId) return;
     const agent = gsystemAgents.find((a) => a.id === selectedAgentId);
     linkMutation.mutate({ userId: selectedUserId, agentId: selectedAgentId, agentName: agent?.name || selectedAgentId });
+  };
+
+  const handleOpenSectors = (profile: { user_id: string; name: string }) => {
+    setSectorUserId(profile.user_id);
+    setSectorUserName(profile.name || "Sem nome");
+    setSelectedSectorIds(getSectorsForUser(profile.user_id));
+    setSectorDialogOpen(true);
   };
 
   const handleOpenEdit = (profile: { user_id: string; name: string }) => {
@@ -450,14 +514,16 @@ function UsuariosConfigPage() {
                   <TableRow>
                     <TableHead>Nome</TableHead>
                     <TableHead>Papéis</TableHead>
+                    <TableHead>Setores</TableHead>
                     <TableHead>Agente GSystem</TableHead>
-                    <TableHead className="w-[180px]">Ações</TableHead>
+                    <TableHead className="w-[200px]">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {profiles.map((profile) => {
                     const roles = getRolesForUser(profile.user_id);
                     const link = getLinkForUser(profile.user_id);
+                    const userSectors = getSectorsForUser(profile.user_id);
                     const isSelf = profile.user_id === currentUser?.id;
                     return (
                       <TableRow key={profile.user_id}>
@@ -467,6 +533,16 @@ function UsuariosConfigPage() {
                             {roles.length > 0 ? roles.map((r) => (
                               <Badge key={r} variant={ROLE_VARIANT(r)} className="text-xs">{ROLE_LABEL[r] || r}</Badge>
                             )) : (
+                              <span className="text-xs text-muted-foreground">—</span>
+                            )}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex gap-1 flex-wrap">
+                            {userSectors.length > 0 ? userSectors.map((sid) => {
+                              const sec = localSectors.find((s) => s.id === sid);
+                              return <Badge key={sid} variant="outline" className="text-xs">{sec?.name || "?"}</Badge>;
+                            }) : (
                               <span className="text-xs text-muted-foreground">—</span>
                             )}
                           </div>
@@ -483,6 +559,9 @@ function UsuariosConfigPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-1">
+                            <Button size="sm" variant="outline" onClick={() => handleOpenSectors(profile)} title="Setores">
+                              <Building2 className="h-3.5 w-3.5" />
+                            </Button>
                             <Button size="sm" variant="outline" onClick={() => handleOpenEdit(profile)} title="Editar">
                               <Pencil className="h-3.5 w-3.5" />
                             </Button>
@@ -668,6 +747,82 @@ function UsuariosConfigPage() {
               <Button onClick={handleSaveLink} disabled={!selectedAgentId || linkMutation.isPending}>
                 {linkMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
                 Vincular
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ========== Sector Assignment Dialog ========== */}
+      <Dialog open={sectorDialogOpen} onOpenChange={setSectorDialogOpen}>
+        <DialogContent className="max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Setores de {sectorUserName}</DialogTitle>
+            <DialogDescription>Selecione os setores que este usuário pode atender.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            {localSectors.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhum setor cadastrado. Cadastre setores em Configurações &gt; Encaminhamento.</p>
+            ) : (
+              <>
+                {sectorGroups.map((group) => {
+                  const groupSectors = localSectors.filter((s) => s.group_id === group.id);
+                  if (groupSectors.length === 0) return null;
+                  return (
+                    <div key={group.id} className="space-y-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{group.name}</p>
+                      <div className="space-y-1.5">
+                        {groupSectors.map((sector) => (
+                          <label key={sector.id} className="flex items-center gap-2 cursor-pointer rounded-md border border-border p-2 hover:bg-accent/50">
+                            <Checkbox
+                              checked={selectedSectorIds.includes(sector.id)}
+                              onCheckedChange={(checked) => {
+                                setSelectedSectorIds((prev) =>
+                                  checked ? [...prev, sector.id] : prev.filter((id) => id !== sector.id)
+                                );
+                              }}
+                            />
+                            <span className="text-sm">{sector.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+                {(() => {
+                  const ungrouped = localSectors.filter((s) => !s.group_id);
+                  if (ungrouped.length === 0) return null;
+                  return (
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Sem grupo</p>
+                      <div className="space-y-1.5">
+                        {ungrouped.map((sector) => (
+                          <label key={sector.id} className="flex items-center gap-2 cursor-pointer rounded-md border border-border p-2 hover:bg-accent/50">
+                            <Checkbox
+                              checked={selectedSectorIds.includes(sector.id)}
+                              onCheckedChange={(checked) => {
+                                setSelectedSectorIds((prev) =>
+                                  checked ? [...prev, sector.id] : prev.filter((id) => id !== sector.id)
+                                );
+                              }}
+                            />
+                            <span className="text-sm">{sector.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </>
+            )}
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setSectorDialogOpen(false)}>Cancelar</Button>
+              <Button
+                onClick={() => sectorUserId && sectorAssignMutation.mutate({ userId: sectorUserId, sectorIds: selectedSectorIds })}
+                disabled={sectorAssignMutation.isPending}
+              >
+                {sectorAssignMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+                Salvar
               </Button>
             </div>
           </div>
