@@ -1,0 +1,1 @@
+ALTER TABLE public.profiles ADD COLUMN group_id uuid REFERENCES public.sector_groups(id) ON DELETE SET NULL DEFAULT NULL;
