@@ -515,6 +515,7 @@ function UsuariosConfigPage() {
                   <TableRow>
                     <TableHead>Nome</TableHead>
                     <TableHead>Papéis</TableHead>
+                    <TableHead>Grupo</TableHead>
                     <TableHead>Setores</TableHead>
                     <TableHead>Agente GSystem</TableHead>
                     <TableHead className="w-[200px]">Ações</TableHead>
