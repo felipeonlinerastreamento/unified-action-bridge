@@ -752,6 +752,82 @@ function UsuariosConfigPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* ========== Sector Assignment Dialog ========== */}
+      <Dialog open={sectorDialogOpen} onOpenChange={setSectorDialogOpen}>
+        <DialogContent className="max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Setores de {sectorUserName}</DialogTitle>
+            <DialogDescription>Selecione os setores que este usuário pode atender.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 pt-2">
+            {localSectors.length === 0 ? (
+              <p className="text-sm text-muted-foreground">Nenhum setor cadastrado. Cadastre setores em Configurações &gt; Encaminhamento.</p>
+            ) : (
+              <>
+                {sectorGroups.map((group) => {
+                  const groupSectors = localSectors.filter((s) => s.group_id === group.id);
+                  if (groupSectors.length === 0) return null;
+                  return (
+                    <div key={group.id} className="space-y-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">{group.name}</p>
+                      <div className="space-y-1.5">
+                        {groupSectors.map((sector) => (
+                          <label key={sector.id} className="flex items-center gap-2 cursor-pointer rounded-md border border-border p-2 hover:bg-accent/50">
+                            <Checkbox
+                              checked={selectedSectorIds.includes(sector.id)}
+                              onCheckedChange={(checked) => {
+                                setSelectedSectorIds((prev) =>
+                                  checked ? [...prev, sector.id] : prev.filter((id) => id !== sector.id)
+                                );
+                              }}
+                            />
+                            <span className="text-sm">{sector.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+                {(() => {
+                  const ungrouped = localSectors.filter((s) => !s.group_id);
+                  if (ungrouped.length === 0) return null;
+                  return (
+                    <div className="space-y-2">
+                      <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Sem grupo</p>
+                      <div className="space-y-1.5">
+                        {ungrouped.map((sector) => (
+                          <label key={sector.id} className="flex items-center gap-2 cursor-pointer rounded-md border border-border p-2 hover:bg-accent/50">
+                            <Checkbox
+                              checked={selectedSectorIds.includes(sector.id)}
+                              onCheckedChange={(checked) => {
+                                setSelectedSectorIds((prev) =>
+                                  checked ? [...prev, sector.id] : prev.filter((id) => id !== sector.id)
+                                );
+                              }}
+                            />
+                            <span className="text-sm">{sector.name}</span>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })()}
+              </>
+            )}
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setSectorDialogOpen(false)}>Cancelar</Button>
+              <Button
+                onClick={() => sectorUserId && sectorAssignMutation.mutate({ userId: sectorUserId, sectorIds: selectedSectorIds })}
+                disabled={sectorAssignMutation.isPending}
+              >
+                {sectorAssignMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
+                Salvar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }
