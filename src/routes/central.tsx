@@ -1098,6 +1098,23 @@ function CentralPage() {
         }
       }
 
+      // Send closing message with protocol number before finalizing
+      const closingMessage = `Seu atendimento foi finalizado e desde já agradecemos pela atenção.\n\nSe você precisar de suporte no futuro, fique à vontade para falar conosco.\n\nTenha um ótimo dia!\n\nProtocolo desse atendimento: ${selectedChatId}\n\nEsta é uma mensagem automática e não precisa responder.`;
+      try {
+        const authH = await getAuthHeaders();
+        await sendText({
+          data: {
+            channelId: selectedChannelId,
+            chatId: selectedChatId,
+            message: closingMessage,
+          },
+          ...authH,
+        });
+        console.log("[Finalize] Closing message sent successfully");
+      } catch (err: any) {
+        console.warn("[Finalize] Error sending closing message:", err.message);
+      }
+
       return finalizeChat({
         data: { channelId: selectedChannelId, chatId: selectedChatId },
         ...await getAuthHeaders(),
