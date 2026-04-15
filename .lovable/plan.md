@@ -1,50 +1,45 @@
 
 
-# Plano: Replicar Fila de Atendimento do GChat
+# Plano: Gestão Local de Setores + Verificação da Criação de Usuários
 
 ## Resumo
-Reformular a lista de chats na Central de Atendimento para replicar o layout do GChat, agrupando atendimentos por categoria (Automático, Aguardando, Fora de hora, Manual, Grupo) com contadores, e exibindo cada chat com avatar, nome, telefone, setor, agente responsável, horário, tags do contato, e última mensagem.
+Criar uma tabela de setores locais para que o admin possa cadastrar setores de destino diretamente no sistema, sem depender exclusivamente do GSystem. Verificar e corrigir qualquer problema na criação de usuários.
 
 ## O que será feito
 
-### 1. Agrupar chats por status (como no GChat)
-Os chats já possuem `status` (0=Automático, 1=Aguardando, 2=Em atendimento/Manual). Vamos criar seções colapsáveis para cada grupo:
-- **Automático** (status 0) — ícone de bot, fundo azul
-- **Aguardando** (status 1) — ícone de clock, fundo âmbar  
-- **Fora de hora** — baseado em `timeInOutOfHour > 0` e status específico
-- **Manual** (status 2) — ícone de headset, contagem de atendimentos
-- **Grupo** — chats de grupo (se disponível na API)
+### 1. Criar tabela `sectors` no banco de dados
+Nova tabela para armazenar setores locais:
+- `id` (uuid, PK)
+- `name` (text, nome do setor)
+- `description` (text, opcional)
+- `is_active` (boolean, default true)
+- `created_at`, `updated_at`
 
-Cada seção terá header clicável com ícone, nome, badge de contagem, e seta para expandir/colapsar.
+RLS: admin/gestor gerencia, autenticados leem.
 
-### 2. Layout de cada item de chat (replicando o screenshot)
-Cada chat mostrará:
-- **Avatar** do contato (foto ou iniciais)
-- **Ícone WhatsApp** ao lado do avatar
-- **Nome do contato** + telefone formatado
-- **Setor** (badge como "Suporte", "Agendamento")
-- **Badge do agente** responsável (nome colorido à direita)
-- **Horário** da última mensagem (formato HH:mm à direita)
-- **Última mensagem** com prefixo do remetente (ex: "Paulo: aguardando*")
-- **Tags do contato** (badges como "Em Testes", "Veículo Sem Comunicação", "Outros Assuntos")
-- **Indicador de mensagens não lidas** (badge numérico)
+### 2. Tela de gestão de setores
+Adicionar uma seção na página de Encaminhamento (ou criar uma sub-rota em Configurações) com:
+- Listagem dos setores cadastrados
+- Botão "Novo Setor" com dialog para nome e descrição
+- Editar/excluir setores existentes
+- Toggle ativo/inativo
 
-### 3. Componente separado
-Extrair a lista de chats para `src/components/central/chat-queue-list.tsx` para manter o `central.tsx` mais organizado. O componente receberá os dados já existentes (filteredChats, gsystemUsers, etc.) via props.
+### 3. Atualizar o dropdown de setor no Encaminhamento
+No `configuracoes.encaminhamento.tsx`, combinar os setores do GSystem com os setores locais no dropdown "Setor de Destino", permitindo que o admin escolha qualquer um dos dois.
 
-### 4. Cores dos agentes
-Atribuir cores automáticas aos agentes para diferenciar visualmente (similar ao GChat onde cada agente tem cor distinta no badge).
+### 4. Verificar criação de usuários
+A criação já usa `email_confirm: true` (sem necessidade de token). Vou garantir que não há nenhum bloqueio adicional e que o fluxo funciona corretamente de ponta a ponta.
 
 ## Arquivos
 
 | Ação | Arquivo |
 |------|---------|
-| Criar | `src/components/central/chat-queue-list.tsx` — novo componente da fila agrupada |
-| Editar | `src/routes/central.tsx` — substituir lista inline pelo novo componente |
+| Migração | Criar tabela `sectors` com RLS |
+| Criar | Seção/componente de gestão de setores |
+| Editar | `src/routes/configuracoes.encaminhamento.tsx` — combinar setores locais + GSystem no dropdown |
 
 ## Detalhes técnicos
-- Os dados já estão disponíveis no `ChatItem`: `status`, `contact.tags`, `currentUser`, `currentSector`, `lastMessage`, `contact.linkImage`, `contact.number`
-- O agrupamento será feito com `useMemo` filtrando `filteredChats` por `status`
-- Tags do contato vêm de `chat.contact?.tags[]`
-- Seções colapsáveis usando estado local (`expandedGroups`)
+- A tabela `sectors` é independente dos setores do GSystem para dar flexibilidade
+- No dropdown de encaminhamento, os setores locais e do GSystem serão listados juntos (com indicação de origem se necessário)
+- A criação de usuários já está funcional sem token — nenhuma alteração necessária nesse fluxo
 
