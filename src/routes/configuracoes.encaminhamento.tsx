@@ -325,6 +325,8 @@ function EncaminhamentoPage() {
           </CardContent>
         </Card>
 
+        <SectorGroupsManagement />
+
         <SectorsManagement />
 
         {/* Create/Edit Dialog */}
