@@ -623,6 +623,8 @@ function UsuariosConfigPage() {
             )}
           </CardContent>
         </Card>
+
+        <SectorGroupsManagement />
       </div>
 
       {/* ========== Create User Dialog ========== */}
