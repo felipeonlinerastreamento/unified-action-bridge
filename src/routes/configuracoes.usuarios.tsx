@@ -62,6 +62,7 @@ function UsuariosConfigPage() {
   const [newPassword, setNewPassword] = useState("");
   const [newName, setNewName] = useState("");
   const [newRole, setNewRole] = useState<"admin" | "gestor" | "atendente">("atendente");
+  const [newGroupId, setNewGroupId] = useState<string>("none");
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editUserId, setEditUserId] = useState<string | null>(null);
@@ -225,13 +226,14 @@ function UsuariosConfigPage() {
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      return createUser({ data: { email: newEmail, password: newPassword, name: newName, role: newRole } });
+      const result = await createUser({ data: { email: newEmail, password: newPassword, name: newName, role: newRole, groupId: newGroupId === "none" ? null : newGroupId } });
+      return result;
     },
     onSuccess: () => {
       toast.success("Usuário criado com sucesso");
       invalidateAll();
       setCreateDialogOpen(false);
-      setNewEmail(""); setNewPassword(""); setNewName(""); setNewRole("atendente");
+      setNewEmail(""); setNewPassword(""); setNewName(""); setNewRole("atendente"); setNewGroupId("none");
     },
     onError: (e: Error) => toast.error(e.message),
   });
@@ -655,6 +657,18 @@ function UsuariosConfigPage() {
                   <SelectItem value="atendente">Atendente</SelectItem>
                   <SelectItem value="gestor">Gestor</SelectItem>
                   <SelectItem value="admin">Admin</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Grupo de Setor</Label>
+              <Select value={newGroupId} onValueChange={setNewGroupId}>
+                <SelectTrigger><SelectValue placeholder="Selecionar grupo" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sem grupo</SelectItem>
+                  {sectorGroups.map((g) => (
+                    <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
