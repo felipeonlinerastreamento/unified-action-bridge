@@ -113,7 +113,7 @@ function EncaminhamentoPage() {
   });
 
   // Fetch sectors from GSystem
-  const { data: sectors = [] } = useQuery({
+  const { data: gsystemSectors = [] } = useQuery({
     queryKey: ["sectors-config", channelId],
     queryFn: async () => {
       if (!channelId) return [];
@@ -123,6 +123,23 @@ function EncaminhamentoPage() {
     },
     enabled: isAuthenticated && !!channelId,
   });
+
+  // Fetch local sectors
+  const { data: localSectors = [] } = useQuery({
+    queryKey: ["local-sectors"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("sectors").select("*").eq("is_active", true).order("name");
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: isAuthenticated,
+  });
+
+  // Merge GSystem + local sectors
+  const allSectors = [
+    ...gsystemSectors.map((s: any) => ({ id: s.id || s.Id, name: s.description || s.name || s.Description, source: "gsystem" })),
+    ...localSectors.map((s: any) => ({ id: s.id, name: s.name, source: "local" })),
+  ];
 
   const resetForm = () => {
     setCategoryKey("");
