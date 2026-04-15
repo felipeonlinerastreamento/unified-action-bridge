@@ -78,7 +78,9 @@ export const updateUserRole = createServerFn({ method: "POST" })
       throw new Error("Você não pode alterar seu próprio papel");
     }
 
-    const { error } = await supabaseAdmin
+    // This action is already allowed by RLS for admins, so use the authenticated
+    // client to avoid depending on service-role secrets just to change roles.
+    const { error } = await context.supabase
       .from("user_roles")
       .update({ role: data.role })
       .eq("user_id", data.targetUserId);
