@@ -1079,6 +1079,9 @@ function CentralPage() {
                     company_id: currentTicket?.company_id || null,
                     channel_id: selectedChannelId,
                     opened_by: session?.user?.id || null,
+                    status: "aberto",
+                    sector: rule.target_sector_name || null,
+                    category: rule.category_label || tipoPendencia || null,
                     notes: `Encaminhado automaticamente do atendimento ${selectedChatId} — ${rule.category_label}`,
                   });
                 }
