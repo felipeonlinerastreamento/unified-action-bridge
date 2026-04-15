@@ -226,13 +226,7 @@ function UsuariosConfigPage() {
 
   const createMutation = useMutation({
     mutationFn: async () => {
-      const result = await createUser({ data: { email: newEmail, password: newPassword, name: newName, role: newRole } });
-      // Assign group if selected
-      if (newGroupId && newGroupId !== "none") {
-        // Wait a moment for the profile trigger to create the profile row
-        await new Promise((r) => setTimeout(r, 500));
-        await supabase.from("profiles").update({ group_id: newGroupId }).eq("user_id", (result as any)?.userId || "");
-      }
+      const result = await createUser({ data: { email: newEmail, password: newPassword, name: newName, role: newRole, groupId: newGroupId === "none" ? null : newGroupId } });
       return result;
     },
     onSuccess: () => {
