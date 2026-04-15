@@ -324,7 +324,7 @@ function EncaminhamentoPage() {
           </CardContent>
         </Card>
 
-        <SectorGroupsManagement />
+        
 
         <SectorsManagement />
 
