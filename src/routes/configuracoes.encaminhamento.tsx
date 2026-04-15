@@ -324,6 +324,8 @@ function EncaminhamentoPage() {
           </CardContent>
         </Card>
 
+        <SectorsManagement />
+
         {/* Create/Edit Dialog */}
         <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) { setDialogOpen(false); resetForm(); } else setDialogOpen(true); }}>
           <DialogContent>
