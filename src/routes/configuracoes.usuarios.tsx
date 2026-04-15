@@ -62,6 +62,7 @@ function UsuariosConfigPage() {
   const [newPassword, setNewPassword] = useState("");
   const [newName, setNewName] = useState("");
   const [newRole, setNewRole] = useState<"admin" | "gestor" | "atendente">("atendente");
+  const [newGroupId, setNewGroupId] = useState<string>("none");
 
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editUserId, setEditUserId] = useState<string | null>(null);
