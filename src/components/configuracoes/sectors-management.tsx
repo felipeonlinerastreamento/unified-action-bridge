@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from "@/components/ui/dialog";
@@ -26,6 +27,12 @@ interface Sector {
   name: string;
   description: string | null;
   is_active: boolean;
+  group_id: string | null;
+}
+
+interface SectorGroup {
+  id: string;
+  name: string;
 }
 
 export function SectorsManagement() {
@@ -35,6 +42,7 @@ export function SectorsManagement() {
   const [editing, setEditing] = useState<Sector | null>(null);
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
+  const [groupId, setGroupId] = useState<string>("");
   const [isActive, setIsActive] = useState(true);
 
   const { data: sectors = [], isLoading } = useQuery({
@@ -46,18 +54,32 @@ export function SectorsManagement() {
     },
   });
 
-  const resetForm = () => { setName(""); setDescription(""); setIsActive(true); setEditing(null); };
+  const { data: groups = [] } = useQuery({
+    queryKey: ["sector-groups"],
+    queryFn: async () => {
+      const { data, error } = await supabase.from("sector_groups").select("id, name").eq("is_active", true).order("name");
+      if (error) throw error;
+      return data as SectorGroup[];
+    },
+  });
+
+  const resetForm = () => { setName(""); setDescription(""); setGroupId(""); setIsActive(true); setEditing(null); };
 
   const openCreate = () => { resetForm(); setDialogOpen(true); };
   const openEdit = (s: Sector) => {
-    setEditing(s); setName(s.name); setDescription(s.description || ""); setIsActive(s.is_active);
+    setEditing(s); setName(s.name); setDescription(s.description || ""); setGroupId(s.group_id || ""); setIsActive(s.is_active);
     setDialogOpen(true);
   };
 
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!name.trim()) throw new Error("Nome é obrigatório");
-      const payload = { name: name.trim(), description: description.trim(), is_active: isActive };
+      const payload = {
+        name: name.trim(),
+        description: description.trim(),
+        group_id: groupId || null,
+        is_active: isActive,
+      };
       if (editing) {
         const { error } = await supabase.from("sectors").update(payload).eq("id", editing.id);
         if (error) throw error;
@@ -95,6 +117,11 @@ export function SectorsManagement() {
     onSuccess: () => queryClient.invalidateQueries({ queryKey: ["local-sectors"] }),
   });
 
+  const getGroupName = (gid: string | null) => {
+    if (!gid) return "—";
+    return groups.find((g) => g.id === gid)?.name || "—";
+  };
+
   return (
     <>
       <Card>
@@ -106,7 +133,7 @@ export function SectorsManagement() {
                 Setores Locais
               </CardTitle>
               <CardDescription>
-                Cadastre setores de destino para usar nos encaminhamentos.
+                Cadastre setores de destino para usar nos encaminhamentos e associar a usuários.
               </CardDescription>
             </div>
             <Button onClick={openCreate} size="sm">
@@ -128,6 +155,7 @@ export function SectorsManagement() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Nome</TableHead>
+                  <TableHead>Grupo</TableHead>
                   <TableHead>Descrição</TableHead>
                   <TableHead>Ativo</TableHead>
                   <TableHead className="w-[100px]">Ações</TableHead>
@@ -137,6 +165,13 @@ export function SectorsManagement() {
                 {sectors.map((s) => (
                   <TableRow key={s.id}>
                     <TableCell className="font-medium">{s.name}</TableCell>
+                    <TableCell>
+                      {s.group_id ? (
+                        <Badge variant="outline">{getGroupName(s.group_id)}</Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-sm">—</span>
+                      )}
+                    </TableCell>
                     <TableCell className="text-muted-foreground">{s.description || "—"}</TableCell>
                     <TableCell>
                       <Switch
@@ -172,6 +207,20 @@ export function SectorsManagement() {
             <div className="space-y-2">
               <Label>Nome do Setor</Label>
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Financeiro" />
+            </div>
+            <div className="space-y-2">
+              <Label>Grupo (opcional)</Label>
+              <Select value={groupId} onValueChange={setGroupId}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione um grupo..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Sem grupo</SelectItem>
+                  {groups.map((g) => (
+                    <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="space-y-2">
               <Label>Descrição (opcional)</Label>
