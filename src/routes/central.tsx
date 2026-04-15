@@ -1057,23 +1057,31 @@ function CentralPage() {
           if (routingRules && routingRules.length > 0) {
             const rule = routingRules[0];
             const phone = contactPhone?.replace(/\D/g, "") || "";
+            const isGSystemSector = !rule.target_sector_id.includes("-"); // UUIDs have dashes, GSystem IDs don't
+
             if (phone && rule.target_sector_id) {
               try {
-                const authH = await getAuthHeaders();
-                const newChat = await createChat({
-                  data: {
-                    channelId: selectedChannelId,
-                    contactPhone: phone,
-                    message: `Encaminhamento automático — Categoria: ${rule.category_label || tipoPendencia}`,
-                    sectorId: rule.target_sector_id,
-                  },
-                  ...authH,
-                });
+                let newAttendanceId: string | null = null;
 
-                // Create service ticket for the new attendance if configured
-                if (rule.auto_create_ticket && newChat?.attendanceId) {
+                if (isGSystemSector) {
+                  // GSystem sector: create chat via GSystem API
+                  const authH = await getAuthHeaders();
+                  const newChat = await createChat({
+                    data: {
+                      channelId: selectedChannelId,
+                      contactPhone: phone,
+                      message: `Encaminhamento automático — Categoria: ${rule.category_label || tipoPendencia}`,
+                      sectorId: rule.target_sector_id,
+                    },
+                    ...authH,
+                  });
+                  newAttendanceId = newChat?.attendanceId || null;
+                }
+
+                // Create service ticket for the routed attendance
+                if (rule.auto_create_ticket) {
                   await supabase.from("service_tickets").insert({
-                    attendance_id: newChat.attendanceId,
+                    attendance_id: newAttendanceId || `auto-${Date.now()}`,
                     contact_phone: phone,
                     contact_name: chatDetail?.contact?.name || chatDetail?.description || null,
                     company_id: currentTicket?.company_id || null,
