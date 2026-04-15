@@ -40,6 +40,7 @@ import { getTiposPendencia } from "@/lib/gsystem-api.functions";
 import { listSectors } from "@/lib/gsystem.functions";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, ArrowRightLeft, Loader2 } from "lucide-react";
+import { SectorsManagement } from "@/components/configuracoes/sectors-management";
 
 export const Route = createFileRoute("/configuracoes/encaminhamento")({
   component: EncaminhamentoPage,
