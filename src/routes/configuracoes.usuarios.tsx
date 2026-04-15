@@ -523,6 +523,7 @@ function UsuariosConfigPage() {
                   {profiles.map((profile) => {
                     const roles = getRolesForUser(profile.user_id);
                     const link = getLinkForUser(profile.user_id);
+                    const userSectors = getSectorsForUser(profile.user_id);
                     const isSelf = profile.user_id === currentUser?.id;
                     return (
                       <TableRow key={profile.user_id}>
