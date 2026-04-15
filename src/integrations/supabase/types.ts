@@ -878,7 +878,7 @@ export type Database = {
         }
         Relationships: []
       }
-      sectors: {
+      sector_groups: {
         Row: {
           created_at: string
           description: string | null
@@ -904,6 +904,44 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      sectors: {
+        Row: {
+          created_at: string
+          description: string | null
+          group_id: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          group_id?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          group_id?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sectors_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "sector_groups"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       service_flow_step_rules: {
         Row: {
@@ -1364,6 +1402,35 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      user_sector_assignments: {
+        Row: {
+          created_at: string
+          id: string
+          sector_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          sector_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          sector_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "user_sector_assignments_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {
