@@ -340,6 +340,13 @@ function UsuariosConfigPage() {
     linkMutation.mutate({ userId: selectedUserId, agentId: selectedAgentId, agentName: agent?.name || selectedAgentId });
   };
 
+  const handleOpenSectors = (profile: { user_id: string; name: string }) => {
+    setSectorUserId(profile.user_id);
+    setSectorUserName(profile.name || "Sem nome");
+    setSelectedSectorIds(getSectorsForUser(profile.user_id));
+    setSectorDialogOpen(true);
+  };
+
   const handleOpenEdit = (profile: { user_id: string; name: string }) => {
     setEditUserId(profile.user_id);
     setEditName(profile.name || "");
