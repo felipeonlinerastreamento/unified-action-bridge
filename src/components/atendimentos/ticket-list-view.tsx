@@ -1,10 +1,11 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Clock, CheckCircle, MessageSquare, User } from "lucide-react";
+import { Building2, Clock, CheckCircle, MessageSquare, User, Layers } from "lucide-react";
 
 interface TicketListViewProps {
   tickets: any[];
   onSelect: (ticket: any) => void;
+  profiles?: any[];
 }
 
 function getPriorityBadge(priority: string) {
@@ -27,7 +28,7 @@ function getStatusBadge(status: string) {
   return <Badge variant="outline">{status || "—"}</Badge>;
 }
 
-export function TicketListView({ tickets, onSelect }: TicketListViewProps) {
+export function TicketListView({ tickets, onSelect, profiles = [] }: TicketListViewProps) {
   if (tickets.length === 0) {
     return (
       <Card>
@@ -65,13 +66,18 @@ export function TicketListView({ tickets, onSelect }: TicketListViewProps) {
                       <Building2 className="h-3 w-3" /> {t.companies.name}
                     </span>
                   )}
-                  {t.contact_phone && <span>Tel: {t.contact_phone}</span>}
-                  {t.plate && <span>Placa: {t.plate}</span>}
                   {t.sector && (
                     <span className="flex items-center gap-1">
-                      <MessageSquare className="h-3 w-3" /> {t.sector}
+                      <Layers className="h-3 w-3" /> {t.sector}
                     </span>
                   )}
+                  {t.assigned_to && (
+                    <span className="flex items-center gap-1">
+                      <User className="h-3 w-3" /> {profiles.find((p) => p.user_id === t.assigned_to)?.name || "Atribuído"}
+                    </span>
+                  )}
+                  {t.contact_phone && <span>Tel: {t.contact_phone}</span>}
+                  {t.plate && <span>Placa: {t.plate}</span>}
                   {t.created_at && (
                     <span className="flex items-center gap-1">
                       <Clock className="h-3 w-3" />

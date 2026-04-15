@@ -1,7 +1,8 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Clock } from "lucide-react";
+import { Building2, Clock, User, Layers } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -26,6 +27,14 @@ function getPriorityColor(p: string) {
 }
 
 export function TicketKanbanView({ tickets, onSelect, onRefetch }: TicketKanbanViewProps) {
+  const { data: profiles = [] } = useQuery({
+    queryKey: ["all-profiles"],
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("*");
+      return data || [];
+    },
+  });
+
   const grouped = useMemo(() => {
     const map: Record<string, any[]> = {};
     for (const col of COLUMNS) map[col.key] = [];
@@ -107,6 +116,16 @@ export function TicketKanbanView({ tickets, onSelect, onRefetch }: TicketKanbanV
                         </span>
                       )}
                     </div>
+                    {t.sector && (
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <Layers className="h-3 w-3" /> {t.sector}
+                      </span>
+                    )}
+                    {t.assigned_to && (
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                        <User className="h-3 w-3" /> {profiles.find((p: any) => p.user_id === t.assigned_to)?.name || "Atribuído"}
+                      </span>
+                    )}
                     {t.created_at && (
                       <span className="flex items-center gap-1 text-xs text-muted-foreground">
                         <Clock className="h-3 w-3" />

@@ -113,7 +113,7 @@ export function AtendimentosContent() {
         ) : (
           <>
             <TabsContent value="lista" className="mt-4">
-              <TicketListView tickets={filteredTickets} onSelect={setSelected} />
+              <TicketListView tickets={filteredTickets} onSelect={setSelected} profiles={profiles} />
             </TabsContent>
             <TabsContent value="kanban" className="mt-4">
               <TicketKanbanView tickets={filteredTickets} onSelect={setSelected} onRefetch={refetch} />
