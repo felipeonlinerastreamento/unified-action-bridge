@@ -1,10 +1,11 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Clock, CheckCircle, MessageSquare, User } from "lucide-react";
+import { Building2, Clock, CheckCircle, MessageSquare, User, Layers } from "lucide-react";
 
 interface TicketListViewProps {
   tickets: any[];
   onSelect: (ticket: any) => void;
+  profiles?: any[];
 }
 
 function getPriorityBadge(priority: string) {
