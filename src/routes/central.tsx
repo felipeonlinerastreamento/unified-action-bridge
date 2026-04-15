@@ -1406,99 +1406,16 @@ function CentralPage() {
                   </div>
                 )}
               </div>
-              <ScrollArea className="flex-1">
-                {chatsLoading && allChats.length === 0 ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                  </div>
-                ) : filteredChats.length === 0 ? (
-                  <div className="p-4 text-sm text-muted-foreground text-center space-y-2">
-                    <p>{allChats.length === 0 ? "Nenhum atendimento ativo" : "Nenhum resultado"}</p>
-                    {allChats.length === 0 && (
-                      <p className="text-xs flex items-center justify-center gap-1">
-                        <Users className="h-3 w-3" /> {onlineAgents} agente(s) online
-                      </p>
-                    )}
-                  </div>
-                ) : (
-                  filteredChats.map((chat) => {
-                    const name = chat.description || chat.contact?.name || chat.contact?.number || `Chat ${chat.attendanceId?.slice(0, 6)}`;
-                    const initials = name.substring(0, 2).toUpperCase();
-                    const imgUrl = chat.linkImage || chat.contact?.linkImage;
-                    const isDefaultAvatar = imgUrl?.includes("avatar-default");
-                    const lastMsg = chat.lastMessage?.text;
-                    const st = STATUS_MAP[chat.status ?? -1];
-                    const agentName = chat._agentName || chat.currentUser?.name;
-
-                    return (
-                      <button
-                        key={chat.attendanceId}
-                        onClick={() => setSelectedChatId(chat.attendanceId)}
-                        className={`w-full text-left p-3 border-b hover:bg-accent/50 transition-colors ${
-                          selectedChatId === chat.attendanceId ? "bg-accent" : ""
-                        }`}
-                      >
-                        <div className="flex items-start gap-3">
-                          <Avatar className="h-10 w-10 shrink-0">
-                            {!isDefaultAvatar && imgUrl && <AvatarImage src={imgUrl} />}
-                            <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                              {initials}
-                            </AvatarFallback>
-                          </Avatar>
-                          <div className="flex-1 min-w-0">
-                            {/* Time badge above name */}
-                            {(() => {
-                              const sla = getSlaColor(chat);
-                              const time = formatServiceTime(chat);
-                              return (
-                                <div className="flex items-center gap-1.5 mb-0.5">
-                                  <span
-                                    className="text-[10px] font-semibold px-1.5 py-0 rounded-full text-white leading-4"
-                                    style={{ backgroundColor: sla.bg }}
-                                  >
-                                    ⏱ {time}
-                                  </span>
-                                </div>
-                              );
-                            })()}
-                            <div className="flex items-center justify-between">
-                              <p
-                                className="text-sm font-medium truncate"
-                                style={{ color: getSlaColor(chat).bg }}
-                              >
-                                {name}
-                              </p>
-                              {(chat.countUnreadMessages ?? 0) > 0 && (
-                                <Badge variant="default" className="text-xs ml-1 shrink-0">
-                                  {chat.countUnreadMessages}
-                                </Badge>
-                              )}
-                            </div>
-                            {lastMsg && (
-                              <p className="text-xs text-muted-foreground truncate mt-0.5">{lastMsg}</p>
-                            )}
-                            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-                              {st && (
-                                <Badge variant="outline" className={`text-[10px] px-1.5 py-0 ${st.color}`}>
-                                  {st.label}
-                                </Badge>
-                              )}
-                              {chat.currentSector?.description && (
-                                <Badge variant="outline" className="text-[10px] px-1.5 py-0">
-                                  {chat.currentSector.description}
-                                </Badge>
-                              )}
-                              {agentName && (
-                                <span className="text-[10px] text-muted-foreground">• {agentName}</span>
-                              )}
-                            </div>
-                          </div>
-                        </div>
-                      </button>
-                    );
-                  })
-                )}
-              </ScrollArea>
+              <ChatQueueList
+                chats={filteredChats}
+                selectedChatId={selectedChatId}
+                onSelectChat={setSelectedChatId}
+                isLoading={chatsLoading}
+                totalChats={allChats.length}
+                onlineAgents={onlineAgents}
+                getSlaColor={getSlaColor}
+                formatServiceTime={formatServiceTime}
+              />
             </div>
             )}
 
