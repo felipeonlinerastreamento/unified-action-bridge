@@ -559,6 +559,9 @@ function UsuariosConfigPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-1">
+                            <Button size="sm" variant="outline" onClick={() => handleOpenSectors(profile)} title="Setores">
+                              <Building2 className="h-3.5 w-3.5" />
+                            </Button>
                             <Button size="sm" variant="outline" onClick={() => handleOpenEdit(profile)} title="Editar">
                               <Pencil className="h-3.5 w-3.5" />
                             </Button>
