@@ -682,19 +682,15 @@ function CentralPage() {
   const { data: crmContactLookup } = useQuery({
     queryKey: ["crm-contact-lookup", contactPhone, currentTicket?.contact_phone],
     queryFn: async () => {
-      const phonesToCheck = [
-        contactPhone,
-        currentTicket?.contact_phone,
-      ].filter(Boolean).map((p) => p!.replace(/\D/g, ""));
-      if (phonesToCheck.length === 0) return null;
+      const phones = [contactPhone, currentTicket?.contact_phone].filter(Boolean) as string[];
+      if (phones.length === 0) return null;
       const { data: contacts } = await supabase
         .from("crm_contacts")
         .select("*, companies(name)");
       if (!contacts) return null;
-      const match = contacts.find((c: any) => {
-        const clean = c.phone.replace(/\D/g, "");
-        return phonesToCheck.some((p) => clean === p || p.endsWith(clean) || clean.endsWith(p));
-      });
+      const match = contacts.find((c: any) =>
+        phones.some((p) => phonesMatch(c.phone, p))
+      );
       return match || null;
     },
     enabled: (!!contactPhone || !!currentTicket?.contact_phone) && !companyLookup && !subClientLookup && isAuthenticated,
