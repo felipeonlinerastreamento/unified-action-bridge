@@ -76,6 +76,11 @@ function UsuariosConfigPage() {
   const [resetUserNameLabel, setResetUserNameLabel] = useState("");
   const [resetPassword, setResetPassword] = useState("");
 
+  const [sectorDialogOpen, setSectorDialogOpen] = useState(false);
+  const [sectorUserId, setSectorUserId] = useState<string | null>(null);
+  const [sectorUserName, setSectorUserName] = useState("");
+  const [selectedSectorIds, setSelectedSectorIds] = useState<string[]>([]);
+
   // ========== Data queries ==========
   const { data: profiles = [], isLoading: profilesLoading } = useQuery({
     queryKey: ["admin-profiles"],
