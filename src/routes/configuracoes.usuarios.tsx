@@ -546,6 +546,7 @@ function UsuariosConfigPage() {
                               <span className="text-xs text-muted-foreground">—</span>
                             )}
                           </div>
+                        </TableCell>
                         <TableCell>
                           {link ? (
                             <div className="flex items-center gap-1.5">
