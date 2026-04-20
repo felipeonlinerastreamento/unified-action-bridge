@@ -227,6 +227,76 @@ function EmpresasPage() {
     onError: (err: any) => toast.error(err?.message || "Erro ao remover"),
   });
 
+  // Observations queries
+  const { data: observations = [], isLoading: obsLoading } = useQuery({
+    queryKey: ["company-observations", observationsCompany?.id],
+    queryFn: async () => {
+      if (!observationsCompany) return [];
+      const { data, error } = await supabase
+        .from("company_observations")
+        .select("*")
+        .eq("company_id", observationsCompany.id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!observationsCompany && isAuthenticated,
+  });
+
+  const addObservationMutation = useMutation({
+    mutationFn: async () => {
+      if (!observationsCompany || !user) throw new Error("Sessão inválida");
+      const content = newObservation.trim();
+      if (!content) throw new Error("Escreva uma observação");
+
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("name")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      const authorName =
+        profileData?.name?.trim() || user.email || "Colaborador";
+
+      const { error } = await supabase.from("company_observations").insert({
+        company_id: observationsCompany.id,
+        content,
+        created_by: user.id,
+        author_name: authorName,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setNewObservation("");
+      queryClient.invalidateQueries({
+        queryKey: ["company-observations", observationsCompany?.id],
+      });
+    },
+    onError: (err: any) =>
+      toast.error(err?.message || "Erro ao adicionar observação"),
+  });
+
+  const formatObsDate = (iso: string) => {
+    try {
+      return new Intl.DateTimeFormat("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(new Date(iso));
+    } catch {
+      return iso;
+    }
+  };
+
+  const getInitials = (name: string) =>
+    name
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((p) => p[0]?.toUpperCase() || "")
+      .join("") || "?";
+
   const filtered = companies.filter((c) => {
     if (!searchTerm) return true;
     const s = searchTerm.toLowerCase();
