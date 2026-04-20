@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import { TicketReminderSection } from "./ticket-reminder-section";
 import { TicketAgentsSection } from "./ticket-agents-section";
+import { TicketTrackingSection } from "./ticket-tracking-section";
 
 interface TicketDetailPanelProps {
   ticket: any | null;
@@ -240,6 +241,10 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
             <DetailRow label="Criado em" value={ticket.created_at ? new Date(ticket.created_at).toLocaleString("pt-BR") : null} />
             <DetailRow label="Finalizado em" value={ticket.closed_at ? new Date(ticket.closed_at).toLocaleString("pt-BR") : null} />
             <DetailRow label="Reaberto em" value={ticket.reopened_at ? new Date(ticket.reopened_at).toLocaleString("pt-BR") : null} />
+
+            {(ticket.tracking_code || (ticket.category || "").toLowerCase().includes("correios")) && (
+              <TicketTrackingSection ticketId={ticket.id} trackingCode={ticket.tracking_code || null} />
+            )}
           </TabsContent>
 
           <TabsContent value="comentarios" className="mt-3 space-y-3">
