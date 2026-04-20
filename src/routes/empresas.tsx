@@ -40,7 +40,10 @@ import {
   Trash2,
   Pencil,
   X,
+  MessageSquare,
+  Send,
 } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 export const Route = createFileRoute("/empresas")({
   component: EmpresasPage,
@@ -65,11 +68,13 @@ interface CompanyPhone {
 }
 
 function EmpresasPage() {
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, user } = useAuth();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [observationsCompany, setObservationsCompany] = useState<Company | null>(null);
+  const [newObservation, setNewObservation] = useState("");
 
   // Form state
   const [formName, setFormName] = useState("");
@@ -222,6 +227,76 @@ function EmpresasPage() {
     onError: (err: any) => toast.error(err?.message || "Erro ao remover"),
   });
 
+  // Observations queries
+  const { data: observations = [], isLoading: obsLoading } = useQuery({
+    queryKey: ["company-observations", observationsCompany?.id],
+    queryFn: async () => {
+      if (!observationsCompany) return [];
+      const { data, error } = await supabase
+        .from("company_observations")
+        .select("*")
+        .eq("company_id", observationsCompany.id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!observationsCompany && isAuthenticated,
+  });
+
+  const addObservationMutation = useMutation({
+    mutationFn: async () => {
+      if (!observationsCompany || !user) throw new Error("Sessão inválida");
+      const content = newObservation.trim();
+      if (!content) throw new Error("Escreva uma observação");
+
+      const { data: profileData } = await supabase
+        .from("profiles")
+        .select("name")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      const authorName =
+        profileData?.name?.trim() || user.email || "Colaborador";
+
+      const { error } = await supabase.from("company_observations").insert({
+        company_id: observationsCompany.id,
+        content,
+        created_by: user.id,
+        author_name: authorName,
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setNewObservation("");
+      queryClient.invalidateQueries({
+        queryKey: ["company-observations", observationsCompany?.id],
+      });
+    },
+    onError: (err: any) =>
+      toast.error(err?.message || "Erro ao adicionar observação"),
+  });
+
+  const formatObsDate = (iso: string) => {
+    try {
+      return new Intl.DateTimeFormat("pt-BR", {
+        day: "2-digit",
+        month: "2-digit",
+        year: "numeric",
+        hour: "2-digit",
+        minute: "2-digit",
+      }).format(new Date(iso));
+    } catch {
+      return iso;
+    }
+  };
+
+  const getInitials = (name: string) =>
+    name
+      .split(" ")
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((p) => p[0]?.toUpperCase() || "")
+      .join("") || "?";
+
   const filtered = companies.filter((c) => {
     if (!searchTerm) return true;
     const s = searchTerm.toLowerCase();
@@ -286,7 +361,17 @@ function EmpresasPage() {
                     .map((p) => p.phone_number);
                   return (
                     <TableRow key={company.id}>
-                      <TableCell className="font-medium">{company.name}</TableCell>
+                      <TableCell className="font-medium">
+                        <button
+                          type="button"
+                          onClick={() => setObservationsCompany(company)}
+                          className="text-left text-primary hover:underline focus:outline-none focus-visible:underline inline-flex items-center gap-1.5"
+                          title="Ver observações"
+                        >
+                          <MessageSquare className="h-3.5 w-3.5 opacity-60" />
+                          {company.name}
+                        </button>
+                      </TableCell>
                       <TableCell>{company.cnpj || "—"}</TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
@@ -517,6 +602,97 @@ function EmpresasPage() {
               {saveMutation.isPending ? "Salvando..." : "Salvar"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Observations dialog */}
+      <Dialog
+        open={!!observationsCompany}
+        onOpenChange={(open) => {
+          if (!open) {
+            setObservationsCompany(null);
+            setNewObservation("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5" />
+              Observações — {observationsCompany?.name}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-2">
+            <Label>Nova observação</Label>
+            <Textarea
+              value={newObservation}
+              onChange={(e) => setNewObservation(e.target.value)}
+              placeholder="Escreva uma observação sobre este cliente..."
+              rows={3}
+            />
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                onClick={() => addObservationMutation.mutate()}
+                disabled={
+                  !newObservation.trim() || addObservationMutation.isPending
+                }
+              >
+                <Send className="h-4 w-4 mr-2" />
+                {addObservationMutation.isPending
+                  ? "Adicionando..."
+                  : "Adicionar observação"}
+              </Button>
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className="flex-1 min-h-0">
+            <div className="text-xs text-muted-foreground mb-2">
+              Histórico ({observations.length})
+            </div>
+            <ScrollArea className="h-[40vh] pr-3">
+              {obsLoading ? (
+                <div className="text-sm text-muted-foreground text-center py-8">
+                  Carregando histórico...
+                </div>
+              ) : observations.length === 0 ? (
+                <div className="text-sm text-muted-foreground text-center py-8">
+                  Nenhuma observação registrada ainda.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {observations.map((obs: any) => (
+                    <div
+                      key={obs.id}
+                      className="flex gap-3 rounded-md border border-border p-3 bg-muted/30"
+                    >
+                      <Avatar className="h-8 w-8 shrink-0">
+                        <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                          {getInitials(obs.author_name || "?")}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <span className="text-sm font-medium text-foreground truncate">
+                            {obs.author_name || "Colaborador"}
+                          </span>
+                          <span className="text-xs text-muted-foreground shrink-0">
+                            {formatObsDate(obs.created_at)}
+                          </span>
+                        </div>
+                        <p className="text-sm text-foreground whitespace-pre-wrap break-words">
+                          {obs.content}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </div>
         </DialogContent>
       </Dialog>
     </AppLayout>

@@ -518,6 +518,41 @@ export type Database = {
         }
         Relationships: []
       }
+      company_observations: {
+        Row: {
+          author_name: string
+          company_id: string
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+        }
+        Insert: {
+          author_name?: string
+          company_id: string
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+        }
+        Update: {
+          author_name?: string
+          company_id?: string
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_observations_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_phones: {
         Row: {
           company_id: string
