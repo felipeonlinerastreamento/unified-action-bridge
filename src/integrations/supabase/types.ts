@@ -1475,7 +1475,15 @@ export type Database = {
           tracking_code?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "ticket_tracking_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: true
+            referencedRelation: "service_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       user_gsystem_links: {
         Row: {
