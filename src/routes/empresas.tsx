@@ -40,7 +40,10 @@ import {
   Trash2,
   Pencil,
   X,
+  MessageSquare,
+  Send,
 } from "lucide-react";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 export const Route = createFileRoute("/empresas")({
   component: EmpresasPage,
