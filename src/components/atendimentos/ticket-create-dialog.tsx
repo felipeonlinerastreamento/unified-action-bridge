@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
@@ -17,6 +18,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+  CommandList,
+} from "@/components/ui/command";
+import { cn } from "@/lib/utils";
+import { Check, ChevronsUpDown, Loader2, AlertCircle } from "lucide-react";
+import { getClientes, getTiposPendencia } from "@/lib/gsystem-api.functions";
 
 interface TicketCreateDialogProps {
   open: boolean;
@@ -24,77 +41,304 @@ interface TicketCreateDialogProps {
   onCreated: () => void;
 }
 
+interface GsystemCliente {
+  Key?: string;
+  key?: string;
+  Nome?: string;
+  nome?: string;
+  RazaoSocial?: string;
+  CpfCnpj?: string;
+  cpf_cnpj?: string;
+  Telefone?: string;
+  telefone?: string;
+}
+
 export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDialogProps) {
+  const [companyOpen, setCompanyOpen] = useState(false);
+  const [companySearch, setCompanySearch] = useState("");
+  const [selectedCliente, setSelectedCliente] = useState<GsystemCliente | null>(null);
+
   const [contactName, setContactName] = useState("");
   const [contactPhone, setContactPhone] = useState("");
   const [plate, setPlate] = useState("");
   const [notes, setNotes] = useState("");
   const [priority, setPriority] = useState("media");
   const [category, setCategory] = useState("");
-  const [sector, setSector] = useState("");
+  const [sectorId, setSectorId] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleCreate = async () => {
-    if (!contactName.trim()) {
-      toast.error("Informe o nome do contato");
-      return;
+  const getAuthHeaders = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    return { headers: { authorization: `Bearer ${session?.access_token}` } };
+  }, []);
+
+  // GSystem clients (same source as Contatos)
+  const {
+    data: clientes = [],
+    isLoading: clientesLoading,
+    error: clientesError,
+  } = useQuery({
+    queryKey: ["gsystem-clientes"],
+    queryFn: async () => {
+      const result = await getClientes({ data: {}, ...(await getAuthHeaders()) });
+      return Array.isArray(result) ? result : result?.data || result?.Data || [];
+    },
+    enabled: open,
+    staleTime: 60_000,
+  });
+
+  // GSystem categories (tipos de pendência)
+  const { data: tiposPendencia = [], isLoading: tiposLoading } = useQuery({
+    queryKey: ["tipos-pendencia-create-ticket"],
+    queryFn: async () => {
+      const result = await getTiposPendencia(await getAuthHeaders());
+      return Array.isArray(result) ? result : [];
+    },
+    enabled: open,
+    staleTime: 60_000,
+  });
+
+  // Local active sectors (from Grupo de Setores config)
+  const { data: localSectors = [] } = useQuery({
+    queryKey: ["local-sectors-active"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("sectors")
+        .select("id, name")
+        .eq("is_active", true)
+        .order("name");
+      return data || [];
+    },
+    enabled: open,
+  });
+
+  const filteredClientes = useMemo(() => {
+    const term = companySearch.trim().toLowerCase();
+    if (!term) return clientes.slice(0, 50);
+    return clientes
+      .filter((c: GsystemCliente) => {
+        const name = (c.Nome || c.nome || c.RazaoSocial || "").toLowerCase();
+        const doc = (c.CpfCnpj || c.cpf_cnpj || "").toLowerCase();
+        return name.includes(term) || doc.includes(term);
+      })
+      .slice(0, 50);
+  }, [clientes, companySearch]);
+
+  const selectedCompanyLabel = useMemo(() => {
+    if (!selectedCliente) return "";
+    return selectedCliente.Nome || selectedCliente.nome || selectedCliente.RazaoSocial || "";
+  }, [selectedCliente]);
+
+  // Auto-fill phone when client selected
+  useEffect(() => {
+    if (selectedCliente && !contactPhone) {
+      const phone = selectedCliente.Telefone || selectedCliente.telefone || "";
+      if (phone) setContactPhone(phone);
     }
-    setLoading(true);
-    const attendanceId = `MANUAL-${Date.now()}`;
-    const { error } = await supabase.from("service_tickets").insert({
-      attendance_id: attendanceId,
-      contact_name: contactName,
-      contact_phone: contactPhone || null,
-      plate: plate || null,
-      notes: notes || null,
-      priority: priority as any,
-      category: category || null,
-      sector: sector || null,
-      status: "aberto",
-    });
-    setLoading(false);
-    if (error) {
-      toast.error("Erro ao criar ticket");
-      return;
-    }
-    toast.success("Ticket criado com sucesso");
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedCliente]);
+
+  const resetForm = () => {
+    setSelectedCliente(null);
+    setCompanySearch("");
     setContactName("");
     setContactPhone("");
     setPlate("");
     setNotes("");
     setPriority("media");
     setCategory("");
-    setSector("");
-    onCreated();
-    onClose();
+    setSectorId("");
+  };
+
+  const ensureLocalCompany = async (cliente: GsystemCliente): Promise<string | null> => {
+    const name = (cliente.Nome || cliente.nome || cliente.RazaoSocial || "").trim();
+    const cnpj = (cliente.CpfCnpj || cliente.cpf_cnpj || "").replace(/\D/g, "") || null;
+    if (!name) return null;
+
+    if (cnpj) {
+      const { data: byCnpj } = await supabase
+        .from("companies")
+        .select("id")
+        .eq("cnpj", cnpj)
+        .limit(1);
+      if (byCnpj && byCnpj.length > 0) return byCnpj[0].id;
+    }
+
+    const { data: byName } = await supabase
+      .from("companies")
+      .select("id")
+      .eq("name", name)
+      .limit(1);
+    if (byName && byName.length > 0) return byName[0].id;
+
+    const { data: created, error } = await supabase
+      .from("companies")
+      .insert({ name, cnpj })
+      .select("id")
+      .single();
+    if (error || !created) return null;
+    return created.id;
+  };
+
+  const handleCreate = async () => {
+    if (!selectedCliente) {
+      toast.error("Selecione a empresa do cliente");
+      return;
+    }
+    if (!contactName.trim()) {
+      toast.error("Informe o nome do contato");
+      return;
+    }
+    setLoading(true);
+    try {
+      const companyId = await ensureLocalCompany(selectedCliente);
+      const sectorName = localSectors.find((s) => s.id === sectorId)?.name || null;
+      const attendanceId = `MANUAL-${Date.now()}`;
+
+      const { error } = await supabase.from("service_tickets").insert({
+        attendance_id: attendanceId,
+        contact_name: contactName,
+        contact_phone: contactPhone || null,
+        company_id: companyId,
+        plate: plate || null,
+        notes: notes || null,
+        priority: priority as any,
+        category: category || null,
+        sector: sectorName,
+        status: "aberto",
+      });
+
+      if (error) {
+        toast.error("Erro ao criar ticket");
+        return;
+      }
+      toast.success("Ticket criado com sucesso");
+      resetForm();
+      onCreated();
+      onClose();
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-md">
+    <Dialog open={open} onOpenChange={(o) => !o && (resetForm(), onClose())}>
+      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Novo Ticket</DialogTitle>
         </DialogHeader>
         <div className="space-y-3">
+          {/* Company - first field, synced with GSystem (Contatos) */}
+          <div className="space-y-1">
+            <label className="text-xs font-medium">Nome da Empresa *</label>
+            <Popover open={companyOpen} onOpenChange={setCompanyOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={companyOpen}
+                  className="w-full justify-between h-9 font-normal"
+                >
+                  <span className="truncate">
+                    {selectedCompanyLabel || "Selecione a empresa..."}
+                  </span>
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[400px] p-0" align="start">
+                <Command shouldFilter={false}>
+                  <CommandInput
+                    placeholder="Buscar empresa por nome ou CNPJ..."
+                    value={companySearch}
+                    onValueChange={setCompanySearch}
+                  />
+                  <CommandList>
+                    {clientesLoading ? (
+                      <div className="p-4 flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" /> Carregando empresas...
+                      </div>
+                    ) : clientesError ? (
+                      <div className="p-4 flex items-center gap-2 text-sm text-destructive">
+                        <AlertCircle className="h-4 w-4" /> Erro ao carregar empresas
+                      </div>
+                    ) : (
+                      <>
+                        <CommandEmpty>Nenhuma empresa encontrada.</CommandEmpty>
+                        <CommandGroup>
+                          {filteredClientes.map((c: GsystemCliente, idx: number) => {
+                            const key = String(c.Key || c.key || idx);
+                            const name = c.Nome || c.nome || c.RazaoSocial || "Sem nome";
+                            const doc = c.CpfCnpj || c.cpf_cnpj || "";
+                            const isSelected =
+                              selectedCliente &&
+                              String(selectedCliente.Key || selectedCliente.key) === key;
+                            return (
+                              <CommandItem
+                                key={key}
+                                value={`${name}-${key}`}
+                                onSelect={() => {
+                                  setSelectedCliente(c);
+                                  setCompanyOpen(false);
+                                  setCompanySearch("");
+                                }}
+                              >
+                                <Check
+                                  className={cn(
+                                    "mr-2 h-4 w-4",
+                                    isSelected ? "opacity-100" : "opacity-0"
+                                  )}
+                                />
+                                <div className="flex flex-col">
+                                  <span className="text-sm">{name}</span>
+                                  {doc && (
+                                    <span className="text-xs text-muted-foreground">{doc}</span>
+                                  )}
+                                </div>
+                              </CommandItem>
+                            );
+                          })}
+                        </CommandGroup>
+                      </>
+                    )}
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
+          </div>
+
           <div className="space-y-1">
             <label className="text-xs font-medium">Nome do Contato *</label>
-            <Input value={contactName} onChange={(e) => setContactName(e.target.value)} placeholder="Nome" />
+            <Input
+              value={contactName}
+              onChange={(e) => setContactName(e.target.value)}
+              placeholder="Nome"
+            />
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="text-xs font-medium">Telefone</label>
-              <Input value={contactPhone} onChange={(e) => setContactPhone(e.target.value)} placeholder="(00) 00000-0000" />
+              <Input
+                value={contactPhone}
+                onChange={(e) => setContactPhone(e.target.value)}
+                placeholder="(00) 00000-0000"
+              />
             </div>
             <div className="space-y-1">
               <label className="text-xs font-medium">Placa</label>
-              <Input value={plate} onChange={(e) => setPlate(e.target.value)} placeholder="ABC-1234" />
+              <Input
+                value={plate}
+                onChange={(e) => setPlate(e.target.value)}
+                placeholder="ABC-1234"
+              />
             </div>
           </div>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <label className="text-xs font-medium">Prioridade</label>
               <Select value={priority} onValueChange={setPriority}>
-                <SelectTrigger className="h-9"><SelectValue /></SelectTrigger>
+                <SelectTrigger className="h-9">
+                  <SelectValue />
+                </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="baixa">Baixa</SelectItem>
                   <SelectItem value="media">Média</SelectItem>
@@ -105,16 +349,56 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
             </div>
             <div className="space-y-1">
               <label className="text-xs font-medium">Setor</label>
-              <Input value={sector} onChange={(e) => setSector(e.target.value)} placeholder="Setor" />
+              <Select value={sectorId} onValueChange={setSectorId}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {localSectors.length === 0 ? (
+                    <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                      Nenhum setor ativo. Cadastre em Configurações → Grupos de Setores.
+                    </div>
+                  ) : (
+                    localSectors.map((s) => (
+                      <SelectItem key={s.id} value={s.id}>
+                        {s.name}
+                      </SelectItem>
+                    ))
+                  )}
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <div className="space-y-1">
-            <label className="text-xs font-medium">Categoria</label>
-            <Input value={category} onChange={(e) => setCategory(e.target.value)} placeholder="Categoria" />
+            <label className="text-xs font-medium">Categoria (GSystem)</label>
+            <Select value={category} onValueChange={setCategory} disabled={tiposLoading}>
+              <SelectTrigger className="h-9">
+                <SelectValue
+                  placeholder={tiposLoading ? "Carregando categorias..." : "Selecione..."}
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {tiposPendencia.length === 0 && !tiposLoading ? (
+                  <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                    Nenhuma categoria encontrada no GSystem.
+                  </div>
+                ) : (
+                  tiposPendencia.map((t: any) => (
+                    <SelectItem key={t.Key} value={t.Descricao}>
+                      {t.Descricao}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
           </div>
           <div className="space-y-1">
             <label className="text-xs font-medium">Observações</label>
-            <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Detalhes do atendimento..." />
+            <Textarea
+              value={notes}
+              onChange={(e) => setNotes(e.target.value)}
+              placeholder="Detalhes do atendimento..."
+            />
           </div>
           <Button onClick={handleCreate} disabled={loading} className="w-full">
             {loading ? "Criando..." : "Criar Ticket"}
