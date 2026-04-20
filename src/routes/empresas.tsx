@@ -604,6 +604,97 @@ function EmpresasPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Observations dialog */}
+      <Dialog
+        open={!!observationsCompany}
+        onOpenChange={(open) => {
+          if (!open) {
+            setObservationsCompany(null);
+            setNewObservation("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <MessageSquare className="h-5 w-5" />
+              Observações — {observationsCompany?.name}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-2">
+            <Label>Nova observação</Label>
+            <Textarea
+              value={newObservation}
+              onChange={(e) => setNewObservation(e.target.value)}
+              placeholder="Escreva uma observação sobre este cliente..."
+              rows={3}
+            />
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                onClick={() => addObservationMutation.mutate()}
+                disabled={
+                  !newObservation.trim() || addObservationMutation.isPending
+                }
+              >
+                <Send className="h-4 w-4 mr-2" />
+                {addObservationMutation.isPending
+                  ? "Adicionando..."
+                  : "Adicionar observação"}
+              </Button>
+            </div>
+          </div>
+
+          <Separator />
+
+          <div className="flex-1 min-h-0">
+            <div className="text-xs text-muted-foreground mb-2">
+              Histórico ({observations.length})
+            </div>
+            <ScrollArea className="h-[40vh] pr-3">
+              {obsLoading ? (
+                <div className="text-sm text-muted-foreground text-center py-8">
+                  Carregando histórico...
+                </div>
+              ) : observations.length === 0 ? (
+                <div className="text-sm text-muted-foreground text-center py-8">
+                  Nenhuma observação registrada ainda.
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {observations.map((obs: any) => (
+                    <div
+                      key={obs.id}
+                      className="flex gap-3 rounded-md border border-border p-3 bg-muted/30"
+                    >
+                      <Avatar className="h-8 w-8 shrink-0">
+                        <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                          {getInitials(obs.author_name || "?")}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2 mb-1">
+                          <span className="text-sm font-medium text-foreground truncate">
+                            {obs.author_name || "Colaborador"}
+                          </span>
+                          <span className="text-xs text-muted-foreground shrink-0">
+                            {formatObsDate(obs.created_at)}
+                          </span>
+                        </div>
+                        <p className="text-sm text-foreground whitespace-pre-wrap break-words">
+                          {obs.content}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </div>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }
