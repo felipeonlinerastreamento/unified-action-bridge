@@ -68,11 +68,13 @@ interface CompanyPhone {
 }
 
 function EmpresasPage() {
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, user } = useAuth();
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [observationsCompany, setObservationsCompany] = useState<Company | null>(null);
+  const [newObservation, setNewObservation] = useState("");
 
   // Form state
   const [formName, setFormName] = useState("");
