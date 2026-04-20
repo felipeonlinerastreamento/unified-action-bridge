@@ -35,6 +35,7 @@ export interface TicketFilters {
   dateTo: Date | undefined;
   contactPhone: string;
   assignedTo: string;
+  trackingStatus: string;
 }
 
 export const defaultFilters: TicketFilters = {
@@ -47,6 +48,7 @@ export const defaultFilters: TicketFilters = {
   dateTo: undefined,
   contactPhone: "",
   assignedTo: "todos",
+  trackingStatus: "todos",
 };
 
 interface Props {
@@ -125,8 +127,11 @@ export function TicketFiltersBar({ filters, onChange, tickets, profiles, open, o
     if (filters.contactPhone) c++;
     if (filters.assignedTo !== "todos") c++;
     if (filters.search) c++;
+    if (filters.trackingStatus !== "todos") c++;
     return c;
   }, [filters]);
+
+  const showTrackingFilter = filters.category !== "todos" && filters.category.toLowerCase().includes("correios");
 
   const clearAll = () => onChange({ ...defaultFilters });
 
@@ -253,6 +258,21 @@ export function TicketFiltersBar({ filters, onChange, tickets, profiles, open, o
                 onChange={(e) => set({ contactPhone: e.target.value })}
               />
             </div>
+            {showTrackingFilter && (
+              <div className="space-y-1 col-span-2">
+                <label className="text-xs font-medium text-muted-foreground">Status do Envio (Sedex)</label>
+                <Select value={filters.trackingStatus} onValueChange={(v) => set({ trackingStatus: v })}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="todos">Todos</SelectItem>
+                    <SelectItem value="em_transito">Em trânsito</SelectItem>
+                    <SelectItem value="entregue">Entregue</SelectItem>
+                    <SelectItem value="problema">Problema</SelectItem>
+                    <SelectItem value="sem_codigo">Sem código</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
         </CollapsibleContent>
       </Collapsible>
@@ -307,6 +327,30 @@ export function applyTicketFilters(tickets: any[], filters: TicketFilters): any[
       const to = new Date(filters.dateTo);
       to.setHours(23, 59, 59, 999);
       if (created > to) return false;
+    }
+
+    // Tracking status (only meaningful for Correios)
+    if (filters.trackingStatus !== "todos") {
+      const tr = Array.isArray(t.ticket_tracking) ? t.ticket_tracking[0] : t.ticket_tracking;
+      const status = (tr?.last_status || "").toLowerCase();
+      const delivered = !!tr?.is_delivered;
+      const hasCode = !!t.tracking_code;
+      switch (filters.trackingStatus) {
+        case "entregue":
+          if (!delivered) return false;
+          break;
+        case "em_transito":
+          if (!hasCode || delivered) return false;
+          if (status && (status.includes("falha") || status.includes("erro") || status.includes("devolv"))) return false;
+          break;
+        case "problema":
+          if (!status) return false;
+          if (!(status.includes("falha") || status.includes("erro") || status.includes("ausent") || status.includes("devolv"))) return false;
+          break;
+        case "sem_codigo":
+          if (hasCode) return false;
+          break;
+      }
     }
 
     return true;

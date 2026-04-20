@@ -26,7 +26,7 @@ export function AtendimentosContent() {
     queryFn: async () => {
       const { data } = await supabase
         .from("service_tickets")
-        .select("*, companies(name)")
+        .select("*, companies(name), ticket_tracking(last_status, last_status_date, last_location, is_delivered, tracking_code)")
         .order("created_at", { ascending: false });
       return data || [];
     },

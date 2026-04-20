@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Clock, CheckCircle, MessageSquare, User, Layers } from "lucide-react";
+import { Building2, Clock, CheckCircle, MessageSquare, User, Layers, Package, MapPin } from "lucide-react";
 
 interface TicketListViewProps {
   tickets: any[];
@@ -91,6 +91,26 @@ export function TicketListView({ tickets, onSelect, profiles = [] }: TicketListV
                     </span>
                   )}
                 </div>
+                {t.tracking_code && (() => {
+                  const tr = Array.isArray(t.ticket_tracking) ? t.ticket_tracking[0] : t.ticket_tracking;
+                  if (!tr && !t.tracking_code) return null;
+                  const status = tr?.last_status || "Aguardando consulta";
+                  const delivered = tr?.is_delivered;
+                  return (
+                    <div className="flex items-center gap-2 flex-wrap text-xs mt-1">
+                      <Badge className={`text-[10px] ${delivered ? "bg-emerald-600 text-white" : "bg-blue-500 text-white"}`}>
+                        <Package className="h-3 w-3 mr-1" />
+                        {delivered ? "Entregue" : status}
+                      </Badge>
+                      <span className="font-mono text-muted-foreground">{t.tracking_code}</span>
+                      {tr?.last_location && (
+                        <span className="flex items-center gap-1 text-muted-foreground">
+                          <MapPin className="h-3 w-3" /> {tr.last_location}
+                        </span>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
               <span className="text-xs text-muted-foreground whitespace-nowrap">
                 #{t.id?.substring(0, 8)}
