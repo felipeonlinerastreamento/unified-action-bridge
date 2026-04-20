@@ -1361,24 +1361,30 @@ export type Database = {
           comment_type: string
           content: string
           created_at: string
+          edited_at: string | null
           id: string
           ticket_id: string
+          updated_at: string
           user_id: string | null
         }
         Insert: {
           comment_type?: string
           content?: string
           created_at?: string
+          edited_at?: string | null
           id?: string
           ticket_id: string
+          updated_at?: string
           user_id?: string | null
         }
         Update: {
           comment_type?: string
           content?: string
           created_at?: string
+          edited_at?: string | null
           id?: string
           ticket_id?: string
+          updated_at?: string
           user_id?: string | null
         }
         Relationships: [
