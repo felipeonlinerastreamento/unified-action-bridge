@@ -65,7 +65,10 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
   const [priority, setPriority] = useState("media");
   const [category, setCategory] = useState("");
   const [sectorId, setSectorId] = useState("");
+  const [trackingCode, setTrackingCode] = useState("");
   const [loading, setLoading] = useState(false);
+
+  const isCorreios = (category || "").toLowerCase().includes("correios");
 
   const getAuthHeaders = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -148,6 +151,7 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
     setPriority("media");
     setCategory("");
     setSectorId("");
+    setTrackingCode("");
   };
 
   const ensureLocalCompany = async (cliente: GsystemCliente): Promise<string | null> => {
@@ -189,13 +193,22 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
       toast.error("Informe o nome do contato");
       return;
     }
+    // Validate tracking code if Correios
+    let trackCodeClean: string | null = null;
+    if (isCorreios && trackingCode.trim()) {
+      trackCodeClean = trackingCode.trim().toUpperCase();
+      if (!/^[A-Z]{2}\d{9}[A-Z]{2}$/.test(trackCodeClean)) {
+        toast.error("Código de envio inválido. Use AA123456789BR");
+        return;
+      }
+    }
     setLoading(true);
     try {
       const companyId = await ensureLocalCompany(selectedCliente);
       const sectorName = localSectors.find((s) => s.id === sectorId)?.name || null;
       const attendanceId = `MANUAL-${Date.now()}`;
 
-      const { error } = await supabase.from("service_tickets").insert({
+      const { data: created, error } = await supabase.from("service_tickets").insert({
         attendance_id: attendanceId,
         contact_name: contactName,
         contact_phone: contactPhone || null,
@@ -206,12 +219,23 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
         category: category || null,
         sector: sectorName,
         status: "aberto",
-      });
+        tracking_code: trackCodeClean,
+      }).select("id").single();
 
       if (error) {
         toast.error("Erro ao criar ticket");
         return;
       }
+
+      // Create tracking row if applicable
+      if (created?.id && trackCodeClean) {
+        await supabase.from("ticket_tracking").insert({
+          ticket_id: created.id,
+          tracking_code: trackCodeClean,
+          carrier: "correios",
+        });
+      }
+
       toast.success("Ticket criado com sucesso");
       resetForm();
       onCreated();
@@ -392,6 +416,23 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
               </SelectContent>
             </Select>
           </div>
+          {isCorreios && (
+            <div className="space-y-1">
+              <label className="text-xs font-medium flex items-center gap-1">
+                📦 Código de Envio (Sedex) *
+              </label>
+              <Input
+                value={trackingCode}
+                onChange={(e) => setTrackingCode(e.target.value.toUpperCase())}
+                placeholder="AA123456789BR"
+                maxLength={13}
+                className="font-mono"
+              />
+              <p className="text-[10px] text-muted-foreground">
+                Formato Correios: 2 letras + 9 dígitos + 2 letras
+              </p>
+            </div>
+          )}
           <div className="space-y-1">
             <label className="text-xs font-medium">Observações</label>
             <Textarea
