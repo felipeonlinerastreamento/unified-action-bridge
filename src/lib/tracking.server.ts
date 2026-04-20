@@ -24,11 +24,27 @@ export interface TrackingResult {
 }
 
 const DELIVERED_KEYWORDS = ["entregue", "entrega realizada", "delivered"];
+const EXCEPTION_KEYWORDS = ["devolvido", "devolução", "ausente", "não localizado", "endereço incorreto", "recusado"];
 
 export function isDeliveredStatus(desc?: string | null): boolean {
   if (!desc) return false;
   const t = desc.toLowerCase();
   return DELIVERED_KEYWORDS.some((k) => t.includes(k));
+}
+
+export function isExceptionStatus(desc?: string | null): boolean {
+  if (!desc) return false;
+  const t = desc.toLowerCase();
+  return EXCEPTION_KEYWORDS.some((k) => t.includes(k));
+}
+
+async function getSettings() {
+  const { data } = await supabaseAdmin
+    .from("tracking_settings")
+    .select("*")
+    .limit(1)
+    .maybeSingle();
+  return data;
 }
 
 export async function fetchTracking(code: string): Promise<TrackingResult> {
@@ -65,6 +81,7 @@ export async function refreshOneTracking(row: {
   tracking_code: string;
   is_delivered: boolean;
 }): Promise<{ ok: boolean; deliveredJustNow: boolean }> {
+  const settings = await getSettings();
   try {
     const result = await fetchTracking(row.tracking_code);
     const latest = result.eventoMaisRecente;
@@ -73,6 +90,7 @@ export async function refreshOneTracking(row: {
       : (latest ? [latest] : []);
     const delivered = isDeliveredStatus(latest?.descricao) ||
       (events.length > 0 && isDeliveredStatus(events[0]?.descricao));
+    const exception = isExceptionStatus(latest?.descricao);
     const wasDelivered = row.is_delivered;
     const justDelivered = !wasDelivered && delivered;
 
@@ -91,8 +109,19 @@ export async function refreshOneTracking(row: {
 
     await logIntegration(`/rastreio/${row.tracking_code}`, "GET", 200);
 
-    if (justDelivered) {
-      await notifyTicketSector(row.ticket_id, row.tracking_code);
+    // Auto-close ticket on delivery
+    if (justDelivered && settings?.auto_close_ticket_on_delivery) {
+      await supabaseAdmin
+        .from("service_tickets")
+        .update({ status: "finalizado", closed_at: new Date().toISOString() })
+        .eq("id", row.ticket_id);
+    }
+
+    // Notifications
+    if (justDelivered && settings?.notify_on_delivered !== false) {
+      await notifyTicketSector(row.ticket_id, row.tracking_code, "delivered", settings);
+    } else if (exception && settings?.notify_on_exception) {
+      await notifyTicketSector(row.ticket_id, row.tracking_code, "exception", settings, latest?.descricao);
     }
     return { ok: true, deliveredJustNow: justDelivered };
   } catch (e: any) {
@@ -106,19 +135,24 @@ export async function refreshOneTracking(row: {
   }
 }
 
-async function notifyTicketSector(ticketId: string, code: string) {
-  // Find ticket sector
+async function notifyTicketSector(
+  ticketId: string,
+  code: string,
+  kind: "delivered" | "exception",
+  settings: any,
+  customDesc?: string,
+) {
   const { data: ticket } = await supabaseAdmin
     .from("service_tickets")
-    .select("id, sector, contact_name, attendance_id")
+    .select("id, sector, contact_name, attendance_id, assigned_to, opened_by")
     .eq("id", ticketId)
     .maybeSingle();
   if (!ticket) return;
 
   const targetUserIds = new Set<string>();
 
-  // Find sector + members
-  if (ticket.sector) {
+  // Notify sector members
+  if (settings?.notify_sector_members !== false && ticket.sector) {
     const { data: sector } = await supabaseAdmin
       .from("sectors")
       .select("id")
@@ -133,25 +167,25 @@ async function notifyTicketSector(ticketId: string, code: string) {
     }
   }
 
-  // Always notify the assigned user as fallback
-  const { data: assigned } = await supabaseAdmin
-    .from("service_tickets")
-    .select("assigned_to, opened_by")
-    .eq("id", ticketId)
-    .maybeSingle();
-  if (assigned?.assigned_to) targetUserIds.add(assigned.assigned_to);
-  if (assigned?.opened_by) targetUserIds.add(assigned.opened_by);
+  // Always include assigned + opener (or only them if notify_assigned_only)
+  if (settings?.notify_assigned_only) {
+    targetUserIds.clear();
+  }
+  if (ticket.assigned_to) targetUserIds.add(ticket.assigned_to);
+  if (ticket.opened_by) targetUserIds.add(ticket.opened_by);
 
   if (targetUserIds.size === 0) return;
 
-  const title = "📦 Encomenda entregue";
   const ref = ticket.contact_name || ticket.attendance_id || "ticket";
-  const message = `Sedex ${code} entregue (${ref}).`;
+  const title = kind === "delivered" ? "📦 Encomenda entregue" : "⚠️ Exceção no envio";
+  const message = kind === "delivered"
+    ? `Sedex ${code} entregue (${ref}).`
+    : `Sedex ${code}: ${customDesc || "exceção registrada"} (${ref}).`;
 
   const rows = Array.from(targetUserIds).map((uid) => ({
     user_id: uid,
     ticket_id: ticketId,
-    type: "tracking_delivered",
+    type: kind === "delivered" ? "tracking_delivered" : "tracking_exception",
     title,
     message,
     metadata: { tracking_code: code } as any,
@@ -159,7 +193,12 @@ async function notifyTicketSector(ticketId: string, code: string) {
   await supabaseAdmin.from("notifications").insert(rows);
 }
 
-export async function refreshAllPending(): Promise<{ checked: number; delivered: number }> {
+export async function refreshAllPending(): Promise<{ checked: number; delivered: number; skipped?: boolean }> {
+  const settings = await getSettings();
+  if (settings && settings.auto_refresh_enabled === false) {
+    return { checked: 0, delivered: 0, skipped: true };
+  }
+
   const { data: rows } = await supabaseAdmin
     .from("ticket_tracking")
     .select("id, ticket_id, tracking_code, is_delivered")
@@ -172,7 +211,7 @@ export async function refreshAllPending(): Promise<{ checked: number; delivered:
   for (const r of rows) {
     const res = await refreshOneTracking(r);
     if (res.deliveredJustNow) delivered++;
-    await new Promise((rs) => setTimeout(rs, 250)); // gentle rate limit
+    await new Promise((rs) => setTimeout(rs, 250));
   }
   return { checked: rows.length, delivered };
 }

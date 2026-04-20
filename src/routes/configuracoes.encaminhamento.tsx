@@ -41,6 +41,7 @@ import { listSectors } from "@/lib/gsystem.functions";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, ArrowRightLeft, Loader2 } from "lucide-react";
 import { SectorsManagement } from "@/components/configuracoes/sectors-management";
+import { TrackingSedexConfig } from "@/components/configuracoes/tracking-sedex-config";
 
 export const Route = createFileRoute("/configuracoes/encaminhamento")({
   component: EncaminhamentoPage,
@@ -256,6 +257,8 @@ function EncaminhamentoPage() {
             Nova Regra
           </Button>
         </div>
+
+        <TrackingSedexConfig />
 
         <Card>
           <CardHeader>

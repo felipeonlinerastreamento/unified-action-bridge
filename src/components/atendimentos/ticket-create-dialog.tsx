@@ -34,6 +34,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Check, ChevronsUpDown, Loader2, AlertCircle } from "lucide-react";
 import { getClientes, getTiposPendencia } from "@/lib/gsystem-api.functions";
+import { useTrackingSettings } from "@/hooks/use-tracking-settings";
 
 interface TicketCreateDialogProps {
   open: boolean;
@@ -69,6 +70,7 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
   const [loading, setLoading] = useState(false);
 
   const isCorreios = (category || "").toLowerCase().includes("correios");
+  const { data: trackingSettings } = useTrackingSettings();
 
   const getAuthHeaders = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -195,11 +197,26 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
     }
     // Validate tracking code if Correios
     let trackCodeClean: string | null = null;
-    if (isCorreios && trackingCode.trim()) {
-      trackCodeClean = trackingCode.trim().toUpperCase();
-      if (!/^[A-Z]{2}\d{9}[A-Z]{2}$/.test(trackCodeClean)) {
-        toast.error("Código de envio inválido. Use AA123456789BR");
+    if (isCorreios) {
+      const required = trackingSettings?.require_tracking_code ?? true;
+      const pattern = trackingSettings?.tracking_code_pattern || "^[A-Z]{2}\\d{9}[A-Z]{2}$";
+      if (required && !trackingCode.trim()) {
+        toast.error("Código de envio é obrigatório para Correios");
         return;
+      }
+      if (trackingCode.trim()) {
+        trackCodeClean = trackingCode.trim().toUpperCase();
+        try {
+          if (!new RegExp(pattern).test(trackCodeClean)) {
+            toast.error("Código de envio inválido. Use AA123456789BR");
+            return;
+          }
+        } catch {
+          if (!/^[A-Z]{2}\d{9}[A-Z]{2}$/.test(trackCodeClean)) {
+            toast.error("Código de envio inválido. Use AA123456789BR");
+            return;
+          }
+        }
       }
     }
     setLoading(true);
@@ -419,7 +436,7 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
           {isCorreios && (
             <div className="space-y-1">
               <label className="text-xs font-medium flex items-center gap-1">
-                📦 Código de Envio (Sedex) *
+                📦 Código de Envio (Sedex) {trackingSettings?.require_tracking_code !== false ? "*" : ""}
               </label>
               <Input
                 value={trackingCode}
