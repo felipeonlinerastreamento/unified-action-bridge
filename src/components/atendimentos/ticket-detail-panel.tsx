@@ -27,6 +27,9 @@ import {
   ArrowRight,
   Clock,
   MessageSquare,
+  Pencil,
+  Check,
+  X,
 } from "lucide-react";
 import { TicketReminderSection } from "./ticket-reminder-section";
 import { TicketAgentsSection } from "./ticket-agents-section";
@@ -57,6 +60,8 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   const [comment, setComment] = useState("");
   const [forwardSector, setForwardSector] = useState("");
   const [forwardUser, setForwardUser] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingContent, setEditingContent] = useState("");
 
   // Get current user
   const { data: currentUser } = useQuery({
@@ -103,6 +108,43 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
     setComment("");
     refetchComments();
     toast.success("Comentário adicionado");
+  };
+
+  const startEdit = (c: any) => {
+    setEditingId(c.id);
+    setEditingContent(c.content);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditingContent("");
+  };
+
+  const saveEdit = async (commentId: string) => {
+    if (!editingContent.trim()) return;
+    const { error } = await supabase
+      .from("ticket_comments")
+      .update({
+        content: editingContent,
+        edited_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", commentId);
+    if (error) {
+      toast.error("Erro ao editar comentário: " + error.message);
+      return;
+    }
+    setEditingId(null);
+    setEditingContent("");
+    refetchComments();
+    toast.success("Comentário atualizado");
+  };
+
+  const getAuthorName = (uid: string | null | undefined) => {
+    if (!uid) return "Sistema";
+    if (uid === userId) return "Você";
+    const p = profiles.find((p) => p.user_id === uid);
+    return p?.name || "Usuário";
   };
 
   const insertSystemComment = async (ticketId: string, content: string, type: string) => {
@@ -252,17 +294,58 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
               {comments.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">Nenhum comentário ainda.</p>
               ) : (
-                comments.map((c: any) => (
-                  <div key={c.id} className="flex gap-2 text-sm">
-                    {getCommentIcon(c.comment_type)}
-                    <div className="flex-1">
-                      <p className="break-words">{c.content}</p>
-                      <p className="text-xs text-muted-foreground mt-0.5">
-                        {new Date(c.created_at).toLocaleString("pt-BR")}
-                      </p>
+                comments.map((c: any) => {
+                  const isOwn = c.user_id && c.user_id === userId;
+                  const isEditable = isOwn && c.comment_type === "comentario";
+                  const isEditing = editingId === c.id;
+                  return (
+                    <div key={c.id} className="flex gap-2 text-sm group">
+                      {getCommentIcon(c.comment_type)}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-medium text-foreground/80">
+                            {getAuthorName(c.user_id)}
+                          </span>
+                          {isEditable && !isEditing && (
+                            <Button
+                              size="icon"
+                              variant="ghost"
+                              className="h-6 w-6 opacity-0 group-hover:opacity-100"
+                              onClick={() => startEdit(c)}
+                            >
+                              <Pencil className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
+                        {isEditing ? (
+                          <div className="space-y-1 mt-1">
+                            <Textarea
+                              value={editingContent}
+                              onChange={(e) => setEditingContent(e.target.value)}
+                              className="min-h-[60px] text-sm"
+                            />
+                            <div className="flex gap-1">
+                              <Button size="sm" variant="default" className="h-7 gap-1" onClick={() => saveEdit(c.id)} disabled={!editingContent.trim()}>
+                                <Check className="h-3 w-3" /> Salvar
+                              </Button>
+                              <Button size="sm" variant="ghost" className="h-7 gap-1" onClick={cancelEdit}>
+                                <X className="h-3 w-3" /> Cancelar
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <p className="break-words">{c.content}</p>
+                        )}
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {new Date(c.created_at).toLocaleString("pt-BR")}
+                          {c.edited_at && (
+                            <span className="ml-1 italic">(editado)</span>
+                          )}
+                        </p>
+                      </div>
                     </div>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
             <div className="flex gap-2">
