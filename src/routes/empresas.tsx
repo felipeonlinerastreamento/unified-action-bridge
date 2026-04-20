@@ -361,7 +361,17 @@ function EmpresasPage() {
                     .map((p) => p.phone_number);
                   return (
                     <TableRow key={company.id}>
-                      <TableCell className="font-medium">{company.name}</TableCell>
+                      <TableCell className="font-medium">
+                        <button
+                          type="button"
+                          onClick={() => setObservationsCompany(company)}
+                          className="text-left text-primary hover:underline focus:outline-none focus-visible:underline inline-flex items-center gap-1.5"
+                          title="Ver observações"
+                        >
+                          <MessageSquare className="h-3.5 w-3.5 opacity-60" />
+                          {company.name}
+                        </button>
+                      </TableCell>
                       <TableCell>{company.cnpj || "—"}</TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
