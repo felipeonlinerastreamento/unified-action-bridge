@@ -1,104 +1,68 @@
 
 
-# Rastreamento de Sedex (Rastro.com.br) para tickets de Correios
+# Configuração de Rastreio Sedex no menu "Encaminhamento por Categoria"
 
-## Visão geral
+## Objetivo
 
-Adicionar suporte completo a rastreamento de envios para a categoria **"Correios controle de movimentações"**:
+Adicionar à página **Configurações → Encaminhamento por Categoria** uma área de administração específica para regras com a categoria **"Correios Controle de Movimentações"**, permitindo gerenciar o comportamento do rastreio Sedex (intervalo de atualização, notificações, validações) sem precisar mexer em código.
 
-1. Campo **Código de Envio** aparece automaticamente quando essa categoria é selecionada (ao criar ou editar ticket)
-2. Sistema consulta a API do **Rastro.com.br** periodicamente e armazena o histórico de eventos
-3. Ao filtrar por categoria "Correios", a lista mostra o último status do Sedex em cada ticket
-4. Quando o status muda para **"Entregue"**, todos os usuários do setor recebem uma notificação na plataforma
+## O que será feito
 
-## Banco de dados
+### 1. Nova tabela `tracking_settings` (singleton de configuração global)
 
-Nova tabela `ticket_tracking`:
-- `id`, `ticket_id`, `tracking_code` (texto, único por ticket)
-- `carrier` (default "correios"), `last_status`, `last_status_date`
-- `is_delivered` (bool), `events` (jsonb com histórico completo)
-- `last_checked_at`, `created_at`, `updated_at`
+Campos:
+- `id` (uuid, PK)
+- `auto_refresh_enabled` (bool, default true) — liga/desliga o cron horário
+- `refresh_interval_minutes` (int, default 60) — frequência de atualização automática
+- `notify_on_delivered` (bool, default true) — gera notificação quando entregue
+- `notify_on_exception` (bool, default true) — notifica em falhas/devolução/ausência
+- `notify_sector_members` (bool, default true) — notifica todos do setor
+- `notify_assigned_only` (bool, default false) — só o responsável
+- `auto_close_ticket_on_delivery` (bool, default false) — fecha ticket ao entregar
+- `require_tracking_code` (bool, default true) — torna obrigatório no momento da criação
+- `tracking_code_pattern` (text, default `^[A-Z]{2}\d{9}[A-Z]{2}$`) — regex de validação
+- `whatsapp_notify_client` (bool, default false) — placeholder para futura integração
+- `updated_at`, `updated_by`
 
-Nova tabela `notifications`:
-- `id`, `user_id`, `ticket_id`, `type` (ex: `tracking_delivered`)
-- `title`, `message`, `is_read` (bool), `created_at`
-- RLS: usuário vê só suas próprias notificações; sistema pode inserir
+RLS: admin/gestor gerenciam, autenticados leem.
 
-Coluna nova em `service_tickets`:
-- `tracking_code` (text, nullable) — guarda o código do envio diretamente no ticket para facilitar busca/filtro
+### 2. Nova seção visual em `configuracoes.encaminhamento.tsx`
 
-Realtime ativado em `notifications` para alertas instantâneos.
+Quando o usuário cadastrar/editar uma regra cuja `category_label` contenha "Correios" (ou tiver flag específica), aparece automaticamente um **bloco expandido "Configuração de Rastreio Sedex"** abaixo do formulário com os campos acima.
 
-## Integração com Rastro.com.br
+Além disso, no topo da página será adicionado um card dedicado **"Rastreamento Sedex"** (visível independente das regras), com:
+- Switch geral "Ativar atualização automática"
+- Select de intervalo (15min / 30min / 1h / 2h / 6h)
+- Switches de notificação (entregue / exceção / setor inteiro / só responsável)
+- Switch "Exigir código no cadastro"
+- Switch "Fechar ticket automaticamente ao entregar"
+- Botão **"Atualizar todos agora"** (admin/gestor) — chama `/hooks/refresh-tracking`
+- Botão **"Testar código"** — input + chama `previewTracking` e mostra resultado
+- Métricas rápidas: total em trânsito, entregues hoje, com erro
 
-A API do Rastro.com.br requer **token** (plano gratuito limitado, pago a partir de planos básicos). Preciso adicionar como secret `RASTRO_API_TOKEN` (e `RASTRO_USER` se aplicável) — vou solicitar quando começar a implementação.
+### 3. Aplicar as configurações no fluxo existente
 
-**Server functions** (em `src/lib/tracking.functions.ts` + `src/lib/tracking.server.ts`):
-- `trackPackage(code)` — consulta a API e devolve eventos normalizados
-- `refreshTicketTracking(ticketId)` — atualiza um ticket específico
-- `refreshAllPendingTracking()` — usado pelo cron, atualiza todos os códigos de tickets não entregues
+- `tracking.server.ts` `refreshAllPending`: lê `tracking_settings` e respeita `auto_refresh_enabled`; ajusta filtro de quem notificar.
+- `tracking.server.ts` `notifyTicketSector`: respeita `notify_sector_members` vs `notify_assigned_only`, e só dispara se `notify_on_delivered`.
+- `refreshOneTracking`: se `auto_close_ticket_on_delivery` e entregue → atualiza `service_tickets.status='resolvido'` + `closed_at`.
+- `ticket-create-dialog.tsx`: quando categoria for de Correios, lê `require_tracking_code` e `tracking_code_pattern` para validar.
+- Cron horário existente continuará rodando, mas a função sairá imediatamente se `auto_refresh_enabled = false`.
 
-**Cron job** via pg_cron + pg_net chamando rota `/hooks/refresh-tracking` a cada 1 hora (configurável). A rota:
-1. Lê todos os `ticket_tracking` onde `is_delivered = false`
-2. Consulta a API para cada código (com pequeno delay para respeitar rate limit)
-3. Atualiza `events`, `last_status`, `last_status_date`
-4. Quando detecta status "Entregue", marca `is_delivered = true` e dispara notificações para todos os usuários do setor do ticket
+### 4. Permissões / segurança
 
-## Mudanças na interface
+- Só admin/gestor podem alterar `tracking_settings` e disparar refresh manual global.
+- Atendentes só visualizam.
 
-### `ticket-create-dialog.tsx`
-- Quando `category === "Correios controle de movimentações"`, mostra campo extra **"Código de Envio (Sedex)"** (validação: formato BR de rastreio, ex: `AA123456789BR`)
-- Salva o código em `service_tickets.tracking_code` e cria registro em `ticket_tracking`
+## Fora de escopo
 
-### `ticket-detail-panel.tsx` (aba Detalhes)
-- Nova seção **"Rastreamento Sedex"** quando o ticket tem `tracking_code`:
-  - Status atual destacado (badge colorido: amarelo "Em trânsito", verde "Entregue", vermelho "Problema")
-  - Data da última atualização
-  - Lista expandível com histórico completo de eventos (data, local, descrição)
-  - Botão **"Atualizar agora"** para refresh manual
-  - Botão **"Editar código"** caso o atendente precise corrigir
-
-### `ticket-list-view.tsx`
-- Quando o filtro de categoria está em "Correios...", cada card mostra:
-  - Badge com último status do Sedex
-  - Local do último evento
-  - Indicador visual se foi entregue (✓ verde)
-
-### `ticket-filters.tsx`
-- Novo filtro extra (só visível quando categoria = Correios): **Status do Envio** (Em trânsito / Entregue / Problema / Sem código)
-
-### Notificações na plataforma
-- Novo componente `<NotificationsBell />` no header (sino com badge de não-lidas)
-- Dropdown com lista das últimas notificações
-- Toast (sonner) automático quando chega notificação nova via Supabase Realtime
-- Ao clicar na notificação, abre o ticket correspondente
-
-## Sugestões adicionais para administração de envio de equipamentos
-
-Como o objetivo principal é **gestão de envio de equipamentos**, sugiro também:
-
-1. **Vincular item de estoque ao ticket de envio** — ao criar o ticket de Correios, escolher qual equipamento (do menu Estoque) está sendo enviado. Quando entregue, atualizar status do item para "entregue ao cliente".
-2. **Comprovante de postagem** — upload de imagem/PDF do recibo dos Correios anexado ao ticket.
-3. **Endereço de destino** — campos estruturados (CEP, rua, cidade, UF) integrados aos dados da empresa cliente; preenchimento automático via ViaCEP.
-4. **Prazo estimado vs real** — mostrar SLA do envio (data prevista pela transportadora) e alertar se atrasou.
-5. **Dashboard de envios** — KPIs específicos: total em trânsito, entregues no mês, atrasados, tempo médio de entrega por região.
-6. **Notificação ao cliente** — opcionalmente enviar mensagem automática ao contato do ticket (via Central de Atendimento/WhatsApp) quando o pacote for entregue.
-7. **Histórico de equipamentos por empresa** — ver todos os envios feitos para um cliente específico direto na tela Empresas.
-
-Estas sugestões adicionais **não estão incluídas no plano principal** — me avise quais quer incluir agora ou depois.
+- Mudar a UI de criação de tickets (já feita em iteração anterior).
+- Integração WhatsApp para avisar cliente — fica como switch desabilitado/placeholder.
+- Múltiplas transportadoras (continua só Correios/SeuRastreio).
 
 ## Detalhes técnicos
 
-- **Migração SQL** cria as tabelas, índices, RLS, e ativa realtime em `notifications`
-- **Cron** registrado via insert SQL (não migração) — precisa do anon key do projeto
-- **Rate limiting** no server function: delay de 200ms entre chamadas no batch para não estourar limite da API
-- **Fallback**: se a API falhar, registrar em `integration_logs` e não quebrar a UI
-- **Secret `RASTRO_API_TOKEN`** será solicitado durante a implementação (vou pedir o valor)
-- **Notificação para o setor**: query em `user_sector_assignments` cruzada com `sectors.name = ticket.sector` para descobrir destinatários
-
-## O que NÃO muda
-
-- Demais campos e fluxos do ticket continuam iguais
-- Integração com GSystem (categorias) permanece como fonte da lista de categorias
-- Outras categorias não mostram o campo de rastreio
+- Migration cria a tabela `tracking_settings` + insere 1 linha default.
+- Hook `useTrackingSettings()` em `src/hooks/` para uso em UI e em `ticket-create-dialog`.
+- Botão "Atualizar todos" usa `fetch('/hooks/refresh-tracking', { method:'POST', headers:{ Authorization:'Bearer '+token } })`.
+- Layout: dois Cards na página `configuracoes.encaminhamento.tsx`, posicionados entre o header e o card "Regras de Encaminhamento" — assim a configuração do Correios fica em destaque.
 
