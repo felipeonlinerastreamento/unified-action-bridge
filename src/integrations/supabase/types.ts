@@ -886,6 +886,42 @@ export type Database = {
           },
         ]
       }
+      notifications: {
+        Row: {
+          created_at: string
+          id: string
+          is_read: boolean
+          message: string
+          metadata: Json | null
+          ticket_id: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          metadata?: Json | null
+          ticket_id?: string | null
+          title: string
+          type: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_read?: boolean
+          message?: string
+          metadata?: Json | null
+          ticket_id?: string | null
+          title?: string
+          type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -1141,6 +1177,7 @@ export type Database = {
           reopened_at: string | null
           sector: string | null
           status: Database["public"]["Enums"]["service_ticket_status"]
+          tracking_code: string | null
           updated_at: string
         }
         Insert: {
@@ -1164,6 +1201,7 @@ export type Database = {
           reopened_at?: string | null
           sector?: string | null
           status?: Database["public"]["Enums"]["service_ticket_status"]
+          tracking_code?: string | null
           updated_at?: string
         }
         Update: {
@@ -1187,6 +1225,7 @@ export type Database = {
           reopened_at?: string | null
           sector?: string | null
           status?: Database["public"]["Enums"]["service_ticket_status"]
+          tracking_code?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -1389,6 +1428,54 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      ticket_tracking: {
+        Row: {
+          carrier: string
+          created_at: string
+          events: Json
+          id: string
+          is_delivered: boolean
+          last_checked_at: string | null
+          last_error: string | null
+          last_location: string | null
+          last_status: string | null
+          last_status_date: string | null
+          ticket_id: string
+          tracking_code: string
+          updated_at: string
+        }
+        Insert: {
+          carrier?: string
+          created_at?: string
+          events?: Json
+          id?: string
+          is_delivered?: boolean
+          last_checked_at?: string | null
+          last_error?: string | null
+          last_location?: string | null
+          last_status?: string | null
+          last_status_date?: string | null
+          ticket_id: string
+          tracking_code: string
+          updated_at?: string
+        }
+        Update: {
+          carrier?: string
+          created_at?: string
+          events?: Json
+          id?: string
+          is_delivered?: boolean
+          last_checked_at?: string | null
+          last_error?: string | null
+          last_location?: string | null
+          last_status?: string | null
+          last_status_date?: string | null
+          ticket_id?: string
+          tracking_code?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       user_gsystem_links: {
         Row: {
