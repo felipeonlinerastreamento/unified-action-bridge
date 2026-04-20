@@ -20,6 +20,7 @@ import { Route as CentralRouteImport } from './routes/central'
 import { Route as AtendimentosRouteImport } from './routes/atendimentos'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ConfiguracoesIndexRouteImport } from './routes/configuracoes.index'
+import { Route as HooksRefreshTrackingRouteImport } from './routes/hooks/refresh-tracking'
 import { Route as ConfiguracoesUsuariosRouteImport } from './routes/configuracoes.usuarios'
 import { Route as ConfiguracoesFluxoAtendimentoRouteImport } from './routes/configuracoes.fluxo-atendimento'
 import { Route as ConfiguracoesEstoqueRouteImport } from './routes/configuracoes.estoque'
@@ -82,6 +83,11 @@ const ConfiguracoesIndexRoute = ConfiguracoesIndexRouteImport.update({
   path: '/',
   getParentRoute: () => ConfiguracoesRoute,
 } as any)
+const HooksRefreshTrackingRoute = HooksRefreshTrackingRouteImport.update({
+  id: '/hooks/refresh-tracking',
+  path: '/hooks/refresh-tracking',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ConfiguracoesUsuariosRoute = ConfiguracoesUsuariosRouteImport.update({
   id: '/usuarios',
   path: '/usuarios',
@@ -134,6 +140,7 @@ export interface FileRoutesByFullPath {
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
   '/configuracoes/fluxo-atendimento': typeof ConfiguracoesFluxoAtendimentoRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
+  '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
   '/configuracoes/': typeof ConfiguracoesIndexRoute
 }
 export interface FileRoutesByTo {
@@ -152,6 +159,7 @@ export interface FileRoutesByTo {
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
   '/configuracoes/fluxo-atendimento': typeof ConfiguracoesFluxoAtendimentoRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
+  '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
   '/configuracoes': typeof ConfiguracoesIndexRoute
 }
 export interface FileRoutesById {
@@ -172,6 +180,7 @@ export interface FileRoutesById {
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
   '/configuracoes/fluxo-atendimento': typeof ConfiguracoesFluxoAtendimentoRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
+  '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
   '/configuracoes/': typeof ConfiguracoesIndexRoute
 }
 export interface FileRouteTypes {
@@ -193,6 +202,7 @@ export interface FileRouteTypes {
     | '/configuracoes/estoque'
     | '/configuracoes/fluxo-atendimento'
     | '/configuracoes/usuarios'
+    | '/hooks/refresh-tracking'
     | '/configuracoes/'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -211,6 +221,7 @@ export interface FileRouteTypes {
     | '/configuracoes/estoque'
     | '/configuracoes/fluxo-atendimento'
     | '/configuracoes/usuarios'
+    | '/hooks/refresh-tracking'
     | '/configuracoes'
   id:
     | '__root__'
@@ -230,6 +241,7 @@ export interface FileRouteTypes {
     | '/configuracoes/estoque'
     | '/configuracoes/fluxo-atendimento'
     | '/configuracoes/usuarios'
+    | '/hooks/refresh-tracking'
     | '/configuracoes/'
   fileRoutesById: FileRoutesById
 }
@@ -244,6 +256,7 @@ export interface RootRouteChildren {
   EmpresasRoute: typeof EmpresasRoute
   EstoqueRoute: typeof EstoqueRoute
   RelatoriosRoute: typeof RelatoriosRoute
+  HooksRefreshTrackingRoute: typeof HooksRefreshTrackingRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -325,6 +338,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConfiguracoesIndexRouteImport
       parentRoute: typeof ConfiguracoesRoute
     }
+    '/hooks/refresh-tracking': {
+      id: '/hooks/refresh-tracking'
+      path: '/hooks/refresh-tracking'
+      fullPath: '/hooks/refresh-tracking'
+      preLoaderRoute: typeof HooksRefreshTrackingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/configuracoes/usuarios': {
       id: '/configuracoes/usuarios'
       path: '/usuarios'
@@ -405,6 +425,7 @@ const rootRouteChildren: RootRouteChildren = {
   EmpresasRoute: EmpresasRoute,
   EstoqueRoute: EstoqueRoute,
   RelatoriosRoute: RelatoriosRoute,
+  HooksRefreshTrackingRoute: HooksRefreshTrackingRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
