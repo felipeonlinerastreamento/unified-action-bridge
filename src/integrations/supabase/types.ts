@@ -1485,6 +1485,54 @@ export type Database = {
           },
         ]
       }
+      tracking_settings: {
+        Row: {
+          auto_close_ticket_on_delivery: boolean
+          auto_refresh_enabled: boolean
+          id: string
+          notify_assigned_only: boolean
+          notify_on_delivered: boolean
+          notify_on_exception: boolean
+          notify_sector_members: boolean
+          refresh_interval_minutes: number
+          require_tracking_code: boolean
+          tracking_code_pattern: string
+          updated_at: string
+          updated_by: string | null
+          whatsapp_notify_client: boolean
+        }
+        Insert: {
+          auto_close_ticket_on_delivery?: boolean
+          auto_refresh_enabled?: boolean
+          id?: string
+          notify_assigned_only?: boolean
+          notify_on_delivered?: boolean
+          notify_on_exception?: boolean
+          notify_sector_members?: boolean
+          refresh_interval_minutes?: number
+          require_tracking_code?: boolean
+          tracking_code_pattern?: string
+          updated_at?: string
+          updated_by?: string | null
+          whatsapp_notify_client?: boolean
+        }
+        Update: {
+          auto_close_ticket_on_delivery?: boolean
+          auto_refresh_enabled?: boolean
+          id?: string
+          notify_assigned_only?: boolean
+          notify_on_delivered?: boolean
+          notify_on_exception?: boolean
+          notify_sector_members?: boolean
+          refresh_interval_minutes?: number
+          require_tracking_code?: boolean
+          tracking_code_pattern?: string
+          updated_at?: string
+          updated_by?: string | null
+          whatsapp_notify_client?: boolean
+        }
+        Relationships: []
+      }
       user_gsystem_links: {
         Row: {
           channel_id: string | null
