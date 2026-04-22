@@ -230,6 +230,25 @@ export function FloatingChatWindow({ state, onOpenInPanel }: Props) {
     sendMutation.mutate({ text: input.trim(), whisper: whisperMode });
   };
 
+  // Co-agent (collaborative attendance) state derived from chat detail
+  const detail = chatDetail as any;
+  const responsibleUserId: string | undefined = detail?.assignedUserId || undefined;
+  const responsibleFirstName: string | undefined = detail?.assignedFirstName || undefined;
+  const coAgents: Array<{ userId: string; firstName?: string }> = detail?.coAgents || [];
+  const isResponsible = !!user?.id && responsibleUserId === user.id;
+  const isCoAgent = !!user?.id && coAgents.some((a) => a.userId === user.id);
+  const canJoin = !!responsibleUserId && !isResponsible && !isCoAgent;
+
+  const joinMutation = useMutation({
+    mutationFn: async () => joinChatAsCoAgent({ data: { chatId }, ...await getAuthHeaders() }),
+    onSuccess: () => {
+      toast.success("Você entrou na conversa como co-atendente");
+      queryClient.invalidateQueries({ queryKey: ["floating-chat-detail", channelId, chatId] });
+      queryClient.invalidateQueries({ queryKey: ["chat-detail", channelId, chatId] });
+    },
+    onError: (e: any) => toast.error(e?.message || "Erro ao entrar na conversa"),
+  });
+
   if (state.minimized) return null;
 
   const name = meta.name || `Chat ${chatId.slice(0, 6)}`;
