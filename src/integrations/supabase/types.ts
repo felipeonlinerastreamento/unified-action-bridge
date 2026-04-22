@@ -445,6 +445,7 @@ export type Database = {
       }
       channels: {
         Row: {
+          bot_mode: string | null
           created_at: string
           created_by: string | null
           id: string
@@ -454,8 +455,12 @@ export type Database = {
           platform: string
           token: string
           updated_at: string
+          webhook_secret: string | null
+          zapi_client_token: string | null
+          zapi_instance_id: string | null
         }
         Insert: {
+          bot_mode?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -465,8 +470,12 @@ export type Database = {
           platform?: string
           token: string
           updated_at?: string
+          webhook_secret?: string | null
+          zapi_client_token?: string | null
+          zapi_instance_id?: string | null
         }
         Update: {
+          bot_mode?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -476,6 +485,9 @@ export type Database = {
           platform?: string
           token?: string
           updated_at?: string
+          webhook_secret?: string | null
+          zapi_client_token?: string | null
+          zapi_instance_id?: string | null
         }
         Relationships: []
       }
@@ -1672,6 +1684,192 @@ export type Database = {
           },
         ]
       }
+      zapi_bot_flows: {
+        Row: {
+          channel_id: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          nodes: Json
+          updated_at: string
+        }
+        Insert: {
+          channel_id?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          nodes?: Json
+          updated_at?: string
+        }
+        Update: {
+          channel_id?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          nodes?: Json
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zapi_bot_flows_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      zapi_chats: {
+        Row: {
+          assigned_to: string | null
+          bot_state: Json
+          channel_id: string
+          contact_avatar: string | null
+          contact_name: string | null
+          created_at: string
+          id: string
+          last_message_at: string | null
+          last_message_preview: string | null
+          phone: string
+          sector_name: string | null
+          status: string
+          tags: Json
+          unread_count: number
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          bot_state?: Json
+          channel_id: string
+          contact_avatar?: string | null
+          contact_name?: string | null
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          last_message_preview?: string | null
+          phone: string
+          sector_name?: string | null
+          status?: string
+          tags?: Json
+          unread_count?: number
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          bot_state?: Json
+          channel_id?: string
+          contact_avatar?: string | null
+          contact_name?: string | null
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          last_message_preview?: string | null
+          phone?: string
+          sector_name?: string | null
+          status?: string
+          tags?: Json
+          unread_count?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zapi_chats_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      zapi_messages: {
+        Row: {
+          chat_id: string
+          created_at: string
+          from_me: boolean
+          id: string
+          is_typing: boolean
+          is_whisper: boolean
+          media_type: string | null
+          media_url: string | null
+          status: string
+          text: string | null
+          whisper_author: string | null
+          zapi_message_id: string | null
+        }
+        Insert: {
+          chat_id: string
+          created_at?: string
+          from_me: boolean
+          id?: string
+          is_typing?: boolean
+          is_whisper?: boolean
+          media_type?: string | null
+          media_url?: string | null
+          status?: string
+          text?: string | null
+          whisper_author?: string | null
+          zapi_message_id?: string | null
+        }
+        Update: {
+          chat_id?: string
+          created_at?: string
+          from_me?: boolean
+          id?: string
+          is_typing?: boolean
+          is_whisper?: boolean
+          media_type?: string | null
+          media_url?: string | null
+          status?: string
+          text?: string | null
+          whisper_author?: string | null
+          zapi_message_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "zapi_messages_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: false
+            referencedRelation: "zapi_chats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      zapi_quick_replies: {
+        Row: {
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_global: boolean
+          label: string
+          shortcut: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_global?: boolean
+          label: string
+          shortcut: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_global?: boolean
+          label?: string
+          shortcut?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -1684,6 +1882,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      pick_least_loaded_agent: { Args: { _sector: string }; Returns: string }
     }
     Enums: {
       app_role: "admin" | "gestor" | "atendente"
