@@ -84,7 +84,7 @@ import {
   Check,
 } from "lucide-react";
 import { ChatQueueList } from "@/components/central/chat-queue-list";
-import { FloatingChatsProvider, useFloatingChats } from "@/components/central/floating-chats-context";
+import { FloatingChatsProvider } from "@/components/central/floating-chats-context";
 import { FloatingChatsLayer } from "@/components/central/floating-chats-layer";
 import {
   AlertDialog,
