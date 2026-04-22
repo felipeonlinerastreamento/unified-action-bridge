@@ -84,6 +84,7 @@ import {
   ChevronsUpDown,
   Check,
   CheckCheck,
+  Pencil,
 } from "lucide-react";
 import { ChatQueueList } from "@/components/central/chat-queue-list";
 import { FloatingChatsProvider } from "@/components/central/floating-chats-context";
