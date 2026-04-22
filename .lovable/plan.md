@@ -1,68 +1,167 @@
 
 
-# Configuração de Rastreio Sedex no menu "Encaminhamento por Categoria"
+# Fluxo "Teste de Equipamento" + finalização automática para Administrativo + sincronização GSystem
 
 ## Objetivo
 
-Adicionar à página **Configurações → Encaminhamento por Categoria** uma área de administração específica para regras com a categoria **"Correios Controle de Movimentações"**, permitindo gerenciar o comportamento do rastreio Sedex (intervalo de atualização, notificações, validações) sem precisar mexer em código.
+Quando a categoria do chamado for **"Teste de Equipamento"**, o sistema deve solicitar campos adicionais condicionais (subtipo, cobrança, garantia, motivo). Ao **finalizar** esse atendimento, ele deve ser encaminhado automaticamente para o setor **"Administrativo"** com status **"Aberto"**, e uma pendência correspondente deve ser criada no **GSystem** com toda a descrição do atendimento. Toda essa regra fica gerenciada pela página **Configurações → Encaminhamento por Categoria**.
 
-## O que será feito
+---
 
-### 1. Nova tabela `tracking_settings` (singleton de configuração global)
+## 1. Novos campos condicionais em "Teste de Equipamento"
 
-Campos:
-- `id` (uuid, PK)
-- `auto_refresh_enabled` (bool, default true) — liga/desliga o cron horário
-- `refresh_interval_minutes` (int, default 60) — frequência de atualização automática
-- `notify_on_delivered` (bool, default true) — gera notificação quando entregue
-- `notify_on_exception` (bool, default true) — notifica em falhas/devolução/ausência
-- `notify_sector_members` (bool, default true) — notifica todos do setor
-- `notify_assigned_only` (bool, default false) — só o responsável
-- `auto_close_ticket_on_delivery` (bool, default false) — fecha ticket ao entregar
-- `require_tracking_code` (bool, default true) — torna obrigatório no momento da criação
-- `tracking_code_pattern` (text, default `^[A-Z]{2}\d{9}[A-Z]{2}$`) — regex de validação
-- `whatsapp_notify_client` (bool, default false) — placeholder para futura integração
-- `updated_at`, `updated_by`
+### Onde
+- `src/components/atendimentos/ticket-create-dialog.tsx` (criação)
+- `src/components/atendimentos/ticket-detail-panel.tsx` (edição/finalização)
 
-RLS: admin/gestor gerenciam, autenticados leem.
+### Comportamento (em cascata)
+```text
+Categoria = "Teste de Equipamento"
+└── Subtipo *  (Instalação | Retirada | Manutenção)
+    └── se Subtipo = "Manutenção"
+        ├── Necessário cobrar *  (Sim | Não)
+        │   └── se "Sim" → Motivo da cobrança *  (texto livre)
+        └── Garantia *            (Sim | Não)
+```
+- Todos os campos com `*` são **obrigatórios** — bloqueiam o "Criar Ticket" e o "Finalizar".
+- Detecção da categoria: `category.toLowerCase().includes("teste de equipamento")` (mesma estratégia já usada para "correios").
 
-### 2. Nova seção visual em `configuracoes.encaminhamento.tsx`
+### Persistência
+Os valores são salvos em `service_tickets.notes` como bloco estruturado no topo:
+```
+[Teste de Equipamento]
+Subtipo: Manutenção
+Necessário cobrar: Sim
+Motivo: Cliente fora da garantia contratual
+Garantia: Não
+---
+<observações originais do operador>
+```
+Assim usamos a coluna `notes` (já existente, já enviada ao GSystem na descrição) sem migração extra.
 
-Quando o usuário cadastrar/editar uma regra cuja `category_label` contenha "Correios" (ou tiver flag específica), aparece automaticamente um **bloco expandido "Configuração de Rastreio Sedex"** abaixo do formulário com os campos acima.
+---
 
-Além disso, no topo da página será adicionado um card dedicado **"Rastreamento Sedex"** (visível independente das regras), com:
-- Switch geral "Ativar atualização automática"
-- Select de intervalo (15min / 30min / 1h / 2h / 6h)
-- Switches de notificação (entregue / exceção / setor inteiro / só responsável)
-- Switch "Exigir código no cadastro"
-- Switch "Fechar ticket automaticamente ao entregar"
-- Botão **"Atualizar todos agora"** (admin/gestor) — chama `/hooks/refresh-tracking`
-- Botão **"Testar código"** — input + chama `previewTracking` e mostra resultado
-- Métricas rápidas: total em trânsito, entregues hoje, com erro
+## 2. Encaminhamento automático ao finalizar
 
-### 3. Aplicar as configurações no fluxo existente
+### Regra
+Ao clicar em **Finalizar** num ticket de categoria "Teste de Equipamento":
+1. Se a regra estiver ativa em `category_routing_rules`, ler `target_sector_name` (default "Administrativo").
+2. Atualizar o ticket: `sector = "Administrativo"`, `status = "aberto"`, `assigned_to = null`, registrar `closed_at` apenas no histórico (comentário sistema), **não** no campo (porque o ticket continua aberto para o setor destino).
+3. Inserir comentário sistema: *"Finalizado pelo atendente X e encaminhado automaticamente para o setor Administrativo (status: Aberto)"*.
+4. Inserir linha em `ticket_assignments` registrando o encaminhamento.
 
-- `tracking.server.ts` `refreshAllPending`: lê `tracking_settings` e respeita `auto_refresh_enabled`; ajusta filtro de quem notificar.
-- `tracking.server.ts` `notifyTicketSector`: respeita `notify_sector_members` vs `notify_assigned_only`, e só dispara se `notify_on_delivered`.
-- `refreshOneTracking`: se `auto_close_ticket_on_delivery` e entregue → atualiza `service_tickets.status='resolvido'` + `closed_at`.
-- `ticket-create-dialog.tsx`: quando categoria for de Correios, lê `require_tracking_code` e `tracking_code_pattern` para validar.
-- Cron horário existente continuará rodando, mas a função sairá imediatamente se `auto_refresh_enabled = false`.
+### Onde implementar
+- `src/components/atendimentos/ticket-detail-panel.tsx` → função `updateStatus("finalizado")`: detectar categoria "teste de equipamento", consultar `category_routing_rules`, executar fluxo acima ao invés do update padrão.
 
-### 4. Permissões / segurança
+---
 
-- Só admin/gestor podem alterar `tracking_settings` e disparar refresh manual global.
-- Atendentes só visualizam.
+## 3. Sincronização para o GSystem (criação de pendência)
 
-## Fora de escopo
+### Onde
+Reaproveitar `createPendencia` em `src/lib/gsystem-api.functions.ts` (já existe, faz `POST /pendencias`).
 
-- Mudar a UI de criação de tickets (já feita em iteração anterior).
-- Integração WhatsApp para avisar cliente — fica como switch desabilitado/placeholder.
-- Múltiplas transportadoras (continua só Correios/SeuRastreio).
+### Quando
+Disparado dentro do `updateStatus("finalizado")` (etapa 2.3), **independente** da categoria — toda finalização sincroniza, mas a regra de Teste de Equipamento garante a montagem da descrição enriquecida.
 
-## Detalhes técnicos
+### Payload (descrição completa)
+```
+TICKET #<id curto>
+Empresa: <companies.name>
+Contato: <contact_name>  Telefone: <contact_phone>
+Placa: <plate>
+Categoria: <category>
+Prioridade: <priority>
+Setor destino: Administrativo
+Aberto em: <created_at>
+Finalizado em: <agora>
+Atendente: <profile.name>
 
-- Migration cria a tabela `tracking_settings` + insere 1 linha default.
-- Hook `useTrackingSettings()` em `src/hooks/` para uso em UI e em `ticket-create-dialog`.
-- Botão "Atualizar todos" usa `fetch('/hooks/refresh-tracking', { method:'POST', headers:{ Authorization:'Bearer '+token } })`.
-- Layout: dois Cards na página `configuracoes.encaminhamento.tsx`, posicionados entre o header e o card "Regras de Encaminhamento" — assim a configuração do Correios fica em destaque.
+[Teste de Equipamento]
+Subtipo: ...
+Necessário cobrar: ...
+Motivo: ...
+Garantia: ...
+
+OBSERVAÇÕES:
+<notes do operador>
+
+HISTÓRICO DE COMENTÁRIOS:
+- [data] autor: comentário
+- ...
+```
+- Campos GSystem: `Tipo` (mapeado pela `category_routing_rules.category_key` quando existir), `Descricao` (texto acima), `Cliente` (key GSystem do `companies` — buscado via `entity_links`), `Veiculo` (placa, opcional).
+- Em caso de erro na chamada, o ticket continua finalizado/encaminhado localmente e um comentário sistema regista *"Falha ao sincronizar com GSystem: <erro>. Tente novamente em Ações → Sincronizar."* (mantém a operação resiliente).
+
+### Botão de retry manual
+Adicionar em `ticket-detail-panel.tsx` aba **Ações** → botão "Sincronizar com GSystem" (visível quando o ticket já está finalizado e ainda não tem `gsystem_pendencia_key` registado).
+
+---
+
+## 4. Gestão na tela "Encaminhamento por Categoria"
+
+### Onde
+`src/routes/configuracoes.encaminhamento.tsx` + novo componente `src/components/configuracoes/teste-equipamento-config.tsx`.
+
+### Conteúdo do novo card (entre o card de Sedex e a tabela de regras)
+- **Switch**: "Ativar fluxo Teste de Equipamento"
+- **Select**: Categoria GSystem que dispara o fluxo (default: "Teste de Equipamento" — autodescoberta na lista de `tiposPendencia`)
+- **Select**: Setor destino ao finalizar (default: "Administrativo" — opções vêm de `sectors` + GSystem)
+- **Select**: Status no setor destino (Aberto | Em Andamento) — default Aberto
+- **Switches**:
+  - "Sincronizar automaticamente com GSystem ao finalizar"
+  - "Exigir Subtipo"
+  - "Exigir Motivo quando 'Necessário cobrar' = Sim"
+  - "Exigir Garantia"
+- **Botão**: "Salvar configurações"
+
+### Persistência
+Nova tabela singleton `teste_equipamento_settings` (mesmo padrão de `tracking_settings`):
+
+```sql
+CREATE TABLE public.teste_equipamento_settings (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  is_enabled boolean NOT NULL DEFAULT true,
+  trigger_category_key text NOT NULL DEFAULT 'Teste de Equipamento',
+  trigger_category_label text NOT NULL DEFAULT 'Teste de Equipamento',
+  target_sector_name text NOT NULL DEFAULT 'Administrativo',
+  target_status text NOT NULL DEFAULT 'aberto',
+  auto_sync_gsystem boolean NOT NULL DEFAULT true,
+  require_subtipo boolean NOT NULL DEFAULT true,
+  require_motivo_when_cobrar boolean NOT NULL DEFAULT true,
+  require_garantia boolean NOT NULL DEFAULT true,
+  updated_at timestamptz NOT NULL DEFAULT now(),
+  updated_by uuid
+);
+-- RLS: leitura para autenticados; escrita só admin/gestor (mesmo padrão de tracking_settings)
+-- Insert default row ao final da migration
+```
+
+Hook `src/hooks/use-teste-equipamento-settings.tsx` (espelho de `use-tracking-settings`).
+
+---
+
+## 5. Sumário de arquivos
+
+### Criar
+- `supabase/migrations/<timestamp>_teste_equipamento_settings.sql`
+- `src/hooks/use-teste-equipamento-settings.tsx`
+- `src/components/configuracoes/teste-equipamento-config.tsx`
+- `src/components/atendimentos/teste-equipamento-fields.tsx` (componente de campos condicionais reutilizado em criação e detalhe)
+- `src/lib/ticket-finalize.functions.ts` (server fn `finalizeTicketAndSync` — chama `createPendencia` com a descrição montada e devolve `pendenciaKey`)
+
+### Editar
+- `src/components/atendimentos/ticket-create-dialog.tsx` — incluir `<TesteEquipamentoFields>` quando a categoria casar; bloquear submit se obrigatórios faltarem; gravar bloco estruturado no `notes`.
+- `src/components/atendimentos/ticket-detail-panel.tsx` — `updateStatus("finalizado")` passa pelo novo fluxo (encaminhar para Administrativo + chamar `finalizeTicketAndSync`); novo botão "Sincronizar com GSystem".
+- `src/routes/configuracoes.encaminhamento.tsx` — renderizar `<TesteEquipamentoConfig />` logo após `<TrackingSedexConfig />`.
+
+---
+
+## 6. Detalhes técnicos
+
+- Detecção de categoria no front: `category.trim().toLowerCase() === settings.trigger_category_key.toLowerCase()` (mais robusto que `includes`).
+- Encaminhamento ao finalizar é uma operação **transacional best-effort no cliente**: 1) update do ticket; 2) insert em `ticket_assignments`; 3) insert comentário; 4) chamada `finalizeTicketAndSync`. Cada passo trata erro próprio; falha no GSystem não reverte os passos locais.
+- Mapeamento GSystem do cliente: `entity_links` onde `entity_type='cliente'` e `local_id = companies.id`. Se não houver vínculo, a sync falha graciosamente e oferece o botão de retry.
+- Server fn `finalizeTicketAndSync` reutiliza `gsystemApiFetch` via `createPendencia` — não cria nova rota nem novo segredo.
+- O bloco "[Teste de Equipamento]" é parseado via regex simples para preencher os campos de volta na edição.
+- Sem mudanças em `service_tickets`: usamos `notes` (estruturado) + `sector` + `status` + `category` que já existem.
 
