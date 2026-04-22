@@ -8,7 +8,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Send, Minus, Maximize2, Minimize2, X, GripHorizontal, Loader2, ExternalLink, MessageSquare } from "lucide-react";
-import { getChatDetail, getChatMessages, sendText } from "@/lib/gsystem.functions";
+import { getChatDetail, getChatMessages, sendText, joinChatAsCoAgent } from "@/lib/gsystem.functions";
+import { useAuth } from "@/hooks/use-auth";
+import { UserPlus2 } from "lucide-react";
 import { useFloatingChats, FloatingChatState } from "./floating-chats-context";
 import { WhisperToggle } from "./whisper-toggle";
 import { QuickRepliesPopover } from "./quick-replies-popover";
@@ -23,6 +25,11 @@ interface Props {
 interface GMessage {
   IdMessage?: string;
   senderName?: string;
+  senderUserId?: string;
+  senderFirstName?: string;
+  senderFullName?: string;
+  responsibleFirstName?: string;
+  isCoAgent?: boolean;
   dhMessage?: string;
   text?: string;
   isSentByMe?: boolean;
@@ -45,6 +52,7 @@ function formatTime(dateStr?: string): string {
 
 export function FloatingChatWindow({ state, onOpenInPanel }: Props) {
   const { closeChat, minimize, toggleMaximize, bringToFront, updatePosition, updateMeta, setUnread } = useFloatingChats();
+  const { user } = useAuth();
   const [input, setInput] = useState("");
   const [whisperMode, setWhisperMode] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -222,6 +230,25 @@ export function FloatingChatWindow({ state, onOpenInPanel }: Props) {
     sendMutation.mutate({ text: input.trim(), whisper: whisperMode });
   };
 
+  // Co-agent (collaborative attendance) state derived from chat detail
+  const detail = chatDetail as any;
+  const responsibleUserId: string | undefined = detail?.assignedUserId || undefined;
+  const responsibleFirstName: string | undefined = detail?.assignedFirstName || undefined;
+  const coAgents: Array<{ userId: string; firstName?: string }> = detail?.coAgents || [];
+  const isResponsible = !!user?.id && responsibleUserId === user.id;
+  const isCoAgent = !!user?.id && coAgents.some((a) => a.userId === user.id);
+  const canJoin = !!responsibleUserId && !isResponsible && !isCoAgent;
+
+  const joinMutation = useMutation({
+    mutationFn: async () => joinChatAsCoAgent({ data: { chatId }, ...await getAuthHeaders() }),
+    onSuccess: () => {
+      toast.success("Você entrou na conversa como co-atendente");
+      queryClient.invalidateQueries({ queryKey: ["floating-chat-detail", channelId, chatId] });
+      queryClient.invalidateQueries({ queryKey: ["chat-detail", channelId, chatId] });
+    },
+    onError: (e: any) => toast.error(e?.message || "Erro ao entrar na conversa"),
+  });
+
   if (state.minimized) return null;
 
   const name = meta.name || `Chat ${chatId.slice(0, 6)}`;
@@ -262,6 +289,16 @@ export function FloatingChatWindow({ state, onOpenInPanel }: Props) {
           )}
         </div>
         <div className="flex items-center gap-0.5 shrink-0">
+          {canJoin && (
+            <button
+              onClick={(e) => { e.stopPropagation(); joinMutation.mutate(); }}
+              disabled={joinMutation.isPending}
+              className="rounded p-1 hover:bg-muted text-primary"
+              title="Entrar na conversa como co-atendente"
+            >
+              <UserPlus2 className="h-3 w-3" />
+            </button>
+          )}
           {onOpenInPanel && (
             <button
               onClick={(e) => { e.stopPropagation(); onOpenInPanel(chatId); }}
@@ -283,6 +320,21 @@ export function FloatingChatWindow({ state, onOpenInPanel }: Props) {
         </div>
       </div>
 
+      {/* Responsible / co-agents bar */}
+      {(responsibleFirstName || coAgents.length > 0) && (
+        <div className="flex items-center gap-1.5 border-b bg-muted/30 px-2 py-1 text-[10px] text-muted-foreground">
+          {responsibleFirstName && (
+            <span>
+              Responsável: <strong className="text-foreground">{responsibleFirstName}</strong>
+            </span>
+          )}
+          {coAgents.length > 0 && (
+            <span className="truncate">
+              · Co-atendentes: {coAgents.map((a) => a.firstName || "—").join(", ")}
+            </span>
+          )}
+        </div>
+      )}
       {/* Messages */}
       <ScrollArea className="flex-1 bg-muted/20"
         onFocus={() => { isFocused.current = true; setUnread(chatId, 0); }}
@@ -308,6 +360,7 @@ export function FloatingChatWindow({ state, onOpenInPanel }: Props) {
                 );
               }
               const mine = !!msg.isSentByMe;
+              const opName = mine ? (msg.senderFirstName || (msg.isPrivate ? undefined : "Você")) : undefined;
               return (
                 <div key={msg.IdMessage || i} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                   <div className={`max-w-[85%] rounded-lg px-2.5 py-1.5 text-xs whitespace-pre-wrap break-words ${
@@ -315,6 +368,14 @@ export function FloatingChatWindow({ state, onOpenInPanel }: Props) {
                   } ${msg.isPrivate ? "ring-1 ring-amber-400" : ""}`}>
                     {!mine && msg.senderName && (
                       <p className="text-[10px] font-semibold opacity-70 mb-0.5">{msg.senderName}</p>
+                    )}
+                    {mine && opName && (
+                      <p className={`text-[10px] mb-0.5 ${mine ? "text-primary-foreground/90" : "opacity-70"}`}>
+                        <strong className="font-bold">{opName}</strong>
+                        {msg.isCoAgent && msg.responsibleFirstName && (
+                          <span className="opacity-80"> · via co-atendimento (responsável: {msg.responsibleFirstName})</span>
+                        )}
+                      </p>
                     )}
                     <p>{text}</p>
                     <div className={`flex items-center justify-end gap-1 mt-0.5 opacity-70 ${mine ? "text-primary-foreground" : "text-muted-foreground"}`}>

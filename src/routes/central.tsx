@@ -36,6 +36,7 @@ import {
   listSectors,
   listGSystemUsers,
   transferChat,
+  joinChatAsCoAgent,
 } from "@/lib/gsystem.functions";
 import {
   createPendenciaFromAtendimento,
@@ -130,6 +131,11 @@ function CentralPageWithFloating() {
 interface GMessage {
   IdMessage?: string;
   senderName?: string;
+  senderUserId?: string;
+  senderFirstName?: string;
+  senderFullName?: string;
+  responsibleFirstName?: string;
+  isCoAgent?: boolean;
   dhMessage?: string;
   utcDhMessage?: string;
   unixTimeMessage?: number;
@@ -210,7 +216,7 @@ function detectPlates(messages: GMessage[]): string[] {
 }
 
 function CentralPage() {
-  const { isAuthenticated, isLoading: authLoading, session } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, session, user } = useAuth();
   const [selectedChannelId, setSelectedChannelId] = useState<string>("");
   const [selectedChatId, setSelectedChatId] = useState<string>("");
   const [messageInput, setMessageInput] = useState("");
@@ -1625,6 +1631,36 @@ function CentralPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1">
+                      {(chatDetail as any)?.assignedFirstName && (
+                        <Badge variant="outline" className="text-[10px] mr-1">
+                          Resp.: <strong className="ml-1 font-bold">{(chatDetail as any).assignedFirstName}</strong>
+                        </Badge>
+                      )}
+                      {(() => {
+                        const detail = chatDetail as any;
+                        const respId = detail?.assignedUserId;
+                        const coAgents: Array<{ userId: string }> = detail?.coAgents || [];
+                        const canJoin = !!user?.id && !!respId && respId !== user.id && !coAgents.some((a) => a.userId === user.id);
+                        if (!canJoin) return null;
+                        return (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 mr-2 text-xs"
+                            onClick={async () => {
+                              try {
+                                await joinChatAsCoAgent({ data: { chatId: selectedChatId! }, ...(await getAuthHeaders()) });
+                                toast.success("Você entrou na conversa como co-atendente");
+                                queryClient.invalidateQueries({ queryKey: ["chat-detail", selectedChannelId, selectedChatId] });
+                              } catch (e: any) {
+                                toast.error(e?.message || "Erro ao entrar");
+                              }
+                            }}
+                          >
+                            <UserPlus className="h-3 w-3 mr-1" /> Entrar na conversa
+                          </Button>
+                        );
+                      })()}
                       {statusInfo && (
                         <Badge variant="outline" className={`text-xs mr-2 ${statusInfo.color}`}>
                           {statusInfo.label}
@@ -1762,6 +1798,14 @@ function CentralPage() {
                             >
                               {!isMe && msg.senderName && (
                                 <p className="text-xs font-medium mb-1 opacity-70">{msg.senderName}</p>
+                              )}
+                              {isMe && (msg.senderFirstName || !isPrivate) && (
+                                <p className="text-xs mb-1">
+                                  <strong className="font-bold">{msg.senderFirstName || "Você"}</strong>
+                                  {msg.isCoAgent && msg.responsibleFirstName && (
+                                    <span className="opacity-80 font-normal"> · via co-atendimento (responsável: {msg.responsibleFirstName})</span>
+                                  )}
+                                </p>
                               )}
                               {isPrivate && (
                                 <p className="text-[10px] font-medium mb-1 opacity-60">🔒 Nota privada</p>

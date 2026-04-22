@@ -86,6 +86,14 @@ export const listChats = listAllOpenChats;
 
 // ------------ Chat detail / messages ------------
 
+// Helper: extract first name from a full name
+function firstNameOf(full?: string | null): string | undefined {
+  if (!full) return undefined;
+  const trimmed = String(full).trim();
+  if (!trimmed) return undefined;
+  return trimmed.split(/\s+/)[0];
+}
+
 export const getChatDetail = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
@@ -98,6 +106,29 @@ export const getChatDetail = createServerFn({ method: "POST" })
       .eq("id", data.chatId)
       .single();
     if (error || !r) return null;
+
+    // Resolve responsible operator name (assigned_to → profiles.name)
+    let assignedUserId: string | null = r.assigned_to || null;
+    let assignedUserName: string | undefined;
+    if (assignedUserId) {
+      const { data: prof } = await context.supabase
+        .from("profiles")
+        .select("name")
+        .eq("user_id", assignedUserId)
+        .maybeSingle();
+      assignedUserName = prof?.name || undefined;
+    }
+
+    // Co-agents stored under bot_state.co_agents = [{ user_id, name, joined_at }]
+    const botState = (r.bot_state as Record<string, unknown> | null) || {};
+    const rawCoAgents = Array.isArray((botState as any).co_agents) ? (botState as any).co_agents : [];
+    const coAgents = rawCoAgents.map((a: any) => ({
+      userId: String(a?.user_id || ""),
+      name: a?.name ? String(a.name) : undefined,
+      firstName: firstNameOf(a?.name),
+      joinedAt: a?.joined_at || null,
+    })).filter((a: any) => a.userId);
+
     return {
       attendanceId: r.id,
       description: r.contact_name || r.phone,
@@ -108,6 +139,10 @@ export const getChatDetail = createServerFn({ method: "POST" })
         linkImage: r.contact_avatar || undefined,
       },
       currentSector: r.sector_name ? { description: r.sector_name } : undefined,
+      assignedUserId,
+      assignedUserName,
+      assignedFirstName: firstNameOf(assignedUserName),
+      coAgents,
       messages: [],
     };
   });
@@ -126,17 +161,150 @@ export const getChatMessages = createServerFn({ method: "POST" })
       .limit(500);
     if (error) return { data: [], messages: [] };
 
-    const messages = (rows || []).map((m: any) => ({
-      IdMessage: m.id,
-      senderName: m.is_whisper ? "🤫 Sussurro" : (m.from_me ? "Você" : undefined),
-      utcDhMessage: m.created_at,
-      text: m.text || (m.media_url ? `[mídia: ${m.media_type || "arquivo"}]` : ""),
-      isSentByMe: !!m.from_me,
-      isPrivate: !!m.is_whisper,
-      isSystemMessage: false,
-      _status: m.status,
-    }));
+    // Collect distinct author user_ids to resolve names in a single query
+    const userIds = Array.from(
+      new Set(
+        (rows || [])
+          .map((m: any) => m.sent_by_user_id || m.whisper_author)
+          .filter((v: string | null): v is string => !!v)
+      )
+    );
+    const namesById = new Map<string, string>();
+    if (userIds.length > 0) {
+      const { data: profs } = await context.supabase
+        .from("profiles")
+        .select("user_id, name")
+        .in("user_id", userIds);
+      for (const p of profs || []) {
+        if (p?.user_id && p?.name) namesById.set(p.user_id, p.name);
+      }
+    }
+
+    // Resolve chat responsible to mark "via X" messages
+    const { data: chatRow } = await context.supabase
+      .from("zapi_chats")
+      .select("assigned_to")
+      .eq("id", data.chatId)
+      .maybeSingle();
+    const responsibleUserId = chatRow?.assigned_to || null;
+    let responsibleName: string | undefined;
+    if (responsibleUserId) {
+      responsibleName = namesById.get(responsibleUserId);
+      if (!responsibleName) {
+        const { data: prof } = await context.supabase
+          .from("profiles")
+          .select("name")
+          .eq("user_id", responsibleUserId)
+          .maybeSingle();
+        if (prof?.name) {
+          responsibleName = prof.name;
+          namesById.set(responsibleUserId, prof.name);
+        }
+      }
+    }
+    const responsibleFirstName = firstNameOf(responsibleName);
+
+    const messages = (rows || []).map((m: any) => {
+      const authorId: string | null = m.sent_by_user_id || m.whisper_author || null;
+      const authorFull = authorId ? namesById.get(authorId) : undefined;
+      const authorFirst = firstNameOf(authorFull);
+      const isCoAgentMsg =
+        !!m.from_me && !!authorId && !!responsibleUserId && authorId !== responsibleUserId;
+
+      let senderName: string | undefined;
+      if (m.is_whisper) senderName = authorFirst ? `🤫 Sussurro · ${authorFirst}` : "🤫 Sussurro";
+      else if (m.from_me) senderName = authorFirst || "Você";
+      else senderName = undefined;
+
+      return {
+        IdMessage: m.id,
+        senderName,
+        senderUserId: authorId,
+        senderFirstName: authorFirst,
+        senderFullName: authorFull,
+        responsibleFirstName: isCoAgentMsg ? responsibleFirstName : undefined,
+        isCoAgent: isCoAgentMsg,
+        utcDhMessage: m.created_at,
+        text: m.text || (m.media_url ? `[mídia: ${m.media_type || "arquivo"}]` : ""),
+        isSentByMe: !!m.from_me,
+        isPrivate: !!m.is_whisper,
+        isSystemMessage: false,
+        _status: m.status,
+      };
+    });
     return { data: messages, messages };
+  });
+
+// Add the current operator to the chat as a co-agent (collaborative attendance).
+// Stored inside `zapi_chats.bot_state.co_agents` so we don't need a new table.
+export const joinChatAsCoAgent = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ chatId: z.string().min(1).max(255) }).parse)
+  .handler(async ({ data, context }) => {
+    const userId = context.userId;
+    if (!userId) throw new Error("Usuário não autenticado");
+
+    const { data: chat, error } = await context.supabase
+      .from("zapi_chats")
+      .select("id, assigned_to, bot_state")
+      .eq("id", data.chatId)
+      .single();
+    if (error || !chat) throw new Error("Conversa não encontrada");
+
+    if (chat.assigned_to === userId) {
+      return { success: true, alreadyResponsible: true };
+    }
+
+    const { data: prof } = await context.supabase
+      .from("profiles")
+      .select("name")
+      .eq("user_id", userId)
+      .maybeSingle();
+    const name = prof?.name || "Operador";
+
+    const botState = (chat.bot_state as Record<string, unknown> | null) || {};
+    const list = Array.isArray((botState as any).co_agents) ? [...(botState as any).co_agents] : [];
+    if (list.some((a: any) => a?.user_id === userId)) {
+      return { success: true, alreadyJoined: true };
+    }
+    list.push({ user_id: userId, name, joined_at: new Date().toISOString() });
+
+    const newState = { ...botState, co_agents: list };
+    const { error: upErr } = await context.supabase
+      .from("zapi_chats")
+      .update({ bot_state: newState })
+      .eq("id", data.chatId);
+    if (upErr) throw new Error(upErr.message);
+
+    return { success: true, name };
+  });
+
+// Remove the current operator from the co-agent list.
+export const leaveChatAsCoAgent = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ chatId: z.string().min(1).max(255) }).parse)
+  .handler(async ({ data, context }) => {
+    const userId = context.userId;
+    if (!userId) throw new Error("Usuário não autenticado");
+
+    const { data: chat, error } = await context.supabase
+      .from("zapi_chats")
+      .select("bot_state")
+      .eq("id", data.chatId)
+      .single();
+    if (error || !chat) throw new Error("Conversa não encontrada");
+
+    const botState = (chat.bot_state as Record<string, unknown> | null) || {};
+    const list = Array.isArray((botState as any).co_agents) ? (botState as any).co_agents : [];
+    const filtered = list.filter((a: any) => a?.user_id !== userId);
+    const newState = { ...botState, co_agents: filtered };
+
+    const { error: upErr } = await context.supabase
+      .from("zapi_chats")
+      .update({ bot_state: newState })
+      .eq("id", data.chatId);
+    if (upErr) throw new Error(upErr.message);
+    return { success: true };
   });
 
 // ------------ Send / actions ------------
@@ -163,6 +331,7 @@ export const sendText = createServerFn({ method: "POST" })
         from_me: true,
         is_whisper: true,
         whisper_author: context.userId,
+        sent_by_user_id: context.userId,
         text,
         status: "sent",
       });
@@ -185,6 +354,7 @@ export const sendText = createServerFn({ method: "POST" })
       chat_id: data.chatId,
       zapi_message_id: result?.messageId || result?.id || null,
       from_me: true,
+      sent_by_user_id: context.userId,
       text,
       status: "sent",
     });

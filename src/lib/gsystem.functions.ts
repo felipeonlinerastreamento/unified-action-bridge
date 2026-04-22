@@ -16,4 +16,6 @@ export {
   listSectors,
   listGSystemUsers,
   listContacts,
+  joinChatAsCoAgent,
+  leaveChatAsCoAgent,
 } from "./zapi.functions";
