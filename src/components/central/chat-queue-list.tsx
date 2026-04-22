@@ -384,6 +384,6 @@ function ChatListItem({
           )}
         </div>
       </div>
-    </button>
+    </div>
   );
 }
