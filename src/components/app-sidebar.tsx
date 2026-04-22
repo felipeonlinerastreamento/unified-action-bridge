@@ -17,9 +17,12 @@ import {
   UserCog,
   GitBranch,
   ArrowRightLeft,
+  Sun,
+  Moon,
 } from "lucide-react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
+import { useTheme } from "@/hooks/use-theme";
 import {
   Sidebar,
   SidebarContent,
@@ -64,6 +67,7 @@ export function AppSidebar() {
   const collapsed = state === "collapsed";
   const location = useLocation();
   const { profile, signOut } = useAuth();
+  const { theme, toggleTheme } = useTheme();
 
   const isConfigActive = location.pathname.startsWith("/configuracoes");
 
@@ -139,11 +143,35 @@ export function AppSidebar() {
       <SidebarFooter>
         <SidebarMenu>
           <SidebarMenuItem>
-            <SidebarMenuButton onClick={signOut} tooltip="Sair">
-              <LogOut className="h-4 w-4" />
-              <span>{profile?.name || "Sair"}</span>
-            </SidebarMenuButton>
+            <div className="flex items-center gap-1">
+              <SidebarMenuButton onClick={signOut} tooltip="Sair" className="flex-1">
+                <LogOut className="h-4 w-4" />
+                <span>{profile?.name || "Sair"}</span>
+              </SidebarMenuButton>
+              {!collapsed && (
+                <button
+                  type="button"
+                  onClick={toggleTheme}
+                  aria-label={theme === "dark" ? "Ativar tema claro" : "Ativar tema escuro"}
+                  title={theme === "dark" ? "Tema claro" : "Tema escuro"}
+                  className="flex h-8 w-8 items-center justify-center rounded-md text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground transition-colors shrink-0"
+                >
+                  {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                </button>
+              )}
+            </div>
           </SidebarMenuItem>
+          {collapsed && (
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                onClick={toggleTheme}
+                tooltip={theme === "dark" ? "Tema claro" : "Tema escuro"}
+              >
+                {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+                <span>{theme === "dark" ? "Tema claro" : "Tema escuro"}</span>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          )}
         </SidebarMenu>
       </SidebarFooter>
     </Sidebar>
