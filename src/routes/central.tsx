@@ -93,6 +93,7 @@ import { ChatTags, type ChatTag } from "@/components/central/chat-tags";
 import { MessageStatusTicks } from "@/components/central/message-status-ticks";
 import { TypingIndicator } from "@/components/central/typing-indicator";
 import { useZapiRealtime } from "@/hooks/use-zapi-realtime";
+import { isGroupChat } from "@/lib/chat-utils";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -739,8 +740,11 @@ function CentralPage() {
     enabled: (!!contactPhone || !!currentTicket?.contact_phone) && !companyLookup && !subClientLookup && isAuthenticated,
   });
 
-  // Identification modal — only for contacts without any existing link
-  const isUnidentified = !!chatDetail && !!contactPhone && !companyLookup && !subClientLookup && !crmContactLookup && !currentTicket?.company_id;
+  // Group chats never require client identification
+  const isGroup = isGroupChat(chatDetail);
+
+  // Identification modal — only for contacts without any existing link (and not groups)
+  const isUnidentified = !isGroup && !!chatDetail && !!contactPhone && !companyLookup && !subClientLookup && !crmContactLookup && !currentTicket?.company_id;
 
   // Auto-open identification modal when contact is unidentified
   useEffect(() => {
