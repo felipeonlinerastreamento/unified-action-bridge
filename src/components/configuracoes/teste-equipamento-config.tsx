@@ -185,7 +185,7 @@ export function TesteEquipamentoConfig() {
               </SelectContent>
             </Select>
             {!sectorExists && local.target_sector_name && (
-              <p className="text-[10px] text-amber-600 flex items-center gap-1">
+              <p className="text-[10px] text-destructive flex items-center gap-1">
                 <AlertTriangle className="h-3 w-3" />
                 Setor "{local.target_sector_name}" não existe em Configurações → Setores. Crie-o ou escolha outro.
               </p>
