@@ -1528,8 +1528,8 @@ function CentralPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="flex gap-3 h-[calc(100vh-12rem)]">
-            {/* Toggle left panel button */}
+          <div className="flex gap-2 sm:gap-3 h-[calc(100vh-12rem)] relative">
+            {/* Toggle left panel button (when collapsed) */}
             {!showLeftPanel && (
               <Button
                 variant="outline"
@@ -1542,9 +1542,17 @@ function CentralPage() {
               </Button>
             )}
 
+            {/* Mobile backdrop when left panel is open */}
+            {showLeftPanel && isMobile && (
+              <div
+                className="fixed inset-0 bg-background/60 backdrop-blur-sm z-30 md:hidden"
+                onClick={() => setShowLeftPanel(false)}
+              />
+            )}
+
             {/* Chat list */}
             {showLeftPanel && (
-            <div className="w-80 shrink-0 border rounded-lg flex flex-col bg-card overflow-hidden relative">
+            <div className="w-[85vw] max-w-sm md:w-72 lg:w-80 shrink-0 border rounded-lg flex flex-col bg-card overflow-hidden relative max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-40 max-md:shadow-xl max-md:rounded-none">
               <div className="p-3 border-b space-y-2">
                 <div className="flex items-center gap-2">
                   <Button
