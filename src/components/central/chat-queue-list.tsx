@@ -4,6 +4,7 @@ import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, Bot, Clock, Headset, Users, Moon, ChevronDown, ChevronRight, MessageSquare } from "lucide-react";
 import { useFloatingChats } from "./floating-chats-context";
+import { isGroupChat } from "@/lib/chat-utils";
 
 interface ChatItem {
   attendanceId: string;
@@ -83,7 +84,7 @@ const GROUP_CONFIGS: GroupConfig[] = [
   { key: "waiting", label: "Aguardando", icon: <Clock className="h-4 w-4" />, headerBg: "bg-amber-50 dark:bg-amber-950/30", headerText: "text-amber-700 dark:text-amber-300" },
   { key: "outOfHour", label: "Fora de hora", icon: <Moon className="h-4 w-4" />, headerBg: "bg-purple-50 dark:bg-purple-950/30", headerText: "text-purple-700 dark:text-purple-300" },
   { key: "manual", label: "Manual", icon: <Headset className="h-4 w-4" />, headerBg: "bg-emerald-50 dark:bg-emerald-950/30", headerText: "text-emerald-700 dark:text-emerald-300" },
-  { key: "group", label: "Grupo", icon: <Users className="h-4 w-4" />, headerBg: "bg-slate-50 dark:bg-slate-950/30", headerText: "text-slate-700 dark:text-slate-300" },
+  { key: "group", label: "Grupos", icon: <Users className="h-4 w-4" />, headerBg: "bg-slate-50 dark:bg-slate-950/30", headerText: "text-slate-700 dark:text-slate-300" },
 ];
 
 function formatTime(dateStr?: string): string {
@@ -138,6 +139,11 @@ export function ChatQueueList({
     };
 
     for (const chat of chats) {
+      // Group chats always land in the "Grupos" bucket
+      if (isGroupChat(chat)) {
+        groups.group.push(chat);
+        continue;
+      }
       // Check out-of-hour first
       if ((chat.timeInOutOfHour || 0) > 0 && chat.status !== 2) {
         groups.outOfHour.push(chat);
