@@ -126,7 +126,7 @@ export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
               .select("id, contact_name")
               .single();
             chatId = created?.id;
-          } else {
+          } else if (existing) {
             await supabaseAdmin
               .from("zapi_chats")
               .update({
@@ -134,7 +134,7 @@ export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
                 contact_avatar: p.senderPhoto || undefined,
                 last_message_at: new Date().toISOString(),
                 last_message_preview: text.slice(0, 120),
-                unread_count: p.fromMe ? existing.unread_count || 0 : (existing.unread_count || 0) + 1,
+                unread_count: p.fromMe ? (existing.unread_count || 0) : ((existing.unread_count || 0) + 1),
               })
               .eq("id", chatId!);
           }

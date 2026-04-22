@@ -310,7 +310,7 @@ export const listSectors = createServerFn({ method: "POST" })
       .from("sectors")
       .select("id, name, description")
       .eq("is_active", true);
-    return (data || []).map((s) => ({ id: s.id, description: s.name, ...s }));
+    return (data || []).map((s) => ({ id: s.id, description: s.name, name: s.name }));
   });
 
 export const listGSystemUsers = createServerFn({ method: "POST" })
