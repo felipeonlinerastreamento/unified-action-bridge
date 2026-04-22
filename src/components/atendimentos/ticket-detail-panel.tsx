@@ -34,6 +34,12 @@ import {
 import { TicketReminderSection } from "./ticket-reminder-section";
 import { TicketAgentsSection } from "./ticket-agents-section";
 import { TicketTrackingSection } from "./ticket-tracking-section";
+import {
+  useTesteEquipamentoSettings,
+  isTesteEquipamentoCategory,
+} from "@/hooks/use-teste-equipamento-settings";
+import { syncTicketToGsystem } from "@/lib/ticket-finalize.functions";
+import { Cloud } from "lucide-react";
 
 interface TicketDetailPanelProps {
   ticket: any | null;
