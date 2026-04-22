@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
-import { getVeiculos, getVeiculoTipos, getCadastrosByTipo, discoverEquipamentos, discoverChips, probeEquipamentosDeep } from "@/lib/gsystem-api.functions";
+import { getVeiculos, getVeiculoTipos, getCadastrosByTipo, discoverEquipamentos, discoverChips, listEquipamentosFromVeiculos, probeEquipamentosDeep } from "@/lib/gsystem-api.functions";
 import { Search, Package, Car, RefreshCw, Loader2, AlertCircle, Cpu, Wifi, Stethoscope } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -99,6 +99,16 @@ function EstoquePage() {
           matched: direct.matchedEndpoint,
           tried: direct.tried,
           items: direct.items as CadastroItem[],
+          availableTipos: [] as string[],
+        };
+      }
+      const veiculosFallback = await listEquipamentosFromVeiculos(auth);
+      if (veiculosFallback.items.length > 0) {
+        return {
+          source: "veiculos" as const,
+          matched: "/veiculos → Equipamento/EquipamentoSecundario",
+          tried: direct.tried,
+          items: veiculosFallback.items as CadastroItem[],
           availableTipos: [] as string[],
         };
       }
