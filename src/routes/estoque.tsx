@@ -544,7 +544,9 @@ function CadastrosTable({
   identifierLabel,
   matchedTipo,
   availableTipos,
+  endpointsTried,
   candidatesTried,
+  source,
   kind,
 }: {
   icon: React.ReactNode;
@@ -554,7 +556,9 @@ function CadastrosTable({
   identifierLabel: string;
   matchedTipo: string | null;
   availableTipos: string[];
+  endpointsTried: Array<{ endpoint: string; status: string }>;
   candidatesTried: string[];
+  source: "endpoint" | "cadastros" | null;
   kind: string;
 }) {
   if (error) {
@@ -571,33 +575,55 @@ function CadastrosTable({
     );
   }
 
-  // No matching tipo found in /cadastros — show diagnostic hint
+  // Nothing found anywhere — show full diagnostic
   if (!loading && !matchedTipo && items.length === 0) {
     return (
       <Card>
-        <CardContent className="p-6 space-y-3">
+        <CardContent className="p-6 space-y-4">
           <div className="flex items-center gap-2 text-amber-600">
             <AlertCircle className="h-5 w-5" />
-            <p className="font-medium">Nenhum cadastro do tipo {kind} encontrado no GSystem.</p>
+            <p className="font-medium">Nenhum {kind} localizado na sua base GSystem.</p>
           </div>
+
+          {endpointsTried.length > 0 && (
+            <div className="text-sm space-y-1">
+              <p className="text-muted-foreground">Endpoints diretos consultados:</p>
+              <div className="rounded border bg-muted/30 p-2 space-y-1 font-mono text-xs">
+                {endpointsTried.map((t) => (
+                  <div key={t.endpoint} className="flex justify-between gap-3">
+                    <span>{t.endpoint}</span>
+                    <span className="text-muted-foreground">{t.status}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <p className="text-sm text-muted-foreground">
-            Tentei estes tipos: <span className="font-mono">{candidatesTried.join(", ")}</span>
+            Também tentei <span className="font-mono">/cadastros</span> com os tipos:{" "}
+            <span className="font-mono">{candidatesTried.join(", ")}</span>
           </p>
+
           {availableTipos.length > 0 && (
             <div className="text-sm">
-              <p className="text-muted-foreground mb-1">Tipos disponíveis na sua base:</p>
+              <p className="text-muted-foreground mb-1">Tipos disponíveis em /cadastros:</p>
               <div className="flex flex-wrap gap-1">
                 {availableTipos.map((t) => (
                   <Badge key={t} variant="secondary" className="font-mono text-xs">{t}</Badge>
                 ))}
               </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                Me avise qual desses corresponde a {kind} para fixar no filtro.
-              </p>
             </div>
           )}
+
+          <p className="text-xs text-muted-foreground border-t pt-3">
+            Possíveis causas: a API do seu GSystem expõe {kind}s em endpoint não-padrão, o usuário da
+            integração não tem permissão de leitura nesse cadastro, ou a base realmente está vazia.
+            Me envie o nome do endpoint ou tipo correto para que eu fixe a consulta.
+          </p>
         </CardContent>
       </Card>
+    );
+  }
     );
   }
 
