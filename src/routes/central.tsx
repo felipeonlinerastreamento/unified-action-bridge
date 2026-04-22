@@ -1631,6 +1631,36 @@ function CentralPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1">
+                      {(chatDetail as any)?.assignedFirstName && (
+                        <Badge variant="outline" className="text-[10px] mr-1">
+                          Resp.: <strong className="ml-1 font-bold">{(chatDetail as any).assignedFirstName}</strong>
+                        </Badge>
+                      )}
+                      {(() => {
+                        const detail = chatDetail as any;
+                        const respId = detail?.assignedUserId;
+                        const coAgents: Array<{ userId: string }> = detail?.coAgents || [];
+                        const canJoin = !!user?.id && !!respId && respId !== user.id && !coAgents.some((a) => a.userId === user.id);
+                        if (!canJoin) return null;
+                        return (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 mr-2 text-xs"
+                            onClick={async () => {
+                              try {
+                                await joinChatAsCoAgent({ data: { chatId: selectedChatId! }, ...(await getAuthHeaders()) });
+                                toast.success("Você entrou na conversa como co-atendente");
+                                queryClient.invalidateQueries({ queryKey: ["chat-detail", selectedChannelId, selectedChatId] });
+                              } catch (e: any) {
+                                toast.error(e?.message || "Erro ao entrar");
+                              }
+                            }}
+                          >
+                            <UserPlus className="h-3 w-3 mr-1" /> Entrar na conversa
+                          </Button>
+                        );
+                      })()}
                       {statusInfo && (
                         <Badge variant="outline" className={`text-xs mr-2 ${statusInfo.color}`}>
                           {statusInfo.label}
