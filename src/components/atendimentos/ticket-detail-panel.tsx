@@ -526,6 +526,24 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
                 </Button>
               </div>
             </div>
+
+            {/* Manual GSystem sync */}
+            <div className="space-y-2 pt-2 border-t">
+              <label className="text-xs font-medium text-muted-foreground">Sincronização GSystem</label>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => runGsystemSync(false)}
+                disabled={syncing}
+                className="w-full gap-2"
+              >
+                <Cloud className="h-4 w-4" />
+                {syncing ? "Sincronizando..." : "Sincronizar com GSystem"}
+              </Button>
+              <p className="text-[10px] text-muted-foreground">
+                Cria pendência no GSystem com toda a descrição do atendimento.
+              </p>
+            </div>
           </TabsContent>
         </Tabs>
       </SheetContent>
