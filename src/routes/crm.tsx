@@ -30,10 +30,15 @@ export const Route = createFileRoute("/crm")({
   component: CrmPage,
 });
 
+type ViewMode = "all" | "direct" | "subclients";
+
 function CrmPage() {
   const { isAuthenticated, isLoading } = useAuth();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
+  const [companyFilter, setCompanyFilter] = useState<string>("all");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [viewMode, setViewMode] = useState<ViewMode>("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<any>(null);
   const [form, setForm] = useState({ name: "", phone: "", email: "", notes: "", companyId: "", categoryId: "" });
@@ -43,7 +48,19 @@ function CrmPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("crm_contacts")
-        .select("*, companies(name), crm_categories(name)")
+        .select("*, companies(id, name, cnpj), crm_categories(name)")
+        .order("created_at", { ascending: false });
+      return data || [];
+    },
+    enabled: isAuthenticated,
+  });
+
+  const { data: subClients = [], isLoading: subClientsLoading } = useQuery({
+    queryKey: ["crm-sub-clients"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("sub_clients")
+        .select("*, companies(id, name, cnpj)")
         .order("created_at", { ascending: false });
       return data || [];
     },
