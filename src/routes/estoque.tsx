@@ -627,6 +627,14 @@ function CadastrosTable({
 
   return (
     <Card>
+      {matchedTipo && (
+        <div className="px-4 py-2 text-xs text-muted-foreground border-b flex items-center gap-2">
+          <span>Fonte:</span>
+          <Badge variant="outline" className="font-mono text-xs">
+            {source === "endpoint" ? matchedTipo : `/cadastros · Tipo=${matchedTipo}`}
+          </Badge>
+        </div>
+      )}
       <CardContent className="p-0">
         <Table>
           <TableHeader>
