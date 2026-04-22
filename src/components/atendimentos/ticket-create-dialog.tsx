@@ -474,6 +474,9 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
               </p>
             </div>
           )}
+          {isTesteEquip && (
+            <TesteEquipamentoFields value={teData} onChange={setTeData} settings={teSettings} />
+          )}
           <div className="space-y-1">
             <label className="text-xs font-medium">Observações</label>
             <Textarea
