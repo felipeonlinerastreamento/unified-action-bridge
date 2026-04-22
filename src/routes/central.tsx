@@ -1714,26 +1714,31 @@ function CentralPage() {
                   </ScrollArea>
 
                   {/* Input */}
-                  <div className="p-3 border-t flex gap-2">
-                    <Input
-                      placeholder="Digite uma mensagem..."
-                      value={messageInput}
-                      onChange={(e) => setMessageInput(e.target.value)}
-                      onKeyDown={handleKeyDown}
-                      disabled={sendMutation.isPending || chatDetail?.status === 3}
-                      className="flex-1"
-                    />
-                    <Button
-                      onClick={handleSend}
-                      disabled={!messageInput.trim() || sendMutation.isPending || chatDetail?.status === 3}
-                      size="icon"
-                    >
-                      {sendMutation.isPending ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                      ) : (
-                        <Send className="h-4 w-4" />
-                      )}
-                    </Button>
+                  <div className="p-3 border-t space-y-2">
+                    <div className="flex gap-2">
+                      <QuickRepliesPopover onPick={(text) => setMessageInput((prev) => prev ? `${prev} ${text}` : text)} />
+                      <WhisperToggle active={whisperMode} onToggle={() => setWhisperMode((v) => !v)} />
+                      <Input
+                        placeholder={whisperMode ? "Sussurro interno (não vai para o cliente)" : "Digite uma mensagem..."}
+                        value={messageInput}
+                        onChange={(e) => setMessageInput(e.target.value)}
+                        onKeyDown={handleKeyDown}
+                        disabled={sendMutation.isPending || chatDetail?.status === 3}
+                        className={`flex-1 ${whisperMode ? "border-amber-400 focus-visible:ring-amber-400" : ""}`}
+                      />
+                      <Button
+                        onClick={handleSend}
+                        disabled={!messageInput.trim() || sendMutation.isPending || chatDetail?.status === 3}
+                        size="icon"
+                        className={whisperMode ? "bg-amber-500 hover:bg-amber-600" : ""}
+                      >
+                        {sendMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Send className="h-4 w-4" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 </>
               )}
