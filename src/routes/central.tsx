@@ -2594,6 +2594,9 @@ function CentralPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Floating chat windows layer */}
+      <FloatingChatsLayer onOpenInPanel={(id) => setSelectedChatId(id)} />
     </AppLayout>
   );
 }
