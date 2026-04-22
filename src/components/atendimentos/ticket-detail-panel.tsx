@@ -464,6 +464,19 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
                   </Button>
                 )}
               </div>
+              {ticket.status === "finalizado" &&
+                isTesteEquipamentoCategory(ticket.category, teSettings) &&
+                (!ticket.sector ||
+                  ticket.sector !== (teSettings?.target_sector_name || "Administrativo")) && (
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    onClick={reprocessFlow}
+                    className="gap-1 mt-2"
+                  >
+                    <RefreshCcw className="h-3.5 w-3.5" /> Reprocessar fluxo
+                  </Button>
+                )}
             </div>
 
             {/* Priority */}
