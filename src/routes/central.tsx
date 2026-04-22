@@ -89,6 +89,7 @@ import {
 import { ChatQueueList } from "@/components/central/chat-queue-list";
 import { FloatingChatsProvider } from "@/components/central/floating-chats-context";
 import { FloatingChatsLayer } from "@/components/central/floating-chats-layer";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { WhisperToggle } from "@/components/central/whisper-toggle";
 import { QuickRepliesPopover } from "@/components/central/quick-replies-popover";
 import { ChatTags, type ChatTag } from "@/components/central/chat-tags";
@@ -242,12 +243,28 @@ function CentralPage() {
   const [transferSectorId, setTransferSectorId] = useState<string>("");
   const [transferUserId, setTransferUserId] = useState<string>("");
   const [changingCompany, setChangingCompany] = useState(false);
+  const isMobile = useIsMobile();
   const [showLeftPanel, setShowLeftPanel] = useState(true);
   const [showRightPanel, setShowRightPanel] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const aiChatEndRef = useRef<HTMLDivElement>(null);
   const lastIdentFormSeedRef = useRef<string>("");
   const queryClient = useQueryClient();
+
+  // Auto-collapse side panels on mobile, expand right panel on desktop when a chat is opened
+  useEffect(() => {
+    if (isMobile) {
+      // On small screens, hide the right panel by default to give chat full width
+      setShowRightPanel(false);
+    }
+  }, [isMobile]);
+
+  // On mobile, auto-close the chat list when a chat is selected so the chat takes full width
+  useEffect(() => {
+    if (isMobile && selectedChatId) {
+      setShowLeftPanel(false);
+    }
+  }, [isMobile, selectedChatId]);
 
   // AI Assistant state
   const [aiMessages, setAiMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
@@ -1462,14 +1479,14 @@ function CentralPage() {
     <AppLayout>
       <div className="space-y-4">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">Central de Atendimento</h1>
-            <p className="text-sm text-muted-foreground">
+        <div className="flex items-start sm:items-center justify-between gap-3 flex-wrap">
+          <div className="min-w-0">
+            <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate">Central de Atendimento</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground">
               {allChats.length} atendimento(s) ativo(s) • {onlineAgents} agente(s) online
             </p>
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             {isConnected ? (
               <Badge variant="outline" className="gap-1 border-emerald-300 text-emerald-700">
                 <Wifi className="h-3 w-3" /> Conectado
@@ -1518,8 +1535,8 @@ function CentralPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="flex gap-3 h-[calc(100vh-12rem)]">
-            {/* Toggle left panel button */}
+          <div className="flex gap-2 sm:gap-3 h-[calc(100vh-12rem)] relative">
+            {/* Toggle left panel button (when collapsed) */}
             {!showLeftPanel && (
               <Button
                 variant="outline"
@@ -1532,9 +1549,17 @@ function CentralPage() {
               </Button>
             )}
 
+            {/* Mobile backdrop when left panel is open */}
+            {showLeftPanel && isMobile && (
+              <div
+                className="fixed inset-0 bg-background/60 backdrop-blur-sm z-30 md:hidden"
+                onClick={() => setShowLeftPanel(false)}
+              />
+            )}
+
             {/* Chat list */}
             {showLeftPanel && (
-            <div className="w-80 shrink-0 border rounded-lg flex flex-col bg-card overflow-hidden relative">
+            <div className="w-[85vw] max-w-sm md:w-72 lg:w-80 shrink-0 border rounded-lg flex flex-col bg-card overflow-hidden relative max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-40 max-md:shadow-xl max-md:rounded-none">
               <div className="p-3 border-b space-y-2">
                 <div className="flex items-center gap-2">
                   <Button
@@ -1628,9 +1653,21 @@ function CentralPage() {
               ) : (
                 <>
                   {/* Chat header */}
-                  <div className="p-3 border-b flex items-center justify-between bg-muted/30">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-9 w-9">
+                  <div className="p-2 sm:p-3 border-b flex items-center justify-between gap-2 bg-muted/30 flex-wrap">
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                      {/* Mobile: show button to open chat list */}
+                      {!showLeftPanel && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="shrink-0 h-7 w-7 md:hidden"
+                          onClick={() => setShowLeftPanel(true)}
+                          title="Mostrar lista"
+                        >
+                          <PanelLeftOpen className="h-4 w-4" />
+                        </Button>
+                      )}
+                      <Avatar className="h-9 w-9 shrink-0">
                         {chatDetail?.contact?.linkImage &&
                           !chatDetail.contact.linkImage.includes("avatar-default") && (
                             <AvatarImage src={chatDetail.contact.linkImage} />
@@ -1639,19 +1676,19 @@ function CentralPage() {
                           {(chatDetail?.description || chatDetail?.contact?.name || "?").substring(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <div>
-                        <p className="text-sm font-medium text-foreground">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">
                           {chatDetail?.description || chatDetail?.contact?.name || "Contato"}
                         </p>
-                        <div className="flex items-center gap-2">
-                          <p className="text-xs text-muted-foreground">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-xs text-muted-foreground truncate">
                             {chatDetail?.contact?.secondaryName || chatDetail?.contact?.number}
                             {chatDetail?.protocol && ` • #${chatDetail.protocol}`}
                           </p>
                           {companyLookup && (
-                            <Badge variant="secondary" className="text-[10px] gap-1">
-                              <Building2 className="h-2.5 w-2.5" />
-                              {companyLookup.name}
+                            <Badge variant="secondary" className="text-[10px] gap-1 max-w-[160px]">
+                              <Building2 className="h-2.5 w-2.5 shrink-0" />
+                              <span className="truncate">{companyLookup.name}</span>
                             </Badge>
                           )}
                         </div>
@@ -1666,7 +1703,7 @@ function CentralPage() {
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 flex-wrap justify-end">
                       {(chatDetail as any)?.assignedFirstName && (
                         <Badge variant="outline" className="text-[10px] mr-1">
                           Resp.: <strong className="ml-1 font-bold">{(chatDetail as any).assignedFirstName}</strong>
@@ -1899,9 +1936,17 @@ function CentralPage() {
               )}
             </div>
 
+            {/* Mobile backdrop when right panel is open */}
+            {showRightPanel && isMobile && (
+              <div
+                className="fixed inset-0 bg-background/60 backdrop-blur-sm z-30 md:hidden"
+                onClick={() => setShowRightPanel(false)}
+              />
+            )}
+
             {/* Right panel with tabs */}
             {showRightPanel ? (
-            <div className="w-80 shrink-0 border rounded-lg bg-card overflow-hidden flex flex-col relative">
+            <div className="w-[85vw] max-w-sm md:w-72 xl:w-80 shrink-0 border rounded-lg bg-card overflow-hidden flex flex-col relative max-md:fixed max-md:inset-y-0 max-md:right-0 max-md:z-40 max-md:shadow-xl max-md:rounded-none">
               <Button
                 variant="ghost"
                 size="icon"
