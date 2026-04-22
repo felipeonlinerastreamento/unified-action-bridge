@@ -84,6 +84,8 @@ import {
   Check,
 } from "lucide-react";
 import { ChatQueueList } from "@/components/central/chat-queue-list";
+import { FloatingChatsProvider } from "@/components/central/floating-chats-context";
+import { FloatingChatsLayer } from "@/components/central/floating-chats-layer";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -96,8 +98,16 @@ import {
 } from "@/components/ui/alert-dialog";
 
 export const Route = createFileRoute("/central")({
-  component: CentralPage,
+  component: CentralPageWithFloating,
 });
+
+function CentralPageWithFloating() {
+  return (
+    <FloatingChatsProvider>
+      <CentralPage />
+    </FloatingChatsProvider>
+  );
+}
 
 interface GMessage {
   IdMessage?: string;
@@ -2584,6 +2594,9 @@ function CentralPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Floating chat windows layer */}
+      <FloatingChatsLayer onOpenInPanel={(id) => setSelectedChatId(id)} />
     </AppLayout>
   );
 }

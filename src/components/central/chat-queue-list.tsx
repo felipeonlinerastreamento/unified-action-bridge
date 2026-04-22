@@ -3,6 +3,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Loader2, Bot, Clock, Headset, Users, Moon, ChevronDown, ChevronRight, MessageSquare } from "lucide-react";
+import { useFloatingChats } from "./floating-chats-context";
 
 interface ChatItem {
   attendanceId: string;
@@ -250,13 +251,49 @@ function ChatListItem({
   const tags = chat.contact?.tags || [];
   const sectorName = chat.currentSector?.description;
   const unread = chat.countUnreadMessages ?? 0;
+  const { openChat } = useFloatingChats();
+
+  const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
+    e.dataTransfer.effectAllowed = "move";
+    try {
+      e.dataTransfer.setData("text/plain", chat.attendanceId);
+      e.dataTransfer.setData("application/x-gsystem-chat", chat.attendanceId);
+    } catch {
+      // ignore
+    }
+  };
+
+  const handleDragEnd = (e: React.DragEvent<HTMLDivElement>) => {
+    if (e.dataTransfer.dropEffect === "none") {
+      openChat({
+        chatId: chat.attendanceId,
+        channelId: chat.channel?.id || "",
+        meta: {
+          name,
+          phone,
+          avatar: imgUrl,
+          slaColor: sla.bg,
+          agentName: agentName || undefined,
+          sectorName: sectorName || undefined,
+        },
+        position: { x: e.clientX, y: e.clientY },
+      });
+    }
+  };
 
   return (
-    <button
+    <div
+      role="button"
+      tabIndex={0}
+      draggable
+      onDragStart={handleDragStart}
+      onDragEnd={handleDragEnd}
       onClick={onSelect}
-      className={`w-full text-left px-3 py-2.5 border-b hover:bg-accent/50 transition-colors ${
+      onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(); } }}
+      className={`w-full text-left px-3 py-2.5 border-b hover:bg-accent/50 transition-colors cursor-grab active:cursor-grabbing ${
         isSelected ? "bg-accent" : ""
       }`}
+      title="Clique para abrir no painel ou arraste para fora para janela flutuante"
     >
       <div className="flex items-start gap-2.5">
         {/* Avatar with WhatsApp indicator */}
@@ -347,6 +384,6 @@ function ChatListItem({
           )}
         </div>
       </div>
-    </button>
+    </div>
   );
 }
