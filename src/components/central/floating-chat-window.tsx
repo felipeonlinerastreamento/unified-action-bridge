@@ -289,6 +289,16 @@ export function FloatingChatWindow({ state, onOpenInPanel }: Props) {
           )}
         </div>
         <div className="flex items-center gap-0.5 shrink-0">
+          {canJoin && (
+            <button
+              onClick={(e) => { e.stopPropagation(); joinMutation.mutate(); }}
+              disabled={joinMutation.isPending}
+              className="rounded p-1 hover:bg-muted text-primary"
+              title="Entrar na conversa como co-atendente"
+            >
+              <UserPlus2 className="h-3 w-3" />
+            </button>
+          )}
           {onOpenInPanel && (
             <button
               onClick={(e) => { e.stopPropagation(); onOpenInPanel(chatId); }}
@@ -310,6 +320,21 @@ export function FloatingChatWindow({ state, onOpenInPanel }: Props) {
         </div>
       </div>
 
+      {/* Responsible / co-agents bar */}
+      {(responsibleFirstName || coAgents.length > 0) && (
+        <div className="flex items-center gap-1.5 border-b bg-muted/30 px-2 py-1 text-[10px] text-muted-foreground">
+          {responsibleFirstName && (
+            <span>
+              Responsável: <strong className="text-foreground">{responsibleFirstName}</strong>
+            </span>
+          )}
+          {coAgents.length > 0 && (
+            <span className="truncate">
+              · Co-atendentes: {coAgents.map((a) => a.firstName || "—").join(", ")}
+            </span>
+          )}
+        </div>
+      )}
       {/* Messages */}
       <ScrollArea className="flex-1 bg-muted/20"
         onFocus={() => { isFocused.current = true; setUnread(chatId, 0); }}
