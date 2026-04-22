@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
-import { getVeiculos, getVeiculoTipos, getCadastrosByTipo } from "@/lib/gsystem-api.functions";
+import { getVeiculos, getVeiculoTipos, getCadastrosByTipo, discoverEquipamentos, discoverChips } from "@/lib/gsystem-api.functions";
 import { Search, Package, Car, RefreshCw, Loader2, AlertCircle, Cpu, Wifi } from "lucide-react";
 
 export const Route = createFileRoute("/estoque")({
