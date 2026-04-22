@@ -86,6 +86,10 @@ import {
 import { ChatQueueList } from "@/components/central/chat-queue-list";
 import { FloatingChatsProvider } from "@/components/central/floating-chats-context";
 import { FloatingChatsLayer } from "@/components/central/floating-chats-layer";
+import { WhisperToggle } from "@/components/central/whisper-toggle";
+import { QuickRepliesPopover } from "@/components/central/quick-replies-popover";
+import { ChatTags, type ChatTag } from "@/components/central/chat-tags";
+import { useZapiRealtime } from "@/hooks/use-zapi-realtime";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -194,6 +198,7 @@ function CentralPage() {
   const [selectedChannelId, setSelectedChannelId] = useState<string>("");
   const [selectedChatId, setSelectedChatId] = useState<string>("");
   const [messageInput, setMessageInput] = useState("");
+  const [whisperMode, setWhisperMode] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [ticketPlate, setTicketPlate] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -915,18 +920,41 @@ function CentralPage() {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages.length, selectedChatId]);
 
-  // Send message
+  // Send message (or whisper)
   const sendMutation = useMutation({
-    mutationFn: async (text: string) => {
+    mutationFn: async ({ text, whisper }: { text: string; whisper: boolean }) => {
+      if (whisper) {
+        // Whisper: persist locally only, never sent to client via Z-API
+        const { data: chatRow } = await supabase
+          .from("zapi_chats")
+          .select("id")
+          .eq("channel_id", selectedChannelId)
+          .eq("phone", contactPhone)
+          .maybeSingle();
+        if (!chatRow) {
+          throw new Error("Sussurro indisponível: este chat ainda não está vinculado a um chat Z-API local.");
+        }
+        const { error } = await supabase.from("zapi_messages").insert({
+          chat_id: chatRow.id,
+          from_me: true,
+          is_whisper: true,
+          whisper_author: session?.user?.id || null,
+          text,
+          status: "sent",
+        });
+        if (error) throw error;
+        return { whisper: true };
+      }
       return sendText({
         data: { channelId: selectedChannelId, chatId: selectedChatId, message: text },
         ...await getAuthHeaders(),
       });
     },
-    onSuccess: () => {
+    onSuccess: (_data, vars) => {
       setMessageInput("");
-      toast.success("Mensagem enviada");
+      toast.success(vars.whisper ? "Sussurro registrado" : "Mensagem enviada");
       queryClient.invalidateQueries({ queryKey: ["chat-detail", selectedChannelId, selectedChatId] });
+      queryClient.invalidateQueries({ queryKey: ["zapi-messages"] });
     },
     onError: (err: any) => toast.error(err?.message || "Erro ao enviar mensagem"),
   });
@@ -1206,7 +1234,7 @@ function CentralPage() {
 
   const handleSend = () => {
     if (!messageInput.trim() || !selectedChatId) return;
-    sendMutation.mutate(messageInput.trim());
+    sendMutation.mutate({ text: messageInput.trim(), whisper: whisperMode });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
