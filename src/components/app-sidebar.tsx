@@ -58,7 +58,7 @@ const configSubItems = [
   { title: "Integrações", url: "/configuracoes", icon: Plug },
   { title: "Central de Atendimento", url: "/configuracoes/central-atendimento", icon: PhoneCall },
   { title: "Fluxo de Atendimento", url: "/configuracoes/fluxo-atendimento", icon: GitBranch },
-  { title: "Estoque", url: "/configuracoes/estoque", icon: Boxes },
+  { title: "Estoque (Regras)", url: "/configuracoes/estoque", icon: Boxes },
   { title: "Assistente IA", url: "/configuracoes/assistente-ia", icon: Bot },
   { title: "Z-API & Bot", url: "/configuracoes/zapi", icon: MessageCircle },
   { title: "Encaminhamento", url: "/configuracoes/encaminhamento", icon: ArrowRightLeft },
