@@ -82,6 +82,7 @@ import {
   PanelRightOpen,
   ChevronsUpDown,
   Check,
+  CheckCheck,
 } from "lucide-react";
 import { ChatQueueList } from "@/components/central/chat-queue-list";
 import { FloatingChatsProvider } from "@/components/central/floating-chats-context";
@@ -117,6 +118,7 @@ interface GMessage {
   IdMessage?: string;
   senderName?: string;
   dhMessage?: string;
+  utcDhMessage?: string;
   unixTimeMessage?: number;
   text?: string;
   isSentByMe?: boolean;
@@ -124,6 +126,7 @@ interface GMessage {
   isPrivate?: boolean;
   isDeleted?: boolean;
   typeMessage?: number;
+  _status?: string; // "sent" | "delivered" | "read" (from zapi_messages.status)
 }
 
 interface ChatItem {
@@ -479,21 +482,25 @@ function CentralPage() {
   // Company lookup by contact phone
   const contactPhone = chatDetail?.contact?.number || chatDetail?.contact?.secondaryName || "";
 
-  // Local Z-API chat row for this conversation (used for tags + whisper persistence)
+  // Local Z-API chat row for this conversation (used for tags + whisper persistence + typing indicator)
   const { data: localZapiChat } = useQuery({
     queryKey: ["zapi-chat-row", selectedChannelId, contactPhone],
     queryFn: async () => {
       if (!selectedChannelId || !contactPhone) return null;
       const { data } = await supabase
         .from("zapi_chats")
-        .select("id, tags")
+        .select("id, tags, bot_state")
         .eq("channel_id", selectedChannelId)
         .eq("phone", contactPhone)
         .maybeSingle();
       return data;
     },
     enabled: !!selectedChannelId && !!contactPhone && isAuthenticated,
+    refetchInterval: 5000,
   });
+
+  // Contact "typing..." indicator from Z-API presence webhook (stored in zapi_chats.bot_state)
+  const isContactTyping = !!(localZapiChat?.bot_state as any)?.is_typing;
 
   // Wire realtime updates for chat list and current chat messages
   useZapiRealtime({ channelId: selectedChannelId, chatId: localZapiChat?.id });
