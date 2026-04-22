@@ -573,6 +573,106 @@ export const getCadastrosByTipo = createServerFn({ method: "POST" })
   });
 
 // ============================================================
+// EQUIPAMENTOS / CHIPS — descoberta automática
+// ============================================================
+//
+// A API do GSystem hospeda equipamentos físicos em endpoints próprios
+// (e não em /cadastros, que serve apenas para listas auxiliares).
+// O nome exato do endpoint varia por instalação. Esta função tenta
+// vários caminhos em ordem e devolve o primeiro que responder com lista.
+
+const EQUIP_ENDPOINT_CANDIDATES = [
+  "/equipamentos",
+  "/equipamento",
+  "/rastreadores",
+  "/rastreador",
+  "/dispositivos",
+  "/aparelhos",
+];
+
+const CHIP_ENDPOINT_CANDIDATES = [
+  "/chips",
+  "/chip",
+  "/sims",
+  "/sim",
+  "/simcards",
+  "/linhas",
+];
+
+function normalizeEquipItem(c: any) {
+  const ativadoFalse = c?.Ativado === false || c?.ativado === false;
+  return {
+    key: String(c?.Key ?? c?.Id ?? c?.Codigo ?? c?.IMEI ?? c?.Serial ?? ""),
+    descricao: c?.Descricao ?? c?.descricao ?? c?.DisplayName ?? c?.Modelo ?? c?.Nome ?? "",
+    modelo: c?.Modelo ?? c?.modelo ?? c?.Tipo ?? c?.Categoria ?? "",
+    identificador: c?.Serial ?? c?.serial ?? c?.IMEI ?? c?.imei ?? c?.ICCID ?? c?.iccid ?? c?.Numero ?? c?.numero ?? c?.Codigo ?? "",
+    status: c?.Status ?? c?.status ?? (ativadoFalse ? "Inativo" : "Disponível"),
+    vinculo: c?.Veiculo ?? c?.veiculo ?? c?.Cliente ?? c?.cliente ?? c?.VinculadoA ?? null,
+    raw: c,
+  };
+}
+
+async function probeEndpoints(
+  fetcher: (endpoint: string, method?: string, body?: unknown) => Promise<any>,
+  endpoints: string[]
+): Promise<{ matchedEndpoint: string | null; items: any[]; tried: Array<{ endpoint: string; status: string }> }> {
+  const tried: Array<{ endpoint: string; status: string }> = [];
+  for (const ep of endpoints) {
+    try {
+      const result = await fetcher(ep);
+      if (Array.isArray(result)) {
+        tried.push({ endpoint: ep, status: `ok (${result.length} itens)` });
+        if (result.length > 0) {
+          return { matchedEndpoint: ep, items: result, tried };
+        }
+      } else if (result && typeof result === "object") {
+        // Some APIs wrap arrays in { data: [...] } or { Items: [...] }
+        const arr = (result as any).data ?? (result as any).Data ?? (result as any).Items ?? (result as any).items ?? (result as any).resultado;
+        if (Array.isArray(arr)) {
+          tried.push({ endpoint: ep, status: `ok (${arr.length} itens, wrapped)` });
+          if (arr.length > 0) {
+            return { matchedEndpoint: ep, items: arr, tried };
+          }
+        } else {
+          tried.push({ endpoint: ep, status: "resposta não-array" });
+        }
+      } else {
+        tried.push({ endpoint: ep, status: "resposta vazia" });
+      }
+    } catch (err: any) {
+      const msg = String(err?.message || err);
+      const m = msg.match(/\[(\d{3})\]/);
+      tried.push({ endpoint: ep, status: m ? `HTTP ${m[1]}` : msg.substring(0, 80) });
+    }
+  }
+  return { matchedEndpoint: null, items: [], tried };
+}
+
+export const discoverEquipamentos = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => {
+    const { gsystemApiFetch } = await import("@/lib/gsystem-api.server");
+    const probe = await probeEndpoints(gsystemApiFetch, EQUIP_ENDPOINT_CANDIDATES);
+    return {
+      matchedEndpoint: probe.matchedEndpoint,
+      items: probe.items.map(normalizeEquipItem),
+      tried: probe.tried,
+    };
+  });
+
+export const discoverChips = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => {
+    const { gsystemApiFetch } = await import("@/lib/gsystem-api.server");
+    const probe = await probeEndpoints(gsystemApiFetch, CHIP_ENDPOINT_CANDIDATES);
+    return {
+      matchedEndpoint: probe.matchedEndpoint,
+      items: probe.items.map(normalizeEquipItem),
+      tried: probe.tried,
+    };
+  });
+
+// ============================================================
 // PARÂMETROS
 // ============================================================
 
