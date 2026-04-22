@@ -366,6 +366,7 @@ function EstoquePage() {
               </Button>
             )}
           </div>
+        </div>
 
         {/* KPI cards */}
         <div className="grid gap-4 md:grid-cols-4">
