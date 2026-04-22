@@ -612,6 +612,41 @@ function CentralPage() {
   const [companySearch, setCompanySearch] = useState("");
   const [subClientSearch, setSubClientSearch] = useState("");
 
+  // Inline edit for contact name in the "Contato" tab
+  const [editingContactName, setEditingContactName] = useState(false);
+  const [contactNameDraft, setContactNameDraft] = useState("");
+  const [savingContactName, setSavingContactName] = useState(false);
+
+  const handleSaveContactName = async () => {
+    if (!selectedChatId) return;
+    const newName = contactNameDraft.trim();
+    if (!newName) {
+      toast.error("O nome não pode ficar vazio");
+      return;
+    }
+    if (newName.length > 120) {
+      toast.error("Nome muito longo (máx. 120 caracteres)");
+      return;
+    }
+    setSavingContactName(true);
+    try {
+      const { error } = await supabase
+        .from("zapi_chats")
+        .update({ contact_name: newName })
+        .eq("id", selectedChatId);
+      if (error) throw error;
+      toast.success("Nome do contato atualizado");
+      setEditingContactName(false);
+      queryClient.invalidateQueries({ queryKey: ["chat-detail", selectedChannelId, selectedChatId] });
+      queryClient.invalidateQueries({ queryKey: ["all-open-chats", selectedChannelId] });
+      queryClient.invalidateQueries({ queryKey: ["zapi-chats", selectedChannelId] });
+    } catch (e: any) {
+      toast.error(e?.message || "Erro ao atualizar nome");
+    } finally {
+      setSavingContactName(false);
+    }
+  };
+
   // Seed identification form only once per selected chat to avoid resets during polling
   useEffect(() => {
     if (!selectedChatId || !chatDetail) return;
