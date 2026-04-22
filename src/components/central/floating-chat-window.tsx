@@ -360,6 +360,7 @@ export function FloatingChatWindow({ state, onOpenInPanel }: Props) {
                 );
               }
               const mine = !!msg.isSentByMe;
+              const opName = mine ? (msg.senderFirstName || (msg.isPrivate ? undefined : "Você")) : undefined;
               return (
                 <div key={msg.IdMessage || i} className={`flex ${mine ? "justify-end" : "justify-start"}`}>
                   <div className={`max-w-[85%] rounded-lg px-2.5 py-1.5 text-xs whitespace-pre-wrap break-words ${
@@ -367,6 +368,14 @@ export function FloatingChatWindow({ state, onOpenInPanel }: Props) {
                   } ${msg.isPrivate ? "ring-1 ring-amber-400" : ""}`}>
                     {!mine && msg.senderName && (
                       <p className="text-[10px] font-semibold opacity-70 mb-0.5">{msg.senderName}</p>
+                    )}
+                    {mine && opName && (
+                      <p className={`text-[10px] mb-0.5 ${mine ? "text-primary-foreground/90" : "opacity-70"}`}>
+                        <strong className="font-bold">{opName}</strong>
+                        {msg.isCoAgent && msg.responsibleFirstName && (
+                          <span className="opacity-80"> · via co-atendimento (responsável: {msg.responsibleFirstName})</span>
+                        )}
+                      </p>
                     )}
                     <p>{text}</p>
                     <div className={`flex items-center justify-end gap-1 mt-0.5 opacity-70 ${mine ? "text-primary-foreground" : "text-muted-foreground"}`}>
