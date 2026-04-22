@@ -12,6 +12,8 @@ import { getChatDetail, getChatMessages, sendText } from "@/lib/gsystem.function
 import { useFloatingChats, FloatingChatState } from "./floating-chats-context";
 import { WhisperToggle } from "./whisper-toggle";
 import { QuickRepliesPopover } from "./quick-replies-popover";
+import { MessageStatusTicks } from "./message-status-ticks";
+import { TypingIndicator } from "./typing-indicator";
 
 interface Props {
   state: FloatingChatState;
@@ -28,6 +30,7 @@ interface GMessage {
   isPrivate?: boolean;
   utcDhMessage?: string;
   unixTimeMessage?: number;
+  _status?: string; // sent | delivered | read
 }
 
 function formatTime(dateStr?: string): string {
@@ -97,6 +100,24 @@ export function FloatingChatWindow({ state, onOpenInPanel }: Props) {
 
   const messages = (fullMessages && fullMessages.length > 0) ? fullMessages : ((chatDetail?.messages as GMessage[]) || []);
 
+  // Local Z-API chat row → drives typing indicator (bot_state.is_typing) updated by the webhook
+  const phoneForLookup = meta.phone || chatDetail?.contact?.number;
+  const { data: localZapiChat } = useQuery({
+    queryKey: ["floating-zapi-chat-row", channelId, phoneForLookup],
+    queryFn: async () => {
+      if (!channelId || !phoneForLookup) return null;
+      const { data } = await supabase
+        .from("zapi_chats")
+        .select("id, bot_state")
+        .eq("channel_id", channelId)
+        .eq("phone", phoneForLookup)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!channelId && !!phoneForLookup,
+    refetchInterval: 5000,
+  });
+  const isContactTyping = !!(localZapiChat?.bot_state as any)?.is_typing;
   // Update meta from chat detail (name/avatar/sector)
   useEffect(() => {
     if (!chatDetail) return;
@@ -296,14 +317,16 @@ export function FloatingChatWindow({ state, onOpenInPanel }: Props) {
                       <p className="text-[10px] font-semibold opacity-70 mb-0.5">{msg.senderName}</p>
                     )}
                     <p>{text}</p>
-                    <p className={`text-[9px] mt-0.5 opacity-60 text-right`}>
-                      {formatTime(msg.utcDhMessage || msg.dhMessage)}
-                    </p>
+                    <div className={`flex items-center justify-end gap-1 mt-0.5 opacity-70 ${mine ? "text-primary-foreground" : "text-muted-foreground"}`}>
+                      <span className="text-[9px]">{formatTime(msg.utcDhMessage || msg.dhMessage)}</span>
+                      {mine && !msg.isPrivate && <MessageStatusTicks status={msg._status} />}
+                    </div>
                   </div>
                 </div>
               );
             })
           )}
+          {isContactTyping && <TypingIndicator name={meta.name} className="mt-1" />}
           <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
