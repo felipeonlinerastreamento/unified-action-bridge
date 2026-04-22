@@ -331,6 +331,7 @@ export const sendText = createServerFn({ method: "POST" })
         from_me: true,
         is_whisper: true,
         whisper_author: context.userId,
+        sent_by_user_id: context.userId,
         text,
         status: "sent",
       });
@@ -353,6 +354,7 @@ export const sendText = createServerFn({ method: "POST" })
       chat_id: data.chatId,
       zapi_message_id: result?.messageId || result?.id || null,
       from_me: true,
+      sent_by_user_id: context.userId,
       text,
       status: "sent",
     });
