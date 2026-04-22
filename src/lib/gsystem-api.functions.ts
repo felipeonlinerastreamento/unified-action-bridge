@@ -494,6 +494,84 @@ export const updateCadastro = createServerFn({ method: "POST" })
     return gsystemApiFetch(`/cadastros/${encodeURIComponent(data.key)}`, "PUT", data.body);
   });
 
+// List all distinct Tipo values present in /cadastros (useful for discovery)
+export const listCadastroTipos = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => {
+    const { gsystemApiFetch } = await import("@/lib/gsystem-api.server");
+    try {
+      const cadastros = await gsystemApiFetch("/cadastros");
+      if (!Array.isArray(cadastros)) return [];
+      const counts = new Map<string, number>();
+      for (const c of cadastros as any[]) {
+        const tipo = c?.Tipo ? String(c.Tipo) : "";
+        if (!tipo) continue;
+        counts.set(tipo, (counts.get(tipo) ?? 0) + 1);
+      }
+      return Array.from(counts.entries())
+        .map(([tipo, count]) => ({ tipo, count }))
+        .sort((a, b) => a.tipo.localeCompare(b.tipo));
+    } catch (err) {
+      console.error("[listCadastroTipos] failed:", String(err).substring(0, 200));
+      return [];
+    }
+  });
+
+// Fetch normalized cadastros filtered by one or more candidate Tipo names.
+// Tries each candidate (case/underscore-insensitive) and returns the first match.
+export const getCadastrosByTipo = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    z.object({
+      candidates: z.array(z.string().min(1).max(120)).min(1).max(20),
+    }).parse
+  )
+  .handler(async ({ data }) => {
+    const { gsystemApiFetch } = await import("@/lib/gsystem-api.server");
+    const norm = (s: string) => String(s || "").replace(/_/g, " ").trim().toLowerCase();
+
+    let cadastros: any[] = [];
+    try {
+      const result = await gsystemApiFetch("/cadastros");
+      cadastros = Array.isArray(result) ? result : [];
+    } catch (err) {
+      console.error("[getCadastrosByTipo] /cadastros failed:", String(err).substring(0, 200));
+      return { matchedTipo: null as string | null, items: [] as any[], availableTipos: [] as string[] };
+    }
+
+    // Build set of available tipos for diagnostics
+    const tiposSet = new Set<string>();
+    for (const c of cadastros) {
+      if (c?.Tipo) tiposSet.add(String(c.Tipo));
+    }
+    const availableTipos = Array.from(tiposSet).sort();
+
+    // Try each candidate
+    const candidatesNorm = data.candidates.map(norm);
+    let matchedTipo: string | null = null;
+    const matched = cadastros.filter((c: any) => {
+      const t = norm(c?.Tipo);
+      const hit = candidatesNorm.includes(t);
+      if (hit && !matchedTipo) matchedTipo = String(c.Tipo);
+      return hit;
+    });
+
+    const items = matched.map((c: any) => {
+      const ativadoFalse = c.Ativado === false;
+      return {
+        key: String(c.Codigo ?? c.Key ?? c.Id ?? c.DisplayName ?? ""),
+        descricao: c.DisplayName ?? c.Texto ?? c.Descricao ?? "",
+        modelo: c.Modelo ?? c.Categoria ?? c.SubTipo ?? c.Tipo ?? "",
+        identificador: c.Serial ?? c.IMEI ?? c.ICCID ?? c.Numero ?? c.Codigo ?? "",
+        status: c.Status ?? (ativadoFalse ? "Inativo" : "Disponível"),
+        vinculo: c.Veiculo ?? c.Cliente ?? c.VinculadoA ?? null,
+        raw: c,
+      };
+    });
+
+    return { matchedTipo, items, availableTipos };
+  });
+
 // ============================================================
 // PARÂMETROS
 // ============================================================
