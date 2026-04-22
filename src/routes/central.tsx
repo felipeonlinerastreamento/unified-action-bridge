@@ -89,6 +89,7 @@ import {
 import { ChatQueueList } from "@/components/central/chat-queue-list";
 import { FloatingChatsProvider } from "@/components/central/floating-chats-context";
 import { FloatingChatsLayer } from "@/components/central/floating-chats-layer";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { WhisperToggle } from "@/components/central/whisper-toggle";
 import { QuickRepliesPopover } from "@/components/central/quick-replies-popover";
 import { ChatTags, type ChatTag } from "@/components/central/chat-tags";
