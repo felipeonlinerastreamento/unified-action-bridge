@@ -35,6 +35,15 @@ import { cn } from "@/lib/utils";
 import { Check, ChevronsUpDown, Loader2, AlertCircle } from "lucide-react";
 import { getClientes, getTiposPendencia } from "@/lib/gsystem-api.functions";
 import { useTrackingSettings } from "@/hooks/use-tracking-settings";
+import {
+  useTesteEquipamentoSettings,
+  isTesteEquipamentoCategory,
+  buildTesteEquipamentoNotes,
+  validateTesteEquipamento,
+  EMPTY_TESTE_EQUIPAMENTO,
+  type TesteEquipamentoData,
+} from "@/hooks/use-teste-equipamento-settings";
+import { TesteEquipamentoFields } from "./teste-equipamento-fields";
 
 interface TicketCreateDialogProps {
   open: boolean;
@@ -71,6 +80,9 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
 
   const isCorreios = (category || "").toLowerCase().includes("correios");
   const { data: trackingSettings } = useTrackingSettings();
+  const { data: teSettings } = useTesteEquipamentoSettings();
+  const isTesteEquip = isTesteEquipamentoCategory(category, teSettings);
+  const [teData, setTeData] = useState<TesteEquipamentoData>(EMPTY_TESTE_EQUIPAMENTO);
 
   const getAuthHeaders = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -154,6 +166,7 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
     setCategory("");
     setSectorId("");
     setTrackingCode("");
+    setTeData(EMPTY_TESTE_EQUIPAMENTO);
   };
 
   const ensureLocalCompany = async (cliente: GsystemCliente): Promise<string | null> => {
