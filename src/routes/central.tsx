@@ -1214,13 +1214,38 @@ function CentralPage() {
         ...await getAuthHeaders(),
       });
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      // Apply auto-routing flow (TE / category rules) on the local ticket
+      if (currentTicket) {
+        try {
+          const fresh = await supabase
+            .from("service_tickets")
+            .select("*")
+            .eq("id", currentTicket.id)
+            .single();
+          const ticket = fresh.data || currentTicket;
+          const res = await finalizeTicketWithFlow({
+            ticket,
+            userId: session?.user?.id || null,
+            teSettings,
+            registerStatusComment: false,
+          });
+          if (res.routed && res.routedTo) {
+            toast.success(`Encaminhado para ${res.routedTo.sector}`);
+            if (res.syncError) toast.error("Falha GSystem: " + res.syncError);
+            else if (res.syncedToGsystem) toast.success("Sincronizado com GSystem");
+          }
+        } catch (e: any) {
+          console.warn("[Finalize] post-flow error:", e?.message);
+        }
+      }
       toast.success("Atendimento finalizado");
       setSelectedChatId("");
       setShowFinalizeConfirm(false);
       setFinalizeNotes("");
       setFinalizeStatus("A resolver");
       setFinalizeTipoPendencia("");
+      setTeData(EMPTY_TESTE_EQUIPAMENTO);
       refetchChats();
     },
     onError: (err: any) => toast.error(err?.message || "Erro ao finalizar"),
@@ -1666,6 +1691,12 @@ function CentralPage() {
                           }
                           if (!finalizeTipoPendencia) {
                             toast.error("Selecione a categoria do atendimento antes de finalizar.");
+                            return;
+                          }
+                          // If category is Teste de Equipamento, require extra fields first
+                          const tipoLabel = tiposPendencia.find((t) => t.Key === finalizeTipoPendencia)?.Descricao || "";
+                          if (isTesteEquipamentoCategory(tipoLabel, teSettings)) {
+                            setShowTeDialog(true);
                             return;
                           }
                           setShowFinalizeConfirm(true);
