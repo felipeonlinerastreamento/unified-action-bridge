@@ -317,14 +317,16 @@ export function FloatingChatWindow({ state, onOpenInPanel }: Props) {
                       <p className="text-[10px] font-semibold opacity-70 mb-0.5">{msg.senderName}</p>
                     )}
                     <p>{text}</p>
-                    <p className={`text-[9px] mt-0.5 opacity-60 text-right`}>
-                      {formatTime(msg.utcDhMessage || msg.dhMessage)}
-                    </p>
+                    <div className={`flex items-center justify-end gap-1 mt-0.5 opacity-70 ${mine ? "text-primary-foreground" : "text-muted-foreground"}`}>
+                      <span className="text-[9px]">{formatTime(msg.utcDhMessage || msg.dhMessage)}</span>
+                      {mine && !msg.isPrivate && <MessageStatusTicks status={msg._status} />}
+                    </div>
                   </div>
                 </div>
               );
             })
           )}
+          {isContactTyping && <TypingIndicator name={meta.name} className="mt-1" />}
           <div ref={messagesEndRef} />
         </div>
       </ScrollArea>
