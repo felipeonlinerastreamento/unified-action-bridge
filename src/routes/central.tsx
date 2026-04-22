@@ -1561,6 +1561,15 @@ function CentralPage() {
                             </Badge>
                           )}
                         </div>
+                        {localZapiChat?.id && (
+                          <div className="mt-1.5">
+                            <ChatTags
+                              chatRowId={localZapiChat.id}
+                              initialTags={(localZapiChat.tags as unknown as ChatTag[]) || []}
+                              size="xs"
+                            />
+                          </div>
+                        )}
                       </div>
                     </div>
                     <div className="flex items-center gap-1">
