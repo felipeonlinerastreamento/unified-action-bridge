@@ -166,14 +166,27 @@ export const syncTicketToGsystem = createServerFn({ method: "POST" })
     // ticket without explicit category key) fall back to "186" (Assuntos
     // Diversos) — the subtype/details are preserved inside the description.
     const tipoPendencia = ticket.pendencia_key || "186";
+    // Try to resolve gsystem veiculo key via plate
+    let gsystemVeiculoKey: string | null = null;
+    if (ticket.plate) {
+      const { data: vlink } = await supabase
+        .from("entity_links")
+        .select("external_id")
+        .eq("entity_type", "veiculo")
+        .eq("local_id", String(ticket.plate).toUpperCase())
+        .maybeSingle();
+      if (vlink?.external_id) gsystemVeiculoKey = vlink.external_id;
+    }
+
     const body: Record<string, unknown> = {
       Descricao: descricao,
       DataAbertura: new Date().toISOString().split("T")[0],
       TipoPendencia: tipoPendencia,
       Observacao: descricao,
+      // GSystem requires this property even when empty
+      Veiculos: gsystemVeiculoKey ? [gsystemVeiculoKey] : [],
     };
     if (gsystemClienteKey) body.Cliente = gsystemClienteKey;
-    if (ticket.plate) body.Veiculo = ticket.plate;
 
     try {
       const { gsystemApiFetch } = await import("@/lib/gsystem-api.server");
