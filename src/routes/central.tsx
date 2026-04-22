@@ -95,6 +95,16 @@ import { TypingIndicator } from "@/components/central/typing-indicator";
 import { useZapiRealtime } from "@/hooks/use-zapi-realtime";
 import { isGroupChat } from "@/lib/chat-utils";
 import {
+  useTesteEquipamentoSettings,
+  isTesteEquipamentoCategory,
+  EMPTY_TESTE_EQUIPAMENTO,
+  buildTesteEquipamentoNotes,
+  validateTesteEquipamento,
+  type TesteEquipamentoData,
+} from "@/hooks/use-teste-equipamento-settings";
+import { TesteEquipamentoFields } from "@/components/atendimentos/teste-equipamento-fields";
+import { finalizeTicketWithFlow } from "@/lib/ticket-finalize-flow";
+import {
   AlertDialog,
   AlertDialogContent,
   AlertDialogHeader,
@@ -219,6 +229,8 @@ function CentralPage() {
   const [finalizeNotes, setFinalizeNotes] = useState("");
   const [finalizeStatus, setFinalizeStatus] = useState<string>("A resolver");
   const [finalizeTipoPendencia, setFinalizeTipoPendencia] = useState<string>("");
+  const [showTeDialog, setShowTeDialog] = useState(false);
+  const [teData, setTeData] = useState<TesteEquipamentoData>(EMPTY_TESTE_EQUIPAMENTO);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [transferSectorId, setTransferSectorId] = useState<string>("");
   const [transferUserId, setTransferUserId] = useState<string>("");
