@@ -672,6 +672,62 @@ export const discoverChips = createServerFn({ method: "POST" })
     };
   });
 
+export const listEquipamentosFromVeiculos = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => {
+    const { gsystemApiFetch } = await import("@/lib/gsystem-api.server");
+
+    let veiculos: any[] = [];
+    try {
+      const result = await gsystemApiFetch("/veiculos");
+      veiculos = Array.isArray(result)
+        ? result
+        : (result?.data ?? result?.Data ?? result?.Items ?? result?.items ?? []);
+    } catch (err) {
+      console.error("[listEquipamentosFromVeiculos] /veiculos failed:", String(err).substring(0, 200));
+      return { items: [] as any[], source: "veiculos" as const };
+    }
+
+    const items = veiculos
+      .filter((v: any) => v?.Equipamento || v?.EquipamentoSecundario)
+      .flatMap((v: any) => {
+        const entries = [
+          { equipamento: v?.Equipamento, secondary: false },
+          { equipamento: v?.EquipamentoSecundario, secondary: true },
+        ].filter((entry) => entry.equipamento);
+
+        return entries.map(({ equipamento, secondary }) => {
+          const eq = typeof equipamento === "object" ? equipamento : { DisplayName: String(equipamento), Equipamento: String(equipamento) };
+          const status = v?.Status ?? "Ativado";
+          return {
+            key: String(eq?.Codigo ?? eq?.Key ?? eq?.Id ?? eq?.Equipamento ?? eq?.Serie ?? eq?.DisplayName ?? v?.Codigo ?? ""),
+            descricao: eq?.DisplayName ?? eq?.Equipamento ?? eq?.Serie ?? (secondary ? "Equipamento secundário" : "Equipamento"),
+            modelo: v?.Modelo ?? v?.Tipo ?? "",
+            identificador: String(eq?.Equipamento ?? eq?.Serie ?? eq?.DisplayName ?? ""),
+            status,
+            vinculo: v?.Placa ?? v?.DisplayName ?? v?.Cliente ?? null,
+            raw: {
+              veiculoCodigo: v?.Codigo,
+              veiculoPlaca: v?.Placa,
+              cliente: v?.Cliente,
+              equipamento: eq,
+              secondary,
+            },
+          };
+        });
+      });
+
+    const seen = new Set<string>();
+    const deduped = items.filter((item) => {
+      const key = `${item.identificador}::${item.vinculo ?? ""}`;
+      if (!item.identificador || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+
+    return { items: deduped, source: "veiculos" as const };
+  });
+
 // Sondagem ampla para diagnóstico — tenta muitos endpoints e devolve um relatório completo
 export const probeEquipamentosDeep = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
