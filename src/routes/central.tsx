@@ -243,12 +243,21 @@ function CentralPage() {
   const [transferSectorId, setTransferSectorId] = useState<string>("");
   const [transferUserId, setTransferUserId] = useState<string>("");
   const [changingCompany, setChangingCompany] = useState(false);
+  const isMobile = useIsMobile();
   const [showLeftPanel, setShowLeftPanel] = useState(true);
   const [showRightPanel, setShowRightPanel] = useState(true);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const aiChatEndRef = useRef<HTMLDivElement>(null);
   const lastIdentFormSeedRef = useRef<string>("");
   const queryClient = useQueryClient();
+
+  // Auto-collapse side panels on mobile, expand right panel on desktop when a chat is opened
+  useEffect(() => {
+    if (isMobile) {
+      // On small screens, hide the right panel by default to give chat full width
+      setShowRightPanel(false);
+    }
+  }, [isMobile]);
 
   // AI Assistant state
   const [aiMessages, setAiMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
