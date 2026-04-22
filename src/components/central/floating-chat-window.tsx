@@ -8,7 +8,9 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Send, Minus, Maximize2, Minimize2, X, GripHorizontal, Loader2, ExternalLink, MessageSquare } from "lucide-react";
-import { getChatDetail, getChatMessages, sendText } from "@/lib/gsystem.functions";
+import { getChatDetail, getChatMessages, sendText, joinChatAsCoAgent } from "@/lib/gsystem.functions";
+import { useAuth } from "@/hooks/use-auth";
+import { UserPlus2 } from "lucide-react";
 import { useFloatingChats, FloatingChatState } from "./floating-chats-context";
 import { WhisperToggle } from "./whisper-toggle";
 import { QuickRepliesPopover } from "./quick-replies-popover";
@@ -23,6 +25,11 @@ interface Props {
 interface GMessage {
   IdMessage?: string;
   senderName?: string;
+  senderUserId?: string;
+  senderFirstName?: string;
+  senderFullName?: string;
+  responsibleFirstName?: string;
+  isCoAgent?: boolean;
   dhMessage?: string;
   text?: string;
   isSentByMe?: boolean;
