@@ -39,7 +39,8 @@ import {
   isTesteEquipamentoCategory,
 } from "@/hooks/use-teste-equipamento-settings";
 import { syncTicketToGsystem } from "@/lib/ticket-finalize.functions";
-import { Cloud } from "lucide-react";
+import { finalizeTicketWithFlow } from "@/lib/ticket-finalize-flow";
+import { Cloud, RefreshCcw } from "lucide-react";
 
 interface TicketDetailPanelProps {
   ticket: any | null;
@@ -197,46 +198,21 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   const updateStatus = async (newStatus: string) => {
     if (!ticket?.id) return;
 
-    const isTesteEquip = isTesteEquipamentoCategory(ticket.category, teSettings);
-    const shouldAutoRoute =
-      newStatus === "finalizado" && isTesteEquip && (teSettings?.is_enabled ?? true);
-
-    if (shouldAutoRoute) {
-      const targetSector = teSettings?.target_sector_name || "Administrativo";
-      const targetStatus = (teSettings?.target_status || "aberto") as
-        | "aberto"
-        | "em_andamento";
-      const { error } = await supabase
-        .from("service_tickets")
-        .update({
-          status: targetStatus,
-          sector: targetSector,
-          assigned_to: null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", ticket.id);
-      if (error) {
-        toast.error("Erro ao finalizar/encaminhar: " + error.message);
+    if (newStatus === "finalizado") {
+      const res = await finalizeTicketWithFlow({ ticket, userId, teSettings });
+      if (res.error) {
+        toast.error("Erro ao finalizar: " + res.error);
         return;
       }
-      await supabase.from("ticket_assignments").insert({
-        ticket_id: ticket.id,
-        assigned_by: userId,
-        sector_name: targetSector,
-      });
-      await insertSystemComment(
-        ticket.id,
-        `Atendimento finalizado e encaminhado automaticamente para o setor "${targetSector}" com status "${targetStatus}".`,
-        "encaminhamento"
-      );
-
-      if (teSettings?.auto_sync_gsystem ?? true) {
-        await runGsystemSync(true);
-      }
-
       refetchComments();
       onRefetch();
-      toast.success(`Encaminhado para ${targetSector}`);
+      if (res.routed && res.routedTo) {
+        toast.success(`Encaminhado para ${res.routedTo.sector}`);
+        if (res.syncError) toast.error("Falha GSystem: " + res.syncError);
+        else if (res.syncedToGsystem) toast.success("Sincronizado com GSystem");
+      } else {
+        toast.success("Ticket finalizado");
+      }
       return;
     }
 
@@ -246,7 +222,6 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
       closed_at: null as string | null,
       reopened_at: ticket.reopened_at as string | null,
     };
-    if (newStatus === "finalizado") baseUpdate.closed_at = new Date().toISOString();
     if (newStatus === "reaberto") baseUpdate.reopened_at = new Date().toISOString();
 
     const { error } = await supabase.from("service_tickets").update(baseUpdate).eq("id", ticket.id);
@@ -259,7 +234,29 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
     await insertSystemComment(ticket.id, `Status alterado para ${newStatus}`, "status_change");
     refetchComments();
     onRefetch();
-    toast.success(`Ticket ${newStatus === "finalizado" ? "finalizado" : newStatus === "reaberto" ? "reaberto" : "atualizado"}`);
+    toast.success(`Ticket ${newStatus === "reaberto" ? "reaberto" : "atualizado"}`);
+  };
+
+  const reprocessFlow = async () => {
+    if (!ticket?.id) return;
+    const res = await finalizeTicketWithFlow({
+      ticket,
+      userId,
+      teSettings,
+      registerStatusComment: false,
+    });
+    if (res.error) {
+      toast.error("Erro ao reprocessar: " + res.error);
+      return;
+    }
+    refetchComments();
+    onRefetch();
+    if (res.routed && res.routedTo) {
+      toast.success(`Reprocessado: encaminhado para ${res.routedTo.sector}`);
+      if (res.syncError) toast.error("Falha GSystem: " + res.syncError);
+    } else {
+      toast.message("Sem regra de encaminhamento aplicável");
+    }
   };
 
   const updatePriority = async (priority: string) => {
