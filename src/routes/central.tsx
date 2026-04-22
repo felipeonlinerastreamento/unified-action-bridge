@@ -259,6 +259,13 @@ function CentralPage() {
     }
   }, [isMobile]);
 
+  // On mobile, auto-close the chat list when a chat is selected so the chat takes full width
+  useEffect(() => {
+    if (isMobile && selectedChatId) {
+      setShowLeftPanel(false);
+    }
+  }, [isMobile, selectedChatId]);
+
   // AI Assistant state
   const [aiMessages, setAiMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
   const [aiInput, setAiInput] = useState("");
