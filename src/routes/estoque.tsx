@@ -11,7 +11,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
-import { getVeiculos, getVeiculoTipos, getCadastrosByTipo } from "@/lib/gsystem-api.functions";
+import { getVeiculos, getVeiculoTipos, getCadastrosByTipo, discoverEquipamentos, discoverChips } from "@/lib/gsystem-api.functions";
 import { Search, Package, Car, RefreshCw, Loader2, AlertCircle, Cpu, Wifi } from "lucide-react";
 
 export const Route = createFileRoute("/estoque")({
@@ -64,27 +64,57 @@ function EstoquePage() {
     return { headers: { authorization: `Bearer ${session?.access_token}` } };
   }, []);
 
-  // Equipamentos (cadastros)
+  // Equipamentos: try dedicated endpoints first, fallback to /cadastros
   const equipQuery = useQuery({
-    queryKey: ["gsystem-cadastros", "equipamentos"],
+    queryKey: ["gsystem-equipamentos-v2"],
     queryFn: async () => {
-      return getCadastrosByTipo({
-        ...await getAuthHeaders(),
-        data: { candidates: EQUIP_CANDIDATES },
-      });
+      const auth = await getAuthHeaders();
+      const direct = await discoverEquipamentos(auth);
+      if (direct.matchedEndpoint && direct.items.length > 0) {
+        return {
+          source: "endpoint" as const,
+          matched: direct.matchedEndpoint,
+          tried: direct.tried,
+          items: direct.items as CadastroItem[],
+          availableTipos: [] as string[],
+        };
+      }
+      const fb = await getCadastrosByTipo({ ...auth, data: { candidates: EQUIP_CANDIDATES } });
+      return {
+        source: "cadastros" as const,
+        matched: fb.matchedTipo,
+        tried: direct.tried,
+        items: (fb.items ?? []) as CadastroItem[],
+        availableTipos: fb.availableTipos ?? [],
+      };
     },
     enabled: isAuthenticated && tab === "equipamentos",
     staleTime: 5 * 60 * 1000,
   });
 
-  // Chips (cadastros)
+  // Chips: try dedicated endpoints first, fallback to /cadastros
   const chipsQuery = useQuery({
-    queryKey: ["gsystem-cadastros", "chips"],
+    queryKey: ["gsystem-chips-v2"],
     queryFn: async () => {
-      return getCadastrosByTipo({
-        ...await getAuthHeaders(),
-        data: { candidates: CHIP_CANDIDATES },
-      });
+      const auth = await getAuthHeaders();
+      const direct = await discoverChips(auth);
+      if (direct.matchedEndpoint && direct.items.length > 0) {
+        return {
+          source: "endpoint" as const,
+          matched: direct.matchedEndpoint,
+          tried: direct.tried,
+          items: direct.items as CadastroItem[],
+          availableTipos: [] as string[],
+        };
+      }
+      const fb = await getCadastrosByTipo({ ...auth, data: { candidates: CHIP_CANDIDATES } });
+      return {
+        source: "cadastros" as const,
+        matched: fb.matchedTipo,
+        tried: direct.tried,
+        items: (fb.items ?? []) as CadastroItem[],
+        availableTipos: fb.availableTipos ?? [],
+      };
     },
     enabled: isAuthenticated && tab === "chips",
     staleTime: 5 * 60 * 1000,
@@ -337,9 +367,11 @@ function EstoquePage() {
               error={equipQuery.error}
               items={equipFiltered}
               identifierLabel="Serial / IMEI"
-              matchedTipo={equipQuery.data?.matchedTipo ?? null}
+              matchedTipo={equipQuery.data?.matched ?? null}
               availableTipos={equipQuery.data?.availableTipos ?? []}
+              endpointsTried={equipQuery.data?.tried ?? []}
               candidatesTried={EQUIP_CANDIDATES}
+              source={equipQuery.data?.source ?? null}
               kind="equipamento"
             />
           </TabsContent>
@@ -352,9 +384,11 @@ function EstoquePage() {
               error={chipsQuery.error}
               items={chipFiltered}
               identifierLabel="ICCID / Número"
-              matchedTipo={chipsQuery.data?.matchedTipo ?? null}
+              matchedTipo={chipsQuery.data?.matched ?? null}
               availableTipos={chipsQuery.data?.availableTipos ?? []}
+              endpointsTried={chipsQuery.data?.tried ?? []}
               candidatesTried={CHIP_CANDIDATES}
+              source={chipsQuery.data?.source ?? null}
               kind="chip"
             />
           </TabsContent>
@@ -510,7 +544,9 @@ function CadastrosTable({
   identifierLabel,
   matchedTipo,
   availableTipos,
+  endpointsTried,
   candidatesTried,
+  source,
   kind,
 }: {
   icon: React.ReactNode;
@@ -520,7 +556,9 @@ function CadastrosTable({
   identifierLabel: string;
   matchedTipo: string | null;
   availableTipos: string[];
+  endpointsTried: Array<{ endpoint: string; status: string }>;
   candidatesTried: string[];
+  source: "endpoint" | "cadastros" | null;
   kind: string;
 }) {
   if (error) {
@@ -537,31 +575,51 @@ function CadastrosTable({
     );
   }
 
-  // No matching tipo found in /cadastros — show diagnostic hint
+  // Nothing found anywhere — show full diagnostic
   if (!loading && !matchedTipo && items.length === 0) {
     return (
       <Card>
-        <CardContent className="p-6 space-y-3">
+        <CardContent className="p-6 space-y-4">
           <div className="flex items-center gap-2 text-amber-600">
             <AlertCircle className="h-5 w-5" />
-            <p className="font-medium">Nenhum cadastro do tipo {kind} encontrado no GSystem.</p>
+            <p className="font-medium">Nenhum {kind} localizado na sua base GSystem.</p>
           </div>
+
+          {endpointsTried.length > 0 && (
+            <div className="text-sm space-y-1">
+              <p className="text-muted-foreground">Endpoints diretos consultados:</p>
+              <div className="rounded border bg-muted/30 p-2 space-y-1 font-mono text-xs">
+                {endpointsTried.map((t) => (
+                  <div key={t.endpoint} className="flex justify-between gap-3">
+                    <span>{t.endpoint}</span>
+                    <span className="text-muted-foreground">{t.status}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
           <p className="text-sm text-muted-foreground">
-            Tentei estes tipos: <span className="font-mono">{candidatesTried.join(", ")}</span>
+            Também tentei <span className="font-mono">/cadastros</span> com os tipos:{" "}
+            <span className="font-mono">{candidatesTried.join(", ")}</span>
           </p>
+
           {availableTipos.length > 0 && (
             <div className="text-sm">
-              <p className="text-muted-foreground mb-1">Tipos disponíveis na sua base:</p>
+              <p className="text-muted-foreground mb-1">Tipos disponíveis em /cadastros:</p>
               <div className="flex flex-wrap gap-1">
                 {availableTipos.map((t) => (
                   <Badge key={t} variant="secondary" className="font-mono text-xs">{t}</Badge>
                 ))}
               </div>
-              <p className="text-xs text-muted-foreground mt-2">
-                Me avise qual desses corresponde a {kind} para fixar no filtro.
-              </p>
             </div>
           )}
+
+          <p className="text-xs text-muted-foreground border-t pt-3">
+            Possíveis causas: a API do seu GSystem expõe {kind}s em endpoint não-padrão, o usuário da
+            integração não tem permissão de leitura nesse cadastro, ou a base realmente está vazia.
+            Me envie o nome do endpoint ou tipo correto para que eu fixe a consulta.
+          </p>
         </CardContent>
       </Card>
     );
@@ -569,6 +627,14 @@ function CadastrosTable({
 
   return (
     <Card>
+      {matchedTipo && (
+        <div className="px-4 py-2 text-xs text-muted-foreground border-b flex items-center gap-2">
+          <span>Fonte:</span>
+          <Badge variant="outline" className="font-mono text-xs">
+            {source === "endpoint" ? matchedTipo : `/cadastros · Tipo=${matchedTipo}`}
+          </Badge>
+        </div>
+      )}
       <CardContent className="p-0">
         <Table>
           <TableHeader>
