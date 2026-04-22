@@ -1646,9 +1646,21 @@ function CentralPage() {
               ) : (
                 <>
                   {/* Chat header */}
-                  <div className="p-3 border-b flex items-center justify-between bg-muted/30">
-                    <div className="flex items-center gap-3">
-                      <Avatar className="h-9 w-9">
+                  <div className="p-2 sm:p-3 border-b flex items-center justify-between gap-2 bg-muted/30 flex-wrap">
+                    <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                      {/* Mobile: show button to open chat list */}
+                      {!showLeftPanel && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="shrink-0 h-7 w-7 md:hidden"
+                          onClick={() => setShowLeftPanel(true)}
+                          title="Mostrar lista"
+                        >
+                          <PanelLeftOpen className="h-4 w-4" />
+                        </Button>
+                      )}
+                      <Avatar className="h-9 w-9 shrink-0">
                         {chatDetail?.contact?.linkImage &&
                           !chatDetail.contact.linkImage.includes("avatar-default") && (
                             <AvatarImage src={chatDetail.contact.linkImage} />
@@ -1657,19 +1669,19 @@ function CentralPage() {
                           {(chatDetail?.description || chatDetail?.contact?.name || "?").substring(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <div>
-                        <p className="text-sm font-medium text-foreground">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-foreground truncate">
                           {chatDetail?.description || chatDetail?.contact?.name || "Contato"}
                         </p>
-                        <div className="flex items-center gap-2">
-                          <p className="text-xs text-muted-foreground">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-xs text-muted-foreground truncate">
                             {chatDetail?.contact?.secondaryName || chatDetail?.contact?.number}
                             {chatDetail?.protocol && ` • #${chatDetail.protocol}`}
                           </p>
                           {companyLookup && (
-                            <Badge variant="secondary" className="text-[10px] gap-1">
-                              <Building2 className="h-2.5 w-2.5" />
-                              {companyLookup.name}
+                            <Badge variant="secondary" className="text-[10px] gap-1 max-w-[160px]">
+                              <Building2 className="h-2.5 w-2.5 shrink-0" />
+                              <span className="truncate">{companyLookup.name}</span>
                             </Badge>
                           )}
                         </div>
@@ -1684,7 +1696,7 @@ function CentralPage() {
                         )}
                       </div>
                     </div>
-                    <div className="flex items-center gap-1">
+                    <div className="flex items-center gap-1 flex-wrap justify-end">
                       {(chatDetail as any)?.assignedFirstName && (
                         <Badge variant="outline" className="text-[10px] mr-1">
                           Resp.: <strong className="ml-1 font-bold">{(chatDetail as any).assignedFirstName}</strong>
