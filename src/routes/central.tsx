@@ -390,10 +390,11 @@ function CentralPage() {
     },
     enabled: isAuthenticated,
     staleTime: 300000,
-    retry: 2,
   });
 
-  // GSystem users for transfer
+  const { data: teSettings } = useTesteEquipamentoSettings();
+
+
   const { data: gsystemUsersList = [] } = useQuery({
     queryKey: ["gsystem-users-list", selectedChannelId],
     queryFn: async () => {
