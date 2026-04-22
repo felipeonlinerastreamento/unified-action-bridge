@@ -2114,9 +2114,61 @@ function CentralPage() {
                               {(chatDetail.description || chatDetail.contact?.name || "?").substring(0, 2).toUpperCase()}
                             </AvatarFallback>
                           </Avatar>
-                          <h3 className="mt-3 font-medium text-foreground">
-                            {chatDetail.contact?.name || chatDetail.description || "Contato"}
-                          </h3>
+                          {editingContactName ? (
+                            <div className="mt-3 flex items-center gap-1 justify-center">
+                              <Input
+                                value={contactNameDraft}
+                                onChange={(e) => setContactNameDraft(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") handleSaveContactName();
+                                  if (e.key === "Escape") setEditingContactName(false);
+                                }}
+                                placeholder="Nome do contato"
+                                maxLength={120}
+                                autoFocus
+                                className="h-8 text-sm max-w-[220px]"
+                                disabled={savingContactName}
+                              />
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7"
+                                onClick={handleSaveContactName}
+                                disabled={savingContactName}
+                                title="Salvar"
+                              >
+                                {savingContactName ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7"
+                                onClick={() => setEditingContactName(false)}
+                                disabled={savingContactName}
+                                title="Cancelar"
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ) : (
+                            <div className="mt-3 flex items-center gap-1 justify-center group">
+                              <h3 className="font-medium text-foreground">
+                                {chatDetail.contact?.name || chatDetail.description || "Contato"}
+                              </h3>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-6 w-6 opacity-60 hover:opacity-100"
+                                onClick={() => {
+                                  setContactNameDraft(chatDetail.contact?.name || chatDetail.description || "");
+                                  setEditingContactName(true);
+                                }}
+                                title="Alterar nome do contato"
+                              >
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          )}
                           {chatDetail.contact?.number && (
                             <p className="text-sm text-muted-foreground flex items-center justify-center gap-1 mt-1">
                               <Phone className="h-3 w-3" />
