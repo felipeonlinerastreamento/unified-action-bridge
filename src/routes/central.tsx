@@ -2701,7 +2701,8 @@ function TimeMetric({ label, seconds }: { label: string; seconds: number }) {
   );
 }
 
-function formatTime(dateStr: string): string {
+function formatTime(dateStr?: string): string {
+  if (!dateStr) return "";
   try {
     const d = new Date(dateStr);
     const now = new Date();
