@@ -12,6 +12,8 @@ import { getChatDetail, getChatMessages, sendText } from "@/lib/gsystem.function
 import { useFloatingChats, FloatingChatState } from "./floating-chats-context";
 import { WhisperToggle } from "./whisper-toggle";
 import { QuickRepliesPopover } from "./quick-replies-popover";
+import { MessageStatusTicks } from "./message-status-ticks";
+import { TypingIndicator } from "./typing-indicator";
 
 interface Props {
   state: FloatingChatState;
@@ -28,6 +30,7 @@ interface GMessage {
   isPrivate?: boolean;
   utcDhMessage?: string;
   unixTimeMessage?: number;
+  _status?: string; // sent | delivered | read
 }
 
 function formatTime(dateStr?: string): string {
