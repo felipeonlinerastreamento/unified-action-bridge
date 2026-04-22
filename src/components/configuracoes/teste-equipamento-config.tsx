@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,7 +15,7 @@ import {
   type TesteEquipamentoSettings,
 } from "@/hooks/use-teste-equipamento-settings";
 import { toast } from "sonner";
-import { Loader2, Wrench } from "lucide-react";
+import { Loader2, Wrench, AlertTriangle } from "lucide-react";
 import { getTiposPendencia } from "@/lib/gsystem-api.functions";
 
 export function TesteEquipamentoConfig() {
