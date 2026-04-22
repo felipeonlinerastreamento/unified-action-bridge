@@ -158,7 +158,7 @@ export function SectorGroupsManagement() {
       const payload = {
         name: sectorName.trim(),
         description: sectorDescription.trim(),
-        group_id: sectorGroupId || null,
+        group_id: sectorGroupId && sectorGroupId !== "none" ? sectorGroupId : null,
         is_active: sectorIsActive,
       };
       if (editingSector) {
