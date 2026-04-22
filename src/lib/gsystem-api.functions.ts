@@ -694,10 +694,10 @@ export const probeEquipamentosDeep = createServerFn({ method: "POST" })
       "/inventario", "/Inventario",
     ];
 
-    const summarizeSample = (item: any) => {
+    const summarizeSample = (item: any): Record<string, any> | null => {
       if (!item || typeof item !== "object") return null;
       const keys = Object.keys(item).slice(0, 25);
-      const sample: Record<string, unknown> = {};
+      const sample: Record<string, any> = {};
       for (const k of keys) {
         const v = (item as any)[k];
         if (v == null) sample[k] = null;
@@ -712,7 +712,7 @@ export const probeEquipamentosDeep = createServerFn({ method: "POST" })
       status: string;
       count?: number;
       firstItemKeys?: string[];
-      sample?: Record<string, unknown> | null;
+      sample?: Record<string, any> | null;
     }> = [];
 
     for (const ep of ENDPOINTS_TO_TRY) {
