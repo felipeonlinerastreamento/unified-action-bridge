@@ -35,6 +35,15 @@ import { cn } from "@/lib/utils";
 import { Check, ChevronsUpDown, Loader2, AlertCircle } from "lucide-react";
 import { getClientes, getTiposPendencia } from "@/lib/gsystem-api.functions";
 import { useTrackingSettings } from "@/hooks/use-tracking-settings";
+import {
+  useTesteEquipamentoSettings,
+  isTesteEquipamentoCategory,
+  buildTesteEquipamentoNotes,
+  validateTesteEquipamento,
+  EMPTY_TESTE_EQUIPAMENTO,
+  type TesteEquipamentoData,
+} from "@/hooks/use-teste-equipamento-settings";
+import { TesteEquipamentoFields } from "./teste-equipamento-fields";
 
 interface TicketCreateDialogProps {
   open: boolean;
@@ -71,6 +80,9 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
 
   const isCorreios = (category || "").toLowerCase().includes("correios");
   const { data: trackingSettings } = useTrackingSettings();
+  const { data: teSettings } = useTesteEquipamentoSettings();
+  const isTesteEquip = isTesteEquipamentoCategory(category, teSettings);
+  const [teData, setTeData] = useState<TesteEquipamentoData>(EMPTY_TESTE_EQUIPAMENTO);
 
   const getAuthHeaders = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -154,6 +166,7 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
     setCategory("");
     setSectorId("");
     setTrackingCode("");
+    setTeData(EMPTY_TESTE_EQUIPAMENTO);
   };
 
   const ensureLocalCompany = async (cliente: GsystemCliente): Promise<string | null> => {
@@ -219,11 +232,22 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
         }
       }
     }
+    // Validate Teste de Equipamento fields
+    if (isTesteEquip) {
+      const err = validateTesteEquipamento(teData, teSettings);
+      if (err) {
+        toast.error(err);
+        return;
+      }
+    }
     setLoading(true);
     try {
       const companyId = await ensureLocalCompany(selectedCliente);
       const sectorName = localSectors.find((s) => s.id === sectorId)?.name || null;
       const attendanceId = `MANUAL-${Date.now()}`;
+      const finalNotes = isTesteEquip
+        ? buildTesteEquipamentoNotes(teData, notes)
+        : (notes || null);
 
       const { data: created, error } = await supabase.from("service_tickets").insert({
         attendance_id: attendanceId,
@@ -231,7 +255,7 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
         contact_phone: contactPhone || null,
         company_id: companyId,
         plate: plate || null,
-        notes: notes || null,
+        notes: finalNotes,
         priority: priority as any,
         category: category || null,
         sector: sectorName,
@@ -449,6 +473,9 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
                 Formato Correios: 2 letras + 9 dígitos + 2 letras
               </p>
             </div>
+          )}
+          {isTesteEquip && (
+            <TesteEquipamentoFields value={teData} onChange={setTeData} settings={teSettings} />
           )}
           <div className="space-y-1">
             <label className="text-xs font-medium">Observações</label>

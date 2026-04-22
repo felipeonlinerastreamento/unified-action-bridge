@@ -34,6 +34,12 @@ import {
 import { TicketReminderSection } from "./ticket-reminder-section";
 import { TicketAgentsSection } from "./ticket-agents-section";
 import { TicketTrackingSection } from "./ticket-tracking-section";
+import {
+  useTesteEquipamentoSettings,
+  isTesteEquipamentoCategory,
+} from "@/hooks/use-teste-equipamento-settings";
+import { syncTicketToGsystem } from "@/lib/ticket-finalize.functions";
+import { Cloud } from "lucide-react";
 
 interface TicketDetailPanelProps {
   ticket: any | null;
@@ -62,6 +68,8 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   const [forwardUser, setForwardUser] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState("");
+  const [syncing, setSyncing] = useState(false);
+  const { data: teSettings } = useTesteEquipamentoSettings();
 
   // Get current user
   const { data: currentUser } = useQuery({
@@ -157,8 +165,80 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
     if (error) console.error("Error inserting system comment:", error);
   };
 
+  const runGsystemSync = async (silent = false) => {
+    if (!ticket?.id) return;
+    setSyncing(true);
+    try {
+      const res = await syncTicketToGsystem({ data: { ticketId: ticket.id } });
+      if ((res as any)?.ok) {
+        await insertSystemComment(
+          ticket.id,
+          `Sincronizado com GSystem (pendência ${(res as any).pendenciaKey || "criada"})`,
+          "sistema"
+        );
+        if (!silent) toast.success("Sincronizado com GSystem");
+      } else {
+        const errMsg = (res as any)?.error || "erro desconhecido";
+        await insertSystemComment(
+          ticket.id,
+          `Falha ao sincronizar com GSystem: ${errMsg}. Tente novamente em Ações.`,
+          "sistema"
+        );
+        if (!silent) toast.error("Falha ao sincronizar GSystem: " + errMsg);
+      }
+    } catch (e: any) {
+      if (!silent) toast.error("Erro de sincronização: " + (e?.message || e));
+    } finally {
+      setSyncing(false);
+      refetchComments();
+    }
+  };
+
   const updateStatus = async (newStatus: string) => {
     if (!ticket?.id) return;
+
+    const isTesteEquip = isTesteEquipamentoCategory(ticket.category, teSettings);
+    const shouldAutoRoute =
+      newStatus === "finalizado" && isTesteEquip && (teSettings?.is_enabled ?? true);
+
+    if (shouldAutoRoute) {
+      const targetSector = teSettings?.target_sector_name || "Administrativo";
+      const targetStatus = (teSettings?.target_status || "aberto") as
+        | "aberto"
+        | "em_andamento";
+      const { error } = await supabase
+        .from("service_tickets")
+        .update({
+          status: targetStatus,
+          sector: targetSector,
+          assigned_to: null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", ticket.id);
+      if (error) {
+        toast.error("Erro ao finalizar/encaminhar: " + error.message);
+        return;
+      }
+      await supabase.from("ticket_assignments").insert({
+        ticket_id: ticket.id,
+        assigned_by: userId,
+        sector_name: targetSector,
+      });
+      await insertSystemComment(
+        ticket.id,
+        `Atendimento finalizado e encaminhado automaticamente para o setor "${targetSector}" com status "${targetStatus}".`,
+        "encaminhamento"
+      );
+
+      if (teSettings?.auto_sync_gsystem ?? true) {
+        await runGsystemSync(true);
+      }
+
+      refetchComments();
+      onRefetch();
+      toast.success(`Encaminhado para ${targetSector}`);
+      return;
+    }
 
     const baseUpdate = {
       status: newStatus as "aberto" | "em_andamento" | "finalizado" | "reaberto",
@@ -445,6 +525,24 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </div>
+            </div>
+
+            {/* Manual GSystem sync */}
+            <div className="space-y-2 pt-2 border-t">
+              <label className="text-xs font-medium text-muted-foreground">Sincronização GSystem</label>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => runGsystemSync(false)}
+                disabled={syncing}
+                className="w-full gap-2"
+              >
+                <Cloud className="h-4 w-4" />
+                {syncing ? "Sincronizando..." : "Sincronizar com GSystem"}
+              </Button>
+              <p className="text-[10px] text-muted-foreground">
+                Cria pendência no GSystem com toda a descrição do atendimento.
+              </p>
             </div>
           </TabsContent>
         </Tabs>

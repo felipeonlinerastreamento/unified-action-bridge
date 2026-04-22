@@ -42,6 +42,7 @@ import { toast } from "sonner";
 import { Plus, Pencil, Trash2, ArrowRightLeft, Loader2 } from "lucide-react";
 import { SectorsManagement } from "@/components/configuracoes/sectors-management";
 import { TrackingSedexConfig } from "@/components/configuracoes/tracking-sedex-config";
+import { TesteEquipamentoConfig } from "@/components/configuracoes/teste-equipamento-config";
 
 export const Route = createFileRoute("/configuracoes/encaminhamento")({
   component: EncaminhamentoPage,
@@ -259,6 +260,8 @@ function EncaminhamentoPage() {
         </div>
 
         <TrackingSedexConfig />
+
+        <TesteEquipamentoConfig />
 
         <Card>
           <CardHeader>
