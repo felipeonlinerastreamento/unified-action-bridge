@@ -10,6 +10,8 @@ import { toast } from "sonner";
 import { Send, Minus, Maximize2, Minimize2, X, GripHorizontal, Loader2, ExternalLink, MessageSquare } from "lucide-react";
 import { getChatDetail, getChatMessages, sendText } from "@/lib/gsystem.functions";
 import { useFloatingChats, FloatingChatState } from "./floating-chats-context";
+import { WhisperToggle } from "./whisper-toggle";
+import { QuickRepliesPopover } from "./quick-replies-popover";
 
 interface Props {
   state: FloatingChatState;
@@ -41,6 +43,7 @@ function formatTime(dateStr?: string): string {
 export function FloatingChatWindow({ state, onOpenInPanel }: Props) {
   const { closeChat, minimize, toggleMaximize, bringToFront, updatePosition, updateMeta, setUnread } = useFloatingChats();
   const [input, setInput] = useState("");
+  const [whisperMode, setWhisperMode] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const dragOffset = useRef({ x: 0, y: 0 });
   const windowRef = useRef<HTMLDivElement>(null);
@@ -153,25 +156,49 @@ export function FloatingChatWindow({ state, onOpenInPanel }: Props) {
     };
   }, [isDragging, chatId, updatePosition]);
 
-  // Send
+  // Send (or whisper)
   const sendMutation = useMutation({
-    mutationFn: async (text: string) => {
+    mutationFn: async ({ text, whisper }: { text: string; whisper: boolean }) => {
+      if (whisper) {
+        const phone = meta.phone;
+        if (!phone) throw new Error("Telefone do contato indisponível");
+        const { data: chatRow } = await supabase
+          .from("zapi_chats")
+          .select("id")
+          .eq("channel_id", channelId)
+          .eq("phone", phone)
+          .maybeSingle();
+        if (!chatRow) throw new Error("Sussurro indisponível: chat ainda não vinculado ao Z-API local");
+        const { data: { session } } = await supabase.auth.getSession();
+        const { error } = await supabase.from("zapi_messages").insert({
+          chat_id: chatRow.id,
+          from_me: true,
+          is_whisper: true,
+          whisper_author: session?.user?.id || null,
+          text,
+          status: "sent",
+        });
+        if (error) throw error;
+        return { whisper: true };
+      }
       return await sendText({
         data: { channelId, chatId, text },
         ...await getAuthHeaders(),
       });
     },
-    onSuccess: () => {
+    onSuccess: (_data, vars) => {
       setInput("");
       queryClient.invalidateQueries({ queryKey: ["floating-chat-messages", channelId, chatId] });
       queryClient.invalidateQueries({ queryKey: ["chat-messages", channelId, chatId] });
+      queryClient.invalidateQueries({ queryKey: ["zapi-messages"] });
+      if (vars.whisper) toast.success("Sussurro registrado");
     },
     onError: (err: any) => toast.error(err?.message || "Erro ao enviar mensagem"),
   });
 
   const handleSend = () => {
     if (!input.trim() || sendMutation.isPending) return;
-    sendMutation.mutate(input.trim());
+    sendMutation.mutate({ text: input.trim(), whisper: whisperMode });
   };
 
   if (state.minimized) return null;
@@ -284,11 +311,13 @@ export function FloatingChatWindow({ state, onOpenInPanel }: Props) {
       {/* Input */}
       <div className="border-t p-2 bg-background">
         <div className="flex gap-1.5">
+          <QuickRepliesPopover size="sm" onPick={(text) => setInput((prev) => prev ? `${prev} ${text}` : text)} />
+          <WhisperToggle size="sm" active={whisperMode} onToggle={() => setWhisperMode((v) => !v)} />
           <Input
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="Digite uma mensagem..."
-            className="text-xs h-8"
+            placeholder={whisperMode ? "Sussurro interno..." : "Digite uma mensagem..."}
+            className={`text-xs h-8 ${whisperMode ? "border-amber-400 focus-visible:ring-amber-400" : ""}`}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
@@ -297,7 +326,12 @@ export function FloatingChatWindow({ state, onOpenInPanel }: Props) {
             }}
             disabled={sendMutation.isPending}
           />
-          <Button size="icon" className="h-8 w-8 shrink-0" onClick={handleSend} disabled={sendMutation.isPending || !input.trim()}>
+          <Button
+            size="icon"
+            className={`h-8 w-8 shrink-0 ${whisperMode ? "bg-amber-500 hover:bg-amber-600" : ""}`}
+            onClick={handleSend}
+            disabled={sendMutation.isPending || !input.trim()}
+          >
             {sendMutation.isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
           </Button>
         </div>

@@ -120,7 +120,7 @@ function EncaminhamentoPage() {
     queryFn: async () => {
       if (!channelId) return [];
       const auth = await getAuthHeaders();
-      const result = await listSectors({ data: { channelId }, ...auth });
+      const result: any = await listSectors({ data: { channelId }, ...auth });
       return Array.isArray(result) ? result : result?.data || [];
     },
     enabled: isAuthenticated && !!channelId,

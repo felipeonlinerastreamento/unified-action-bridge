@@ -10,6 +10,7 @@ import {
   Building2,
   UserPlus,
   Bot,
+  MessageCircle,
   PhoneCall,
   Plug,
   ChevronDown,
@@ -58,6 +59,7 @@ const configSubItems = [
   { title: "Fluxo de Atendimento", url: "/configuracoes/fluxo-atendimento", icon: GitBranch },
   { title: "Estoque", url: "/configuracoes/estoque", icon: Boxes },
   { title: "Assistente IA", url: "/configuracoes/assistente-ia", icon: Bot },
+  { title: "Z-API & Bot", url: "/configuracoes/zapi", icon: MessageCircle },
   { title: "Encaminhamento", url: "/configuracoes/encaminhamento", icon: ArrowRightLeft },
   { title: "Usuários", url: "/configuracoes/usuarios", icon: UserCog },
 ];
