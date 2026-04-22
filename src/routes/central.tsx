@@ -36,6 +36,7 @@ import {
   listSectors,
   listGSystemUsers,
   transferChat,
+  joinChatAsCoAgent,
 } from "@/lib/gsystem.functions";
 import {
   createPendenciaFromAtendimento,
@@ -215,7 +216,7 @@ function detectPlates(messages: GMessage[]): string[] {
 }
 
 function CentralPage() {
-  const { isAuthenticated, isLoading: authLoading, session } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, session, user } = useAuth();
   const [selectedChannelId, setSelectedChannelId] = useState<string>("");
   const [selectedChatId, setSelectedChatId] = useState<string>("");
   const [messageInput, setMessageInput] = useState("");
