@@ -182,6 +182,8 @@ export const syncTicketToGsystem = createServerFn({ method: "POST" })
       Descricao: descricao,
       DataAbertura: new Date().toISOString().split("T")[0],
       TipoPendencia: tipoPendencia,
+      // Campo legado mantido por compatibilidade; o GSystem continua usando TipoPendencia.
+      Tipo: tipoPendencia,
       Observacao: descricao,
       // GSystem requires this property even when empty
       Veiculos: gsystemVeiculoKey ? [gsystemVeiculoKey] : [],
@@ -189,6 +191,12 @@ export const syncTicketToGsystem = createServerFn({ method: "POST" })
     if (gsystemClienteKey) body.Cliente = gsystemClienteKey;
 
     try {
+      console.log("[ticket-finalize] Creating pendência", {
+        ticketId: ticket.id,
+        tipoPendencia,
+        hasCliente: Boolean(gsystemClienteKey),
+        veiculosCount: Array.isArray(body.Veiculos) ? body.Veiculos.length : 0,
+      });
       const { gsystemApiFetch } = await import("@/lib/gsystem-api.server");
       const result = await gsystemApiFetch("/pendencias", "POST", body);
       const pendenciaKey =
@@ -210,6 +218,13 @@ export const syncTicketToGsystem = createServerFn({ method: "POST" })
 
       return { ok: true, pendenciaKey };
     } catch (err: any) {
+      console.error("[ticket-finalize] Error creating pendência", {
+        ticketId: ticket.id,
+        tipoPendencia,
+        hasCliente: Boolean(gsystemClienteKey),
+        veiculosCount: Array.isArray(body.Veiculos) ? body.Veiculos.length : 0,
+        error: err?.message || String(err),
+      });
       return { ok: false, error: err?.message || "Falha ao criar pendência no GSystem" };
     }
   });
