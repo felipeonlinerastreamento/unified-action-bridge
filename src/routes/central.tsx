@@ -852,12 +852,13 @@ function CentralPage() {
     onSuccess: () => refetchTicket(),
   });
 
-  // Auto-create ticket on chat selection
+  // Auto-create ticket on chat selection (skip for group chats — they don't enter the tratativa flow)
   useEffect(() => {
+    if (isGroup) return;
     if (chatDetail && selectedChatId && !currentTicket && !createTicketMutation.isPending) {
       createTicketMutation.mutate();
     }
-  }, [chatDetail, selectedChatId, currentTicket]);
+  }, [chatDetail, selectedChatId, currentTicket, isGroup]);
 
   // Update ticket plate
   const updatePlateMutation = useMutation({

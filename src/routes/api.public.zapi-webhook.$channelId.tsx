@@ -87,7 +87,10 @@ export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
 
         // Incoming/outgoing message
         if (p.phone) {
-          const phone = String(p.phone).replace(/\D/g, "");
+          const rawPhone = String(p.phone);
+          // WhatsApp groups: raw phone contains "@g.us" or "<creator>-<timestamp>" pattern
+          const isGroupMessage = /@g\.us/i.test(rawPhone) || /-\d{8,}/.test(rawPhone);
+          const phone = rawPhone.replace(/\D/g, "");
           const text =
             p.text?.message ||
             p.image?.caption ||
@@ -150,8 +153,8 @@ export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
               status: p.fromMe ? "sent" : "delivered",
             });
 
-            // Run bot only on incoming customer messages
-            if (!p.fromMe && text) {
+            // Run bot only on incoming customer messages — skip for groups
+            if (!p.fromMe && text && !isGroupMessage) {
               try {
                 await processIncomingForBot({
                   channelId,
