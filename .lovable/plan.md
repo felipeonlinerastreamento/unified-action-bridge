@@ -1,71 +1,81 @@
 
 
-# Corrigir o fluxo "Teste de Equipamento"
+# Menu "Estoque" — equipamentos e chips do GSystem
 
 ## Diagnóstico
 
-A infra do fluxo já existe (tabela `teste_equipamento_settings` populada com Administrativo/Aberto/auto-sync), os campos extras estão no diálogo e há card de gestão em **Configurações → Encaminhamento**. Mas o fluxo **não disparou** no único ticket existente da categoria porque:
+A tela `/estoque` hoje só mostra **veículos** e o estoque local (categorias criadas manualmente). Os endpoints GSystem que temos integrados são: `/clientes`, `/veiculos`, `/agendamentos`, `/faturas`, `/pendencias`, `/planos`, `/anexos`, `/cadastros`, `/parametros`. **Não existe** `/equipamentos` nem `/chips` no wrapper atual.
 
-1. **Kanban (drag-and-drop)** atualiza o status diretamente no banco sem chamar `updateStatus()` — então arrastar um card para "Finalizado" pula o auto-route, a sincronização GSystem e o registro do encaminhamento.
-2. **Central de Atendimento** (chats WhatsApp) cria tickets sem oferecer os campos extras de Teste de Equipamento, e a finalização do chat também ignora o auto-route.
-3. O `updateStatus()` do detail-panel **só** dispara o sync GSystem quando é Teste de Equipamento — outros tickets perdem o sync mesmo se a categoria tiver regra em `category_routing_rules`.
-4. Faltam validações visuais no card de configuração (a tela "encaminhamento" mostra o card, mas não valida que `target_sector_name` exista realmente em `sectors`).
+Como o GSystem usa `/cadastros` como repositório genérico (já uso isso para tipos de pendência, ver `getTiposPendencia`), o caminho mais provável é que equipamentos/chips estejam em `/cadastros` agrupados por `Tipo`. Vou descobrir os tipos disponíveis em runtime e expor as duas categorias na tela.
 
-## Mudanças
+## O que vou construir
 
-### A. Centralizar a finalização (1 helper, 3 chamadas)
+### A. Server function exploratória (1ª chamada para mapear)
 
-Criar `src/lib/ticket-finalize-flow.ts` com `finalizeTicketWithFlow({ ticket, userId, teSettings, routingRules })`:
+Criar `getCadastrosByTipo({ tipo })` em `src/lib/gsystem-api.functions.ts`:
 
-- Detecta Teste de Equipamento (`isTesteEquipamentoCategory`) **ou** match em `category_routing_rules` ativo.
-- Se houver match: faz `UPDATE service_tickets` para `status = target_status`, `sector = target_sector_name`, `assigned_to = null`, `closed_at = null`, registra comentário `encaminhamento` + cria linha em `ticket_assignments`.
-- Se não houver match: finaliza normalmente (`status = finalizado`, `closed_at = now`).
-- Se `auto_sync_gsystem` (TE) ou `auto_create_ticket` (rule): chama `syncTicketToGsystem({ ticketId })`, registra comentário sistema com `pendenciaKey` ou erro.
+- Chama `/cadastros`, filtra por `Tipo` (case/underscore-insensitive como já fazemos em `getTiposPendencia`).
+- Retorna registros normalizados: `{ key, descricao, status, modelo, identificador, raw }`.
+- Aceita lista de tipos candidatos (ex.: `["Equipamentos","Equipamento","Rastreador"]`) e tenta na ordem.
 
-### B. Plugar o helper
+Criar também `listCadastroTipos()` que retorna todos os `Tipo` distintos presentes em `/cadastros` — usado uma vez em dev para descobrir os nomes exatos que o GSystem usa para "equipamento" e "chip" no tenant atual.
 
-- **`ticket-detail-panel.tsx`** → `updateStatus("finalizado")` passa a delegar para `finalizeTicketWithFlow`. Mantém o resto.
-- **`ticket-kanban-view.tsx`** → `handleDrop` quando `newStatus === "finalizado"` chama `finalizeTicketWithFlow` em vez do `update` direto.
-- **`src/routes/central.tsx`** → na ação "finalizar atendimento" do chat, depois de fechar o chat, se houver ticket vinculado (mesmo `attendance_id`), chama `finalizeTicketWithFlow`.
+### B. Nova tela "Estoque" (substitui a atual)
 
-### C. Campos extras também no chat
+Reescrever `src/routes/estoque.tsx` mantendo a estrutura existente (tabs, filtros, cards de KPI):
 
-- **`src/routes/central.tsx`** → quando o operador clica "Finalizar atendimento" e o ticket vinculado tem `category = Teste de Equipamento`, abrir um pequeno dialog reutilizando `<TesteEquipamentoFields />` antes de finalizar. Os dados são gravados em `notes` via `buildTesteEquipamentoNotes` e validados com `validateTesteEquipamento`.
+**Tabs:**
+1. **Equipamentos (GSystem)** — lista cadastros com tipo equipamento.
+2. **Chips (GSystem)** — lista cadastros com tipo chip/SIM.
+3. **Veículos (GSystem)** — mantém o que já funciona.
+4. **Estoque local** — fallback atual, intacto.
 
-### D. Garantia de descrição completa no GSystem
+**Por aba GSystem:**
+- KPIs: Total, **Disponíveis**, Vinculados/Em uso, Inativos.
+- Filtros: busca livre (descrição/serial/IMEI), status (`Disponível` / `Vinculado` / `Inativo` / `Todos`), modelo/tipo.
+- Tabela: Identificador (serial/IMEI/ICCID) · Descrição · Modelo · Status (badge verde para Disponível) · Vínculo (se houver).
+- **Padrão do filtro de status = "Disponível"** (atende ao pedido).
+- Botão "Atualizar" reusa o `RefreshCw` já existente.
 
-Atualizar `src/lib/ticket-finalize.functions.ts` (`syncTicketToGsystem`) para:
+### C. Resolução automática dos tipos
 
-- Incluir explicitamente o bloco `[Teste de Equipamento]` (já vem no `notes`, ok).
-- Adicionar `Setor destino`, `Origem (chat/manual)`, `Placa`, `Tracking`, **histórico completo de comentários** (já há) e **dados extras de TE parseados** (Subtipo, Necessário cobrar, Motivo, Garantia) em seção dedicada usando `parseTesteEquipamentoNotes`.
-- Forçar `Tipo` da pendência = `"Atendimento"` (categoria genérica do GSystem) quando vier do fluxo TE, mantendo o subtipo na descrição. Hoje envia `"Teste de Equipamento"` que pode não existir no enum do GSystem e estourar erro silencioso.
+Como não sei o nome exato dos `Tipo` no GSystem, a query roda em duas etapas:
 
-### E. Melhorar o card de gestão (`teste-equipamento-config.tsx`)
+1. `listCadastroTipos()` → cacheada por 5 min, retorna lista de `Tipo` distintos.
+2. Faço um match heurístico (`/equip|rastr/i` para equipamentos, `/chip|sim|iccid/i` para chips) e uso o nome encontrado como filtro real em `getCadastrosByTipo`.
+3. Se nenhum tipo bater, mostro um aviso na aba: *"Nenhum cadastro do tipo Equipamento/Chip encontrado no GSystem. Tipos disponíveis: …"* — assim você me confirma o nome exato em uma resposta e eu fixo na lista.
 
-- Trocar o `<Input>` livre de `target_sector_name` por `<Select>` populado com `sectors` ativos (mantém o valor atual mesmo se não estiver na lista, com aviso "setor inexistente").
-- Mostrar badge "Ativo / Inativo" no header do card.
-- Botão "Testar fluxo" que faz um dry-run: pega o último ticket TE em aberto e mostra o que seria gravado (sem persistir).
+### D. Mapeamento de campos do cadastro
 
-### F. Diagnóstico do ticket existente
+Como `/cadastros` é genérico, leio os campos comuns observados no projeto (`Codigo`, `DisplayName`, `Texto`, `Ativado`) e mais os que costumam aparecer nessas listas:
 
-O ticket `51ea3063…` está finalizado sem ter passado pelo fluxo. Adicionar botão **"Reprocessar fluxo"** no detail-panel (visível só em tickets TE finalizados sem `sector` preenchido) que chama `finalizeTicketWithFlow` re-executando o auto-route + sync.
+```ts
+{
+  key: c.Codigo ?? c.Key ?? c.Id,
+  descricao: c.DisplayName ?? c.Texto ?? c.Descricao,
+  modelo: c.Modelo ?? c.Categoria ?? c.SubTipo,
+  identificador: c.Serial ?? c.IMEI ?? c.ICCID ?? c.Numero,
+  status: c.Status ?? (c.Ativado === false ? "Inativo" : "Disponível"),
+  vinculo: c.Veiculo ?? c.Cliente ?? null,
+}
+```
+
+Se algum campo vier vazio na sua base, ele só aparece como "—" — ainda assim a tela funciona.
+
+### E. Item de menu
+
+`src/components/app-sidebar.tsx` já tem a entrada "Estoque" → mantém o mesmo link, só muda o conteúdo da rota. Sem mudança de navegação.
 
 ## Arquivos tocados
 
 ```text
-src/lib/ticket-finalize-flow.ts          (novo)
-src/lib/ticket-finalize.functions.ts     (descrição enriquecida)
-src/components/atendimentos/ticket-detail-panel.tsx
-src/components/atendimentos/ticket-kanban-view.tsx
-src/components/configuracoes/teste-equipamento-config.tsx
-src/routes/central.tsx                   (dialog TE + finalize helper)
+src/lib/gsystem-api.functions.ts   (novas server functions getCadastrosByTipo + listCadastroTipos)
+src/routes/estoque.tsx             (reescrita: 4 tabs, KPIs, filtro padrão "Disponível")
 ```
 
-Sem migrações de banco — o schema já está pronto.
+Sem migrações, sem novos secrets — usa a auth GSystem que já está configurada.
 
-## Resultado esperado
+## O que pode ficar pendente
 
-- Operador finaliza ticket TE (de qualquer view: lista, kanban, central) → ticket vai para **Administrativo / Aberto** automaticamente, comentário de encaminhamento registrado, pendência criada no GSystem com descrição completa (dados do contato, placa, subtipo, motivo, garantia, histórico).
-- Card de gestão na tela **Encaminhamento** permite ligar/desligar, escolher setor destino de uma lista válida, mudar status alvo e exigências de campos.
-- Tickets antigos podem ser reprocessados manualmente sem reabrir.
+Se o GSystem deste tenant **não** guarda equipamentos/chips em `/cadastros` (e sim em outro endpoint não documentado no wrapper atual), a aba mostrará o aviso descrito em **C** com a lista de tipos reais. Aí eu adiciono o endpoint correto (ex.: `/equipamentos`) em uma iteração rápida, sem refazer o resto.
 
