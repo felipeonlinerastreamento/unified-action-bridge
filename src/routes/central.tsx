@@ -479,6 +479,25 @@ function CentralPage() {
   // Company lookup by contact phone
   const contactPhone = chatDetail?.contact?.number || chatDetail?.contact?.secondaryName || "";
 
+  // Local Z-API chat row for this conversation (used for tags + whisper persistence)
+  const { data: localZapiChat } = useQuery({
+    queryKey: ["zapi-chat-row", selectedChannelId, contactPhone],
+    queryFn: async () => {
+      if (!selectedChannelId || !contactPhone) return null;
+      const { data } = await supabase
+        .from("zapi_chats")
+        .select("id, tags")
+        .eq("channel_id", selectedChannelId)
+        .eq("phone", contactPhone)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!selectedChannelId && !!contactPhone && isAuthenticated,
+  });
+
+  // Wire realtime updates for chat list and current chat messages
+  useZapiRealtime({ channelId: selectedChannelId, chatId: localZapiChat?.id });
+
   // Helper: normalize phone to last 10-11 digits for reliable matching
   const normalizePhone = useCallback((phone: string) => {
     const digits = phone.replace(/\D/g, "");
