@@ -1768,6 +1768,14 @@ function CentralPage() {
                               {!isMe && msg.senderName && (
                                 <p className="text-xs font-medium mb-1 opacity-70">{msg.senderName}</p>
                               )}
+                              {isMe && (msg.senderFirstName || !isPrivate) && (
+                                <p className="text-xs mb-1">
+                                  <strong className="font-bold">{msg.senderFirstName || "Você"}</strong>
+                                  {msg.isCoAgent && msg.responsibleFirstName && (
+                                    <span className="opacity-80 font-normal"> · via co-atendimento (responsável: {msg.responsibleFirstName})</span>
+                                  )}
+                                </p>
+                              )}
                               {isPrivate && (
                                 <p className="text-[10px] font-medium mb-1 opacity-60">🔒 Nota privada</p>
                               )}
