@@ -1289,6 +1289,51 @@ export type Database = {
           },
         ]
       }
+      teste_equipamento_settings: {
+        Row: {
+          auto_sync_gsystem: boolean
+          id: string
+          is_enabled: boolean
+          require_garantia: boolean
+          require_motivo_when_cobrar: boolean
+          require_subtipo: boolean
+          target_sector_name: string
+          target_status: string
+          trigger_category_key: string
+          trigger_category_label: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          auto_sync_gsystem?: boolean
+          id?: string
+          is_enabled?: boolean
+          require_garantia?: boolean
+          require_motivo_when_cobrar?: boolean
+          require_subtipo?: boolean
+          target_sector_name?: string
+          target_status?: string
+          trigger_category_key?: string
+          trigger_category_label?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          auto_sync_gsystem?: boolean
+          id?: string
+          is_enabled?: boolean
+          require_garantia?: boolean
+          require_motivo_when_cobrar?: boolean
+          require_subtipo?: boolean
+          target_sector_name?: string
+          target_status?: string
+          trigger_category_key?: string
+          trigger_category_label?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       ticket_agents: {
         Row: {
           assigned_by: string | null
