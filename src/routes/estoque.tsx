@@ -64,27 +64,57 @@ function EstoquePage() {
     return { headers: { authorization: `Bearer ${session?.access_token}` } };
   }, []);
 
-  // Equipamentos (cadastros)
+  // Equipamentos: try dedicated endpoints first, fallback to /cadastros
   const equipQuery = useQuery({
-    queryKey: ["gsystem-cadastros", "equipamentos"],
+    queryKey: ["gsystem-equipamentos-v2"],
     queryFn: async () => {
-      return getCadastrosByTipo({
-        ...await getAuthHeaders(),
-        data: { candidates: EQUIP_CANDIDATES },
-      });
+      const auth = await getAuthHeaders();
+      const direct = await discoverEquipamentos(auth);
+      if (direct.matchedEndpoint && direct.items.length > 0) {
+        return {
+          source: "endpoint" as const,
+          matched: direct.matchedEndpoint,
+          tried: direct.tried,
+          items: direct.items as CadastroItem[],
+          availableTipos: [] as string[],
+        };
+      }
+      const fb = await getCadastrosByTipo({ ...auth, data: { candidates: EQUIP_CANDIDATES } });
+      return {
+        source: "cadastros" as const,
+        matched: fb.matchedTipo,
+        tried: direct.tried,
+        items: (fb.items ?? []) as CadastroItem[],
+        availableTipos: fb.availableTipos ?? [],
+      };
     },
     enabled: isAuthenticated && tab === "equipamentos",
     staleTime: 5 * 60 * 1000,
   });
 
-  // Chips (cadastros)
+  // Chips: try dedicated endpoints first, fallback to /cadastros
   const chipsQuery = useQuery({
-    queryKey: ["gsystem-cadastros", "chips"],
+    queryKey: ["gsystem-chips-v2"],
     queryFn: async () => {
-      return getCadastrosByTipo({
-        ...await getAuthHeaders(),
-        data: { candidates: CHIP_CANDIDATES },
-      });
+      const auth = await getAuthHeaders();
+      const direct = await discoverChips(auth);
+      if (direct.matchedEndpoint && direct.items.length > 0) {
+        return {
+          source: "endpoint" as const,
+          matched: direct.matchedEndpoint,
+          tried: direct.tried,
+          items: direct.items as CadastroItem[],
+          availableTipos: [] as string[],
+        };
+      }
+      const fb = await getCadastrosByTipo({ ...auth, data: { candidates: CHIP_CANDIDATES } });
+      return {
+        source: "cadastros" as const,
+        matched: fb.matchedTipo,
+        tried: direct.tried,
+        items: (fb.items ?? []) as CadastroItem[],
+        availableTipos: fb.availableTipos ?? [],
+      };
     },
     enabled: isAuthenticated && tab === "chips",
     staleTime: 5 * 60 * 1000,
