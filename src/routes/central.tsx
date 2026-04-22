@@ -95,6 +95,16 @@ import { TypingIndicator } from "@/components/central/typing-indicator";
 import { useZapiRealtime } from "@/hooks/use-zapi-realtime";
 import { isGroupChat } from "@/lib/chat-utils";
 import {
+  useTesteEquipamentoSettings,
+  isTesteEquipamentoCategory,
+  EMPTY_TESTE_EQUIPAMENTO,
+  buildTesteEquipamentoNotes,
+  validateTesteEquipamento,
+  type TesteEquipamentoData,
+} from "@/hooks/use-teste-equipamento-settings";
+import { TesteEquipamentoFields } from "@/components/atendimentos/teste-equipamento-fields";
+import { finalizeTicketWithFlow } from "@/lib/ticket-finalize-flow";
+import {
   AlertDialog,
   AlertDialogContent,
   AlertDialogHeader,
@@ -219,6 +229,8 @@ function CentralPage() {
   const [finalizeNotes, setFinalizeNotes] = useState("");
   const [finalizeStatus, setFinalizeStatus] = useState<string>("A resolver");
   const [finalizeTipoPendencia, setFinalizeTipoPendencia] = useState<string>("");
+  const [showTeDialog, setShowTeDialog] = useState(false);
+  const [teData, setTeData] = useState<TesteEquipamentoData>(EMPTY_TESTE_EQUIPAMENTO);
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [transferSectorId, setTransferSectorId] = useState<string>("");
   const [transferUserId, setTransferUserId] = useState<string>("");
@@ -378,10 +390,11 @@ function CentralPage() {
     },
     enabled: isAuthenticated,
     staleTime: 300000,
-    retry: 2,
   });
 
-  // GSystem users for transfer
+  const { data: teSettings } = useTesteEquipamentoSettings();
+
+
   const { data: gsystemUsersList = [] } = useQuery({
     queryKey: ["gsystem-users-list", selectedChannelId],
     queryFn: async () => {
@@ -1202,13 +1215,38 @@ function CentralPage() {
         ...await getAuthHeaders(),
       });
     },
-    onSuccess: () => {
+    onSuccess: async () => {
+      // Apply auto-routing flow (TE / category rules) on the local ticket
+      if (currentTicket) {
+        try {
+          const fresh = await supabase
+            .from("service_tickets")
+            .select("*")
+            .eq("id", currentTicket.id)
+            .single();
+          const ticket = fresh.data || currentTicket;
+          const res = await finalizeTicketWithFlow({
+            ticket,
+            userId: session?.user?.id || null,
+            teSettings,
+            registerStatusComment: false,
+          });
+          if (res.routed && res.routedTo) {
+            toast.success(`Encaminhado para ${res.routedTo.sector}`);
+            if (res.syncError) toast.error("Falha GSystem: " + res.syncError);
+            else if (res.syncedToGsystem) toast.success("Sincronizado com GSystem");
+          }
+        } catch (e: any) {
+          console.warn("[Finalize] post-flow error:", e?.message);
+        }
+      }
       toast.success("Atendimento finalizado");
       setSelectedChatId("");
       setShowFinalizeConfirm(false);
       setFinalizeNotes("");
       setFinalizeStatus("A resolver");
       setFinalizeTipoPendencia("");
+      setTeData(EMPTY_TESTE_EQUIPAMENTO);
       refetchChats();
     },
     onError: (err: any) => toast.error(err?.message || "Erro ao finalizar"),
@@ -1654,6 +1692,12 @@ function CentralPage() {
                           }
                           if (!finalizeTipoPendencia) {
                             toast.error("Selecione a categoria do atendimento antes de finalizar.");
+                            return;
+                          }
+                          // If category is Teste de Equipamento, require extra fields first
+                          const tipoLabel = tiposPendencia.find((t) => t.Key === finalizeTipoPendencia)?.Descricao || "";
+                          if (isTesteEquipamentoCategory(tipoLabel, teSettings)) {
+                            setShowTeDialog(true);
                             return;
                           }
                           setShowFinalizeConfirm(true);

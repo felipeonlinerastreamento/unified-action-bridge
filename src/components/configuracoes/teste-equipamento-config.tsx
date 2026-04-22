@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
@@ -14,7 +15,7 @@ import {
   type TesteEquipamentoSettings,
 } from "@/hooks/use-teste-equipamento-settings";
 import { toast } from "sonner";
-import { Loader2, Wrench } from "lucide-react";
+import { Loader2, Wrench, AlertTriangle } from "lucide-react";
 import { getTiposPendencia } from "@/lib/gsystem-api.functions";
 
 export function TesteEquipamentoConfig() {
@@ -89,12 +90,17 @@ export function TesteEquipamentoConfig() {
     );
   }
 
+  const sectorExists = localSectors.some((s) => s.name === local.target_sector_name);
+
   return (
     <Card>
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Wrench className="h-5 w-5" />
           Fluxo Teste de Equipamento
+          <Badge variant={local.is_enabled ? "default" : "secondary"} className="ml-auto">
+            {local.is_enabled ? "Ativo" : "Inativo"}
+          </Badge>
         </CardTitle>
         <CardDescription>
           Configure os campos obrigatórios e o encaminhamento automático para tickets
@@ -159,18 +165,31 @@ export function TesteEquipamentoConfig() {
           <h4 className="text-sm font-semibold">Encaminhamento ao finalizar</h4>
           <div className="space-y-1">
             <Label className="text-xs">Setor destino</Label>
-            <Input
+            <Select
               value={local.target_sector_name}
-              onChange={(e) => setLocal({ ...local, target_sector_name: e.target.value })}
-              onBlur={() => update({ target_sector_name: local.target_sector_name })}
+              onValueChange={(v) => update({ target_sector_name: v })}
               disabled={!canManage}
-              list="sector-options-te"
-            />
-            <datalist id="sector-options-te">
-              {localSectors.map((s) => (
-                <option key={s.id} value={s.name} />
-              ))}
-            </datalist>
+            >
+              <SelectTrigger className="h-9">
+                <SelectValue placeholder="Selecione um setor..." />
+              </SelectTrigger>
+              <SelectContent>
+                {!sectorExists && local.target_sector_name && (
+                  <SelectItem value={local.target_sector_name}>
+                    {local.target_sector_name} (não cadastrado)
+                  </SelectItem>
+                )}
+                {localSectors.map((s) => (
+                  <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {!sectorExists && local.target_sector_name && (
+              <p className="text-[10px] text-destructive flex items-center gap-1">
+                <AlertTriangle className="h-3 w-3" />
+                Setor "{local.target_sector_name}" não existe em Configurações → Setores. Crie-o ou escolha outro.
+              </p>
+            )}
           </div>
           <div className="flex items-center justify-between gap-3">
             <Label>Status no destino</Label>

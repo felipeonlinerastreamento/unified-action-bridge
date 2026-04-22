@@ -5,6 +5,8 @@ import { Building2, Clock, User, Layers } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { useTesteEquipamentoSettings } from "@/hooks/use-teste-equipamento-settings";
+import { finalizeTicketWithFlow } from "@/lib/ticket-finalize-flow";
 
 interface TicketKanbanViewProps {
   tickets: any[];
@@ -34,6 +36,7 @@ export function TicketKanbanView({ tickets, onSelect, onRefetch }: TicketKanbanV
       return data || [];
     },
   });
+  const { data: teSettings } = useTesteEquipamentoSettings();
 
   const grouped = useMemo(() => {
     const map: Record<string, any[]> = {};
@@ -47,8 +50,31 @@ export function TicketKanbanView({ tickets, onSelect, onRefetch }: TicketKanbanV
   }, [tickets]);
 
   const handleDrop = async (ticketId: string, newStatus: string) => {
+    if (newStatus === "finalizado") {
+      const ticket = tickets.find((t) => t.id === ticketId);
+      if (!ticket) return;
+      const { data: { user } } = await supabase.auth.getUser();
+      const res = await finalizeTicketWithFlow({
+        ticket,
+        userId: user?.id || null,
+        teSettings,
+      });
+      if (res.error) {
+        toast.error("Erro ao finalizar: " + res.error);
+        return;
+      }
+      if (res.routed && res.routedTo) {
+        toast.success(`Encaminhado para ${res.routedTo.sector}`);
+        if (res.syncError) toast.error("Falha GSystem: " + res.syncError);
+        else if (res.syncedToGsystem) toast.success("Sincronizado com GSystem");
+      } else {
+        toast.success("Ticket finalizado");
+      }
+      onRefetch();
+      return;
+    }
+
     const update: any = { status: newStatus, updated_at: new Date().toISOString() };
-    if (newStatus === "finalizado") update.closed_at = new Date().toISOString();
     if (newStatus === "reaberto") {
       update.reopened_at = new Date().toISOString();
       update.closed_at = null;
