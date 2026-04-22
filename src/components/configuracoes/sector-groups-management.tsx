@@ -135,11 +135,11 @@ export function SectorGroupsManagement() {
   });
 
   // Sector CRUD
-  const resetSectorForm = () => { setSectorName(""); setSectorDescription(""); setSectorGroupId(""); setSectorIsActive(true); setEditingSector(null); };
+  const resetSectorForm = () => { setSectorName(""); setSectorDescription(""); setSectorGroupId("none"); setSectorIsActive(true); setEditingSector(null); };
   
   const openCreateSector = (groupId: string) => {
     resetSectorForm();
-    setSectorGroupId(groupId);
+    setSectorGroupId(groupId || "none");
     setSectorDialogOpen(true);
   };
 
@@ -147,7 +147,7 @@ export function SectorGroupsManagement() {
     setEditingSector(s);
     setSectorName(s.name);
     setSectorDescription(s.description || "");
-    setSectorGroupId(s.group_id || "");
+    setSectorGroupId(s.group_id || "none");
     setSectorIsActive(s.is_active);
     setSectorDialogOpen(true);
   };
