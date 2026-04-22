@@ -624,8 +624,6 @@ function CadastrosTable({
       </Card>
     );
   }
-    );
-  }
 
   return (
     <Card>
