@@ -367,9 +367,11 @@ function EstoquePage() {
               error={equipQuery.error}
               items={equipFiltered}
               identifierLabel="Serial / IMEI"
-              matchedTipo={equipQuery.data?.matchedTipo ?? null}
+              matchedTipo={equipQuery.data?.matched ?? null}
               availableTipos={equipQuery.data?.availableTipos ?? []}
+              endpointsTried={equipQuery.data?.tried ?? []}
               candidatesTried={EQUIP_CANDIDATES}
+              source={equipQuery.data?.source ?? null}
               kind="equipamento"
             />
           </TabsContent>
@@ -382,9 +384,11 @@ function EstoquePage() {
               error={chipsQuery.error}
               items={chipFiltered}
               identifierLabel="ICCID / Número"
-              matchedTipo={chipsQuery.data?.matchedTipo ?? null}
+              matchedTipo={chipsQuery.data?.matched ?? null}
               availableTipos={chipsQuery.data?.availableTipos ?? []}
+              endpointsTried={chipsQuery.data?.tried ?? []}
               candidatesTried={CHIP_CANDIDATES}
+              source={chipsQuery.data?.source ?? null}
               kind="chip"
             />
           </TabsContent>
