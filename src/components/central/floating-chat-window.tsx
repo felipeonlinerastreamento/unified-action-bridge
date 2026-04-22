@@ -52,6 +52,7 @@ function formatTime(dateStr?: string): string {
 
 export function FloatingChatWindow({ state, onOpenInPanel }: Props) {
   const { closeChat, minimize, toggleMaximize, bringToFront, updatePosition, updateMeta, setUnread } = useFloatingChats();
+  const { user } = useAuth();
   const [input, setInput] = useState("");
   const [whisperMode, setWhisperMode] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
