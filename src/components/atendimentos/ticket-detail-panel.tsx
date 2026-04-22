@@ -68,6 +68,8 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   const [forwardUser, setForwardUser] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState("");
+  const [syncing, setSyncing] = useState(false);
+  const { data: teSettings } = useTesteEquipamentoSettings();
 
   // Get current user
   const { data: currentUser } = useQuery({
