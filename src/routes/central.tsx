@@ -1704,11 +1704,71 @@ function CentralPage() {
                       </div>
                     </div>
                     <div className="flex items-center gap-1 flex-wrap justify-end">
-                      {(chatDetail as any)?.assignedFirstName && (
-                        <Badge variant="outline" className="text-[10px] mr-1">
-                          Resp.: <strong className="ml-1 font-bold">{(chatDetail as any).assignedFirstName}</strong>
-                        </Badge>
-                      )}
+                      {/* Operador responsável (clicável para alterar) */}
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 mr-1 text-[10px] gap-1"
+                            title="Clique para alterar o operador responsável"
+                          >
+                            <UserPlus className="h-3 w-3" />
+                            <span className="text-muted-foreground">Resp.:</span>
+                            <strong className="font-bold">
+                              {(chatDetail as any)?.assignedFirstName || "atribuir"}
+                            </strong>
+                            <ChevronsUpDown className="ml-0.5 h-3 w-3 opacity-50" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-[240px] p-0" align="end">
+                          <Command>
+                            <CommandInput placeholder="Buscar operador..." className="text-xs h-8" />
+                            <CommandList>
+                              <CommandEmpty className="text-xs py-3 text-center">
+                                Nenhum operador encontrado
+                              </CommandEmpty>
+                              <CommandGroup heading="Atribuir responsável">
+                                {gsystemUsersList.map((op: any) => {
+                                  const isCurrent = (chatDetail as any)?.assignedUserId === op.id;
+                                  return (
+                                    <CommandItem
+                                      key={op.id}
+                                      value={op.name || op.id}
+                                      onSelect={async () => {
+                                        if (isCurrent) return;
+                                        try {
+                                          await transferChat({
+                                            data: {
+                                              channelId: selectedChannelId,
+                                              chatId: selectedChatId!,
+                                              userId: op.id,
+                                            },
+                                            ...(await getAuthHeaders()),
+                                          });
+                                          toast.success(`Atendimento atribuído a ${op.name}`);
+                                          queryClient.invalidateQueries({
+                                            queryKey: ["chat-detail", selectedChannelId, selectedChatId],
+                                          });
+                                          refetchChats();
+                                        } catch (e: any) {
+                                          toast.error(e?.message || "Erro ao alterar responsável");
+                                        }
+                                      }}
+                                      className="text-xs"
+                                    >
+                                      <Check
+                                        className={`mr-2 h-3 w-3 ${isCurrent ? "opacity-100" : "opacity-0"}`}
+                                      />
+                                      {op.name || "Sem nome"}
+                                    </CommandItem>
+                                  );
+                                })}
+                              </CommandGroup>
+                            </CommandList>
+                          </Command>
+                        </PopoverContent>
+                      </Popover>
                       {(() => {
                         const detail = chatDetail as any;
                         const respId = detail?.assignedUserId;
