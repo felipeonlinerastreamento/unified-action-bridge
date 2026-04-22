@@ -192,7 +192,6 @@ function CrmPage() {
 
   const baseRows: Row[] =
     viewMode === "direct" ? directRows :
-    viewMode === "sub-only" as any ? subRows :
     viewMode === "subclients" ? subRows :
     [...directRows, ...subRows];
 
