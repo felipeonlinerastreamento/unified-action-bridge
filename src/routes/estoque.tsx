@@ -61,11 +61,31 @@ function EstoquePage() {
   const [statusFilter, setStatusFilter] = useState<string>("disponivel");
   const [modelFilter, setModelFilter] = useState<string>("all");
   const [tab, setTab] = useState("equipamentos");
+  const [diagOpen, setDiagOpen] = useState(false);
+  const [diagLoading, setDiagLoading] = useState(false);
+  const [diagResult, setDiagResult] = useState<any>(null);
 
   const getAuthHeaders = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
     return { headers: { authorization: `Bearer ${session?.access_token}` } };
   }, []);
+
+  const runDeepProbe = async () => {
+    setDiagLoading(true);
+    setDiagResult(null);
+    try {
+      const auth = await getAuthHeaders();
+      const result = await probeEquipamentosDeep(auth);
+      setDiagResult(result);
+      const found = result.successfulEndpoints?.length || 0;
+      if (found > 0) toast.success(`Encontrei ${found} endpoint(s) com dados`);
+      else toast.warning("Nenhum endpoint padrão respondeu com lista de itens");
+    } catch (e: any) {
+      toast.error(e?.message || "Erro na sondagem");
+    } finally {
+      setDiagLoading(false);
+    }
+  };
 
   // Equipamentos: try dedicated endpoints first, fallback to /cadastros
   const equipQuery = useQuery({
