@@ -100,7 +100,7 @@ export function FloatingChatWindow({ state, onOpenInPanel }: Props) {
     const newMeta: any = {};
     const name = chatDetail.description || chatDetail.contact?.name || chatDetail.contact?.number;
     if (name && name !== meta.name) newMeta.name = name;
-    const phone = chatDetail.contact?.number || chatDetail.contact?.secondaryName;
+    const phone = chatDetail.contact?.number;
     if (phone && phone !== meta.phone) newMeta.phone = phone;
     const avatar = chatDetail.linkImage || chatDetail.contact?.linkImage;
     if (avatar && avatar !== meta.avatar) newMeta.avatar = avatar;

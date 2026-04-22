@@ -21,12 +21,14 @@ import { Route as AtendimentosRouteImport } from './routes/atendimentos'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ConfiguracoesIndexRouteImport } from './routes/configuracoes.index'
 import { Route as HooksRefreshTrackingRouteImport } from './routes/hooks/refresh-tracking'
+import { Route as ConfiguracoesZapiRouteImport } from './routes/configuracoes.zapi'
 import { Route as ConfiguracoesUsuariosRouteImport } from './routes/configuracoes.usuarios'
 import { Route as ConfiguracoesFluxoAtendimentoRouteImport } from './routes/configuracoes.fluxo-atendimento'
 import { Route as ConfiguracoesEstoqueRouteImport } from './routes/configuracoes.estoque'
 import { Route as ConfiguracoesEncaminhamentoRouteImport } from './routes/configuracoes.encaminhamento'
 import { Route as ConfiguracoesCentralAtendimentoRouteImport } from './routes/configuracoes.central-atendimento'
 import { Route as ConfiguracoesAssistenteIaRouteImport } from './routes/configuracoes.assistente-ia'
+import { Route as ApiPublicZapiWebhookChannelIdRouteImport } from './routes/api.public.zapi-webhook.$channelId'
 
 const RelatoriosRoute = RelatoriosRouteImport.update({
   id: '/relatorios',
@@ -88,6 +90,11 @@ const HooksRefreshTrackingRoute = HooksRefreshTrackingRouteImport.update({
   path: '/hooks/refresh-tracking',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ConfiguracoesZapiRoute = ConfiguracoesZapiRouteImport.update({
+  id: '/zapi',
+  path: '/zapi',
+  getParentRoute: () => ConfiguracoesRoute,
+} as any)
 const ConfiguracoesUsuariosRoute = ConfiguracoesUsuariosRouteImport.update({
   id: '/usuarios',
   path: '/usuarios',
@@ -122,6 +129,12 @@ const ConfiguracoesAssistenteIaRoute =
     path: '/assistente-ia',
     getParentRoute: () => ConfiguracoesRoute,
   } as any)
+const ApiPublicZapiWebhookChannelIdRoute =
+  ApiPublicZapiWebhookChannelIdRouteImport.update({
+    id: '/api/public/zapi-webhook/$channelId',
+    path: '/api/public/zapi-webhook/$channelId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -140,8 +153,10 @@ export interface FileRoutesByFullPath {
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
   '/configuracoes/fluxo-atendimento': typeof ConfiguracoesFluxoAtendimentoRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
+  '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
   '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
   '/configuracoes/': typeof ConfiguracoesIndexRoute
+  '/api/public/zapi-webhook/$channelId': typeof ApiPublicZapiWebhookChannelIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -159,8 +174,10 @@ export interface FileRoutesByTo {
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
   '/configuracoes/fluxo-atendimento': typeof ConfiguracoesFluxoAtendimentoRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
+  '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
   '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
   '/configuracoes': typeof ConfiguracoesIndexRoute
+  '/api/public/zapi-webhook/$channelId': typeof ApiPublicZapiWebhookChannelIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -180,8 +197,10 @@ export interface FileRoutesById {
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
   '/configuracoes/fluxo-atendimento': typeof ConfiguracoesFluxoAtendimentoRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
+  '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
   '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
   '/configuracoes/': typeof ConfiguracoesIndexRoute
+  '/api/public/zapi-webhook/$channelId': typeof ApiPublicZapiWebhookChannelIdRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -202,8 +221,10 @@ export interface FileRouteTypes {
     | '/configuracoes/estoque'
     | '/configuracoes/fluxo-atendimento'
     | '/configuracoes/usuarios'
+    | '/configuracoes/zapi'
     | '/hooks/refresh-tracking'
     | '/configuracoes/'
+    | '/api/public/zapi-webhook/$channelId'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -221,8 +242,10 @@ export interface FileRouteTypes {
     | '/configuracoes/estoque'
     | '/configuracoes/fluxo-atendimento'
     | '/configuracoes/usuarios'
+    | '/configuracoes/zapi'
     | '/hooks/refresh-tracking'
     | '/configuracoes'
+    | '/api/public/zapi-webhook/$channelId'
   id:
     | '__root__'
     | '/'
@@ -241,8 +264,10 @@ export interface FileRouteTypes {
     | '/configuracoes/estoque'
     | '/configuracoes/fluxo-atendimento'
     | '/configuracoes/usuarios'
+    | '/configuracoes/zapi'
     | '/hooks/refresh-tracking'
     | '/configuracoes/'
+    | '/api/public/zapi-webhook/$channelId'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -257,6 +282,7 @@ export interface RootRouteChildren {
   EstoqueRoute: typeof EstoqueRoute
   RelatoriosRoute: typeof RelatoriosRoute
   HooksRefreshTrackingRoute: typeof HooksRefreshTrackingRoute
+  ApiPublicZapiWebhookChannelIdRoute: typeof ApiPublicZapiWebhookChannelIdRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -345,6 +371,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof HooksRefreshTrackingRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/configuracoes/zapi': {
+      id: '/configuracoes/zapi'
+      path: '/zapi'
+      fullPath: '/configuracoes/zapi'
+      preLoaderRoute: typeof ConfiguracoesZapiRouteImport
+      parentRoute: typeof ConfiguracoesRoute
+    }
     '/configuracoes/usuarios': {
       id: '/configuracoes/usuarios'
       path: '/usuarios'
@@ -387,6 +420,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConfiguracoesAssistenteIaRouteImport
       parentRoute: typeof ConfiguracoesRoute
     }
+    '/api/public/zapi-webhook/$channelId': {
+      id: '/api/public/zapi-webhook/$channelId'
+      path: '/api/public/zapi-webhook/$channelId'
+      fullPath: '/api/public/zapi-webhook/$channelId'
+      preLoaderRoute: typeof ApiPublicZapiWebhookChannelIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -397,6 +437,7 @@ interface ConfiguracoesRouteChildren {
   ConfiguracoesEstoqueRoute: typeof ConfiguracoesEstoqueRoute
   ConfiguracoesFluxoAtendimentoRoute: typeof ConfiguracoesFluxoAtendimentoRoute
   ConfiguracoesUsuariosRoute: typeof ConfiguracoesUsuariosRoute
+  ConfiguracoesZapiRoute: typeof ConfiguracoesZapiRoute
   ConfiguracoesIndexRoute: typeof ConfiguracoesIndexRoute
 }
 
@@ -407,6 +448,7 @@ const ConfiguracoesRouteChildren: ConfiguracoesRouteChildren = {
   ConfiguracoesEstoqueRoute: ConfiguracoesEstoqueRoute,
   ConfiguracoesFluxoAtendimentoRoute: ConfiguracoesFluxoAtendimentoRoute,
   ConfiguracoesUsuariosRoute: ConfiguracoesUsuariosRoute,
+  ConfiguracoesZapiRoute: ConfiguracoesZapiRoute,
   ConfiguracoesIndexRoute: ConfiguracoesIndexRoute,
 }
 
@@ -426,6 +468,7 @@ const rootRouteChildren: RootRouteChildren = {
   EstoqueRoute: EstoqueRoute,
   RelatoriosRoute: RelatoriosRoute,
   HooksRefreshTrackingRoute: HooksRefreshTrackingRoute,
+  ApiPublicZapiWebhookChannelIdRoute: ApiPublicZapiWebhookChannelIdRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
