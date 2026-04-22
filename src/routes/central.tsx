@@ -130,6 +130,11 @@ function CentralPageWithFloating() {
 interface GMessage {
   IdMessage?: string;
   senderName?: string;
+  senderUserId?: string;
+  senderFirstName?: string;
+  senderFullName?: string;
+  responsibleFirstName?: string;
+  isCoAgent?: boolean;
   dhMessage?: string;
   utcDhMessage?: string;
   unixTimeMessage?: number;
