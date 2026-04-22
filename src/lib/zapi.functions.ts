@@ -1,0 +1,350 @@
+// Server functions for Z-API integration.
+// IMPORTANT: kept API-compatible with the legacy gsystem functions so existing
+// callers (central.tsx, floating-chat-window.tsx) work without code changes.
+import { createServerFn } from "@tanstack/react-start";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { z } from "zod";
+import { loadZapiChannel, zapiFetch, zapiGetStatus, zapiSendText } from "./zapi.server";
+
+// ------------ Status / chats list ------------
+
+export const getChannelStatus = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ channelId: z.string().uuid() }).parse)
+  .handler(async ({ data, context }) => {
+    try {
+      const channel = await loadZapiChannel(context.supabase, data.channelId);
+      const r = await zapiGetStatus(channel);
+      // Normalize to gsystem-shaped { status: "CONNECTED" | "DISCONNECTED" }
+      const connected = r?.connected === true || r?.session === true;
+      return { ...r, status: connected ? "CONNECTED" : "DISCONNECTED" };
+    } catch (e: any) {
+      return { status: "DISCONNECTED", error: String(e?.message || e) };
+    }
+  });
+
+export const listAllOpenChats = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ channelId: z.string().uuid() }).parse)
+  .handler(async ({ data, context }) => {
+    try {
+      const { data: rows, error } = await context.supabase
+        .from("zapi_chats")
+        .select("*")
+        .eq("channel_id", data.channelId)
+        .neq("status", "finalizado")
+        .order("last_message_at", { ascending: false, nullsFirst: false })
+        .limit(200);
+      if (error) throw error;
+
+      // Map to gsystem-like ChatItem shape so the UI continues to work
+      const chats = (rows || []).map((r: any) => {
+        const statusMap: Record<string, number> = {
+          bot: 0,
+          aguardando: 1,
+          em_atendimento: 2,
+          finalizado: 3,
+        };
+        return {
+          attendanceId: r.id,
+          status: statusMap[r.status] ?? 1,
+          description: r.contact_name || r.phone,
+          linkImage: r.contact_avatar,
+          countUnreadMessages: r.unread_count || 0,
+          contact: {
+            name: r.contact_name || undefined,
+            number: r.phone,
+            linkImage: r.contact_avatar || undefined,
+            tags: Array.isArray(r.tags) ? r.tags : [],
+          },
+          channel: { id: r.channel_id },
+          currentSector: r.sector_name ? { description: r.sector_name } : undefined,
+          lastMessage: r.last_message_preview
+            ? { text: r.last_message_preview, utcDhMessage: r.last_message_at }
+            : undefined,
+          utcDhStartChat: r.created_at,
+          timeInWaiting: r.status === "aguardando" && r.last_message_at
+            ? Math.max(0, Math.floor((Date.now() - new Date(r.last_message_at).getTime()) / 1000))
+            : 0,
+          timeInManual: r.status === "em_atendimento" && r.last_message_at
+            ? Math.max(0, Math.floor((Date.now() - new Date(r.last_message_at).getTime()) / 1000))
+            : 0,
+          timeInAutomatic: 0,
+          timeInOutOfHour: 0,
+        };
+      });
+
+      return { chats, users: [], total: chats.length };
+    } catch (err) {
+      console.error("[listAllOpenChats] Error:", err);
+      return { chats: [], users: [], total: 0, error: String(err) };
+    }
+  });
+
+// Backward-compat alias
+export const listChats = listAllOpenChats;
+
+// ------------ Chat detail / messages ------------
+
+export const getChatDetail = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    z.object({ channelId: z.string().uuid(), chatId: z.string().min(1).max(255) }).parse
+  )
+  .handler(async ({ data, context }) => {
+    const { data: r, error } = await context.supabase
+      .from("zapi_chats")
+      .select("*")
+      .eq("id", data.chatId)
+      .single();
+    if (error || !r) return null;
+    return {
+      attendanceId: r.id,
+      description: r.contact_name || r.phone,
+      linkImage: r.contact_avatar,
+      contact: {
+        name: r.contact_name || undefined,
+        number: r.phone,
+        linkImage: r.contact_avatar || undefined,
+      },
+      currentSector: r.sector_name ? { description: r.sector_name } : undefined,
+      messages: [],
+    };
+  });
+
+export const getChatMessages = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    z.object({ channelId: z.string().uuid(), chatId: z.string().min(1).max(255) }).parse
+  )
+  .handler(async ({ data, context }) => {
+    const { data: rows, error } = await context.supabase
+      .from("zapi_messages")
+      .select("*")
+      .eq("chat_id", data.chatId)
+      .order("created_at", { ascending: true })
+      .limit(500);
+    if (error) return { data: [], messages: [] };
+
+    const messages = (rows || []).map((m: any) => ({
+      IdMessage: m.id,
+      senderName: m.is_whisper ? "🤫 Sussurro" : (m.from_me ? "Você" : undefined),
+      utcDhMessage: m.created_at,
+      text: m.text || (m.media_url ? `[mídia: ${m.media_type || "arquivo"}]` : ""),
+      isSentByMe: !!m.from_me,
+      isPrivate: !!m.is_whisper,
+      isSystemMessage: false,
+      _status: m.status,
+    }));
+    return { data: messages, messages };
+  });
+
+// ------------ Send / actions ------------
+
+export const sendText = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    z.object({
+      channelId: z.string().uuid(),
+      chatId: z.string().min(1).max(255),
+      message: z.string().min(1).max(5000).optional(),
+      text: z.string().min(1).max(5000).optional(),
+      whisper: z.boolean().optional(),
+    }).parse
+  )
+  .handler(async ({ data, context }) => {
+    const text = (data.message ?? data.text ?? "").trim();
+    if (!text) throw new Error("Mensagem não pode estar vazia");
+
+    // Whisper: persist only, do NOT call Z-API
+    if (data.whisper) {
+      const { error: insErr } = await context.supabase.from("zapi_messages").insert({
+        chat_id: data.chatId,
+        from_me: true,
+        is_whisper: true,
+        whisper_author: context.userId,
+        text,
+        status: "sent",
+      });
+      if (insErr) throw new Error(insErr.message);
+      return { success: true, whisper: true };
+    }
+
+    // Look up phone for outgoing
+    const { data: chat, error: chatErr } = await context.supabase
+      .from("zapi_chats")
+      .select("phone, channel_id")
+      .eq("id", data.chatId)
+      .single();
+    if (chatErr || !chat) throw new Error("Conversa não encontrada");
+
+    const channel = await loadZapiChannel(context.supabase, chat.channel_id);
+    const result = await zapiSendText(channel, chat.phone, text);
+
+    await context.supabase.from("zapi_messages").insert({
+      chat_id: data.chatId,
+      zapi_message_id: result?.messageId || result?.id || null,
+      from_me: true,
+      text,
+      status: "sent",
+    });
+    await context.supabase
+      .from("zapi_chats")
+      .update({
+        last_message_at: new Date().toISOString(),
+        last_message_preview: text.slice(0, 120),
+      })
+      .eq("id", data.chatId);
+
+    return { success: true, ...result };
+  });
+
+export const finalizeChat = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    z.object({ channelId: z.string().uuid(), chatId: z.string().min(1).max(255) }).parse
+  )
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase
+      .from("zapi_chats")
+      .update({ status: "finalizado", assigned_to: null })
+      .eq("id", data.chatId);
+    if (error) throw new Error(error.message);
+    return { success: true };
+  });
+
+export const transferChat = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    z.object({
+      channelId: z.string().uuid(),
+      chatId: z.string().min(1).max(255),
+      sectorId: z.string().max(255).optional(),
+      sectorName: z.string().max(255).optional(),
+      userId: z.string().max(255).optional(),
+    }).parse
+  )
+  .handler(async ({ data, context }) => {
+    const update: any = {};
+    if (data.sectorName) update.sector_name = data.sectorName;
+    else if (data.sectorId) {
+      const { data: s } = await context.supabase
+        .from("sectors")
+        .select("name")
+        .eq("id", data.sectorId)
+        .maybeSingle();
+      if (s?.name) update.sector_name = s.name;
+    }
+    if (data.userId && /^[0-9a-f-]{36}$/i.test(data.userId)) {
+      update.assigned_to = data.userId;
+    }
+    update.status = "em_atendimento";
+
+    const { error } = await context.supabase
+      .from("zapi_chats")
+      .update(update)
+      .eq("id", data.chatId);
+    if (error) throw new Error(error.message);
+    return { success: true };
+  });
+
+// ------------ Compatibility stubs for legacy UI ------------
+
+export const createChat = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    z.object({
+      channelId: z.string().uuid(),
+      contactPhone: z.string().min(8).max(20),
+      message: z.string().min(1).max(5000).optional(),
+      sectorId: z.string().max(255).optional(),
+    }).parse
+  )
+  .handler(async ({ data, context }) => {
+    const phone = data.contactPhone.replace(/\D/g, "");
+    if (!phone) throw new Error("Telefone inválido");
+
+    // Upsert chat
+    const { data: existing } = await context.supabase
+      .from("zapi_chats")
+      .select("id")
+      .eq("channel_id", data.channelId)
+      .eq("phone", phone)
+      .maybeSingle();
+
+    let chatId = existing?.id;
+    if (!chatId) {
+      const { data: created, error } = await context.supabase
+        .from("zapi_chats")
+        .insert({
+          channel_id: data.channelId,
+          phone,
+          status: "em_atendimento",
+          last_message_at: new Date().toISOString(),
+        })
+        .select("id")
+        .single();
+      if (error || !created) throw new Error(error?.message || "Erro ao criar conversa");
+      chatId = created.id;
+    }
+
+    if (data.message) {
+      const channel = await loadZapiChannel(context.supabase, data.channelId);
+      await zapiSendText(channel, phone, data.message);
+      await context.supabase.from("zapi_messages").insert({
+        chat_id: chatId,
+        from_me: true,
+        text: data.message,
+        status: "sent",
+      });
+    }
+
+    return { success: true, attendanceId: chatId };
+  });
+
+export const listSectors = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ channelId: z.string().uuid() }).parse)
+  .handler(async ({ context }) => {
+    const { data } = await context.supabase
+      .from("sectors")
+      .select("id, name, description")
+      .eq("is_active", true);
+    return (data || []).map((s) => ({ id: s.id, description: s.name, ...s }));
+  });
+
+export const listGSystemUsers = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ channelId: z.string().uuid() }).parse)
+  .handler(async ({ context }) => {
+    const { data } = await context.supabase
+      .from("profiles")
+      .select("user_id, name");
+    return (data || []).map((p) => ({ id: p.user_id, name: p.name, status: "ONLINE" }));
+  });
+
+export const listContacts = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    z.object({
+      channelId: z.string().uuid(),
+      page: z.number().min(1).max(1000).optional(),
+      pageSize: z.number().min(1).max(500).optional(),
+      search: z.string().max(255).optional(),
+    }).parse
+  )
+  .handler(async ({ data, context }) => {
+    let q = context.supabase
+      .from("zapi_chats")
+      .select("phone, contact_name, contact_avatar")
+      .eq("channel_id", data.channelId);
+    if (data.search) q = q.ilike("contact_name", `%${data.search}%`);
+    const { data: rows } = await q.limit(data.pageSize || 50);
+    return {
+      data: (rows || []).map((r) => ({
+        name: r.contact_name,
+        number: r.phone,
+        linkImage: r.contact_avatar,
+      })),
+    };
+  });
