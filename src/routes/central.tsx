@@ -90,6 +90,8 @@ import { FloatingChatsLayer } from "@/components/central/floating-chats-layer";
 import { WhisperToggle } from "@/components/central/whisper-toggle";
 import { QuickRepliesPopover } from "@/components/central/quick-replies-popover";
 import { ChatTags, type ChatTag } from "@/components/central/chat-tags";
+import { MessageStatusTicks } from "@/components/central/message-status-ticks";
+import { TypingIndicator } from "@/components/central/typing-indicator";
 import { useZapiRealtime } from "@/hooks/use-zapi-realtime";
 import {
   AlertDialog,
@@ -1716,15 +1718,23 @@ function CentralPage() {
                                 <p className="text-[10px] font-medium mb-1 opacity-60">🔒 Nota privada</p>
                               )}
                               <p className="whitespace-pre-wrap break-words">{msg.text}</p>
-                              {msg.dhMessage && (
-                                <p className={`text-[10px] mt-1 ${isMe ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
-                                  {formatTime(msg.dhMessage)}
-                                </p>
-                              )}
+                              <div className={`flex items-center justify-end gap-1 mt-1 ${isMe ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
+                                {msg.dhMessage || msg.utcDhMessage ? (
+                                  <span className="text-[10px]">
+                                    {formatTime(msg.dhMessage || msg.utcDhMessage)}
+                                  </span>
+                                ) : null}
+                                {isMe && !isPrivate && (
+                                  <MessageStatusTicks status={msg._status} />
+                                )}
+                              </div>
                             </div>
                           </div>
                         );
                       })}
+                      {isContactTyping && (
+                        <TypingIndicator name={chatDetail?.contact?.name || chatDetail?.description} />
+                      )}
                       <div ref={messagesEndRef} />
                     </div>
                   </ScrollArea>
