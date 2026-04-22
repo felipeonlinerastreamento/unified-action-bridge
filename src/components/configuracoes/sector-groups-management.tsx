@@ -51,7 +51,7 @@ export function SectorGroupsManagement() {
   const [editingSector, setEditingSector] = useState<Sector | null>(null);
   const [sectorName, setSectorName] = useState("");
   const [sectorDescription, setSectorDescription] = useState("");
-  const [sectorGroupId, setSectorGroupId] = useState<string>("");
+  const [sectorGroupId, setSectorGroupId] = useState<string>("none");
   const [sectorIsActive, setSectorIsActive] = useState(true);
   const [deleteSectorId, setDeleteSectorId] = useState<string | null>(null);
 
