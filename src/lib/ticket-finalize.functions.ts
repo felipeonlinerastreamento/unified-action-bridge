@@ -161,16 +161,16 @@ export const syncTicketToGsystem = createServerFn({ method: "POST" })
       return { ok: false, error: "Nenhum canal GSystem ativo configurado" };
     }
 
-    // Build the pendência body — fields based on common GSystem schema.
-    // For Teste de Equipamento we send a generic "Atendimento" type since the
-    // GSystem enum may not include "Teste de Equipamento" — the subtype is
-    // preserved inside the description.
-    const tipo = isTesteEquip
-      ? "Atendimento"
-      : (ticket.pendencia_key || ticket.category || "Atendimento");
+    // Build the pendência body. GSystem requires `TipoPendencia` (the Key of
+    // a tipo cadastrado em /cadastros). For Teste de Equipamento (and any
+    // ticket without explicit category key) fall back to "186" (Assuntos
+    // Diversos) — the subtype/details are preserved inside the description.
+    const tipoPendencia = ticket.pendencia_key || "186";
     const body: Record<string, unknown> = {
       Descricao: descricao,
-      Tipo: tipo,
+      DataAbertura: new Date().toISOString().split("T")[0],
+      TipoPendencia: tipoPendencia,
+      Observacao: descricao,
     };
     if (gsystemClienteKey) body.Cliente = gsystemClienteKey;
     if (ticket.plate) body.Veiculo = ticket.plate;
