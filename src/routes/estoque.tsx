@@ -11,8 +11,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
-import { getVeiculos, getVeiculoTipos } from "@/lib/gsystem-api.functions";
-import { Search, Package, Car, RefreshCw, Loader2, AlertCircle } from "lucide-react";
+import { getVeiculos, getVeiculoTipos, getCadastrosByTipo } from "@/lib/gsystem-api.functions";
+import { Search, Package, Car, RefreshCw, Loader2, AlertCircle, Cpu, Wifi } from "lucide-react";
 
 export const Route = createFileRoute("/estoque")({
   component: EstoquePage,
@@ -25,17 +25,70 @@ type InventoryItem = {
   status: "disponivel" | "vinculado";
 };
 
+type CadastroItem = {
+  key: string;
+  descricao: string;
+  modelo: string;
+  identificador: string;
+  status: string;
+  vinculo: string | null;
+};
+
+const EQUIP_CANDIDATES = [
+  "Equipamentos",
+  "Equipamento",
+  "Rastreador",
+  "Rastreadores",
+  "Equipamento_Rastreador",
+];
+const CHIP_CANDIDATES = ["Chips", "Chip", "SIM", "SimCard", "Linhas", "Linha"];
+
+function classifyStatus(raw: string): "disponivel" | "vinculado" | "inativo" | "outro" {
+  const s = String(raw || "").trim().toLowerCase();
+  if (!s) return "outro";
+  if (s.includes("dispon")) return "disponivel";
+  if (s.includes("inativ")) return "inativo";
+  if (s.includes("vincul") || s.includes("uso") || s.includes("ativ")) return "vinculado";
+  return "outro";
+}
+
 function EstoquePage() {
   const { isAuthenticated, isLoading } = useAuth();
   const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("disponivel");
   const [modelFilter, setModelFilter] = useState<string>("all");
-  const [tab, setTab] = useState("gsystem");
+  const [tab, setTab] = useState("equipamentos");
 
   const getAuthHeaders = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
     return { headers: { authorization: `Bearer ${session?.access_token}` } };
   }, []);
+
+  // Equipamentos (cadastros)
+  const equipQuery = useQuery({
+    queryKey: ["gsystem-cadastros", "equipamentos"],
+    queryFn: async () => {
+      return getCadastrosByTipo({
+        ...await getAuthHeaders(),
+        data: { candidates: EQUIP_CANDIDATES },
+      });
+    },
+    enabled: isAuthenticated && tab === "equipamentos",
+    staleTime: 5 * 60 * 1000,
+  });
+
+  // Chips (cadastros)
+  const chipsQuery = useQuery({
+    queryKey: ["gsystem-cadastros", "chips"],
+    queryFn: async () => {
+      return getCadastrosByTipo({
+        ...await getAuthHeaders(),
+        data: { candidates: CHIP_CANDIDATES },
+      });
+    },
+    enabled: isAuthenticated && tab === "chips",
+    staleTime: 5 * 60 * 1000,
+  });
 
   // GSystem Veículos
   const { data: veiculos = [], isLoading: veiculosLoading, error: veiculosError, refetch: refetchVeiculos } = useQuery({
@@ -44,13 +97,12 @@ function EstoquePage() {
       const result = await getVeiculos({
         ...await getAuthHeaders(),
       });
-      return Array.isArray(result) ? result : result?.data || result?.Data || [];
+      return Array.isArray(result) ? result : (result as any)?.data || (result as any)?.Data || [];
     },
-    enabled: isAuthenticated && tab === "gsystem",
+    enabled: isAuthenticated && tab === "veiculos",
     retry: 1,
   });
 
-  // Vehicle types
   const { data: veiculoTipos = [] } = useQuery({
     queryKey: ["gsystem-veiculo-tipos"],
     queryFn: async () => {
@@ -59,7 +111,7 @@ function EstoquePage() {
       });
       return Array.isArray(result) ? result : [];
     },
-    enabled: isAuthenticated && tab === "gsystem",
+    enabled: isAuthenticated && tab === "veiculos",
     retry: 1,
   });
 
@@ -76,7 +128,6 @@ function EstoquePage() {
     enabled: isAuthenticated && tab === "local",
   });
 
-  // Unique models from GSystem data
   const gsystemModels = useMemo(() => {
     const models = new Set<string>();
     veiculos.forEach((v: any) => {
@@ -94,6 +145,37 @@ function EstoquePage() {
 
   if (isLoading || !isAuthenticated) return null;
 
+  // ----- Filtering helpers for cadastros -----
+  function filterCadastros(items: CadastroItem[]): CadastroItem[] {
+    return items.filter((it) => {
+      const matchesSearch = !search ||
+        it.descricao.toLowerCase().includes(search.toLowerCase()) ||
+        it.identificador.toLowerCase().includes(search.toLowerCase()) ||
+        it.modelo.toLowerCase().includes(search.toLowerCase()) ||
+        it.key.toLowerCase().includes(search.toLowerCase());
+      const matchesModel = modelFilter === "all" || it.modelo === modelFilter;
+      const cls = classifyStatus(it.status);
+      const matchesStatus =
+        statusFilter === "all" ||
+        (statusFilter === "disponivel" && cls === "disponivel") ||
+        (statusFilter === "vinculado" && cls === "vinculado") ||
+        (statusFilter === "inativo" && cls === "inativo");
+      return matchesSearch && matchesModel && matchesStatus;
+    });
+  }
+
+  function cadastrosModels(items: CadastroItem[]): string[] {
+    const set = new Set<string>();
+    items.forEach((i) => { if (i.modelo) set.add(i.modelo); });
+    return Array.from(set).sort();
+  }
+
+  const equipItems: CadastroItem[] = equipQuery.data?.items ?? [];
+  const chipItems: CadastroItem[] = chipsQuery.data?.items ?? [];
+
+  const equipFiltered = filterCadastros(equipItems);
+  const chipFiltered = filterCadastros(chipItems);
+
   // Filter GSystem vehicles
   const filteredVeiculos = veiculos.filter((v: any) => {
     const placa = v.Placa || v.placa || "";
@@ -107,24 +189,53 @@ function EstoquePage() {
       modelo.toLowerCase().includes(search.toLowerCase());
     const matchesModel = modelFilter === "all" || modelo === modelFilter;
     const matchesStatus = statusFilter === "all" ||
-      (statusFilter === "ativo" && (status === "Ativo" || status === 1 || status === "1")) ||
+      (statusFilter === "disponivel" && (status === "Ativo" || status === 1 || status === "1")) ||
       (statusFilter === "inativo" && (status === "Inativo" || status === 0 || status === "0"));
     return matchesSearch && matchesModel && matchesStatus;
   });
 
-  // Filter local items
   const filteredLocal = localItems.filter((item) => {
     const matchesSearch = !search ||
       item.name.toLowerCase().includes(search.toLowerCase()) ||
       (item.model && item.model.toLowerCase().includes(search.toLowerCase()));
-    const matchesStatus = statusFilter === "all" || item.status === statusFilter;
+    const matchesStatus = statusFilter === "all" || statusFilter === item.status ||
+      (statusFilter === "disponivel" && item.status === "disponivel") ||
+      (statusFilter === "vinculado" && item.status === "vinculado");
     const matchesModel = modelFilter === "all" || item.model === modelFilter;
     return matchesSearch && matchesStatus && matchesModel;
   });
 
-  const currentModels = tab === "gsystem" ? gsystemModels : localModels;
-  const currentLoading = tab === "gsystem" ? veiculosLoading : localLoading;
-  const totalCount = tab === "gsystem" ? filteredVeiculos.length : filteredLocal.length;
+  // Pick model dropdown options based on tab
+  const currentModels =
+    tab === "equipamentos" ? cadastrosModels(equipItems) :
+    tab === "chips" ? cadastrosModels(chipItems) :
+    tab === "veiculos" ? gsystemModels :
+    localModels;
+
+  // KPIs by tab
+  function cadastroKpis(items: CadastroItem[]) {
+    let disp = 0, vinc = 0, inat = 0;
+    items.forEach((i) => {
+      const c = classifyStatus(i.status);
+      if (c === "disponivel") disp++;
+      else if (c === "vinculado") vinc++;
+      else if (c === "inativo") inat++;
+    });
+    return { total: items.length, disp, vinc, inat };
+  }
+  const equipKpis = cadastroKpis(equipItems);
+  const chipKpis = cadastroKpis(chipItems);
+
+  const refreshActive = () => {
+    if (tab === "equipamentos") equipQuery.refetch();
+    else if (tab === "chips") chipsQuery.refetch();
+    else if (tab === "veiculos") refetchVeiculos();
+  };
+
+  const isAnyLoading =
+    (tab === "equipamentos" && equipQuery.isLoading) ||
+    (tab === "chips" && chipsQuery.isLoading) ||
+    (tab === "veiculos" && veiculosLoading);
 
   return (
     <AppLayout>
@@ -132,74 +243,51 @@ function EstoquePage() {
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-foreground">Consulta de Estoque</h1>
-            <p className="text-sm text-muted-foreground">Consulte equipamentos e veículos</p>
+            <p className="text-sm text-muted-foreground">Equipamentos, chips e veículos do GSystem</p>
           </div>
-          {tab === "gsystem" && (
-            <Button variant="outline" size="sm" onClick={() => refetchVeiculos()} disabled={veiculosLoading}>
-              <RefreshCw className={`h-4 w-4 ${veiculosLoading ? "animate-spin" : ""}`} />
+          {tab !== "local" && (
+            <Button variant="outline" size="sm" onClick={refreshActive} disabled={isAnyLoading}>
+              <RefreshCw className={`h-4 w-4 ${isAnyLoading ? "animate-spin" : ""}`} />
             </Button>
           )}
         </div>
 
-        {/* Summary cards */}
-        <div className="grid gap-4 md:grid-cols-3">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium">Total</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-2xl font-bold">{totalCount}</p>
-            </CardContent>
-          </Card>
-          {tab === "gsystem" ? (
+        {/* KPI cards */}
+        <div className="grid gap-4 md:grid-cols-4">
+          {tab === "equipamentos" || tab === "chips" ? (
             <>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-emerald-600">Veículos (GSystem)</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold text-emerald-600">{veiculos.length}</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium">Tipos</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold">{veiculoTipos.length}</p>
-                </CardContent>
-              </Card>
+              <KpiCard label="Total" value={tab === "equipamentos" ? equipKpis.total : chipKpis.total} />
+              <KpiCard label="Disponíveis" value={tab === "equipamentos" ? equipKpis.disp : chipKpis.disp} accent="emerald" />
+              <KpiCard label="Vinculados / Em uso" value={tab === "equipamentos" ? equipKpis.vinc : chipKpis.vinc} accent="amber" />
+              <KpiCard label="Inativos" value={tab === "equipamentos" ? equipKpis.inat : chipKpis.inat} accent="muted" />
+            </>
+          ) : tab === "veiculos" ? (
+            <>
+              <KpiCard label="Total" value={filteredVeiculos.length} />
+              <KpiCard label="Veículos" value={veiculos.length} accent="emerald" />
+              <KpiCard label="Tipos" value={veiculoTipos.length} />
+              <KpiCard label="Filtrados" value={filteredVeiculos.length} accent="muted" />
             </>
           ) : (
             <>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-emerald-600">Disponíveis</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold text-emerald-600">
-                    {filteredLocal.filter((i) => i.status === "disponivel").length}
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm font-medium text-amber-600">Vinculados</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <p className="text-2xl font-bold text-amber-600">
-                    {filteredLocal.filter((i) => i.status === "vinculado").length}
-                  </p>
-                </CardContent>
-              </Card>
+              <KpiCard label="Total" value={filteredLocal.length} />
+              <KpiCard label="Disponíveis" value={filteredLocal.filter((i) => i.status === "disponivel").length} accent="emerald" />
+              <KpiCard label="Vinculados" value={filteredLocal.filter((i) => i.status === "vinculado").length} accent="amber" />
+              <KpiCard label="Modelos" value={localModels.length} />
             </>
           )}
         </div>
 
-        <Tabs value={tab} onValueChange={setTab}>
+        <Tabs value={tab} onValueChange={(v) => { setTab(v); setModelFilter("all"); }}>
           <TabsList>
-            <TabsTrigger value="gsystem">
-              <Car className="h-4 w-4 mr-1" /> Veículos (GSystem)
+            <TabsTrigger value="equipamentos">
+              <Cpu className="h-4 w-4 mr-1" /> Equipamentos
+            </TabsTrigger>
+            <TabsTrigger value="chips">
+              <Wifi className="h-4 w-4 mr-1" /> Chips
+            </TabsTrigger>
+            <TabsTrigger value="veiculos">
+              <Car className="h-4 w-4 mr-1" /> Veículos
             </TabsTrigger>
             <TabsTrigger value="local">
               <Package className="h-4 w-4 mr-1" /> Estoque Local
@@ -211,7 +299,7 @@ function EstoquePage() {
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar..."
+                placeholder="Buscar descrição, serial, IMEI..."
                 className="pl-8"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -234,23 +322,45 @@ function EstoquePage() {
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Todos</SelectItem>
-                {tab === "gsystem" ? (
-                  <>
-                    <SelectItem value="ativo">Ativo</SelectItem>
-                    <SelectItem value="inativo">Inativo</SelectItem>
-                  </>
-                ) : (
-                  <>
-                    <SelectItem value="disponivel">Disponível</SelectItem>
-                    <SelectItem value="vinculado">Vinculado</SelectItem>
-                  </>
-                )}
+                <SelectItem value="disponivel">Disponível</SelectItem>
+                <SelectItem value="vinculado">Vinculado</SelectItem>
+                <SelectItem value="inativo">Inativo</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
-          {/* GSystem tab */}
-          <TabsContent value="gsystem">
+          {/* Equipamentos tab */}
+          <TabsContent value="equipamentos">
+            <CadastrosTable
+              icon={<Cpu className="h-8 w-8 mx-auto mb-2 opacity-50" />}
+              loading={equipQuery.isLoading}
+              error={equipQuery.error}
+              items={equipFiltered}
+              identifierLabel="Serial / IMEI"
+              matchedTipo={equipQuery.data?.matchedTipo ?? null}
+              availableTipos={equipQuery.data?.availableTipos ?? []}
+              candidatesTried={EQUIP_CANDIDATES}
+              kind="equipamento"
+            />
+          </TabsContent>
+
+          {/* Chips tab */}
+          <TabsContent value="chips">
+            <CadastrosTable
+              icon={<Wifi className="h-8 w-8 mx-auto mb-2 opacity-50" />}
+              loading={chipsQuery.isLoading}
+              error={chipsQuery.error}
+              items={chipFiltered}
+              identifierLabel="ICCID / Número"
+              matchedTipo={chipsQuery.data?.matchedTipo ?? null}
+              availableTipos={chipsQuery.data?.availableTipos ?? []}
+              candidatesTried={CHIP_CANDIDATES}
+              kind="chip"
+            />
+          </TabsContent>
+
+          {/* Veículos tab */}
+          <TabsContent value="veiculos">
             {veiculosError ? (
               <Card>
                 <CardContent className="flex items-center gap-3 p-6 text-destructive">
@@ -274,7 +384,7 @@ function EstoquePage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {currentLoading ? (
+                      {veiculosLoading ? (
                         <TableRow>
                           <TableCell colSpan={4} className="text-center py-8">
                             <Loader2 className="h-5 w-5 animate-spin mx-auto" />
@@ -372,5 +482,146 @@ function EstoquePage() {
         </Tabs>
       </div>
     </AppLayout>
+  );
+}
+
+function KpiCard({ label, value, accent }: { label: string; value: number; accent?: "emerald" | "amber" | "muted" }) {
+  const color =
+    accent === "emerald" ? "text-emerald-600" :
+    accent === "amber" ? "text-amber-600" :
+    accent === "muted" ? "text-muted-foreground" : "";
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className={`text-sm font-medium ${color}`}>{label}</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <p className={`text-2xl font-bold ${color}`}>{value}</p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function CadastrosTable({
+  icon,
+  loading,
+  error,
+  items,
+  identifierLabel,
+  matchedTipo,
+  availableTipos,
+  candidatesTried,
+  kind,
+}: {
+  icon: React.ReactNode;
+  loading: boolean;
+  error: unknown;
+  items: CadastroItem[];
+  identifierLabel: string;
+  matchedTipo: string | null;
+  availableTipos: string[];
+  candidatesTried: string[];
+  kind: string;
+}) {
+  if (error) {
+    return (
+      <Card>
+        <CardContent className="flex items-center gap-3 p-6 text-destructive">
+          <AlertCircle className="h-5 w-5" />
+          <div>
+            <p className="font-medium">Erro ao consultar GSystem</p>
+            <p className="text-sm text-muted-foreground">{String(error)}</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  // No matching tipo found in /cadastros — show diagnostic hint
+  if (!loading && !matchedTipo && items.length === 0) {
+    return (
+      <Card>
+        <CardContent className="p-6 space-y-3">
+          <div className="flex items-center gap-2 text-amber-600">
+            <AlertCircle className="h-5 w-5" />
+            <p className="font-medium">Nenhum cadastro do tipo {kind} encontrado no GSystem.</p>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            Tentei estes tipos: <span className="font-mono">{candidatesTried.join(", ")}</span>
+          </p>
+          {availableTipos.length > 0 && (
+            <div className="text-sm">
+              <p className="text-muted-foreground mb-1">Tipos disponíveis na sua base:</p>
+              <div className="flex flex-wrap gap-1">
+                {availableTipos.map((t) => (
+                  <Badge key={t} variant="secondary" className="font-mono text-xs">{t}</Badge>
+                ))}
+              </div>
+              <p className="text-xs text-muted-foreground mt-2">
+                Me avise qual desses corresponde a {kind} para fixar no filtro.
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardContent className="p-0">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{identifierLabel}</TableHead>
+              <TableHead>Descrição</TableHead>
+              <TableHead>Modelo</TableHead>
+              <TableHead>Status</TableHead>
+              <TableHead>Vínculo</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin mx-auto" />
+                </TableCell>
+              </TableRow>
+            ) : items.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                  {icon}
+                  Nenhum item encontrado com os filtros atuais.
+                </TableCell>
+              </TableRow>
+            ) : (
+              items.map((it) => {
+                const cls = classifyStatus(it.status);
+                const badgeClass =
+                  cls === "disponivel" ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100" :
+                  cls === "vinculado" ? "bg-amber-100 text-amber-700 hover:bg-amber-100" :
+                  cls === "inativo" ? "bg-muted text-muted-foreground" :
+                  "bg-secondary text-secondary-foreground";
+                return (
+                  <TableRow key={it.key}>
+                    <TableCell className="font-mono text-sm">{it.identificador || it.key || "—"}</TableCell>
+                    <TableCell className="font-medium">{it.descricao || "—"}</TableCell>
+                    <TableCell className="text-sm">{it.modelo || "—"}</TableCell>
+                    <TableCell>
+                      <Badge variant="secondary" className={badgeClass}>
+                        {it.status || "—"}
+                      </Badge>
+                    </TableCell>
+                    <TableCell className="text-sm text-muted-foreground">
+                      {typeof it.vinculo === "string" ? it.vinculo : it.vinculo ? JSON.stringify(it.vinculo) : "—"}
+                    </TableCell>
+                  </TableRow>
+                );
+              })
+            )}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
   );
 }
