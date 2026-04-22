@@ -1,0 +1,30 @@
+/**
+ * Shared helpers for chat classification.
+ *
+ * WhatsApp groups expose a longer numeric "phone" identifier than personal
+ * chats: typically a creator-phone + "-" + creation-timestamp (e.g.
+ * `5511999999999-1620000000`) which collapses to a digit-only string longer
+ * than 15 chars. GSystem also forwards the raw `@g.us` suffix when present,
+ * and some channels (`channel.type === 4`) map to group conversations.
+ */
+export interface GroupishChat {
+  contact?: { number?: string; secondaryName?: string; name?: string } | null;
+  channel?: { type?: number; identifier?: string } | null;
+  description?: string;
+}
+
+export function isGroupChat(chat: GroupishChat | null | undefined): boolean {
+  if (!chat) return false;
+
+  const raw = `${chat.contact?.number ?? ""} ${chat.contact?.secondaryName ?? ""} ${chat.channel?.identifier ?? ""}`;
+  if (/@g\.us/i.test(raw)) return true;
+  if (/-\d{8,}/.test(raw)) return true; // "<phone>-<timestamp>" pattern
+
+  const phone = (chat.contact?.number || chat.contact?.secondaryName || "").replace(/\D/g, "");
+  if (phone.length > 15) return true;
+
+  // Some GSystem payloads label group chats as type 4
+  if (chat.channel?.type === 4) return true;
+
+  return false;
+}
