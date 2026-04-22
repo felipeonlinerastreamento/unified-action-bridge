@@ -11,8 +11,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
-import { getVeiculos, getVeiculoTipos, getCadastrosByTipo, discoverEquipamentos, discoverChips } from "@/lib/gsystem-api.functions";
-import { Search, Package, Car, RefreshCw, Loader2, AlertCircle, Cpu, Wifi } from "lucide-react";
+import { getVeiculos, getVeiculoTipos, getCadastrosByTipo, discoverEquipamentos, discoverChips, probeEquipamentosDeep } from "@/lib/gsystem-api.functions";
+import { Search, Package, Car, RefreshCw, Loader2, AlertCircle, Cpu, Wifi, Stethoscope } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { toast } from "sonner";
 
 export const Route = createFileRoute("/estoque")({
   component: EstoquePage,
@@ -58,11 +61,31 @@ function EstoquePage() {
   const [statusFilter, setStatusFilter] = useState<string>("disponivel");
   const [modelFilter, setModelFilter] = useState<string>("all");
   const [tab, setTab] = useState("equipamentos");
+  const [diagOpen, setDiagOpen] = useState(false);
+  const [diagLoading, setDiagLoading] = useState(false);
+  const [diagResult, setDiagResult] = useState<any>(null);
 
   const getAuthHeaders = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
     return { headers: { authorization: `Bearer ${session?.access_token}` } };
   }, []);
+
+  const runDeepProbe = async () => {
+    setDiagLoading(true);
+    setDiagResult(null);
+    try {
+      const auth = await getAuthHeaders();
+      const result = await probeEquipamentosDeep(auth);
+      setDiagResult(result);
+      const found = result.successfulEndpoints?.length || 0;
+      if (found > 0) toast.success(`Encontrei ${found} endpoint(s) com dados`);
+      else toast.warning("Nenhum endpoint padrão respondeu com lista de itens");
+    } catch (e: any) {
+      toast.error(e?.message || "Erro na sondagem");
+    } finally {
+      setDiagLoading(false);
+    }
+  };
 
   // Equipamentos: try dedicated endpoints first, fallback to /cadastros
   const equipQuery = useQuery({
@@ -275,11 +298,74 @@ function EstoquePage() {
             <h1 className="text-2xl font-bold text-foreground">Consulta de Estoque</h1>
             <p className="text-sm text-muted-foreground">Equipamentos, chips e veículos do GSystem</p>
           </div>
-          {tab !== "local" && (
-            <Button variant="outline" size="sm" onClick={refreshActive} disabled={isAnyLoading}>
-              <RefreshCw className={`h-4 w-4 ${isAnyLoading ? "animate-spin" : ""}`} />
-            </Button>
-          )}
+          <div className="flex items-center gap-2">
+            <Dialog open={diagOpen} onOpenChange={setDiagOpen}>
+              <DialogTrigger asChild>
+                <Button variant="outline" size="sm" onClick={() => { setDiagOpen(true); runDeepProbe(); }}>
+                  <Stethoscope className="h-4 w-4 mr-1" /> Diagnóstico
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="max-w-3xl max-h-[80vh]">
+                <DialogHeader>
+                  <DialogTitle>Sondagem profunda da API GSystem</DialogTitle>
+                </DialogHeader>
+                <ScrollArea className="h-[60vh] pr-3">
+                  {diagLoading && (
+                    <div className="flex items-center gap-2 py-8 justify-center text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Consultando endpoints...
+                    </div>
+                  )}
+                  {diagResult && (
+                    <div className="space-y-4 text-xs">
+                      <div>
+                        <p className="font-semibold mb-1">Endpoints com dados ({diagResult.successfulEndpoints?.length || 0}):</p>
+                        {diagResult.successfulEndpoints?.length > 0 ? (
+                          <div className="space-y-2">
+                            {diagResult.successfulEndpoints.map((s: any) => (
+                              <div key={s.endpoint} className="rounded border bg-emerald-50 dark:bg-emerald-950/20 p-2">
+                                <p className="font-mono font-semibold">{s.endpoint} — {s.count} item(ns)</p>
+                                <p className="text-muted-foreground mt-1">Campos: {s.firstItemKeys?.join(", ")}</p>
+                                {s.sample && <pre className="mt-1 text-[10px] bg-background rounded p-1 overflow-x-auto">{JSON.stringify(s.sample, null, 2)}</pre>}
+                              </div>
+                            ))}
+                          </div>
+                        ) : <p className="text-muted-foreground">Nenhum endpoint direto retornou itens.</p>}
+                      </div>
+
+                      <div>
+                        <p className="font-semibold mb-1">Tipos disponíveis em /cadastros ({diagResult.cadastrosByTipo?.length || 0}):</p>
+                        <div className="rounded border bg-muted/30 p-2 space-y-1 max-h-60 overflow-auto">
+                          {diagResult.cadastrosByTipo?.map((t: any) => (
+                            <div key={t.tipo} className="flex justify-between font-mono">
+                              <span>{t.tipo}</span>
+                              <span className="text-muted-foreground">{t.count}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <p className="font-semibold mb-1">Todos os endpoints testados:</p>
+                        <div className="rounded border bg-muted/30 p-2 space-y-0.5 font-mono">
+                          {diagResult.endpoints?.map((r: any) => (
+                            <div key={r.endpoint} className="flex justify-between">
+                              <span>{r.endpoint}</span>
+                              <span className="text-muted-foreground">{r.status}{r.count != null ? ` (${r.count})` : ""}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </ScrollArea>
+              </DialogContent>
+            </Dialog>
+            {tab !== "local" && (
+              <Button variant="outline" size="sm" onClick={refreshActive} disabled={isAnyLoading}>
+                <RefreshCw className={`h-4 w-4 ${isAnyLoading ? "animate-spin" : ""}`} />
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* KPI cards */}
