@@ -232,11 +232,22 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
         }
       }
     }
+    // Validate Teste de Equipamento fields
+    if (isTesteEquip) {
+      const err = validateTesteEquipamento(teData, teSettings);
+      if (err) {
+        toast.error(err);
+        return;
+      }
+    }
     setLoading(true);
     try {
       const companyId = await ensureLocalCompany(selectedCliente);
       const sectorName = localSectors.find((s) => s.id === sectorId)?.name || null;
       const attendanceId = `MANUAL-${Date.now()}`;
+      const finalNotes = isTesteEquip
+        ? buildTesteEquipamentoNotes(teData, notes)
+        : (notes || null);
 
       const { data: created, error } = await supabase.from("service_tickets").insert({
         attendance_id: attendanceId,
@@ -244,7 +255,7 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
         contact_phone: contactPhone || null,
         company_id: companyId,
         plate: plate || null,
-        notes: notes || null,
+        notes: finalNotes,
         priority: priority as any,
         category: category || null,
         sector: sectorName,
