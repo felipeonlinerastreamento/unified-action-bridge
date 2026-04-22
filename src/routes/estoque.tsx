@@ -654,7 +654,7 @@ function CadastrosTable({
   availableTipos: string[];
   endpointsTried: Array<{ endpoint: string; status: string }>;
   candidatesTried: string[];
-  source: "endpoint" | "cadastros" | "veiculos" | null;
+  source: string | null;
   kind: string;
 }) {
   if (error) {
@@ -727,7 +727,7 @@ function CadastrosTable({
         <div className="px-4 py-2 text-xs text-muted-foreground border-b flex items-center gap-2">
           <span>Fonte:</span>
           <Badge variant="outline" className="font-mono text-xs">
-            {source === "endpoint" || source === "veiculos" ? matchedTipo : `/cadastros · Tipo=${matchedTipo}`}
+            {source === "cadastros" ? `/cadastros · Tipo=${matchedTipo}` : matchedTipo}
           </Badge>
         </div>
       )}
