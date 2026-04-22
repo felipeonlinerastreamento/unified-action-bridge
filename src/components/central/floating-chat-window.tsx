@@ -100,6 +100,24 @@ export function FloatingChatWindow({ state, onOpenInPanel }: Props) {
 
   const messages = (fullMessages && fullMessages.length > 0) ? fullMessages : ((chatDetail?.messages as GMessage[]) || []);
 
+  // Local Z-API chat row → drives typing indicator (bot_state.is_typing) updated by the webhook
+  const phoneForLookup = meta.phone || chatDetail?.contact?.number;
+  const { data: localZapiChat } = useQuery({
+    queryKey: ["floating-zapi-chat-row", channelId, phoneForLookup],
+    queryFn: async () => {
+      if (!channelId || !phoneForLookup) return null;
+      const { data } = await supabase
+        .from("zapi_chats")
+        .select("id, bot_state")
+        .eq("channel_id", channelId)
+        .eq("phone", phoneForLookup)
+        .maybeSingle();
+      return data;
+    },
+    enabled: !!channelId && !!phoneForLookup,
+    refetchInterval: 5000,
+  });
+  const isContactTyping = !!(localZapiChat?.bot_state as any)?.is_typing;
   // Update meta from chat detail (name/avatar/sector)
   useEffect(() => {
     if (!chatDetail) return;
