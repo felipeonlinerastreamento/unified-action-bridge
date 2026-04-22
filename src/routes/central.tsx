@@ -2591,8 +2591,13 @@ function CentralPage() {
                   toast.error("Selecione o tipo de pendência antes de finalizar.");
                   return;
                 }
+                const tipoLabel = tiposPendencia.find((t) => t.Key === finalizeTipoPendencia)?.Descricao || "";
+                let notesToSend = finalizeNotes || "";
+                if (isTesteEquipamentoCategory(tipoLabel, teSettings)) {
+                  notesToSend = buildTesteEquipamentoNotes(teData, notesToSend);
+                }
                 finalizeMutation.mutate({
-                  notes: finalizeNotes || undefined,
+                  notes: notesToSend || undefined,
                   status: finalizeStatus,
                   tipoPendencia: finalizeTipoPendencia,
                 });
@@ -2601,6 +2606,52 @@ function CentralPage() {
             >
               {finalizeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
               Finalizar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Teste de Equipamento Fields Dialog (gate before finalize) */}
+      <Dialog
+        open={showTeDialog}
+        onOpenChange={(open) => {
+          setShowTeDialog(open);
+          if (!open) setTeData(EMPTY_TESTE_EQUIPAMENTO);
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-primary" />
+              Dados do Teste de Equipamento
+            </DialogTitle>
+            <DialogDescription>
+              Preencha os campos obrigatórios antes de finalizar o atendimento.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <TesteEquipamentoFields
+              value={teData}
+              onChange={setTeData}
+              settings={teSettings}
+            />
+          </div>
+          <div className="flex justify-end gap-2 mt-2">
+            <Button variant="outline" onClick={() => setShowTeDialog(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => {
+                const err = validateTesteEquipamento(teData, teSettings);
+                if (err) {
+                  toast.error(err);
+                  return;
+                }
+                setShowTeDialog(false);
+                setShowFinalizeConfirm(true);
+              }}
+            >
+              Continuar
             </Button>
           </div>
         </DialogContent>
