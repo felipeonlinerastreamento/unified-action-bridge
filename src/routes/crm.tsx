@@ -153,16 +153,90 @@ function CrmPage() {
 
   if (isLoading || !isAuthenticated) return null;
 
-  const filtered = contacts.filter((c: any) => {
+  // Build unified rows: direct CRM contacts + sub-clients (referenced as "sub")
+  type Row = {
+    id: string;
+    kind: "direct" | "sub";
+    name: string;
+    phone: string;
+    email: string | null;
+    notes: string | null;
+    company: { id: string; name: string; cnpj?: string | null } | null;
+    categoryName: string | null;
+    raw: any;
+  };
+
+  const directRows: Row[] = contacts.map((c: any) => ({
+    id: c.id,
+    kind: "direct",
+    name: c.name,
+    phone: c.phone,
+    email: c.email,
+    notes: c.notes,
+    company: c.companies ? { id: c.companies.id, name: c.companies.name, cnpj: c.companies.cnpj } : null,
+    categoryName: c.crm_categories?.name || null,
+    raw: c,
+  }));
+
+  const subRows: Row[] = subClients.map((s: any) => ({
+    id: s.id,
+    kind: "sub",
+    name: s.name,
+    phone: s.phone,
+    email: s.email,
+    notes: s.notes,
+    company: s.companies ? { id: s.companies.id, name: s.companies.name, cnpj: s.companies.cnpj } : null,
+    categoryName: null,
+    raw: s,
+  }));
+
+  const baseRows: Row[] =
+    viewMode === "direct" ? directRows :
+    viewMode === "sub-only" as any ? subRows :
+    viewMode === "subclients" ? subRows :
+    [...directRows, ...subRows];
+
+  const filtered = baseRows.filter((r) => {
+    if (companyFilter !== "all") {
+      if (companyFilter === "none") {
+        if (r.company) return false;
+      } else if (r.company?.id !== companyFilter) {
+        return false;
+      }
+    }
+    if (categoryFilter !== "all") {
+      if (categoryFilter === "none") {
+        if (r.categoryName) return false;
+      } else if (r.kind !== "direct" || r.raw.category_id !== categoryFilter) {
+        return false;
+      }
+    }
     if (!search) return true;
     const s = search.toLowerCase();
     return (
-      c.name?.toLowerCase().includes(s) ||
-      c.phone?.includes(s) ||
-      c.email?.toLowerCase().includes(s) ||
-      (c.companies as any)?.name?.toLowerCase().includes(s)
+      r.name?.toLowerCase().includes(s) ||
+      r.phone?.includes(s) ||
+      r.email?.toLowerCase().includes(s) ||
+      r.company?.name?.toLowerCase().includes(s)
     );
   });
+
+  // Group by company for the "by company" view
+  const groupedByCompany = (() => {
+    const map = new Map<string, { company: Row["company"]; rows: Row[] }>();
+    for (const r of filtered) {
+      const key = r.company?.id || "__none__";
+      if (!map.has(key)) map.set(key, { company: r.company, rows: [] });
+      map.get(key)!.rows.push(r);
+    }
+    return Array.from(map.values()).sort((a, b) =>
+      (a.company?.name || "Sem empresa").localeCompare(b.company?.name || "Sem empresa")
+    );
+  })();
+
+  const totalDirect = contacts.length;
+  const totalSubs = subClients.length;
+  const isLoadingData = contactsLoading || subClientsLoading;
 
   return (
     <AppLayout>
@@ -176,36 +250,100 @@ function CrmPage() {
             <TabsTrigger value="contatos" className="gap-1">
               <Users className="h-4 w-4" /> Contatos
             </TabsTrigger>
+            <TabsTrigger value="por-empresa" className="gap-1">
+              <Building2 className="h-4 w-4" /> Por Empresa
+            </TabsTrigger>
             <TabsTrigger value="categorias" className="gap-1">
               <Tag className="h-4 w-4" /> Categorias
             </TabsTrigger>
           </TabsList>
 
           <TabsContent value="contatos" className="space-y-4 mt-4">
-            <div className="flex items-center justify-between">
-              <p className="text-sm text-muted-foreground">
-                {contacts.length} contato(s) cadastrado(s)
-              </p>
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-3 text-sm text-muted-foreground">
+                <span>{totalDirect} contato(s) direto(s)</span>
+                <span>•</span>
+                <span>{totalSubs} sub-cliente(s)</span>
+              </div>
               <Button onClick={openNew}>
                 <UserPlus className="h-4 w-4 mr-2" /> Novo Contato
               </Button>
             </div>
 
-            <div className="relative max-w-sm">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Buscar por nome, telefone, e-mail..."
-                className="pl-8"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-              />
-            </div>
+            <Card className="p-3">
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+                <div className="relative md:col-span-2">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar por nome, telefone, e-mail, empresa..."
+                    className="pl-8"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                  />
+                </div>
+
+                <Select value={companyFilter} onValueChange={setCompanyFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Empresa" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas as empresas</SelectItem>
+                    <SelectItem value="none">Sem empresa vinculada</SelectItem>
+                    {companies.map((c: any) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Categoria" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas as categorias</SelectItem>
+                    <SelectItem value="none">Sem categoria</SelectItem>
+                    {categories.map((c: any) => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center gap-2 mt-3">
+                <span className="text-xs text-muted-foreground">Tipo:</span>
+                <Button
+                  size="sm"
+                  variant={viewMode === "all" ? "default" : "outline"}
+                  onClick={() => setViewMode("all")}
+                  className="h-7 text-xs"
+                >
+                  Todos
+                </Button>
+                <Button
+                  size="sm"
+                  variant={viewMode === "direct" ? "default" : "outline"}
+                  onClick={() => setViewMode("direct")}
+                  className="h-7 text-xs"
+                >
+                  Contatos diretos
+                </Button>
+                <Button
+                  size="sm"
+                  variant={viewMode === "subclients" ? "default" : "outline"}
+                  onClick={() => setViewMode("subclients")}
+                  className="h-7 text-xs"
+                >
+                  Sub-clientes
+                </Button>
+              </div>
+            </Card>
 
             <Card>
               <CardContent className="p-0">
                 <Table>
                   <TableHeader>
                     <TableRow>
+                      <TableHead>Tipo</TableHead>
                       <TableHead>Nome</TableHead>
                       <TableHead>Telefone</TableHead>
                       <TableHead>E-mail</TableHead>
@@ -216,59 +354,74 @@ function CrmPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {contactsLoading ? (
+                    {isLoadingData ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8">
+                        <TableCell colSpan={8} className="text-center py-8">
                           <Loader2 className="h-5 w-5 animate-spin mx-auto" />
                         </TableCell>
                       </TableRow>
                     ) : filtered.length === 0 ? (
                       <TableRow>
-                        <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                        <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                           <Users className="h-8 w-8 mx-auto mb-2 opacity-50" />
                           Nenhum contato encontrado.
                         </TableCell>
                       </TableRow>
                     ) : (
-                      filtered.map((contact: any) => (
-                        <TableRow key={contact.id}>
-                          <TableCell className="font-medium">{contact.name}</TableCell>
-                          <TableCell className="font-mono text-sm">{contact.phone}</TableCell>
-                          <TableCell>{contact.email || "—"}</TableCell>
+                      filtered.map((row) => (
+                        <TableRow key={`${row.kind}-${row.id}`}>
                           <TableCell>
-                            {(contact.companies as any)?.name ? (
+                            {row.kind === "direct" ? (
+                              <Badge variant="default" className="text-[10px]">
+                                Direto
+                              </Badge>
+                            ) : (
+                              <Badge variant="secondary" className="text-[10px] gap-1">
+                                <Users className="h-3 w-3" /> Sub-cliente
+                              </Badge>
+                            )}
+                          </TableCell>
+                          <TableCell className="font-medium">{row.name}</TableCell>
+                          <TableCell className="font-mono text-sm">{row.phone}</TableCell>
+                          <TableCell>{row.email || "—"}</TableCell>
+                          <TableCell>
+                            {row.company?.name ? (
                               <Badge variant="secondary" className="text-xs gap-1">
                                 <Building2 className="h-3 w-3" />
-                                {(contact.companies as any).name}
+                                {row.company.name}
                               </Badge>
                             ) : "—"}
                           </TableCell>
                           <TableCell>
-                            {(contact.crm_categories as any)?.name ? (
+                            {row.categoryName ? (
                               <Badge variant="outline" className="text-xs gap-1">
                                 <Tag className="h-3 w-3" />
-                                {(contact.crm_categories as any).name}
+                                {row.categoryName}
                               </Badge>
                             ) : "—"}
                           </TableCell>
                           <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">
-                            {contact.notes || "—"}
+                            {row.notes || "—"}
                           </TableCell>
                           <TableCell>
-                            <div className="flex gap-1">
-                              <Button variant="ghost" size="icon" onClick={() => openEdit(contact)}>
-                                <Edit className="h-4 w-4" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                onClick={() => {
-                                  if (confirm("Remover este contato?")) deleteMutation.mutate(contact.id);
-                                }}
-                              >
-                                <Trash2 className="h-4 w-4 text-destructive" />
-                              </Button>
-                            </div>
+                            {row.kind === "direct" ? (
+                              <div className="flex gap-1">
+                                <Button variant="ghost" size="icon" onClick={() => openEdit(row.raw)}>
+                                  <Edit className="h-4 w-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => {
+                                    if (confirm("Remover este contato?")) deleteMutation.mutate(row.id);
+                                  }}
+                                >
+                                  <Trash2 className="h-4 w-4 text-destructive" />
+                                </Button>
+                              </div>
+                            ) : (
+                              <span className="text-[10px] text-muted-foreground">via Empresas</span>
+                            )}
                           </TableCell>
                         </TableRow>
                       ))
@@ -277,6 +430,93 @@ function CrmPage() {
                 </Table>
               </CardContent>
             </Card>
+          </TabsContent>
+
+          <TabsContent value="por-empresa" className="space-y-4 mt-4">
+            <p className="text-sm text-muted-foreground">
+              Visualize todos os contatos diretos e sub-clientes agrupados pela empresa pai.
+            </p>
+
+            <div className="relative max-w-sm">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar..."
+                className="pl-8"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+
+            {isLoadingData ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-5 w-5 animate-spin" />
+              </div>
+            ) : groupedByCompany.length === 0 ? (
+              <Card>
+                <CardContent className="text-center py-8 text-muted-foreground">
+                  <Building2 className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  Nenhum resultado.
+                </CardContent>
+              </Card>
+            ) : (
+              <div className="space-y-3">
+                {groupedByCompany.map((g) => (
+                  <Card key={g.company?.id || "none"}>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <Building2 className="h-4 w-4 text-primary" />
+                          <h3 className="font-semibold">
+                            {g.company?.name || "Sem empresa vinculada"}
+                          </h3>
+                          {g.company?.cnpj && (
+                            <span className="text-xs text-muted-foreground font-mono">
+                              {g.company.cnpj}
+                            </span>
+                          )}
+                        </div>
+                        <Badge variant="outline" className="text-xs">
+                          {g.rows.length} contato(s)
+                        </Badge>
+                      </div>
+
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-28">Tipo</TableHead>
+                            <TableHead>Nome</TableHead>
+                            <TableHead>Telefone</TableHead>
+                            <TableHead>E-mail</TableHead>
+                            <TableHead>Categoria/Obs.</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {g.rows.map((row) => (
+                            <TableRow key={`${row.kind}-${row.id}`}>
+                              <TableCell>
+                                {row.kind === "direct" ? (
+                                  <Badge variant="default" className="text-[10px]">Direto</Badge>
+                                ) : (
+                                  <Badge variant="secondary" className="text-[10px] gap-1">
+                                    <Users className="h-3 w-3" /> Sub
+                                  </Badge>
+                                )}
+                              </TableCell>
+                              <TableCell className="font-medium">{row.name}</TableCell>
+                              <TableCell className="font-mono text-sm">{row.phone}</TableCell>
+                              <TableCell className="text-sm">{row.email || "—"}</TableCell>
+                              <TableCell className="text-sm text-muted-foreground max-w-[260px] truncate">
+                                {row.categoryName || row.notes || "—"}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </CardContent>
+                  </Card>
+                ))}
+              </div>
+            )}
           </TabsContent>
 
           <TabsContent value="categorias" className="mt-4">
