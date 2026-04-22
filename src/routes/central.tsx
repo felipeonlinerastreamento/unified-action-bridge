@@ -1917,9 +1917,17 @@ function CentralPage() {
               )}
             </div>
 
+            {/* Mobile backdrop when right panel is open */}
+            {showRightPanel && isMobile && (
+              <div
+                className="fixed inset-0 bg-background/60 backdrop-blur-sm z-30 md:hidden"
+                onClick={() => setShowRightPanel(false)}
+              />
+            )}
+
             {/* Right panel with tabs */}
             {showRightPanel ? (
-            <div className="w-80 shrink-0 border rounded-lg bg-card overflow-hidden flex flex-col relative">
+            <div className="w-[85vw] max-w-sm md:w-72 xl:w-80 shrink-0 border rounded-lg bg-card overflow-hidden flex flex-col relative max-md:fixed max-md:inset-y-0 max-md:right-0 max-md:z-40 max-md:shadow-xl max-md:rounded-none">
               <Button
                 variant="ghost"
                 size="icon"
