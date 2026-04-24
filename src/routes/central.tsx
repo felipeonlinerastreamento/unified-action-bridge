@@ -106,6 +106,12 @@ import {
   type TesteEquipamentoData,
 } from "@/hooks/use-teste-equipamento-settings";
 import { TesteEquipamentoFields } from "@/components/atendimentos/teste-equipamento-fields";
+import {
+  LiberacaoEquipamentoFields,
+  validateLiberacaoItems,
+  type LiberacaoLineItem,
+} from "@/components/atendimentos/liberacao-equipamento-fields";
+import { isLiberacaoCategory } from "@/hooks/use-liberacao-equipamento";
 import { finalizeTicketWithFlow } from "@/lib/ticket-finalize-flow";
 import {
   AlertDialog,
@@ -239,6 +245,9 @@ function CentralPage() {
   const [finalizeTipoPendencia, setFinalizeTipoPendencia] = useState<string>("");
   const [showTeDialog, setShowTeDialog] = useState(false);
   const [teData, setTeData] = useState<TesteEquipamentoData>(EMPTY_TESTE_EQUIPAMENTO);
+  const [showLiberacaoDialog, setShowLiberacaoDialog] = useState(false);
+  const [liberacaoItems, setLiberacaoItems] = useState<LiberacaoLineItem[]>([]);
+  const [liberacaoDate, setLiberacaoDate] = useState<string>("");
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [transferSectorId, setTransferSectorId] = useState<string>("");
   const [transferUserId, setTransferUserId] = useState<string>("");
@@ -1299,6 +1308,27 @@ function CentralPage() {
           console.warn("[Finalize] post-flow error:", e?.message);
         }
       }
+      // Save Liberação items if applicable
+      if (currentTicket && liberacaoItems.length > 0) {
+        try {
+          const rows = liberacaoItems.map((it) => ({
+            ticket_id: currentTicket.id,
+            item_id: it.item_id,
+            item_name: it.item_name,
+            quantity: it.quantity,
+            status: "pendente" as const,
+          }));
+          await supabase.from("ticket_liberacao_items" as any).insert(rows);
+          if (liberacaoDate) {
+            await supabase
+              .from("service_tickets")
+              .update({ liberacao_date: new Date(liberacaoDate).toISOString() } as any)
+              .eq("id", currentTicket.id);
+          }
+        } catch (e: any) {
+          console.error("[Finalize] error saving liberacao items:", e?.message);
+        }
+      }
       toast.success("Atendimento finalizado");
       setSelectedChatId("");
       setShowFinalizeConfirm(false);
@@ -1306,6 +1336,8 @@ function CentralPage() {
       setFinalizeStatus("A resolver");
       setFinalizeTipoPendencia("");
       setTeData(EMPTY_TESTE_EQUIPAMENTO);
+      setLiberacaoItems([]);
+      setLiberacaoDate("");
       refetchChats();
     },
     onError: (err: any) => toast.error(err?.message || "Erro ao finalizar"),
@@ -1867,6 +1899,10 @@ function CentralPage() {
                           const tipoLabel = tiposPendencia.find((t) => t.Key === finalizeTipoPendencia)?.Descricao || "";
                           if (isTesteEquipamentoCategory(tipoLabel, teSettings)) {
                             setShowTeDialog(true);
+                            return;
+                          }
+                          if (isLiberacaoCategory(tipoLabel)) {
+                            setShowLiberacaoDialog(true);
                             return;
                           }
                           setShowFinalizeConfirm(true);
@@ -2894,7 +2930,51 @@ function CentralPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Transfer Chat Modal */}
+      {/* Liberação de Equipamento Dialog (gate before finalize) */}
+      <Dialog
+        open={showLiberacaoDialog}
+        onOpenChange={(open) => {
+          setShowLiberacaoDialog(open);
+          if (!open) {
+            setLiberacaoItems([]);
+            setLiberacaoDate("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-primary" />
+              Liberação de Equipamento
+            </DialogTitle>
+            <DialogDescription>
+              Adicione os itens e a data de liberação antes de finalizar.
+            </DialogDescription>
+          </DialogHeader>
+          <LiberacaoEquipamentoFields
+            items={liberacaoItems}
+            onChange={setLiberacaoItems}
+            liberacaoDate={liberacaoDate}
+            onLiberacaoDateChange={setLiberacaoDate}
+          />
+          <div className="flex justify-end gap-2 mt-2">
+            <Button variant="outline" onClick={() => setShowLiberacaoDialog(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => {
+                const err = validateLiberacaoItems(liberacaoItems);
+                if (err) { toast.error(err); return; }
+                if (!liberacaoDate) { toast.error("Informe a data de liberação."); return; }
+                setShowLiberacaoDialog(false);
+                setShowFinalizeConfirm(true);
+              }}
+            >
+              Continuar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       <Dialog open={showTransferModal} onOpenChange={setShowTransferModal}>
         <DialogContent className="max-w-md">
           <DialogHeader>

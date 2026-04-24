@@ -44,6 +44,12 @@ import {
   type TesteEquipamentoData,
 } from "@/hooks/use-teste-equipamento-settings";
 import { TesteEquipamentoFields } from "./teste-equipamento-fields";
+import {
+  LiberacaoEquipamentoFields,
+  validateLiberacaoItems,
+  type LiberacaoLineItem,
+} from "./liberacao-equipamento-fields";
+import { isLiberacaoCategory } from "@/hooks/use-liberacao-equipamento";
 
 interface TicketCreateDialogProps {
   open: boolean;
@@ -83,6 +89,9 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
   const { data: teSettings } = useTesteEquipamentoSettings();
   const isTesteEquip = isTesteEquipamentoCategory(category, teSettings);
   const [teData, setTeData] = useState<TesteEquipamentoData>(EMPTY_TESTE_EQUIPAMENTO);
+  const isLiberacao = isLiberacaoCategory(category);
+  const [liberacaoItems, setLiberacaoItems] = useState<LiberacaoLineItem[]>([]);
+  const [liberacaoDate, setLiberacaoDate] = useState<string>("");
 
   const getAuthHeaders = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -167,6 +176,8 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
     setSectorId("");
     setTrackingCode("");
     setTeData(EMPTY_TESTE_EQUIPAMENTO);
+    setLiberacaoItems([]);
+    setLiberacaoDate("");
   };
 
   const ensureLocalCompany = async (cliente: GsystemCliente): Promise<string | null> => {
@@ -240,6 +251,18 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
         return;
       }
     }
+    // Validate Liberação de Equipamento
+    if (isLiberacao) {
+      const err = validateLiberacaoItems(liberacaoItems);
+      if (err) {
+        toast.error(err);
+        return;
+      }
+      if (!liberacaoDate) {
+        toast.error("Informe a data de liberação.");
+        return;
+      }
+    }
     setLoading(true);
     try {
       const companyId = await ensureLocalCompany(selectedCliente);
@@ -261,7 +284,10 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
         sector: sectorName,
         status: "aberto",
         tracking_code: trackCodeClean,
-      }).select("id").single();
+        ...(isLiberacao && liberacaoDate
+          ? { liberacao_date: new Date(liberacaoDate).toISOString() }
+          : {}),
+      } as any).select("id").single();
 
       if (error) {
         toast.error("Erro ao criar ticket");
@@ -275,6 +301,24 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
           tracking_code: trackCodeClean,
           carrier: "correios",
         });
+      }
+
+      // Insert liberação items
+      if (created?.id && isLiberacao && liberacaoItems.length > 0) {
+        const rows = liberacaoItems.map((it) => ({
+          ticket_id: created.id,
+          item_id: it.item_id,
+          item_name: it.item_name,
+          quantity: it.quantity,
+          status: "pendente" as const,
+        }));
+        const { error: itemsErr } = await supabase
+          .from("ticket_liberacao_items" as any)
+          .insert(rows);
+        if (itemsErr) {
+          console.error("Erro ao salvar itens de liberação", itemsErr);
+          toast.error("Ticket criado, mas falhou ao salvar itens de liberação.");
+        }
       }
 
       toast.success("Ticket criado com sucesso");
@@ -476,6 +520,14 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
           )}
           {isTesteEquip && (
             <TesteEquipamentoFields value={teData} onChange={setTeData} settings={teSettings} />
+          )}
+          {isLiberacao && (
+            <LiberacaoEquipamentoFields
+              items={liberacaoItems}
+              onChange={setLiberacaoItems}
+              liberacaoDate={liberacaoDate}
+              onLiberacaoDateChange={setLiberacaoDate}
+            />
           )}
           <div className="space-y-1">
             <label className="text-xs font-medium">Observações</label>
