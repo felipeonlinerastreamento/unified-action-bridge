@@ -192,6 +192,9 @@ export function AiFloatingAssistant() {
     setLoading(false);
   }
 
+  // Hide entirely when assistant is disabled in admin settings
+  if (isEnabled === false) return null;
+
   // FAB button
   if (!isOpen) {
     return (
