@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { getTiposPendencia } from "@/lib/gsystem-api.functions";
@@ -158,6 +158,25 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
     setCategoryDraft(ticket?.pendencia_key || "");
     setEditingCategory(true);
   };
+
+  // Quando os tipos carregarem e o ticket não tiver pendencia_key (ticket antigo),
+  // tentamos resolver pela Descricao para que o Select já apareça selecionado.
+  useEffect(() => {
+    if (
+      editingCategory &&
+      !categoryDraft &&
+      ticket?.category &&
+      Array.isArray(tiposPendencia) &&
+      tiposPendencia.length > 0
+    ) {
+      const match = tiposPendencia.find(
+        (t: any) =>
+          String(t.Descricao || "").trim().toLowerCase() ===
+          String(ticket.category || "").trim().toLowerCase()
+      );
+      if (match?.Key) setCategoryDraft(String(match.Key));
+    }
+  }, [editingCategory, tiposPendencia, ticket?.category, categoryDraft]);
 
   const cancelEditCategory = () => {
     setEditingCategory(false);
