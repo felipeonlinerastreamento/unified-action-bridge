@@ -47,6 +47,7 @@ const mainItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
   { title: "Atendimentos", url: "/atendimentos", icon: MessageSquare },
   { title: "Central", url: "/central", icon: Headphones },
+  { title: "Laboratório", url: "/laboratorio", icon: Package },
   { title: "CRM", url: "/crm", icon: UserPlus },
   { title: "Contatos", url: "/contatos", icon: Users },
   { title: "Empresas", url: "/empresas", icon: Building2 },
