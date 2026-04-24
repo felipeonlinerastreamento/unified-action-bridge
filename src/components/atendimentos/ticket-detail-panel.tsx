@@ -72,6 +72,19 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   const [syncing, setSyncing] = useState(false);
   const { data: teSettings } = useTesteEquipamentoSettings();
 
+  // Load active sectors for forward dropdown
+  const { data: sectors = [] } = useQuery({
+    queryKey: ["active-sectors"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("sectors")
+        .select("id, name")
+        .eq("is_active", true)
+        .order("name");
+      return data || [];
+    },
+  });
+
   // Get current user
   const { data: currentUser } = useQuery({
     queryKey: ["current-user"],
@@ -277,24 +290,57 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
 
   const forwardToSector = async () => {
     if (!forwardSector.trim() || !ticket?.id) return;
+
+    // Pick least loaded agent in the sector
+    let assignedAgentId: string | null = null;
+    let assignedAgentName = "";
+    try {
+      const { data: agentId } = await supabase.rpc("pick_least_loaded_agent", {
+        _sector: forwardSector,
+      });
+      if (agentId) {
+        assignedAgentId = agentId as string;
+        const profile = profiles.find((p) => p.user_id === assignedAgentId);
+        assignedAgentName = profile?.name || "atendente";
+      }
+    } catch (e) {
+      console.error("Error picking least loaded agent:", e);
+    }
+
+    const updatePayload: any = {
+      sector: forwardSector,
+      updated_at: new Date().toISOString(),
+    };
+    if (assignedAgentId) updatePayload.assigned_to = assignedAgentId;
+
     const { error } = await supabase
       .from("service_tickets")
-      .update({ sector: forwardSector, updated_at: new Date().toISOString() })
+      .update(updatePayload)
       .eq("id", ticket.id);
     if (error) {
       toast.error("Erro ao encaminhar: " + error.message);
       return;
     }
-    await insertSystemComment(ticket.id, `Encaminhado para setor: ${forwardSector}`, "encaminhamento");
+
+    const commentMsg = assignedAgentId
+      ? `Encaminhado para setor: ${forwardSector} → atribuído a ${assignedAgentName} (menor carga)`
+      : `Encaminhado para setor: ${forwardSector} (sem atendente disponível para atribuição automática)`;
+    await insertSystemComment(ticket.id, commentMsg, "encaminhamento");
+
     await supabase.from("ticket_assignments").insert({
       ticket_id: ticket.id,
       assigned_by: userId,
+      assigned_to: assignedAgentId,
       sector_name: forwardSector,
     });
     setForwardSector("");
     refetchComments();
     onRefetch();
-    toast.success("Encaminhado para setor");
+    toast.success(
+      assignedAgentId
+        ? `Encaminhado para ${forwardSector} → ${assignedAgentName}`
+        : `Encaminhado para ${forwardSector}`
+    );
   };
 
   const forwardToUser = async () => {
@@ -497,16 +543,23 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
             <div className="space-y-2">
               <label className="text-xs font-medium text-muted-foreground">Encaminhar para Setor</label>
               <div className="flex gap-2">
-                <Input
-                  placeholder="Nome do setor"
-                  value={forwardSector}
-                  onChange={(e) => setForwardSector(e.target.value)}
-                  className="h-9"
-                />
+                <Select value={forwardSector} onValueChange={setForwardSector}>
+                  <SelectTrigger className="h-9 flex-1">
+                    <SelectValue placeholder="Selecionar setor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sectors.map((s: any) => (
+                      <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <Button size="sm" onClick={forwardToSector} disabled={!forwardSector.trim()}>
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </div>
+              <p className="text-[10px] text-muted-foreground">
+                O ticket será atribuído automaticamente ao atendente do setor com menor número de chamados ativos.
+              </p>
             </div>
 
             {/* Linked agents */}
