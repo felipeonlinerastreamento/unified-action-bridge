@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { getTiposPendencia } from "@/lib/gsystem-api.functions";
 import { toast } from "sonner";
 import {
   Sheet,
@@ -70,7 +71,26 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState("");
   const [syncing, setSyncing] = useState(false);
+  const [editingCategory, setEditingCategory] = useState(false);
+  const [categoryDraft, setCategoryDraft] = useState("");
+  const [savingCategory, setSavingCategory] = useState(false);
   const { data: teSettings } = useTesteEquipamentoSettings();
+
+  const getAuthHeaders = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    return { headers: { authorization: `Bearer ${session?.access_token}` } };
+  }, []);
+
+  // GSystem categories (tipos de pendência) — same source used at ticket creation
+  const { data: tiposPendencia = [], isLoading: tiposLoading } = useQuery({
+    queryKey: ["tipos-pendencia-detail-panel"],
+    queryFn: async () => {
+      const result = await getTiposPendencia(await getAuthHeaders());
+      return Array.isArray(result) ? result : [];
+    },
+    enabled: open && editingCategory,
+    staleTime: 60_000,
+  });
 
   // Load active sectors for forward dropdown
   const { data: sectors = [] } = useQuery({
@@ -130,6 +150,49 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
     setComment("");
     refetchComments();
     toast.success("Comentário adicionado");
+  };
+
+  const startEditCategory = () => {
+    setCategoryDraft(ticket?.category || "");
+    setEditingCategory(true);
+  };
+
+  const cancelEditCategory = () => {
+    setEditingCategory(false);
+    setCategoryDraft("");
+  };
+
+  const saveCategory = async () => {
+    if (!ticket?.id) return;
+    const newCategory = categoryDraft.trim() || null;
+    if ((newCategory || "") === (ticket.category || "")) {
+      setEditingCategory(false);
+      return;
+    }
+    setSavingCategory(true);
+    try {
+      const { error } = await supabase
+        .from("service_tickets")
+        .update({ category: newCategory, updated_at: new Date().toISOString() })
+        .eq("id", ticket.id);
+      if (error) {
+        toast.error("Erro ao alterar categoria: " + error.message);
+        return;
+      }
+      await supabase.from("ticket_comments").insert({
+        ticket_id: ticket.id,
+        user_id: userId,
+        content: `Categoria alterada de "${ticket.category || "—"}" para "${newCategory || "—"}"`,
+        comment_type: "status_change",
+      });
+      toast.success("Categoria atualizada");
+      setEditingCategory(false);
+      onRefetch();
+      refetchComments();
+      queryClient.invalidateQueries({ queryKey: ["service-tickets"] });
+    } finally {
+      setSavingCategory(false);
+    }
   };
 
   const startEdit = (c: any) => {
@@ -401,7 +464,42 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
                 ? (profiles.find((p) => p.user_id === ticket.assigned_to)?.name || "Atribuído")
                 : null
             } />
-            <DetailRow label="Categoria" value={ticket.category} />
+            <div className="flex gap-2 text-sm items-start">
+              <span className="font-medium text-muted-foreground min-w-[120px] pt-1.5">Categoria:</span>
+              <div className="flex-1 min-w-0">
+                {editingCategory ? (
+                  <div className="flex gap-1 items-center">
+                    <Select value={categoryDraft} onValueChange={setCategoryDraft} disabled={tiposLoading || savingCategory}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder={tiposLoading ? "Carregando..." : "Selecione..."} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {tiposPendencia.length === 0 && !tiposLoading ? (
+                          <div className="px-2 py-1.5 text-xs text-muted-foreground">Nenhuma categoria encontrada.</div>
+                        ) : (
+                          tiposPendencia.map((t: any) => (
+                            <SelectItem key={t.Key} value={t.Descricao}>{t.Descricao}</SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={saveCategory} disabled={savingCategory}>
+                      <Check className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={cancelEditCategory} disabled={savingCategory}>
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1 group">
+                    <span className="break-all">{ticket.category || "—"}</span>
+                    <Button size="icon" variant="ghost" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={startEditCategory}>
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
             <DetailRow label="Observações" value={ticket.notes} />
             <DetailRow label="Criado em" value={ticket.created_at ? new Date(ticket.created_at).toLocaleString("pt-BR") : null} />
             <DetailRow label="Finalizado em" value={ticket.closed_at ? new Date(ticket.closed_at).toLocaleString("pt-BR") : null} />
