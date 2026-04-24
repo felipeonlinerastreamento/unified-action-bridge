@@ -104,6 +104,14 @@ export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
           // WhatsApp groups: raw phone contains "@g.us" or "<creator>-<timestamp>" pattern
           const isGroupMessage = /@g\.us/i.test(rawPhone) || /-\d{8,}/.test(rawPhone);
           const phone = rawPhone.replace(/\D/g, "");
+
+          // For groups, prefer the group name (chatName/groupName) over the sender's name.
+          // For direct chats, use senderName.
+          const groupDisplayName = p.chatName || p.groupName || null;
+          const incomingContactName = isGroupMessage
+            ? (groupDisplayName || p.senderName || null)
+            : (p.senderName || null);
+
           const text =
             p.text?.message ||
             p.image?.caption ||
@@ -138,7 +146,7 @@ export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
               .insert({
                 channel_id: channelId,
                 phone,
-                contact_name: p.senderName || null,
+                contact_name: incomingContactName,
                 contact_avatar: p.senderPhoto || null,
                 status: "bot",
                 last_message_at: new Date().toISOString(),
@@ -155,6 +163,11 @@ export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
             // making it look like new conversations were not appearing.
             const shouldReopen =
               !p.fromMe && existing.status === "finalizado";
+            // For groups, ALWAYS prefer the latest group name (it can change),
+            // overriding any previously stored sender name.
+            const nameToStore = isGroupMessage
+              ? (groupDisplayName || existing.contact_name || p.senderName || null)
+              : (existing.contact_name || p.senderName || null);
             const baseUpdate: {
               contact_name: string | null;
               contact_avatar?: string;
@@ -166,7 +179,7 @@ export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
               assigned_to?: null;
               sector_name?: null;
             } = {
-              contact_name: existing.contact_name || p.senderName || null,
+              contact_name: nameToStore,
               contact_avatar: p.senderPhoto || undefined,
               last_message_at: new Date().toISOString(),
               last_message_preview: text.slice(0, 120),
