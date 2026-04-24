@@ -225,7 +225,7 @@ function DashboardPage() {
         </div>
 
         {/* KPI Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
           <KPICard
             title="Atendimentos Abertos"
             value={String(openTickets.length)}
@@ -251,6 +251,13 @@ function DashboardPage() {
             value={avgTime > 0 ? formatDuration(avgTime) : "—"}
             icon={Headphones}
             description="Média geral de atendimento"
+          />
+          <KPICard
+            title="Equip. Liberados (Lab)"
+            value={String(labStats.qtyToday)}
+            icon={Package}
+            description={`${labStats.qty7d} em 7 dias · ${labStats.qtyTotal} no total`}
+            accent={labStats.qtyToday > 0}
           />
         </div>
 
