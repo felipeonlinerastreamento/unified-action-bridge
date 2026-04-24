@@ -162,10 +162,24 @@ export const syncTicketToGsystem = createServerFn({ method: "POST" })
     }
 
     // Build the pendência body. GSystem requires `TipoPendencia` (the Key of
-    // a tipo cadastrado em /cadastros). For Teste de Equipamento (and any
-    // ticket without explicit category key) fall back to "186" (Assuntos
-    // Diversos) — the subtype/details are preserved inside the description.
-    const tipoPendencia = ticket.pendencia_key || "186";
+    // a tipo cadastrado em /cadastros). Resolution order:
+    //  1. ticket.pendencia_key (set explicitly when ticket was created)
+    //  2. category_routing_rules.category_key matching the ticket category
+    //  3. fallback to "186" (Assuntos Diversos)
+    let tipoPendencia: string = ticket.pendencia_key || "";
+    if (!tipoPendencia && ticket.category) {
+      const { data: rules } = await supabase
+        .from("category_routing_rules")
+        .select("category_key")
+        .eq("is_active", true)
+        .or(`category_key.eq.${ticket.category},category_label.eq.${ticket.category}`)
+        .limit(1);
+      const ruleKey = rules?.[0]?.category_key;
+      if (ruleKey && /^\d+$/.test(String(ruleKey))) {
+        tipoPendencia = String(ruleKey);
+      }
+    }
+    if (!tipoPendencia) tipoPendencia = "186";
     // Try to resolve gsystem veiculo key via plate
     let gsystemVeiculoKey: string | null = null;
     if (ticket.plate) {
