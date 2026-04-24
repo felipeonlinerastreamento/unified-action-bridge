@@ -1878,6 +1878,10 @@ function CentralPage() {
                             setShowTeDialog(true);
                             return;
                           }
+                          if (isLiberacaoCategory(tipoLabel)) {
+                            setShowLiberacaoDialog(true);
+                            return;
+                          }
                           setShowFinalizeConfirm(true);
                         }}
                         disabled={finalizeMutation.isPending}
