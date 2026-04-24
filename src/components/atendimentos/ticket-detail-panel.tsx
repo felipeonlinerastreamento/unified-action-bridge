@@ -71,7 +71,26 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState("");
   const [syncing, setSyncing] = useState(false);
+  const [editingCategory, setEditingCategory] = useState(false);
+  const [categoryDraft, setCategoryDraft] = useState("");
+  const [savingCategory, setSavingCategory] = useState(false);
   const { data: teSettings } = useTesteEquipamentoSettings();
+
+  const getAuthHeaders = useCallback(async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+    return { headers: { authorization: `Bearer ${session?.access_token}` } };
+  }, []);
+
+  // GSystem categories (tipos de pendência) — same source used at ticket creation
+  const { data: tiposPendencia = [], isLoading: tiposLoading } = useQuery({
+    queryKey: ["tipos-pendencia-detail-panel"],
+    queryFn: async () => {
+      const result = await getTiposPendencia(await getAuthHeaders());
+      return Array.isArray(result) ? result : [];
+    },
+    enabled: open && editingCategory,
+    staleTime: 60_000,
+  });
 
   // Load active sectors for forward dropdown
   const { data: sectors = [] } = useQuery({
