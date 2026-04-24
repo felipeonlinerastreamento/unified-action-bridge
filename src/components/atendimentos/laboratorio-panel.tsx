@@ -1,14 +1,11 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
-import { useState, useMemo } from "react";
-import { useAuth } from "@/hooks/use-auth";
-import { AppLayout } from "@/components/app-layout";
+import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table,
   TableBody,
@@ -26,12 +23,7 @@ import {
   LayoutGrid,
   List as ListIcon,
   Loader2,
-  RefreshCw,
 } from "lucide-react";
-
-export const Route = createFileRoute("/laboratorio")({
-  component: LaboratorioPage,
-});
 
 interface LabRow {
   id: string;
@@ -54,43 +46,67 @@ interface LabRow {
   };
 }
 
-function LaboratorioPage() {
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+interface Props {
+  /** Tickets atualmente filtrados (já contendo somente setor Laboratório). */
+  tickets: any[];
+  /** Callback para abrir o painel de detalhes de um ticket. */
+  onOpenTicket?: (ticket: any) => void;
+}
+
+/**
+ * Painel completo do Laboratório, exibido dentro do menu Atendimentos
+ * quando o filtro de setor "Laboratório" está ativo. Lista os itens de
+ * liberação de equipamentos, com KPIs, visualizações em cards/kanban/tabela
+ * e ação direta de "Liberar".
+ */
+export function LaboratorioPanel({ tickets, onOpenTicket }: Props) {
   const qc = useQueryClient();
   const [view, setView] = useState<"cards" | "kanban" | "tabela">("cards");
   const [statusFilter, setStatusFilter] = useState<"todos" | "pendente" | "liberado">("pendente");
 
-  const { data: rows = [], isLoading, refetch, isFetching } = useQuery({
-    queryKey: ["lab-liberacao"],
+  // IDs dos tickets atualmente filtrados (setor Laboratório)
+  const ticketIds = useMemo(() => tickets.map((t) => t.id), [tickets]);
+  const ticketById = useMemo(() => {
+    const map = new Map<string, any>();
+    for (const t of tickets) map.set(t.id, t);
+    return map;
+  }, [tickets]);
+
+  const { data: rows = [], isLoading } = useQuery({
+    queryKey: ["lab-liberacao", ticketIds],
+    enabled: ticketIds.length > 0,
     queryFn: async (): Promise<LabRow[]> => {
       const { data, error } = await supabase
         .from("ticket_liberacao_items" as any)
         .select(
-          `id, ticket_id, item_name, quantity, status, created_at, liberado_at, liberado_by,
-           service_tickets:ticket_id (id, contact_name, contact_phone, plate, liberacao_date, status, sector, companies(name))`
+          `id, ticket_id, item_name, quantity, status, created_at, liberado_at, liberado_by`
         )
+        .in("ticket_id", ticketIds)
         .order("created_at", { ascending: false });
       if (error) throw error;
-      return ((data || []) as any[]).map((r) => ({
-        id: r.id,
-        ticket_id: r.ticket_id,
-        item_name: r.item_name,
-        quantity: r.quantity,
-        status: r.status,
-        created_at: r.created_at,
-        liberado_at: r.liberado_at,
-        liberado_by: r.liberado_by,
-        ticket: {
-          id: r.service_tickets?.id || r.ticket_id,
-          contact_name: r.service_tickets?.contact_name || null,
-          contact_phone: r.service_tickets?.contact_phone || null,
-          company_name: r.service_tickets?.companies?.name || null,
-          plate: r.service_tickets?.plate || null,
-          liberacao_date: r.service_tickets?.liberacao_date || null,
-          status: r.service_tickets?.status || "",
-          sector: r.service_tickets?.sector || null,
-        },
-      }));
+      return ((data || []) as any[]).map((r) => {
+        const t = ticketById.get(r.ticket_id) || {};
+        return {
+          id: r.id,
+          ticket_id: r.ticket_id,
+          item_name: r.item_name,
+          quantity: r.quantity,
+          status: r.status,
+          created_at: r.created_at,
+          liberado_at: r.liberado_at,
+          liberado_by: r.liberado_by,
+          ticket: {
+            id: t.id || r.ticket_id,
+            contact_name: t.contact_name || null,
+            contact_phone: t.contact_phone || null,
+            company_name: t.companies?.name || null,
+            plate: t.plate || null,
+            liberacao_date: t.liberacao_date || null,
+            status: t.status || "",
+            sector: t.sector || null,
+          },
+        };
+      });
     },
     refetchInterval: 30000,
   });
@@ -125,6 +141,7 @@ function LaboratorioPage() {
     onSuccess: () => {
       toast.success("Item liberado");
       qc.invalidateQueries({ queryKey: ["lab-liberacao"] });
+      qc.invalidateQueries({ queryKey: ["service-tickets"] });
     },
     onError: (e: any) => toast.error(e?.message || "Erro"),
   });
@@ -134,7 +151,61 @@ function LaboratorioPage() {
     return rows.filter((r) => r.status === statusFilter);
   }, [rows, statusFilter]);
 
-  // Group by liberacao_date (yyyy-mm-dd) for cards & kanban
+  const today = new Date().toISOString().slice(0, 10);
+  const totalPendentes = rows.filter((r) => r.status === "pendente").length;
+  const totalLiberados = rows.filter((r) => r.status === "liberado").length;
+  const atrasados = rows.filter(
+    (r) =>
+      r.status === "pendente" &&
+      r.ticket.liberacao_date &&
+      String(r.ticket.liberacao_date).slice(0, 10) < today
+  ).length;
+  const hoje = rows.filter(
+    (r) =>
+      r.status === "pendente" &&
+      r.ticket.liberacao_date &&
+      String(r.ticket.liberacao_date).slice(0, 10) === today
+  ).length;
+
+  const urgencyOf = (
+    dateStr: string | null
+  ): "atrasado" | "hoje" | "futuro" | "sem-data" => {
+    if (!dateStr) return "sem-data";
+    const d = String(dateStr).slice(0, 10);
+    if (d < today) return "atrasado";
+    if (d === today) return "hoje";
+    return "futuro";
+  };
+
+  const urgencyBadge = (u: string) => {
+    if (u === "atrasado")
+      return (
+        <Badge variant="destructive" className="text-[10px]">
+          <AlertTriangle className="h-2.5 w-2.5 mr-1" />
+          Atrasado
+        </Badge>
+      );
+    if (u === "hoje")
+      return (
+        <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-[10px]">
+          <Clock className="h-2.5 w-2.5 mr-1" />
+          Hoje
+        </Badge>
+      );
+    if (u === "futuro")
+      return (
+        <Badge variant="outline" className="text-[10px]">
+          <CalendarDays className="h-2.5 w-2.5 mr-1" />
+          Futuro
+        </Badge>
+      );
+    return (
+      <Badge variant="secondary" className="text-[10px]">
+        Sem data
+      </Badge>
+    );
+  };
+
   const grouped = useMemo(() => {
     const map = new Map<string, LabRow[]>();
     for (const r of filtered) {
@@ -151,54 +222,20 @@ function LaboratorioPage() {
     });
   }, [filtered]);
 
-  const today = new Date().toISOString().slice(0, 10);
-  const totalPendentes = rows.filter((r) => r.status === "pendente").length;
-  const totalLiberados = rows.filter((r) => r.status === "liberado").length;
-  const atrasados = rows.filter(
-    (r) => r.status === "pendente" && r.ticket.liberacao_date && String(r.ticket.liberacao_date).slice(0, 10) < today
-  ).length;
-  const hoje = rows.filter(
-    (r) => r.status === "pendente" && r.ticket.liberacao_date && String(r.ticket.liberacao_date).slice(0, 10) === today
-  ).length;
-
-  const urgencyOf = (dateStr: string | null): "atrasado" | "hoje" | "futuro" | "sem-data" => {
-    if (!dateStr) return "sem-data";
-    const d = String(dateStr).slice(0, 10);
-    if (d < today) return "atrasado";
-    if (d === today) return "hoje";
-    return "futuro";
+  const handleOpen = (row: LabRow) => {
+    const t = ticketById.get(row.ticket_id);
+    if (t && onOpenTicket) onOpenTicket(t);
   };
-
-  const urgencyBadge = (u: string) => {
-    if (u === "atrasado")
-      return <Badge variant="destructive" className="text-[10px]"><AlertTriangle className="h-2.5 w-2.5 mr-1" />Atrasado</Badge>;
-    if (u === "hoje")
-      return <Badge className="bg-amber-100 text-amber-800 border-amber-200 text-[10px]"><Clock className="h-2.5 w-2.5 mr-1" />Hoje</Badge>;
-    if (u === "futuro")
-      return <Badge variant="outline" className="text-[10px]"><CalendarDays className="h-2.5 w-2.5 mr-1" />Futuro</Badge>;
-    return <Badge variant="secondary" className="text-[10px]">Sem data</Badge>;
-  };
-
-  if (authLoading || !isAuthenticated) return null;
 
   return (
-    <AppLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between flex-wrap gap-3">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
-              <Package className="h-6 w-6 text-primary" /> Laboratório — Liberações
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              Itens a liberar por data e urgência. Atualiza automaticamente.
-            </p>
-          </div>
-          <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${isFetching ? "animate-spin" : ""}`} />
-            Atualizar
-          </Button>
-        </div>
-
+    <Card className="border-primary/30 bg-primary/5">
+      <CardHeader className="pb-3">
+        <CardTitle className="text-base flex items-center gap-2">
+          <Package className="h-5 w-5 text-primary" />
+          Laboratório — Liberação de Equipamentos
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-4">
         {/* KPIs */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
           <KpiCard label="Pendentes" value={totalPendentes} icon={Clock} tone="default" />
@@ -207,7 +244,7 @@ function LaboratorioPage() {
           <KpiCard label="Liberados" value={totalLiberados} icon={CheckCircle2} tone="success" />
         </div>
 
-        {/* Filters */}
+        {/* Filtros */}
         <div className="flex items-center justify-between gap-2 flex-wrap">
           <Tabs value={statusFilter} onValueChange={(v) => setStatusFilter(v as any)}>
             <TabsList>
@@ -233,93 +270,94 @@ function LaboratorioPage() {
         </div>
 
         {isLoading ? (
-          <Card>
-            <CardContent className="p-6 flex items-center justify-center">
-              <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-            </CardContent>
-          </Card>
+          <div className="p-6 flex items-center justify-center">
+            <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+          </div>
         ) : filtered.length === 0 ? (
-          <Card>
-            <CardContent className="p-6 text-center text-sm text-muted-foreground">
-              Nenhum item nesta visualização.
-            </CardContent>
-          </Card>
+          <div className="p-6 text-center text-sm text-muted-foreground">
+            Nenhum item nesta visualização.
+          </div>
         ) : view === "tabela" ? (
-          <Card>
-            <CardContent className="p-0">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Data Liberação</TableHead>
-                    <TableHead>Urgência</TableHead>
-                    <TableHead>Item</TableHead>
-                    <TableHead>Qtde</TableHead>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Placa</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="w-[140px]">Ações</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filtered.map((r) => (
-                    <TableRow key={r.id}>
-                      <TableCell className="text-xs">
-                        {r.ticket.liberacao_date
-                          ? new Date(r.ticket.liberacao_date).toLocaleDateString("pt-BR")
-                          : "—"}
-                      </TableCell>
-                      <TableCell>{urgencyBadge(urgencyOf(r.ticket.liberacao_date))}</TableCell>
-                      <TableCell className="font-medium">{r.item_name}</TableCell>
-                      <TableCell>{r.quantity}</TableCell>
-                      <TableCell className="text-xs">
-                        {r.ticket.company_name || r.ticket.contact_name || "—"}
-                      </TableCell>
-                      <TableCell className="text-xs">{r.ticket.plate || "—"}</TableCell>
-                      <TableCell>
-                        {r.status === "liberado" ? (
-                          <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px]">
-                            Liberado
-                          </Badge>
-                        ) : (
-                          <Badge variant="secondary" className="text-[10px]">Pendente</Badge>
+          <div className="rounded-md border bg-background">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Data Liberação</TableHead>
+                  <TableHead>Urgência</TableHead>
+                  <TableHead>Item</TableHead>
+                  <TableHead>Qtde</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Placa</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead className="w-[160px]">Ações</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filtered.map((r) => (
+                  <TableRow key={r.id}>
+                    <TableCell className="text-xs">
+                      {r.ticket.liberacao_date
+                        ? new Date(r.ticket.liberacao_date).toLocaleDateString("pt-BR")
+                        : "—"}
+                    </TableCell>
+                    <TableCell>{urgencyBadge(urgencyOf(r.ticket.liberacao_date))}</TableCell>
+                    <TableCell className="font-medium">{r.item_name}</TableCell>
+                    <TableCell>{r.quantity}</TableCell>
+                    <TableCell className="text-xs">
+                      {r.ticket.company_name || r.ticket.contact_name || "—"}
+                    </TableCell>
+                    <TableCell className="text-xs">{r.ticket.plate || "—"}</TableCell>
+                    <TableCell>
+                      {r.status === "liberado" ? (
+                        <Badge className="bg-emerald-100 text-emerald-800 border-emerald-200 text-[10px]">
+                          Liberado
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary" className="text-[10px]">
+                          Pendente
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1">
+                        {r.status === "pendente" && (
+                          <Button
+                            size="sm"
+                            className="h-7 text-[10px] gap-1"
+                            onClick={() => liberar.mutate(r)}
+                            disabled={liberar.isPending}
+                          >
+                            <CheckCircle2 className="h-3 w-3" /> Liberar
+                          </Button>
                         )}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-1">
-                          {r.status === "pendente" && (
-                            <Button
-                              size="sm"
-                              className="h-7 text-[10px] gap-1"
-                              onClick={() => liberar.mutate(r)}
-                              disabled={liberar.isPending}
-                            >
-                              <CheckCircle2 className="h-3 w-3" /> Liberar
-                            </Button>
-                          )}
-                          <Link to="/atendimentos">
-                            <Button size="sm" variant="ghost" className="h-7 text-[10px]">
-                              Abrir
-                            </Button>
-                          </Link>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </CardContent>
-          </Card>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-7 text-[10px]"
+                          onClick={() => handleOpen(r)}
+                        >
+                          Abrir
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
         ) : view === "kanban" ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {(["atrasado", "hoje", "futuro"] as const).map((bucket) => {
-              const list = filtered.filter((r) => urgencyOf(r.ticket.liberacao_date) === bucket);
+              const list = filtered.filter(
+                (r) => urgencyOf(r.ticket.liberacao_date) === bucket
+              );
               const labels: Record<string, string> = {
                 atrasado: "Atrasados",
                 hoje: "Para hoje",
                 futuro: "Futuros",
               };
               return (
-                <Card key={bucket}>
+                <Card key={bucket} className="bg-background">
                   <CardHeader className="pb-2">
                     <CardTitle className="text-sm flex items-center justify-between">
                       <span>{labels[bucket]}</span>
@@ -332,7 +370,15 @@ function LaboratorioPage() {
                         Nenhum item.
                       </p>
                     ) : (
-                      list.map((r) => <ItemMiniCard key={r.id} row={r} onLiberar={() => liberar.mutate(r)} pending={liberar.isPending} />)
+                      list.map((r) => (
+                        <ItemMiniCard
+                          key={r.id}
+                          row={r}
+                          onLiberar={() => liberar.mutate(r)}
+                          onOpen={() => handleOpen(r)}
+                          pending={liberar.isPending}
+                        />
+                      ))
                     )}
                   </CardContent>
                 </Card>
@@ -343,7 +389,7 @@ function LaboratorioPage() {
           // cards by date
           <div className="space-y-4">
             {grouped.map(([date, list]) => (
-              <Card key={date}>
+              <Card key={date} className="bg-background">
                 <CardHeader className="pb-2">
                   <CardTitle className="text-sm flex items-center gap-2">
                     <CalendarDays className="h-4 w-4 text-primary" />
@@ -361,15 +407,21 @@ function LaboratorioPage() {
                 </CardHeader>
                 <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
                   {list.map((r) => (
-                    <ItemMiniCard key={r.id} row={r} onLiberar={() => liberar.mutate(r)} pending={liberar.isPending} />
+                    <ItemMiniCard
+                      key={r.id}
+                      row={r}
+                      onLiberar={() => liberar.mutate(r)}
+                      onOpen={() => handleOpen(r)}
+                      pending={liberar.isPending}
+                    />
                   ))}
                 </CardContent>
               </Card>
             ))}
           </div>
         )}
-      </div>
-    </AppLayout>
+      </CardContent>
+    </Card>
   );
 }
 
@@ -393,7 +445,7 @@ function KpiCard({
           ? "text-emerald-600"
           : "text-primary";
   return (
-    <Card>
+    <Card className="bg-background">
       <CardContent className="p-3 flex items-center justify-between">
         <div>
           <p className="text-xs text-muted-foreground">{label}</p>
@@ -408,10 +460,12 @@ function KpiCard({
 function ItemMiniCard({
   row,
   onLiberar,
+  onOpen,
   pending,
 }: {
   row: LabRow;
   onLiberar: () => void;
+  onOpen: () => void;
   pending: boolean;
 }) {
   const isLiberado = row.status === "liberado";
@@ -423,9 +477,13 @@ function ItemMiniCard({
     >
       <div className="flex items-center gap-1">
         <Package className="h-3.5 w-3.5 text-primary shrink-0" />
-        <span className="font-semibold truncate">
+        <button
+          type="button"
+          onClick={onOpen}
+          className="font-semibold truncate text-left hover:underline"
+        >
           {row.quantity}x {row.item_name}
-        </span>
+        </button>
       </div>
       <div className="text-muted-foreground truncate">
         {row.ticket.company_name || row.ticket.contact_name || "Sem cliente"}
@@ -442,7 +500,12 @@ function ItemMiniCard({
             Liberado
           </Badge>
         ) : (
-          <Button size="sm" className="h-6 text-[10px] gap-1" onClick={onLiberar} disabled={pending}>
+          <Button
+            size="sm"
+            className="h-6 text-[10px] gap-1"
+            onClick={onLiberar}
+            disabled={pending}
+          >
             <CheckCircle2 className="h-3 w-3" /> Liberar
           </Button>
         )}

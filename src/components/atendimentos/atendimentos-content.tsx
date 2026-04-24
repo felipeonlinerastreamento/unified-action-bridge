@@ -13,7 +13,7 @@ import { TicketDetailPanel } from "./ticket-detail-panel";
 import { TicketCreateDialog } from "./ticket-create-dialog";
 import { TicketReminderNotifications } from "./ticket-reminder-notifications";
 import { TicketFiltersBar, applyTicketFilters, defaultFilters, type TicketFilters } from "./ticket-filters";
-import { LaboratorioSummaryPanel } from "./laboratorio-summary-panel";
+import { LaboratorioPanel } from "./laboratorio-panel";
 
 export function AtendimentosContent() {
   const [viewMode, setViewMode] = useState<"lista" | "kanban" | "calendario">("lista");
@@ -109,9 +109,9 @@ export function AtendimentosContent() {
         onToggle={() => setFiltersOpen(!filtersOpen)}
       />
 
-      {/* Painel resumo do Laboratório (quando o setor Laboratorio é filtrado) */}
+      {/* Painel completo do Laboratório (apenas quando o setor Laboratório é filtrado) */}
       {filters.sector.toLowerCase().includes("laborat") && (
-        <LaboratorioSummaryPanel tickets={filteredTickets} />
+        <LaboratorioPanel tickets={filteredTickets} onOpenTicket={setSelected} />
       )}
 
       {/* KPIs */}

@@ -10,7 +10,6 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as RelatoriosRouteImport } from './routes/relatorios'
-import { Route as LaboratorioRouteImport } from './routes/laboratorio'
 import { Route as EstoqueRouteImport } from './routes/estoque'
 import { Route as EmpresasRouteImport } from './routes/empresas'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -34,11 +33,6 @@ import { Route as ApiPublicZapiWebhookChannelIdRouteImport } from './routes/api.
 const RelatoriosRoute = RelatoriosRouteImport.update({
   id: '/relatorios',
   path: '/relatorios',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const LaboratorioRoute = LaboratorioRouteImport.update({
-  id: '/laboratorio',
-  path: '/laboratorio',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EstoqueRoute = EstoqueRouteImport.update({
@@ -152,7 +146,6 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
-  '/laboratorio': typeof LaboratorioRoute
   '/relatorios': typeof RelatoriosRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
   '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
@@ -174,7 +167,6 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
-  '/laboratorio': typeof LaboratorioRoute
   '/relatorios': typeof RelatoriosRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
   '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
@@ -198,7 +190,6 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
-  '/laboratorio': typeof LaboratorioRoute
   '/relatorios': typeof RelatoriosRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
   '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
@@ -223,7 +214,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/empresas'
     | '/estoque'
-    | '/laboratorio'
     | '/relatorios'
     | '/configuracoes/assistente-ia'
     | '/configuracoes/central-atendimento'
@@ -245,7 +235,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/empresas'
     | '/estoque'
-    | '/laboratorio'
     | '/relatorios'
     | '/configuracoes/assistente-ia'
     | '/configuracoes/central-atendimento'
@@ -268,7 +257,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/empresas'
     | '/estoque'
-    | '/laboratorio'
     | '/relatorios'
     | '/configuracoes/assistente-ia'
     | '/configuracoes/central-atendimento'
@@ -292,7 +280,6 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   EmpresasRoute: typeof EmpresasRoute
   EstoqueRoute: typeof EstoqueRoute
-  LaboratorioRoute: typeof LaboratorioRoute
   RelatoriosRoute: typeof RelatoriosRoute
   HooksRefreshTrackingRoute: typeof HooksRefreshTrackingRoute
   ApiPublicZapiWebhookChannelIdRoute: typeof ApiPublicZapiWebhookChannelIdRoute
@@ -305,13 +292,6 @@ declare module '@tanstack/react-router' {
       path: '/relatorios'
       fullPath: '/relatorios'
       preLoaderRoute: typeof RelatoriosRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/laboratorio': {
-      id: '/laboratorio'
-      path: '/laboratorio'
-      fullPath: '/laboratorio'
-      preLoaderRoute: typeof LaboratorioRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/estoque': {
@@ -486,7 +466,6 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   EmpresasRoute: EmpresasRoute,
   EstoqueRoute: EstoqueRoute,
-  LaboratorioRoute: LaboratorioRoute,
   RelatoriosRoute: RelatoriosRoute,
   HooksRefreshTrackingRoute: HooksRefreshTrackingRoute,
   ApiPublicZapiWebhookChannelIdRoute: ApiPublicZapiWebhookChannelIdRoute,

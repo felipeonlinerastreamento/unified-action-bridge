@@ -1,7 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Building2, Clock, CheckCircle, MessageSquare, User, Layers, Package, MapPin } from "lucide-react";
-import { LiberacaoBadge } from "./laboratorio-summary-panel";
+import { LiberacaoBadge } from "./liberacao-badge";
 
 interface TicketListViewProps {
   tickets: any[];
