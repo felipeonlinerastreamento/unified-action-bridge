@@ -295,7 +295,9 @@ export function applyTicketFilters(tickets: any[], filters: TicketFilters): any[
     }
 
     // Status
-    if (filters.status !== "todos" && t.status !== filters.status) return false;
+    if (filters.status === "abertos_em_andamento") {
+      if (t.status !== "aberto" && t.status !== "em_andamento" && t.status !== "reaberto") return false;
+    } else if (filters.status !== "todos" && t.status !== filters.status) return false;
 
     // Priority
     if (filters.priority !== "todos" && (t.priority || "media") !== filters.priority) return false;
