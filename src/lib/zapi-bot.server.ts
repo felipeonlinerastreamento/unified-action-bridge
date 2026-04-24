@@ -153,7 +153,11 @@ export async function processIncomingForBot(params: ProcessParams): Promise<bool
   } else {
     // Resume: evaluate current node based on incoming response
     const node = flow.nodes.find((n) => n.id === currentNodeId);
-    if (node?.type === "menu" && node.options) {
+    if (!node) {
+      // Orphan state (node id no longer exists in flow) — restart from first node
+      console.warn(`[bot] orphan current_node="${currentNodeId}", restarting flow`);
+      currentNodeId = flow.nodes[0].id;
+    } else if (node.type === "menu" && node.options) {
       const matched = matchMenuOption(node, incomingText);
 
       if (matched) {
@@ -166,7 +170,7 @@ export async function processIncomingForBot(params: ProcessParams): Promise<bool
         await persistOutgoing(chatId, renderText(node.text || "", vars));
         return true;
       }
-    } else if (node?.next) {
+    } else if (node.next) {
       currentNodeId = node.next;
     }
   }
