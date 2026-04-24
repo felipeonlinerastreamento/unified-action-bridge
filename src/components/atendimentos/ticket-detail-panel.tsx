@@ -72,6 +72,19 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   const [syncing, setSyncing] = useState(false);
   const { data: teSettings } = useTesteEquipamentoSettings();
 
+  // Load active sectors for forward dropdown
+  const { data: sectors = [] } = useQuery({
+    queryKey: ["active-sectors"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("sectors")
+        .select("id, name")
+        .eq("is_active", true)
+        .order("name");
+      return data || [];
+    },
+  });
+
   // Get current user
   const { data: currentUser } = useQuery({
     queryKey: ["current-user"],
