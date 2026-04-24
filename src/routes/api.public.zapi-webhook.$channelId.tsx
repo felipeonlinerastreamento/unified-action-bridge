@@ -93,8 +93,12 @@ export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
           return new Response("ok");
         }
 
-        // Incoming/outgoing message
-        if (p.phone) {
+        // Incoming/outgoing message — only process actual message events
+        const eventType = String(p.type || "");
+        const hasContent = !!(p.text?.message || p.image || p.audio || p.video || p.document);
+        const isMessageEvent = MESSAGE_EVENT_TYPES.has(eventType) || (!eventType && hasContent);
+
+        if (p.phone && isMessageEvent) {
           const rawPhone = String(p.phone);
           // WhatsApp groups: raw phone contains "@g.us" or "<creator>-<timestamp>" pattern
           const isGroupMessage = /@g\.us/i.test(rawPhone) || /-\d{8,}/.test(rawPhone);
@@ -107,6 +111,12 @@ export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
             (p.video ? "[vídeo]" : null) ||
             (p.document ? "[documento]" : null) ||
             "";
+
+          // Skip empty events that have no content (status callbacks, presence echoes, etc.)
+          if (!hasContent) {
+            console.log("[zapi-webhook] skipping empty event", { type: eventType, phone });
+            return new Response("ok");
+          }
 
           const mediaUrl =
             p.image?.imageUrl || p.audio?.audioUrl || p.video?.videoUrl || p.document?.documentUrl || null;
