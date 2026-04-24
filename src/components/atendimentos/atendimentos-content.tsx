@@ -109,6 +109,11 @@ export function AtendimentosContent() {
         onToggle={() => setFiltersOpen(!filtersOpen)}
       />
 
+      {/* Painel resumo do Laboratório (quando o setor Laboratorio é filtrado) */}
+      {filters.sector.toLowerCase().includes("laborat") && (
+        <LaboratorioSummaryPanel tickets={filteredTickets} />
+      )}
+
       {/* KPIs */}
       <TicketKpis tickets={filteredTickets} />
 
