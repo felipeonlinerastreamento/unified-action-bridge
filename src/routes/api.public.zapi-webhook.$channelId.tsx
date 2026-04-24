@@ -1,7 +1,9 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
+import { isGroupPhoneIdentifier } from "@/lib/chat-utils";
 import { processIncomingForBot } from "@/lib/zapi-bot.server";
+import { loadZapiChannel, zapiGetGroupName } from "@/lib/zapi.server";
 
 // Z-API webhook payload (loose schema — Z-API sends many event shapes)
 const PayloadSchema = z.object({
@@ -13,6 +15,8 @@ const PayloadSchema = z.object({
   senderPhoto: z.string().nullable().optional(),
   chatName: z.string().nullable().optional(),
   groupName: z.string().nullable().optional(),
+  name: z.string().nullable().optional(),
+  subject: z.string().nullable().optional(),
   participantPhone: z.string().nullable().optional(),
   text: z.object({ message: z.string().optional() }).optional(),
   image: z.object({ imageUrl: z.string().optional(), caption: z.string().optional() }).optional(),
