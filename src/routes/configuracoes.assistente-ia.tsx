@@ -69,8 +69,33 @@ function AssistenteIaConfigPage() {
       .limit(1);
     if (data && data.length > 0) {
       setSystemPrompt(data[0].system_prompt);
+      setIsEnabled((data[0] as any).is_enabled ?? true);
       setConfigId(data[0].id);
     }
+  }
+
+  async function handleToggleEnabled(next: boolean) {
+    if (!configId) {
+      toast.error("Configuração não inicializada");
+      return;
+    }
+    setTogglingEnabled(true);
+    const { data: sess } = await supabase.auth.getSession();
+    const { error } = await supabase
+      .from("ai_assistant_config")
+      .update({
+        is_enabled: next,
+        updated_at: new Date().toISOString(),
+        updated_by: sess.session?.user?.id || null,
+      } as any)
+      .eq("id", configId);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      setIsEnabled(next);
+      toast.success(next ? "Assistente ativado" : "Assistente desativado");
+    }
+    setTogglingEnabled(false);
   }
 
   async function loadDocs() {
