@@ -61,6 +61,25 @@ async function pickLeastLoaded(sectorName: string): Promise<string | null> {
   return (data as string | null) || null;
 }
 
+function matchMenuOption(node: FlowNode, incomingText: string) {
+  if (node.type !== "menu" || !node.options) return null;
+
+  // Normalize incoming text: trim, lowercase, strip common punctuation/brackets/emojis
+  const raw = (incomingText || "").trim().toLowerCase();
+  // Extract first number or first word for matching
+  const numMatch = raw.match(/\d+/);
+  const firstToken = raw.replace(/[\[\]\(\)\.\-\,\!\?\*]/g, " ").trim().split(/\s+/)[0] || "";
+  const candidates = [raw, numMatch?.[0] || "", firstToken].filter(Boolean);
+
+  return (
+    node.options.find((o) => {
+      const key = String(o.key || "").trim().toLowerCase();
+      const label = String(o.label || "").trim().toLowerCase();
+      return candidates.some((c) => c === key) || (label && raw.includes(label));
+    }) || null
+  );
+}
+
 interface ProcessParams {
   channelId: string;
   chatId: string;
@@ -121,28 +140,21 @@ export async function processIncomingForBot(params: ProcessParams): Promise<bool
   // Determine current node
   let currentNodeId = botState.current_node;
   if (!currentNodeId) {
-    // First contact — start at first node
-    currentNodeId = flow.nodes[0].id;
+    // If the state was lost by webhook presence events, still accept a reply to the first menu.
+    const firstNode = flow.nodes[0];
+    const matched = matchMenuOption(firstNode, incomingText);
+    if (matched) {
+      console.log(`[bot] menu fallback match: input="${incomingText}" → key="${matched.key}" → next="${matched.next}"`);
+      currentNodeId = matched.next;
+    } else {
+      // First contact — start at first node
+      currentNodeId = firstNode.id;
+    }
   } else {
     // Resume: evaluate current node based on incoming response
     const node = flow.nodes.find((n) => n.id === currentNodeId);
     if (node?.type === "menu" && node.options) {
-      // Normalize incoming text: trim, lowercase, strip common punctuation/brackets/emojis
-      const raw = (incomingText || "").trim().toLowerCase();
-      // Extract first number or first word for matching
-      const numMatch = raw.match(/\d+/);
-      const firstToken = raw.replace(/[\[\]\(\)\.\-\,\!\?\*]/g, " ").trim().split(/\s+/)[0] || "";
-      const candidates = [
-        raw,
-        numMatch?.[0] || "",
-        firstToken,
-      ].filter(Boolean);
-
-      const matched = node.options.find((o) => {
-        const key = String(o.key || "").trim().toLowerCase();
-        const label = String(o.label || "").trim().toLowerCase();
-        return candidates.some((c) => c === key) || (label && raw.includes(label));
-      });
+      const matched = matchMenuOption(node, incomingText);
 
       if (matched) {
         console.log(`[bot] menu match: input="${incomingText}" → key="${matched.key}" → next="${matched.next}"`);
