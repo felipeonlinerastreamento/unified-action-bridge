@@ -148,7 +148,29 @@ export async function finalizeTicketWithFlow(
       const rule = rules?.[0];
       // Liberação de Equipamento é fluxo interno — nunca sincroniza com GSystem
       const isLiberacao = /libera[cç][aã]o de equipamento/i.test(String(ticket.category || ""));
-      if (rule && rule.target_sector_name) {
+
+      // If ticket already routed to the target sector, skip re-routing
+      // and fall through to standard finalize. This prevents duplicate
+      // GSystem pendência creation and confusing 404 errors when the
+      // user clicks "Finalizar" on an already-routed ticket.
+      const alreadyRouted =
+        rule?.target_sector_name &&
+        String(ticket.sector || "").toLowerCase() ===
+          String(rule.target_sector_name).toLowerCase();
+
+      // Check if a pendência already exists for this ticket
+      let pendenciaAlreadyExists = false;
+      if (rule?.auto_create_ticket && !isLiberacao) {
+        const { data: existingLink } = await supabase
+          .from("entity_links")
+          .select("external_id")
+          .eq("entity_type", "pendencia")
+          .eq("local_id", String(ticket.id))
+          .maybeSingle();
+        pendenciaAlreadyExists = Boolean(existingLink?.external_id);
+      }
+
+      if (rule && rule.target_sector_name && !alreadyRouted) {
         const targetSector = rule.target_sector_name;
         const targetStatus = "aberto" as const;
         const { error } = await supabase
@@ -178,7 +200,7 @@ export async function finalizeTicketWithFlow(
         let syncedToGsystem = false;
         let pendenciaKey: string | null = null;
         let syncError: string | null = null;
-        if (rule.auto_create_ticket && !isLiberacao) {
+        if (rule.auto_create_ticket && !isLiberacao && !pendenciaAlreadyExists) {
           try {
             const res = await syncTicketToGsystem({ data: { ticketId: ticket.id } });
             if ((res as any)?.ok) {
@@ -196,6 +218,9 @@ export async function finalizeTicketWithFlow(
           } catch (e: any) {
             syncError = e?.message || String(e);
           }
+        } else if (pendenciaAlreadyExists) {
+          // Pendência já foi criada anteriormente — não duplicar
+          syncedToGsystem = true;
         }
 
         return {
