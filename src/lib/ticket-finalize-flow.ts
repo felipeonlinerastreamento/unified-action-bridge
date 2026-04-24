@@ -146,6 +146,8 @@ export async function finalizeTicketWithFlow(
         .eq("is_active", true)
         .or(`category_key.eq.${ticket.category},category_label.eq.${ticket.category}`);
       const rule = rules?.[0];
+      // Liberação de Equipamento é fluxo interno — nunca sincroniza com GSystem
+      const isLiberacao = /libera[cç][aã]o de equipamento/i.test(String(ticket.category || ""));
       if (rule && rule.target_sector_name) {
         const targetSector = rule.target_sector_name;
         const targetStatus = "aberto" as const;
@@ -176,7 +178,7 @@ export async function finalizeTicketWithFlow(
         let syncedToGsystem = false;
         let pendenciaKey: string | null = null;
         let syncError: string | null = null;
-        if (rule.auto_create_ticket) {
+        if (rule.auto_create_ticket && !isLiberacao) {
           try {
             const res = await syncTicketToGsystem({ data: { ticketId: ticket.id } });
             if ((res as any)?.ok) {
