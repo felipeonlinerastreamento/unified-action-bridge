@@ -464,7 +464,42 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
                 ? (profiles.find((p) => p.user_id === ticket.assigned_to)?.name || "Atribuído")
                 : null
             } />
-            <DetailRow label="Categoria" value={ticket.category} />
+            <div className="flex gap-2 text-sm items-start">
+              <span className="font-medium text-muted-foreground min-w-[120px] pt-1.5">Categoria:</span>
+              <div className="flex-1 min-w-0">
+                {editingCategory ? (
+                  <div className="flex gap-1 items-center">
+                    <Select value={categoryDraft} onValueChange={setCategoryDraft} disabled={tiposLoading || savingCategory}>
+                      <SelectTrigger className="h-8 text-xs">
+                        <SelectValue placeholder={tiposLoading ? "Carregando..." : "Selecione..."} />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {tiposPendencia.length === 0 && !tiposLoading ? (
+                          <div className="px-2 py-1.5 text-xs text-muted-foreground">Nenhuma categoria encontrada.</div>
+                        ) : (
+                          tiposPendencia.map((t: any) => (
+                            <SelectItem key={t.Key} value={t.Descricao}>{t.Descricao}</SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={saveCategory} disabled={savingCategory}>
+                      <Check className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={cancelEditCategory} disabled={savingCategory}>
+                      <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-1 group">
+                    <span className="break-all">{ticket.category || "—"}</span>
+                    <Button size="icon" variant="ghost" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={startEditCategory}>
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
             <DetailRow label="Observações" value={ticket.notes} />
             <DetailRow label="Criado em" value={ticket.created_at ? new Date(ticket.created_at).toLocaleString("pt-BR") : null} />
             <DetailRow label="Finalizado em" value={ticket.closed_at ? new Date(ticket.closed_at).toLocaleString("pt-BR") : null} />
