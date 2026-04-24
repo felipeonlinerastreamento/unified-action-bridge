@@ -40,7 +40,7 @@ export interface TicketFilters {
 
 export const defaultFilters: TicketFilters = {
   search: "",
-  status: "todos",
+  status: "abertos_em_andamento",
   priority: "todos",
   category: "todos",
   sector: "todos",
@@ -62,6 +62,7 @@ interface Props {
 
 const STATUS_OPTIONS = [
   { value: "todos", label: "Todos" },
+  { value: "abertos_em_andamento", label: "Aberto + Em Andamento" },
   { value: "aberto", label: "Aberto" },
   { value: "em_andamento", label: "Em Andamento" },
   { value: "finalizado", label: "Finalizado" },
@@ -118,7 +119,7 @@ export function TicketFiltersBar({ filters, onChange, tickets, profiles, open, o
 
   const activeCount = useMemo(() => {
     let c = 0;
-    if (filters.status !== "todos") c++;
+    if (filters.status !== "todos" && filters.status !== "abertos_em_andamento") c++;
     if (filters.priority !== "todos") c++;
     if (filters.category !== "todos") c++;
     if (filters.sector !== "todos") c++;
@@ -294,7 +295,9 @@ export function applyTicketFilters(tickets: any[], filters: TicketFilters): any[
     }
 
     // Status
-    if (filters.status !== "todos" && t.status !== filters.status) return false;
+    if (filters.status === "abertos_em_andamento") {
+      if (t.status !== "aberto" && t.status !== "em_andamento" && t.status !== "reaberto") return false;
+    } else if (filters.status !== "todos" && t.status !== filters.status) return false;
 
     // Priority
     if (filters.priority !== "todos" && (t.priority || "media") !== filters.priority) return false;
