@@ -106,6 +106,12 @@ import {
   type TesteEquipamentoData,
 } from "@/hooks/use-teste-equipamento-settings";
 import { TesteEquipamentoFields } from "@/components/atendimentos/teste-equipamento-fields";
+import {
+  LiberacaoEquipamentoFields,
+  validateLiberacaoItems,
+  type LiberacaoLineItem,
+} from "@/components/atendimentos/liberacao-equipamento-fields";
+import { isLiberacaoCategory } from "@/hooks/use-liberacao-equipamento";
 import { finalizeTicketWithFlow } from "@/lib/ticket-finalize-flow";
 import {
   AlertDialog,
@@ -239,6 +245,9 @@ function CentralPage() {
   const [finalizeTipoPendencia, setFinalizeTipoPendencia] = useState<string>("");
   const [showTeDialog, setShowTeDialog] = useState(false);
   const [teData, setTeData] = useState<TesteEquipamentoData>(EMPTY_TESTE_EQUIPAMENTO);
+  const [showLiberacaoDialog, setShowLiberacaoDialog] = useState(false);
+  const [liberacaoItems, setLiberacaoItems] = useState<LiberacaoLineItem[]>([]);
+  const [liberacaoDate, setLiberacaoDate] = useState<string>("");
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [transferSectorId, setTransferSectorId] = useState<string>("");
   const [transferUserId, setTransferUserId] = useState<string>("");
