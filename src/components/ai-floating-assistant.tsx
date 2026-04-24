@@ -28,6 +28,7 @@ export function AiFloatingAssistant() {
   const [messages, setMessages] = useState<AiMessage[]>([]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [isEnabled, setIsEnabled] = useState<boolean | null>(null);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
   // Drag state
@@ -36,6 +37,35 @@ export function AiFloatingAssistant() {
   const dragOffset = useRef({ x: 0, y: 0 });
   const windowRef = useRef<HTMLDivElement>(null);
   const initialized = useRef(false);
+
+  // Load enabled flag and subscribe to changes
+  useEffect(() => {
+    let active = true;
+    async function load() {
+      const { data } = await supabase
+        .from("ai_assistant_config")
+        .select("is_enabled")
+        .limit(1)
+        .maybeSingle();
+      if (active) setIsEnabled(((data as any)?.is_enabled ?? true) as boolean);
+    }
+    load();
+    const channel = supabase
+      .channel("ai-assistant-config-flag")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "ai_assistant_config" },
+        (payload: any) => {
+          const next = payload?.new?.is_enabled;
+          if (typeof next === "boolean") setIsEnabled(next);
+        }
+      )
+      .subscribe();
+    return () => {
+      active = false;
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   // Initialize position on first open
   useEffect(() => {
