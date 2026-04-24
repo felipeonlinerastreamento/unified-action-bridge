@@ -36,6 +36,7 @@ import { TicketReminderSection } from "./ticket-reminder-section";
 import { TicketAgentsSection } from "./ticket-agents-section";
 import { TicketTrackingSection } from "./ticket-tracking-section";
 import { TicketLiberacaoSection } from "./ticket-liberacao-section";
+import { TicketAttachmentsSection } from "./ticket-attachments-section";
 import {
   useTesteEquipamentoSettings,
   isTesteEquipamentoCategory,
