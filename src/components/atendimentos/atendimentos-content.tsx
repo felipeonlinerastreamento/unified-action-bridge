@@ -114,8 +114,8 @@ export function AtendimentosContent() {
         <LaboratorioPanel tickets={filteredTickets} onOpenTicket={setSelected} />
       )}
 
-      {/* KPIs */}
-      <TicketKpis tickets={filteredTickets} />
+      {/* KPIs — usar lista completa para que "Finalizados Hoje" não fique zerado quando o filtro padrão exclui finalizados */}
+      <TicketKpis tickets={tickets} />
 
       {/* View mode tabs */}
       <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)}>
