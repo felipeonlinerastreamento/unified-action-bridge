@@ -1,6 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Building2, Clock, CheckCircle, MessageSquare, User, Layers, Package, MapPin } from "lucide-react";
+import { LiberacaoBadge } from "./laboratorio-summary-panel";
 
 interface TicketListViewProps {
   tickets: any[];
@@ -59,6 +60,7 @@ export function TicketListView({ tickets, onSelect, profiles = [] }: TicketListV
                   {t.category && <Badge className="text-xs bg-violet-600 text-white">{t.category}</Badge>}
                   {getStatusBadge(t.status)}
                   {getPriorityBadge(t.priority || "media")}
+                  <LiberacaoBadge ticket={t} />
                 </div>
                 <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
                   {t.companies?.name && (
