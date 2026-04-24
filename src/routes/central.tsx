@@ -282,6 +282,36 @@ function CentralPage() {
   const [aiMessages, setAiMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
   const [aiInput, setAiInput] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiEnabled, setAiEnabled] = useState<boolean>(true);
+
+  // Load AI assistant enabled flag and subscribe to realtime changes,
+  // so we can hide the IA panel and skip API calls when disabled.
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const { data } = await supabase
+        .from("ai_assistant_config")
+        .select("is_enabled")
+        .limit(1)
+        .maybeSingle();
+      if (active) setAiEnabled(((data as any)?.is_enabled ?? true) as boolean);
+    })();
+    const channel = supabase
+      .channel("central-ai-assistant-flag")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "ai_assistant_config" },
+        (payload: any) => {
+          const next = payload?.new?.is_enabled;
+          if (typeof next === "boolean") setAiEnabled(next);
+        }
+      )
+      .subscribe();
+    return () => {
+      active = false;
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   // Load channels from DB
   const { data: channels = [] } = useQuery({
@@ -1416,6 +1446,11 @@ function CentralPage() {
   const handleAiSend = async (autoMessage?: string) => {
     const msg = autoMessage || aiInput.trim();
     if (!msg || aiLoading) return;
+    if (!aiEnabled) {
+      // Assistant is disabled in admin settings — silently skip to avoid
+      // the recurring "Assistente desativado" toast on every chat open.
+      return;
+    }
     const userMsg = { role: "user" as const, content: msg };
     const newMsgs = [...aiMessages, userMsg];
     setAiMessages(newMsgs);
@@ -1496,13 +1531,14 @@ function CentralPage() {
       selectedChatId &&
       messages.length > 0 &&
       !aiLoading &&
+      aiEnabled &&
       lastAutoAnalyzedChat.current !== selectedChatId
     ) {
       lastAutoAnalyzedChat.current = selectedChatId;
       setAiMessages([]);
       handleAiSend("Analise a conversa atual e dê instruções diretas sobre como o operador deve proceder agora.");
     }
-  }, [selectedChatId, messages.length > 0]);
+  }, [selectedChatId, messages.length > 0, aiEnabled]);
 
   const serviceTimeMinutes = chatDetail?.utcDhStartChat
     ? Math.round((Date.now() - new Date(chatDetail.utcDhStartChat).getTime()) / 60000)
@@ -2077,9 +2113,11 @@ function CentralPage() {
                     <TabsTrigger value="historico" className="flex-1 text-xs">
                       <History className="h-3 w-3 mr-1" /> Histórico
                     </TabsTrigger>
-                    <TabsTrigger value="ia" className="flex-1 text-xs">
-                      <Bot className="h-3 w-3 mr-1" /> Supervisor IA
-                    </TabsTrigger>
+                    {aiEnabled && (
+                      <TabsTrigger value="ia" className="flex-1 text-xs">
+                        <Bot className="h-3 w-3 mr-1" /> Supervisor IA
+                      </TabsTrigger>
+                    )}
                   </TabsList>
 
                   {/* Empresa Tab */}
