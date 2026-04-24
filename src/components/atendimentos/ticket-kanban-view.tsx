@@ -7,6 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useTesteEquipamentoSettings } from "@/hooks/use-teste-equipamento-settings";
 import { finalizeTicketWithFlow } from "@/lib/ticket-finalize-flow";
+import { LiberacaoBadge } from "./laboratorio-summary-panel";
 
 interface TicketKanbanViewProps {
   tickets: any[];
@@ -164,6 +165,7 @@ export function TicketKanbanView({ tickets, onSelect, onRefetch }: TicketKanbanV
                         ? new Date(t.last_comment_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
                         : "Sem interações"}
                     </span>
+                    <LiberacaoBadge ticket={t} />
                   </CardContent>
                 </Card>
               ))}

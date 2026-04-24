@@ -13,6 +13,7 @@ import { TicketDetailPanel } from "./ticket-detail-panel";
 import { TicketCreateDialog } from "./ticket-create-dialog";
 import { TicketReminderNotifications } from "./ticket-reminder-notifications";
 import { TicketFiltersBar, applyTicketFilters, defaultFilters, type TicketFilters } from "./ticket-filters";
+import { LaboratorioSummaryPanel } from "./laboratorio-summary-panel";
 
 export function AtendimentosContent() {
   const [viewMode, setViewMode] = useState<"lista" | "kanban" | "calendario">("lista");
@@ -33,6 +34,7 @@ export function AtendimentosContent() {
       // Buscar último comentário por ticket
       const ids = list.map((t: any) => t.id);
       const lastByTicket: Record<string, string> = {};
+      const liberacaoByTicket: Record<string, any[]> = {};
       if (ids.length > 0) {
         const { data: comments } = await supabase
           .from("ticket_comments")
@@ -42,8 +44,22 @@ export function AtendimentosContent() {
         for (const c of comments || []) {
           if (!lastByTicket[c.ticket_id]) lastByTicket[c.ticket_id] = c.created_at;
         }
+
+        // Buscar itens de liberação dos tickets em lote
+        const { data: libItems } = await supabase
+          .from("ticket_liberacao_items" as any)
+          .select("ticket_id, status, quantity, item_name, liberado_at")
+          .in("ticket_id", ids);
+        for (const it of (libItems as any[]) || []) {
+          if (!liberacaoByTicket[it.ticket_id]) liberacaoByTicket[it.ticket_id] = [];
+          liberacaoByTicket[it.ticket_id].push(it);
+        }
       }
-      return list.map((t: any) => ({ ...t, last_comment_at: lastByTicket[t.id] || null }));
+      return list.map((t: any) => ({
+        ...t,
+        last_comment_at: lastByTicket[t.id] || null,
+        liberacao_items: liberacaoByTicket[t.id] || [],
+      }));
     },
     refetchInterval: 30000,
   });
@@ -92,6 +108,11 @@ export function AtendimentosContent() {
         open={filtersOpen}
         onToggle={() => setFiltersOpen(!filtersOpen)}
       />
+
+      {/* Painel resumo do Laboratório (quando o setor Laboratorio é filtrado) */}
+      {filters.sector.toLowerCase().includes("laborat") && (
+        <LaboratorioSummaryPanel tickets={filteredTickets} />
+      )}
 
       {/* KPIs */}
       <TicketKpis tickets={filteredTickets} />
