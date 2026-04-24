@@ -543,16 +543,23 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
             <div className="space-y-2">
               <label className="text-xs font-medium text-muted-foreground">Encaminhar para Setor</label>
               <div className="flex gap-2">
-                <Input
-                  placeholder="Nome do setor"
-                  value={forwardSector}
-                  onChange={(e) => setForwardSector(e.target.value)}
-                  className="h-9"
-                />
+                <Select value={forwardSector} onValueChange={setForwardSector}>
+                  <SelectTrigger className="h-9 flex-1">
+                    <SelectValue placeholder="Selecionar setor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sectors.map((s: any) => (
+                      <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
                 <Button size="sm" onClick={forwardToSector} disabled={!forwardSector.trim()}>
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </div>
+              <p className="text-[10px] text-muted-foreground">
+                O ticket será atribuído automaticamente ao atendente do setor com menor número de chamados ativos.
+              </p>
             </div>
 
             {/* Linked agents */}
