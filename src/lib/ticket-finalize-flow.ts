@@ -200,7 +200,7 @@ export async function finalizeTicketWithFlow(
         let syncedToGsystem = false;
         let pendenciaKey: string | null = null;
         let syncError: string | null = null;
-        if (rule.auto_create_ticket && !isLiberacao) {
+        if (rule.auto_create_ticket && !isLiberacao && !pendenciaAlreadyExists) {
           try {
             const res = await syncTicketToGsystem({ data: { ticketId: ticket.id } });
             if ((res as any)?.ok) {
@@ -218,6 +218,9 @@ export async function finalizeTicketWithFlow(
           } catch (e: any) {
             syncError = e?.message || String(e);
           }
+        } else if (pendenciaAlreadyExists) {
+          // Pendência já foi criada anteriormente — não duplicar
+          syncedToGsystem = true;
         }
 
         return {
