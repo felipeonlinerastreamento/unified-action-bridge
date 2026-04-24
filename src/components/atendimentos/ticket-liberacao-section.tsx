@@ -151,6 +151,8 @@ export function TicketLiberacaoSection({ ticket, userId, onRefetch }: TicketLibe
   const pendentes = items.filter((i) => i.status === "pendente").length;
   const liberados = items.filter((i) => i.status === "liberado").length;
 
+  if (!isLiberacao) return null;
+
   return (
     <Card className="p-3 space-y-3 border-primary/30 bg-primary/5">
       <div className="flex items-center justify-between gap-2">
