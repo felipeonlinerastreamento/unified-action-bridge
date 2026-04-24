@@ -898,6 +898,33 @@ export type Database = {
           },
         ]
       }
+      liberacao_equipamento_items: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
           created_at: string
@@ -1179,6 +1206,7 @@ export type Database = {
           contact_phone: string | null
           created_at: string
           id: string
+          liberacao_date: string | null
           notes: string | null
           opened_by: string | null
           pendencia_key: string | null
@@ -1203,6 +1231,7 @@ export type Database = {
           contact_phone?: string | null
           created_at?: string
           id?: string
+          liberacao_date?: string | null
           notes?: string | null
           opened_by?: string | null
           pendencia_key?: string | null
@@ -1227,6 +1256,7 @@ export type Database = {
           contact_phone?: string | null
           created_at?: string
           id?: string
+          liberacao_date?: string | null
           notes?: string | null
           opened_by?: string | null
           pendencia_key?: string | null
@@ -1447,6 +1477,60 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "ticket_comments_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "service_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ticket_liberacao_items: {
+        Row: {
+          created_at: string
+          id: string
+          item_id: string | null
+          item_name: string
+          liberado_at: string | null
+          liberado_by: string | null
+          quantity: number
+          status: string
+          ticket_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          item_id?: string | null
+          item_name: string
+          liberado_at?: string | null
+          liberado_by?: string | null
+          quantity?: number
+          status?: string
+          ticket_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          item_id?: string | null
+          item_name?: string
+          liberado_at?: string | null
+          liberado_by?: string | null
+          quantity?: number
+          status?: string
+          ticket_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_liberacao_items_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "liberacao_equipamento_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_liberacao_items_ticket_id_fkey"
             columns: ["ticket_id"]
             isOneToOne: false
             referencedRelation: "service_tickets"
