@@ -149,11 +149,21 @@ export async function finalizeTicketWithFlow(
       // Liberação de Equipamento é fluxo interno — nunca sincroniza com GSystem
       const isLiberacao = /libera[cç][aã]o de equipamento/i.test(String(ticket.category || ""));
 
-      // If ticket already routed to the target sector, skip re-routing
-      // and fall through to standard finalize. This prevents duplicate
-      // GSystem pendência creation and confusing 404 errors when the
-      // user clicks "Finalizar" on an already-routed ticket.
-      const ticketSectorNorm = String(ticket.sector || "").trim().toLowerCase();
+      // Re-fetch the live sector from DB to avoid using stale prop data.
+      // This prevents re-routing a ticket that is already in the target sector.
+      let liveSector: string | null = ticket.sector ?? null;
+      try {
+        const { data: fresh } = await supabase
+          .from("service_tickets")
+          .select("sector")
+          .eq("id", ticket.id)
+          .maybeSingle();
+        if (fresh?.sector !== undefined) liveSector = fresh.sector;
+      } catch {
+        // ignore — fall back to prop value
+      }
+
+      const ticketSectorNorm = String(liveSector || "").trim().toLowerCase();
       const ruleSectorNorm = String(rule?.target_sector_name || "").trim().toLowerCase();
       const alreadyRouted = Boolean(
         ruleSectorNorm && ticketSectorNorm && ticketSectorNorm === ruleSectorNorm
@@ -161,7 +171,8 @@ export async function finalizeTicketWithFlow(
       console.log("[finalize-flow] routing check", {
         ticketId: ticket.id,
         category: ticket.category,
-        ticketSector: ticket.sector,
+        propSector: ticket.sector,
+        liveSector,
         ruleTargetSector: rule?.target_sector_name,
         alreadyRouted,
         ruleFound: Boolean(rule),
