@@ -146,15 +146,40 @@ export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
               .single();
             chatId = created?.id;
           } else if (existing) {
+            // Reopen finalized chats when the customer sends a NEW message.
+            // Without this, all incoming messages were silently swallowed by
+            // the bot's "if status === 'finalizado' return false" guard,
+            // making it look like new conversations were not appearing.
+            const shouldReopen =
+              !p.fromMe && existing.status === "finalizado";
+            const baseUpdate: {
+              contact_name: string | null;
+              contact_avatar?: string;
+              last_message_at: string;
+              last_message_preview: string;
+              unread_count: number;
+              status?: string;
+              bot_state?: Record<string, never>;
+              assigned_to?: null;
+              sector_name?: null;
+            } = {
+              contact_name: existing.contact_name || p.senderName || null,
+              contact_avatar: p.senderPhoto || undefined,
+              last_message_at: new Date().toISOString(),
+              last_message_preview: text.slice(0, 120),
+              unread_count: p.fromMe
+                ? (existing.unread_count || 0)
+                : ((existing.unread_count || 0) + 1),
+            };
+            if (shouldReopen) {
+              baseUpdate.status = "bot";
+              baseUpdate.bot_state = {};
+              baseUpdate.assigned_to = null;
+              baseUpdate.sector_name = null;
+            }
             await supabaseAdmin
               .from("zapi_chats")
-              .update({
-                contact_name: existing.contact_name || p.senderName || null,
-                contact_avatar: p.senderPhoto || undefined,
-                last_message_at: new Date().toISOString(),
-                last_message_preview: text.slice(0, 120),
-                unread_count: p.fromMe ? (existing.unread_count || 0) : ((existing.unread_count || 0) + 1),
-              })
+              .update(baseUpdate)
               .eq("id", chatId!);
           }
 
