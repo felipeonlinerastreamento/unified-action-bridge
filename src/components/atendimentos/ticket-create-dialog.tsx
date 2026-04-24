@@ -251,6 +251,18 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
         return;
       }
     }
+    // Validate Liberação de Equipamento
+    if (isLiberacao) {
+      const err = validateLiberacaoItems(liberacaoItems);
+      if (err) {
+        toast.error(err);
+        return;
+      }
+      if (!liberacaoDate) {
+        toast.error("Informe a data de liberação.");
+        return;
+      }
+    }
     setLoading(true);
     try {
       const companyId = await ensureLocalCompany(selectedCliente);
@@ -272,7 +284,10 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
         sector: sectorName,
         status: "aberto",
         tracking_code: trackCodeClean,
-      }).select("id").single();
+        ...(isLiberacao && liberacaoDate
+          ? { liberacao_date: new Date(liberacaoDate).toISOString() }
+          : {}),
+      } as any).select("id").single();
 
       if (error) {
         toast.error("Erro ao criar ticket");
@@ -286,6 +301,24 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
           tracking_code: trackCodeClean,
           carrier: "correios",
         });
+      }
+
+      // Insert liberação items
+      if (created?.id && isLiberacao && liberacaoItems.length > 0) {
+        const rows = liberacaoItems.map((it) => ({
+          ticket_id: created.id,
+          item_id: it.item_id,
+          item_name: it.item_name,
+          quantity: it.quantity,
+          status: "pendente" as const,
+        }));
+        const { error: itemsErr } = await supabase
+          .from("ticket_liberacao_items" as any)
+          .insert(rows);
+        if (itemsErr) {
+          console.error("Erro ao salvar itens de liberação", itemsErr);
+          toast.error("Ticket criado, mas falhou ao salvar itens de liberação.");
+        }
       }
 
       toast.success("Ticket criado com sucesso");
