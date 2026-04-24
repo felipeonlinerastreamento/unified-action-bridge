@@ -89,11 +89,46 @@ function DashboardPage() {
     enabled: isAuthenticated,
   });
 
+  // Lab released equipment (last 30 days window covers 7d + today + total)
+  const { data: labLiberacoes = [] } = useQuery({
+    queryKey: ["dashboard-lab-liberacao"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("ticket_liberacao_items")
+        .select("id, item_name, quantity, status, liberado_at, liberado_by, ticket_id, service_tickets!inner(sector, contact_name, plate)")
+        .eq("status", "liberado")
+        .ilike("service_tickets.sector", "%laborat%")
+        .order("liberado_at", { ascending: false });
+      return data || [];
+    },
+    enabled: isAuthenticated,
+    refetchInterval: 30000,
+  });
+
   const tickets = ticketStats || [];
   const inventory = inventoryStats || [];
 
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const sevenDaysAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+  // Lab liberation aggregations (sum quantities, not row count)
+  const labStats = useMemo(() => {
+    let qtyToday = 0;
+    let qty7d = 0;
+    let qtyTotal = 0;
+    for (const r of labLiberacoes) {
+      const q = r.quantity || 1;
+      qtyTotal += q;
+      if (r.liberado_at) {
+        const d = new Date(r.liberado_at);
+        if (d >= sevenDaysAgo) qty7d += q;
+        if (d >= today) qtyToday += q;
+      }
+    }
+    return { qtyToday, qty7d, qtyTotal };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [labLiberacoes]);
 
   const openTickets = tickets.filter((t) => t.status === "aberto");
   const inProgressTickets = tickets.filter((t) => t.status === "em_andamento");
