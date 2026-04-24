@@ -567,6 +567,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
 
             <TicketTrackingSection ticketId={ticket.id} trackingCode={ticket.tracking_code || null} />
             <TicketLiberacaoSection ticket={ticket} userId={userId} onRefetch={onRefetch} />
+            <TicketAttachmentsSection ticketId={ticket.id} userId={userId} />
           </TabsContent>
 
           <TabsContent value="comentarios" className="mt-3 space-y-3">
