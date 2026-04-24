@@ -67,3 +67,42 @@ export async function zapiSendText(channel: ZapiChannelCreds, phone: string, mes
 export async function zapiGetStatus(channel: ZapiChannelCreds) {
   return zapiFetch(channel, "/status", "GET");
 }
+
+function extractGroupName(payload: any): string | null {
+  const candidates = [
+    payload?.name,
+    payload?.groupName,
+    payload?.subject,
+    payload?.chatName,
+    payload?.group?.name,
+    payload?.group?.subject,
+    payload?.data?.name,
+    payload?.data?.groupName,
+    payload?.data?.subject,
+  ];
+
+  const name = candidates.find((value) => typeof value === "string" && value.trim().length > 0);
+  return name ? name.trim() : null;
+}
+
+export async function zapiGetGroupName(channel: ZapiChannelCreds, groupPhone: string): Promise<string | null> {
+  const groupId = groupPhone.includes("@g.us") ? groupPhone : `${groupPhone}@g.us`;
+  const paths = [
+    `/group-metadata/${encodeURIComponent(groupId)}`,
+    `/group-metadata/${encodeURIComponent(groupPhone)}`,
+    `/groups/${encodeURIComponent(groupId)}`,
+    `/groups/${encodeURIComponent(groupPhone)}`,
+  ];
+
+  for (const path of paths) {
+    try {
+      const payload = await zapiFetch(channel, path, "GET");
+      const name = extractGroupName(payload);
+      if (name) return name;
+    } catch (error) {
+      console.warn(`[zapi] cannot fetch group name via ${path}`, error);
+    }
+  }
+
+  return null;
+}

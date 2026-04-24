@@ -13,12 +13,20 @@ export interface GroupishChat {
   description?: string;
 }
 
+export function isGroupPhoneIdentifier(value: string | null | undefined): boolean {
+  const raw = value || "";
+  if (/@g\.us/i.test(raw)) return true;
+  if (/-\d{8,}/.test(raw)) return true;
+
+  const phone = raw.replace(/\D/g, "");
+  return phone.length > 15;
+}
+
 export function isGroupChat(chat: GroupishChat | null | undefined): boolean {
   if (!chat) return false;
 
   const raw = `${chat.contact?.number ?? ""} ${chat.contact?.secondaryName ?? ""} ${chat.channel?.identifier ?? ""}`;
-  if (/@g\.us/i.test(raw)) return true;
-  if (/-\d{8,}/.test(raw)) return true; // "<phone>-<timestamp>" pattern
+  if (isGroupPhoneIdentifier(raw)) return true;
 
   const phone = (chat.contact?.number || chat.contact?.secondaryName || "").replace(/\D/g, "");
   if (phone.length > 15) return true;
