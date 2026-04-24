@@ -282,6 +282,36 @@ function CentralPage() {
   const [aiMessages, setAiMessages] = useState<{ role: "user" | "assistant"; content: string }[]>([]);
   const [aiInput, setAiInput] = useState("");
   const [aiLoading, setAiLoading] = useState(false);
+  const [aiEnabled, setAiEnabled] = useState<boolean>(true);
+
+  // Load AI assistant enabled flag and subscribe to realtime changes,
+  // so we can hide the IA panel and skip API calls when disabled.
+  useEffect(() => {
+    let active = true;
+    (async () => {
+      const { data } = await supabase
+        .from("ai_assistant_config")
+        .select("is_enabled")
+        .limit(1)
+        .maybeSingle();
+      if (active) setAiEnabled(((data as any)?.is_enabled ?? true) as boolean);
+    })();
+    const channel = supabase
+      .channel("central-ai-assistant-flag")
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "ai_assistant_config" },
+        (payload: any) => {
+          const next = payload?.new?.is_enabled;
+          if (typeof next === "boolean") setAiEnabled(next);
+        }
+      )
+      .subscribe();
+    return () => {
+      active = false;
+      supabase.removeChannel(channel);
+    };
+  }, []);
 
   // Load channels from DB
   const { data: channels = [] } = useQuery({
