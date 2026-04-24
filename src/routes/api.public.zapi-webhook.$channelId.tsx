@@ -9,8 +9,8 @@ const PayloadSchema = z.object({
   phone: z.string().optional(),
   fromMe: z.boolean().optional(),
   messageId: z.string().optional(),
-  senderName: z.string().optional(),
-  senderPhoto: z.string().optional(),
+  senderName: z.string().nullable().optional(),
+  senderPhoto: z.string().nullable().optional(),
   text: z.object({ message: z.string().optional() }).optional(),
   image: z.object({ imageUrl: z.string().optional(), caption: z.string().optional() }).optional(),
   audio: z.object({ audioUrl: z.string().optional() }).optional(),
@@ -19,6 +19,14 @@ const PayloadSchema = z.object({
   status: z.string().optional(),
   ids: z.array(z.string()).optional(),
 }).passthrough();
+
+// Z-API event types that carry actual message content
+const MESSAGE_EVENT_TYPES = new Set([
+  "ReceivedCallback",
+  "SentCallback",
+  "MessageReceivedCallback",
+  "MessageSentCallback",
+]);
 
 export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
   server: {
