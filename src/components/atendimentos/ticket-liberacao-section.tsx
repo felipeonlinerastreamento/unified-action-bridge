@@ -30,7 +30,7 @@ interface TicketLiberacaoSectionProps {
 export function TicketLiberacaoSection({ ticket, userId, onRefetch }: TicketLiberacaoSectionProps) {
   const qc = useQueryClient();
   const isLiberacao = isLiberacaoCategory(ticket?.category);
-  const { data: items = [], refetch } = useTicketLiberacaoItems(ticket?.id);
+  const { data: items = [], refetch } = useTicketLiberacaoItems(isLiberacao ? ticket?.id : null);
   const { data: catalog = [] } = useLiberacaoCatalog(isLiberacao);
   const [liberacaoDate, setLiberacaoDate] = useState<string>(
     ticket?.liberacao_date ? String(ticket.liberacao_date).slice(0, 10) : ""
@@ -39,8 +39,6 @@ export function TicketLiberacaoSection({ ticket, userId, onRefetch }: TicketLibe
   const [adding, setAdding] = useState(false);
   const [newItemId, setNewItemId] = useState<string>("");
   const [newQty, setNewQty] = useState(1);
-
-  if (!isLiberacao) return null;
 
   const liberar = useMutation({
     mutationFn: async (item: any) => {
