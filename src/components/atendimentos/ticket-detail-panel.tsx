@@ -290,24 +290,57 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
 
   const forwardToSector = async () => {
     if (!forwardSector.trim() || !ticket?.id) return;
+
+    // Pick least loaded agent in the sector
+    let assignedAgentId: string | null = null;
+    let assignedAgentName = "";
+    try {
+      const { data: agentId } = await supabase.rpc("pick_least_loaded_agent", {
+        _sector: forwardSector,
+      });
+      if (agentId) {
+        assignedAgentId = agentId as string;
+        const profile = profiles.find((p) => p.user_id === assignedAgentId);
+        assignedAgentName = profile?.name || "atendente";
+      }
+    } catch (e) {
+      console.error("Error picking least loaded agent:", e);
+    }
+
+    const updatePayload: any = {
+      sector: forwardSector,
+      updated_at: new Date().toISOString(),
+    };
+    if (assignedAgentId) updatePayload.assigned_to = assignedAgentId;
+
     const { error } = await supabase
       .from("service_tickets")
-      .update({ sector: forwardSector, updated_at: new Date().toISOString() })
+      .update(updatePayload)
       .eq("id", ticket.id);
     if (error) {
       toast.error("Erro ao encaminhar: " + error.message);
       return;
     }
-    await insertSystemComment(ticket.id, `Encaminhado para setor: ${forwardSector}`, "encaminhamento");
+
+    const commentMsg = assignedAgentId
+      ? `Encaminhado para setor: ${forwardSector} → atribuído a ${assignedAgentName} (menor carga)`
+      : `Encaminhado para setor: ${forwardSector} (sem atendente disponível para atribuição automática)`;
+    await insertSystemComment(ticket.id, commentMsg, "encaminhamento");
+
     await supabase.from("ticket_assignments").insert({
       ticket_id: ticket.id,
       assigned_by: userId,
+      assigned_to: assignedAgentId,
       sector_name: forwardSector,
     });
     setForwardSector("");
     refetchComments();
     onRefetch();
-    toast.success("Encaminhado para setor");
+    toast.success(
+      assignedAgentId
+        ? `Encaminhado para ${forwardSector} → ${assignedAgentName}`
+        : `Encaminhado para ${forwardSector}`
+    );
   };
 
   const forwardToUser = async () => {
