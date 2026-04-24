@@ -28,7 +28,7 @@ export const listAllOpenChats = createServerFn({ method: "POST" })
   .inputValidator(z.object({ channelId: z.string().uuid() }).parse)
   .handler(async ({ data, context }) => {
     try {
-      const { data: rows, error } = await context.supabase
+      const { data: activeRows, error } = await context.supabase
         .from("zapi_chats")
         .select("*")
         .eq("channel_id", data.channelId)
@@ -37,8 +37,51 @@ export const listAllOpenChats = createServerFn({ method: "POST" })
         .limit(200);
       if (error) throw error;
 
+      const cutoff = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+      const { data: finalizedRows, error: finalizedError } = await context.supabase
+        .from("zapi_chats")
+        .select("*")
+        .eq("channel_id", data.channelId)
+        .eq("status", "finalizado")
+        .gte("last_message_at", cutoff)
+        .order("last_message_at", { ascending: false, nullsFirst: false })
+        .limit(100);
+      if (finalizedError) throw finalizedError;
+
+      const reactivatedRows: any[] = [];
+      const finalizedIds = (finalizedRows || []).map((row: any) => row.id);
+      if (finalizedIds.length > 0) {
+        const { data: recentMessages, error: messagesError } = await context.supabase
+          .from("zapi_messages")
+          .select("chat_id, from_me, created_at")
+          .in("chat_id", finalizedIds)
+          .order("created_at", { ascending: false })
+          .limit(500);
+        if (messagesError) throw messagesError;
+
+        const latestByChat = new Map<string, any>();
+        for (const message of recentMessages || []) {
+          if (!latestByChat.has(message.chat_id)) latestByChat.set(message.chat_id, message);
+        }
+
+        for (const row of finalizedRows || []) {
+          const latest = latestByChat.get(row.id);
+          if (latest && latest.from_me === false) {
+            reactivatedRows.push({ ...row, status: "aguardando" });
+          }
+        }
+      }
+
+      const rows = [...(activeRows || []), ...reactivatedRows]
+        .sort((a: any, b: any) => {
+          const aTime = a.last_message_at ? new Date(a.last_message_at).getTime() : 0;
+          const bTime = b.last_message_at ? new Date(b.last_message_at).getTime() : 0;
+          return bTime - aTime;
+        })
+        .slice(0, 200);
+
       // Map to gsystem-like ChatItem shape so the UI continues to work
-      const chats = (rows || []).map((r: any) => {
+      const chats = rows.map((r: any) => {
         const statusMap: Record<string, number> = {
           bot: 0,
           aguardando: 1,
