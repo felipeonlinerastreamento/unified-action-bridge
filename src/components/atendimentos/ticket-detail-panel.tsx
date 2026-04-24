@@ -152,7 +152,49 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
     toast.success("Comentário adicionado");
   };
 
-  const startEdit = (c: any) => {
+  const startEditCategory = () => {
+    setCategoryDraft(ticket?.category || "");
+    setEditingCategory(true);
+  };
+
+  const cancelEditCategory = () => {
+    setEditingCategory(false);
+    setCategoryDraft("");
+  };
+
+  const saveCategory = async () => {
+    if (!ticket?.id) return;
+    const newCategory = categoryDraft.trim() || null;
+    if ((newCategory || "") === (ticket.category || "")) {
+      setEditingCategory(false);
+      return;
+    }
+    setSavingCategory(true);
+    try {
+      const { error } = await supabase
+        .from("service_tickets")
+        .update({ category: newCategory, updated_at: new Date().toISOString() })
+        .eq("id", ticket.id);
+      if (error) {
+        toast.error("Erro ao alterar categoria: " + error.message);
+        return;
+      }
+      await supabase.from("ticket_comments").insert({
+        ticket_id: ticket.id,
+        user_id: userId,
+        content: `Categoria alterada de "${ticket.category || "—"}" para "${newCategory || "—"}"`,
+        comment_type: "status_change",
+      });
+      toast.success("Categoria atualizada");
+      setEditingCategory(false);
+      onRefetch();
+      refetchComments();
+      queryClient.invalidateQueries({ queryKey: ["service-tickets"] });
+    } finally {
+      setSavingCategory(false);
+    }
+  };
+
     setEditingId(c.id);
     setEditingContent(c.content);
   };
