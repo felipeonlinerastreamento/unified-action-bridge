@@ -38,8 +38,10 @@ interface AiMessage {
 function AssistenteIaConfigPage() {
   const { isAuthenticated, isLoading, hasRole } = useAuth();
   const [systemPrompt, setSystemPrompt] = useState("");
+  const [isEnabled, setIsEnabled] = useState(true);
   const [configId, setConfigId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [togglingEnabled, setTogglingEnabled] = useState(false);
   const [docs, setDocs] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
 
