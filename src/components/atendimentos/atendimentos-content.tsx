@@ -28,7 +28,22 @@ export function AtendimentosContent() {
         .from("service_tickets")
         .select("*, companies(name), ticket_tracking(last_status, last_status_date, last_location, is_delivered, tracking_code)")
         .order("created_at", { ascending: false });
-      return data || [];
+      const list = data || [];
+
+      // Buscar último comentário por ticket
+      const ids = list.map((t: any) => t.id);
+      const lastByTicket: Record<string, string> = {};
+      if (ids.length > 0) {
+        const { data: comments } = await supabase
+          .from("ticket_comments")
+          .select("ticket_id, created_at")
+          .in("ticket_id", ids)
+          .order("created_at", { ascending: false });
+        for (const c of comments || []) {
+          if (!lastByTicket[c.ticket_id]) lastByTicket[c.ticket_id] = c.created_at;
+        }
+      }
+      return list.map((t: any) => ({ ...t, last_comment_at: lastByTicket[t.id] || null }));
     },
     refetchInterval: 30000,
   });
