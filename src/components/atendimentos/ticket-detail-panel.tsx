@@ -195,6 +195,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
     }
   };
 
+  const startEdit = (c: any) => {
     setEditingId(c.id);
     setEditingContent(c.content);
   };
