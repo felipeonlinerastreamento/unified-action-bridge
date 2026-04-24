@@ -336,6 +336,17 @@ function UsuariosConfigPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const quickRoleMutation = useMutation({
+    mutationFn: async ({ userId, role }: { userId: string; role: "admin" | "gestor" | "atendente" }) => {
+      await updateUserRole({ data: { targetUserId: userId, role } });
+    },
+    onSuccess: (_d, vars) => {
+      toast.success(`Papel alterado para ${ROLE_LABEL[vars.role]}`);
+      queryClient.invalidateQueries({ queryKey: ["admin-user-roles"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   // ========== Helpers ==========
   const getRolesForUser = (userId: string) => userRoles.filter((r) => r.user_id === userId).map((r) => r.role);
   const getLinkForUser = (userId: string) => gsystemLinks.find((l) => l.user_id === userId);
