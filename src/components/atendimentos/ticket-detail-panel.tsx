@@ -154,7 +154,8 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   };
 
   const startEditCategory = () => {
-    setCategoryDraft(ticket?.category || "");
+    // categoryDraft passa a guardar a Key do GSystem (não o rótulo).
+    setCategoryDraft(ticket?.pendencia_key || "");
     setEditingCategory(true);
   };
 
@@ -165,28 +166,66 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
 
   const saveCategory = async () => {
     if (!ticket?.id) return;
-    const newCategory = categoryDraft.trim() || null;
-    if ((newCategory || "") === (ticket.category || "")) {
+    const newKey = categoryDraft.trim() || null;
+    const tipo = newKey
+      ? tiposPendencia.find((t: any) => String(t.Key) === newKey)
+      : null;
+    const newLabel = tipo?.Descricao || null;
+
+    if (
+      (newKey || "") === (ticket.pendencia_key || "") &&
+      (newLabel || "") === (ticket.category || "")
+    ) {
       setEditingCategory(false);
       return;
     }
     setSavingCategory(true);
     try {
+      // 1) Atualiza a tabela local mantendo categoria + pendencia_key sincronizados
       const { error } = await supabase
         .from("service_tickets")
-        .update({ category: newCategory, updated_at: new Date().toISOString() })
+        .update({
+          category: newLabel,
+          pendencia_key: newKey,
+          updated_at: new Date().toISOString(),
+        })
         .eq("id", ticket.id);
       if (error) {
         toast.error("Erro ao alterar categoria: " + error.message);
         return;
       }
+
+      // 2) Se já existe pendência criada no GSystem para esse ticket, atualiza lá também
+      let gsyncMsg = "";
+      try {
+        const { data: link } = await supabase
+          .from("entity_links")
+          .select("external_id")
+          .eq("entity_type", "pendencia")
+          .eq("local_id", String(ticket.id))
+          .maybeSingle();
+        if (link?.external_id && newKey) {
+          const { updatePendencia } = await import("@/lib/gsystem-api.functions");
+          await updatePendencia({
+            data: {
+              key: String(link.external_id),
+              body: { TipoPendencia: newKey, Tipo: newKey },
+            },
+          });
+          gsyncMsg = " e sincronizada no GSystem";
+        }
+      } catch (gErr: any) {
+        console.warn("[saveCategory] GSystem sync failed:", gErr?.message || gErr);
+        gsyncMsg = " (falha ao sincronizar no GSystem)";
+      }
+
       await supabase.from("ticket_comments").insert({
         ticket_id: ticket.id,
         user_id: userId,
-        content: `Categoria alterada de "${ticket.category || "—"}" para "${newCategory || "—"}"`,
+        content: `Categoria alterada de "${ticket.category || "—"}" para "${newLabel || "—"}"${gsyncMsg}`,
         comment_type: "status_change",
       });
-      toast.success("Categoria atualizada");
+      toast.success("Categoria atualizada" + gsyncMsg);
       setEditingCategory(false);
       onRefetch();
       refetchComments();
@@ -479,7 +518,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
                           <div className="px-2 py-1.5 text-xs text-muted-foreground">Nenhuma categoria encontrada.</div>
                         ) : (
                           tiposPendencia.map((t: any) => (
-                            <SelectItem key={t.Key} value={t.Descricao}>{t.Descricao}</SelectItem>
+                            <SelectItem key={t.Key} value={String(t.Key)}>{t.Descricao}</SelectItem>
                           ))
                         )}
                       </SelectContent>
