@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Clock, User, Layers } from "lucide-react";
+import { Building2, Clock, User, Layers, MessageSquare } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -153,11 +153,17 @@ export function TicketKanbanView({ tickets, onSelect, onRefetch }: TicketKanbanV
                       </span>
                     )}
                     {t.created_at && (
-                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground" title="Criação">
                         <Clock className="h-3 w-3" />
-                        {new Date(t.created_at).toLocaleDateString("pt-BR")}
+                        {new Date(t.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}
                       </span>
                     )}
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground" title="Última interação">
+                      <MessageSquare className="h-3 w-3" />
+                      {t.last_comment_at
+                        ? new Date(t.last_comment_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })
+                        : "Sem interações"}
+                    </span>
                   </CardContent>
                 </Card>
               ))}

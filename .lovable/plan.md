@@ -1,56 +1,60 @@
+## Objetivo
 
+No menu **Atendimentos**, cada ticket (em todas as visualizações: Lista, Kanban e Calendário) deve mostrar de forma clara:
+- **Data de criação** (já existe parcialmente, mas será padronizada com data + hora)
+- **Data do último comentário/interação** (novo)
 
-## Adicionar "Estoque" ao menu lateral
+## Análise do estado atual
 
-### Resposta direta
-**Sim, é totalmente possível via API.** A integração com o GSystem já existe e a página `/estoque` já está implementada — ela puxa equipamentos (rastreadores) e chips (ICCID) do endpoint `/cadastros` da API GSystem, com filtros por status (Disponível / Vinculado / Inativo) e por modelo.
+- A tela `AtendimentosContent` faz uma única query em `service_tickets` sem trazer comentários.
+- A tabela `ticket_comments` armazena todas as interações (comentários, mudanças de status, encaminhamentos, etc.) com `created_at`.
+- Hoje os cards mostram apenas `created_at` formatado como data (sem hora), e nada sobre a última interação.
 
-O que falta apenas é **expor essa página no menu lateral principal**, hoje ela só pode ser acessada digitando a URL.
+## Plano de implementação
 
----
+### 1. Buscar a data do último comentário junto com os tickets
 
-### O que será feito
+Em `src/components/atendimentos/atendimentos-content.tsx`, na query `service-tickets`:
+- Após carregar os tickets, fazer uma segunda query agregada em `ticket_comments` selecionando `ticket_id, created_at` ordenado desc, agrupando no client por `ticket_id` e pegando o `MAX(created_at)`.
+- Mesclar o resultado em cada ticket como `last_comment_at`.
+- Manter o `refetchInterval: 30000` para atualizar automaticamente.
 
-**1. Adicionar item "Estoque" no menu lateral principal** (`src/components/app-sidebar.tsx`)
-Inserir um novo item entre **Empresas** e **Relatórios**:
-```
-- Dashboard
-- Atendimentos
-- Central
-- CRM
-- Contatos
-- Empresas
-- Estoque        ← NOVO (ícone: Boxes)
-- Relatórios
-- Configurações
-```
-Aponta para a rota `/estoque` (já existente).
+Alternativa mais eficiente (sem alterar schema): aproveitar que toda mudança relevante já chama `update_at` do ticket — porém o `updated_at` muda também por edições silenciosas. A query separada de comentários é mais precisa para "última interação real" e é o que o usuário pediu.
 
-**2. Confirmar que a página atende o pedido**
-A rota `/estoque` já oferece exatamente o que você descreveu:
-- **Aba "Equipamentos"** — sincroniza os rastreadores cadastrados no GSystem (Serial / IMEI), via `/cadastros` com tipos: `Equipamentos`, `Rastreador`, `Equipamento_Rastreador`.
-- **Aba "Chips"** — sincroniza os chips/SIM com ICCID, via `/cadastros` com tipos: `Chips`, `Chip`, `SIM`, `SimCard`, `Linhas`.
-- **Aba "Veículos"** — bônus: lista veículos do GSystem.
-- **Aba "Estoque Local"** — itens cadastrados localmente.
+### 2. Atualizar `TicketListView`
 
-**Filtros já disponíveis em todas as abas:**
-- Busca por descrição / serial / IMEI / ICCID
-- Filtro por **Status**: Todos · **Disponível** · **Vinculado** · Inativo
-- Filtro por Modelo
-- Botão de refresh para sincronizar com o GSystem
-- KPIs no topo: Total / Disponíveis / Vinculados / Inativos
+Em `src/components/atendimentos/ticket-list-view.tsx`:
+- Substituir o `created_at` formatado apenas como data por **"Criado em: dd/MM/yyyy HH:mm"**.
+- Adicionar nova linha/badge com **"Último comentário: dd/MM/yyyy HH:mm"** (ou "Sem comentários" quando nulo), com ícone `MessageSquare`.
+- Usar `formatDistanceToNow` do `date-fns` em tooltip para mostrar "há X minutos/horas" ao passar o mouse.
 
-**3. Pequeno ajuste de rótulo no submenu de Configurações**
-Para evitar confusão, renomear o item nas Configurações de "Estoque" para **"Estoque (Regras)"** — esse submenu trata só de regras de mínimo e categorias locais, não da consulta sincronizada.
+### 3. Atualizar `TicketKanbanView`
 
----
+Em `src/components/atendimentos/ticket-kanban-view.tsx`:
+- No card de cada ticket, manter o `Clock` com `created_at` (data + hora curta).
+- Adicionar uma linha extra com ícone `MessageSquare` e a data/hora do último comentário (ou "—" quando vazio).
 
-### Observações técnicas
+### 4. Atualizar `TicketCalendarView`
 
-- A classificação **Disponível / Vinculado / Inativo** é derivada do campo `Status` (ou `Ativado`) de cada cadastro do GSystem pela função `classifyStatus` — palavras como "disponível", "vinculado", "em uso", "ativo", "inativo" são reconhecidas automaticamente.
-- A sincronização é sob demanda (cache de 5 min via React Query) com botão de refresh manual.
-- Caso o GSystem use outro nome de "Tipo" para equipamentos/chips diferente dos candidatos atuais, a UI já mostra os tipos disponíveis para diagnóstico — basta avisar e adiciono o nome correto à lista.
+Em `src/components/atendimentos/ticket-calendar-view.tsx`:
+- Nos cards da lista lateral (tickets do dia selecionado), adicionar a data do último comentário em texto pequeno abaixo do setor.
 
-### Arquivos alterados
-- `src/components/app-sidebar.tsx` — adicionar item "Estoque" no menu principal, renomear submenu de Configurações.
+### 5. Formatação consistente
 
+Criar utilitário inline (ou usar `date-fns/format`):
+- Formato curto: `dd/MM HH:mm` quando do mesmo ano.
+- Formato completo: `dd/MM/yyyy HH:mm` caso contrário.
+- Se `last_comment_at` for nulo, exibir `"Sem interações"`.
+
+## Arquivos que serão editados
+
+- `src/components/atendimentos/atendimentos-content.tsx` — adicionar query de últimos comentários e mesclar em cada ticket.
+- `src/components/atendimentos/ticket-list-view.tsx` — exibir criação (com hora) + último comentário.
+- `src/components/atendimentos/ticket-kanban-view.tsx` — exibir último comentário no card.
+- `src/components/atendimentos/ticket-calendar-view.tsx` — exibir último comentário nos cards laterais.
+
+## Sem alterações no banco
+
+Não há necessidade de migração: a coluna `ticket_comments.created_at` já existe e é alimentada por todas as ações relevantes do sistema (status, encaminhamento, edição de categoria, lembretes, etc.).
+
+Aprove o plano para eu implementar.

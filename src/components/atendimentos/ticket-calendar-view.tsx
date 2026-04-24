@@ -82,6 +82,11 @@ export function TicketCalendarView({ tickets, onSelect }: TicketCalendarViewProp
                   <p className="text-xs text-muted-foreground">
                     {t.companies?.name || ""} {t.sector ? `• ${t.sector}` : ""}
                   </p>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Criado: {t.created_at ? new Date(t.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "—"}
+                    {" • "}
+                    Última: {t.last_comment_at ? new Date(t.last_comment_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" }) : "Sem interações"}
+                  </p>
                 </div>
                 <Badge variant="outline" className="text-xs">{t.status}</Badge>
               </CardContent>

@@ -79,11 +79,17 @@ export function TicketListView({ tickets, onSelect, profiles = [] }: TicketListV
                   {t.contact_phone && <span>Tel: {t.contact_phone}</span>}
                   {t.plate && <span>Placa: {t.plate}</span>}
                   {t.created_at && (
-                    <span className="flex items-center gap-1">
+                    <span className="flex items-center gap-1" title="Data de criação">
                       <Clock className="h-3 w-3" />
-                      {new Date(t.created_at).toLocaleDateString("pt-BR")}
+                      Criado: {new Date(t.created_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}
                     </span>
                   )}
+                  <span className="flex items-center gap-1" title="Última interação">
+                    <MessageSquare className="h-3 w-3" />
+                    {t.last_comment_at
+                      ? `Última: ${new Date(t.last_comment_at).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric", hour: "2-digit", minute: "2-digit" })}`
+                      : "Sem interações"}
+                  </span>
                   {t.closed_at && (
                     <span className="flex items-center gap-1">
                       <CheckCircle className="h-3 w-3" />
