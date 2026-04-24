@@ -185,6 +185,8 @@ export const syncTicketToGsystem = createServerFn({ method: "POST" })
       // Campo legado mantido por compatibilidade; o GSystem continua usando TipoPendencia.
       Tipo: tipoPendencia,
       Observacao: descricao,
+      // GSystem requires Situacao (status) — "A" = Aberta
+      Situacao: "A",
       // GSystem requires this property even when empty
       Veiculos: gsystemVeiculoKey ? [gsystemVeiculoKey] : [],
     };
