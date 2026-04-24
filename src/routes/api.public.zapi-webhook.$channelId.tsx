@@ -105,13 +105,22 @@ export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
 
         if (p.phone && isMessageEvent) {
           const rawPhone = String(p.phone);
-          // WhatsApp groups: raw phone contains "@g.us" or "<creator>-<timestamp>" pattern
-          const isGroupMessage = /@g\.us/i.test(rawPhone) || /-\d{8,}/.test(rawPhone);
+          // WhatsApp groups: raw phone may contain "@g.us", "<creator>-<timestamp>",
+          // or arrive already normalized as a long numeric group id.
+          const isGroupMessage = isGroupPhoneIdentifier(rawPhone);
           const phone = rawPhone.replace(/\D/g, "");
 
           // For groups, prefer the group name (chatName/groupName) over the sender's name.
           // For direct chats, use senderName.
-          const groupDisplayName = p.chatName || p.groupName || null;
+          let groupDisplayName = p.chatName || p.groupName || p.name || p.subject || null;
+          if (isGroupMessage && !groupDisplayName) {
+            try {
+              const creds = await loadZapiChannel(supabaseAdmin, channelId);
+              groupDisplayName = await zapiGetGroupName(creds, rawPhone);
+            } catch (error) {
+              console.warn("[zapi-webhook] cannot resolve group name", { phone, error });
+            }
+          }
           const incomingContactName = isGroupMessage
             ? (groupDisplayName || p.senderName || null)
             : (p.senderName || null);
