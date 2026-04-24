@@ -10,6 +10,8 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
@@ -36,8 +38,10 @@ interface AiMessage {
 function AssistenteIaConfigPage() {
   const { isAuthenticated, isLoading, hasRole } = useAuth();
   const [systemPrompt, setSystemPrompt] = useState("");
+  const [isEnabled, setIsEnabled] = useState(true);
   const [configId, setConfigId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
+  const [togglingEnabled, setTogglingEnabled] = useState(false);
   const [docs, setDocs] = useState<any[]>([]);
   const [uploading, setUploading] = useState(false);
 
@@ -65,8 +69,33 @@ function AssistenteIaConfigPage() {
       .limit(1);
     if (data && data.length > 0) {
       setSystemPrompt(data[0].system_prompt);
+      setIsEnabled((data[0] as any).is_enabled ?? true);
       setConfigId(data[0].id);
     }
+  }
+
+  async function handleToggleEnabled(next: boolean) {
+    if (!configId) {
+      toast.error("Configuração não inicializada");
+      return;
+    }
+    setTogglingEnabled(true);
+    const { data: sess } = await supabase.auth.getSession();
+    const { error } = await supabase
+      .from("ai_assistant_config")
+      .update({
+        is_enabled: next,
+        updated_at: new Date().toISOString(),
+        updated_by: sess.session?.user?.id || null,
+      } as any)
+      .eq("id", configId);
+    if (error) {
+      toast.error(error.message);
+    } else {
+      setIsEnabled(next);
+      toast.success(next ? "Assistente ativado" : "Assistente desativado");
+    }
+    setTogglingEnabled(false);
   }
 
   async function loadDocs() {
@@ -254,7 +283,36 @@ function AssistenteIaConfigPage() {
           </TabsList>
 
           {/* Config Tab */}
-          <TabsContent value="config" className="mt-4">
+          <TabsContent value="config" className="mt-4 space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center justify-between">
+                  <span>Status do Assistente</span>
+                  <Badge variant={isEnabled ? "default" : "secondary"}>
+                    {isEnabled ? "Ativo" : "Inativo"}
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between gap-4 rounded-lg border p-4">
+                  <div className="space-y-1">
+                    <Label htmlFor="ai-enabled" className="text-sm font-medium">
+                      Assistente IA habilitado
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Quando desativado, o botão flutuante e as respostas do supervisor IA ficam indisponíveis em todo o sistema. A configuração e a base de conhecimento são preservadas.
+                    </p>
+                  </div>
+                  <Switch
+                    id="ai-enabled"
+                    checked={isEnabled}
+                    onCheckedChange={handleToggleEnabled}
+                    disabled={togglingEnabled || !configId}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Prompt de Sistema</CardTitle>

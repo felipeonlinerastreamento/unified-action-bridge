@@ -17,18 +17,21 @@ export type Database = {
       ai_assistant_config: {
         Row: {
           id: string
+          is_enabled: boolean
           system_prompt: string
           updated_at: string
           updated_by: string | null
         }
         Insert: {
           id?: string
+          is_enabled?: boolean
           system_prompt?: string
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
           id?: string
+          is_enabled?: boolean
           system_prompt?: string
           updated_at?: string
           updated_by?: string | null

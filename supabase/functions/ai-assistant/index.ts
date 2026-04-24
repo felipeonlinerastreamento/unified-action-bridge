@@ -20,12 +20,19 @@ serve(async (req) => {
 
     const { chatMessages, contactPhone, contactName, attendanceStartTime, userMessage, mode } = await req.json();
 
-    // Fetch AI config (system prompt / knowledge base)
+    // Fetch AI config (system prompt / knowledge base / enabled flag)
     const { data: configRows } = await supabase
       .from("ai_assistant_config")
-      .select("system_prompt")
+      .select("system_prompt, is_enabled")
       .limit(1);
-    const knowledgeBase = configRows?.[0]?.system_prompt || "";
+    const cfg = configRows?.[0] as any;
+    if (cfg && cfg.is_enabled === false) {
+      return new Response(
+        JSON.stringify({ error: "Assistente IA está desativado nas configurações." }),
+        { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+    const knowledgeBase = cfg?.system_prompt || "";
 
     // Fetch knowledge docs file names for context
     const { data: knowledgeDocs } = await supabase
