@@ -283,7 +283,36 @@ function AssistenteIaConfigPage() {
           </TabsList>
 
           {/* Config Tab */}
-          <TabsContent value="config" className="mt-4">
+          <TabsContent value="config" className="mt-4 space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center justify-between">
+                  <span>Status do Assistente</span>
+                  <Badge variant={isEnabled ? "default" : "secondary"}>
+                    {isEnabled ? "Ativo" : "Inativo"}
+                  </Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex items-center justify-between gap-4 rounded-lg border p-4">
+                  <div className="space-y-1">
+                    <Label htmlFor="ai-enabled" className="text-sm font-medium">
+                      Assistente IA habilitado
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Quando desativado, o botão flutuante e as respostas do supervisor IA ficam indisponíveis em todo o sistema. A configuração e a base de conhecimento são preservadas.
+                    </p>
+                  </div>
+                  <Switch
+                    id="ai-enabled"
+                    checked={isEnabled}
+                    onCheckedChange={handleToggleEnabled}
+                    disabled={togglingEnabled || !configId}
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
             <Card>
               <CardHeader>
                 <CardTitle className="text-base">Prompt de Sistema</CardTitle>
