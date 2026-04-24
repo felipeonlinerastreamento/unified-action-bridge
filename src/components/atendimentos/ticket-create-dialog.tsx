@@ -521,6 +521,14 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
           {isTesteEquip && (
             <TesteEquipamentoFields value={teData} onChange={setTeData} settings={teSettings} />
           )}
+          {isLiberacao && (
+            <LiberacaoEquipamentoFields
+              items={liberacaoItems}
+              onChange={setLiberacaoItems}
+              liberacaoDate={liberacaoDate}
+              onLiberacaoDateChange={setLiberacaoDate}
+            />
+          )}
           <div className="space-y-1">
             <label className="text-xs font-medium">Observações</label>
             <Textarea
