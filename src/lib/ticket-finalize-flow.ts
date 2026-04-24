@@ -153,10 +153,19 @@ export async function finalizeTicketWithFlow(
       // and fall through to standard finalize. This prevents duplicate
       // GSystem pendência creation and confusing 404 errors when the
       // user clicks "Finalizar" on an already-routed ticket.
-      const alreadyRouted =
-        rule?.target_sector_name &&
-        String(ticket.sector || "").toLowerCase() ===
-          String(rule.target_sector_name).toLowerCase();
+      const ticketSectorNorm = String(ticket.sector || "").trim().toLowerCase();
+      const ruleSectorNorm = String(rule?.target_sector_name || "").trim().toLowerCase();
+      const alreadyRouted = Boolean(
+        ruleSectorNorm && ticketSectorNorm && ticketSectorNorm === ruleSectorNorm
+      );
+      console.log("[finalize-flow] routing check", {
+        ticketId: ticket.id,
+        category: ticket.category,
+        ticketSector: ticket.sector,
+        ruleTargetSector: rule?.target_sector_name,
+        alreadyRouted,
+        ruleFound: Boolean(rule),
+      });
 
       // Check if a pendência already exists for this ticket
       let pendenciaAlreadyExists = false;
