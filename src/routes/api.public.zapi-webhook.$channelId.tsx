@@ -82,24 +82,12 @@ export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
           return new Response("ok");
         }
 
-        // Presence: typing
-        if (p.type === "PresenceChatCallback" && p.phone) {
-          const phone = String(p.phone).replace(/\D/g, "");
-          const isTyping = String(p.status || "").toLowerCase().includes("typ");
-          const { data: typingChat } = await supabaseAdmin
-            .from("zapi_chats")
-            .select("id, bot_state")
-            .eq("channel_id", channelId)
-            .eq("phone", phone)
-            .maybeSingle();
-
-          if (typingChat?.id) {
-            const currentBotState = (typingChat.bot_state as Record<string, unknown> | null) || {};
-            await supabaseAdmin
-              .from("zapi_chats")
-              .update({ bot_state: { ...currentBotState, is_typing: isTyping } as any })
-              .eq("id", typingChat.id);
-          }
+        // Presence: typing — IGNORED on purpose.
+        // Persisting is_typing into bot_state used to overwrite `current_node` due to
+        // race conditions between the bot writing state and presence events arriving
+        // concurrently, which broke multi-step flows. Typing indicators are ephemeral
+        // UI signals only and should not touch the bot state.
+        if (p.type === "PresenceChatCallback") {
           return new Response("ok");
         }
 
