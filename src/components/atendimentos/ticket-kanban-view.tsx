@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useTesteEquipamentoSettings } from "@/hooks/use-teste-equipamento-settings";
 import { finalizeTicketWithFlow } from "@/lib/ticket-finalize-flow";
-import { LiberacaoBadge } from "./laboratorio-summary-panel";
+import { LiberacaoBadge } from "./liberacao-badge";
 
 interface TicketKanbanViewProps {
   tickets: any[];
