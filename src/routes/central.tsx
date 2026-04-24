@@ -1446,6 +1446,11 @@ function CentralPage() {
   const handleAiSend = async (autoMessage?: string) => {
     const msg = autoMessage || aiInput.trim();
     if (!msg || aiLoading) return;
+    if (!aiEnabled) {
+      // Assistant is disabled in admin settings — silently skip to avoid
+      // the recurring "Assistente desativado" toast on every chat open.
+      return;
+    }
     const userMsg = { role: "user" as const, content: msg };
     const newMsgs = [...aiMessages, userMsg];
     setAiMessages(newMsgs);
@@ -1526,13 +1531,14 @@ function CentralPage() {
       selectedChatId &&
       messages.length > 0 &&
       !aiLoading &&
+      aiEnabled &&
       lastAutoAnalyzedChat.current !== selectedChatId
     ) {
       lastAutoAnalyzedChat.current = selectedChatId;
       setAiMessages([]);
       handleAiSend("Analise a conversa atual e dê instruções diretas sobre como o operador deve proceder agora.");
     }
-  }, [selectedChatId, messages.length > 0]);
+  }, [selectedChatId, messages.length > 0, aiEnabled]);
 
   const serviceTimeMinutes = chatDetail?.utcDhStartChat
     ? Math.round((Date.now() - new Date(chatDetail.utcDhStartChat).getTime()) / 60000)
