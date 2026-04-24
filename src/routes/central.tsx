@@ -2930,7 +2930,51 @@ function CentralPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Transfer Chat Modal */}
+      {/* Liberação de Equipamento Dialog (gate before finalize) */}
+      <Dialog
+        open={showLiberacaoDialog}
+        onOpenChange={(open) => {
+          setShowLiberacaoDialog(open);
+          if (!open) {
+            setLiberacaoItems([]);
+            setLiberacaoDate("");
+          }
+        }}
+      >
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-primary" />
+              Liberação de Equipamento
+            </DialogTitle>
+            <DialogDescription>
+              Adicione os itens e a data de liberação antes de finalizar.
+            </DialogDescription>
+          </DialogHeader>
+          <LiberacaoEquipamentoFields
+            items={liberacaoItems}
+            onChange={setLiberacaoItems}
+            liberacaoDate={liberacaoDate}
+            onLiberacaoDateChange={setLiberacaoDate}
+          />
+          <div className="flex justify-end gap-2 mt-2">
+            <Button variant="outline" onClick={() => setShowLiberacaoDialog(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => {
+                const err = validateLiberacaoItems(liberacaoItems);
+                if (err) { toast.error(err); return; }
+                if (!liberacaoDate) { toast.error("Informe a data de liberação."); return; }
+                setShowLiberacaoDialog(false);
+                setShowFinalizeConfirm(true);
+              }}
+            >
+              Continuar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
       <Dialog open={showTransferModal} onOpenChange={setShowTransferModal}>
         <DialogContent className="max-w-md">
           <DialogHeader>
