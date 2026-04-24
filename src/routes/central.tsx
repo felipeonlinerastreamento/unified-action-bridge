@@ -45,6 +45,7 @@ import {
   getTiposPendencia,
 } from "@/lib/gsystem-api.functions";
 import { SubClientLinker } from "@/components/central/sub-client-linker";
+import { ContactPicker, type PickedContact } from "@/components/central/contact-picker";
 import {
   createCrmContactWithCompany,
   createSubClientWithParentCompany,
