@@ -331,6 +331,23 @@ export const createPendencia = createServerFn({ method: "POST" })
     return gsystemApiFetch("/pendencias", "POST", data.body);
   });
 
+export const updatePendencia = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    z.object({
+      key: z.string().min(1).max(255),
+      body: z.record(z.unknown()),
+    }).parse
+  )
+  .handler(async ({ data }) => {
+    const { gsystemApiFetch } = await import("@/lib/gsystem-api.server");
+    return gsystemApiFetch(
+      `/pendencias/${encodeURIComponent(data.key)}`,
+      "PUT",
+      data.body
+    );
+  });
+
 export const cancelarPendencia = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
