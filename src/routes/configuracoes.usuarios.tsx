@@ -336,6 +336,17 @@ function UsuariosConfigPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const quickRoleMutation = useMutation({
+    mutationFn: async ({ userId, role }: { userId: string; role: "admin" | "gestor" | "atendente" }) => {
+      await updateUserRole({ data: { targetUserId: userId, role } });
+    },
+    onSuccess: (_d, vars) => {
+      toast.success(`Papel alterado para ${ROLE_LABEL[vars.role]}`);
+      queryClient.invalidateQueries({ queryKey: ["admin-user-roles"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   // ========== Helpers ==========
   const getRolesForUser = (userId: string) => userRoles.filter((r) => r.user_id === userId).map((r) => r.role);
   const getLinkForUser = (userId: string) => gsystemLinks.find((l) => l.user_id === userId);
@@ -544,11 +555,31 @@ function UsuariosConfigPage() {
                       <TableRow key={profile.user_id}>
                         <TableCell className="font-medium">{profile.name || "Sem nome"}</TableCell>
                         <TableCell>
-                          <div className="flex gap-1 flex-wrap">
-                            {roles.length > 0 ? roles.map((r) => (
-                              <Badge key={r} variant={ROLE_VARIANT(r)} className="text-xs">{ROLE_LABEL[r] || r}</Badge>
-                            )) : (
-                              <span className="text-xs text-muted-foreground">—</span>
+                          <div className="flex items-center gap-2">
+                            {roles.length > 0 && (
+                              <Badge variant={ROLE_VARIANT(roles[0])} className="text-xs shrink-0">
+                                {ROLE_LABEL[roles[0]] || roles[0]}
+                              </Badge>
+                            )}
+                            {!isSelf ? (
+                              <Select
+                                value={(roles[0] as string) || "atendente"}
+                                onValueChange={(v) =>
+                                  quickRoleMutation.mutate({ userId: profile.user_id, role: v as "admin" | "gestor" | "atendente" })
+                                }
+                                disabled={quickRoleMutation.isPending}
+                              >
+                                <SelectTrigger className="h-8 w-[120px] text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="atendente">Atendente</SelectItem>
+                                  <SelectItem value="gestor">Gestor</SelectItem>
+                                  <SelectItem value="admin">Admin</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            ) : (
+                              <span className="text-xs text-muted-foreground">(você)</span>
                             )}
                           </div>
                         </TableCell>
