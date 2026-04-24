@@ -84,12 +84,22 @@ export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
 
         // Presence: typing
         if (p.type === "PresenceChatCallback" && p.phone) {
+          const phone = String(p.phone).replace(/\D/g, "");
           const isTyping = String(p.status || "").toLowerCase().includes("typ");
-          await supabaseAdmin
+          const { data: typingChat } = await supabaseAdmin
             .from("zapi_chats")
-            .update({ bot_state: { is_typing: isTyping } as any })
+            .select("id, bot_state")
             .eq("channel_id", channelId)
-            .eq("phone", String(p.phone).replace(/\D/g, ""));
+            .eq("phone", phone)
+            .maybeSingle();
+
+          if (typingChat?.id) {
+            const currentBotState = (typingChat.bot_state as Record<string, unknown> | null) || {};
+            await supabaseAdmin
+              .from("zapi_chats")
+              .update({ bot_state: { ...currentBotState, is_typing: isTyping } as any })
+              .eq("id", typingChat.id);
+          }
           return new Response("ok");
         }
 
