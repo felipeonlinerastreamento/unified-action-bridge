@@ -127,11 +127,28 @@ export async function processIncomingForBot(params: ProcessParams): Promise<bool
     // Resume: evaluate current node based on incoming response
     const node = flow.nodes.find((n) => n.id === currentNodeId);
     if (node?.type === "menu" && node.options) {
-      const choice = (incomingText || "").trim().slice(0, 5);
-      const matched = node.options.find((o) => o.key === choice);
+      // Normalize incoming text: trim, lowercase, strip common punctuation/brackets/emojis
+      const raw = (incomingText || "").trim().toLowerCase();
+      // Extract first number or first word for matching
+      const numMatch = raw.match(/\d+/);
+      const firstToken = raw.replace(/[\[\]\(\)\.\-\,\!\?\*]/g, " ").trim().split(/\s+/)[0] || "";
+      const candidates = [
+        raw,
+        numMatch?.[0] || "",
+        firstToken,
+      ].filter(Boolean);
+
+      const matched = node.options.find((o) => {
+        const key = String(o.key || "").trim().toLowerCase();
+        const label = String(o.label || "").trim().toLowerCase();
+        return candidates.some((c) => c === key) || (label && raw.includes(label));
+      });
+
       if (matched) {
+        console.log(`[bot] menu match: input="${incomingText}" → key="${matched.key}" → next="${matched.next}"`);
         currentNodeId = matched.next;
       } else {
+        console.log(`[bot] menu no match for input="${incomingText}", re-sending menu`);
         // Invalid choice, re-send menu
         await zapiSendText(creds, phone, renderText(node.text || "", vars));
         await persistOutgoing(chatId, renderText(node.text || "", vars));
