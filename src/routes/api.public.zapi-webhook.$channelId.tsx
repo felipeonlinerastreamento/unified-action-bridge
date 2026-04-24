@@ -152,7 +152,17 @@ export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
             // making it look like new conversations were not appearing.
             const shouldReopen =
               !p.fromMe && existing.status === "finalizado";
-            const baseUpdate: Record<string, unknown> = {
+            const baseUpdate: {
+              contact_name: string | null;
+              contact_avatar?: string;
+              last_message_at: string;
+              last_message_preview: string;
+              unread_count: number;
+              status?: string;
+              bot_state?: Record<string, never>;
+              assigned_to?: null;
+              sector_name?: null;
+            } = {
               contact_name: existing.contact_name || p.senderName || null,
               contact_avatar: p.senderPhoto || undefined,
               last_message_at: new Date().toISOString(),
