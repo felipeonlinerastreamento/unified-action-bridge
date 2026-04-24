@@ -2113,9 +2113,11 @@ function CentralPage() {
                     <TabsTrigger value="historico" className="flex-1 text-xs">
                       <History className="h-3 w-3 mr-1" /> Histórico
                     </TabsTrigger>
-                    <TabsTrigger value="ia" className="flex-1 text-xs">
-                      <Bot className="h-3 w-3 mr-1" /> Supervisor IA
-                    </TabsTrigger>
+                    {aiEnabled && (
+                      <TabsTrigger value="ia" className="flex-1 text-xs">
+                        <Bot className="h-3 w-3 mr-1" /> Supervisor IA
+                      </TabsTrigger>
+                    )}
                   </TabsList>
 
                   {/* Empresa Tab */}
