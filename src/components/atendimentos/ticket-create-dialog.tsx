@@ -44,6 +44,12 @@ import {
   type TesteEquipamentoData,
 } from "@/hooks/use-teste-equipamento-settings";
 import { TesteEquipamentoFields } from "./teste-equipamento-fields";
+import {
+  LiberacaoEquipamentoFields,
+  validateLiberacaoItems,
+  type LiberacaoLineItem,
+} from "./liberacao-equipamento-fields";
+import { isLiberacaoCategory } from "@/hooks/use-liberacao-equipamento";
 
 interface TicketCreateDialogProps {
   open: boolean;
@@ -83,6 +89,9 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
   const { data: teSettings } = useTesteEquipamentoSettings();
   const isTesteEquip = isTesteEquipamentoCategory(category, teSettings);
   const [teData, setTeData] = useState<TesteEquipamentoData>(EMPTY_TESTE_EQUIPAMENTO);
+  const isLiberacao = isLiberacaoCategory(category);
+  const [liberacaoItems, setLiberacaoItems] = useState<LiberacaoLineItem[]>([]);
+  const [liberacaoDate, setLiberacaoDate] = useState<string>("");
 
   const getAuthHeaders = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -167,6 +176,8 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
     setSectorId("");
     setTrackingCode("");
     setTeData(EMPTY_TESTE_EQUIPAMENTO);
+    setLiberacaoItems([]);
+    setLiberacaoDate("");
   };
 
   const ensureLocalCompany = async (cliente: GsystemCliente): Promise<string | null> => {
