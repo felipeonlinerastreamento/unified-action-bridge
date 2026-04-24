@@ -240,6 +240,8 @@ function CentralPage() {
   const [newChatPhone, setNewChatPhone] = useState("");
   const [newChatMessage, setNewChatMessage] = useState("");
   const [newChatSector, setNewChatSector] = useState("");
+  const [newChatTab, setNewChatTab] = useState<"saved" | "manual">("saved");
+  const [newChatPickedContact, setNewChatPickedContact] = useState<PickedContact | null>(null);
   const [showFinalizeConfirm, setShowFinalizeConfirm] = useState(false);
   const [finalizeNotes, setFinalizeNotes] = useState("");
   const [finalizeStatus, setFinalizeStatus] = useState<string>("A resolver");
@@ -1385,11 +1387,14 @@ function CentralPage() {
       });
     },
     onSuccess: () => {
-      toast.success("Nova conversa criada");
+      const who = newChatPickedContact?.name;
+      toast.success(who ? `Conversa iniciada com ${who}` : "Nova conversa criada");
       setShowNewChatModal(false);
       setNewChatPhone("");
       setNewChatMessage("");
       setNewChatSector("");
+      setNewChatPickedContact(null);
+      setNewChatTab("saved");
       refetchChats();
     },
     onError: (err: any) => toast.error(err?.message || "Erro ao criar conversa"),
@@ -3037,26 +3042,68 @@ function CentralPage() {
 
       {/* New Chat Modal */}
       <Dialog open={showNewChatModal} onOpenChange={setShowNewChatModal}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Plus className="h-5 w-5" />
               Nova Conversa
             </DialogTitle>
             <DialogDescription>
-              Inicie uma nova conversa informando o telefone do contato.
+              Selecione um contato salvo ou informe o telefone manualmente.
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 mt-2">
-            <div>
-              <Label className="text-xs">Telefone *</Label>
-              <Input
-                placeholder="5531999999999"
-                value={newChatPhone}
-                onChange={(e) => setNewChatPhone(e.target.value)}
+
+          <Tabs value={newChatTab} onValueChange={(v) => setNewChatTab(v as "saved" | "manual")} className="mt-2">
+            <TabsList className="grid grid-cols-2 w-full">
+              <TabsTrigger value="saved" className="gap-1.5">
+                <Users className="h-3.5 w-3.5" /> Contato salvo
+              </TabsTrigger>
+              <TabsTrigger value="manual" className="gap-1.5">
+                <Phone className="h-3.5 w-3.5" /> Telefone manual
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="saved" className="space-y-3 mt-3">
+              <ContactPicker
+                selectedId={newChatPickedContact?.id}
+                onSelect={(c) => {
+                  setNewChatPickedContact(c);
+                  setNewChatPhone(c.phone);
+                }}
               />
-              <p className="text-[10px] text-muted-foreground mt-1">Formato: código do país + DDD + número</p>
-            </div>
+              {newChatPickedContact && (
+                <div className="rounded-md border bg-accent/40 px-3 py-2 text-xs flex items-center justify-between">
+                  <div className="min-w-0">
+                    <p className="font-medium truncate">{newChatPickedContact.name}</p>
+                    <p className="font-mono text-muted-foreground">{newChatPickedContact.phone}</p>
+                  </div>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-7 px-2"
+                    onClick={() => { setNewChatPickedContact(null); setNewChatPhone(""); }}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="manual" className="space-y-3 mt-3">
+              <div>
+                <Label className="text-xs">Telefone *</Label>
+                <Input
+                  placeholder="5531999999999"
+                  value={newChatPhone}
+                  onChange={(e) => { setNewChatPhone(e.target.value); setNewChatPickedContact(null); }}
+                />
+                <p className="text-[10px] text-muted-foreground mt-1">Formato: código do país + DDD + número</p>
+              </div>
+            </TabsContent>
+          </Tabs>
+
+          <div className="space-y-3 mt-4">
             <div>
               <Label className="text-xs">Mensagem inicial (opcional)</Label>
               <Textarea
