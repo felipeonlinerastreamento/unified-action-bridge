@@ -1308,6 +1308,27 @@ function CentralPage() {
           console.warn("[Finalize] post-flow error:", e?.message);
         }
       }
+      // Save Liberação items if applicable
+      if (currentTicket && liberacaoItems.length > 0) {
+        try {
+          const rows = liberacaoItems.map((it) => ({
+            ticket_id: currentTicket.id,
+            item_id: it.item_id,
+            item_name: it.item_name,
+            quantity: it.quantity,
+            status: "pendente" as const,
+          }));
+          await supabase.from("ticket_liberacao_items" as any).insert(rows);
+          if (liberacaoDate) {
+            await supabase
+              .from("service_tickets")
+              .update({ liberacao_date: new Date(liberacaoDate).toISOString() } as any)
+              .eq("id", currentTicket.id);
+          }
+        } catch (e: any) {
+          console.error("[Finalize] error saving liberacao items:", e?.message);
+        }
+      }
       toast.success("Atendimento finalizado");
       setSelectedChatId("");
       setShowFinalizeConfirm(false);
@@ -1315,6 +1336,8 @@ function CentralPage() {
       setFinalizeStatus("A resolver");
       setFinalizeTipoPendencia("");
       setTeData(EMPTY_TESTE_EQUIPAMENTO);
+      setLiberacaoItems([]);
+      setLiberacaoDate("");
       refetchChats();
     },
     onError: (err: any) => toast.error(err?.message || "Erro ao finalizar"),
