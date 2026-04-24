@@ -89,11 +89,46 @@ function DashboardPage() {
     enabled: isAuthenticated,
   });
 
+  // Lab released equipment (last 30 days window covers 7d + today + total)
+  const { data: labLiberacoes = [] } = useQuery({
+    queryKey: ["dashboard-lab-liberacao"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("ticket_liberacao_items")
+        .select("id, item_name, quantity, status, liberado_at, liberado_by, ticket_id, service_tickets!inner(sector, contact_name, plate)")
+        .eq("status", "liberado")
+        .ilike("service_tickets.sector", "%laborat%")
+        .order("liberado_at", { ascending: false });
+      return data || [];
+    },
+    enabled: isAuthenticated,
+    refetchInterval: 30000,
+  });
+
   const tickets = ticketStats || [];
   const inventory = inventoryStats || [];
 
   const now = new Date();
   const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const sevenDaysAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+
+  // Lab liberation aggregations (sum quantities, not row count)
+  const labStats = useMemo(() => {
+    let qtyToday = 0;
+    let qty7d = 0;
+    let qtyTotal = 0;
+    for (const r of labLiberacoes) {
+      const q = r.quantity || 1;
+      qtyTotal += q;
+      if (r.liberado_at) {
+        const d = new Date(r.liberado_at);
+        if (d >= sevenDaysAgo) qty7d += q;
+        if (d >= today) qtyToday += q;
+      }
+    }
+    return { qtyToday, qty7d, qtyTotal };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [labLiberacoes]);
 
   const openTickets = tickets.filter((t) => t.status === "aberto");
   const inProgressTickets = tickets.filter((t) => t.status === "em_andamento");
@@ -190,7 +225,7 @@ function DashboardPage() {
         </div>
 
         {/* KPI Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
           <KPICard
             title="Atendimentos Abertos"
             value={String(openTickets.length)}
@@ -216,6 +251,13 @@ function DashboardPage() {
             value={avgTime > 0 ? formatDuration(avgTime) : "—"}
             icon={Headphones}
             description="Média geral de atendimento"
+          />
+          <KPICard
+            title="Equip. Liberados (Lab)"
+            value={String(labStats.qtyToday)}
+            icon={Package}
+            description={`${labStats.qty7d} em 7 dias · ${labStats.qtyTotal} no total`}
+            accent={labStats.qtyToday > 0}
           />
         </div>
 
@@ -520,6 +562,61 @@ function DashboardPage() {
 
             {/* Equipamentos Tab */}
             <TabsContent value="equipamentos" className="space-y-4 mt-4">
+              {/* Lab liberation block */}
+              <Card className="border-primary/30">
+                <CardHeader>
+                  <CardTitle className="text-base flex items-center gap-2">
+                    <Package className="h-4 w-4 text-primary" /> Equipamentos Liberados pelo Laboratório
+                  </CardTitle>
+                  <CardDescription>Total de unidades liberadas (somando quantidades)</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  <div className="grid gap-4 md:grid-cols-3">
+                    <MetricCard label="Hoje" value={String(labStats.qtyToday)} icon={CheckCircle} />
+                    <MetricCard label="Últimos 7 dias" value={String(labStats.qty7d)} icon={Activity} />
+                    <MetricCard label="Total" value={String(labStats.qtyTotal)} icon={Package} />
+                  </div>
+
+                  {labLiberacoes.length > 0 && (
+                    <div>
+                      <p className="text-xs font-medium text-muted-foreground mb-2 uppercase tracking-wide">Últimas liberações</p>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Item</TableHead>
+                            <TableHead className="text-center">Qtd</TableHead>
+                            <TableHead>Cliente / Placa</TableHead>
+                            <TableHead>Liberado por</TableHead>
+                            <TableHead>Data/hora</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {labLiberacoes.slice(0, 10).map((r: any) => {
+                            const t = r.service_tickets || {};
+                            const clientLabel = [t.contact_name, t.plate].filter(Boolean).join(" · ") || "—";
+                            const operator = profileMap[r.liberado_by] || "—";
+                            const when = r.liberado_at
+                              ? new Date(r.liberado_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })
+                              : "—";
+                            return (
+                              <TableRow key={r.id}>
+                                <TableCell className="font-medium text-sm">{r.item_name}</TableCell>
+                                <TableCell className="text-center">
+                                  <Badge variant="secondary">{r.quantity}</Badge>
+                                </TableCell>
+                                <TableCell className="text-sm">{clientLabel}</TableCell>
+                                <TableCell className="text-sm">{operator}</TableCell>
+                                <TableCell className="text-sm text-muted-foreground">{when}</TableCell>
+                              </TableRow>
+                            );
+                          })}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+
               <div className="grid gap-4 md:grid-cols-3">
                 <MetricCard label="Total de Equipamentos" value={String(inventory.length)} icon={Package} />
                 <MetricCard label="Disponíveis" value={String(availableItems.length)} icon={CheckCircle} />
