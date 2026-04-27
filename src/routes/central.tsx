@@ -1378,6 +1378,7 @@ function CentralPage() {
       setTeData(EMPTY_TESTE_EQUIPAMENTO);
       setLiberacaoItems([]);
       setLiberacaoDate("");
+      setSkipClosingMessage(false);
       refetchChats();
     },
     onError: (err: any) => toast.error(err?.message || "Erro ao finalizar"),
