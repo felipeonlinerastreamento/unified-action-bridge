@@ -10,6 +10,8 @@ import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+type OperatorOption = { id: string; name: string };
+
 type Props = {
   dateFrom: string;
   dateTo: string;
@@ -21,12 +23,19 @@ type Props = {
   extraFilters?: React.ReactNode;
   plate?: string;
   onPlateChange?: (v: string) => void;
+  protocol?: string;
+  onProtocolChange?: (v: string) => void;
+  operatorId?: string;
+  onOperatorChange?: (v: string) => void;
+  operators?: OperatorOption[];
 };
 
 export function ReportFilters({
   dateFrom, dateTo, onDateFromChange, onDateToChange,
   period, onPeriodChange, onExport, extraFilters,
   plate, onPlateChange,
+  protocol, onProtocolChange,
+  operatorId, onOperatorChange, operators,
 }: Props) {
   const applyPeriod = (p: string) => {
     onPeriodChange(p);
@@ -95,6 +104,43 @@ export function ReportFilters({
               >×</button>
             )}
           </div>
+        </div>
+      )}
+      {onProtocolChange && (
+        <div>
+          <Label className="text-xs">Protocolo</Label>
+          <div className="relative">
+            <Input
+              value={protocol ?? ""}
+              onChange={(e) => onProtocolChange(e.target.value)}
+              placeholder="Nº protocolo"
+              className="h-8 text-xs w-[150px] pr-7"
+            />
+            {protocol && (
+              <button
+                type="button"
+                onClick={() => onProtocolChange("")}
+                className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs px-1"
+                aria-label="Limpar protocolo"
+              >×</button>
+            )}
+          </div>
+        </div>
+      )}
+      {onOperatorChange && operators && (
+        <div>
+          <Label className="text-xs">Operador</Label>
+          <Select value={operatorId || "all"} onValueChange={(v) => onOperatorChange(v === "all" ? "" : v)}>
+            <SelectTrigger className="w-[180px] h-8 text-xs">
+              <SelectValue placeholder="Todos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os operadores</SelectItem>
+              {operators.map((op) => (
+                <SelectItem key={op.id} value={op.id}>{op.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
       )}
       {extraFilters}
