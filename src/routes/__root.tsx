@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/hooks/use-auth";
 import { Toaster } from "@/components/ui/sonner";
 import { AiFloatingAssistant } from "@/components/ai-floating-assistant";
+import { useDailyReviewReminder } from "@/hooks/use-attendance-events";
 
 import appCss from "../styles.css?url";
 
@@ -62,10 +63,16 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
+        <GlobalEventsRunner />
         <Outlet />
         <Toaster />
         <AiFloatingAssistant />
       </AuthProvider>
     </QueryClientProvider>
   );
+}
+
+function GlobalEventsRunner() {
+  useDailyReviewReminder();
+  return null;
 }
