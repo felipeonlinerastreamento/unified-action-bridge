@@ -392,7 +392,8 @@ export const sendText = createServerFn({ method: "POST" })
 
     const channel = await loadZapiChannel(context.supabase, chat.channel_id);
 
-    // Prefixa a mensagem com o primeiro nome do operador (ex: "*João*: ...")
+    // Prefixa a mensagem com o nome do operador no padrão WhatsApp: _*Nome*_
+    // (negrito + itálico) numa linha acima do conteúdo da mensagem.
     let outgoingText = text;
     let operatorFirstName: string | undefined;
     if (context.userId) {
@@ -402,8 +403,8 @@ export const sendText = createServerFn({ method: "POST" })
         .eq("user_id", context.userId)
         .maybeSingle();
       operatorFirstName = firstNameOf(prof?.name);
-      if (operatorFirstName && !text.startsWith(`*${operatorFirstName}*`)) {
-        outgoingText = `*${operatorFirstName}*:\n${text}`;
+      if (operatorFirstName && !text.startsWith(`_*${operatorFirstName}*_`)) {
+        outgoingText = `_*${operatorFirstName}*_\n${text}`;
       }
     }
 
