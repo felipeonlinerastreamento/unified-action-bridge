@@ -297,8 +297,8 @@ function EmpresasPage() {
       .map((p) => p[0]?.toUpperCase() || "")
       .join("") || "?";
 
-  const filtered = companies.filter((c) => {
-    if (!searchTerm) return true;
+  const hasSearch = searchTerm.trim().length > 0;
+  const filtered = !hasSearch ? [] : companies.filter((c) => {
     const s = searchTerm.toLowerCase();
     return (
       c.name.toLowerCase().includes(s) ||
@@ -348,7 +348,14 @@ function EmpresasPage() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.length === 0 ? (
+              {!hasSearch ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
+                    <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                    Use o campo de busca acima para consultar empresas.
+                  </TableCell>
+                </TableRow>
+              ) : filtered.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
                     {isLoading ? "Carregando..." : "Nenhuma empresa encontrada"}
