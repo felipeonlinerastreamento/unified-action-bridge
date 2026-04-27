@@ -226,6 +226,40 @@ export function ZapiBotFlowEditor() {
               <Input value={name} onChange={(e) => setName(e.target.value)} />
             </div>
 
+            {/* Bloco de ajuda colapsável */}
+            <Card className="bg-muted/40 border-dashed">
+              <CardContent className="pt-3 pb-3">
+                <button
+                  type="button"
+                  onClick={() => setShowHelp((s) => !s)}
+                  className="flex w-full items-center gap-2 text-sm font-medium"
+                >
+                  <Lightbulb className="h-4 w-4 text-amber-600" />
+                  <span>Como criar mensagens personalizadas e submenus por opção</span>
+                  {showHelp ? <ChevronUp className="ml-auto h-4 w-4" /> : <ChevronDown className="ml-auto h-4 w-4" />}
+                </button>
+                {showHelp && (
+                  <div className="mt-3 space-y-2 text-xs text-muted-foreground">
+                    <p>
+                      Cada opção do menu tem um campo <strong>"Próximo nó"</strong>. Aponte para qualquer outro nó para definir o que acontece quando o cliente escolhe essa opção:
+                    </p>
+                    <ul className="list-disc pl-5 space-y-1">
+                      <li><strong>Mensagem personalizada</strong>: aponte a opção para um nó tipo <em>Mensagem</em>. Use o atalho <Badge variant="outline" className="text-[10px]">+ Mensagem</Badge> ao lado da opção para criar e conectar de uma vez.</li>
+                      <li><strong>Submenu</strong>: aponte para outro nó tipo <em>Menu</em> com novas opções. Use o atalho <Badge variant="outline" className="text-[10px]">+ Submenu</Badge>.</li>
+                      <li><strong>Encaminhar para setor</strong>: aponte para um nó <em>Encaminhar p/ setor</em>.</li>
+                      <li><strong>Consultar boletos no GSystem</strong>: aponte para o novo nó <em>Consultar boletos</em>. O bot identifica o cliente pelo telefone, busca os boletos em aberto e envia automaticamente.</li>
+                    </ul>
+                    <pre className="mt-2 p-2 rounded bg-background text-[11px] overflow-x-auto">{`Menu inicial
+ 1 → "Falar com vendas"        (Encaminhar p/ setor: Vendas)
+ 2 → "Agora é só aguardar..."  (Mensagem → Encaminhar p/ Atendimento)
+ 3 → Submenu Financeiro
+       1 → Setor Financeiro    (Encaminhar p/ setor)
+       2 → Boletos em aberto   (Consultar boletos GSystem)`}</pre>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
+
             <div className="space-y-3">
               <div className="flex items-center justify-between">
                 <h3 className="text-sm font-semibold">Nós do fluxo ({nodes.length})</h3>
