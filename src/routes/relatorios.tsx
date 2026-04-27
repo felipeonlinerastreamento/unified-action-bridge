@@ -344,6 +344,17 @@ function RelatoriosPage() {
             <TabsContent value="atendimentos" className="space-y-4">
               {isLoading ? <LoadingState /> : (
                 <>
+                  {plateFilter && (
+                    <div className="rounded-md border border-primary/30 bg-primary/5 px-3 py-2 text-xs flex items-center justify-between">
+                      <span>
+                        Filtrando por placa: <strong className="font-mono">{plateFilter.toUpperCase()}</strong> — {tickets.length} atendimento(s) encontrado(s)
+                      </span>
+                      <button
+                        onClick={() => setPlateFilter("")}
+                        className="text-primary hover:underline"
+                      >Limpar filtro</button>
+                    </div>
+                  )}
                   <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
                     <ReportKpiCard title="Total de Atendimentos" value={tickets.length} icon={MessageSquare} subtitle={`${dateFrom} a ${dateTo}`} />
                     <ReportKpiCard title="Abertos" value={tickets.filter((t: any) => t.status === "aberto").length} icon={Clock} trend={0} trendLabel="no período" />
@@ -444,6 +455,7 @@ function RelatoriosPage() {
                               <TableHead className="text-xs">Contato</TableHead>
                               <TableHead className="text-xs">Empresa</TableHead>
                               <TableHead className="text-xs">Canal</TableHead>
+                              <TableHead className="text-xs">Placa</TableHead>
                               <TableHead className="text-xs">Status</TableHead>
                               <TableHead className="text-xs">Data</TableHead>
                             </TableRow>
@@ -455,6 +467,7 @@ function RelatoriosPage() {
                                 <TableCell className="text-xs">{t.contact_name || "—"}</TableCell>
                                 <TableCell className="text-xs">{(t.companies as any)?.name || "—"}</TableCell>
                                 <TableCell className="text-xs">{(t.channels as any)?.name || "—"}</TableCell>
+                                <TableCell className="text-xs font-mono">{t.plate || "—"}</TableCell>
                                 <TableCell>
                                   <Badge variant={t.status === "finalizado" ? "default" : "secondary"} className="text-[10px]">
                                     {statusLabel(t.status)}
