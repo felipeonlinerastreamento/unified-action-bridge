@@ -92,8 +92,16 @@ export function AtendimentosContent() {
   const { data: profiles = [] } = useQuery({
     queryKey: ["all-profiles"],
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("*");
-      return data || [];
+      // Usa server function (admin client) para listar TODOS os usuários,
+      // contornando a RLS de profiles que só permite o próprio perfil.
+      const { listAllProfiles } = await import("@/lib/user-admin.functions");
+      const { getAuthHeaders } = await import("@/lib/utils");
+      try {
+        return (await listAllProfiles({ ...(await getAuthHeaders()) })) || [];
+      } catch {
+        const { data } = await supabase.from("profiles").select("*");
+        return data || [];
+      }
     },
   });
 
