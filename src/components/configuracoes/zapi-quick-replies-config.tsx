@@ -97,7 +97,7 @@ export function ZapiQuickRepliesConfig() {
     mutationFn: async () => {
       if (!editingId) throw new Error("Nada para editar");
       if (!form.shortcut.trim() || !form.content.trim()) throw new Error("Atalho e conteúdo são obrigatórios");
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from("zapi_quick_replies")
         .update({
           shortcut: form.shortcut.startsWith("/") ? form.shortcut : `/${form.shortcut}`,
@@ -105,8 +105,12 @@ export function ZapiQuickRepliesConfig() {
           content: form.content,
           is_global: form.is_global,
         })
-        .eq("id", editingId);
+        .eq("id", editingId)
+        .select();
       if (error) throw new Error(error.message);
+      if (!data || data.length === 0) {
+        throw new Error("Sem permissão para editar essa resposta rápida.");
+      }
     },
     onSuccess: () => {
       toast.success("Resposta rápida atualizada");
