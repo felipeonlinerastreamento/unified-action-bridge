@@ -668,7 +668,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
                   </Button>
                 )}
                 {canFinalize && (
-                  <Button size="sm" variant="default" onClick={() => updateStatus("finalizado")} className="gap-1">
+                  <Button size="sm" variant="default" onClick={() => setConfirmFinalizeOpen(true)} className="gap-1">
                     <CheckCircle className="h-3.5 w-3.5" /> Finalizar
                   </Button>
                 )}
