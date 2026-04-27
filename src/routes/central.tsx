@@ -1466,9 +1466,47 @@ function CentralPage() {
     sendMutation.mutate({ text, whisper: whisperMode });
   };
 
+  // Quick replies disponíveis para expansão de atalhos digitados (ex: /bd)
+  const { data: quickRepliesAll = [] } = useQuery({
+    queryKey: ["zapi-quick-replies"],
+    queryFn: async () => {
+      const { data } = await supabase.from("zapi_quick_replies").select("*").order("shortcut");
+      return data || [];
+    },
+  });
+
+  const expandShortcutInText = (text: string): string | null => {
+    // Detecta um atalho /xxx isolado (no fim ou seguido de espaço) e substitui pelo conteúdo
+    const match = text.match(/(^|\s)(\/[A-Za-z0-9_-]+)\s*$/);
+    if (!match) return null;
+    const shortcut = match[2].toLowerCase();
+    const reply = quickRepliesAll.find((r: any) => (r.shortcut || "").toLowerCase() === shortcut);
+    if (!reply) return null;
+    const resolved = applyQuickReplyVars(reply.content || "", {
+      operatorName: profile?.name,
+      contactName: chatDetail?.contact?.name || chatDetail?.description,
+      protocol: chatDetail?.protocol,
+    });
+    return text.slice(0, match.index! + match[1].length) + resolved;
+  };
+
   const handleKeyDown = (e: React.KeyboardEvent) => {
+    if ((e.key === " " || e.key === "Tab") && messageInput.trim().startsWith("/")) {
+      const expanded = expandShortcutInText(messageInput);
+      if (expanded !== null) {
+        e.preventDefault();
+        setMessageInput(expanded);
+        return;
+      }
+    }
     if (e.key === "Enter" && !e.shiftKey) {
       e.preventDefault();
+      // Tenta expandir um atalho pendente antes de enviar
+      const expanded = expandShortcutInText(messageInput);
+      if (expanded !== null) {
+        setMessageInput(expanded);
+        return;
+      }
       handleSend();
     }
   };
