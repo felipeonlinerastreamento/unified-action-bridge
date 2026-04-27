@@ -122,16 +122,42 @@ export function ZapiQuickRepliesConfig() {
                 <Bold className="h-3 w-3" /> Negrito
               </Button>
             </div>
+            <div className="flex flex-wrap gap-1">
+              {QUICK_REPLY_VARIABLES.map((v) => (
+                <Button
+                  key={v.token}
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-6 px-2 text-[10px] font-mono gap-1"
+                  onClick={() => insertVariable(v.token)}
+                  title={`${v.label} — ${v.description}`}
+                >
+                  <Code2 className="h-3 w-3" /> {v.token}
+                </Button>
+              ))}
+            </div>
             <Textarea
               ref={contentRef}
               rows={3}
               value={form.content}
               onChange={(e) => setForm({ ...form, content: e.target.value })}
-              placeholder="Olá, em que posso ajudar?"
+              placeholder="Olá {nome_contato}, aqui é {primeiro_nome_operador}. Em que posso ajudar?"
             />
-            <p className="text-[10px] text-muted-foreground">
-              Use <code className="font-mono">*texto*</code> para deixar em negrito no WhatsApp.
-            </p>
+            <div className="rounded border bg-background/60 p-2 space-y-1">
+              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Variáveis disponíveis</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 gap-y-0.5">
+                {QUICK_REPLY_VARIABLES.map((v) => (
+                  <div key={v.token} className="text-[10px] text-muted-foreground flex gap-1">
+                    <code className="font-mono text-foreground">{v.token}</code>
+                    <span>→ {v.description}</span>
+                  </div>
+                ))}
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                Use <code className="font-mono">*texto*</code> para negrito. Variáveis são substituídas no momento do envio.
+              </p>
+            </div>
           </div>
           <div className="md:col-span-3 flex items-center gap-2">
             <Switch checked={form.is_global} onCheckedChange={(v) => setForm({ ...form, is_global: v })} />
