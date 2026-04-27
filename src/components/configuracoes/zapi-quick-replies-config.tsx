@@ -15,6 +15,7 @@ import { QUICK_REPLY_VARIABLES } from "@/lib/quick-reply-vars";
 export function ZapiQuickRepliesConfig() {
   const qc = useQueryClient();
   const [form, setForm] = useState({ shortcut: "", label: "", content: "", is_global: true });
+  const [editingId, setEditingId] = useState<string | null>(null);
   const contentRef = useRef<HTMLTextAreaElement | null>(null);
 
   const wrapBold = () => {
