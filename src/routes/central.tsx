@@ -2116,10 +2116,12 @@ function CentralPage() {
                           </DropdownMenuCheckboxItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
-                      {/* Hidden trigger for quick replies popover, controlled via menu */}
-                      <div className="hidden">
-                        <QuickRepliesPopover onPick={(text) => setMessageInput((prev) => prev ? `${prev} ${text}` : text)} />
-                      </div>
+                      <QuickRepliesPopover
+                        hideTrigger
+                        open={quickRepliesOpen}
+                        onOpenChange={setQuickRepliesOpen}
+                        onPick={(text) => setMessageInput((prev) => prev ? `${prev} ${text}` : text)}
+                      />
                       <Input
                         placeholder={whisperMode ? "Sussurro interno (não vai para o cliente)" : "Digite uma mensagem..."}
                         value={messageInput}
