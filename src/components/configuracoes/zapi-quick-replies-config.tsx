@@ -17,6 +17,7 @@ export function ZapiQuickRepliesConfig() {
   const [form, setForm] = useState({ shortcut: "", label: "", content: "", is_global: true });
   const [editingId, setEditingId] = useState<string | null>(null);
   const contentRef = useRef<HTMLTextAreaElement | null>(null);
+  const formRef = useRef<HTMLDivElement | null>(null);
 
   const wrapBold = () => {
     const ta = contentRef.current;
@@ -129,7 +130,10 @@ export function ZapiQuickRepliesConfig() {
       content: r.content || "",
       is_global: !!r.is_global,
     });
-    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+    requestAnimationFrame(() => {
+      formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
+      setTimeout(() => contentRef.current?.focus(), 300);
+    });
   };
 
   const cancelEdit = () => {
@@ -144,7 +148,7 @@ export function ZapiQuickRepliesConfig() {
         <CardDescription>Templates acessíveis via botão ⚡ ou digitando "/" no campo de mensagem.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-2 items-end border rounded p-3 bg-muted/30">
+        <div ref={formRef} className={`grid grid-cols-1 md:grid-cols-12 gap-2 items-end border rounded p-3 bg-muted/30 transition-all ${editingId ? "ring-2 ring-primary border-primary" : ""}`}>
           <div className="md:col-span-3 space-y-1">
             <Label className="text-xs">Atalho</Label>
             <Input placeholder="/saudacao" value={form.shortcut} onChange={(e) => setForm({ ...form, shortcut: e.target.value })} />
