@@ -2906,6 +2906,24 @@ function CentralPage() {
                 onChange={(e) => setFinalizeNotes(e.target.value)}
               />
             </div>
+
+            {isAdmin && (
+              <div className="flex items-start gap-2 rounded-md border border-dashed p-3 bg-muted/30">
+                <Checkbox
+                  id="skip-closing-message"
+                  checked={skipClosingMessage}
+                  onCheckedChange={(c) => setSkipClosingMessage(c === true)}
+                />
+                <div className="space-y-1">
+                  <Label htmlFor="skip-closing-message" className="text-xs font-medium cursor-pointer">
+                    Finalizar sem enviar mensagem ao cliente
+                  </Label>
+                  <p className="text-[11px] text-muted-foreground">
+                    Encerra silenciosamente — apenas administradores.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
           <div className="flex justify-end gap-2 mt-2">
             <Button variant="outline" onClick={() => setShowFinalizeConfirm(false)}>
@@ -2926,6 +2944,7 @@ function CentralPage() {
                   notes: notesToSend || undefined,
                   status: finalizeStatus,
                   tipoPendencia: finalizeTipoPendencia,
+                  skipClosingMessage: isAdmin && skipClosingMessage,
                 });
               }}
               disabled={!finalizeTipoPendencia || finalizeMutation.isPending}
