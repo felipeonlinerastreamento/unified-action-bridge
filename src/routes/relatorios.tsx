@@ -53,9 +53,10 @@ function RelatoriosPage() {
   const [dateTo, setDateTo] = useState(defaults.to);
   const [period, setPeriod] = useState("30d");
   const [activeTab, setActiveTab] = useState("atendimentos");
+  const [plateFilter, setPlateFilter] = useState("");
 
   // Fetch tickets
-  const { data: tickets = [], isLoading: ticketsLoading } = useQuery({
+  const { data: rawTickets = [], isLoading: ticketsLoading } = useQuery({
     queryKey: ["report-tickets", dateFrom, dateTo],
     queryFn: async () => {
       const { data, error } = await supabase
@@ -68,6 +69,13 @@ function RelatoriosPage() {
       return data || [];
     },
   });
+
+  // Apply plate filter (case-insensitive partial match)
+  const tickets = useMemo(() => {
+    const p = plateFilter.trim().toUpperCase();
+    if (!p) return rawTickets;
+    return (rawTickets as any[]).filter((t) => (t.plate || "").toUpperCase().includes(p));
+  }, [rawTickets, plateFilter]);
 
   // Fetch inventory
   const { data: inventoryItems = [] } = useQuery({
@@ -307,6 +315,8 @@ function RelatoriosPage() {
           onDateFromChange={setDateFrom} onDateToChange={setDateTo}
           period={period} onPeriodChange={setPeriod}
           onExport={handleExport}
+          plate={plateFilter}
+          onPlateChange={setPlateFilter}
         />
 
         <div id="report-content">
