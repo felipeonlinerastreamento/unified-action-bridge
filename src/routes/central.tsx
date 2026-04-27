@@ -2121,7 +2121,14 @@ function CentralPage() {
                         hideTrigger
                         open={quickRepliesOpen}
                         onOpenChange={setQuickRepliesOpen}
-                        onPick={(text) => setMessageInput((prev) => prev ? `${prev} ${text}` : text)}
+                        onPick={(text) => {
+                          const resolved = applyQuickReplyVars(text, {
+                            operatorName: profile?.name,
+                            contactName: chatDetail?.contact?.name || chatDetail?.description,
+                            protocol: chatDetail?.protocol,
+                          });
+                          setMessageInput((prev) => prev ? `${prev} ${resolved}` : resolved);
+                        }}
                       />
                       <Input
                         placeholder={whisperMode ? "Sussurro interno (não vai para o cliente)" : "Digite uma mensagem..."}
