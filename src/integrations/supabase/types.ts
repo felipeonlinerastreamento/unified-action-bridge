@@ -98,6 +98,78 @@ export type Database = {
         }
         Relationships: []
       }
+      attendance_event_logs: {
+        Row: {
+          chat_id: string | null
+          created_at: string
+          event_type: string
+          from_band: string | null
+          id: string
+          message: string
+          metadata: Json
+          to_band: string | null
+          user_id: string | null
+        }
+        Insert: {
+          chat_id?: string | null
+          created_at?: string
+          event_type: string
+          from_band?: string | null
+          id?: string
+          message?: string
+          metadata?: Json
+          to_band?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          chat_id?: string | null
+          created_at?: string
+          event_type?: string
+          from_band?: string | null
+          id?: string
+          message?: string
+          metadata?: Json
+          to_band?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      attendance_event_settings: {
+        Row: {
+          created_at: string
+          daily_review_enabled: boolean
+          daily_review_message: string
+          daily_review_sound: boolean
+          daily_review_time: string
+          id: string
+          sla_band_change_enabled: boolean
+          sla_band_change_sound: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          daily_review_enabled?: boolean
+          daily_review_message?: string
+          daily_review_sound?: boolean
+          daily_review_time?: string
+          id?: string
+          sla_band_change_enabled?: boolean
+          sla_band_change_sound?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          daily_review_enabled?: boolean
+          daily_review_message?: string
+          daily_review_sound?: boolean
+          daily_review_time?: string
+          id?: string
+          sla_band_change_enabled?: boolean
+          sla_band_change_sound?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
       attendance_flow_history: {
         Row: {
           attendance_flow_instance_id: string

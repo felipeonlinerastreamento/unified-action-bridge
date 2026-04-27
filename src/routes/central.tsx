@@ -129,6 +129,7 @@ import {
 } from "@/components/atendimentos/liberacao-equipamento-fields";
 import { isLiberacaoCategory } from "@/hooks/use-liberacao-equipamento";
 import { finalizeTicketWithFlow } from "@/lib/ticket-finalize-flow";
+import { useAttendanceEventSettings, useSlaBandChangeNotifier } from "@/hooks/use-attendance-events";
 import {
   AlertDialog,
   AlertDialogContent,
@@ -430,6 +431,45 @@ function CentralPage() {
     if (totalMinutes <= rule.orange_limit_minutes) return { bg: rule.orange_color, text: "", label: "orange" };
     return { bg: rule.red_color, text: "", label: "red" };
   }, [slaRules]);
+
+  // ===== Attendance Events: SLA band-change pop-up for the responsible operator =====
+  const { data: eventSettings } = useAttendanceEventSettings();
+  const { data: myGsystemLink } = useQuery({
+    queryKey: ["my-gsystem-link", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const { data } = await supabase
+        .from("user_gsystem_links" as any)
+        .select("gsystem_user_id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      return (data as any) || null;
+    },
+    enabled: !!user?.id,
+    staleTime: 300000,
+  });
+
+  const slaItems = useMemo(() => {
+    return allChats.map((c: any) => {
+      const band = getSlaColor(c).label;
+      const assignedGsystemId = c.assignedUserId ? String(c.assignedUserId) : null;
+      const isMine = !!assignedGsystemId && !!myGsystemLink?.gsystem_user_id &&
+        String(myGsystemLink.gsystem_user_id) === assignedGsystemId;
+      return {
+        chatId: String(c.attendanceId),
+        assignedUserId: assignedGsystemId,
+        currentUserIsResponsible: isMine,
+        band,
+        contactName: c.description || c.secondaryDescription || "",
+      };
+    });
+  }, [allChats, getSlaColor, myGsystemLink?.gsystem_user_id]);
+
+  useSlaBandChangeNotifier(
+    slaItems,
+    !!eventSettings?.sla_band_change_enabled,
+    !!eventSettings?.sla_band_change_sound,
+  );
 
   const formatServiceTime = (chat: ChatItem) => {
     const totalSeconds = (chat.timeInManual || 0) + (chat.timeInWaiting || 0) + (chat.timeInAutomatic || 0) + (chat.timeInOutOfHour || 0);
