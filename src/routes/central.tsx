@@ -87,7 +87,20 @@ import {
   Check,
   CheckCheck,
   Pencil,
+  Paperclip,
+  Zap,
+  EyeOff,
+  AtSign,
 } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuCheckboxItem,
+  DropdownMenuSeparator,
+  DropdownMenuLabel,
+} from "@/components/ui/dropdown-menu";
 import { ChatQueueList } from "@/components/central/chat-queue-list";
 import { FloatingChatsProvider } from "@/components/central/floating-chats-context";
 import { FloatingChatsLayer } from "@/components/central/floating-chats-layer";
@@ -226,12 +239,14 @@ function detectPlates(messages: GMessage[]): string[] {
 }
 
 function CentralPage() {
-  const { isAuthenticated, isLoading: authLoading, session, user, hasRole } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, session, user, hasRole, profile } = useAuth();
   const isAdmin = hasRole("admin");
   const [selectedChannelId, setSelectedChannelId] = useState<string>("");
   const [selectedChatId, setSelectedChatId] = useState<string>("");
   const [messageInput, setMessageInput] = useState("");
   const [whisperMode, setWhisperMode] = useState(false);
+  const [nicknameMode, setNicknameMode] = useState(false);
+  const [quickRepliesOpen, setQuickRepliesOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [ticketPlate, setTicketPlate] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -1441,7 +1456,12 @@ function CentralPage() {
 
   const handleSend = () => {
     if (!messageInput.trim() || !selectedChatId) return;
-    sendMutation.mutate({ text: messageInput.trim(), whisper: whisperMode });
+    const operatorName = profile?.name?.trim();
+    const text =
+      nicknameMode && !whisperMode && operatorName
+        ? `*${operatorName}:* ${messageInput.trim()}`
+        : messageInput.trim();
+    sendMutation.mutate({ text, whisper: whisperMode });
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -2055,8 +2075,53 @@ function CentralPage() {
                   {/* Input */}
                   <div className="p-3 border-t space-y-2">
                     <div className="flex gap-2">
-                      <QuickRepliesPopover onPick={(text) => setMessageInput((prev) => prev ? `${prev} ${text}` : text)} />
-                      <WhisperToggle active={whisperMode} onToggle={() => setWhisperMode((v) => !v)} />
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            className="shrink-0"
+                            title="Opções de mensagem"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-56">
+                          <DropdownMenuLabel>Opções de envio</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuCheckboxItem
+                            checked={whisperMode}
+                            onCheckedChange={(v) => {
+                              setWhisperMode(!!v);
+                              if (v) setNicknameMode(false);
+                            }}
+                          >
+                            <EyeOff className="h-4 w-4 mr-2" />
+                            Enviar sussurro
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setQuickRepliesOpen(true); }}>
+                            <Zap className="h-4 w-4 mr-2" />
+                            Respostas rápidas
+                          </DropdownMenuItem>
+                          <DropdownMenuCheckboxItem
+                            checked={nicknameMode}
+                            onCheckedChange={(v) => {
+                              setNicknameMode(!!v);
+                              if (v) setWhisperMode(false);
+                            }}
+                            disabled={!profile?.name}
+                          >
+                            <AtSign className="h-4 w-4 mr-2" />
+                            Interagir com apelido
+                          </DropdownMenuCheckboxItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      <QuickRepliesPopover
+                        hideTrigger
+                        open={quickRepliesOpen}
+                        onOpenChange={setQuickRepliesOpen}
+                        onPick={(text) => setMessageInput((prev) => prev ? `${prev} ${text}` : text)}
+                      />
                       <Input
                         placeholder={whisperMode ? "Sussurro interno (não vai para o cliente)" : "Digite uma mensagem..."}
                         value={messageInput}
