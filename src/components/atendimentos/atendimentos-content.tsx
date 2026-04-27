@@ -109,9 +109,6 @@ export function AtendimentosContent() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <h1 className="text-2xl font-bold text-foreground">Atendimentos</h1>
-          <p className="text-sm text-muted-foreground">
-            {filteredTickets.length} de {tickets.length} ticket(s)
-          </p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
