@@ -268,7 +268,8 @@ function RelatoriosPage() {
       data = tickets.map((t: any) => ({
         ID: t.attendance_id, Status: t.status, Empresa: (t.companies as any)?.name || "",
         Canal: (t.channels as any)?.name || "", Contato: t.contact_name || "",
-        Telefone: t.contact_phone || "", Criado: t.created_at, Fechado: t.closed_at || "",
+        Telefone: t.contact_phone || "", Placa: t.plate || "",
+        Criado: t.created_at, Fechado: t.closed_at || "",
       }));
     } else if (activeTab === "estoque") {
       data = inventoryItems.map((i: any) => ({
