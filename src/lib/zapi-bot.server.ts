@@ -142,7 +142,7 @@ export async function processIncomingForBot(params: ProcessParams): Promise<bool
   const flow = await findActiveFlow(channelId);
   if (!flow || !Array.isArray(flow.nodes) || flow.nodes.length === 0) return false;
 
-  const botState = (chat.bot_state || {}) as { current_node?: string };
+  const botState = (chat.bot_state || {}) as { current_node?: string; [k: string]: any };
   const vars = { contactName: contactName || undefined };
 
   let creds;
