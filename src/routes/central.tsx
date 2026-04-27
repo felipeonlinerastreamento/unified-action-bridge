@@ -129,6 +129,7 @@ import {
 } from "@/components/atendimentos/liberacao-equipamento-fields";
 import { isLiberacaoCategory } from "@/hooks/use-liberacao-equipamento";
 import { finalizeTicketWithFlow } from "@/lib/ticket-finalize-flow";
+import { useAttendanceEventSettings, useSlaBandChangeNotifier } from "@/hooks/use-attendance-events";
 import {
   AlertDialog,
   AlertDialogContent,
