@@ -28,6 +28,7 @@ import { Route as ConfiguracoesEstoqueRouteImport } from './routes/configuracoes
 import { Route as ConfiguracoesEncaminhamentoRouteImport } from './routes/configuracoes.encaminhamento'
 import { Route as ConfiguracoesCentralAtendimentoRouteImport } from './routes/configuracoes.central-atendimento'
 import { Route as ConfiguracoesAssistenteIaRouteImport } from './routes/configuracoes.assistente-ia'
+import { Route as ApiPublicDebugColabRouteImport } from './routes/api.public.debug-colab'
 import { Route as ApiPublicZapiWebhookChannelIdRouteImport } from './routes/api.public.zapi-webhook.$channelId'
 
 const RelatoriosRoute = RelatoriosRouteImport.update({
@@ -129,6 +130,11 @@ const ConfiguracoesAssistenteIaRoute =
     path: '/assistente-ia',
     getParentRoute: () => ConfiguracoesRoute,
   } as any)
+const ApiPublicDebugColabRoute = ApiPublicDebugColabRouteImport.update({
+  id: '/api/public/debug-colab',
+  path: '/api/public/debug-colab',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicZapiWebhookChannelIdRoute =
   ApiPublicZapiWebhookChannelIdRouteImport.update({
     id: '/api/public/zapi-webhook/$channelId',
@@ -156,6 +162,7 @@ export interface FileRoutesByFullPath {
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
   '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
   '/configuracoes/': typeof ConfiguracoesIndexRoute
+  '/api/public/debug-colab': typeof ApiPublicDebugColabRoute
   '/api/public/zapi-webhook/$channelId': typeof ApiPublicZapiWebhookChannelIdRoute
 }
 export interface FileRoutesByTo {
@@ -177,6 +184,7 @@ export interface FileRoutesByTo {
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
   '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
   '/configuracoes': typeof ConfiguracoesIndexRoute
+  '/api/public/debug-colab': typeof ApiPublicDebugColabRoute
   '/api/public/zapi-webhook/$channelId': typeof ApiPublicZapiWebhookChannelIdRoute
 }
 export interface FileRoutesById {
@@ -200,6 +208,7 @@ export interface FileRoutesById {
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
   '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
   '/configuracoes/': typeof ConfiguracoesIndexRoute
+  '/api/public/debug-colab': typeof ApiPublicDebugColabRoute
   '/api/public/zapi-webhook/$channelId': typeof ApiPublicZapiWebhookChannelIdRoute
 }
 export interface FileRouteTypes {
@@ -224,6 +233,7 @@ export interface FileRouteTypes {
     | '/configuracoes/zapi'
     | '/hooks/refresh-tracking'
     | '/configuracoes/'
+    | '/api/public/debug-colab'
     | '/api/public/zapi-webhook/$channelId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -245,6 +255,7 @@ export interface FileRouteTypes {
     | '/configuracoes/zapi'
     | '/hooks/refresh-tracking'
     | '/configuracoes'
+    | '/api/public/debug-colab'
     | '/api/public/zapi-webhook/$channelId'
   id:
     | '__root__'
@@ -267,6 +278,7 @@ export interface FileRouteTypes {
     | '/configuracoes/zapi'
     | '/hooks/refresh-tracking'
     | '/configuracoes/'
+    | '/api/public/debug-colab'
     | '/api/public/zapi-webhook/$channelId'
   fileRoutesById: FileRoutesById
 }
@@ -282,6 +294,7 @@ export interface RootRouteChildren {
   EstoqueRoute: typeof EstoqueRoute
   RelatoriosRoute: typeof RelatoriosRoute
   HooksRefreshTrackingRoute: typeof HooksRefreshTrackingRoute
+  ApiPublicDebugColabRoute: typeof ApiPublicDebugColabRoute
   ApiPublicZapiWebhookChannelIdRoute: typeof ApiPublicZapiWebhookChannelIdRoute
 }
 
@@ -420,6 +433,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConfiguracoesAssistenteIaRouteImport
       parentRoute: typeof ConfiguracoesRoute
     }
+    '/api/public/debug-colab': {
+      id: '/api/public/debug-colab'
+      path: '/api/public/debug-colab'
+      fullPath: '/api/public/debug-colab'
+      preLoaderRoute: typeof ApiPublicDebugColabRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/zapi-webhook/$channelId': {
       id: '/api/public/zapi-webhook/$channelId'
       path: '/api/public/zapi-webhook/$channelId'
@@ -468,6 +488,7 @@ const rootRouteChildren: RootRouteChildren = {
   EstoqueRoute: EstoqueRoute,
   RelatoriosRoute: RelatoriosRoute,
   HooksRefreshTrackingRoute: HooksRefreshTrackingRoute,
+  ApiPublicDebugColabRoute: ApiPublicDebugColabRoute,
   ApiPublicZapiWebhookChannelIdRoute: ApiPublicZapiWebhookChannelIdRoute,
 }
 export const routeTree = rootRouteImport
