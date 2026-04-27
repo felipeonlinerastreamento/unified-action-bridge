@@ -68,6 +68,7 @@ function UsuariosConfigPage() {
   const [editUserId, setEditUserId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editRole, setEditRole] = useState<"admin" | "gestor" | "atendente">("atendente");
+  const [editTargetMinutes, setEditTargetMinutes] = useState<string>("");
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
@@ -89,7 +90,7 @@ function UsuariosConfigPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("user_id, name, avatar_url, group_id")
+        .select("user_id, name, avatar_url, group_id, attendance_target_minutes")
         .order("name");
       if (error) throw error;
       return data || [];
@@ -243,6 +244,12 @@ function UsuariosConfigPage() {
       if (!editUserId) return;
       await updateUserName({ data: { targetUserId: editUserId, name: editName } });
       await updateUserRole({ data: { targetUserId: editUserId, role: editRole } });
+      const parsed = editTargetMinutes.trim() === "" ? null : Math.max(0, Number(editTargetMinutes));
+      const { error: profErr } = await supabase
+        .from("profiles")
+        .update({ attendance_target_minutes: Number.isFinite(parsed as number) ? parsed : null } as any)
+        .eq("user_id", editUserId);
+      if (profErr) throw profErr;
     },
     onSuccess: () => {
       toast.success("Usuário atualizado");
@@ -372,11 +379,14 @@ function UsuariosConfigPage() {
     setSectorDialogOpen(true);
   };
 
-  const handleOpenEdit = (profile: { user_id: string; name: string }) => {
+  const handleOpenEdit = (profile: { user_id: string; name: string; attendance_target_minutes?: number | null }) => {
     setEditUserId(profile.user_id);
     setEditName(profile.name || "");
     const roles = getRolesForUser(profile.user_id);
     setEditRole((roles[0] as any) || "atendente");
+    setEditTargetMinutes(
+      profile.attendance_target_minutes != null ? String(profile.attendance_target_minutes) : ""
+    );
     setEditDialogOpen(true);
   };
 
@@ -735,6 +745,19 @@ function UsuariosConfigPage() {
                   <SelectItem value="admin">Admin</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Meta de tempo de atendimento (minutos)</Label>
+              <Input
+                type="number"
+                min={0}
+                placeholder="Ex.: 15"
+                value={editTargetMinutes}
+                onChange={(e) => setEditTargetMinutes(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Tempo médio alvo para finalizar um atendimento. Aparece como meta na Central de Atendimento.
+              </p>
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancelar</Button>

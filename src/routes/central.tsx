@@ -102,6 +102,7 @@ import {
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { ChatQueueList } from "@/components/central/chat-queue-list";
+import { MyAttendanceKpis } from "@/components/central/my-attendance-kpis";
 import { FloatingChatsProvider } from "@/components/central/floating-chats-context";
 import { FloatingChatsLayer } from "@/components/central/floating-chats-layer";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -1679,11 +1680,14 @@ function CentralPage() {
       <div className="space-y-4">
         {/* Header */}
         <div className="flex items-start sm:items-center justify-between gap-3 flex-wrap">
-          <div className="min-w-0">
-            <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate">Central de Atendimento</h1>
-            <p className="text-xs sm:text-sm text-muted-foreground">
-              {allChats.length} atendimento(s) ativo(s) • {onlineAgents} agente(s) online
-            </p>
+          <div className="min-w-0 flex items-center gap-4 flex-wrap">
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate">Central de Atendimento</h1>
+              <p className="text-xs sm:text-sm text-muted-foreground">
+                {allChats.length} atendimento(s) ativo(s) • {onlineAgents} agente(s) online
+              </p>
+            </div>
+            <MyAttendanceKpis />
           </div>
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             {isConnected ? (

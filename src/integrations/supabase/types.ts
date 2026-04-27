@@ -1038,6 +1038,7 @@ export type Database = {
       }
       profiles: {
         Row: {
+          attendance_target_minutes: number | null
           avatar_url: string | null
           created_at: string
           group_id: string | null
@@ -1047,6 +1048,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          attendance_target_minutes?: number | null
           avatar_url?: string | null
           created_at?: string
           group_id?: string | null
@@ -1056,6 +1058,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          attendance_target_minutes?: number | null
           avatar_url?: string | null
           created_at?: string
           group_id?: string | null
