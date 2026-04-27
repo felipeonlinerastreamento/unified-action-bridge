@@ -6,11 +6,16 @@ import { loadZapiChannel, zapiSendText } from "./zapi.server";
 
 export interface FlowNode {
   id: string;
-  type: "message" | "menu" | "route_to_sector" | "route_to_least_loaded" | "end";
+  type: "message" | "menu" | "route_to_sector" | "route_to_least_loaded" | "end" | "gsystem_boleto";
   text?: string;
   options?: Array<{ key: string; label: string; next: string }>;
   next?: string;
   target_sector?: string;
+  // gsystem_boleto specific
+  fallback_sector?: string;
+  text_success?: string;
+  text_no_boletos?: string;
+  text_no_client?: string;
 }
 
 export interface FlowDoc {
