@@ -379,11 +379,14 @@ function UsuariosConfigPage() {
     setSectorDialogOpen(true);
   };
 
-  const handleOpenEdit = (profile: { user_id: string; name: string }) => {
+  const handleOpenEdit = (profile: { user_id: string; name: string; attendance_target_minutes?: number | null }) => {
     setEditUserId(profile.user_id);
     setEditName(profile.name || "");
     const roles = getRolesForUser(profile.user_id);
     setEditRole((roles[0] as any) || "atendente");
+    setEditTargetMinutes(
+      profile.attendance_target_minutes != null ? String(profile.attendance_target_minutes) : ""
+    );
     setEditDialogOpen(true);
   };
 
