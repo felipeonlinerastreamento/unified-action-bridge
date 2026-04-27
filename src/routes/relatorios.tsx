@@ -54,6 +54,21 @@ function RelatoriosPage() {
   const [period, setPeriod] = useState("30d");
   const [activeTab, setActiveTab] = useState("atendimentos");
   const [plateFilter, setPlateFilter] = useState("");
+  const [protocolFilter, setProtocolFilter] = useState("");
+  const [operatorFilter, setOperatorFilter] = useState("");
+
+  // Operators list (profiles)
+  const { data: operators = [] } = useQuery({
+    queryKey: ["report-operators"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("user_id, name")
+        .order("name", { ascending: true });
+      if (error) throw error;
+      return (data || []).map((p: any) => ({ id: p.user_id, name: p.name || "Sem nome" }));
+    },
+  });
 
   // Fetch tickets
   const { data: rawTickets = [], isLoading: ticketsLoading } = useQuery({
@@ -70,12 +85,18 @@ function RelatoriosPage() {
     },
   });
 
-  // Apply plate filter (case-insensitive partial match)
+  // Apply plate / protocol / operator filters
   const tickets = useMemo(() => {
     const p = plateFilter.trim().toUpperCase();
-    if (!p) return rawTickets;
-    return (rawTickets as any[]).filter((t) => (t.plate || "").toUpperCase().includes(p));
-  }, [rawTickets, plateFilter]);
+    const proto = protocolFilter.trim().toLowerCase();
+    const op = operatorFilter.trim();
+    return (rawTickets as any[]).filter((t) => {
+      if (p && !(t.plate || "").toUpperCase().includes(p)) return false;
+      if (proto && !(t.attendance_id || "").toLowerCase().includes(proto)) return false;
+      if (op && t.assigned_to !== op) return false;
+      return true;
+    });
+  }, [rawTickets, plateFilter, protocolFilter, operatorFilter]);
 
   // Fetch inventory
   const { data: inventoryItems = [] } = useQuery({
@@ -318,6 +339,11 @@ function RelatoriosPage() {
           onExport={handleExport}
           plate={plateFilter}
           onPlateChange={setPlateFilter}
+          protocol={protocolFilter}
+          onProtocolChange={setProtocolFilter}
+          operatorId={operatorFilter}
+          onOperatorChange={setOperatorFilter}
+          operators={operators}
         />
 
         <div id="report-content">
