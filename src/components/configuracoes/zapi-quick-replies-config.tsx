@@ -35,6 +35,23 @@ export function ZapiQuickRepliesConfig() {
     });
   };
 
+  const insertVariable = (token: string) => {
+    const ta = contentRef.current;
+    const value = form.content;
+    if (!ta) {
+      setForm({ ...form, content: `${value}${token}` });
+      return;
+    }
+    const start = ta.selectionStart ?? value.length;
+    const end = ta.selectionEnd ?? value.length;
+    const next = `${value.slice(0, start)}${token}${value.slice(end)}`;
+    setForm({ ...form, content: next });
+    requestAnimationFrame(() => {
+      ta.focus();
+      ta.setSelectionRange(start + token.length, start + token.length);
+    });
+  };
+
   const { data: replies = [] } = useQuery({
     queryKey: ["zapi-quick-replies"],
     queryFn: async () => {
