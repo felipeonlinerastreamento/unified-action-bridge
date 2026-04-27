@@ -304,3 +304,101 @@ async function persistOutgoing(chatId: string, text: string) {
     .update({ last_message_at: new Date().toISOString(), last_message_preview: text.slice(0, 120) })
     .eq("id", chatId);
 }
+
+// ============================================================
+// GSystem boleto helpers
+// ============================================================
+
+type GsApiFetch = (endpoint: string, method?: string, body?: unknown) => Promise<any>;
+
+/**
+ * Try to find a client in GSystem using only the WhatsApp phone number.
+ * Strategy: GSystem's `/clientes/{identifier}` accepts multiple identifiers
+ * (CPF, CNPJ, phone). We try a few normalised variants.
+ */
+async function findGSystemClientByPhone(
+  gsApi: GsApiFetch,
+  phone: string
+): Promise<{ key?: string; cpfCnpj?: string } | null> {
+  const digits = (phone || "").replace(/\D/g, "");
+  if (!digits) return null;
+
+  // Variants: full, without country code (55), last 11 digits, last 10 digits
+  const variants = Array.from(
+    new Set([
+      digits,
+      digits.startsWith("55") ? digits.slice(2) : digits,
+      digits.slice(-11),
+      digits.slice(-10),
+    ].filter((v) => v.length >= 8))
+  );
+
+  for (const v of variants) {
+    try {
+      const result = await gsApi(`/clientes/${encodeURIComponent(v)}`);
+      const first = Array.isArray(result) ? result[0] : result;
+      if (first && (first.CPF || first.CNPJ || first.cpf || first.cnpj || first.Key || first.key)) {
+        return {
+          key: String(first.Key || first.key || ""),
+          cpfCnpj: String(first.CNPJ || first.CPF || first.cnpj || first.cpf || ""),
+        };
+      }
+    } catch {
+      // try next variant
+    }
+  }
+  return null;
+}
+
+interface BoletoSummary {
+  numero?: string;
+  vencimento?: string;
+  valor?: number | string;
+  link?: string;
+  linhaDigitavel?: string;
+  status?: string;
+}
+
+/** Filter only open / pending invoices from a GSystem `/faturas/...` response. */
+function filterOpenBoletos(faturas: any): BoletoSummary[] {
+  const arr: any[] = Array.isArray(faturas) ? faturas : (faturas?.items || faturas?.Items || []);
+  return arr
+    .map((f) => {
+      const status = String(
+        f.Status || f.status || f.SituacaoDescricao || f.Situacao || ""
+      ).toLowerCase();
+      const isPaid = /pago|quitad|liquidad|baixad/.test(status);
+      if (isPaid) return null;
+      return {
+        numero: f.NumeroDocumento || f.Numero || f.numero || f.Documento || f.Id || f.id,
+        vencimento: f.DataVencimento || f.Vencimento || f.vencimento || f.dataVencimento,
+        valor: f.Valor || f.valor || f.ValorTotal || f.valorTotal,
+        link: f.LinkBoleto || f.UrlBoleto || f.linkBoleto || f.url || f.Url,
+        linhaDigitavel: f.LinhaDigitavel || f.linhaDigitavel || f.CodigoBarras || f.codigoBarras,
+        status: f.SituacaoDescricao || f.Situacao || f.Status || f.status,
+      } as BoletoSummary;
+    })
+    .filter((x): x is BoletoSummary => x !== null);
+}
+
+function formatBoletos(boletos: BoletoSummary[]): string {
+  return boletos
+    .map((b, i) => {
+      const lines: string[] = [`*${i + 1})* Documento ${b.numero || "-"}`];
+      if (b.vencimento) {
+        const d = String(b.vencimento).split("T")[0];
+        const [y, m, dd] = d.includes("-") ? d.split("-") : ["", "", ""];
+        lines.push(`📅 Vencimento: ${y && m && dd ? `${dd}/${m}/${y}` : d}`);
+      }
+      if (b.valor != null) {
+        const num = typeof b.valor === "string" ? Number(b.valor.replace(",", ".")) : b.valor;
+        if (!Number.isNaN(num)) {
+          lines.push(`💵 Valor: R$ ${num.toFixed(2).replace(".", ",")}`);
+        }
+      }
+      if (b.link) lines.push(`🔗 ${b.link}`);
+      if (b.linhaDigitavel) lines.push(`🧾 ${b.linhaDigitavel}`);
+      return lines.join("\n");
+    })
+    .join("\n\n");
+}
