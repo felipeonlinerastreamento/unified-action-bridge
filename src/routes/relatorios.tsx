@@ -339,6 +339,11 @@ function RelatoriosPage() {
           onExport={handleExport}
           plate={plateFilter}
           onPlateChange={setPlateFilter}
+          protocol={protocolFilter}
+          onProtocolChange={setProtocolFilter}
+          operatorId={operatorFilter}
+          onOperatorChange={setOperatorFilter}
+          operators={operators}
         />
 
         <div id="report-content">
