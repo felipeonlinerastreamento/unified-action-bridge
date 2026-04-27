@@ -545,11 +545,17 @@ export const listSectors = createServerFn({ method: "POST" })
 export const listGSystemUsers = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ channelId: z.string().uuid() }).parse)
-  .handler(async ({ context }) => {
-    const { data } = await context.supabase
+  .handler(async () => {
+    // Usa o admin client para bypassar a RLS de profiles (atendentes só veem o
+    // próprio perfil), permitindo que qualquer operador transfira para qualquer outro.
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data } = await supabaseAdmin
       .from("profiles")
-      .select("user_id, name");
-    return (data || []).map((p) => ({ id: p.user_id, name: p.name, status: "ONLINE" }));
+      .select("user_id, name")
+      .order("name", { ascending: true });
+    return (data || [])
+      .filter((p: any) => p.user_id && p.name)
+      .map((p: any) => ({ id: p.user_id, name: p.name, status: "ONLINE" }));
   });
 
 export const listContacts = createServerFn({ method: "POST" })
