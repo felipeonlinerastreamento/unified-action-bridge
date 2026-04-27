@@ -2075,8 +2075,51 @@ function CentralPage() {
                   {/* Input */}
                   <div className="p-3 border-t space-y-2">
                     <div className="flex gap-2">
-                      <QuickRepliesPopover onPick={(text) => setMessageInput((prev) => prev ? `${prev} ${text}` : text)} />
-                      <WhisperToggle active={whisperMode} onToggle={() => setWhisperMode((v) => !v)} />
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button
+                            size="icon"
+                            variant="outline"
+                            className="shrink-0"
+                            title="Opções de mensagem"
+                          >
+                            <Plus className="h-4 w-4" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="start" className="w-56">
+                          <DropdownMenuLabel>Opções de envio</DropdownMenuLabel>
+                          <DropdownMenuSeparator />
+                          <DropdownMenuCheckboxItem
+                            checked={whisperMode}
+                            onCheckedChange={(v) => {
+                              setWhisperMode(!!v);
+                              if (v) setNicknameMode(false);
+                            }}
+                          >
+                            <EyeOff className="h-4 w-4 mr-2" />
+                            Enviar sussurro
+                          </DropdownMenuCheckboxItem>
+                          <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setQuickRepliesOpen(true); }}>
+                            <Zap className="h-4 w-4 mr-2" />
+                            Respostas rápidas
+                          </DropdownMenuItem>
+                          <DropdownMenuCheckboxItem
+                            checked={nicknameMode}
+                            onCheckedChange={(v) => {
+                              setNicknameMode(!!v);
+                              if (v) setWhisperMode(false);
+                            }}
+                            disabled={!profile?.name}
+                          >
+                            <AtSign className="h-4 w-4 mr-2" />
+                            Interagir com apelido
+                          </DropdownMenuCheckboxItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                      {/* Hidden trigger for quick replies popover, controlled via menu */}
+                      <div className="hidden">
+                        <QuickRepliesPopover onPick={(text) => setMessageInput((prev) => prev ? `${prev} ${text}` : text)} />
+                      </div>
                       <Input
                         placeholder={whisperMode ? "Sussurro interno (não vai para o cliente)" : "Digite uma mensagem..."}
                         value={messageInput}
