@@ -1317,7 +1317,23 @@ function CentralPage() {
       // Admins can opt out via skipClosingMessage to silently close.
       if (!skipMsg) {
         const protocolNumber = chatDetail?.protocol || selectedChatId;
-        const closingMessage = `Seu atendimento foi finalizado e desde já agradecemos pela atenção.\n\nSe você precisar de suporte no futuro, fique à vontade para falar conosco.\n\nTenha um ótimo dia!\n\nProtocolo desse atendimento: ${protocolNumber}\n\nEsta é uma mensagem automática e não precisa responder.`;
+        // Busca template editável; cai para o padrão se ainda não houver registro
+        let templateContent = `Seu atendimento foi finalizado e desde já agradecemos pela atenção.\n\nSe você precisar de suporte no futuro, fique à vontade para falar conosco.\n\nTenha um ótimo dia!\n\nProtocolo desse atendimento: {protocolo}\n\nEsta é uma mensagem automática e não precisa responder.`;
+        try {
+          const { data: tpl } = await supabase
+            .from("zapi_message_templates" as any)
+            .select("content")
+            .eq("key", "finalizacao")
+            .maybeSingle();
+          if (tpl && (tpl as any).content) templateContent = (tpl as any).content;
+        } catch (e) {
+          console.warn("[Finalize] Failed to load template, using default", e);
+        }
+        const closingMessage = applyQuickReplyVars(templateContent, {
+          operatorName: profile?.name,
+          contactName: chatDetail?.contact?.name || chatDetail?.description,
+          protocol: String(protocolNumber),
+        });
         try {
           const authH = await getAuthHeaders();
           await sendText({
