@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -9,11 +9,30 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Trash2, Zap } from "lucide-react";
+import { Plus, Trash2, Zap, Bold } from "lucide-react";
 
 export function ZapiQuickRepliesConfig() {
   const qc = useQueryClient();
   const [form, setForm] = useState({ shortcut: "", label: "", content: "", is_global: true });
+  const contentRef = useRef<HTMLTextAreaElement | null>(null);
+
+  const wrapBold = () => {
+    const ta = contentRef.current;
+    const value = form.content;
+    if (!ta) {
+      setForm({ ...form, content: `${value}*texto em negrito*` });
+      return;
+    }
+    const start = ta.selectionStart ?? value.length;
+    const end = ta.selectionEnd ?? value.length;
+    const selected = value.slice(start, end) || "texto em negrito";
+    const next = `${value.slice(0, start)}*${selected}*${value.slice(end)}`;
+    setForm({ ...form, content: next });
+    requestAnimationFrame(() => {
+      ta.focus();
+      ta.setSelectionRange(start + 1, start + 1 + selected.length);
+    });
+  };
 
   const { data: replies = [] } = useQuery({
     queryKey: ["zapi-quick-replies"],
@@ -72,8 +91,29 @@ export function ZapiQuickRepliesConfig() {
             <Input placeholder="Saudação inicial" value={form.label} onChange={(e) => setForm({ ...form, label: e.target.value })} />
           </div>
           <div className="md:col-span-12 space-y-1">
-            <Label className="text-xs">Conteúdo</Label>
-            <Textarea rows={2} value={form.content} onChange={(e) => setForm({ ...form, content: e.target.value })} placeholder="Olá, em que posso ajudar?" />
+            <div className="flex items-center justify-between">
+              <Label className="text-xs">Conteúdo</Label>
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="h-6 px-2 text-xs gap-1"
+                onClick={wrapBold}
+                title="Envolver seleção com *negrito* (formato WhatsApp)"
+              >
+                <Bold className="h-3 w-3" /> Negrito
+              </Button>
+            </div>
+            <Textarea
+              ref={contentRef}
+              rows={3}
+              value={form.content}
+              onChange={(e) => setForm({ ...form, content: e.target.value })}
+              placeholder="Olá, em que posso ajudar?"
+            />
+            <p className="text-[10px] text-muted-foreground">
+              Use <code className="font-mono">*texto*</code> para deixar em negrito no WhatsApp.
+            </p>
           </div>
           <div className="md:col-span-3 flex items-center gap-2">
             <Switch checked={form.is_global} onCheckedChange={(v) => setForm({ ...form, is_global: v })} />
