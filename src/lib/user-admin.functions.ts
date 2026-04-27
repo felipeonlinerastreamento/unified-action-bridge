@@ -178,3 +178,15 @@ export const deleteUser = createServerFn({ method: "POST" })
 
     return { success: true };
   });
+
+// List all profiles (bypasses RLS) — needed so atendentes can see/select
+// any user when forwarding tickets or linking ticket agents.
+export const listAllProfiles = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => {
+    const { data } = await supabaseAdmin
+      .from("profiles")
+      .select("user_id, name, avatar_url, group_id")
+      .order("name", { ascending: true });
+    return (data || []).filter((p: any) => p.user_id);
+  });
