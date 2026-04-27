@@ -90,7 +90,7 @@ function UsuariosConfigPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("user_id, name, avatar_url, group_id")
+        .select("user_id, name, avatar_url, group_id, attendance_target_minutes")
         .order("name");
       if (error) throw error;
       return data || [];
