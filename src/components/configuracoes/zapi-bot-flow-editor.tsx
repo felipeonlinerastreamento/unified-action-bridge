@@ -124,7 +124,7 @@ export function ZapiBotFlowEditor() {
     },
   });
 
-  const addNode = (type: NodeType) => {
+  const addNode = (type: NodeType): FlowNode => {
     const newNode: FlowNode = {
       id: genId(),
       type,
@@ -132,8 +132,43 @@ export function ZapiBotFlowEditor() {
       ...(type === "message" ? { text: "Sua mensagem aqui", next: "" } : {}),
       ...(type === "route_to_sector" || type === "route_to_least_loaded" ? { target_sector: "Atendimento" } : {}),
       ...(type === "end" ? { text: "Atendimento finalizado, obrigado!" } : {}),
+      ...(type === "gsystem_boleto"
+        ? {
+            fallback_sector: "Financeiro",
+            text_success: "Encontrei {{count}} boleto(s) em aberto no seu cadastro:",
+            text_no_boletos: "Não encontrei boletos em aberto no seu cadastro. Vou te encaminhar para o Financeiro.",
+            text_no_client: "Não consegui identificar seu cadastro pelo seu telefone. Vou te encaminhar para o Financeiro.",
+          }
+        : {}),
     };
-    setNodes([...nodes, newNode]);
+    setNodes((prev) => [...prev, newNode]);
+    return newNode;
+  };
+
+  /** Cria um novo nó e conecta automaticamente como "next" da opção indicada de um menu. */
+  const addNodeAndLinkToOption = (menuId: string, optionIndex: number, type: NodeType) => {
+    setNodes((prev) => {
+      const newNode: FlowNode = {
+        id: genId(),
+        type,
+        ...(type === "menu" ? { text: "Escolha uma opção:", options: [{ key: "1", label: "Opção 1", next: "" }] } : {}),
+        ...(type === "message" ? { text: "Sua mensagem aqui", next: "" } : {}),
+        ...(type === "gsystem_boleto"
+          ? {
+              fallback_sector: "Financeiro",
+              text_success: "Encontrei {{count}} boleto(s) em aberto no seu cadastro:",
+              text_no_boletos: "Não encontrei boletos em aberto no seu cadastro. Vou te encaminhar para o Financeiro.",
+              text_no_client: "Não consegui identificar seu cadastro pelo seu telefone. Vou te encaminhar para o Financeiro.",
+            }
+          : {}),
+      };
+      return prev.map((n) => {
+        if (n.id !== menuId || n.type !== "menu" || !n.options) return n;
+        const opts = [...n.options];
+        opts[optionIndex] = { ...opts[optionIndex], next: newNode.id };
+        return { ...n, options: opts };
+      }).concat(newNode);
+    });
   };
 
   const updateNode = (id: string, patch: Partial<FlowNode>) => {
