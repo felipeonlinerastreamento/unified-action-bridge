@@ -17,6 +17,7 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -225,7 +226,8 @@ function detectPlates(messages: GMessage[]): string[] {
 }
 
 function CentralPage() {
-  const { isAuthenticated, isLoading: authLoading, session, user } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, session, user, hasRole } = useAuth();
+  const isAdmin = hasRole("admin");
   const [selectedChannelId, setSelectedChannelId] = useState<string>("");
   const [selectedChatId, setSelectedChatId] = useState<string>("");
   const [messageInput, setMessageInput] = useState("");
@@ -244,6 +246,7 @@ function CentralPage() {
   const [newChatPickedContact, setNewChatPickedContact] = useState<PickedContact | null>(null);
   const [showFinalizeConfirm, setShowFinalizeConfirm] = useState(false);
   const [finalizeNotes, setFinalizeNotes] = useState("");
+  const [skipClosingMessage, setSkipClosingMessage] = useState(false);
   const [finalizeStatus, setFinalizeStatus] = useState<string>("A resolver");
   const [finalizeTipoPendencia, setFinalizeTipoPendencia] = useState<string>("");
   const [showTeDialog, setShowTeDialog] = useState(false);
@@ -1108,7 +1111,7 @@ function CentralPage() {
 
   // Finalize chat
   const finalizeMutation = useMutation({
-    mutationFn: async ({ notes, status, tipoPendencia }: { notes?: string; status?: string; tipoPendencia?: string } = {}) => {
+    mutationFn: async ({ notes, status, tipoPendencia, skipClosingMessage: skipMsg }: { notes?: string; status?: string; tipoPendencia?: string; skipClosingMessage?: boolean } = {}) => {
       if (currentTicket) {
         let pendenciaKey = currentTicket.pendencia_key;
 
@@ -1295,20 +1298,25 @@ function CentralPage() {
       }
 
       // Send closing message with protocol number before finalizing
-      const closingMessage = `Seu atendimento foi finalizado e desde já agradecemos pela atenção.\n\nSe você precisar de suporte no futuro, fique à vontade para falar conosco.\n\nTenha um ótimo dia!\n\nProtocolo desse atendimento: ${selectedChatId}\n\nEsta é uma mensagem automática e não precisa responder.`;
-      try {
-        const authH = await getAuthHeaders();
-        await sendText({
-          data: {
-            channelId: selectedChannelId,
-            chatId: selectedChatId,
-            message: closingMessage,
-          },
-          ...authH,
-        });
-        console.log("[Finalize] Closing message sent successfully");
-      } catch (err: any) {
-        console.warn("[Finalize] Error sending closing message:", err.message);
+      // Admins can opt out via skipClosingMessage to silently close.
+      if (!skipMsg) {
+        const closingMessage = `Seu atendimento foi finalizado e desde já agradecemos pela atenção.\n\nSe você precisar de suporte no futuro, fique à vontade para falar conosco.\n\nTenha um ótimo dia!\n\nProtocolo desse atendimento: ${selectedChatId}\n\nEsta é uma mensagem automática e não precisa responder.`;
+        try {
+          const authH = await getAuthHeaders();
+          await sendText({
+            data: {
+              channelId: selectedChannelId,
+              chatId: selectedChatId,
+              message: closingMessage,
+            },
+            ...authH,
+          });
+          console.log("[Finalize] Closing message sent successfully");
+        } catch (err: any) {
+          console.warn("[Finalize] Error sending closing message:", err.message);
+        }
+      } else {
+        console.log("[Finalize] Skipping closing message (admin opt-out)");
       }
 
       return finalizeChat({
@@ -1371,6 +1379,7 @@ function CentralPage() {
       setTeData(EMPTY_TESTE_EQUIPAMENTO);
       setLiberacaoItems([]);
       setLiberacaoDate("");
+      setSkipClosingMessage(false);
       refetchChats();
     },
     onError: (err: any) => toast.error(err?.message || "Erro ao finalizar"),
@@ -2897,6 +2906,24 @@ function CentralPage() {
                 onChange={(e) => setFinalizeNotes(e.target.value)}
               />
             </div>
+
+            {isAdmin && (
+              <div className="flex items-start gap-2 rounded-md border border-dashed p-3 bg-muted/30">
+                <Checkbox
+                  id="skip-closing-message"
+                  checked={skipClosingMessage}
+                  onCheckedChange={(c) => setSkipClosingMessage(c === true)}
+                />
+                <div className="space-y-1">
+                  <Label htmlFor="skip-closing-message" className="text-xs font-medium cursor-pointer">
+                    Finalizar sem enviar mensagem ao cliente
+                  </Label>
+                  <p className="text-[11px] text-muted-foreground">
+                    Encerra silenciosamente — apenas administradores.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
           <div className="flex justify-end gap-2 mt-2">
             <Button variant="outline" onClick={() => setShowFinalizeConfirm(false)}>
@@ -2917,6 +2944,7 @@ function CentralPage() {
                   notes: notesToSend || undefined,
                   status: finalizeStatus,
                   tipoPendencia: finalizeTipoPendencia,
+                  skipClosingMessage: isAdmin && skipClosingMessage,
                 });
               }}
               disabled={!finalizeTipoPendencia || finalizeMutation.isPending}
