@@ -227,6 +227,53 @@ export async function processIncomingForBot(params: ProcessParams): Promise<bool
       return true;
     }
 
+    if (node.type === "gsystem_boleto") {
+      const fallbackSector = node.fallback_sector || "Financeiro";
+      const textSuccess = node.text_success || "Encontrei {{count}} boleto(s) em aberto no seu cadastro:";
+      const textNoBoletos = node.text_no_boletos || "Não encontrei boletos em aberto no seu cadastro. Vou te encaminhar para o Financeiro.";
+      const textNoClient = node.text_no_client || "Não consegui identificar seu cadastro pelo seu telefone. Vou te encaminhar para o Financeiro.";
+
+      let messageToSend = textNoClient;
+      try {
+        const { gsystemApiFetch } = await import("@/lib/gsystem-api.server");
+        const cliente = await findGSystemClientByPhone(gsystemApiFetch, phone);
+        if (cliente?.cpfCnpj) {
+          const faturas = await gsystemApiFetch(`/faturas/${encodeURIComponent(cliente.cpfCnpj)}`);
+          const abertos = filterOpenBoletos(faturas);
+          if (abertos.length > 0) {
+            messageToSend = textSuccess.replace(/\{\{count\}\}/g, String(abertos.length))
+              + "\n\n" + formatBoletos(abertos);
+          } else {
+            messageToSend = textNoBoletos;
+          }
+        }
+      } catch (err) {
+        console.error("[bot:gsystem_boleto] error", err);
+        messageToSend = textNoBoletos;
+      }
+
+      await zapiSendText(creds, phone, renderText(messageToSend, vars));
+      await persistOutgoing(chatId, renderText(messageToSend, vars));
+
+      // Roteia para humano após enviar boletos (fallback / continuidade)
+      let assignedTo: string | null = null;
+      try {
+        assignedTo = await pickLeastLoaded(fallbackSector);
+      } catch {
+        // ignore
+      }
+      await supabaseAdmin
+        .from("zapi_chats")
+        .update({
+          status: "em_atendimento",
+          sector_name: fallbackSector,
+          assigned_to: assignedTo,
+          bot_state: {},
+        })
+        .eq("id", chatId);
+      return true;
+    }
+
     if (node.type === "end") {
       if (node.text) {
         await zapiSendText(creds, phone, renderText(node.text, vars));
