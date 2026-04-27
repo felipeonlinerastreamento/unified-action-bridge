@@ -9,6 +9,16 @@ import {
   SheetHeader,
   SheetTitle,
 } from "@/components/ui/sheet";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -76,6 +86,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   const [editingCategory, setEditingCategory] = useState(false);
   const [categoryDraft, setCategoryDraft] = useState("");
   const [savingCategory, setSavingCategory] = useState(false);
+  const [confirmFinalizeOpen, setConfirmFinalizeOpen] = useState(false);
   const { data: teSettings } = useTesteEquipamentoSettings();
 
   const getAuthHeaders = useCallback(async () => {
@@ -658,7 +669,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
                   </Button>
                 )}
                 {canFinalize && (
-                  <Button size="sm" variant="default" onClick={() => updateStatus("finalizado")} className="gap-1">
+                  <Button size="sm" variant="default" onClick={() => setConfirmFinalizeOpen(true)} className="gap-1">
                     <CheckCircle className="h-3.5 w-3.5" /> Finalizar
                   </Button>
                 )}
@@ -768,6 +779,27 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
           </TabsContent>
         </Tabs>
       </SheetContent>
+      <AlertDialog open={confirmFinalizeOpen} onOpenChange={setConfirmFinalizeOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Finalizar atendimento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação encerrará o ticket. Você poderá reabri-lo depois, se necessário.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setConfirmFinalizeOpen(false);
+                updateStatus("finalizado");
+              }}
+            >
+              Sim, finalizar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Sheet>
   );
 }
