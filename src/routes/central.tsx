@@ -245,6 +245,7 @@ function CentralPage() {
   const [newChatPickedContact, setNewChatPickedContact] = useState<PickedContact | null>(null);
   const [showFinalizeConfirm, setShowFinalizeConfirm] = useState(false);
   const [finalizeNotes, setFinalizeNotes] = useState("");
+  const [skipClosingMessage, setSkipClosingMessage] = useState(false);
   const [finalizeStatus, setFinalizeStatus] = useState<string>("A resolver");
   const [finalizeTipoPendencia, setFinalizeTipoPendencia] = useState<string>("");
   const [showTeDialog, setShowTeDialog] = useState(false);
