@@ -1110,7 +1110,7 @@ function CentralPage() {
 
   // Finalize chat
   const finalizeMutation = useMutation({
-    mutationFn: async ({ notes, status, tipoPendencia }: { notes?: string; status?: string; tipoPendencia?: string } = {}) => {
+    mutationFn: async ({ notes, status, tipoPendencia, skipClosingMessage: skipMsg }: { notes?: string; status?: string; tipoPendencia?: string; skipClosingMessage?: boolean } = {}) => {
       if (currentTicket) {
         let pendenciaKey = currentTicket.pendencia_key;
 
