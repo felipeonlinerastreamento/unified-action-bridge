@@ -6,7 +6,15 @@ import { loadZapiChannel, zapiSendText } from "./zapi.server";
 
 export interface FlowNode {
   id: string;
-  type: "message" | "menu" | "route_to_sector" | "route_to_least_loaded" | "end" | "gsystem_boleto";
+  type:
+    | "message"
+    | "menu"
+    | "route_to_sector"
+    | "route_to_least_loaded"
+    | "end"
+    | "gsystem_boleto"
+    | "ask_input"
+    | "gsystem_boleto_by_doc";
   text?: string;
   options?: Array<{ key: string; label: string; next: string }>;
   next?: string;
@@ -16,6 +24,9 @@ export interface FlowNode {
   text_success?: string;
   text_no_boletos?: string;
   text_no_client?: string;
+  // ask_input specific
+  state_key?: string;     // where to store user's reply in bot_state
+  next_on_no_client?: string; // for gsystem_boleto: where to go if client not found by phone
 }
 
 export interface FlowDoc {
