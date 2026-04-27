@@ -6,6 +6,7 @@ import { SlaRulesConfig } from "@/components/configuracoes/sla-rules-config";
 import { AlertSettingsConfig } from "@/components/configuracoes/alert-settings-config";
 import { MetricSettingsConfig } from "@/components/configuracoes/metric-settings-config";
 import { VisualSettingsConfig } from "@/components/configuracoes/visual-settings-config";
+import { AttendanceEventsConfig } from "@/components/configuracoes/attendance-events-config";
 
 export const Route = createFileRoute("/configuracoes/central-atendimento")({
   component: CentralAtendimentoConfigPage,
@@ -29,6 +30,7 @@ function CentralAtendimentoConfigPage() {
             <TabsTrigger value="alerts">Alertas e Escalonamento</TabsTrigger>
             <TabsTrigger value="metrics">Indicadores Operacionais</TabsTrigger>
             <TabsTrigger value="visual">Visual do Chat</TabsTrigger>
+            <TabsTrigger value="eventos">Eventos</TabsTrigger>
           </TabsList>
 
           <TabsContent value="sla" className="mt-4">
@@ -42,6 +44,9 @@ function CentralAtendimentoConfigPage() {
           </TabsContent>
           <TabsContent value="visual" className="mt-4">
             <VisualSettingsConfig />
+          </TabsContent>
+          <TabsContent value="eventos" className="mt-4">
+            <AttendanceEventsConfig />
           </TabsContent>
         </Tabs>
       </div>
