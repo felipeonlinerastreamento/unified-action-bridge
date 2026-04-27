@@ -779,6 +779,27 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
           </TabsContent>
         </Tabs>
       </SheetContent>
+      <AlertDialog open={confirmFinalizeOpen} onOpenChange={setConfirmFinalizeOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Finalizar atendimento?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação encerrará o ticket. Você poderá reabri-lo depois, se necessário.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setConfirmFinalizeOpen(false);
+                updateStatus("finalizado");
+              }}
+            >
+              Sim, finalizar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Sheet>
   );
 }
