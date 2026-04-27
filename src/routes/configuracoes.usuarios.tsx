@@ -746,6 +746,19 @@ function UsuariosConfigPage() {
                 </SelectContent>
               </Select>
             </div>
+            <div className="space-y-2">
+              <Label>Meta de tempo de atendimento (minutos)</Label>
+              <Input
+                type="number"
+                min={0}
+                placeholder="Ex.: 15"
+                value={editTargetMinutes}
+                onChange={(e) => setEditTargetMinutes(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+                Tempo médio alvo para finalizar um atendimento. Aparece como meta na Central de Atendimento.
+              </p>
+            </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancelar</Button>
               <Button onClick={() => editMutation.mutate()} disabled={editMutation.isPending || !editName}>
