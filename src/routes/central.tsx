@@ -2963,7 +2963,7 @@ function CentralPage() {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-xs font-medium">Placa do veículo (opcional)</Label>
+              <Label className="text-xs font-medium">Placa do veículo (Modelo AAA1111 - Não digitar hífen)</Label>
               <Input
                 placeholder="Ex: ABC1D23"
                 value={ticketPlate}
