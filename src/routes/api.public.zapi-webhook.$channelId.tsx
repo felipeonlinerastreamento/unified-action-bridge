@@ -201,6 +201,7 @@ export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
                 : ((existing.unread_count || 0) + 1),
             };
             if (shouldReopen) {
+              console.log(`[zapi-webhook] reopening finalized chat for ${phone} → restarting bot flow`);
               baseUpdate.status = "bot";
               baseUpdate.bot_state = {};
               baseUpdate.assigned_to = null;
