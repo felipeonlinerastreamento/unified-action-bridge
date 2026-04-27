@@ -1,10 +1,11 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { RefreshCw, Loader2, AlertTriangle, Plus, List, LayoutGrid, CalendarDays } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 import { TicketKpis } from "./ticket-kpis";
 import { TicketListView } from "./ticket-list-view";
 import { TicketKanbanView } from "./ticket-kanban-view";
@@ -16,11 +17,35 @@ import { TicketFiltersBar, applyTicketFilters, defaultFilters, type TicketFilter
 import { LaboratorioPanel } from "./laboratorio-panel";
 
 export function AtendimentosContent() {
+  const { user, hasRole } = useAuth();
   const [viewMode, setViewMode] = useState<"lista" | "kanban" | "calendario">("lista");
   const [selected, setSelected] = useState<any>(null);
   const [createOpen, setCreateOpen] = useState(false);
   const [filters, setFilters] = useState<TicketFilters>(defaultFilters);
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const sectorDefaultApplied = useRef(false);
+
+  // Define o setor padrão do usuário logado (atendentes/gestores).
+  // Admins veem "todos". O usuário pode trocar livremente depois.
+  useEffect(() => {
+    if (sectorDefaultApplied.current || !user?.id) return;
+    if (hasRole("admin")) {
+      sectorDefaultApplied.current = true;
+      return;
+    }
+    (async () => {
+      const { data } = await supabase
+        .from("user_sector_assignments" as any)
+        .select("sector_id, sectors(name)")
+        .eq("user_id", user.id)
+        .limit(1);
+      const sectorName = (data?.[0] as any)?.sectors?.name;
+      if (sectorName) {
+        setFilters((f) => ({ ...f, sector: sectorName, status: "abertos_em_andamento" }));
+      }
+      sectorDefaultApplied.current = true;
+    })();
+  }, [user?.id, hasRole]);
 
   const { data: tickets = [], isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ["service-tickets"],
