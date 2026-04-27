@@ -113,8 +113,8 @@ function ContatosPage() {
 
   if (isLoading || !isAuthenticated) return null;
 
-  const filtered = clientes.filter((c: any) => {
-    if (!search) return true;
+  const hasSearch = search.trim().length > 0;
+  const filtered = !hasSearch ? [] : clientes.filter((c: any) => {
     const s = search.toLowerCase();
     const nome = (c.Nome || c.nome || c.RazaoSocial || c.razaoSocial || "").toLowerCase();
     const cpf = (c.CpfCnpj || c.cpfCnpj || c.CNPJ || c.cnpj || "").toLowerCase();
@@ -194,6 +194,13 @@ function ContatosPage() {
                         <TableRow>
                           <TableCell colSpan={5} className="text-center py-8">
                             <Loader2 className="h-5 w-5 animate-spin mx-auto" />
+                          </TableCell>
+                        </TableRow>
+                      ) : !hasSearch ? (
+                        <TableRow>
+                          <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
+                            <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                            Use o campo de busca acima para consultar clientes.
                           </TableCell>
                         </TableRow>
                       ) : filtered.length === 0 ? (
