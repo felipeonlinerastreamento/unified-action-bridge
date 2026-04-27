@@ -93,6 +93,46 @@ export function ZapiQuickRepliesConfig() {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async () => {
+      if (!editingId) throw new Error("Nada para editar");
+      if (!form.shortcut.trim() || !form.content.trim()) throw new Error("Atalho e conteúdo são obrigatórios");
+      const { error } = await supabase
+        .from("zapi_quick_replies")
+        .update({
+          shortcut: form.shortcut.startsWith("/") ? form.shortcut : `/${form.shortcut}`,
+          label: form.label || form.shortcut,
+          content: form.content,
+          is_global: form.is_global,
+        })
+        .eq("id", editingId);
+      if (error) throw new Error(error.message);
+    },
+    onSuccess: () => {
+      toast.success("Resposta rápida atualizada");
+      setEditingId(null);
+      setForm({ shortcut: "", label: "", content: "", is_global: true });
+      qc.invalidateQueries({ queryKey: ["zapi-quick-replies"] });
+    },
+    onError: (e: any) => toast.error(e?.message || "Erro"),
+  });
+
+  const startEdit = (r: any) => {
+    setEditingId(r.id);
+    setForm({
+      shortcut: r.shortcut || "",
+      label: r.label || "",
+      content: r.content || "",
+      is_global: !!r.is_global,
+    });
+    if (typeof window !== "undefined") window.scrollTo({ top: 0, behavior: "smooth" });
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setForm({ shortcut: "", label: "", content: "", is_global: true });
+  };
+
   return (
     <Card>
       <CardHeader>
