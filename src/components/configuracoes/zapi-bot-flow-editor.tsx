@@ -48,6 +48,7 @@ export function ZapiBotFlowEditor() {
   const [isActive, setIsActive] = useState(true);
   const [nodes, setNodes] = useState<FlowNode[]>([]);
   const [showPreview, setShowPreview] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
   const { data: flows = [] } = useQuery({
     queryKey: ["zapi-bot-flows"],
