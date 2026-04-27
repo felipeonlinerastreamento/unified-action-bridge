@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Trash2, Zap, Bold, Code2 } from "lucide-react";
+import { Plus, Trash2, Zap, Bold, Code2, Pencil, X, Check } from "lucide-react";
 import { QUICK_REPLY_VARIABLES } from "@/lib/quick-reply-vars";
 
 export function ZapiQuickRepliesConfig() {
