@@ -244,6 +244,12 @@ function UsuariosConfigPage() {
       if (!editUserId) return;
       await updateUserName({ data: { targetUserId: editUserId, name: editName } });
       await updateUserRole({ data: { targetUserId: editUserId, role: editRole } });
+      const parsed = editTargetMinutes.trim() === "" ? null : Math.max(0, Number(editTargetMinutes));
+      const { error: profErr } = await supabase
+        .from("profiles")
+        .update({ attendance_target_minutes: Number.isFinite(parsed as number) ? parsed : null } as any)
+        .eq("user_id", editUserId);
+      if (profErr) throw profErr;
     },
     onSuccess: () => {
       toast.success("Usuário atualizado");
