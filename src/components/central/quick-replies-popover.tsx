@@ -32,13 +32,15 @@ export function QuickRepliesPopover({ onPick, size = "icon", open: openProp, onO
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      {!hideTrigger && (
-        <PopoverTrigger asChild>
+      <PopoverTrigger asChild>
+        {hideTrigger ? (
+          <button type="button" aria-hidden className="sr-only" tabIndex={-1} />
+        ) : (
           <Button size={size === "icon" ? "icon" : "sm"} variant="outline" className="shrink-0" title="Respostas rápidas">
             <Zap className="h-4 w-4" />
           </Button>
-        </PopoverTrigger>
-      )}
+        )}
+      </PopoverTrigger>
       <PopoverContent className="p-0 w-80" align="end">
         <Command>
           <CommandInput placeholder="Buscar atalho ou rótulo..." />
