@@ -9,10 +9,18 @@ import { useState } from "react";
 interface Props {
   onPick: (text: string) => void;
   size?: "sm" | "icon";
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+  hideTrigger?: boolean;
 }
 
-export function QuickRepliesPopover({ onPick, size = "icon" }: Props) {
-  const [open, setOpen] = useState(false);
+export function QuickRepliesPopover({ onPick, size = "icon", open: openProp, onOpenChange, hideTrigger }: Props) {
+  const [openInternal, setOpenInternal] = useState(false);
+  const open = openProp ?? openInternal;
+  const setOpen = (v: boolean) => {
+    setOpenInternal(v);
+    onOpenChange?.(v);
+  };
   const { data: replies = [] } = useQuery({
     queryKey: ["zapi-quick-replies"],
     queryFn: async () => {
@@ -24,11 +32,13 @@ export function QuickRepliesPopover({ onPick, size = "icon" }: Props) {
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        <Button size={size === "icon" ? "icon" : "sm"} variant="outline" className="shrink-0" title="Respostas rápidas">
-          <Zap className="h-4 w-4" />
-        </Button>
-      </PopoverTrigger>
+      {!hideTrigger && (
+        <PopoverTrigger asChild>
+          <Button size={size === "icon" ? "icon" : "sm"} variant="outline" className="shrink-0" title="Respostas rápidas">
+            <Zap className="h-4 w-4" />
+          </Button>
+        </PopoverTrigger>
+      )}
       <PopoverContent className="p-0 w-80" align="end">
         <Command>
           <CommandInput placeholder="Buscar atalho ou rótulo..." />
