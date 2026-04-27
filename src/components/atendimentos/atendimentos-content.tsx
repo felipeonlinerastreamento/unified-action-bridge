@@ -94,10 +94,11 @@ export function AtendimentosContent() {
     queryFn: async () => {
       // Usa server function (admin client) para listar TODOS os usuários,
       // contornando a RLS de profiles que só permite o próprio perfil.
-      const { listAllProfiles } = await import("@/lib/user-admin.functions");
-      const { getAuthHeaders } = await import("@/lib/utils");
       try {
-        return (await listAllProfiles({ ...(await getAuthHeaders()) })) || [];
+        const { listAllProfiles } = await import("@/lib/user-admin.functions");
+        const { data: { session } } = await supabase.auth.getSession();
+        const headers = { headers: { authorization: `Bearer ${session?.access_token}` } };
+        return (await listAllProfiles(headers)) || [];
       } catch {
         const { data } = await supabase.from("profiles").select("*");
         return data || [];
