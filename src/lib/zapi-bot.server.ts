@@ -6,7 +6,15 @@ import { loadZapiChannel, zapiSendText } from "./zapi.server";
 
 export interface FlowNode {
   id: string;
-  type: "message" | "menu" | "route_to_sector" | "route_to_least_loaded" | "end" | "gsystem_boleto";
+  type:
+    | "message"
+    | "menu"
+    | "route_to_sector"
+    | "route_to_least_loaded"
+    | "end"
+    | "gsystem_boleto"
+    | "ask_input"
+    | "gsystem_boleto_by_doc";
   text?: string;
   options?: Array<{ key: string; label: string; next: string }>;
   next?: string;
@@ -16,6 +24,9 @@ export interface FlowNode {
   text_success?: string;
   text_no_boletos?: string;
   text_no_client?: string;
+  // ask_input specific
+  state_key?: string;     // where to store user's reply in bot_state
+  next_on_no_client?: string; // for gsystem_boleto: where to go if client not found by phone
 }
 
 export interface FlowDoc {
@@ -131,7 +142,7 @@ export async function processIncomingForBot(params: ProcessParams): Promise<bool
   const flow = await findActiveFlow(channelId);
   if (!flow || !Array.isArray(flow.nodes) || flow.nodes.length === 0) return false;
 
-  const botState = (chat.bot_state || {}) as { current_node?: string };
+  const botState = (chat.bot_state || {}) as { current_node?: string; [k: string]: any };
   const vars = { contactName: contactName || undefined };
 
   let creds;
@@ -175,6 +186,11 @@ export async function processIncomingForBot(params: ProcessParams): Promise<bool
         await persistOutgoing(chatId, renderText(node.text || "", vars));
         return true;
       }
+    } else if (node.type === "ask_input") {
+      // Capture user reply into bot_state under state_key, then advance
+      const key = node.state_key || "input";
+      botState[key] = (incomingText || "").trim();
+      currentNodeId = node.next || currentNodeId;
     } else if (node.next) {
       currentNodeId = node.next;
     }
@@ -227,17 +243,30 @@ export async function processIncomingForBot(params: ProcessParams): Promise<bool
       return true;
     }
 
+    if (node.type === "ask_input") {
+      // Send the prompt and wait for user reply
+      await zapiSendText(creds, phone, renderText(node.text || "", vars));
+      await persistOutgoing(chatId, renderText(node.text || "", vars));
+      await supabaseAdmin
+        .from("zapi_chats")
+        .update({ bot_state: { ...botState, current_node: node.id }, status: "bot" })
+        .eq("id", chatId);
+      return true;
+    }
+
     if (node.type === "gsystem_boleto") {
       const fallbackSector = node.fallback_sector || "Financeiro";
       const textSuccess = node.text_success || "Encontrei {{count}} boleto(s) em aberto no seu cadastro:";
       const textNoBoletos = node.text_no_boletos || "Não encontrei boletos em aberto no seu cadastro. Vou te encaminhar para o Financeiro.";
       const textNoClient = node.text_no_client || "Não consegui identificar seu cadastro pelo seu telefone. Vou te encaminhar para o Financeiro.";
 
+      let clientFound = false;
       let messageToSend = textNoClient;
       try {
         const { gsystemApiFetch } = await import("@/lib/gsystem-api.server");
         const cliente = await findGSystemClientByPhone(gsystemApiFetch, phone);
         if (cliente?.cpfCnpj) {
+          clientFound = true;
           const faturas = await gsystemApiFetch(`/faturas/${encodeURIComponent(cliente.cpfCnpj)}`);
           const abertos = filterOpenBoletos(faturas);
           if (abertos.length > 0) {
@@ -250,12 +279,77 @@ export async function processIncomingForBot(params: ProcessParams): Promise<bool
       } catch (err) {
         console.error("[bot:gsystem_boleto] error", err);
         messageToSend = textNoBoletos;
+        clientFound = true; // erro real — não vale ir para ask_doc
+      }
+
+      // Se cliente não foi identificado por telefone e há um próximo nó configurado (ask CPF/CNPJ), redireciona pra ele
+      if (!clientFound && node.next_on_no_client) {
+        currentNodeId = node.next_on_no_client;
+        continue;
       }
 
       await zapiSendText(creds, phone, renderText(messageToSend, vars));
       await persistOutgoing(chatId, renderText(messageToSend, vars));
 
       // Roteia para humano após enviar boletos (fallback / continuidade)
+      let assignedTo: string | null = null;
+      try {
+        assignedTo = await pickLeastLoaded(fallbackSector);
+      } catch {
+        // ignore
+      }
+      await supabaseAdmin
+        .from("zapi_chats")
+        .update({
+          status: "em_atendimento",
+          sector_name: fallbackSector,
+          assigned_to: assignedTo,
+          bot_state: {},
+        })
+        .eq("id", chatId);
+      return true;
+    }
+
+    if (node.type === "gsystem_boleto_by_doc") {
+      const fallbackSector = node.fallback_sector || "Financeiro";
+      const textSuccess = node.text_success || "Encontrei {{count}} boleto(s) em aberto no seu cadastro:";
+      const textNoBoletos = node.text_no_boletos || "Não encontrei boletos em aberto no seu cadastro. Vou te encaminhar para o Financeiro.";
+      const textNoClient = node.text_no_client || "Não consegui localizar seu cadastro com esse CPF/CNPJ. Vou te encaminhar para o Financeiro.";
+
+      const stateKey = node.state_key || "cpf_cnpj";
+      const rawDoc = String(botState[stateKey] || "").replace(/\D/g, "");
+
+      let messageToSend = textNoClient;
+      if (rawDoc.length === 11 || rawDoc.length === 14) {
+        try {
+          const { gsystemApiFetch } = await import("@/lib/gsystem-api.server");
+          // Tenta buscar cliente pelo doc; se achar, usa o doc retornado, senão tenta direto faturas
+          let docToQuery = rawDoc;
+          try {
+            const result = await gsystemApiFetch(`/clientes/${encodeURIComponent(rawDoc)}`);
+            const first = Array.isArray(result) ? result[0] : result;
+            const cpfCnpj = first?.CNPJ || first?.CPF || first?.cnpj || first?.cpf;
+            if (cpfCnpj) docToQuery = String(cpfCnpj).replace(/\D/g, "");
+          } catch {
+            // segue tentando faturas direto
+          }
+
+          const faturas = await gsystemApiFetch(`/faturas/${encodeURIComponent(docToQuery)}`);
+          const abertos = filterOpenBoletos(faturas);
+          if (abertos.length > 0) {
+            messageToSend = textSuccess.replace(/\{\{count\}\}/g, String(abertos.length))
+              + "\n\n" + formatBoletos(abertos);
+          } else if (Array.isArray(faturas) ? faturas.length > 0 : !!faturas) {
+            messageToSend = textNoBoletos;
+          }
+        } catch (err) {
+          console.error("[bot:gsystem_boleto_by_doc] error", err);
+        }
+      }
+
+      await zapiSendText(creds, phone, renderText(messageToSend, vars));
+      await persistOutgoing(chatId, renderText(messageToSend, vars));
+
       let assignedTo: string | null = null;
       try {
         assignedTo = await pickLeastLoaded(fallbackSector);
