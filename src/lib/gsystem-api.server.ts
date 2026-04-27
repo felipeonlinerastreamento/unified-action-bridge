@@ -233,3 +233,39 @@ export function clearGsystemToken() {
   cachedToken = null;
   tokenExpiry = 0;
 }
+
+let cachedColaboradorKey: string | null = null;
+let cachedColaboradorAt = 0;
+
+/**
+ * Resolve a default Colaborador Key from GSystem.
+ * Tries multiple endpoints/shapes and picks the first active colaborador.
+ * Cached for 30 minutes.
+ */
+export async function getDefaultColaboradorKey(): Promise<string | null> {
+  const now = Date.now();
+  if (cachedColaboradorKey && now - cachedColaboradorAt < 30 * 60 * 1000) {
+    return cachedColaboradorKey;
+  }
+
+  const endpoints = ["/colaboradores", "/Colaboradores", "/usuarios", "/Usuarios"];
+  for (const ep of endpoints) {
+    try {
+      const data = await gsystemApiFetch(ep, "GET");
+      const list = Array.isArray(data) ? data : (data?.Items || data?.items || data?.Data || data?.data || []);
+      if (Array.isArray(list) && list.length > 0) {
+        const first = list.find((x: any) => (x?.Ativo ?? x?.ativo ?? true)) || list[0];
+        const key = first?.Key || first?.key || first?.Id || first?.id || first?.ID;
+        if (key) {
+          cachedColaboradorKey = String(key);
+          cachedColaboradorAt = now;
+          console.log(`[GSystem] Default Colaborador resolved from ${ep}:`, cachedColaboradorKey);
+          return cachedColaboradorKey;
+        }
+      }
+    } catch (err) {
+      console.log(`[GSystem] ${ep} lookup failed:`, String(err).substring(0, 200));
+    }
+  }
+  return null;
+}

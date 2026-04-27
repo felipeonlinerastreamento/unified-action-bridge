@@ -192,6 +192,15 @@ export const syncTicketToGsystem = createServerFn({ method: "POST" })
       if (vlink?.external_id) gsystemVeiculoKey = vlink.external_id;
     }
 
+    // Resolve Colaborador (required by GSystem)
+    let colaboradorKey: string | null = null;
+    try {
+      const { getDefaultColaboradorKey } = await import("@/lib/gsystem-api.server");
+      colaboradorKey = await getDefaultColaboradorKey();
+    } catch (e) {
+      console.warn("[ticket-finalize] Could not resolve Colaborador:", e);
+    }
+
     const body: Record<string, unknown> = {
       Descricao: descricao,
       DataAbertura: new Date().toISOString().split("T")[0],
@@ -201,6 +210,8 @@ export const syncTicketToGsystem = createServerFn({ method: "POST" })
       Observacao: descricao,
       // GSystem requires Situacao (status) — "A" = Aberta
       Situacao: "A",
+      // GSystem requires Colaborador (responsável pela pendência)
+      Colaborador: colaboradorKey || "",
       // GSystem requires this property even when empty
       Veiculos: gsystemVeiculoKey ? [gsystemVeiculoKey] : [],
     };
