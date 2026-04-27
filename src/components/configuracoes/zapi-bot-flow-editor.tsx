@@ -318,56 +318,88 @@ export function ZapiBotFlowEditor() {
                       {node.type === "menu" && (
                         <div className="space-y-2">
                           <Label className="text-xs">Opções do menu</Label>
-                          {(node.options || []).map((opt, oi) => (
-                            <div key={oi} className="grid grid-cols-12 gap-2 items-center">
-                              <Input
-                                className="col-span-2"
-                                placeholder="1"
-                                value={opt.key}
-                                onChange={(e) => {
-                                  const opts = [...(node.options || [])];
-                                  opts[oi] = { ...opts[oi], key: e.target.value };
-                                  updateNode(node.id, { options: opts });
-                                }}
-                              />
-                              <Input
-                                className="col-span-5"
-                                placeholder="Rótulo"
-                                value={opt.label}
-                                onChange={(e) => {
-                                  const opts = [...(node.options || [])];
-                                  opts[oi] = { ...opts[oi], label: e.target.value };
-                                  updateNode(node.id, { options: opts });
-                                }}
-                              />
-                              <Select
-                                value={opt.next}
-                                onValueChange={(v) => {
-                                  const opts = [...(node.options || [])];
-                                  opts[oi] = { ...opts[oi], next: v };
-                                  updateNode(node.id, { options: opts });
-                                }}
-                              >
-                                <SelectTrigger className="col-span-4"><SelectValue placeholder="Próximo nó" /></SelectTrigger>
-                                <SelectContent>
-                                  {nodes.filter((n) => n.id !== node.id).map((n) => (
-                                    <SelectItem key={n.id} value={n.id}>{n.id} ({TYPE_META[n.type].label})</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="col-span-1 h-8 w-8 text-destructive"
-                                onClick={() => {
-                                  const opts = (node.options || []).filter((_, i) => i !== oi);
-                                  updateNode(node.id, { options: opts });
-                                }}
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
-                            </div>
-                          ))}
+                          {(node.options || []).map((opt, oi) => {
+                            const targetNode = nodes.find((n) => n.id === opt.next);
+                            const targetMeta = targetNode ? TYPE_META[targetNode.type] : null;
+                            return (
+                              <div key={oi} className="space-y-1 rounded border p-2 bg-muted/20">
+                                <div className="grid grid-cols-12 gap-2 items-center">
+                                  <Input
+                                    className="col-span-2"
+                                    placeholder="1"
+                                    value={opt.key}
+                                    onChange={(e) => {
+                                      const opts = [...(node.options || [])];
+                                      opts[oi] = { ...opts[oi], key: e.target.value };
+                                      updateNode(node.id, { options: opts });
+                                    }}
+                                  />
+                                  <Input
+                                    className="col-span-5"
+                                    placeholder="Rótulo"
+                                    value={opt.label}
+                                    onChange={(e) => {
+                                      const opts = [...(node.options || [])];
+                                      opts[oi] = { ...opts[oi], label: e.target.value };
+                                      updateNode(node.id, { options: opts });
+                                    }}
+                                  />
+                                  <Select
+                                    value={opt.next}
+                                    onValueChange={(v) => {
+                                      const opts = [...(node.options || [])];
+                                      opts[oi] = { ...opts[oi], next: v };
+                                      updateNode(node.id, { options: opts });
+                                    }}
+                                  >
+                                    <SelectTrigger className="col-span-4"><SelectValue placeholder="Próximo nó" /></SelectTrigger>
+                                    <SelectContent>
+                                      {nodes.filter((n) => n.id !== node.id).map((n) => (
+                                        <SelectItem key={n.id} value={n.id}>{n.id} ({TYPE_META[n.type].label})</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="col-span-1 h-8 w-8 text-destructive"
+                                    onClick={() => {
+                                      const opts = (node.options || []).filter((_, i) => i !== oi);
+                                      updateNode(node.id, { options: opts });
+                                    }}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                                  {targetMeta ? (
+                                    <Badge variant="outline" className="gap-1">
+                                      <targetMeta.icon className={`h-3 w-3 ${targetMeta.color}`} />
+                                      → {targetMeta.label}
+                                    </Badge>
+                                  ) : (
+                                    <span className="text-muted-foreground italic">Sem destino · use os atalhos para criar:</span>
+                                  )}
+                                  {!opt.next && (
+                                    <>
+                                      <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px]"
+                                        onClick={() => addNodeAndLinkToOption(node.id, oi, "message")}>
+                                        <Plus className="h-3 w-3 mr-1" /> Mensagem
+                                      </Button>
+                                      <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px]"
+                                        onClick={() => addNodeAndLinkToOption(node.id, oi, "menu")}>
+                                        <Plus className="h-3 w-3 mr-1" /> Submenu
+                                      </Button>
+                                      <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px]"
+                                        onClick={() => addNodeAndLinkToOption(node.id, oi, "gsystem_boleto")}>
+                                        <Plus className="h-3 w-3 mr-1" /> Boletos GSystem
+                                      </Button>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
                           <Button size="sm" variant="outline" onClick={() => {
                             const opts = [...(node.options || []), { key: String((node.options?.length || 0) + 1), label: "Nova opção", next: "" }];
                             updateNode(node.id, { options: opts });
@@ -402,6 +434,41 @@ export function ZapiBotFlowEditor() {
                               ))}
                             </SelectContent>
                           </Select>
+                        </div>
+                      )}
+
+                      {node.type === "gsystem_boleto" && (
+                        <div className="space-y-2">
+                          <p className="text-[11px] text-muted-foreground">
+                            O bot busca automaticamente o cliente no GSystem pelo telefone do WhatsApp e envia os boletos em aberto.
+                            Use <code>{`{{count}}`}</code> no texto de sucesso para o número de boletos encontrados.
+                          </p>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Mensagem quando há boletos</Label>
+                            <Textarea rows={2} value={node.text_success || ""}
+                              onChange={(e) => updateNode(node.id, { text_success: e.target.value })} />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Mensagem quando não há boletos em aberto</Label>
+                            <Textarea rows={2} value={node.text_no_boletos || ""}
+                              onChange={(e) => updateNode(node.id, { text_no_boletos: e.target.value })} />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Mensagem quando o cliente não é identificado</Label>
+                            <Textarea rows={2} value={node.text_no_client || ""}
+                              onChange={(e) => updateNode(node.id, { text_no_client: e.target.value })} />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Setor de fallback (encaminhar após responder ou em caso de erro)</Label>
+                            <Select value={node.fallback_sector || ""} onValueChange={(v) => updateNode(node.id, { fallback_sector: v })}>
+                              <SelectTrigger><SelectValue placeholder="Selecione um setor" /></SelectTrigger>
+                              <SelectContent>
+                                {sectors.map((s) => (
+                                  <SelectItem key={s.name} value={s.name}>{s.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
                       )}
                     </CardContent>
