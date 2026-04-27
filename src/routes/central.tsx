@@ -245,6 +245,8 @@ function CentralPage() {
   const [selectedChatId, setSelectedChatId] = useState<string>("");
   const [messageInput, setMessageInput] = useState("");
   const [whisperMode, setWhisperMode] = useState(false);
+  const [nicknameMode, setNicknameMode] = useState(false);
+  const [quickRepliesOpen, setQuickRepliesOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [ticketPlate, setTicketPlate] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
