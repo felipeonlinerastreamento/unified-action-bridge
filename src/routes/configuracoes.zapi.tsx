@@ -5,6 +5,7 @@ import { Bot } from "lucide-react";
 import { ZapiConnectionConfig } from "@/components/configuracoes/zapi-connection-config";
 import { ZapiBotFlowEditor } from "@/components/configuracoes/zapi-bot-flow-editor";
 import { ZapiQuickRepliesConfig } from "@/components/configuracoes/zapi-quick-replies-config";
+import { ZapiMessageTemplatesConfig } from "@/components/configuracoes/zapi-message-templates-config";
 
 export const Route = createFileRoute("/configuracoes/zapi")({
   component: ZapiPage,
