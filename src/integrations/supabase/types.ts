@@ -1912,6 +1912,36 @@ export type Database = {
           },
         ]
       }
+      zapi_message_templates: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          key: string
+          label: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          content?: string
+          created_at?: string
+          id?: string
+          key: string
+          label?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          key?: string
+          label?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       zapi_messages: {
         Row: {
           chat_id: string
