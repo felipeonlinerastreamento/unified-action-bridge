@@ -107,6 +107,7 @@ import { FloatingChatsLayer } from "@/components/central/floating-chats-layer";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { WhisperToggle } from "@/components/central/whisper-toggle";
 import { QuickRepliesPopover } from "@/components/central/quick-replies-popover";
+import { applyQuickReplyVars } from "@/lib/quick-reply-vars";
 import { ChatTags, type ChatTag } from "@/components/central/chat-tags";
 import { MessageStatusTicks } from "@/components/central/message-status-ticks";
 import { TypingIndicator } from "@/components/central/typing-indicator";
