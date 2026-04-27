@@ -193,12 +193,55 @@ export const syncTicketToGsystem = createServerFn({ method: "POST" })
     }
 
     // Resolve Colaborador (required by GSystem)
+    // Priority: 1) per-user mapping (user_gsystem_links of assignee/author),
+    //           2) env secret GSYSTEM_DEFAULT_COLABORADOR_KEY,
+    //           3) auto-discover via /colaboradores
     let colaboradorKey: string | null = null;
+
+    // 1) Try mapping from the assignee (or any author of comments)
     try {
-      const { getDefaultColaboradorKey } = await import("@/lib/gsystem-api.server");
-      colaboradorKey = await getDefaultColaboradorKey();
+      const candidateUserIds: string[] = [];
+      if (ticket.assigned_to) candidateUserIds.push(ticket.assigned_to);
+      for (const c of comments || []) {
+        if (c.user_id && !candidateUserIds.includes(c.user_id)) {
+          candidateUserIds.push(c.user_id);
+        }
+      }
+      if (candidateUserIds.length > 0) {
+        const { data: links } = await supabase
+          .from("user_gsystem_links")
+          .select("user_id, gsystem_user_id")
+          .in("user_id", candidateUserIds);
+        if (links && links.length > 0) {
+          const first = links.find((l: any) => l.gsystem_user_id) || links[0];
+          if (first?.gsystem_user_id) colaboradorKey = String(first.gsystem_user_id);
+        }
+      }
     } catch (e) {
-      console.warn("[ticket-finalize] Could not resolve Colaborador:", e);
+      console.warn("[ticket-finalize] user_gsystem_links lookup failed:", e);
+    }
+
+    // 2) Env override
+    if (!colaboradorKey && process.env.GSYSTEM_DEFAULT_COLABORADOR_KEY) {
+      colaboradorKey = String(process.env.GSYSTEM_DEFAULT_COLABORADOR_KEY);
+    }
+
+    // 3) Auto-discover (best-effort)
+    if (!colaboradorKey) {
+      try {
+        const { getDefaultColaboradorKey } = await import("@/lib/gsystem-api.server");
+        colaboradorKey = await getDefaultColaboradorKey();
+      } catch (e) {
+        console.warn("[ticket-finalize] Could not auto-resolve Colaborador:", e);
+      }
+    }
+
+    if (!colaboradorKey) {
+      return {
+        ok: false,
+        error:
+          "Colaborador padrão do GSystem não configurado. Vincule este usuário a um colaborador do GSystem em Configurações → Usuários, ou configure o segredo GSYSTEM_DEFAULT_COLABORADOR_KEY.",
+      };
     }
 
     const body: Record<string, unknown> = {
@@ -210,12 +253,14 @@ export const syncTicketToGsystem = createServerFn({ method: "POST" })
       Observacao: descricao,
       // GSystem requires Situacao (status) — "A" = Aberta
       Situacao: "A",
-      // GSystem requires Colaborador (responsável pela pendência)
-      Colaborador: colaboradorKey || "",
+      // GSystem requires Colaborador (responsável pela pendência) — string Key
+      Colaborador: colaboradorKey,
       // GSystem requires this property even when empty
       Veiculos: gsystemVeiculoKey ? [gsystemVeiculoKey] : [],
     };
     if (gsystemClienteKey) body.Cliente = gsystemClienteKey;
+
+    console.log("[ticket-finalize] Resolved Colaborador:", colaboradorKey);
 
     try {
       console.log("[ticket-finalize] Creating pendência", {
