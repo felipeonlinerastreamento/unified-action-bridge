@@ -225,7 +225,8 @@ function detectPlates(messages: GMessage[]): string[] {
 }
 
 function CentralPage() {
-  const { isAuthenticated, isLoading: authLoading, session, user } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, session, user, hasRole } = useAuth();
+  const isAdmin = hasRole("admin");
   const [selectedChannelId, setSelectedChannelId] = useState<string>("");
   const [selectedChatId, setSelectedChatId] = useState<string>("");
   const [messageInput, setMessageInput] = useState("");
