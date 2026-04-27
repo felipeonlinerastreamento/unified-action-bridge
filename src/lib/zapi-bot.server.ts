@@ -186,6 +186,11 @@ export async function processIncomingForBot(params: ProcessParams): Promise<bool
         await persistOutgoing(chatId, renderText(node.text || "", vars));
         return true;
       }
+    } else if (node.type === "ask_input") {
+      // Capture user reply into bot_state under state_key, then advance
+      const key = node.state_key || "input";
+      botState[key] = (incomingText || "").trim();
+      currentNodeId = node.next || currentNodeId;
     } else if (node.next) {
       currentNodeId = node.next;
     }
