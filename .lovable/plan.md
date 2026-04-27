@@ -1,60 +1,101 @@
-## Objetivo
+## Visão geral
 
-No menu **Atendimentos**, cada ticket (em todas as visualizações: Lista, Kanban e Calendário) deve mostrar de forma clara:
-- **Data de criação** (já existe parcialmente, mas será padronizada com data + hora)
-- **Data do último comentário/interação** (novo)
+A boa notícia: o editor de fluxo do bot **já suporta** mensagens personalizadas por opção e submenus aninhados. O que falta é (1) deixar isso óbvio na UI/documentação e (2) adicionar um novo tipo de nó capaz de **consultar boletos no GSystem** automaticamente.
 
-## Análise do estado atual
+---
 
-- A tela `AtendimentosContent` faz uma única query em `service_tickets` sem trazer comentários.
-- A tabela `ticket_comments` armazena todas as interações (comentários, mudanças de status, encaminhamentos, etc.) com `created_at`.
-- Hoje os cards mostram apenas `created_at` formatado como data (sem hora), e nada sobre a última interação.
+## Como o sistema atual já resolve mensagens personalizadas e submenus
 
-## Plano de implementação
+Cada opção de um menu tem o campo "Próximo nó" — basta apontar para outro nó:
 
-### 1. Buscar a data do último comentário junto com os tickets
+- **Mensagem personalizada por opção** → opção aponta para um nó tipo `Mensagem`.
+- **Submenu** → opção aponta para outro nó tipo `Menu` com novas opções.
 
-Em `src/components/atendimentos/atendimentos-content.tsx`, na query `service-tickets`:
-- Após carregar os tickets, fazer uma segunda query agregada em `ticket_comments` selecionando `ticket_id, created_at` ordenado desc, agrupando no client por `ticket_id` e pegando o `MAX(created_at)`.
-- Mesclar o resultado em cada ticket como `last_comment_at`.
-- Manter o `refetchInterval: 30000` para atualizar automaticamente.
+Exemplo do pedido:
 
-Alternativa mais eficiente (sem alterar schema): aproveitar que toda mudança relevante já chama `update_at` do ticket — porém o `updated_at` muda também por edições silenciosas. A query separada de comentários é mais precisa para "última interação real" e é o que o usuário pediu.
+```text
+[menu] Principal
+  1 → [route_to_sector] Vendas
+  2 → [message] "Agora é só aguardar..." → [route_to_sector] Atendimento
+  3 → [menu] Financeiro
+        1 → [route_to_sector] Financeiro
+        2 → [gsystem_boleto] Consulta boleto
+```
 
-### 2. Atualizar `TicketListView`
+Isso funciona hoje, mas o usuário não percebe porque a UI não dá um exemplo claro.
 
-Em `src/components/atendimentos/ticket-list-view.tsx`:
-- Substituir o `created_at` formatado apenas como data por **"Criado em: dd/MM/yyyy HH:mm"**.
-- Adicionar nova linha/badge com **"Último comentário: dd/MM/yyyy HH:mm"** (ou "Sem comentários" quando nulo), com ícone `MessageSquare`.
-- Usar `formatDistanceToNow` do `date-fns` em tooltip para mostrar "há X minutos/horas" ao passar o mouse.
+---
 
-### 3. Atualizar `TicketKanbanView`
+## O que será implementado
 
-Em `src/components/atendimentos/ticket-kanban-view.tsx`:
-- No card de cada ticket, manter o `Clock` com `created_at` (data + hora curta).
-- Adicionar uma linha extra com ícone `MessageSquare` e a data/hora do último comentário (ou "—" quando vazio).
+### 1. Novo tipo de nó: `gsystem_boleto`
 
-### 4. Atualizar `TicketCalendarView`
+Adicionar um quinto tipo no editor: **"Consultar boletos (GSystem)"**.
 
-Em `src/components/atendimentos/ticket-calendar-view.tsx`:
-- Nos cards da lista lateral (tickets do dia selecionado), adicionar a data do último comentário em texto pequeno abaixo do setor.
+Comportamento em runtime (no `zapi-bot.server.ts`):
+1. Tenta encontrar o cliente no GSystem usando o telefone do WhatsApp (rota `/clientes/?telefone=...`).
+2. Se encontrar: chama `getFaturas(cpfCnpj)` e formata os boletos em aberto.
+3. Envia ao cliente uma mensagem com: nº documento, vencimento, valor e link/linha digitável.
+4. Após responder, encaminha para o setor configurado (default: **Financeiro**) como fallback humano.
+5. Se não encontrar cliente OU nenhum boleto OU erro → mensagem amigável + encaminha para Financeiro.
 
-### 5. Formatação consistente
+Configuração do nó na UI:
+- **Setor de fallback** (select de setores, default "Financeiro")
+- **Mensagem quando há boletos** (template, default: "Encontrei {{count}} boleto(s) em aberto:")
+- **Mensagem quando não há boletos** (default: "Não encontrei boletos em aberto no seu CPF/CNPJ. Vou te encaminhar para o Financeiro.")
+- **Mensagem quando cliente não identificado** (default: "Não consegui identificar seu cadastro pelo telefone. Vou te encaminhar para o Financeiro.")
 
-Criar utilitário inline (ou usar `date-fns/format`):
-- Formato curto: `dd/MM HH:mm` quando do mesmo ano.
-- Formato completo: `dd/MM/yyyy HH:mm` caso contrário.
-- Se `last_comment_at` for nulo, exibir `"Sem interações"`.
+### 2. Melhorias UX no editor de fluxo
 
-## Arquivos que serão editados
+- Adicionar **bloco de ajuda colapsável** no topo do editor com o exemplo acima ("Como criar mensagens personalizadas e submenus por opção").
+- Em cada opção de menu, mostrar **etiqueta visual do tipo do próximo nó** (ex: `→ Mensagem`, `→ Submenu`, `→ Boletos`) para deixar claro o destino.
+- Botão **"Criar mensagem para esta opção"** ao lado de cada opção: cria automaticamente um nó tipo Mensagem em branco e já conecta no "next" da opção.
+- Botão **"Criar submenu para esta opção"**: cria um novo nó Menu vazio e conecta.
 
-- `src/components/atendimentos/atendimentos-content.tsx` — adicionar query de últimos comentários e mesclar em cada ticket.
-- `src/components/atendimentos/ticket-list-view.tsx` — exibir criação (com hora) + último comentário.
-- `src/components/atendimentos/ticket-kanban-view.tsx` — exibir último comentário no card.
-- `src/components/atendimentos/ticket-calendar-view.tsx` — exibir último comentário nos cards laterais.
+### 3. Defaults adotados (perguntas puladas)
 
-## Sem alterações no banco
+- **Identificação**: pelo telefone do WhatsApp; sem fallback de pedir CPF (encaminha para Financeiro se não achar).
+- **Formato**: lista resumida com vencimento, valor e link/linha digitável (o que o GSystem retornar).
+- **Sem boletos / erro**: mensagem informativa + encaminha para o Financeiro.
 
-Não há necessidade de migração: a coluna `ticket_comments.created_at` já existe e é alimentada por todas as ações relevantes do sistema (status, encaminhamento, edição de categoria, lembretes, etc.).
+---
 
-Aprove o plano para eu implementar.
+## Detalhes técnicos
+
+**Arquivos a editar:**
+- `src/components/configuracoes/zapi-bot-flow-editor.tsx` — novo tipo `gsystem_boleto`, bloco de ajuda, etiquetas e atalhos por opção.
+- `src/lib/zapi-bot.server.ts` — handler do novo tipo: lookup de cliente por telefone, chamada `getFaturas`, formatação, fallback de roteamento.
+
+**Reuso:**
+- `gsystemApiFetch` (servidor) — chamadas autenticadas ao GSystem.
+- Endpoint `/faturas/{cpfCnpj}` já existe (`getFaturas` em `gsystem-api.functions.ts`).
+- Para lookup por telefone, usar o endpoint de clientes existente (mesma lógica usada hoje no fluxo de identificação de cliente).
+
+**Schema do nó (TypeScript):**
+```ts
+type FlowNode = {
+  ...
+  type: "message" | "menu" | "route_to_sector" | "route_to_least_loaded" | "end" | "gsystem_boleto";
+  fallback_sector?: string;
+  text_success?: string;
+  text_no_boletos?: string;
+  text_no_client?: string;
+};
+```
+
+Sem migração de banco — `nodes` já é `jsonb` em `zapi_bot_flows`.
+
+---
+
+## Resultado final
+
+O usuário poderá montar o fluxo solicitado totalmente pela UI:
+
+```text
+Menu inicial
+ 1 → Falar com vendas        (route_to_sector)
+ 2 → "Agora é só aguardar..." (message → route_to_sector Atendimento)
+ 3 → Submenu Financeiro
+      1 → Setor Financeiro    (route_to_sector)
+      2 → Consulta boletos    (gsystem_boleto)
+```

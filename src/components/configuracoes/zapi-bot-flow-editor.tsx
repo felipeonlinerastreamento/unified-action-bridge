@@ -10,9 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Trash2, ArrowUp, ArrowDown, MessageSquare, ListOrdered, ArrowRight, Hash, Square, Loader2, Eye } from "lucide-react";
+import { Plus, Trash2, ArrowUp, ArrowDown, MessageSquare, ListOrdered, ArrowRight, Hash, Square, Loader2, Eye, Receipt, Lightbulb, ChevronDown, ChevronUp } from "lucide-react";
 
-type NodeType = "message" | "menu" | "route_to_sector" | "route_to_least_loaded" | "end";
+type NodeType = "message" | "menu" | "route_to_sector" | "route_to_least_loaded" | "end" | "gsystem_boleto";
 
 interface FlowNode {
   id: string;
@@ -21,6 +21,11 @@ interface FlowNode {
   options?: Array<{ key: string; label: string; next: string }>;
   next?: string;
   target_sector?: string;
+  // gsystem_boleto specific
+  fallback_sector?: string;
+  text_success?: string;
+  text_no_boletos?: string;
+  text_no_client?: string;
 }
 
 const TYPE_META: Record<NodeType, { label: string; icon: any; color: string }> = {
@@ -29,6 +34,7 @@ const TYPE_META: Record<NodeType, { label: string; icon: any; color: string }> =
   route_to_sector: { label: "Encaminhar p/ setor", icon: ArrowRight, color: "text-emerald-600" },
   route_to_least_loaded: { label: "Encaminhar p/ atendente menos ocupado", icon: Hash, color: "text-amber-600" },
   end: { label: "Finalizar", icon: Square, color: "text-rose-600" },
+  gsystem_boleto: { label: "Consultar boletos (GSystem)", icon: Receipt, color: "text-cyan-600" },
 };
 
 function genId() {
@@ -42,6 +48,7 @@ export function ZapiBotFlowEditor() {
   const [isActive, setIsActive] = useState(true);
   const [nodes, setNodes] = useState<FlowNode[]>([]);
   const [showPreview, setShowPreview] = useState(false);
+  const [showHelp, setShowHelp] = useState(false);
 
   const { data: flows = [] } = useQuery({
     queryKey: ["zapi-bot-flows"],
@@ -117,7 +124,7 @@ export function ZapiBotFlowEditor() {
     },
   });
 
-  const addNode = (type: NodeType) => {
+  const addNode = (type: NodeType): FlowNode => {
     const newNode: FlowNode = {
       id: genId(),
       type,
@@ -125,8 +132,43 @@ export function ZapiBotFlowEditor() {
       ...(type === "message" ? { text: "Sua mensagem aqui", next: "" } : {}),
       ...(type === "route_to_sector" || type === "route_to_least_loaded" ? { target_sector: "Atendimento" } : {}),
       ...(type === "end" ? { text: "Atendimento finalizado, obrigado!" } : {}),
+      ...(type === "gsystem_boleto"
+        ? {
+            fallback_sector: "Financeiro",
+            text_success: "Encontrei {{count}} boleto(s) em aberto no seu cadastro:",
+            text_no_boletos: "Não encontrei boletos em aberto no seu cadastro. Vou te encaminhar para o Financeiro.",
+            text_no_client: "Não consegui identificar seu cadastro pelo seu telefone. Vou te encaminhar para o Financeiro.",
+          }
+        : {}),
     };
-    setNodes([...nodes, newNode]);
+    setNodes((prev) => [...prev, newNode]);
+    return newNode;
+  };
+
+  /** Cria um novo nó e conecta automaticamente como "next" da opção indicada de um menu. */
+  const addNodeAndLinkToOption = (menuId: string, optionIndex: number, type: NodeType) => {
+    setNodes((prev) => {
+      const newNode: FlowNode = {
+        id: genId(),
+        type,
+        ...(type === "menu" ? { text: "Escolha uma opção:", options: [{ key: "1", label: "Opção 1", next: "" }] } : {}),
+        ...(type === "message" ? { text: "Sua mensagem aqui", next: "" } : {}),
+        ...(type === "gsystem_boleto"
+          ? {
+              fallback_sector: "Financeiro",
+              text_success: "Encontrei {{count}} boleto(s) em aberto no seu cadastro:",
+              text_no_boletos: "Não encontrei boletos em aberto no seu cadastro. Vou te encaminhar para o Financeiro.",
+              text_no_client: "Não consegui identificar seu cadastro pelo seu telefone. Vou te encaminhar para o Financeiro.",
+            }
+          : {}),
+      };
+      return prev.map((n) => {
+        if (n.id !== menuId || n.type !== "menu" || !n.options) return n;
+        const opts = [...n.options];
+        opts[optionIndex] = { ...opts[optionIndex], next: newNode.id };
+        return { ...n, options: opts };
+      }).concat(newNode);
+    });
   };
 
   const updateNode = (id: string, patch: Partial<FlowNode>) => {
@@ -183,6 +225,40 @@ export function ZapiBotFlowEditor() {
               <Label>Nome</Label>
               <Input value={name} onChange={(e) => setName(e.target.value)} />
             </div>
+
+            {/* Bloco de ajuda colapsável */}
+            <Card className="bg-muted/40 border-dashed">
+              <CardContent className="pt-3 pb-3">
+                <button
+                  type="button"
+                  onClick={() => setShowHelp((s) => !s)}
+                  className="flex w-full items-center gap-2 text-sm font-medium"
+                >
+                  <Lightbulb className="h-4 w-4 text-amber-600" />
+                  <span>Como criar mensagens personalizadas e submenus por opção</span>
+                  {showHelp ? <ChevronUp className="ml-auto h-4 w-4" /> : <ChevronDown className="ml-auto h-4 w-4" />}
+                </button>
+                {showHelp && (
+                  <div className="mt-3 space-y-2 text-xs text-muted-foreground">
+                    <p>
+                      Cada opção do menu tem um campo <strong>"Próximo nó"</strong>. Aponte para qualquer outro nó para definir o que acontece quando o cliente escolhe essa opção:
+                    </p>
+                    <ul className="list-disc pl-5 space-y-1">
+                      <li><strong>Mensagem personalizada</strong>: aponte a opção para um nó tipo <em>Mensagem</em>. Use o atalho <Badge variant="outline" className="text-[10px]">+ Mensagem</Badge> ao lado da opção para criar e conectar de uma vez.</li>
+                      <li><strong>Submenu</strong>: aponte para outro nó tipo <em>Menu</em> com novas opções. Use o atalho <Badge variant="outline" className="text-[10px]">+ Submenu</Badge>.</li>
+                      <li><strong>Encaminhar para setor</strong>: aponte para um nó <em>Encaminhar p/ setor</em>.</li>
+                      <li><strong>Consultar boletos no GSystem</strong>: aponte para o novo nó <em>Consultar boletos</em>. O bot identifica o cliente pelo telefone, busca os boletos em aberto e envia automaticamente.</li>
+                    </ul>
+                    <pre className="mt-2 p-2 rounded bg-background text-[11px] overflow-x-auto">{`Menu inicial
+ 1 → "Falar com vendas"        (Encaminhar p/ setor: Vendas)
+ 2 → "Agora é só aguardar..."  (Mensagem → Encaminhar p/ Atendimento)
+ 3 → Submenu Financeiro
+       1 → Setor Financeiro    (Encaminhar p/ setor)
+       2 → Boletos em aberto   (Consultar boletos GSystem)`}</pre>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
 
             <div className="space-y-3">
               <div className="flex items-center justify-between">
@@ -242,56 +318,88 @@ export function ZapiBotFlowEditor() {
                       {node.type === "menu" && (
                         <div className="space-y-2">
                           <Label className="text-xs">Opções do menu</Label>
-                          {(node.options || []).map((opt, oi) => (
-                            <div key={oi} className="grid grid-cols-12 gap-2 items-center">
-                              <Input
-                                className="col-span-2"
-                                placeholder="1"
-                                value={opt.key}
-                                onChange={(e) => {
-                                  const opts = [...(node.options || [])];
-                                  opts[oi] = { ...opts[oi], key: e.target.value };
-                                  updateNode(node.id, { options: opts });
-                                }}
-                              />
-                              <Input
-                                className="col-span-5"
-                                placeholder="Rótulo"
-                                value={opt.label}
-                                onChange={(e) => {
-                                  const opts = [...(node.options || [])];
-                                  opts[oi] = { ...opts[oi], label: e.target.value };
-                                  updateNode(node.id, { options: opts });
-                                }}
-                              />
-                              <Select
-                                value={opt.next}
-                                onValueChange={(v) => {
-                                  const opts = [...(node.options || [])];
-                                  opts[oi] = { ...opts[oi], next: v };
-                                  updateNode(node.id, { options: opts });
-                                }}
-                              >
-                                <SelectTrigger className="col-span-4"><SelectValue placeholder="Próximo nó" /></SelectTrigger>
-                                <SelectContent>
-                                  {nodes.filter((n) => n.id !== node.id).map((n) => (
-                                    <SelectItem key={n.id} value={n.id}>{n.id} ({TYPE_META[n.type].label})</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                              <Button
-                                size="icon"
-                                variant="ghost"
-                                className="col-span-1 h-8 w-8 text-destructive"
-                                onClick={() => {
-                                  const opts = (node.options || []).filter((_, i) => i !== oi);
-                                  updateNode(node.id, { options: opts });
-                                }}
-                              >
-                                <Trash2 className="h-3.5 w-3.5" />
-                              </Button>
-                            </div>
-                          ))}
+                          {(node.options || []).map((opt, oi) => {
+                            const targetNode = nodes.find((n) => n.id === opt.next);
+                            const targetMeta = targetNode ? TYPE_META[targetNode.type] : null;
+                            return (
+                              <div key={oi} className="space-y-1 rounded border p-2 bg-muted/20">
+                                <div className="grid grid-cols-12 gap-2 items-center">
+                                  <Input
+                                    className="col-span-2"
+                                    placeholder="1"
+                                    value={opt.key}
+                                    onChange={(e) => {
+                                      const opts = [...(node.options || [])];
+                                      opts[oi] = { ...opts[oi], key: e.target.value };
+                                      updateNode(node.id, { options: opts });
+                                    }}
+                                  />
+                                  <Input
+                                    className="col-span-5"
+                                    placeholder="Rótulo"
+                                    value={opt.label}
+                                    onChange={(e) => {
+                                      const opts = [...(node.options || [])];
+                                      opts[oi] = { ...opts[oi], label: e.target.value };
+                                      updateNode(node.id, { options: opts });
+                                    }}
+                                  />
+                                  <Select
+                                    value={opt.next}
+                                    onValueChange={(v) => {
+                                      const opts = [...(node.options || [])];
+                                      opts[oi] = { ...opts[oi], next: v };
+                                      updateNode(node.id, { options: opts });
+                                    }}
+                                  >
+                                    <SelectTrigger className="col-span-4"><SelectValue placeholder="Próximo nó" /></SelectTrigger>
+                                    <SelectContent>
+                                      {nodes.filter((n) => n.id !== node.id).map((n) => (
+                                        <SelectItem key={n.id} value={n.id}>{n.id} ({TYPE_META[n.type].label})</SelectItem>
+                                      ))}
+                                    </SelectContent>
+                                  </Select>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="col-span-1 h-8 w-8 text-destructive"
+                                    onClick={() => {
+                                      const opts = (node.options || []).filter((_, i) => i !== oi);
+                                      updateNode(node.id, { options: opts });
+                                    }}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+                                <div className="flex flex-wrap items-center gap-1.5 text-[11px]">
+                                  {targetMeta ? (
+                                    <Badge variant="outline" className="gap-1">
+                                      <targetMeta.icon className={`h-3 w-3 ${targetMeta.color}`} />
+                                      → {targetMeta.label}
+                                    </Badge>
+                                  ) : (
+                                    <span className="text-muted-foreground italic">Sem destino · use os atalhos para criar:</span>
+                                  )}
+                                  {!opt.next && (
+                                    <>
+                                      <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px]"
+                                        onClick={() => addNodeAndLinkToOption(node.id, oi, "message")}>
+                                        <Plus className="h-3 w-3 mr-1" /> Mensagem
+                                      </Button>
+                                      <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px]"
+                                        onClick={() => addNodeAndLinkToOption(node.id, oi, "menu")}>
+                                        <Plus className="h-3 w-3 mr-1" /> Submenu
+                                      </Button>
+                                      <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px]"
+                                        onClick={() => addNodeAndLinkToOption(node.id, oi, "gsystem_boleto")}>
+                                        <Plus className="h-3 w-3 mr-1" /> Boletos GSystem
+                                      </Button>
+                                    </>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
                           <Button size="sm" variant="outline" onClick={() => {
                             const opts = [...(node.options || []), { key: String((node.options?.length || 0) + 1), label: "Nova opção", next: "" }];
                             updateNode(node.id, { options: opts });
@@ -326,6 +434,41 @@ export function ZapiBotFlowEditor() {
                               ))}
                             </SelectContent>
                           </Select>
+                        </div>
+                      )}
+
+                      {node.type === "gsystem_boleto" && (
+                        <div className="space-y-2">
+                          <p className="text-[11px] text-muted-foreground">
+                            O bot busca automaticamente o cliente no GSystem pelo telefone do WhatsApp e envia os boletos em aberto.
+                            Use <code>{`{{count}}`}</code> no texto de sucesso para o número de boletos encontrados.
+                          </p>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Mensagem quando há boletos</Label>
+                            <Textarea rows={2} value={node.text_success || ""}
+                              onChange={(e) => updateNode(node.id, { text_success: e.target.value })} />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Mensagem quando não há boletos em aberto</Label>
+                            <Textarea rows={2} value={node.text_no_boletos || ""}
+                              onChange={(e) => updateNode(node.id, { text_no_boletos: e.target.value })} />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Mensagem quando o cliente não é identificado</Label>
+                            <Textarea rows={2} value={node.text_no_client || ""}
+                              onChange={(e) => updateNode(node.id, { text_no_client: e.target.value })} />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Setor de fallback (encaminhar após responder ou em caso de erro)</Label>
+                            <Select value={node.fallback_sector || ""} onValueChange={(v) => updateNode(node.id, { fallback_sector: v })}>
+                              <SelectTrigger><SelectValue placeholder="Selecione um setor" /></SelectTrigger>
+                              <SelectContent>
+                                {sectors.map((s) => (
+                                  <SelectItem key={s.name} value={s.name}>{s.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
                       )}
                     </CardContent>
