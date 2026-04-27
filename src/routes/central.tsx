@@ -102,6 +102,7 @@ import {
   DropdownMenuLabel,
 } from "@/components/ui/dropdown-menu";
 import { ChatQueueList } from "@/components/central/chat-queue-list";
+import { MyAttendanceKpis } from "@/components/central/my-attendance-kpis";
 import { FloatingChatsProvider } from "@/components/central/floating-chats-context";
 import { FloatingChatsLayer } from "@/components/central/floating-chats-layer";
 import { useIsMobile } from "@/hooks/use-mobile";
