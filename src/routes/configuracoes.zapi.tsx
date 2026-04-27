@@ -40,6 +40,7 @@ function ZapiPage() {
 
         <ZapiConnectionConfig />
         <ZapiBotFlowEditor />
+        <ZapiMessageTemplatesConfig />
         <ZapiQuickRepliesConfig />
       </div>
     </AppLayout>
