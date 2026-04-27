@@ -10,9 +10,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Trash2, ArrowUp, ArrowDown, MessageSquare, ListOrdered, ArrowRight, Hash, Square, Loader2, Eye } from "lucide-react";
+import { Plus, Trash2, ArrowUp, ArrowDown, MessageSquare, ListOrdered, ArrowRight, Hash, Square, Loader2, Eye, Receipt, Lightbulb, ChevronDown, ChevronUp } from "lucide-react";
 
-type NodeType = "message" | "menu" | "route_to_sector" | "route_to_least_loaded" | "end";
+type NodeType = "message" | "menu" | "route_to_sector" | "route_to_least_loaded" | "end" | "gsystem_boleto";
 
 interface FlowNode {
   id: string;
@@ -21,6 +21,11 @@ interface FlowNode {
   options?: Array<{ key: string; label: string; next: string }>;
   next?: string;
   target_sector?: string;
+  // gsystem_boleto specific
+  fallback_sector?: string;
+  text_success?: string;
+  text_no_boletos?: string;
+  text_no_client?: string;
 }
 
 const TYPE_META: Record<NodeType, { label: string; icon: any; color: string }> = {
@@ -29,6 +34,7 @@ const TYPE_META: Record<NodeType, { label: string; icon: any; color: string }> =
   route_to_sector: { label: "Encaminhar p/ setor", icon: ArrowRight, color: "text-emerald-600" },
   route_to_least_loaded: { label: "Encaminhar p/ atendente menos ocupado", icon: Hash, color: "text-amber-600" },
   end: { label: "Finalizar", icon: Square, color: "text-rose-600" },
+  gsystem_boleto: { label: "Consultar boletos (GSystem)", icon: Receipt, color: "text-cyan-600" },
 };
 
 function genId() {
