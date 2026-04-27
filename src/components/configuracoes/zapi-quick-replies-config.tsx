@@ -204,21 +204,62 @@ export function ZapiQuickRepliesConfig() {
             <Switch checked={form.is_global} onCheckedChange={(v) => setForm({ ...form, is_global: v })} />
             <Label className="text-xs">Compartilhar com a equipe</Label>
           </div>
-          <Button className="md:col-span-2" onClick={() => addMutation.mutate()} disabled={addMutation.isPending}>
-            <Plus className="h-4 w-4 mr-1" /> Adicionar
-          </Button>
+          {editingId ? (
+            <>
+              <Button
+                className="md:col-span-1"
+                onClick={() => updateMutation.mutate()}
+                disabled={updateMutation.isPending}
+              >
+                <Check className="h-4 w-4 mr-1" /> Salvar
+              </Button>
+              <Button
+                className="md:col-span-1"
+                variant="outline"
+                onClick={cancelEdit}
+                disabled={updateMutation.isPending}
+              >
+                <X className="h-4 w-4 mr-1" /> Cancelar
+              </Button>
+            </>
+          ) : (
+            <Button className="md:col-span-2" onClick={() => addMutation.mutate()} disabled={addMutation.isPending}>
+              <Plus className="h-4 w-4 mr-1" /> Adicionar
+            </Button>
+          )}
         </div>
 
         <div className="space-y-2">
           {replies.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">Nenhuma resposta rápida ainda.</p>}
           {replies.map((r) => (
-            <div key={r.id} className="flex items-start gap-2 border rounded p-2">
+            <div
+              key={r.id}
+              className={`flex items-start gap-2 border rounded p-2 ${editingId === r.id ? "border-primary bg-primary/5" : ""}`}
+            >
               <Badge variant="outline" className="font-mono text-xs">{r.shortcut}</Badge>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium">{r.label} {r.is_global && <Badge variant="secondary" className="ml-1 text-[10px]">global</Badge>}</p>
+                <p className="text-sm font-medium">
+                  {r.label}
+                  {r.is_global && <Badge variant="secondary" className="ml-1 text-[10px]">global</Badge>}
+                  {editingId === r.id && <Badge className="ml-1 text-[10px]">editando</Badge>}
+                </p>
                 <p className="text-xs text-muted-foreground whitespace-pre-wrap">{r.content}</p>
               </div>
-              <Button size="icon" variant="ghost" className="text-destructive" onClick={() => deleteMutation.mutate(r.id)}>
+              <Button
+                size="icon"
+                variant="ghost"
+                onClick={() => startEdit(r)}
+                title="Editar"
+              >
+                <Pencil className="h-4 w-4" />
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                className="text-destructive"
+                onClick={() => deleteMutation.mutate(r.id)}
+                title="Excluir"
+              >
                 <Trash2 className="h-4 w-4" />
               </Button>
             </div>
