@@ -391,21 +391,37 @@ export const sendText = createServerFn({ method: "POST" })
     if (chatErr || !chat) throw new Error("Conversa não encontrada");
 
     const channel = await loadZapiChannel(context.supabase, chat.channel_id);
-    const result = await zapiSendText(channel, chat.phone, text);
+
+    // Prefixa a mensagem com o primeiro nome do operador (ex: "*João*: ...")
+    let outgoingText = text;
+    let operatorFirstName: string | undefined;
+    if (context.userId) {
+      const { data: prof } = await context.supabase
+        .from("profiles")
+        .select("name")
+        .eq("user_id", context.userId)
+        .maybeSingle();
+      operatorFirstName = firstNameOf(prof?.name);
+      if (operatorFirstName && !text.startsWith(`*${operatorFirstName}*`)) {
+        outgoingText = `*${operatorFirstName}*:\n${text}`;
+      }
+    }
+
+    const result = await zapiSendText(channel, chat.phone, outgoingText);
 
     await context.supabase.from("zapi_messages").insert({
       chat_id: data.chatId,
       zapi_message_id: result?.messageId || result?.id || null,
       from_me: true,
       sent_by_user_id: context.userId,
-      text,
+      text: outgoingText,
       status: "sent",
     });
     await context.supabase
       .from("zapi_chats")
       .update({
         last_message_at: new Date().toISOString(),
-        last_message_preview: text.slice(0, 120),
+        last_message_preview: outgoingText.slice(0, 120),
       })
       .eq("id", data.chatId);
 
