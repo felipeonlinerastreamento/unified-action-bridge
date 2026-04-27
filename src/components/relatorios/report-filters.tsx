@@ -19,11 +19,14 @@ type Props = {
   onPeriodChange: (v: string) => void;
   onExport: (format: "csv" | "xlsx" | "pdf") => void;
   extraFilters?: React.ReactNode;
+  plate?: string;
+  onPlateChange?: (v: string) => void;
 };
 
 export function ReportFilters({
   dateFrom, dateTo, onDateFromChange, onDateToChange,
   period, onPeriodChange, onExport, extraFilters,
+  plate, onPlateChange,
 }: Props) {
   const applyPeriod = (p: string) => {
     onPeriodChange(p);
@@ -72,6 +75,28 @@ export function ReportFilters({
         <Label className="text-xs">Até</Label>
         <Input type="date" value={dateTo} onChange={(e) => { onDateToChange(e.target.value); onPeriodChange("custom"); }} className="h-8 text-xs w-[140px]" />
       </div>
+      {onPlateChange && (
+        <div>
+          <Label className="text-xs">Placa</Label>
+          <div className="relative">
+            <Input
+              value={plate ?? ""}
+              onChange={(e) => onPlateChange(e.target.value.toUpperCase().replace(/\s|-/g, ""))}
+              placeholder="ABC1D23"
+              className="h-8 text-xs w-[140px] pr-7"
+              maxLength={8}
+            />
+            {plate && (
+              <button
+                type="button"
+                onClick={() => onPlateChange("")}
+                className="absolute right-1 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground text-xs px-1"
+                aria-label="Limpar placa"
+              >×</button>
+            )}
+          </div>
+        </div>
+      )}
       {extraFilters}
       <div className="ml-auto">
         <DropdownMenu>

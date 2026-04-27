@@ -436,8 +436,9 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
               <label className="text-xs font-medium">Placa</label>
               <Input
                 value={plate}
-                onChange={(e) => setPlate(e.target.value)}
-                placeholder="ABC-1234"
+                onChange={(e) => setPlate(e.target.value.toUpperCase().replace(/\s|-/g, ""))}
+                placeholder="ABC1D23"
+                maxLength={8}
               />
             </div>
           </div>

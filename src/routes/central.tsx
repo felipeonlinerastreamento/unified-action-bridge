@@ -2963,6 +2963,16 @@ function CentralPage() {
             </div>
 
             <div className="space-y-2">
+              <Label className="text-xs font-medium">Placa do veículo (opcional)</Label>
+              <Input
+                placeholder="Ex: ABC1D23"
+                value={ticketPlate}
+                onChange={(e) => setTicketPlate(e.target.value.toUpperCase().replace(/\s|-/g, ""))}
+                maxLength={8}
+              />
+            </div>
+
+            <div className="space-y-2">
               <Label className="text-xs font-medium">Observação (opcional)</Label>
               <Textarea
                 rows={2}
@@ -3004,6 +3014,10 @@ function CentralPage() {
                 let notesToSend = finalizeNotes || "";
                 if (isTesteEquipamentoCategory(tipoLabel, teSettings)) {
                   notesToSend = buildTesteEquipamentoNotes(teData, notesToSend);
+                }
+                // Persist plate if changed
+                if (currentTicket && ticketPlate !== (currentTicket.plate || "")) {
+                  updatePlateMutation.mutate(ticketPlate);
                 }
                 finalizeMutation.mutate({
                   notes: notesToSend || undefined,
