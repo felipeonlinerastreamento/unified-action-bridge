@@ -289,7 +289,7 @@ export function ZapiBotFlowEditor() {
               )}
 
               {nodes.map((node, idx) => {
-                const meta = TYPE_META[node.type];
+                const meta = getTypeMeta(node.type);
                 const Icon = meta.icon;
                 return (
                   <Card key={node.id} className="border-l-4" style={{ borderLeftColor: "currentColor" }}>
