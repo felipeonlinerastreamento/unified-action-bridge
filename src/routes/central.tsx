@@ -109,6 +109,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { WhisperToggle } from "@/components/central/whisper-toggle";
 import { QuickRepliesPopover } from "@/components/central/quick-replies-popover";
 import { applyQuickReplyVars } from "@/lib/quick-reply-vars";
+import { formatProtocol } from "@/lib/protocol-format";
 import { ChatTags, type ChatTag } from "@/components/central/chat-tags";
 import { MessageStatusTicks } from "@/components/central/message-status-ticks";
 import { TypingIndicator } from "@/components/central/typing-indicator";
@@ -1357,7 +1358,7 @@ function CentralPage() {
       // Send closing message with protocol number before finalizing
       // Admins can opt out via skipClosingMessage to silently close.
       if (!skipMsg) {
-        const protocolNumber = chatDetail?.protocol || selectedChatId;
+        const protocolNumber = formatProtocol(chatDetail?.protocol || selectedChatId);
         // Busca template editável; cai para o padrão se ainda não houver registro
         let templateContent = `Seu atendimento foi finalizado e desde já agradecemos pela atenção.\n\nSe você precisar de suporte no futuro, fique à vontade para falar conosco.\n\nTenha um ótimo dia!\n\nProtocolo desse atendimento: {protocolo}\n\nEsta é uma mensagem automática e não precisa responder.`;
         try {
@@ -1542,7 +1543,7 @@ function CentralPage() {
     const resolved = applyQuickReplyVars(reply.content || "", {
       operatorName: profile?.name,
       contactName: chatDetail?.contact?.name || chatDetail?.description,
-      protocol: chatDetail?.protocol,
+      protocol: formatProtocol(chatDetail?.protocol),
     });
     return text.slice(0, match.index! + match[1].length) + resolved;
   };
@@ -1886,7 +1887,7 @@ function CentralPage() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="text-xs text-muted-foreground truncate">
                             {chatDetail?.contact?.secondaryName || chatDetail?.contact?.number}
-                            {chatDetail?.protocol && ` • #${chatDetail.protocol}`}
+                            {chatDetail?.protocol && ` • #${formatProtocol(chatDetail.protocol)}`}
                           </p>
                           {companyLookup && (
                             <Badge variant="secondary" className="text-[10px] gap-1 max-w-[160px]">
@@ -2224,7 +2225,7 @@ function CentralPage() {
                           const resolved = applyQuickReplyVars(text, {
                             operatorName: profile?.name,
                             contactName: chatDetail?.contact?.name || chatDetail?.description,
-                            protocol: chatDetail?.protocol,
+                            protocol: formatProtocol(chatDetail?.protocol),
                           });
                           setMessageInput((prev) => prev ? `${prev} ${resolved}` : resolved);
                         }}
@@ -2547,7 +2548,7 @@ function CentralPage() {
 
                         <div className="space-y-3">
                           {chatDetail.protocol && (
-                            <DetailRow label="Protocolo" value={`#${chatDetail.protocol}`} mono />
+                            <DetailRow label="Protocolo" value={`#${formatProtocol(chatDetail.protocol)}`} mono />
                           )}
                           {statusInfo && (
                             <div>
