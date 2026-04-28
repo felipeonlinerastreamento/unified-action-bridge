@@ -244,25 +244,27 @@ export const syncTicketToGsystem = createServerFn({ method: "POST" })
       };
     }
 
+    if (!gsystemClienteKey) {
+      return {
+        ok: false,
+        error:
+          "Cliente do GSystem não vinculado a esta empresa. Abra a empresa em Empresas e vincule ao cliente correspondente do GSystem antes de finalizar o atendimento.",
+      };
+    }
+
     const body: Record<string, unknown> = {
       Descricao: descricao,
       DataAbertura: new Date().toISOString().split("T")[0],
       TipoPendencia: tipoPendencia,
-      // Campo legado mantido por compatibilidade; o GSystem continua usando TipoPendencia.
-      Tipo: tipoPendencia,
-      Observacao: descricao,
-      // GSystem requires Situacao (status) — "A" = Aberta
       Situacao: "A",
-      // GSystem requires colaborador (lowercase) — responsável pela pendência
+      Colaborador: colaboradorKey,
       colaborador: colaboradorKey,
-      Colaborador: colaboradorKey, // compat: alguns endpoints aceitam PascalCase
-      // GSystem requires this property even when empty
-      Veiculos: gsystemVeiculoKey ? [gsystemVeiculoKey] : [],
-      veiculos: gsystemVeiculoKey ? [gsystemVeiculoKey] : [],
+      Cliente: gsystemClienteKey,
+      cliente: gsystemClienteKey,
     };
-    if (gsystemClienteKey) {
-      body.Cliente = gsystemClienteKey;
-      body.cliente = gsystemClienteKey;
+    if (gsystemVeiculoKey) {
+      body.Veiculos = [gsystemVeiculoKey];
+      body.veiculos = [gsystemVeiculoKey];
     }
 
     console.log("[ticket-finalize] Resolved Colaborador:", colaboradorKey);
@@ -271,8 +273,10 @@ export const syncTicketToGsystem = createServerFn({ method: "POST" })
       console.log("[ticket-finalize] Creating pendência", {
         ticketId: ticket.id,
         tipoPendencia,
-        hasCliente: Boolean(gsystemClienteKey),
-        veiculosCount: Array.isArray(body.Veiculos) ? body.Veiculos.length : 0,
+        clienteKey: gsystemClienteKey,
+        colaboradorKey,
+        veiculosCount: gsystemVeiculoKey ? 1 : 0,
+        descricaoLen: descricao.length,
       });
       const { gsystemApiFetch } = await import("@/lib/gsystem-api.server");
       const result = await gsystemApiFetch("/pendencias", "POST", body);

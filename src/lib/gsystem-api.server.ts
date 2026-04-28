@@ -210,14 +210,18 @@ export async function gsystemApiFetch(
   try {
     const data = JSON.parse(text);
     if (!res.ok) {
-      throw new Error(
-        `GSystem API error [${res.status}]: ${data?.message || data?.Message || text}`
-      );
+      const detail =
+        data?.message || data?.Message || data?.error || data?.Error ||
+        data?.detail || data?.Detail || data?.errors || data?.Errors;
+      const detailStr = typeof detail === "string" ? detail : JSON.stringify(detail || data);
+      console.error(`[GSystem API] ${method} ${endpoint} => ${res.status}`, detailStr.substring(0, 1000));
+      throw new Error(`GSystem API error [${res.status}]: ${detailStr}`);
     }
     return data;
   } catch (err) {
     if (err instanceof SyntaxError) {
       if (!res.ok) {
+        console.error(`[GSystem API] ${method} ${endpoint} => ${res.status}`, text.substring(0, 1000));
         throw new Error(`GSystem API error [${res.status}]: ${text}`);
       }
       return text;
