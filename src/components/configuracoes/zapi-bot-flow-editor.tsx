@@ -327,7 +327,7 @@ export function ZapiBotFlowEditor() {
                           <Label className="text-xs">Opções do menu</Label>
                           {(node.options || []).map((opt, oi) => {
                             const targetNode = nodes.find((n) => n.id === opt.next);
-                            const targetMeta = targetNode ? TYPE_META[targetNode.type] : null;
+                            const targetMeta = targetNode ? getTypeMeta(targetNode.type) : null;
                             return (
                               <div key={oi} className="space-y-1 rounded border p-2 bg-muted/20">
                                 <div className="grid grid-cols-12 gap-2 items-center">
