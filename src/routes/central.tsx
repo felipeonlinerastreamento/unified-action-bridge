@@ -1543,7 +1543,7 @@ function CentralPage() {
     const resolved = applyQuickReplyVars(reply.content || "", {
       operatorName: profile?.name,
       contactName: chatDetail?.contact?.name || chatDetail?.description,
-      protocol: chatDetail?.protocol,
+      protocol: formatProtocol(chatDetail?.protocol),
     });
     return text.slice(0, match.index! + match[1].length) + resolved;
   };
@@ -1887,7 +1887,7 @@ function CentralPage() {
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="text-xs text-muted-foreground truncate">
                             {chatDetail?.contact?.secondaryName || chatDetail?.contact?.number}
-                            {chatDetail?.protocol && ` • #${chatDetail.protocol}`}
+                            {chatDetail?.protocol && ` • #${formatProtocol(chatDetail.protocol)}`}
                           </p>
                           {companyLookup && (
                             <Badge variant="secondary" className="text-[10px] gap-1 max-w-[160px]">
@@ -2225,7 +2225,7 @@ function CentralPage() {
                           const resolved = applyQuickReplyVars(text, {
                             operatorName: profile?.name,
                             contactName: chatDetail?.contact?.name || chatDetail?.description,
-                            protocol: chatDetail?.protocol,
+                            protocol: formatProtocol(chatDetail?.protocol),
                           });
                           setMessageInput((prev) => prev ? `${prev} ${resolved}` : resolved);
                         }}
@@ -2548,7 +2548,7 @@ function CentralPage() {
 
                         <div className="space-y-3">
                           {chatDetail.protocol && (
-                            <DetailRow label="Protocolo" value={`#${chatDetail.protocol}`} mono />
+                            <DetailRow label="Protocolo" value={`#${formatProtocol(chatDetail.protocol)}`} mono />
                           )}
                           {statusInfo && (
                             <div>
