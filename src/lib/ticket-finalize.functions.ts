@@ -253,12 +253,17 @@ export const syncTicketToGsystem = createServerFn({ method: "POST" })
       Observacao: descricao,
       // GSystem requires Situacao (status) — "A" = Aberta
       Situacao: "A",
-      // GSystem requires Colaborador (responsável pela pendência) — string Key
-      Colaborador: colaboradorKey,
+      // GSystem requires colaborador (lowercase) — responsável pela pendência
+      colaborador: colaboradorKey,
+      Colaborador: colaboradorKey, // compat: alguns endpoints aceitam PascalCase
       // GSystem requires this property even when empty
       Veiculos: gsystemVeiculoKey ? [gsystemVeiculoKey] : [],
+      veiculos: gsystemVeiculoKey ? [gsystemVeiculoKey] : [],
     };
-    if (gsystemClienteKey) body.Cliente = gsystemClienteKey;
+    if (gsystemClienteKey) {
+      body.Cliente = gsystemClienteKey;
+      body.cliente = gsystemClienteKey;
+    }
 
     console.log("[ticket-finalize] Resolved Colaborador:", colaboradorKey);
 
