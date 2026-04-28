@@ -35,7 +35,14 @@ const TYPE_META: Record<NodeType, { label: string; icon: any; color: string }> =
   route_to_least_loaded: { label: "Encaminhar p/ atendente menos ocupado", icon: Hash, color: "text-amber-600" },
   end: { label: "Finalizar", icon: Square, color: "text-rose-600" },
   gsystem_boleto: { label: "Consultar boletos (GSystem)", icon: Receipt, color: "text-cyan-600" },
+  gsystem_boleto_by_doc: { label: "Consultar boletos por CPF/CNPJ", icon: Receipt, color: "text-cyan-700" },
+  ask_input: { label: "Solicitar entrada do usuário", icon: MessageSquare, color: "text-indigo-600" },
 };
+
+const FALLBACK_META = { label: "Tipo desconhecido", icon: Square, color: "text-muted-foreground" };
+function getTypeMeta(t: string) {
+  return (TYPE_META as Record<string, { label: string; icon: any; color: string }>)[t] ?? FALLBACK_META;
+}
 
 function genId() {
   return `n_${Math.random().toString(36).slice(2, 8)}`;
