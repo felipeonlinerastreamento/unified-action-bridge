@@ -1358,7 +1358,7 @@ function CentralPage() {
       // Send closing message with protocol number before finalizing
       // Admins can opt out via skipClosingMessage to silently close.
       if (!skipMsg) {
-        const protocolNumber = chatDetail?.protocol || selectedChatId;
+        const protocolNumber = formatProtocol(chatDetail?.protocol || selectedChatId);
         // Busca template editável; cai para o padrão se ainda não houver registro
         let templateContent = `Seu atendimento foi finalizado e desde já agradecemos pela atenção.\n\nSe você precisar de suporte no futuro, fique à vontade para falar conosco.\n\nTenha um ótimo dia!\n\nProtocolo desse atendimento: {protocolo}\n\nEsta é uma mensagem automática e não precisa responder.`;
         try {
