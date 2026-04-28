@@ -423,7 +423,7 @@ export function ZapiBotFlowEditor() {
                             <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                             <SelectContent>
                               {nodes.filter((n) => n.id !== node.id).map((n) => (
-                                <SelectItem key={n.id} value={n.id}>{n.id} ({TYPE_META[n.type].label})</SelectItem>
+                                <SelectItem key={n.id} value={n.id}>{n.id} ({getTypeMeta(n.type).label})</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
