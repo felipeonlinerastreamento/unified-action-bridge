@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Plus, Trash2, ArrowUp, ArrowDown, MessageSquare, ListOrdered, ArrowRight, Hash, Square, Loader2, Eye, Receipt, Lightbulb, ChevronDown, ChevronUp } from "lucide-react";
 
-type NodeType = "message" | "menu" | "route_to_sector" | "route_to_least_loaded" | "end" | "gsystem_boleto";
+type NodeType = "message" | "menu" | "route_to_sector" | "route_to_least_loaded" | "end" | "gsystem_boleto" | "gsystem_boleto_by_doc" | "ask_input";
 
 interface FlowNode {
   id: string;
@@ -35,7 +35,14 @@ const TYPE_META: Record<NodeType, { label: string; icon: any; color: string }> =
   route_to_least_loaded: { label: "Encaminhar p/ atendente menos ocupado", icon: Hash, color: "text-amber-600" },
   end: { label: "Finalizar", icon: Square, color: "text-rose-600" },
   gsystem_boleto: { label: "Consultar boletos (GSystem)", icon: Receipt, color: "text-cyan-600" },
+  gsystem_boleto_by_doc: { label: "Consultar boletos por CPF/CNPJ", icon: Receipt, color: "text-cyan-700" },
+  ask_input: { label: "Solicitar entrada do usuário", icon: MessageSquare, color: "text-indigo-600" },
 };
+
+const FALLBACK_META = { label: "Tipo desconhecido", icon: Square, color: "text-muted-foreground" };
+function getTypeMeta(t: string) {
+  return (TYPE_META as Record<string, { label: string; icon: any; color: string }>)[t] ?? FALLBACK_META;
+}
 
 function genId() {
   return `n_${Math.random().toString(36).slice(2, 8)}`;
@@ -282,7 +289,7 @@ export function ZapiBotFlowEditor() {
               )}
 
               {nodes.map((node, idx) => {
-                const meta = TYPE_META[node.type];
+                const meta = getTypeMeta(node.type);
                 const Icon = meta.icon;
                 return (
                   <Card key={node.id} className="border-l-4" style={{ borderLeftColor: "currentColor" }}>
@@ -320,7 +327,7 @@ export function ZapiBotFlowEditor() {
                           <Label className="text-xs">Opções do menu</Label>
                           {(node.options || []).map((opt, oi) => {
                             const targetNode = nodes.find((n) => n.id === opt.next);
-                            const targetMeta = targetNode ? TYPE_META[targetNode.type] : null;
+                            const targetMeta = targetNode ? getTypeMeta(targetNode.type) : null;
                             return (
                               <div key={oi} className="space-y-1 rounded border p-2 bg-muted/20">
                                 <div className="grid grid-cols-12 gap-2 items-center">
@@ -355,7 +362,7 @@ export function ZapiBotFlowEditor() {
                                     <SelectTrigger className="col-span-4"><SelectValue placeholder="Próximo nó" /></SelectTrigger>
                                     <SelectContent>
                                       {nodes.filter((n) => n.id !== node.id).map((n) => (
-                                        <SelectItem key={n.id} value={n.id}>{n.id} ({TYPE_META[n.type].label})</SelectItem>
+                                        <SelectItem key={n.id} value={n.id}>{n.id} ({getTypeMeta(n.type).label})</SelectItem>
                                       ))}
                                     </SelectContent>
                                   </Select>
@@ -416,7 +423,7 @@ export function ZapiBotFlowEditor() {
                             <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                             <SelectContent>
                               {nodes.filter((n) => n.id !== node.id).map((n) => (
-                                <SelectItem key={n.id} value={n.id}>{n.id} ({TYPE_META[n.type].label})</SelectItem>
+                                <SelectItem key={n.id} value={n.id}>{n.id} ({getTypeMeta(n.type).label})</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
