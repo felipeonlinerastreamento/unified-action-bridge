@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Plus, Trash2, ArrowUp, ArrowDown, MessageSquare, ListOrdered, ArrowRight, Hash, Square, Loader2, Eye, Receipt, Lightbulb, ChevronDown, ChevronUp } from "lucide-react";
 
-type NodeType = "message" | "menu" | "route_to_sector" | "route_to_least_loaded" | "end" | "gsystem_boleto";
+type NodeType = "message" | "menu" | "route_to_sector" | "route_to_least_loaded" | "end" | "gsystem_boleto" | "gsystem_boleto_by_doc" | "ask_input";
 
 interface FlowNode {
   id: string;
