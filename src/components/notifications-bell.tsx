@@ -59,13 +59,13 @@ export function NotificationsBell() {
 
   const markAllRead = async () => {
     if (!userId || unread === 0) return;
-    await supabase.from("notifications").update({ is_read: true }).eq("user_id", userId).eq("is_read", false);
+    await supabase.from("notifications").update({ is_read: true, read_at: new Date().toISOString() }).eq("user_id", userId).eq("is_read", false);
     qc.invalidateQueries({ queryKey: ["notifications", userId] });
   };
 
   const onClickNotification = async (n: any) => {
     if (!n.is_read) {
-      await supabase.from("notifications").update({ is_read: true }).eq("id", n.id);
+      await supabase.from("notifications").update({ is_read: true, read_at: new Date().toISOString() }).eq("id", n.id);
       qc.invalidateQueries({ queryKey: ["notifications", userId] });
     }
     if (n.ticket_id) navigate({ to: "/atendimentos" });
