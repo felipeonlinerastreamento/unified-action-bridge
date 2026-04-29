@@ -1414,6 +1414,7 @@ function CentralPage() {
             userId: session?.user?.id || null,
             teSettings,
             registerStatusComment: false,
+            bypassRouting: isAdmin,
           });
           if (res.routed && res.routedTo) {
             toast.success(`Encaminhado para ${res.routedTo.sector}`);
