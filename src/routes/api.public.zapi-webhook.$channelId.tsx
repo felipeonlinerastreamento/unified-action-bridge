@@ -3,7 +3,13 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { isGroupPhoneIdentifier } from "@/lib/chat-utils";
 import { processIncomingForBot } from "@/lib/zapi-bot.server";
-import { loadZapiChannel, zapiGetGroupName } from "@/lib/zapi.server";
+import { loadZapiChannel, zapiGetGroupName, zapiSendText } from "@/lib/zapi.server";
+import {
+  loadBusinessHoursSettings,
+  isWithinBusinessHours,
+  shouldSendOutOfHoursMessage,
+  logOutOfHoursMessage,
+} from "@/lib/business-hours.server";
 
 // Z-API webhook payload (loose schema — Z-API sends many event shapes)
 const PayloadSchema = z.object({
