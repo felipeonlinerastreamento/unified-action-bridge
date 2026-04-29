@@ -19,7 +19,7 @@ export const syncTicketToGsystem = createServerFn({ method: "POST" })
     // Load the ticket with company
     const { data: ticket, error: tErr } = await supabase
       .from("service_tickets")
-      .select("*, companies:company_id(id, name, cnpj)")
+      .select("*, companies:company_id(id, name, cnpj, phone)")
       .eq("id", data.ticketId)
       .single();
     if (tErr || !ticket) {
@@ -249,17 +249,17 @@ export const syncTicketToGsystem = createServerFn({ method: "POST" })
     // Fallback: if no link exists yet, try to auto-resolve (or create) the
     // GSystem cliente from the local company data and persist the mapping
     // so future finalizations don't repeat the work.
-    if (!gsystemClienteKey && ticket.company_id && ticket.companies) {
+    if (!gsystemClienteKey && (ticket.companies || ticket.contact_name || ticket.contact_phone)) {
       try {
         const { findOrCreateGSystemClientByCompany } = await import("@/lib/gsystem-api.server");
         const resolved = await findOrCreateGSystemClientByCompany({
-          name: (ticket.companies as any)?.name || "",
+          name: (ticket.companies as any)?.name || ticket.contact_name || "Contato",
           cnpj: (ticket.companies as any)?.cnpj || null,
-          phone: ticket.contact_phone || null,
+          phone: (ticket.companies as any)?.phone || ticket.contact_phone || null,
         });
         if (resolved) {
           gsystemClienteKey = resolved;
-          try {
+          if (ticket.company_id) try {
             await supabase.from("entity_links").insert({
               entity_type: "cliente",
               local_id: String(ticket.company_id),
