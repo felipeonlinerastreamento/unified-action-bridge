@@ -76,18 +76,34 @@ export function TicketReminderSection({ ticketId, userId }: TicketReminderSectio
     enabled: !!ticketId,
   });
 
+  const computeNextFromRecurrence = (rec: string): Date => {
+    const d = new Date();
+    switch (rec) {
+      case "daily": d.setDate(d.getDate() + 1); break;
+      case "weekly": d.setDate(d.getDate() + 7); break;
+      case "biweekly": d.setDate(d.getDate() + 14); break;
+      case "monthly": d.setMonth(d.getMonth() + 1); break;
+      case "yearly": d.setFullYear(d.getFullYear() + 1); break;
+    }
+    return d;
+  };
+
   const addReminder = async () => {
-    if (!date) {
+    const isRecurring = recurrence && recurrence !== "none";
+    if (!date && !isRecurring) {
       toast.error("Selecione uma data para o lembrete");
       return;
     }
+    // Sem data + recorrência: gera automaticamente a próxima ocorrência
+    const finalDate = date ? new Date(date) : computeNextFromRecurrence(recurrence);
+
     const insertPayload: any = {
       ticket_id: ticketId,
-      reminder_date: new Date(date).toISOString(),
+      reminder_date: finalDate.toISOString(),
       reminder_note: note || "",
       created_by: userId,
     };
-    if (recurrence && recurrence !== "none") {
+    if (isRecurring) {
       insertPayload.recurrence_type = recurrence;
       if (recurrenceEnd) insertPayload.recurrence_end_date = new Date(recurrenceEnd).toISOString();
     }
@@ -99,14 +115,14 @@ export function TicketReminderSection({ ticketId, userId }: TicketReminderSectio
     }
     await supabase
       .from("service_tickets")
-      .update({ reminder_date: new Date(date).toISOString(), reminder_note: note || null })
+      .update({ reminder_date: finalDate.toISOString(), reminder_note: note || null })
       .eq("id", ticketId);
 
-    const recLabel = recurrence !== "none" ? ` (recorrência: ${RECURRENCE_LABEL[recurrence]})` : "";
+    const recLabel = isRecurring ? ` (recorrência: ${RECURRENCE_LABEL[recurrence]})` : "";
     await supabase.from("ticket_comments").insert({
       ticket_id: ticketId,
       user_id: userId,
-      content: `Lembrete definido para ${new Date(date).toLocaleDateString("pt-BR")}${note ? `: ${note}` : ""}${recLabel}`,
+      content: `Lembrete definido para ${finalDate.toLocaleDateString("pt-BR")}${note ? `: ${note}` : ""}${recLabel}`,
       comment_type: "sistema",
     });
 
@@ -184,7 +200,9 @@ export function TicketReminderSection({ ticketId, userId }: TicketReminderSectio
       {showForm && (
         <div className="space-y-2 p-3 rounded-md border bg-muted/30">
           <div className="space-y-1">
-            <label className="text-xs font-medium">Data do Lembrete *</label>
+            <label className="text-xs font-medium">
+              Data do Lembrete {recurrence === "none" ? "*" : <span className="text-muted-foreground font-normal">(opcional — usará a próxima ocorrência)</span>}
+            </label>
             <Input
               type="datetime-local"
               value={date}
@@ -230,7 +248,7 @@ export function TicketReminderSection({ ticketId, userId }: TicketReminderSectio
             </div>
           )}
           <div className="flex gap-2">
-            <Button size="sm" onClick={addReminder} disabled={!date} className="h-7 text-xs">
+            <Button size="sm" onClick={addReminder} disabled={!date && recurrence === "none"} className="h-7 text-xs">
               Salvar
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setShowForm(false)} className="h-7 text-xs">
