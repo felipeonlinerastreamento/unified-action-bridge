@@ -23,7 +23,7 @@ import {
 } from "recharts";
 import {
   MessageSquare, Clock, Users, Building2, Package, TrendingUp,
-  Loader2, BarChart3, PieChart as PieChartIcon, Activity,
+  Loader2, BarChart3, PieChart as PieChartIcon, Activity, Bell,
 } from "lucide-react";
 
 export const Route = createFileRoute("/relatorios")({
