@@ -1409,6 +1409,176 @@ export type Database = {
           },
         ]
       }
+      task_categories: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      task_comments: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_comments_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      task_participants: {
+        Row: {
+          created_at: string
+          id: string
+          task_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          task_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          task_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_participants_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          assigned_to: string | null
+          category_id: string | null
+          completed_at: string | null
+          created_at: string
+          created_by: string
+          description: string
+          due_date: string | null
+          id: string
+          is_group_task: boolean
+          parent_task_id: string | null
+          priority: string
+          recurrence_end_date: string | null
+          recurrence_interval: number | null
+          recurrence_type: string | null
+          reminder_at: string | null
+          status: string
+          ticket_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          category_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by: string
+          description?: string
+          due_date?: string | null
+          id?: string
+          is_group_task?: boolean
+          parent_task_id?: string | null
+          priority?: string
+          recurrence_end_date?: string | null
+          recurrence_interval?: number | null
+          recurrence_type?: string | null
+          reminder_at?: string | null
+          status?: string
+          ticket_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          category_id?: string | null
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string
+          due_date?: string | null
+          id?: string
+          is_group_task?: boolean
+          parent_task_id?: string | null
+          priority?: string
+          recurrence_end_date?: string | null
+          recurrence_interval?: number | null
+          recurrence_type?: string | null
+          reminder_at?: string | null
+          status?: string
+          ticket_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "task_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_parent_task_id_fkey"
+            columns: ["parent_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "service_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       teste_equipamento_settings: {
         Row: {
           auto_sync_gsystem: boolean
@@ -2116,6 +2286,18 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_task_assigned: {
+        Args: { _task_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_task_creator: {
+        Args: { _task_id: string; _user_id: string }
+        Returns: boolean
+      }
+      is_task_participant: {
+        Args: { _task_id: string; _user_id: string }
         Returns: boolean
       }
       pick_least_loaded_agent: { Args: { _sector: string }; Returns: string }

@@ -20,6 +20,8 @@ import {
   ArrowRightLeft,
   Sun,
   Moon,
+  CheckSquare,
+  List,
 } from "lucide-react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
@@ -45,13 +47,17 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 
 const mainItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Atendimentos", url: "/atendimentos", icon: MessageSquare },
   { title: "Chat", url: "/central", icon: Headphones },
   { title: "CRM", url: "/crm", icon: UserPlus },
   { title: "Contatos", url: "/contatos", icon: Users },
   { title: "Empresas", url: "/empresas", icon: Building2 },
   { title: "Estoque", url: "/estoque", icon: Boxes },
   { title: "Relatórios", url: "/relatorios", icon: BarChart3 },
+];
+
+const atendimentosSubItems = [
+  { title: "Lista", url: "/atendimentos", icon: List },
+  { title: "Tarefas", url: "/atendimentos/tarefas", icon: CheckSquare },
 ];
 
 const configSubItems = [
@@ -73,6 +79,7 @@ export function AppSidebar() {
   const { theme, toggleTheme } = useTheme();
 
   const isConfigActive = location.pathname.startsWith("/configuracoes");
+  const isAtendimentosActive = location.pathname.startsWith("/atendimentos");
 
   return (
     <Sidebar collapsible="icon">
@@ -92,7 +99,52 @@ export function AppSidebar() {
           <SidebarGroupLabel>Menu</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {mainItems.map((item) => (
+              {/* Dashboard primeiro */}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={location.pathname.startsWith("/dashboard")}
+                  tooltip="Dashboard"
+                >
+                  <Link to="/dashboard">
+                    <LayoutDashboard className="h-4 w-4" />
+                    <span>Dashboard</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
+
+              {/* Atendimentos com submenu */}
+              <Collapsible defaultOpen={isAtendimentosActive} className="group/collapsible-at">
+                <SidebarMenuItem>
+                  <CollapsibleTrigger asChild>
+                    <SidebarMenuButton isActive={isAtendimentosActive} tooltip="Atendimentos">
+                      <MessageSquare className="h-4 w-4" />
+                      <span>Atendimentos</span>
+                      <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible-at:rotate-180" />
+                    </SidebarMenuButton>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <SidebarMenuSub>
+                      {atendimentosSubItems.map((sub) => (
+                        <SidebarMenuSubItem key={sub.title}>
+                          <SidebarMenuSubButton
+                            asChild
+                            isActive={location.pathname === sub.url}
+                          >
+                            <Link to={sub.url}>
+                              <sub.icon className="h-3.5 w-3.5" />
+                              <span>{sub.title}</span>
+                            </Link>
+                          </SidebarMenuSubButton>
+                        </SidebarMenuSubItem>
+                      ))}
+                    </SidebarMenuSub>
+                  </CollapsibleContent>
+                </SidebarMenuItem>
+              </Collapsible>
+
+              {/* Demais itens (pulando Dashboard) */}
+              {mainItems.slice(1).map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild

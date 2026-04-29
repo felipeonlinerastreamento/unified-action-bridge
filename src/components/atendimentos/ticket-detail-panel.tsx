@@ -41,7 +41,9 @@ import {
   Pencil,
   Check,
   X,
+  Repeat,
 } from "lucide-react";
+import { TaskFormDialog } from "@/components/tarefas/task-form-dialog";
 import { TicketReminderSection } from "./ticket-reminder-section";
 import { TicketAgentsSection } from "./ticket-agents-section";
 import { TicketTrackingSection } from "./ticket-tracking-section";
@@ -86,6 +88,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   const [editingCategory, setEditingCategory] = useState(false);
   const [categoryDraft, setCategoryDraft] = useState("");
   const [savingCategory, setSavingCategory] = useState(false);
+  const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [confirmFinalizeOpen, setConfirmFinalizeOpen] = useState(false);
   const { data: teSettings } = useTesteEquipamentoSettings();
 
@@ -513,7 +516,13 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
             {ticket.contact_name || ticket.attendance_id || "Ticket"}
             <Badge variant="outline" className="text-xs">#{ticket.id?.substring(0, 8)}</Badge>
           </SheetTitle>
+          <div className="flex items-center gap-2 pt-1">
+            <Button size="sm" variant="outline" onClick={() => setTaskDialogOpen(true)}>
+              <Repeat className="h-3.5 w-3.5 mr-1.5" /> Nova tarefa / recorrência
+            </Button>
+          </div>
         </SheetHeader>
+        <TaskFormDialog open={taskDialogOpen} onClose={() => setTaskDialogOpen(false)} defaultTicketId={ticket.id} />
 
         <Tabs defaultValue="detalhes" className="mt-4">
           <TabsList className="w-full">
