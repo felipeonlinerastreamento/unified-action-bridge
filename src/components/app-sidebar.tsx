@@ -79,6 +79,7 @@ export function AppSidebar() {
   const { theme, toggleTheme } = useTheme();
 
   const isConfigActive = location.pathname.startsWith("/configuracoes");
+  const isAtendimentosActive = location.pathname.startsWith("/atendimentos");
 
   return (
     <Sidebar collapsible="icon">
