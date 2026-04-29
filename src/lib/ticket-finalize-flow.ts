@@ -33,6 +33,8 @@ export interface FinalizeFlowInput {
   useRoutingRules?: boolean;
   /** When true, register a "status alterado" comment for normal finalize. Default: true. */
   registerStatusComment?: boolean;
+  /** When true, ignora roteamento automático (Teste Equipamento + regras de categoria) e finaliza direto. Usado por admin. */
+  bypassRouting?: boolean;
 }
 
 export interface FinalizeFlowResult {
