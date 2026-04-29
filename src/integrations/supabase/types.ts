@@ -861,6 +861,114 @@ export type Database = {
         }
         Relationships: []
       }
+      email_channels: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          default_priority: Database["public"]["Enums"]["ticket_priority"]
+          default_sector: string | null
+          email_address: string
+          id: string
+          ignore_domains: string[] | null
+          ignore_emails: string[] | null
+          is_active: boolean
+          last_poll_error: string | null
+          last_poll_status: string | null
+          last_polled_at: string | null
+          mark_as_read: boolean
+          name: string
+          polling_enabled: boolean
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          default_priority?: Database["public"]["Enums"]["ticket_priority"]
+          default_sector?: string | null
+          email_address: string
+          id?: string
+          ignore_domains?: string[] | null
+          ignore_emails?: string[] | null
+          is_active?: boolean
+          last_poll_error?: string | null
+          last_poll_status?: string | null
+          last_polled_at?: string | null
+          mark_as_read?: boolean
+          name: string
+          polling_enabled?: boolean
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          default_priority?: Database["public"]["Enums"]["ticket_priority"]
+          default_sector?: string | null
+          email_address?: string
+          id?: string
+          ignore_domains?: string[] | null
+          ignore_emails?: string[] | null
+          is_active?: boolean
+          last_poll_error?: string | null
+          last_poll_status?: string | null
+          last_polled_at?: string | null
+          mark_as_read?: boolean
+          name?: string
+          polling_enabled?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      email_processed: {
+        Row: {
+          email_channel_id: string
+          from_address: string | null
+          id: string
+          internet_message_id: string | null
+          message_id: string
+          processed_at: string
+          received_at: string | null
+          subject: string | null
+          ticket_id: string | null
+        }
+        Insert: {
+          email_channel_id: string
+          from_address?: string | null
+          id?: string
+          internet_message_id?: string | null
+          message_id: string
+          processed_at?: string
+          received_at?: string | null
+          subject?: string | null
+          ticket_id?: string | null
+        }
+        Update: {
+          email_channel_id?: string
+          from_address?: string | null
+          id?: string
+          internet_message_id?: string | null
+          message_id?: string
+          processed_at?: string
+          received_at?: string | null
+          subject?: string | null
+          ticket_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "email_processed_email_channel_id_fkey"
+            columns: ["email_channel_id"]
+            isOneToOne: false
+            referencedRelation: "email_channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "email_processed_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "service_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       entity_links: {
         Row: {
           channel_id: string | null

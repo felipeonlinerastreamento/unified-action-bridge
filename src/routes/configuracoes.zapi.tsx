@@ -7,6 +7,7 @@ import { ZapiBotFlowEditor } from "@/components/configuracoes/zapi-bot-flow-edit
 import { ZapiQuickRepliesConfig } from "@/components/configuracoes/zapi-quick-replies-config";
 import { ZapiMessageTemplatesConfig } from "@/components/configuracoes/zapi-message-templates-config";
 import { BusinessHoursForm } from "@/components/configuracoes/business-hours-form";
+import { EmailChannelsConfig } from "@/components/configuracoes/email-channels-config";
 
 export const Route = createFileRoute("/configuracoes/zapi")({
   component: ZapiPage,
@@ -41,6 +42,7 @@ function ZapiPage() {
 
         <ZapiConnectionConfig />
         <BusinessHoursForm />
+        <EmailChannelsConfig />
         <ZapiBotFlowEditor />
         <ZapiMessageTemplatesConfig />
         <ZapiQuickRepliesConfig />
