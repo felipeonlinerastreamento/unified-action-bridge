@@ -851,9 +851,8 @@ function CentralPage() {
       if (!name) throw new Error("Informe o nome da categoria");
       const { error } = await supabase.from("crm_categories").insert({ name, description: "" });
       if (error) throw error;
-      return name;
     },
-    onSuccess: (name) => {
+    onSuccess: () => {
       toast.success("Categoria criada");
       setCrmCategoryDraft("");
       queryClient.invalidateQueries({ queryKey: ["crm-categories"] });
