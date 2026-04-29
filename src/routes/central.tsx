@@ -845,6 +845,52 @@ function CentralPage() {
     staleTime: 60_000,
   });
 
+  const createCrmCategoryMutation = useMutation({
+    mutationFn: async () => {
+      const name = crmCategoryDraft.trim();
+      if (!name) throw new Error("Informe o nome da categoria");
+      const { error } = await supabase.from("crm_categories").insert({ name, description: "" });
+      if (error) throw error;
+      return name;
+    },
+    onSuccess: (name) => {
+      toast.success("Categoria criada");
+      setCrmCategoryDraft("");
+      queryClient.invalidateQueries({ queryKey: ["crm-categories"] });
+    },
+    onError: (err: any) => toast.error(err?.message || "Erro ao criar categoria"),
+  });
+
+  const updateCrmCategoryMutation = useMutation({
+    mutationFn: async () => {
+      const name = editingCrmCategoryName.trim();
+      if (!editingCrmCategoryId || !name) throw new Error("Informe o nome da categoria");
+      const { error } = await supabase.from("crm_categories").update({ name }).eq("id", editingCrmCategoryId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Categoria atualizada");
+      setEditingCrmCategoryId(null);
+      setEditingCrmCategoryName("");
+      queryClient.invalidateQueries({ queryKey: ["crm-categories"] });
+    },
+    onError: (err: any) => toast.error(err?.message || "Erro ao atualizar categoria"),
+  });
+
+  const deleteCrmCategoryMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("crm_categories").delete().eq("id", id);
+      if (error) throw error;
+      return id;
+    },
+    onSuccess: (id) => {
+      toast.success("Categoria removida");
+      if (identForm.categoryId === id) setIdentForm((f) => ({ ...f, categoryId: "" }));
+      queryClient.invalidateQueries({ queryKey: ["crm-categories"] });
+    },
+    onError: (err: any) => toast.error(err?.message || "Erro ao remover categoria"),
+  });
+
   // Create CRM contact mutation
   const createCrmContactMutation = useMutation({
     mutationFn: async () => {
