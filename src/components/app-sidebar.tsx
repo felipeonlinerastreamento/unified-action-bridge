@@ -47,13 +47,17 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 
 const mainItems = [
   { title: "Dashboard", url: "/dashboard", icon: LayoutDashboard },
-  { title: "Atendimentos", url: "/atendimentos", icon: MessageSquare },
   { title: "Chat", url: "/central", icon: Headphones },
   { title: "CRM", url: "/crm", icon: UserPlus },
   { title: "Contatos", url: "/contatos", icon: Users },
   { title: "Empresas", url: "/empresas", icon: Building2 },
   { title: "Estoque", url: "/estoque", icon: Boxes },
   { title: "Relatórios", url: "/relatorios", icon: BarChart3 },
+];
+
+const atendimentosSubItems = [
+  { title: "Lista", url: "/atendimentos", icon: List },
+  { title: "Tarefas", url: "/atendimentos/tarefas", icon: CheckSquare },
 ];
 
 const configSubItems = [
