@@ -5,6 +5,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { loadZapiChannel, zapiFetch, zapiGetStatus, zapiSendText } from "./zapi.server";
+import { isGroupPhoneIdentifier } from "./chat-utils";
 
 // ------------ Status / chats list ------------
 
