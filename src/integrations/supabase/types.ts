@@ -482,6 +482,45 @@ export type Database = {
           },
         ]
       }
+      business_hours_settings: {
+        Row: {
+          cooldown_minutes: number
+          created_at: string
+          holidays: Json
+          id: string
+          is_enabled: boolean
+          out_of_hours_message: string
+          schedule: Json
+          timezone: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          cooldown_minutes?: number
+          created_at?: string
+          holidays?: Json
+          id?: string
+          is_enabled?: boolean
+          out_of_hours_message?: string
+          schedule?: Json
+          timezone?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          cooldown_minutes?: number
+          created_at?: string
+          holidays?: Json
+          id?: string
+          is_enabled?: boolean
+          out_of_hours_message?: string
+          schedule?: Json
+          timezone?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       category_routing_rules: {
         Row: {
           auto_create_ticket: boolean
@@ -1105,6 +1144,30 @@ export type Database = {
           title?: string
           type?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      out_of_hours_message_log: {
+        Row: {
+          chat_id: string | null
+          contact_phone: string
+          id: string
+          message_sent: string
+          sent_at: string
+        }
+        Insert: {
+          chat_id?: string | null
+          contact_phone: string
+          id?: string
+          message_sent: string
+          sent_at?: string
+        }
+        Update: {
+          chat_id?: string | null
+          contact_phone?: string
+          id?: string
+          message_sent?: string
+          sent_at?: string
         }
         Relationships: []
       }
