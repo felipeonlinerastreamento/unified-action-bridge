@@ -248,7 +248,7 @@ export function TicketReminderSection({ ticketId, userId }: TicketReminderSectio
             </div>
           )}
           <div className="flex gap-2">
-            <Button size="sm" onClick={addReminder} disabled={!date} className="h-7 text-xs">
+            <Button size="sm" onClick={addReminder} disabled={!date && recurrence === "none"} className="h-7 text-xs">
               Salvar
             </Button>
             <Button size="sm" variant="ghost" onClick={() => setShowForm(false)} className="h-7 text-xs">
