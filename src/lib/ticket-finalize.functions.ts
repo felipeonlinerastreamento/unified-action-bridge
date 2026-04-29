@@ -295,6 +295,7 @@ export const syncTicketToGsystem = createServerFn({ method: "POST" })
       colaborador: colaboradorKey,
       Cliente: gsystemClienteKey,
       cliente: gsystemClienteKey,
+      Veiculos: [],
     };
     if (gsystemVeiculoKey) {
       body.Veiculos = [gsystemVeiculoKey];
