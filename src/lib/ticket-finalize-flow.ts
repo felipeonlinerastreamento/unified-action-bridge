@@ -62,6 +62,27 @@ async function insertSystemComment(
   if (error) console.error("[finalize-flow] insert comment error:", error);
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * When a ticket is bound to a Z-API chat (attendance_id is a UUID matching a
+ * row in zapi_chats), finalizing the ticket must also remove that chat from
+ * the Central de Atendimento by setting its status to "finalizado".
+ * Safe to call for tickets without a chat — just no-ops.
+ */
+async function closeLinkedZapiChat(attendanceId: string | null | undefined) {
+  if (!attendanceId || !UUID_RE.test(attendanceId)) return;
+  try {
+    const { error } = await supabase
+      .from("zapi_chats")
+      .update({ status: "finalizado", assigned_to: null })
+      .eq("id", attendanceId);
+    if (error) console.warn("[finalize-flow] close zapi chat error:", error.message);
+  } catch (e: any) {
+    console.warn("[finalize-flow] close zapi chat exception:", e?.message);
+  }
+}
+
 export async function finalizeTicketWithFlow(
   input: FinalizeFlowInput
 ): Promise<FinalizeFlowResult> {
