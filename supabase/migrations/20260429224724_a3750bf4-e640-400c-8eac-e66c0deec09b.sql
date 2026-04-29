@@ -1,0 +1,1 @@
+UPDATE public.zapi_chats SET bot_state = '{}'::jsonb, status = 'aguardando' WHERE phone LIKE '%553194730315%';
