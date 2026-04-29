@@ -96,7 +96,8 @@ function CrmPage() {
         email: form.email || null,
         notes: form.notes || "",
         company_id: form.companyId || null,
-        category_id: form.categoryId || null,
+        category_id: form.contactType === "PJ" ? (form.categoryId || null) : null,
+        contact_type: form.contactType,
         created_by: sess.session?.user?.id || null,
       };
 
