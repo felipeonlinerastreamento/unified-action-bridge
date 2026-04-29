@@ -108,7 +108,7 @@ async function authenticate(): Promise<string> {
   }
 
   const text = await res.text();
-  console.log("[GSystem Auth] Raw response:", text.substring(0, 500));
+  console.log("[GSystem Auth] Response received from authentication endpoint");
 
   // Try parsing as JSON first
   let data: any;
@@ -176,7 +176,7 @@ async function authenticate(): Promise<string> {
     return validatedToken;
   }
 
-  console.error("[GSystem Auth] Could not extract token. Keys:", Object.keys(data), "Data:", JSON.stringify(data).substring(0, 500));
+  console.error("[GSystem Auth] Could not extract token. Keys:", Object.keys(data));
   throw new Error(`Formato de token inesperado do GSystem. Chaves: ${Object.keys(data).join(", ")}`);
 }
 
