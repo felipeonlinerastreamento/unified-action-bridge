@@ -349,7 +349,8 @@ export function FloatingChatWindow({ state, onOpenInPanel }: Props) {
           ) : (
             messages.map((msg, i) => {
               const text = msg.text || "";
-              if (!text && !msg.isSystemMessage) return null;
+              const hasMedia = !!(msg as any).mediaUrl;
+              if (!text && !hasMedia && !msg.isSystemMessage) return null;
               if (msg.isSystemMessage) {
                 return (
                   <div key={msg.IdMessage || i} className="text-center">
@@ -377,7 +378,16 @@ export function FloatingChatWindow({ state, onOpenInPanel }: Props) {
                         )}
                       </p>
                     )}
-                    <p>{text}</p>
+                    {hasMedia && (
+                      <div className="mb-1">
+                        <MessageMediaContent
+                          mediaUrl={(msg as any).mediaUrl}
+                          mediaType={(msg as any).mediaType}
+                          compact
+                        />
+                      </div>
+                    )}
+                    {text && <p>{text}</p>}
                     <div className={`flex items-center justify-end gap-1 mt-0.5 opacity-70 ${mine ? "text-primary-foreground" : "text-muted-foreground"}`}>
                       <span className="text-[9px]">{formatTime(msg.utcDhMessage || msg.dhMessage)}</span>
                       {mine && !msg.isPrivate && <MessageStatusTicks status={msg._status} />}
