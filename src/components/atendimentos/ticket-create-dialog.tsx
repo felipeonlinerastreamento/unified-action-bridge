@@ -50,6 +50,12 @@ import {
   type LiberacaoLineItem,
 } from "./liberacao-equipamento-fields";
 import { isLiberacaoCategory } from "@/hooks/use-liberacao-equipamento";
+import { isSuprimentoCategory } from "@/hooks/use-suprimento";
+import {
+  SuprimentoFields,
+  validateSuprimentoItems,
+  type SuprimentoLineItem,
+} from "./suprimento-fields";
 
 interface TicketCreateDialogProps {
   open: boolean;
