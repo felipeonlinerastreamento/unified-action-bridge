@@ -1,5 +1,6 @@
 import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
+import { z } from "zod";
 
 const FALLBACK_QUOTES = [
   { content: "O sucesso é a soma de pequenos esforços repetidos dia após dia.", author: "Robert Collier" },
@@ -9,6 +10,11 @@ const FALLBACK_QUOTES = [
   { content: "Cada dia é uma nova oportunidade para crescer.", author: "Anônimo" },
   { content: "A excelência não é um ato, mas um hábito.", author: "Aristóteles" },
   { content: "Foque no progresso, não na perfeição.", author: "Anônimo" },
+  { content: "Grandes coisas nunca vêm de zonas de conforto.", author: "Anônimo" },
+  { content: "Seu único limite é você mesmo.", author: "Anônimo" },
+  { content: "Acredite que você pode e você já está no meio do caminho.", author: "Theodore Roosevelt" },
+  { content: "A jornada de mil milhas começa com um único passo.", author: "Lao Tsé" },
+  { content: "Faça hoje o que os outros não querem, viva amanhã como os outros não podem.", author: "Anônimo" },
 ];
 
 function getServiceSupabase() {
@@ -18,7 +24,7 @@ function getServiceSupabase() {
   return createClient(url, key, { auth: { persistSession: false } });
 }
 
-async function generateWithAI(): Promise<{ content: string; author: string } | null> {
+async function generateWithAI(seed: string): Promise<{ content: string; author: string } | null> {
   const apiKey = process.env.LOVABLE_API_KEY;
   if (!apiKey) return null;
   try {
@@ -30,13 +36,17 @@ async function generateWithAI(): Promise<{ content: string; author: string } | n
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
+        temperature: 1.1,
         messages: [
           {
             role: "system",
             content:
-              "Você gera UMA frase motivacional curta e original em português brasileiro para uma equipe de atendimento ao cliente. Responda APENAS no formato JSON: {\"content\":\"frase\",\"author\":\"autor ou Anônimo\"}. Nada além disso.",
+              "Você gera UMA frase motivacional curta, original e ÚNICA em português brasileiro para uma equipe de atendimento ao cliente. Varie temas (foco, persistência, gentileza, equipe, crescimento, propósito). Responda APENAS no formato JSON: {\"content\":\"frase\",\"author\":\"autor real ou Anônimo\"}. Nada além disso.",
           },
-          { role: "user", content: "Gere a frase motivacional de hoje." },
+          {
+            role: "user",
+            content: `Gere uma frase motivacional totalmente nova e diferente de qualquer outra. Semente de aleatoriedade: ${seed}.`,
+          },
         ],
       }),
     });
@@ -56,48 +66,63 @@ async function generateWithAI(): Promise<{ content: string; author: string } | n
   }
 }
 
-export const getDailyQuote = createServerFn({ method: "GET" }).handler(async () => {
-  const supabase = getServiceSupabase();
-  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+export const getDailyQuote = createServerFn({ method: "GET" })
+  .inputValidator((data: unknown) =>
+    z.object({ userId: z.string().uuid().optional() }).parse(data ?? {})
+  )
+  .handler(async ({ data }) => {
+    const supabase = getServiceSupabase();
+    const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
+    const userId = data.userId ?? null;
 
-  // 1. Try existing quote for today
-  const { data: existing } = await supabase
-    .from("daily_motivational_quotes")
-    .select("content, author, quote_date")
-    .eq("quote_date", today)
-    .maybeSingle();
-
-  if (existing) {
-    return { content: existing.content, author: existing.author || "", date: today };
-  }
-
-  // 2. Generate new quote (AI or fallback)
-  let generated = await generateWithAI();
-  if (!generated) {
-    const fallback = FALLBACK_QUOTES[Math.floor(Math.random() * FALLBACK_QUOTES.length)];
-    generated = fallback;
-  }
-
-  // 3. Persist (ignore conflict if another concurrent insert won)
-  const { data: inserted, error: insertError } = await supabase
-    .from("daily_motivational_quotes")
-    .insert({ quote_date: today, content: generated.content, author: generated.author })
-    .select("content, author")
-    .maybeSingle();
-
-  if (insertError) {
-    // Race: another request may have inserted; re-read
-    const { data: retry } = await supabase
+    // 1. Try existing quote for this user (or global) today
+    const query = supabase
       .from("daily_motivational_quotes")
-      .select("content, author")
-      .eq("quote_date", today)
-      .maybeSingle();
-    if (retry) return { content: retry.content, author: retry.author || "", date: today };
-  }
+      .select("content, author, quote_date")
+      .eq("quote_date", today);
+    const { data: existing } = userId
+      ? await query.eq("user_id", userId).maybeSingle()
+      : await query.is("user_id", null).maybeSingle();
 
-  return {
-    content: inserted?.content || generated.content,
-    author: inserted?.author || generated.author,
-    date: today,
-  };
-});
+    if (existing) {
+      return { content: existing.content, author: existing.author || "", date: today };
+    }
+
+    // 2. Generate new quote (AI or fallback) — seed with user+date for variety
+    const seed = `${userId ?? "global"}-${today}-${Math.random().toString(36).slice(2, 10)}`;
+    let generated = await generateWithAI(seed);
+    if (!generated) {
+      const idx = Math.floor(Math.random() * FALLBACK_QUOTES.length);
+      generated = FALLBACK_QUOTES[idx];
+    }
+
+    // 3. Persist
+    const { data: inserted, error: insertError } = await supabase
+      .from("daily_motivational_quotes")
+      .insert({
+        quote_date: today,
+        content: generated.content,
+        author: generated.author,
+        user_id: userId,
+      })
+      .select("content, author")
+      .maybeSingle();
+
+    if (insertError) {
+      // Race: another request may have inserted; re-read
+      const retryQuery = supabase
+        .from("daily_motivational_quotes")
+        .select("content, author")
+        .eq("quote_date", today);
+      const { data: retry } = userId
+        ? await retryQuery.eq("user_id", userId).maybeSingle()
+        : await retryQuery.is("user_id", null).maybeSingle();
+      if (retry) return { content: retry.content, author: retry.author || "", date: today };
+    }
+
+    return {
+      content: inserted?.content || generated.content,
+      author: inserted?.author || generated.author,
+      date: today,
+    };
+  });
