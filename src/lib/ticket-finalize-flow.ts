@@ -25,6 +25,7 @@ export interface FinalizeFlowInput {
     status?: string | null;
     notes?: string | null;
     reopened_at?: string | null;
+    attendance_id?: string | null;
   };
   userId: string | null;
   /** Pass current settings (already loaded via useTesteEquipamentoSettings). Optional. */
