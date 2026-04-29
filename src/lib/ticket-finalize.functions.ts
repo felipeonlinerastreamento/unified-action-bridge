@@ -246,6 +246,38 @@ export const syncTicketToGsystem = createServerFn({ method: "POST" })
       };
     }
 
+    // Fallback: if no link exists yet, try to auto-resolve (or create) the
+    // GSystem cliente from the local company data and persist the mapping
+    // so future finalizations don't repeat the work.
+    if (!gsystemClienteKey && ticket.company_id && ticket.companies) {
+      try {
+        const { findOrCreateGSystemClientByCompany } = await import("@/lib/gsystem-api.server");
+        const resolved = await findOrCreateGSystemClientByCompany({
+          name: (ticket.companies as any)?.name || "",
+          cnpj: (ticket.companies as any)?.cnpj || null,
+          phone: ticket.contact_phone || null,
+        });
+        if (resolved) {
+          gsystemClienteKey = resolved;
+          try {
+            await supabase.from("entity_links").insert({
+              entity_type: "cliente",
+              local_id: String(ticket.company_id),
+              external_id: String(resolved),
+            } as any);
+            console.log("[ticket-finalize] auto-linked company to GSystem cliente:", {
+              companyId: ticket.company_id,
+              clienteKey: resolved,
+            });
+          } catch (linkErr) {
+            console.warn("[ticket-finalize] could not persist entity_link:", linkErr);
+          }
+        }
+      } catch (e) {
+        console.warn("[ticket-finalize] auto-resolve GSystem cliente failed:", e);
+      }
+    }
+
     if (!gsystemClienteKey) {
       return {
         ok: false,
