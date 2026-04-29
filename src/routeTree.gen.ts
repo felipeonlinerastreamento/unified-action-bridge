@@ -28,6 +28,7 @@ import { Route as ConfiguracoesEstoqueRouteImport } from './routes/configuracoes
 import { Route as ConfiguracoesEncaminhamentoRouteImport } from './routes/configuracoes.encaminhamento'
 import { Route as ConfiguracoesCentralAtendimentoRouteImport } from './routes/configuracoes.central-atendimento'
 import { Route as ConfiguracoesAssistenteIaRouteImport } from './routes/configuracoes.assistente-ia'
+import { Route as AtendimentosTarefasRouteImport } from './routes/atendimentos.tarefas'
 import { Route as ApiPublicZapiWebhookChannelIdRouteImport } from './routes/api.public.zapi-webhook.$channelId'
 
 const RelatoriosRoute = RelatoriosRouteImport.update({
@@ -129,6 +130,11 @@ const ConfiguracoesAssistenteIaRoute =
     path: '/assistente-ia',
     getParentRoute: () => ConfiguracoesRoute,
   } as any)
+const AtendimentosTarefasRoute = AtendimentosTarefasRouteImport.update({
+  id: '/tarefas',
+  path: '/tarefas',
+  getParentRoute: () => AtendimentosRoute,
+} as any)
 const ApiPublicZapiWebhookChannelIdRoute =
   ApiPublicZapiWebhookChannelIdRouteImport.update({
     id: '/api/public/zapi-webhook/$channelId',
@@ -138,7 +144,7 @@ const ApiPublicZapiWebhookChannelIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/atendimentos': typeof AtendimentosRoute
+  '/atendimentos': typeof AtendimentosRouteWithChildren
   '/central': typeof CentralRoute
   '/configuracoes': typeof ConfiguracoesRouteWithChildren
   '/contatos': typeof ContatosRoute
@@ -147,6 +153,7 @@ export interface FileRoutesByFullPath {
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
   '/relatorios': typeof RelatoriosRoute
+  '/atendimentos/tarefas': typeof AtendimentosTarefasRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
   '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
   '/configuracoes/encaminhamento': typeof ConfiguracoesEncaminhamentoRoute
@@ -160,7 +167,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/atendimentos': typeof AtendimentosRoute
+  '/atendimentos': typeof AtendimentosRouteWithChildren
   '/central': typeof CentralRoute
   '/contatos': typeof ContatosRoute
   '/crm': typeof CrmRoute
@@ -168,6 +175,7 @@ export interface FileRoutesByTo {
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
   '/relatorios': typeof RelatoriosRoute
+  '/atendimentos/tarefas': typeof AtendimentosTarefasRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
   '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
   '/configuracoes/encaminhamento': typeof ConfiguracoesEncaminhamentoRoute
@@ -182,7 +190,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/atendimentos': typeof AtendimentosRoute
+  '/atendimentos': typeof AtendimentosRouteWithChildren
   '/central': typeof CentralRoute
   '/configuracoes': typeof ConfiguracoesRouteWithChildren
   '/contatos': typeof ContatosRoute
@@ -191,6 +199,7 @@ export interface FileRoutesById {
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
   '/relatorios': typeof RelatoriosRoute
+  '/atendimentos/tarefas': typeof AtendimentosTarefasRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
   '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
   '/configuracoes/encaminhamento': typeof ConfiguracoesEncaminhamentoRoute
@@ -215,6 +224,7 @@ export interface FileRouteTypes {
     | '/empresas'
     | '/estoque'
     | '/relatorios'
+    | '/atendimentos/tarefas'
     | '/configuracoes/assistente-ia'
     | '/configuracoes/central-atendimento'
     | '/configuracoes/encaminhamento'
@@ -236,6 +246,7 @@ export interface FileRouteTypes {
     | '/empresas'
     | '/estoque'
     | '/relatorios'
+    | '/atendimentos/tarefas'
     | '/configuracoes/assistente-ia'
     | '/configuracoes/central-atendimento'
     | '/configuracoes/encaminhamento'
@@ -258,6 +269,7 @@ export interface FileRouteTypes {
     | '/empresas'
     | '/estoque'
     | '/relatorios'
+    | '/atendimentos/tarefas'
     | '/configuracoes/assistente-ia'
     | '/configuracoes/central-atendimento'
     | '/configuracoes/encaminhamento'
@@ -272,7 +284,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AtendimentosRoute: typeof AtendimentosRoute
+  AtendimentosRoute: typeof AtendimentosRouteWithChildren
   CentralRoute: typeof CentralRoute
   ConfiguracoesRoute: typeof ConfiguracoesRouteWithChildren
   ContatosRoute: typeof ContatosRoute
@@ -420,6 +432,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConfiguracoesAssistenteIaRouteImport
       parentRoute: typeof ConfiguracoesRoute
     }
+    '/atendimentos/tarefas': {
+      id: '/atendimentos/tarefas'
+      path: '/tarefas'
+      fullPath: '/atendimentos/tarefas'
+      preLoaderRoute: typeof AtendimentosTarefasRouteImport
+      parentRoute: typeof AtendimentosRoute
+    }
     '/api/public/zapi-webhook/$channelId': {
       id: '/api/public/zapi-webhook/$channelId'
       path: '/api/public/zapi-webhook/$channelId'
@@ -429,6 +448,18 @@ declare module '@tanstack/react-router' {
     }
   }
 }
+
+interface AtendimentosRouteChildren {
+  AtendimentosTarefasRoute: typeof AtendimentosTarefasRoute
+}
+
+const AtendimentosRouteChildren: AtendimentosRouteChildren = {
+  AtendimentosTarefasRoute: AtendimentosTarefasRoute,
+}
+
+const AtendimentosRouteWithChildren = AtendimentosRoute._addFileChildren(
+  AtendimentosRouteChildren,
+)
 
 interface ConfiguracoesRouteChildren {
   ConfiguracoesAssistenteIaRoute: typeof ConfiguracoesAssistenteIaRoute
@@ -458,7 +489,7 @@ const ConfiguracoesRouteWithChildren = ConfiguracoesRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AtendimentosRoute: AtendimentosRoute,
+  AtendimentosRoute: AtendimentosRouteWithChildren,
   CentralRoute: CentralRoute,
   ConfiguracoesRoute: ConfiguracoesRouteWithChildren,
   ContatosRoute: ContatosRoute,

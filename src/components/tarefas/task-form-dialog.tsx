@@ -87,7 +87,7 @@ export function TaskFormDialog({ open, onClose, task, defaultTicketId }: Props) 
       category_id: categoryId === "none" ? null : categoryId,
       assigned_to: assignedTo === "none" ? null : assignedTo,
       is_group_task: isGroup,
-      recurrence_type: recurrenceType === "none" ? null : recurrenceType,
+      recurrence_type: (recurrenceType === "none" ? null : recurrenceType) as Task["recurrence_type"],
       recurrence_end_date: recurrenceEnd ? new Date(recurrenceEnd).toISOString() : null,
     };
 
