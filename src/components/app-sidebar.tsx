@@ -55,9 +55,9 @@ const mainItems = [
   { title: "Relatórios", url: "/relatorios", icon: BarChart3 },
 ];
 
-const atendimentosSubItems = [
+const atendimentosSubItems: { title: string; url: string; icon: typeof List }[] = [
   { title: "Lista", url: "/atendimentos", icon: List },
-  { title: "Tarefas", url: "/atendimentos/tarefas", icon: CheckSquare },
+  // { title: "Tarefas", url: "/atendimentos/tarefas", icon: CheckSquare }, // inativado
 ];
 
 const configSubItems = [
