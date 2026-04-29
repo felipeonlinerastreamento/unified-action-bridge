@@ -219,7 +219,7 @@ export async function processIncomingForBot(params: ProcessParams): Promise<bool
       await persistOutgoing(chatId, renderText(node.text || "", vars));
       await supabaseAdmin
         .from("zapi_chats")
-        .update({ bot_state: { current_node: node.id }, status: "bot" })
+        .update({ bot_state: { ...botState, current_node: node.id, last_menu_sent_at: Date.now() }, status: "bot" })
         .eq("id", chatId);
       return true;
     }
