@@ -58,9 +58,9 @@ export function DailyWelcomeDialog() {
   const quoteSource: "ai" | "manual" = settings?.quote_source === "manual" ? "manual" : "ai";
 
   const { data: aiQuote } = useQuery({
-    queryKey: ["daily-quote", todayKey()],
-    queryFn: () => getDailyQuote(),
-    enabled: open && showQuote && quoteSource === "ai",
+    queryKey: ["daily-quote", todayKey(), user?.id],
+    queryFn: () => getDailyQuote({ data: { userId: user?.id } }),
+    enabled: open && showQuote && quoteSource === "ai" && !!user?.id,
     staleTime: 1000 * 60 * 60,
   });
 
