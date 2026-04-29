@@ -200,7 +200,9 @@ export function TicketReminderSection({ ticketId, userId }: TicketReminderSectio
       {showForm && (
         <div className="space-y-2 p-3 rounded-md border bg-muted/30">
           <div className="space-y-1">
-            <label className="text-xs font-medium">Data do Lembrete *</label>
+            <label className="text-xs font-medium">
+              Data do Lembrete {recurrence === "none" ? "*" : <span className="text-muted-foreground font-normal">(opcional — usará a próxima ocorrência)</span>}
+            </label>
             <Input
               type="datetime-local"
               value={date}
