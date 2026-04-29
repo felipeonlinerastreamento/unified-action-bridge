@@ -747,6 +747,30 @@ export type Database = {
           },
         ]
       }
+      daily_motivational_quotes: {
+        Row: {
+          author: string | null
+          content: string
+          created_at: string
+          id: string
+          quote_date: string
+        }
+        Insert: {
+          author?: string | null
+          content: string
+          created_at?: string
+          id?: string
+          quote_date: string
+        }
+        Update: {
+          author?: string | null
+          content?: string
+          created_at?: string
+          id?: string
+          quote_date?: string
+        }
+        Relationships: []
+      }
       entity_links: {
         Row: {
           channel_id: string | null
