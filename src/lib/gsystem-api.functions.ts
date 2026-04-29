@@ -892,8 +892,8 @@ export const createPendenciaFromAtendimento = createServerFn({ method: "POST" })
     }).parse
   )
   .handler(async ({ data, context }) => {
-    const { gsystemApiFetch } = await import("@/lib/gsystem-api.server");
-    const { supabase } = context;
+    const { gsystemApiFetch, findOrCreateGSystemClientByCompany, getDefaultColaboradorKey } = await import("@/lib/gsystem-api.server");
+    const { supabase, userId } = context;
 
     let clienteKey: string | null = null;
     let observacao = "";
@@ -913,9 +913,11 @@ export const createPendenciaFromAtendimento = createServerFn({ method: "POST" })
           companyName = company?.name || "";
           observacao = `Sub-cliente: ${subClient.name} | Tel: ${subClient.phone}${subClient.notes ? ` | ${subClient.notes}` : ""}`;
 
-          if (company?.cnpj) {
-            clienteKey = await findOrCreateGSystemClient(gsystemApiFetch, company.cnpj, company.name, subClient.phone);
-          }
+          clienteKey = await findOrCreateGSystemClientByCompany({
+            name: company?.name || subClient.name,
+            cnpj: company?.cnpj || null,
+            phone: subClient.phone || data.contactPhone || null,
+          });
         }
       }
 
@@ -930,9 +932,11 @@ export const createPendenciaFromAtendimento = createServerFn({ method: "POST" })
         if (company) {
           companyName = company.name;
           const phone = company.phone || data.contactPhone || "";
-          if (company.cnpj) {
-            clienteKey = await findOrCreateGSystemClient(gsystemApiFetch, company.cnpj, company.name, phone);
-          }
+          clienteKey = await findOrCreateGSystemClientByCompany({
+            name: company.name,
+            cnpj: company.cnpj || null,
+            phone,
+          });
         }
       }
 
@@ -946,23 +950,49 @@ export const createPendenciaFromAtendimento = createServerFn({ method: "POST" })
 
         if (contact) {
           const company = contact.companies as any;
-          if (company?.cnpj) {
+          if (company) {
             companyName = company.name;
-            clienteKey = await findOrCreateGSystemClient(gsystemApiFetch, company.cnpj, company.name, contact.phone);
+            clienteKey = await findOrCreateGSystemClientByCompany({
+              name: company.name || contact.name,
+              cnpj: company.cnpj || null,
+              phone: contact.phone || null,
+            });
           } else {
             // Create basic client from CRM contact
-            clienteKey = await findOrCreateGSystemClient(gsystemApiFetch, null, contact.name, contact.phone);
+            clienteKey = await findOrCreateGSystemClientByCompany({
+              name: contact.name,
+              cnpj: null,
+              phone: contact.phone || null,
+            });
           }
         }
       }
 
       // 4. Fallback: create basic client from contact info
       if (!clienteKey && (data.contactName || data.contactPhone)) {
-        clienteKey = await findOrCreateGSystemClient(gsystemApiFetch, null, data.contactName || "Contato", data.contactPhone || "");
+        clienteKey = await findOrCreateGSystemClientByCompany({
+          name: data.contactName || "Contato",
+          cnpj: null,
+          phone: data.contactPhone || null,
+        });
       }
 
       // Build pendência body
       const now = new Date();
+      let colaboradorKey: string | null = null;
+      if (userId) {
+        const { data: userLink } = await supabase
+          .from("user_gsystem_links")
+          .select("gsystem_user_id")
+          .eq("user_id", userId)
+          .maybeSingle();
+        if (userLink?.gsystem_user_id) colaboradorKey = String(userLink.gsystem_user_id);
+      }
+      if (!colaboradorKey && process.env.GSYSTEM_DEFAULT_COLABORADOR_KEY) {
+        colaboradorKey = String(process.env.GSYSTEM_DEFAULT_COLABORADOR_KEY);
+      }
+      if (!colaboradorKey) colaboradorKey = await getDefaultColaboradorKey();
+
       const pendenciaBody: Record<string, unknown> = {
         Descricao: `Atendimento via chat - ${companyName || data.contactName || data.contactPhone || "Contato"}`,
         DataAbertura: now.toISOString().split("T")[0],
@@ -985,6 +1015,10 @@ export const createPendenciaFromAtendimento = createServerFn({ method: "POST" })
       if (clienteKey) {
         pendenciaBody.Cliente = clienteKey;
       }
+      if (colaboradorKey) {
+        pendenciaBody.Colaborador = colaboradorKey;
+      }
+      pendenciaBody.Veiculos = [];
 
       console.log("[Pendencia] Creating pendência:", JSON.stringify(pendenciaBody).substring(0, 500));
 

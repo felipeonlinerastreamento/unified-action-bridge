@@ -108,7 +108,7 @@ async function authenticate(): Promise<string> {
   }
 
   const text = await res.text();
-  console.log("[GSystem Auth] Raw response:", text.substring(0, 500));
+  console.log("[GSystem Auth] Response received from authentication endpoint");
 
   // Try parsing as JSON first
   let data: any;
@@ -176,7 +176,7 @@ async function authenticate(): Promise<string> {
     return validatedToken;
   }
 
-  console.error("[GSystem Auth] Could not extract token. Keys:", Object.keys(data), "Data:", JSON.stringify(data).substring(0, 500));
+  console.error("[GSystem Auth] Could not extract token. Keys:", Object.keys(data));
   throw new Error(`Formato de token inesperado do GSystem. Chaves: ${Object.keys(data).join(", ")}`);
 }
 
@@ -238,6 +238,40 @@ export function clearGsystemToken() {
   tokenExpiry = 0;
 }
 
+function unwrapGsystemList(data: any): any[] {
+  if (Array.isArray(data)) return data;
+  for (const key of ["Items", "items", "Data", "data", "Dados", "dados", "Resultado", "resultado", "Results", "results"]) {
+    if (Array.isArray(data?.[key])) return data[key];
+  }
+  return [];
+}
+
+function pickGsystemKey(entity: any): string | null {
+  if (!entity || typeof entity !== "object") return null;
+  for (const key of ["Key", "key", "Id", "id", "ID", "Codigo", "codigo", "Código", "Code", "code"]) {
+    const value = entity[key];
+    if (value !== undefined && value !== null && String(value).trim()) return String(value).trim();
+  }
+  return null;
+}
+
+function normalizeSearchText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\b(ltda|eireli|me|epp|s\.?a\.?)\b/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function getClientName(client: any) {
+  return String(
+    client?.Nome || client?.nome || client?.RazaoSocial || client?.razaoSocial ||
+      client?.DisplayName || client?.displayName || client?.NomeFantasia || client?.nomeFantasia || ""
+  );
+}
+
 let cachedColaboradorKey: string | null = null;
 let cachedColaboradorAt = 0;
 
@@ -259,7 +293,7 @@ export async function getDefaultColaboradorKey(): Promise<string | null> {
       const list = Array.isArray(data) ? data : (data?.Items || data?.items || data?.Data || data?.data || []);
       if (Array.isArray(list) && list.length > 0) {
         const first = list.find((x: any) => (x?.Ativo ?? x?.ativo ?? true)) || list[0];
-        const key = first?.Key || first?.key || first?.Id || first?.id || first?.ID;
+        const key = pickGsystemKey(first);
         if (key) {
           cachedColaboradorKey = String(key);
           cachedColaboradorAt = now;
@@ -295,9 +329,7 @@ export async function findOrCreateGSystemClientByCompany(params: {
   if (cleanCnpj) {
     try {
       const result = await gsystemApiFetch(`/clientes/${encodeURIComponent(cleanCnpj)}`, "GET");
-      const key = Array.isArray(result)
-        ? result[0]?.Key || result[0]?.key
-        : (result as any)?.Key || (result as any)?.key;
+      const key = Array.isArray(result) ? pickGsystemKey(result[0]) : pickGsystemKey(result);
       if (key) return String(key);
     } catch (err) {
       console.log("[GSystem] cliente by CNPJ not found:", String(err).substring(0, 200));
@@ -308,17 +340,19 @@ export async function findOrCreateGSystemClientByCompany(params: {
   if (normalizedName || cleanPhone) {
     try {
       const list = await gsystemApiFetch("/clientes", "GET");
-      const arr = Array.isArray(list) ? list : ((list as any)?.Items || (list as any)?.items || []);
+      const arr = unwrapGsystemList(list);
       if (Array.isArray(arr)) {
-        const lowerName = normalizedName.toLowerCase();
+        const lowerName = normalizeSearchText(normalizedName);
         const match = arr.find((c: any) => {
-          const cName = String(c?.Nome || c?.nome || c?.RazaoSocial || c?.razaoSocial || "").toLowerCase();
-          const cPhone = String(c?.Telefone || c?.telefone || c?.Celular || c?.celular || "").replace(/\D/g, "");
+          const cName = normalizeSearchText(getClientName(c));
+          const cDocument = String(c?.CpfCnpj || c?.cpfCnpj || c?.CNPJ || c?.cnpj || c?.CPF || c?.cpf || "").replace(/\D/g, "");
+          const cPhone = String(c?.Telefone || c?.telefone || c?.Celular || c?.celular || c?.Fone || c?.fone || "").replace(/\D/g, "");
+          if (cleanCnpj && cDocument && cDocument === cleanCnpj) return true;
           if (lowerName && cName && (cName === lowerName || cName.includes(lowerName) || lowerName.includes(cName))) return true;
           if (cleanPhone && cPhone && (cPhone === cleanPhone || cPhone.endsWith(cleanPhone) || cleanPhone.endsWith(cPhone))) return true;
           return false;
         });
-        const key = match?.Key || match?.key || match?.Id || match?.id;
+        const key = pickGsystemKey(match);
         if (key) return String(key);
       }
     } catch (err) {
@@ -332,7 +366,7 @@ export async function findOrCreateGSystemClientByCompany(params: {
     if (cleanCnpj) body.CNPJ = cleanCnpj;
     if (cleanPhone) body.Telefone = cleanPhone;
     const created = await gsystemApiFetch("/clientes", "POST", body);
-    const key = (created as any)?.Key || (created as any)?.key || (created as any)?.Id || (created as any)?.id;
+    const key = pickGsystemKey(created);
     if (key) return String(key);
   } catch (err) {
     console.error("[GSystem] failed to create cliente:", String(err).substring(0, 300));
