@@ -180,10 +180,23 @@ export async function processIncomingForBot(params: ProcessParams): Promise<bool
         console.log(`[bot] menu match: input="${incomingText}" → key="${matched.key}" → next="${matched.next}"`);
         currentNodeId = matched.next;
       } else {
-        console.log(`[bot] menu no match for input="${incomingText}", re-sending menu`);
-        // Invalid choice, re-send menu
+        // Invalid choice. Avoid spamming: only re-send the menu if it has not been
+        // re-sent in the last 10 minutes for this chat. Otherwise, stay silent and
+        // wait for the customer to pick a valid option (or for a human to take over).
+        const lastMenuSentAt = typeof botState.last_menu_sent_at === "number" ? botState.last_menu_sent_at : 0;
+        const nowMs = Date.now();
+        const TEN_MIN_MS = 10 * 60 * 1000;
+        if (nowMs - lastMenuSentAt < TEN_MIN_MS) {
+          console.log(`[bot] menu no match for input="${incomingText}", suppressing re-send (cooldown active)`);
+          return true;
+        }
+        console.log(`[bot] menu no match for input="${incomingText}", re-sending menu (cooldown elapsed)`);
         await zapiSendText(creds, phone, renderText(node.text || "", vars));
         await persistOutgoing(chatId, renderText(node.text || "", vars));
+        await supabaseAdmin
+          .from("zapi_chats")
+          .update({ bot_state: { ...botState, current_node: node.id, last_menu_sent_at: nowMs }, status: "bot" })
+          .eq("id", chatId);
         return true;
       }
     } else if (node.type === "ask_input") {
