@@ -1,0 +1,1 @@
+UPDATE public.zapi_chats SET status='finalizado', assigned_to=NULL WHERE id='c82135b5-4938-4fc8-8407-cfcdf1f86425';
