@@ -22,6 +22,7 @@ import {
   Moon,
   CheckSquare,
   List,
+  Bell,
 } from "lucide-react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
