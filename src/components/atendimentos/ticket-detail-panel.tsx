@@ -49,6 +49,7 @@ import { TicketReminderSection } from "./ticket-reminder-section";
 import { TicketAgentsSection } from "./ticket-agents-section";
 import { TicketTrackingSection } from "./ticket-tracking-section";
 import { TicketLiberacaoSection } from "./ticket-liberacao-section";
+import { TicketSuprimentoSection } from "./ticket-suprimento-section";
 import { TicketAttachmentsSection } from "./ticket-attachments-section";
 import {
   useTesteEquipamentoSettings,
@@ -590,6 +591,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
 
             <TicketTrackingSection ticketId={ticket.id} trackingCode={ticket.tracking_code || null} />
             <TicketLiberacaoSection ticket={ticket} userId={userId} onRefetch={onRefetch} />
+            <TicketSuprimentoSection ticket={ticket} userId={userId} onRefetch={onRefetch} />
             <TicketAttachmentsSection ticketId={ticket.id} userId={userId} />
           </TabsContent>
 

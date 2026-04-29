@@ -60,6 +60,7 @@ export function AtendimentosContent() {
       const ids = list.map((t: any) => t.id);
       const lastByTicket: Record<string, string> = {};
       const liberacaoByTicket: Record<string, any[]> = {};
+      const suprimentoByTicket: Record<string, any[]> = {};
       if (ids.length > 0) {
         const { data: comments } = await supabase
           .from("ticket_comments")
@@ -79,11 +80,22 @@ export function AtendimentosContent() {
           if (!liberacaoByTicket[it.ticket_id]) liberacaoByTicket[it.ticket_id] = [];
           liberacaoByTicket[it.ticket_id].push(it);
         }
+
+        // Buscar itens de suprimento dos tickets em lote
+        const { data: supItems } = await supabase
+          .from("ticket_suprimento_items" as any)
+          .select("ticket_id, status, quantity, item_name, delivered_at")
+          .in("ticket_id", ids);
+        for (const it of (supItems as any[]) || []) {
+          if (!suprimentoByTicket[it.ticket_id]) suprimentoByTicket[it.ticket_id] = [];
+          suprimentoByTicket[it.ticket_id].push(it);
+        }
       }
       return list.map((t: any) => ({
         ...t,
         last_comment_at: lastByTicket[t.id] || null,
         liberacao_items: liberacaoByTicket[t.id] || [],
+        suprimento_items: suprimentoByTicket[t.id] || [],
       }));
     },
     refetchInterval: 30000,
