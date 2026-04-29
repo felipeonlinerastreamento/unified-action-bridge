@@ -733,7 +733,7 @@ function CentralPage() {
 
   // Identification modal form state
   const [identTab, setIdentTab] = useState<"vincular" | "subcliente" | "vincular-sub" | "crm">("vincular");
-  const [identForm, setIdentForm] = useState({ name: "", phone: "", email: "", notes: "", companyId: "" });
+  const [identForm, setIdentForm] = useState<{ name: string; phone: string; email: string; notes: string; companyId: string; contactType: "PF" | "PJ"; categoryId: string }>({ name: "", phone: "", email: "", notes: "", companyId: "", contactType: "PF", categoryId: "" });
   const [companySearch, setCompanySearch] = useState("");
   const [subClientSearch, setSubClientSearch] = useState("");
 
@@ -785,6 +785,8 @@ function CentralPage() {
       email: "",
       notes: "",
       companyId: "",
+      contactType: "PF",
+      categoryId: "",
     });
     setIdentTab("vincular");
     setChangingCompany(false);
@@ -828,6 +830,16 @@ function CentralPage() {
     onError: (err: any) => toast.error(err?.message || "Erro ao cadastrar sub-cliente"),
   });
 
+  // CRM categories (for PJ)
+  const { data: crmCategories = [] } = useQuery({
+    queryKey: ["crm-categories"],
+    queryFn: async () => {
+      const { data } = await supabase.from("crm_categories").select("id, name").order("name");
+      return data || [];
+    },
+    staleTime: 60_000,
+  });
+
   // Create CRM contact mutation
   const createCrmContactMutation = useMutation({
     mutationFn: async () => {
@@ -843,6 +855,8 @@ function CentralPage() {
           email: identForm.email || undefined,
           notes: identForm.notes || undefined,
           ticketId: currentTicket?.id,
+          contactType: identForm.contactType,
+          categoryId: identForm.contactType === "PJ" ? (identForm.categoryId || undefined) : undefined,
         },
         ...await getAuthHeaders(),
       });
@@ -3073,6 +3087,54 @@ function CentralPage() {
                 Cadastre como novo contato no CRM.
               </p>
               <div className="space-y-2">
+                <div>
+                  <Label className="text-xs">Tipo de pessoa *</Label>
+                  <div className="flex gap-2 mt-1">
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={identForm.contactType === "PF" ? "default" : "outline"}
+                      className="flex-1"
+                      onClick={() => setIdentForm((f) => ({ ...f, contactType: "PF", categoryId: "" }))}
+                    >
+                      PF · Pessoa Física
+                    </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={identForm.contactType === "PJ" ? "default" : "outline"}
+                      className="flex-1"
+                      onClick={() => setIdentForm((f) => ({ ...f, contactType: "PJ" }))}
+                    >
+                      PJ · Pessoa Jurídica
+                    </Button>
+                  </div>
+                </div>
+                {identForm.contactType === "PJ" && (
+                  <div>
+                    <Label className="text-xs">Categoria (PJ)</Label>
+                    <Select
+                      value={identForm.categoryId || "none"}
+                      onValueChange={(v) => setIdentForm((f) => ({ ...f, categoryId: v === "none" ? "" : v }))}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione a categoria..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Sem categoria</SelectItem>
+                        {crmCategories.length === 0 ? (
+                          <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                            Nenhuma categoria cadastrada
+                          </div>
+                        ) : (
+                          crmCategories.map((c: any) => (
+                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                          ))
+                        )}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div>
                   <Label className="text-xs">Nome *</Label>
                   <Input value={identForm.name} onChange={(e) => setIdentForm((f) => ({ ...f, name: e.target.value }))} placeholder="Nome do contato" />
