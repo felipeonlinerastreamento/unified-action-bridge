@@ -329,9 +329,7 @@ export async function findOrCreateGSystemClientByCompany(params: {
   if (cleanCnpj) {
     try {
       const result = await gsystemApiFetch(`/clientes/${encodeURIComponent(cleanCnpj)}`, "GET");
-      const key = Array.isArray(result)
-        ? result[0]?.Key || result[0]?.key
-        : (result as any)?.Key || (result as any)?.key;
+      const key = Array.isArray(result) ? pickGsystemKey(result[0]) : pickGsystemKey(result);
       if (key) return String(key);
     } catch (err) {
       console.log("[GSystem] cliente by CNPJ not found:", String(err).substring(0, 200));
@@ -342,17 +340,19 @@ export async function findOrCreateGSystemClientByCompany(params: {
   if (normalizedName || cleanPhone) {
     try {
       const list = await gsystemApiFetch("/clientes", "GET");
-      const arr = Array.isArray(list) ? list : ((list as any)?.Items || (list as any)?.items || []);
+      const arr = unwrapGsystemList(list);
       if (Array.isArray(arr)) {
-        const lowerName = normalizedName.toLowerCase();
+        const lowerName = normalizeSearchText(normalizedName);
         const match = arr.find((c: any) => {
-          const cName = String(c?.Nome || c?.nome || c?.RazaoSocial || c?.razaoSocial || "").toLowerCase();
-          const cPhone = String(c?.Telefone || c?.telefone || c?.Celular || c?.celular || "").replace(/\D/g, "");
+          const cName = normalizeSearchText(getClientName(c));
+          const cDocument = String(c?.CpfCnpj || c?.cpfCnpj || c?.CNPJ || c?.cnpj || c?.CPF || c?.cpf || "").replace(/\D/g, "");
+          const cPhone = String(c?.Telefone || c?.telefone || c?.Celular || c?.celular || c?.Fone || c?.fone || "").replace(/\D/g, "");
+          if (cleanCnpj && cDocument && cDocument === cleanCnpj) return true;
           if (lowerName && cName && (cName === lowerName || cName.includes(lowerName) || lowerName.includes(cName))) return true;
           if (cleanPhone && cPhone && (cPhone === cleanPhone || cPhone.endsWith(cleanPhone) || cleanPhone.endsWith(cPhone))) return true;
           return false;
         });
-        const key = match?.Key || match?.key || match?.Id || match?.id;
+        const key = pickGsystemKey(match);
         if (key) return String(key);
       }
     } catch (err) {
@@ -366,7 +366,7 @@ export async function findOrCreateGSystemClientByCompany(params: {
     if (cleanCnpj) body.CNPJ = cleanCnpj;
     if (cleanPhone) body.Telefone = cleanPhone;
     const created = await gsystemApiFetch("/clientes", "POST", body);
-    const key = (created as any)?.Key || (created as any)?.key || (created as any)?.Id || (created as any)?.id;
+    const key = pickGsystemKey(created);
     if (key) return String(key);
   } catch (err) {
     console.error("[GSystem] failed to create cliente:", String(err).substring(0, 300));
