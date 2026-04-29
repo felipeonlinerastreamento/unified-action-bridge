@@ -2207,7 +2207,14 @@ function CentralPage() {
                               {isPrivate && (
                                 <p className="text-[10px] font-medium mb-1 opacity-60">🔒 Nota privada</p>
                               )}
-                              <p className="whitespace-pre-wrap break-words">{msg.text}</p>
+                              {msg.mediaUrl && (
+                                <div className="mb-1">
+                                  <MessageMediaContent mediaUrl={msg.mediaUrl} mediaType={msg.mediaType} />
+                                </div>
+                              )}
+                              {msg.text && (
+                                <p className="whitespace-pre-wrap break-words">{msg.text}</p>
+                              )}
                               <div className={`flex items-center justify-end gap-1 mt-1 ${isMe ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
                                 {msg.dhMessage || msg.utcDhMessage ? (
                                   <span className="text-[10px]">
