@@ -356,14 +356,6 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
           toast.error("Ticket criado, mas falhou ao salvar itens de compra.");
         }
       }
-        const { error: itemsErr } = await supabase
-          .from("ticket_liberacao_items" as any)
-          .insert(rows);
-        if (itemsErr) {
-          console.error("Erro ao salvar itens de liberação", itemsErr);
-          toast.error("Ticket criado, mas falhou ao salvar itens de liberação.");
-        }
-      }
 
       toast.success("Ticket criado com sucesso");
       resetForm();
