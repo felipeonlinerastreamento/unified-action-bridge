@@ -175,6 +175,8 @@ interface GMessage {
   isPrivate?: boolean;
   isDeleted?: boolean;
   typeMessage?: number;
+  mediaUrl?: string | null;
+  mediaType?: string | null;
   _status?: string; // "sent" | "delivered" | "read" (from zapi_messages.status)
 }
 
