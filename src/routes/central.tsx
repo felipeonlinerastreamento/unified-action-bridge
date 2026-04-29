@@ -1241,6 +1241,10 @@ function CentralPage() {
   // Finalize chat
   const finalizeMutation = useMutation({
     mutationFn: async ({ notes, status, tipoPendencia, skipClosingMessage: skipMsg }: { notes?: string; status?: string; tipoPendencia?: string; skipClosingMessage?: boolean } = {}) => {
+      // Wrap all pre-finalization steps so that failures (pendência, ticket update,
+      // routing rules, etc.) NEVER block the actual chat finalization. The user
+      // clicked "Finalizar" — the chat MUST be closed regardless of side-effects.
+      try {
       if (currentTicket) {
         let pendenciaKey = currentTicket.pendencia_key;
 
