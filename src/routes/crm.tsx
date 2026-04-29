@@ -389,15 +389,23 @@ function CrmPage() {
                       filtered.map((row) => (
                         <TableRow key={`${row.kind}-${row.id}`}>
                           <TableCell>
-                            {row.kind === "direct" ? (
-                              <Badge variant="default" className="text-[10px]">
-                                Direto
+                            <div className="flex flex-col gap-1">
+                              {row.kind === "direct" ? (
+                                <Badge variant="default" className="text-[10px] w-fit">
+                                  Direto
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary" className="text-[10px] gap-1 w-fit">
+                                  <Users className="h-3 w-3" /> Sub-cliente
+                                </Badge>
+                              )}
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] w-fit"
+                              >
+                                {row.kind === "direct" ? (row.raw.contact_type || "PF") : "PJ"}
                               </Badge>
-                            ) : (
-                              <Badge variant="secondary" className="text-[10px] gap-1">
-                                <Users className="h-3 w-3" /> Sub-cliente
-                              </Badge>
-                            )}
+                            </div>
                           </TableCell>
                           <TableCell className="font-medium">{row.name}</TableCell>
                           <TableCell className="font-mono text-sm">{row.phone}</TableCell>
