@@ -113,35 +113,19 @@ export function AppSidebar() {
                 </SidebarMenuButton>
               </SidebarMenuItem>
 
-              {/* Atendimentos com submenu */}
-              <Collapsible defaultOpen={isAtendimentosActive} className="group/collapsible-at">
-                <SidebarMenuItem>
-                  <CollapsibleTrigger asChild>
-                    <SidebarMenuButton isActive={isAtendimentosActive} tooltip="Atendimentos">
-                      <MessageSquare className="h-4 w-4" />
-                      <span>Atendimentos</span>
-                      <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible-at:rotate-180" />
-                    </SidebarMenuButton>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <SidebarMenuSub>
-                      {atendimentosSubItems.map((sub) => (
-                        <SidebarMenuSubItem key={sub.title}>
-                          <SidebarMenuSubButton
-                            asChild
-                            isActive={location.pathname === sub.url}
-                          >
-                            <Link to={sub.url}>
-                              <sub.icon className="h-3.5 w-3.5" />
-                              <span>{sub.title}</span>
-                            </Link>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      ))}
-                    </SidebarMenuSub>
-                  </CollapsibleContent>
-                </SidebarMenuItem>
-              </Collapsible>
+              {/* Atendimentos (link direto) */}
+              <SidebarMenuItem>
+                <SidebarMenuButton
+                  asChild
+                  isActive={isAtendimentosActive}
+                  tooltip="Atendimentos"
+                >
+                  <Link to="/atendimentos">
+                    <MessageSquare className="h-4 w-4" />
+                    <span>Atendimentos</span>
+                  </Link>
+                </SidebarMenuButton>
+              </SidebarMenuItem>
 
               {/* Demais itens (pulando Dashboard) */}
               {mainItems.slice(1).map((item) => (
