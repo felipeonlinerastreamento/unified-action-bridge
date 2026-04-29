@@ -126,6 +126,56 @@ function GsystemConnectionTest() {
   );
 }
 
+function GsystemForceSync() {
+  const [syncing, setSyncing] = useState(false);
+  const [summary, setSummary] = useState<any>(null);
+
+  const handleForceSync = async () => {
+    setSyncing(true);
+    setSummary(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await forceSyncGsystemClientes({
+        headers: { authorization: `Bearer ${session?.access_token}` },
+      });
+      setSummary(res);
+      toast.success("Sincronização com GSystem concluída");
+    } catch (err: any) {
+      toast.error(err?.message || "Erro ao sincronizar com GSystem");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between gap-4">
+        <div>
+          <CardTitle className="text-base">Sincronização GSystem</CardTitle>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Atualiza empresas locais e vínculos a partir dos clientes do GSystem.
+          </p>
+        </div>
+        <Button size="sm" onClick={handleForceSync} disabled={syncing}>
+          {syncing ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1" />}
+          {syncing ? "Sincronizando..." : "Forçar sincronização"}
+        </Button>
+      </CardHeader>
+      {summary && (
+        <CardContent>
+          <div className="grid gap-2 text-sm sm:grid-cols-5">
+            <Badge variant="secondary">Lidos: {summary.total ?? 0}</Badge>
+            <Badge variant="secondary">Criados: {summary.created ?? 0}</Badge>
+            <Badge variant="secondary">Atualizados: {summary.updated ?? 0}</Badge>
+            <Badge variant="secondary">Vinculados: {summary.linked ?? 0}</Badge>
+            <Badge variant="secondary">Ignorados: {summary.skipped ?? 0}</Badge>
+          </div>
+        </CardContent>
+      )}
+    </Card>
+  );
+}
+
 function ChannelsConfig() {
   const [channels, setChannels] = useState<any[]>([]);
   const [open, setOpen] = useState(false);
