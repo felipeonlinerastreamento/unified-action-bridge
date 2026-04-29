@@ -25,6 +25,7 @@ export interface FinalizeFlowInput {
     status?: string | null;
     notes?: string | null;
     reopened_at?: string | null;
+    attendance_id?: string | null;
   };
   userId: string | null;
   /** Pass current settings (already loaded via useTesteEquipamentoSettings). Optional. */
@@ -61,6 +62,27 @@ async function insertSystemComment(
   if (error) console.error("[finalize-flow] insert comment error:", error);
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * When a ticket is bound to a Z-API chat (attendance_id is a UUID matching a
+ * row in zapi_chats), finalizing the ticket must also remove that chat from
+ * the Central de Atendimento by setting its status to "finalizado".
+ * Safe to call for tickets without a chat — just no-ops.
+ */
+async function closeLinkedZapiChat(attendanceId: string | null | undefined) {
+  if (!attendanceId || !UUID_RE.test(attendanceId)) return;
+  try {
+    const { error } = await supabase
+      .from("zapi_chats")
+      .update({ status: "finalizado", assigned_to: null })
+      .eq("id", attendanceId);
+    if (error) console.warn("[finalize-flow] close zapi chat error:", error.message);
+  } catch (e: any) {
+    console.warn("[finalize-flow] close zapi chat exception:", e?.message);
+  }
+}
+
 export async function finalizeTicketWithFlow(
   input: FinalizeFlowInput
 ): Promise<FinalizeFlowResult> {
@@ -81,6 +103,7 @@ export async function finalizeTicketWithFlow(
     if (registerStatusComment) {
       await insertSystemComment(ticket.id, userId, "Status alterado para finalizado (admin — sem encaminhamento)", "status_change");
     }
+    await closeLinkedZapiChat(ticket.attendance_id);
     return { routed: false };
   }
 
@@ -147,6 +170,7 @@ export async function finalizeTicketWithFlow(
       }
     }
 
+    await closeLinkedZapiChat(ticket.attendance_id);
     return {
       routed: true,
       routedTo: { sector: targetSector, status: targetStatus },
@@ -262,6 +286,7 @@ export async function finalizeTicketWithFlow(
           syncedToGsystem = true;
         }
 
+        await closeLinkedZapiChat(ticket.attendance_id);
         return {
           routed: true,
           routedTo: { sector: targetSector, status: targetStatus },
@@ -289,5 +314,6 @@ export async function finalizeTicketWithFlow(
   if (registerStatusComment) {
     await insertSystemComment(ticket.id, userId, "Status alterado para finalizado", "status_change");
   }
+  await closeLinkedZapiChat(ticket.attendance_id);
   return { routed: false };
 }
