@@ -9,6 +9,7 @@ export {
   getChatDetail,
   getChatMessages,
   sendText,
+  sendMedia,
   finalizeChat,
   transferChat,
   getChannelStatus,
