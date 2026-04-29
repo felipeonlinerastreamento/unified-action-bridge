@@ -733,7 +733,7 @@ function CentralPage() {
 
   // Identification modal form state
   const [identTab, setIdentTab] = useState<"vincular" | "subcliente" | "vincular-sub" | "crm">("vincular");
-  const [identForm, setIdentForm] = useState({ name: "", phone: "", email: "", notes: "", companyId: "" });
+  const [identForm, setIdentForm] = useState<{ name: string; phone: string; email: string; notes: string; companyId: string; contactType: "PF" | "PJ"; categoryId: string }>({ name: "", phone: "", email: "", notes: "", companyId: "", contactType: "PF", categoryId: "" });
   const [companySearch, setCompanySearch] = useState("");
   const [subClientSearch, setSubClientSearch] = useState("");
 
@@ -785,6 +785,8 @@ function CentralPage() {
       email: "",
       notes: "",
       companyId: "",
+      contactType: "PF",
+      categoryId: "",
     });
     setIdentTab("vincular");
     setChangingCompany(false);
