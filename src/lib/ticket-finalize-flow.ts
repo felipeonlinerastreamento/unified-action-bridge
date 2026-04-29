@@ -170,6 +170,7 @@ export async function finalizeTicketWithFlow(
       }
     }
 
+    await closeLinkedZapiChat(ticket.attendance_id);
     return {
       routed: true,
       routedTo: { sector: targetSector, status: targetStatus },
