@@ -187,6 +187,7 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
     setTeData(EMPTY_TESTE_EQUIPAMENTO);
     setLiberacaoItems([]);
     setLiberacaoDate("");
+    setSuprimentoItems([]);
   };
 
   const ensureLocalCompany = async (cliente: GsystemCliente): Promise<string | null> => {
@@ -228,10 +229,10 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
       toast.error("Informe o nome do contato");
       return;
     }
-    // Validate tracking code if Correios
+    // Validate tracking code (Correios required, Suprimento opcional)
     let trackCodeClean: string | null = null;
-    if (isCorreios) {
-      const required = trackingSettings?.require_tracking_code ?? true;
+    if (showTracking) {
+      const required = isCorreios && (trackingSettings?.require_tracking_code ?? true);
       const pattern = trackingSettings?.tracking_code_pattern || "^[A-Z]{2}\\d{9}[A-Z]{2}$";
       if (required && !trackingCode.trim()) {
         toast.error("Código de envio é obrigatório para Correios");
@@ -269,6 +270,14 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
       }
       if (!liberacaoDate) {
         toast.error("Informe a data de liberação.");
+        return;
+      }
+    }
+    // Validate Suprimento items
+    if (isSuprimento) {
+      const err = validateSuprimentoItems(suprimentoItems);
+      if (err) {
+        toast.error(err);
         return;
       }
     }
@@ -321,6 +330,32 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
           quantity: it.quantity,
           status: "pendente" as const,
         }));
+        const { error: itemsErr } = await supabase
+          .from("ticket_liberacao_items" as any)
+          .insert(rows);
+        if (itemsErr) {
+          console.error("Erro ao salvar itens de liberação", itemsErr);
+          toast.error("Ticket criado, mas falhou ao salvar itens de liberação.");
+        }
+      }
+
+      // Insert suprimento items
+      if (created?.id && isSuprimento && suprimentoItems.length > 0) {
+        const rows = suprimentoItems.map((it) => ({
+          ticket_id: created.id,
+          item_id: it.item_id,
+          item_name: it.item_name,
+          quantity: it.quantity,
+          status: "pendente",
+        }));
+        const { error: supErr } = await supabase
+          .from("ticket_suprimento_items" as any)
+          .insert(rows);
+        if (supErr) {
+          console.error("Erro ao salvar itens de suprimento", supErr);
+          toast.error("Ticket criado, mas falhou ao salvar itens de compra.");
+        }
+      }
         const { error: itemsErr } = await supabase
           .from("ticket_liberacao_items" as any)
           .insert(rows);
