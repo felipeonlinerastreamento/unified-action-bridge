@@ -1827,35 +1827,105 @@ export type Database = {
           },
         ]
       }
+      ticket_reminder_history: {
+        Row: {
+          completed_at: string
+          completed_by: string | null
+          completion_comment: string | null
+          created_at: string
+          id: string
+          next_scheduled_for: string | null
+          parent_reminder_id: string | null
+          recurrence_type: string | null
+          reminder_id: string | null
+          reminder_note: string | null
+          scheduled_for: string
+          ticket_id: string
+        }
+        Insert: {
+          completed_at?: string
+          completed_by?: string | null
+          completion_comment?: string | null
+          created_at?: string
+          id?: string
+          next_scheduled_for?: string | null
+          parent_reminder_id?: string | null
+          recurrence_type?: string | null
+          reminder_id?: string | null
+          reminder_note?: string | null
+          scheduled_for: string
+          ticket_id: string
+        }
+        Update: {
+          completed_at?: string
+          completed_by?: string | null
+          completion_comment?: string | null
+          created_at?: string
+          id?: string
+          next_scheduled_for?: string | null
+          parent_reminder_id?: string | null
+          recurrence_type?: string | null
+          reminder_id?: string | null
+          reminder_note?: string | null
+          scheduled_for?: string
+          ticket_id?: string
+        }
+        Relationships: []
+      }
       ticket_reminders: {
         Row: {
+          completed_at: string | null
+          completed_by: string | null
+          completion_comment: string | null
           created_at: string
           created_by: string | null
           id: string
           is_dismissed: boolean
+          parent_reminder_id: string | null
+          recurrence_end_date: string | null
+          recurrence_type: string | null
           reminder_date: string
           reminder_note: string | null
           ticket_id: string
         }
         Insert: {
+          completed_at?: string | null
+          completed_by?: string | null
+          completion_comment?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
           is_dismissed?: boolean
+          parent_reminder_id?: string | null
+          recurrence_end_date?: string | null
+          recurrence_type?: string | null
           reminder_date: string
           reminder_note?: string | null
           ticket_id: string
         }
         Update: {
+          completed_at?: string | null
+          completed_by?: string | null
+          completion_comment?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
           is_dismissed?: boolean
+          parent_reminder_id?: string | null
+          recurrence_end_date?: string | null
+          recurrence_type?: string | null
           reminder_date?: string
           reminder_note?: string | null
           ticket_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "ticket_reminders_parent_reminder_id_fkey"
+            columns: ["parent_reminder_id"]
+            isOneToOne: false
+            referencedRelation: "ticket_reminders"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "ticket_reminders_ticket_id_fkey"
             columns: ["ticket_id"]
