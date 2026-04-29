@@ -238,6 +238,40 @@ export function clearGsystemToken() {
   tokenExpiry = 0;
 }
 
+function unwrapGsystemList(data: any): any[] {
+  if (Array.isArray(data)) return data;
+  for (const key of ["Items", "items", "Data", "data", "Dados", "dados", "Resultado", "resultado", "Results", "results"]) {
+    if (Array.isArray(data?.[key])) return data[key];
+  }
+  return [];
+}
+
+function pickGsystemKey(entity: any): string | null {
+  if (!entity || typeof entity !== "object") return null;
+  for (const key of ["Key", "key", "Id", "id", "ID", "Codigo", "codigo", "Código", "Code", "code"]) {
+    const value = entity[key];
+    if (value !== undefined && value !== null && String(value).trim()) return String(value).trim();
+  }
+  return null;
+}
+
+function normalizeSearchText(value: string) {
+  return value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\b(ltda|eireli|me|epp|s\.?a\.?)\b/g, "")
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
+function getClientName(client: any) {
+  return String(
+    client?.Nome || client?.nome || client?.RazaoSocial || client?.razaoSocial ||
+      client?.DisplayName || client?.displayName || client?.NomeFantasia || client?.nomeFantasia || ""
+  );
+}
+
 let cachedColaboradorKey: string | null = null;
 let cachedColaboradorAt = 0;
 
@@ -259,7 +293,7 @@ export async function getDefaultColaboradorKey(): Promise<string | null> {
       const list = Array.isArray(data) ? data : (data?.Items || data?.items || data?.Data || data?.data || []);
       if (Array.isArray(list) && list.length > 0) {
         const first = list.find((x: any) => (x?.Ativo ?? x?.ativo ?? true)) || list[0];
-        const key = first?.Key || first?.key || first?.Id || first?.id || first?.ID;
+        const key = pickGsystemKey(first);
         if (key) {
           cachedColaboradorKey = String(key);
           cachedColaboradorAt = now;
