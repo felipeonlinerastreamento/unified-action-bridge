@@ -39,9 +39,10 @@ function CrmPage() {
   const [companyFilter, setCompanyFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [viewMode, setViewMode] = useState<ViewMode>("all");
+  const [typeFilter, setTypeFilter] = useState<"all" | "PF" | "PJ">("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<any>(null);
-  const [form, setForm] = useState({ name: "", phone: "", email: "", notes: "", companyId: "", categoryId: "" });
+  const [form, setForm] = useState({ name: "", phone: "", email: "", notes: "", companyId: "", categoryId: "", contactType: "PF" as "PF" | "PJ" });
 
   const { data: contacts = [], isLoading: contactsLoading } = useQuery({
     queryKey: ["crm-contacts"],
@@ -95,7 +96,8 @@ function CrmPage() {
         email: form.email || null,
         notes: form.notes || "",
         company_id: form.companyId || null,
-        category_id: form.categoryId || null,
+        category_id: form.contactType === "PJ" ? (form.categoryId || null) : null,
+        contact_type: form.contactType,
         created_by: sess.session?.user?.id || null,
       };
 
@@ -129,7 +131,7 @@ function CrmPage() {
   });
 
   const resetForm = () => {
-    setForm({ name: "", phone: "", email: "", notes: "", companyId: "", categoryId: "" });
+    setForm({ name: "", phone: "", email: "", notes: "", companyId: "", categoryId: "", contactType: "PF" });
     setEditingContact(null);
   };
 
@@ -142,6 +144,7 @@ function CrmPage() {
       notes: contact.notes || "",
       companyId: contact.company_id || "",
       categoryId: contact.category_id || "",
+      contactType: (contact.contact_type === "PJ" ? "PJ" : "PF"),
     });
     setDialogOpen(true);
   };
@@ -210,6 +213,11 @@ function CrmPage() {
         return false;
       }
     }
+    if (typeFilter !== "all") {
+      // Sub-clients are always treated as PJ context (linked to a company)
+      const rowType = r.kind === "direct" ? (r.raw.contact_type || "PF") : "PJ";
+      if (rowType !== typeFilter) return false;
+    }
     if (!search) return true;
     const s = search.toLowerCase();
     return (
@@ -270,7 +278,7 @@ function CrmPage() {
             </div>
 
             <Card className="p-3">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
                 <div className="relative md:col-span-2">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -280,6 +288,17 @@ function CrmPage() {
                     onChange={(e) => setSearch(e.target.value)}
                   />
                 </div>
+
+                <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as any)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="PF / PJ" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">PF e PJ</SelectItem>
+                    <SelectItem value="PF">Pessoa Física (PF)</SelectItem>
+                    <SelectItem value="PJ">Pessoa Jurídica (PJ)</SelectItem>
+                  </SelectContent>
+                </Select>
 
                 <Select value={companyFilter} onValueChange={setCompanyFilter}>
                   <SelectTrigger>
@@ -309,7 +328,7 @@ function CrmPage() {
               </div>
 
               <div className="flex items-center gap-2 mt-3">
-                <span className="text-xs text-muted-foreground">Tipo:</span>
+                <span className="text-xs text-muted-foreground">Origem:</span>
                 <Button
                   size="sm"
                   variant={viewMode === "all" ? "default" : "outline"}
@@ -370,15 +389,23 @@ function CrmPage() {
                       filtered.map((row) => (
                         <TableRow key={`${row.kind}-${row.id}`}>
                           <TableCell>
-                            {row.kind === "direct" ? (
-                              <Badge variant="default" className="text-[10px]">
-                                Direto
+                            <div className="flex flex-col gap-1">
+                              {row.kind === "direct" ? (
+                                <Badge variant="default" className="text-[10px] w-fit">
+                                  Direto
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary" className="text-[10px] gap-1 w-fit">
+                                  <Users className="h-3 w-3" /> Sub-cliente
+                                </Badge>
+                              )}
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] w-fit"
+                              >
+                                {row.kind === "direct" ? (row.raw.contact_type || "PF") : "PJ"}
                               </Badge>
-                            ) : (
-                              <Badge variant="secondary" className="text-[10px] gap-1">
-                                <Users className="h-3 w-3" /> Sub-cliente
-                              </Badge>
-                            )}
+                            </div>
                           </TableCell>
                           <TableCell className="font-medium">{row.name}</TableCell>
                           <TableCell className="font-mono text-sm">{row.phone}</TableCell>
@@ -532,6 +559,29 @@ function CrmPage() {
           </DialogHeader>
           <div className="space-y-3">
             <div>
+              <Label>Tipo de contato *</Label>
+              <div className="flex gap-2 mt-1">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={form.contactType === "PF" ? "default" : "outline"}
+                  className="flex-1"
+                  onClick={() => setForm((f) => ({ ...f, contactType: "PF", categoryId: "" }))}
+                >
+                  Pessoa Física (PF)
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant={form.contactType === "PJ" ? "default" : "outline"}
+                  className="flex-1"
+                  onClick={() => setForm((f) => ({ ...f, contactType: "PJ" }))}
+                >
+                  Pessoa Jurídica (PJ)
+                </Button>
+              </div>
+            </div>
+            <div>
               <Label>Nome *</Label>
               <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
             </div>
@@ -556,19 +606,37 @@ function CrmPage() {
                 </SelectContent>
               </Select>
             </div>
-            <div>
-              <Label>Categoria</Label>
-              <Select value={form.categoryId} onValueChange={(v) => setForm((f) => ({ ...f, categoryId: v }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Nenhuma (opcional)" />
-                </SelectTrigger>
-                <SelectContent>
-                  {categories.map((c: any) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            {form.contactType === "PJ" && (
+              <div className="rounded-md border border-border bg-muted/30 p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                    Categorias PJ
+                  </Label>
+                  <span className="text-[10px] text-muted-foreground">
+                    Gerencie em "Categorias"
+                  </span>
+                </div>
+                <Select value={form.categoryId} onValueChange={(v) => setForm((f) => ({ ...f, categoryId: v }))}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione uma categoria PJ" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categories.length === 0 ? (
+                      <div className="px-2 py-3 text-xs text-muted-foreground">
+                        Nenhuma categoria cadastrada. Use a aba "Categorias".
+                      </div>
+                    ) : (
+                      categories.map((c: any) => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground">
+                  Categorias só se aplicam a Pessoa Jurídica. Para criar, editar ou excluir, abra a aba <strong>Categorias</strong>.
+                </p>
+              </div>
+            )}
             <div>
               <Label>Observações</Label>
               <Textarea rows={3} value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} />
