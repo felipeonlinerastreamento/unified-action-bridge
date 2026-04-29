@@ -1,6 +1,7 @@
 import { useState, useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 import { getTiposPendencia } from "@/lib/gsystem-api.functions";
 import { toast } from "sonner";
 import {
@@ -149,6 +150,8 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   });
 
   const userId = currentUser?.id ?? null;
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole("admin");
 
   const addComment = async () => {
     if (!comment.trim() || !ticket?.id) return;
@@ -349,7 +352,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
     if (!ticket?.id) return;
 
     if (newStatus === "finalizado") {
-      const res = await finalizeTicketWithFlow({ ticket, userId, teSettings });
+      const res = await finalizeTicketWithFlow({ ticket, userId, teSettings, bypassRouting: isAdmin });
       if (res.error) {
         toast.error("Erro ao finalizar: " + res.error);
         return;

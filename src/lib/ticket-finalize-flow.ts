@@ -33,6 +33,8 @@ export interface FinalizeFlowInput {
   useRoutingRules?: boolean;
   /** When true, register a "status alterado" comment for normal finalize. Default: true. */
   registerStatusComment?: boolean;
+  /** When true, ignora roteamento automático (Teste Equipamento + regras de categoria) e finaliza direto. Usado por admin. */
+  bypassRouting?: boolean;
 }
 
 export interface FinalizeFlowResult {
@@ -62,8 +64,25 @@ async function insertSystemComment(
 export async function finalizeTicketWithFlow(
   input: FinalizeFlowInput
 ): Promise<FinalizeFlowResult> {
-  const { ticket, userId, teSettings, useRoutingRules = true, registerStatusComment = true } = input;
+  const { ticket, userId, teSettings, useRoutingRules = true, registerStatusComment = true, bypassRouting = false } = input;
   if (!ticket?.id) return { routed: false, error: "Ticket inválido" };
+
+  // Admin bypass: finaliza direto sem criar vínculos/encaminhamentos
+  if (bypassRouting) {
+    const { error } = await supabase
+      .from("service_tickets")
+      .update({
+        status: "finalizado" as const,
+        closed_at: new Date().toISOString(),
+        updated_at: new Date().toISOString(),
+      })
+      .eq("id", ticket.id);
+    if (error) return { routed: false, error: error.message };
+    if (registerStatusComment) {
+      await insertSystemComment(ticket.id, userId, "Status alterado para finalizado (admin — sem encaminhamento)", "status_change");
+    }
+    return { routed: false };
+  }
 
   // 1. Detect Teste de Equipamento
   const isTE = isTesteEquipamentoCategory(ticket.category, teSettings);
