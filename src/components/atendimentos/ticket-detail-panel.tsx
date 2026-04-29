@@ -513,7 +513,13 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
             {ticket.contact_name || ticket.attendance_id || "Ticket"}
             <Badge variant="outline" className="text-xs">#{ticket.id?.substring(0, 8)}</Badge>
           </SheetTitle>
+          <div className="flex items-center gap-2 pt-1">
+            <Button size="sm" variant="outline" onClick={() => setTaskDialogOpen(true)}>
+              <Repeat className="h-3.5 w-3.5 mr-1.5" /> Nova tarefa / recorrência
+            </Button>
+          </div>
         </SheetHeader>
+        <TaskFormDialog open={taskDialogOpen} onClose={() => setTaskDialogOpen(false)} defaultTicketId={ticket.id} />
 
         <Tabs defaultValue="detalhes" className="mt-4">
           <TabsList className="w-full">
