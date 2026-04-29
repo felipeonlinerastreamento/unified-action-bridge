@@ -538,10 +538,11 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
               </SelectContent>
             </Select>
           </div>
-          {isCorreios && (
+          {showTracking && (
             <div className="space-y-1">
               <label className="text-xs font-medium flex items-center gap-1">
-                📦 Código de Envio (Sedex) {trackingSettings?.require_tracking_code !== false ? "*" : ""}
+                📦 Código de Envio (Sedex){" "}
+                {isCorreios && trackingSettings?.require_tracking_code !== false ? "*" : "(opcional)"}
               </label>
               <Input
                 value={trackingCode}
@@ -565,6 +566,9 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
               liberacaoDate={liberacaoDate}
               onLiberacaoDateChange={setLiberacaoDate}
             />
+          )}
+          {isSuprimento && (
+            <SuprimentoFields items={suprimentoItems} onChange={setSuprimentoItems} />
           )}
           <div className="space-y-1">
             <label className="text-xs font-medium">Observações</label>
