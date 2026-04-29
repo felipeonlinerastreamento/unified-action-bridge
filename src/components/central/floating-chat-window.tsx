@@ -16,6 +16,7 @@ import { WhisperToggle } from "./whisper-toggle";
 import { QuickRepliesPopover } from "./quick-replies-popover";
 import { MessageStatusTicks } from "./message-status-ticks";
 import { TypingIndicator } from "./typing-indicator";
+import { MessageMediaContent } from "./message-media";
 
 interface Props {
   state: FloatingChatState;
