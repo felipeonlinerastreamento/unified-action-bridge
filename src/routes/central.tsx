@@ -830,6 +830,16 @@ function CentralPage() {
     onError: (err: any) => toast.error(err?.message || "Erro ao cadastrar sub-cliente"),
   });
 
+  // CRM categories (for PJ)
+  const { data: crmCategories = [] } = useQuery({
+    queryKey: ["crm-categories"],
+    queryFn: async () => {
+      const { data } = await supabase.from("crm_categories").select("id, name").order("name");
+      return data || [];
+    },
+    staleTime: 60_000,
+  });
+
   // Create CRM contact mutation
   const createCrmContactMutation = useMutation({
     mutationFn: async () => {
@@ -845,6 +855,8 @@ function CentralPage() {
           email: identForm.email || undefined,
           notes: identForm.notes || undefined,
           ticketId: currentTicket?.id,
+          contactType: identForm.contactType,
+          categoryId: identForm.contactType === "PJ" ? (identForm.categoryId || undefined) : undefined,
         },
         ...await getAuthHeaders(),
       });
