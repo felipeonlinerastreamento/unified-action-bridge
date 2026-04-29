@@ -1465,8 +1465,8 @@ function CentralPage() {
         } catch (err: any) {
           console.warn("[Finalize] Error sending closing message:", err.message);
         }
-      } else {
-        console.log("[Finalize] Skipping closing message (admin opt-out)");
+      } catch (preErr: any) {
+        console.error("[Finalize] pre-finalization step failed (continuing to close chat):", preErr?.message);
       }
 
       // Always finalize the Z-API chat at the end, regardless of any prior errors.
