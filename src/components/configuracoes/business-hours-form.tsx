@@ -1,7 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useState } from "react";
-import { useAuth } from "@/hooks/use-auth";
-import { AppLayout } from "@/components/app-layout";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,13 +6,9 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
-import { Clock, Loader2, Save, Plus, Trash2 } from "lucide-react";
+import { Loader2, Save, Plus, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-
-export const Route = createFileRoute("/configuracoes/horario-funcionamento")({
-  component: BusinessHoursPage,
-});
 
 type DaySchedule = {
   enabled: boolean;
@@ -73,29 +66,7 @@ const DEFAULTS: Settings = {
   holidays: [],
 };
 
-function BusinessHoursPage() {
-  const { isAuthenticated, isLoading } = useAuth();
-  if (isLoading || !isAuthenticated) return null;
-
-  return (
-    <AppLayout>
-      <div className="space-y-6 max-w-4xl">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Clock className="h-6 w-6 text-primary" />
-            Horário de Funcionamento
-          </h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            Defina o horário comercial e a mensagem automática enviada quando uma mensagem chegar fora do horário.
-          </p>
-        </div>
-        <BusinessHoursForm />
-      </div>
-    </AppLayout>
-  );
-}
-
-function BusinessHoursForm() {
+export function BusinessHoursForm() {
   const [settings, setSettings] = useState<Settings>(DEFAULTS);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -177,65 +148,63 @@ function BusinessHoursForm() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-12">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-      </div>
+      <Card>
+        <CardContent className="flex items-center justify-center py-12">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Configuração geral</CardTitle>
-          <CardDescription>Ative o controle de horário e defina o fuso.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div>
-              <Label className="text-base">Habilitar resposta automática fora do horário</Label>
-              <p className="text-sm text-muted-foreground">
-                Quando ativo, mensagens recebidas fora do horário receberão a resposta automática.
-              </p>
-            </div>
-            <Switch
-              checked={settings.is_enabled}
-              onCheckedChange={(v) => setSettings((s) => ({ ...s, is_enabled: v }))}
+    <Card>
+      <CardHeader>
+        <CardTitle>Horário de Funcionamento</CardTitle>
+        <CardDescription>
+          Mensagens recebidas dentro do horário caem no fluxo do bot. Fora do horário, o sistema envia automaticamente a mensagem de ausência.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div className="flex items-center justify-between border-b pb-4">
+          <div>
+            <Label className="text-base">Habilitar resposta automática fora do horário</Label>
+            <p className="text-sm text-muted-foreground">
+              Quando ativo, o fluxo do bot só executa dentro do horário comercial.
+            </p>
+          </div>
+          <Switch
+            checked={settings.is_enabled}
+            onCheckedChange={(v) => setSettings((s) => ({ ...s, is_enabled: v }))}
+          />
+        </div>
+
+        <div className="grid sm:grid-cols-2 gap-4">
+          <div>
+            <Label>Fuso horário</Label>
+            <Input
+              value={settings.timezone}
+              onChange={(e) => setSettings((s) => ({ ...s, timezone: e.target.value }))}
+              placeholder="America/Sao_Paulo"
             />
           </div>
-          <div className="grid sm:grid-cols-2 gap-4">
-            <div>
-              <Label>Fuso horário</Label>
-              <Input
-                value={settings.timezone}
-                onChange={(e) => setSettings((s) => ({ ...s, timezone: e.target.value }))}
-                placeholder="America/Sao_Paulo"
-              />
-            </div>
-            <div>
-              <Label>Cooldown (minutos)</Label>
-              <Input
-                type="number"
-                min={0}
-                value={settings.cooldown_minutes}
-                onChange={(e) =>
-                  setSettings((s) => ({ ...s, cooldown_minutes: Number(e.target.value) || 0 }))
-                }
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Tempo mínimo antes de reenviar a mensagem ao mesmo contato.
-              </p>
-            </div>
+          <div>
+            <Label>Cooldown (minutos)</Label>
+            <Input
+              type="number"
+              min={0}
+              value={settings.cooldown_minutes}
+              onChange={(e) =>
+                setSettings((s) => ({ ...s, cooldown_minutes: Number(e.target.value) || 0 }))
+              }
+            />
+            <p className="text-xs text-muted-foreground mt-1">
+              Tempo mínimo antes de reenviar a mensagem ao mesmo contato.
+            </p>
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Agenda semanal</CardTitle>
-          <CardDescription>Configure o horário de cada dia. Intervalo de almoço é opcional.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
+        <div className="space-y-3">
+          <Label className="text-base">Agenda semanal</Label>
           {DAYS.map(({ key, label }) => {
             const day = settings.schedule[key];
             return (
@@ -252,67 +221,42 @@ function BusinessHoursForm() {
                 </div>
                 <div>
                   <Label className="text-xs">Abre</Label>
-                  <Input
-                    type="time"
-                    value={day.open}
-                    disabled={!day.enabled}
-                    onChange={(e) => updateDay(key, { open: e.target.value })}
-                  />
+                  <Input type="time" value={day.open} disabled={!day.enabled}
+                    onChange={(e) => updateDay(key, { open: e.target.value })} />
                 </div>
                 <div>
                   <Label className="text-xs">Fecha</Label>
-                  <Input
-                    type="time"
-                    value={day.close}
-                    disabled={!day.enabled}
-                    onChange={(e) => updateDay(key, { close: e.target.value })}
-                  />
+                  <Input type="time" value={day.close} disabled={!day.enabled}
+                    onChange={(e) => updateDay(key, { close: e.target.value })} />
                 </div>
                 <div>
                   <Label className="text-xs">Almoço (início)</Label>
-                  <Input
-                    type="time"
-                    value={day.lunch_start ?? ""}
-                    disabled={!day.enabled}
-                    onChange={(e) => updateDay(key, { lunch_start: e.target.value || null })}
-                  />
+                  <Input type="time" value={day.lunch_start ?? ""} disabled={!day.enabled}
+                    onChange={(e) => updateDay(key, { lunch_start: e.target.value || null })} />
                 </div>
                 <div>
                   <Label className="text-xs">Almoço (fim)</Label>
-                  <Input
-                    type="time"
-                    value={day.lunch_end ?? ""}
-                    disabled={!day.enabled}
-                    onChange={(e) => updateDay(key, { lunch_end: e.target.value || null })}
-                  />
+                  <Input type="time" value={day.lunch_end ?? ""} disabled={!day.enabled}
+                    onChange={(e) => updateDay(key, { lunch_end: e.target.value || null })} />
                 </div>
               </div>
             );
           })}
-        </CardContent>
-      </Card>
+        </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Mensagem automática fora do horário</CardTitle>
-          <CardDescription>Texto enviado quando uma mensagem chegar fora do horário comercial.</CardDescription>
-        </CardHeader>
-        <CardContent>
+        <div>
+          <Label className="text-base">Mensagem automática fora do horário</Label>
           <Textarea
             rows={5}
+            className="mt-2"
             value={settings.out_of_hours_message}
             onChange={(e) => setSettings((s) => ({ ...s, out_of_hours_message: e.target.value }))}
             placeholder="Mensagem que será enviada automaticamente..."
           />
-        </CardContent>
-      </Card>
+        </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Feriados e datas especiais</CardTitle>
-          <CardDescription>Datas em que o atendimento estará fechado, independentemente da agenda semanal.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
+        <div className="space-y-3">
+          <Label className="text-base">Feriados e datas especiais</Label>
           <div className="flex gap-2">
             <Input
               type="date"
@@ -342,15 +286,15 @@ function BusinessHoursForm() {
               </Badge>
             ))}
           </div>
-        </CardContent>
-      </Card>
+        </div>
 
-      <div className="flex justify-end">
-        <Button onClick={save} disabled={saving}>
-          {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
-          Salvar configurações
-        </Button>
-      </div>
-    </div>
+        <div className="flex justify-end pt-2">
+          <Button onClick={save} disabled={saving}>
+            {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+            Salvar configurações
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
   );
 }
