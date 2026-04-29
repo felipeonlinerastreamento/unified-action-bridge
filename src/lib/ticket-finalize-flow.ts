@@ -103,6 +103,7 @@ export async function finalizeTicketWithFlow(
     if (registerStatusComment) {
       await insertSystemComment(ticket.id, userId, "Status alterado para finalizado (admin — sem encaminhamento)", "status_change");
     }
+    await closeLinkedZapiChat(ticket.attendance_id);
     return { routed: false };
   }
 
