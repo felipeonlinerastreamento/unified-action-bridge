@@ -28,7 +28,7 @@ import { Route as ConfiguracoesEstoqueRouteImport } from './routes/configuracoes
 import { Route as ConfiguracoesEncaminhamentoRouteImport } from './routes/configuracoes.encaminhamento'
 import { Route as ConfiguracoesCentralAtendimentoRouteImport } from './routes/configuracoes.central-atendimento'
 import { Route as ConfiguracoesAssistenteIaRouteImport } from './routes/configuracoes.assistente-ia'
-import { Route as AtendimentosTarefasRouteImport } from './routes/atendimentos.tarefas'
+import { Route as AtendimentosTarefasRouteImport } from './routes/atendimentos_.tarefas'
 import { Route as ApiPublicZapiWebhookChannelIdRouteImport } from './routes/api.public.zapi-webhook.$channelId'
 
 const RelatoriosRoute = RelatoriosRouteImport.update({
@@ -131,9 +131,9 @@ const ConfiguracoesAssistenteIaRoute =
     getParentRoute: () => ConfiguracoesRoute,
   } as any)
 const AtendimentosTarefasRoute = AtendimentosTarefasRouteImport.update({
-  id: '/tarefas',
-  path: '/tarefas',
-  getParentRoute: () => AtendimentosRoute,
+  id: '/atendimentos_/tarefas',
+  path: '/atendimentos/tarefas',
+  getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPublicZapiWebhookChannelIdRoute =
   ApiPublicZapiWebhookChannelIdRouteImport.update({
@@ -144,7 +144,7 @@ const ApiPublicZapiWebhookChannelIdRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
-  '/atendimentos': typeof AtendimentosRouteWithChildren
+  '/atendimentos': typeof AtendimentosRoute
   '/central': typeof CentralRoute
   '/configuracoes': typeof ConfiguracoesRouteWithChildren
   '/contatos': typeof ContatosRoute
@@ -167,7 +167,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/atendimentos': typeof AtendimentosRouteWithChildren
+  '/atendimentos': typeof AtendimentosRoute
   '/central': typeof CentralRoute
   '/contatos': typeof ContatosRoute
   '/crm': typeof CrmRoute
@@ -190,7 +190,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
-  '/atendimentos': typeof AtendimentosRouteWithChildren
+  '/atendimentos': typeof AtendimentosRoute
   '/central': typeof CentralRoute
   '/configuracoes': typeof ConfiguracoesRouteWithChildren
   '/contatos': typeof ContatosRoute
@@ -199,7 +199,7 @@ export interface FileRoutesById {
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
   '/relatorios': typeof RelatoriosRoute
-  '/atendimentos/tarefas': typeof AtendimentosTarefasRoute
+  '/atendimentos_/tarefas': typeof AtendimentosTarefasRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
   '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
   '/configuracoes/encaminhamento': typeof ConfiguracoesEncaminhamentoRoute
@@ -269,7 +269,7 @@ export interface FileRouteTypes {
     | '/empresas'
     | '/estoque'
     | '/relatorios'
-    | '/atendimentos/tarefas'
+    | '/atendimentos_/tarefas'
     | '/configuracoes/assistente-ia'
     | '/configuracoes/central-atendimento'
     | '/configuracoes/encaminhamento'
@@ -284,7 +284,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
-  AtendimentosRoute: typeof AtendimentosRouteWithChildren
+  AtendimentosRoute: typeof AtendimentosRoute
   CentralRoute: typeof CentralRoute
   ConfiguracoesRoute: typeof ConfiguracoesRouteWithChildren
   ContatosRoute: typeof ContatosRoute
@@ -293,6 +293,7 @@ export interface RootRouteChildren {
   EmpresasRoute: typeof EmpresasRoute
   EstoqueRoute: typeof EstoqueRoute
   RelatoriosRoute: typeof RelatoriosRoute
+  AtendimentosTarefasRoute: typeof AtendimentosTarefasRoute
   HooksRefreshTrackingRoute: typeof HooksRefreshTrackingRoute
   ApiPublicZapiWebhookChannelIdRoute: typeof ApiPublicZapiWebhookChannelIdRoute
 }
@@ -432,12 +433,12 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConfiguracoesAssistenteIaRouteImport
       parentRoute: typeof ConfiguracoesRoute
     }
-    '/atendimentos/tarefas': {
-      id: '/atendimentos/tarefas'
-      path: '/tarefas'
+    '/atendimentos_/tarefas': {
+      id: '/atendimentos_/tarefas'
+      path: '/atendimentos/tarefas'
       fullPath: '/atendimentos/tarefas'
       preLoaderRoute: typeof AtendimentosTarefasRouteImport
-      parentRoute: typeof AtendimentosRoute
+      parentRoute: typeof rootRouteImport
     }
     '/api/public/zapi-webhook/$channelId': {
       id: '/api/public/zapi-webhook/$channelId'
@@ -448,18 +449,6 @@ declare module '@tanstack/react-router' {
     }
   }
 }
-
-interface AtendimentosRouteChildren {
-  AtendimentosTarefasRoute: typeof AtendimentosTarefasRoute
-}
-
-const AtendimentosRouteChildren: AtendimentosRouteChildren = {
-  AtendimentosTarefasRoute: AtendimentosTarefasRoute,
-}
-
-const AtendimentosRouteWithChildren = AtendimentosRoute._addFileChildren(
-  AtendimentosRouteChildren,
-)
 
 interface ConfiguracoesRouteChildren {
   ConfiguracoesAssistenteIaRoute: typeof ConfiguracoesAssistenteIaRoute
@@ -489,7 +478,7 @@ const ConfiguracoesRouteWithChildren = ConfiguracoesRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
-  AtendimentosRoute: AtendimentosRouteWithChildren,
+  AtendimentosRoute: AtendimentosRoute,
   CentralRoute: CentralRoute,
   ConfiguracoesRoute: ConfiguracoesRouteWithChildren,
   ContatosRoute: ContatosRoute,
@@ -498,6 +487,7 @@ const rootRouteChildren: RootRouteChildren = {
   EmpresasRoute: EmpresasRoute,
   EstoqueRoute: EstoqueRoute,
   RelatoriosRoute: RelatoriosRoute,
+  AtendimentosTarefasRoute: AtendimentosTarefasRoute,
   HooksRefreshTrackingRoute: HooksRefreshTrackingRoute,
   ApiPublicZapiWebhookChannelIdRoute: ApiPublicZapiWebhookChannelIdRoute,
 }
