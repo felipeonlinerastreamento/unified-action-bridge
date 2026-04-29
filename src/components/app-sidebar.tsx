@@ -20,6 +20,8 @@ import {
   ArrowRightLeft,
   Sun,
   Moon,
+  CheckSquare,
+  List,
 } from "lucide-react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
