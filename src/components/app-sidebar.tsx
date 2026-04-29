@@ -70,7 +70,6 @@ const configSubItems = [
   { title: "Z-API & Bot", url: "/configuracoes/zapi", icon: MessageCircle },
   { title: "Encaminhamento", url: "/configuracoes/encaminhamento", icon: ArrowRightLeft },
   { title: "Popup Diário", url: "/configuracoes/popup-diario", icon: Sun },
-  { title: "Horário de Funcionamento", url: "/configuracoes/horario-funcionamento", icon: Clock },
   { title: "Usuários", url: "/configuracoes/usuarios", icon: UserCog },
 ];
 
