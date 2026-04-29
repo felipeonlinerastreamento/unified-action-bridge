@@ -273,3 +273,70 @@ export async function getDefaultColaboradorKey(): Promise<string | null> {
   }
   return null;
 }
+
+/**
+ * Try to resolve a GSystem cliente Key for a local company.
+ * Strategy:
+ *   1. CNPJ exact match (/clientes/{cnpj})
+ *   2. List /clientes and match by name (case-insensitive) or telefone (digits only)
+ *   3. Create a basic cliente with the available data
+ * Returns the cliente Key (string) or null if everything fails.
+ */
+export async function findOrCreateGSystemClientByCompany(params: {
+  name: string;
+  cnpj?: string | null;
+  phone?: string | null;
+}): Promise<string | null> {
+  const cleanCnpj = (params.cnpj || "").replace(/\D/g, "");
+  const cleanPhone = (params.phone || "").replace(/\D/g, "");
+  const normalizedName = (params.name || "").trim();
+
+  // 1) CNPJ exact match
+  if (cleanCnpj) {
+    try {
+      const result = await gsystemApiFetch(`/clientes/${encodeURIComponent(cleanCnpj)}`, "GET");
+      const key = Array.isArray(result)
+        ? result[0]?.Key || result[0]?.key
+        : (result as any)?.Key || (result as any)?.key;
+      if (key) return String(key);
+    } catch (err) {
+      console.log("[GSystem] cliente by CNPJ not found:", String(err).substring(0, 200));
+    }
+  }
+
+  // 2) Search by name / phone in the listing
+  if (normalizedName || cleanPhone) {
+    try {
+      const list = await gsystemApiFetch("/clientes", "GET");
+      const arr = Array.isArray(list) ? list : ((list as any)?.Items || (list as any)?.items || []);
+      if (Array.isArray(arr)) {
+        const lowerName = normalizedName.toLowerCase();
+        const match = arr.find((c: any) => {
+          const cName = String(c?.Nome || c?.nome || c?.RazaoSocial || c?.razaoSocial || "").toLowerCase();
+          const cPhone = String(c?.Telefone || c?.telefone || c?.Celular || c?.celular || "").replace(/\D/g, "");
+          if (lowerName && cName && (cName === lowerName || cName.includes(lowerName) || lowerName.includes(cName))) return true;
+          if (cleanPhone && cPhone && (cPhone === cleanPhone || cPhone.endsWith(cleanPhone) || cleanPhone.endsWith(cPhone))) return true;
+          return false;
+        });
+        const key = match?.Key || match?.key || match?.Id || match?.id;
+        if (key) return String(key);
+      }
+    } catch (err) {
+      console.log("[GSystem] cliente listing failed:", String(err).substring(0, 200));
+    }
+  }
+
+  // 3) Create a basic cliente
+  try {
+    const body: Record<string, unknown> = { Nome: normalizedName || "Cliente" };
+    if (cleanCnpj) body.CNPJ = cleanCnpj;
+    if (cleanPhone) body.Telefone = cleanPhone;
+    const created = await gsystemApiFetch("/clientes", "POST", body);
+    const key = (created as any)?.Key || (created as any)?.key || (created as any)?.Id || (created as any)?.id;
+    if (key) return String(key);
+  } catch (err) {
+    console.error("[GSystem] failed to create cliente:", String(err).substring(0, 300));
+  }
+
+  return null;
+}
