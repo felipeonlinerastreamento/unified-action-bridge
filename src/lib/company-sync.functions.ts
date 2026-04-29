@@ -28,6 +28,8 @@ const createCrmContactSchema = z.object({
   notes: z.string().max(2000).optional(),
   ticketId: z.string().uuid().optional(),
   originalPhone: z.string().max(32).optional(),
+  contactType: z.enum(["PF", "PJ"]).optional(),
+  categoryId: z.string().uuid().optional(),
 });
 
 function cleanDigits(value?: string | null) {
@@ -175,6 +177,9 @@ export const createCrmContactWithCompany = createServerFn({ method: "POST" })
         ? `${data.notes || ""}${data.notes ? "\n" : ""}Telefone original: ${cleanOriginal}`
         : data.notes || "";
 
+    const contactType = data.contactType === "PJ" ? "PJ" : "PF";
+    const categoryId = contactType === "PJ" ? (data.categoryId || null) : null;
+
     const { data: created, error } = await supabase
       .from("crm_contacts")
       .insert({
@@ -184,6 +189,8 @@ export const createCrmContactWithCompany = createServerFn({ method: "POST" })
         email: data.email || null,
         notes: notesWithOriginal,
         created_by: userId ?? null,
+        contact_type: contactType,
+        category_id: categoryId,
       })
       .select("id")
       .single();
