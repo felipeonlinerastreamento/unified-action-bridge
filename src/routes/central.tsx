@@ -1465,10 +1465,26 @@ function CentralPage() {
         console.log("[Finalize] Skipping closing message (admin opt-out)");
       }
 
-      return finalizeChat({
-        data: { channelId: selectedChannelId, chatId: selectedChatId },
-        ...await getAuthHeaders(),
-      });
+      // Always finalize the Z-API chat at the end, regardless of any prior errors.
+      // The user clicked "Finalizar" — the chat MUST leave the Central de Atendimento.
+      try {
+        await finalizeChat({
+          data: { channelId: selectedChannelId, chatId: selectedChatId },
+          ...await getAuthHeaders(),
+        });
+      } catch (err: any) {
+        console.error("[Finalize] finalizeChat failed, forcing local close:", err?.message);
+        // Hard fallback: close the chat row directly so it disappears from the list
+        try {
+          await supabase
+            .from("zapi_chats")
+            .update({ status: "finalizado", assigned_to: null })
+            .eq("id", selectedChatId);
+        } catch (e: any) {
+          console.error("[Finalize] direct close also failed:", e?.message);
+        }
+      }
+      return { success: true };
     },
     onSuccess: async () => {
       // Apply auto-routing flow (TE / category rules) on the local ticket
