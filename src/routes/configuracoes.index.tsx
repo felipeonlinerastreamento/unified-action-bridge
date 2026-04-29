@@ -11,8 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Wifi, WifiOff, Loader2, CheckCircle2, XCircle } from "lucide-react";
-import { testGsystemAuth } from "@/lib/gsystem-api.functions";
+import { Plus, Wifi, WifiOff, Loader2, CheckCircle2, XCircle, RefreshCw } from "lucide-react";
+import { forceSyncGsystemClientes, testGsystemAuth } from "@/lib/gsystem-api.functions";
 
 export const Route = createFileRoute("/configuracoes/")({
   component: ConfiguracoesIndexPage,
@@ -30,6 +30,7 @@ function ConfiguracoesIndexPage() {
           <p className="text-sm text-muted-foreground">Gerenciamento de canais e integrações com sistemas externos</p>
         </div>
         <GsystemConnectionTest />
+        <GsystemForceSync />
         <ChannelsConfig />
       </div>
     </AppLayout>
@@ -118,6 +119,56 @@ function GsystemConnectionTest() {
                 </div>
               )}
             </div>
+          </div>
+        </CardContent>
+      )}
+    </Card>
+  );
+}
+
+function GsystemForceSync() {
+  const [syncing, setSyncing] = useState(false);
+  const [summary, setSummary] = useState<any>(null);
+
+  const handleForceSync = async () => {
+    setSyncing(true);
+    setSummary(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const res = await forceSyncGsystemClientes({
+        headers: { authorization: `Bearer ${session?.access_token}` },
+      });
+      setSummary(res);
+      toast.success("Sincronização com GSystem concluída");
+    } catch (err: any) {
+      toast.error(err?.message || "Erro ao sincronizar com GSystem");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between gap-4">
+        <div>
+          <CardTitle className="text-base">Sincronização GSystem</CardTitle>
+          <p className="text-sm text-muted-foreground mt-0.5">
+            Atualiza empresas locais e vínculos a partir dos clientes do GSystem.
+          </p>
+        </div>
+        <Button size="sm" onClick={handleForceSync} disabled={syncing}>
+          {syncing ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1" />}
+          {syncing ? "Sincronizando..." : "Forçar sincronização"}
+        </Button>
+      </CardHeader>
+      {summary && (
+        <CardContent>
+          <div className="grid gap-2 text-sm sm:grid-cols-5">
+            <Badge variant="secondary">Lidos: {summary.total ?? 0}</Badge>
+            <Badge variant="secondary">Criados: {summary.created ?? 0}</Badge>
+            <Badge variant="secondary">Atualizados: {summary.updated ?? 0}</Badge>
+            <Badge variant="secondary">Vinculados: {summary.linked ?? 0}</Badge>
+            <Badge variant="secondary">Ignorados: {summary.skipped ?? 0}</Badge>
           </div>
         </CardContent>
       )}
