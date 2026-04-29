@@ -213,6 +213,11 @@ function CrmPage() {
         return false;
       }
     }
+    if (typeFilter !== "all") {
+      // Sub-clients are always treated as PJ context (linked to a company)
+      const rowType = r.kind === "direct" ? (r.raw.contact_type || "PF") : "PJ";
+      if (rowType !== typeFilter) return false;
+    }
     if (!search) return true;
     const s = search.toLowerCase();
     return (
