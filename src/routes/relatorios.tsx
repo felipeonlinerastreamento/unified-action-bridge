@@ -829,3 +829,131 @@ function EmptyChart() {
     </div>
   );
 }
+
+function NotificationsReadReport({ dateFrom, dateTo }: { dateFrom: string; dateTo: string }) {
+  const { data: notifications = [], isLoading } = useQuery({
+    queryKey: ["report-notifications-read", dateFrom, dateTo],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("notifications")
+        .select("id, title, message, type, user_id, is_read, read_at, created_at, campaign_id, show_as_popup")
+        .gte("created_at", `${dateFrom}T00:00:00`)
+        .lte("created_at", `${dateTo}T23:59:59`)
+        .order("read_at", { ascending: false, nullsFirst: false });
+      return data || [];
+    },
+  });
+
+  const { data: profiles = [] } = useQuery({
+    queryKey: ["report-notif-profiles"],
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("user_id, name");
+      return data || [];
+    },
+  });
+
+  const nameMap = useMemo(() => {
+    const m: Record<string, string> = {};
+    profiles.forEach((p: any) => { m[p.user_id] = p.name || p.user_id.slice(0, 8); });
+    return m;
+  }, [profiles]);
+
+  const total = notifications.length;
+  const read = notifications.filter((n: any) => n.is_read).length;
+  const unread = total - read;
+  const popups = notifications.filter((n: any) => n.show_as_popup).length;
+
+  if (isLoading) return <LoadingState />;
+
+  return (
+    <>
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+        <ReportKpiCard title="Total enviadas" value={total} icon={Bell} subtitle={`${dateFrom} a ${dateTo}`} />
+        <ReportKpiCard title="Lidas" value={read} icon={Activity} subtitle={total ? `${Math.round((read/total)*100)}%` : "0%"} />
+        <ReportKpiCard title="Não lidas" value={unread} icon={Clock} />
+        <ReportKpiCard title="Pop-ups" value={popups} icon={MessageSquare} />
+      </div>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">Notificações lidas no período</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {notifications.filter((n: any) => n.is_read).length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-6">Nenhuma notificação lida no período.</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Título</TableHead>
+                    <TableHead>Usuário</TableHead>
+                    <TableHead>Enviada em</TableHead>
+                    <TableHead>Lida em</TableHead>
+                    <TableHead>Tempo até leitura</TableHead>
+                    <TableHead>Tipo</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {notifications.filter((n: any) => n.is_read).map((n: any) => {
+                    const sent = new Date(n.created_at);
+                    const readAt = n.read_at ? new Date(n.read_at) : null;
+                    const diffMin = readAt ? Math.round((readAt.getTime() - sent.getTime()) / 60000) : null;
+                    return (
+                      <TableRow key={n.id}>
+                        <TableCell className="font-medium">{n.title}</TableCell>
+                        <TableCell className="text-xs">{nameMap[n.user_id] || n.user_id?.slice(0, 8)}</TableCell>
+                        <TableCell className="text-xs whitespace-nowrap">{sent.toLocaleString("pt-BR")}</TableCell>
+                        <TableCell className="text-xs whitespace-nowrap">
+                          {readAt ? readAt.toLocaleString("pt-BR") : "-"}
+                        </TableCell>
+                        <TableCell className="text-xs">
+                          {diffMin === null ? "-" : diffMin < 60 ? `${diffMin} min` : `${Math.floor(diffMin/60)}h ${diffMin%60}m`}
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={n.show_as_popup ? "default" : "secondary"} className="text-[10px]">
+                            {n.show_as_popup ? "Pop-up" : n.type}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">Não lidas</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {notifications.filter((n: any) => !n.is_read).length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-6">Todas foram lidas!</p>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Título</TableHead>
+                  <TableHead>Usuário</TableHead>
+                  <TableHead>Enviada em</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {notifications.filter((n: any) => !n.is_read).map((n: any) => (
+                  <TableRow key={n.id}>
+                    <TableCell className="font-medium">{n.title}</TableCell>
+                    <TableCell className="text-xs">{nameMap[n.user_id] || n.user_id?.slice(0, 8)}</TableCell>
+                    <TableCell className="text-xs whitespace-nowrap">{new Date(n.created_at).toLocaleString("pt-BR")}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+        </CardContent>
+      </Card>
+    </>
+  );
+}
