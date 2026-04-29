@@ -278,7 +278,7 @@ function CrmPage() {
             </div>
 
             <Card className="p-3">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+              <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
                 <div className="relative md:col-span-2">
                   <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                   <Input
@@ -288,6 +288,17 @@ function CrmPage() {
                     onChange={(e) => setSearch(e.target.value)}
                   />
                 </div>
+
+                <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as any)}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="PF / PJ" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">PF e PJ</SelectItem>
+                    <SelectItem value="PF">Pessoa Física (PF)</SelectItem>
+                    <SelectItem value="PJ">Pessoa Jurídica (PJ)</SelectItem>
+                  </SelectContent>
+                </Select>
 
                 <Select value={companyFilter} onValueChange={setCompanyFilter}>
                   <SelectTrigger>
@@ -317,7 +328,7 @@ function CrmPage() {
               </div>
 
               <div className="flex items-center gap-2 mt-3">
-                <span className="text-xs text-muted-foreground">Tipo:</span>
+                <span className="text-xs text-muted-foreground">Origem:</span>
                 <Button
                   size="sm"
                   variant={viewMode === "all" ? "default" : "outline"}
