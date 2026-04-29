@@ -1168,6 +1168,58 @@ function CentralPage() {
     onError: (err: any) => toast.error(err?.message || "Erro ao enviar mensagem"),
   });
 
+  // Send media (audio / image / video / document)
+  const mediaMutation = useMutation({
+    mutationFn: async (input: {
+      kind: "audio" | "image" | "video" | "document";
+      dataUrl: string;
+      fileName?: string;
+      caption?: string;
+      extension?: string;
+    }) => {
+      if (!selectedChatId) throw new Error("Selecione uma conversa");
+      return sendMedia({
+        data: { chatId: selectedChatId, ...input },
+        ...await getAuthHeaders(),
+      });
+    },
+    onSuccess: (_d, vars) => {
+      const labels: Record<string, string> = {
+        audio: "Áudio enviado",
+        image: "Imagem enviada",
+        video: "Vídeo enviado",
+        document: "Documento enviado",
+      };
+      toast.success(labels[vars.kind] || "Mídia enviada");
+      queryClient.invalidateQueries({ queryKey: ["chat-detail", selectedChannelId, selectedChatId] });
+      queryClient.invalidateQueries({ queryKey: ["zapi-messages"] });
+    },
+    onError: (err: any) => toast.error(err?.message || "Erro ao enviar mídia"),
+  });
+
+  // File picker handler (attach button)
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const handleFilePicked = async (file: File) => {
+    if (!file) return;
+    if (file.size > 12 * 1024 * 1024) {
+      toast.error("Arquivo muito grande (máx. 12 MB)");
+      return;
+    }
+    const kind: "image" | "video" | "audio" | "document" =
+      file.type.startsWith("image/") ? "image" :
+      file.type.startsWith("video/") ? "video" :
+      file.type.startsWith("audio/") ? "audio" :
+      "document";
+    const ext = (file.name.split(".").pop() || "bin").toLowerCase();
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const r = new FileReader();
+      r.onerror = () => reject(r.error);
+      r.onload = () => resolve(String(r.result || ""));
+      r.readAsDataURL(file);
+    });
+    await mediaMutation.mutateAsync({ kind, dataUrl, fileName: file.name, extension: ext });
+  };
+
   // Finalize chat
   const finalizeMutation = useMutation({
     mutationFn: async ({ notes, status, tipoPendencia, skipClosingMessage: skipMsg }: { notes?: string; status?: string; tipoPendencia?: string; skipClosingMessage?: boolean } = {}) => {
