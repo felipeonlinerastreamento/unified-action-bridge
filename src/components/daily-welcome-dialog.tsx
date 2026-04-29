@@ -27,24 +27,50 @@ export function DailyWelcomeDialog() {
   const { user, profile, isAuthenticated } = useAuth();
   const [open, setOpen] = useState(false);
 
+  // Load global settings (admin/gestor configurable)
+  const { data: settings } = useQuery({
+    queryKey: ["daily-welcome-settings"],
+    enabled: isAuthenticated,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("daily_welcome_settings" as any)
+        .select("*")
+        .limit(1)
+        .maybeSingle();
+      return (data as any) || null;
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+
   // Decide whether to show on mount
   useEffect(() => {
     if (!isAuthenticated || !user?.id) return;
+    if (settings && settings.is_enabled === false) return;
     const key = `${STORAGE_PREFIX}${user.id}:${todayKey()}`;
     if (typeof window === "undefined") return;
     if (!localStorage.getItem(key)) {
-      // Small delay so it doesn't fight with route hydration
       const t = setTimeout(() => setOpen(true), 600);
       return () => clearTimeout(t);
     }
-  }, [isAuthenticated, user?.id]);
+  }, [isAuthenticated, user?.id, settings]);
 
-  const { data: quote } = useQuery({
+  const showQuote = settings?.show_quote !== false;
+  const quoteSource: "ai" | "manual" = settings?.quote_source === "manual" ? "manual" : "ai";
+
+  const { data: aiQuote } = useQuery({
     queryKey: ["daily-quote", todayKey()],
     queryFn: () => getDailyQuote(),
-    enabled: open,
-    staleTime: 1000 * 60 * 60, // 1h
+    enabled: open && showQuote && quoteSource === "ai",
+    staleTime: 1000 * 60 * 60,
   });
+
+  const quote = showQuote
+    ? quoteSource === "manual"
+      ? settings?.manual_quote
+        ? { content: settings.manual_quote, author: settings.manual_quote_author || "" }
+        : null
+      : aiQuote
+    : null;
 
   const { data: pending } = useQuery({
     queryKey: ["daily-pending", user?.id],
