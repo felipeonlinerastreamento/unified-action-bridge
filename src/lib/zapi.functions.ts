@@ -435,6 +435,71 @@ export const sendText = createServerFn({ method: "POST" })
     return { success: true, ...result };
   });
 
+// ------------ Send media (audio / image / video / document) ------------
+
+export const sendMedia = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    z.object({
+      chatId: z.string().min(1).max(255),
+      kind: z.enum(["audio", "image", "video", "document"]),
+      // base64 data URL — capped at ~12MB encoded to stay safe with Worker payload limits
+      dataUrl: z.string().min(1).max(16_000_000),
+      fileName: z.string().min(1).max(255).optional(),
+      caption: z.string().max(2000).optional(),
+      extension: z.string().min(1).max(10).optional(),
+    }).parse
+  )
+  .handler(async ({ data, context }) => {
+    const { data: chat, error: chatErr } = await context.supabase
+      .from("zapi_chats")
+      .select("phone, channel_id")
+      .eq("id", data.chatId)
+      .single();
+    if (chatErr || !chat) throw new Error("Conversa não encontrada");
+
+    const channel = await loadZapiChannel(context.supabase, chat.channel_id);
+
+    const result = await zapiSendMedia(channel, chat.phone, data.kind, data.dataUrl, {
+      fileName: data.fileName,
+      caption: data.caption,
+      extension: data.extension,
+    });
+
+    // Persist message — store the Z-API hosted URL when returned, otherwise keep the data URL
+    // so the bubble can play/preview it locally until the webhook updates with the public URL.
+    const hostedUrl =
+      result?.audioUrl || result?.imageUrl || result?.videoUrl || result?.documentUrl || null;
+
+    const labels: Record<string, string> = {
+      audio: "[áudio]",
+      image: "[imagem]",
+      video: "[vídeo]",
+      document: "[documento]",
+    };
+
+    await context.supabase.from("zapi_messages").insert({
+      chat_id: data.chatId,
+      zapi_message_id: result?.messageId || result?.id || null,
+      from_me: true,
+      sent_by_user_id: context.userId,
+      text: data.caption || labels[data.kind],
+      media_url: hostedUrl || data.dataUrl,
+      media_type: data.kind,
+      status: "sent",
+    });
+
+    await context.supabase
+      .from("zapi_chats")
+      .update({
+        last_message_at: new Date().toISOString(),
+        last_message_preview: (data.caption || labels[data.kind]).slice(0, 120),
+      })
+      .eq("id", data.chatId);
+
+    return { success: true, ...result };
+  });
+
 export const finalizeChat = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
