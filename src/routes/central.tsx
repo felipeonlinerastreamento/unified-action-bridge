@@ -2295,6 +2295,37 @@ function CentralPage() {
                           setMessageInput((prev) => prev ? `${prev} ${resolved}` : resolved);
                         }}
                       />
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*,audio/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) handleFilePicked(f);
+                          if (fileInputRef.current) fileInputRef.current.value = "";
+                        }}
+                      />
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        type="button"
+                        title="Anexar arquivo"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={mediaMutation.isPending || chatDetail?.status === 3 || whisperMode}
+                      >
+                        {mediaMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Paperclip className="h-4 w-4" />
+                        )}
+                      </Button>
+                      <AudioRecorderButton
+                        disabled={mediaMutation.isPending || chatDetail?.status === 3 || whisperMode}
+                        onRecorded={async (dataUrl) =>
+                          mediaMutation.mutateAsync({ kind: "audio", dataUrl })
+                        }
+                      />
                       <Input
                         placeholder={whisperMode ? "Sussurro interno (não vai para o cliente)" : "Digite uma mensagem..."}
                         value={messageInput}
