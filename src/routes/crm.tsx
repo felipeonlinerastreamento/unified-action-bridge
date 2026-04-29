@@ -131,7 +131,7 @@ function CrmPage() {
   });
 
   const resetForm = () => {
-    setForm({ name: "", phone: "", email: "", notes: "", companyId: "", categoryId: "" });
+    setForm({ name: "", phone: "", email: "", notes: "", companyId: "", categoryId: "", contactType: "PF" });
     setEditingContact(null);
   };
 
@@ -144,6 +144,7 @@ function CrmPage() {
       notes: contact.notes || "",
       companyId: contact.company_id || "",
       categoryId: contact.category_id || "",
+      contactType: (contact.contact_type === "PJ" ? "PJ" : "PF"),
     });
     setDialogOpen(true);
   };
