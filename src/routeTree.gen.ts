@@ -24,6 +24,7 @@ import { Route as HooksRefreshTrackingRouteImport } from './routes/hooks/refresh
 import { Route as ConfiguracoesZapiRouteImport } from './routes/configuracoes.zapi'
 import { Route as ConfiguracoesUsuariosRouteImport } from './routes/configuracoes.usuarios'
 import { Route as ConfiguracoesPopupDiarioRouteImport } from './routes/configuracoes.popup-diario'
+import { Route as ConfiguracoesHorarioFuncionamentoRouteImport } from './routes/configuracoes.horario-funcionamento'
 import { Route as ConfiguracoesFluxoAtendimentoRouteImport } from './routes/configuracoes.fluxo-atendimento'
 import { Route as ConfiguracoesEstoqueRouteImport } from './routes/configuracoes.estoque'
 import { Route as ConfiguracoesEncaminhamentoRouteImport } from './routes/configuracoes.encaminhamento'
@@ -108,6 +109,12 @@ const ConfiguracoesPopupDiarioRoute =
     path: '/popup-diario',
     getParentRoute: () => ConfiguracoesRoute,
   } as any)
+const ConfiguracoesHorarioFuncionamentoRoute =
+  ConfiguracoesHorarioFuncionamentoRouteImport.update({
+    id: '/horario-funcionamento',
+    path: '/horario-funcionamento',
+    getParentRoute: () => ConfiguracoesRoute,
+  } as any)
 const ConfiguracoesFluxoAtendimentoRoute =
   ConfiguracoesFluxoAtendimentoRouteImport.update({
     id: '/fluxo-atendimento',
@@ -166,6 +173,7 @@ export interface FileRoutesByFullPath {
   '/configuracoes/encaminhamento': typeof ConfiguracoesEncaminhamentoRoute
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
   '/configuracoes/fluxo-atendimento': typeof ConfiguracoesFluxoAtendimentoRoute
+  '/configuracoes/horario-funcionamento': typeof ConfiguracoesHorarioFuncionamentoRoute
   '/configuracoes/popup-diario': typeof ConfiguracoesPopupDiarioRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
@@ -189,6 +197,7 @@ export interface FileRoutesByTo {
   '/configuracoes/encaminhamento': typeof ConfiguracoesEncaminhamentoRoute
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
   '/configuracoes/fluxo-atendimento': typeof ConfiguracoesFluxoAtendimentoRoute
+  '/configuracoes/horario-funcionamento': typeof ConfiguracoesHorarioFuncionamentoRoute
   '/configuracoes/popup-diario': typeof ConfiguracoesPopupDiarioRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
@@ -214,6 +223,7 @@ export interface FileRoutesById {
   '/configuracoes/encaminhamento': typeof ConfiguracoesEncaminhamentoRoute
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
   '/configuracoes/fluxo-atendimento': typeof ConfiguracoesFluxoAtendimentoRoute
+  '/configuracoes/horario-funcionamento': typeof ConfiguracoesHorarioFuncionamentoRoute
   '/configuracoes/popup-diario': typeof ConfiguracoesPopupDiarioRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
@@ -240,6 +250,7 @@ export interface FileRouteTypes {
     | '/configuracoes/encaminhamento'
     | '/configuracoes/estoque'
     | '/configuracoes/fluxo-atendimento'
+    | '/configuracoes/horario-funcionamento'
     | '/configuracoes/popup-diario'
     | '/configuracoes/usuarios'
     | '/configuracoes/zapi'
@@ -263,6 +274,7 @@ export interface FileRouteTypes {
     | '/configuracoes/encaminhamento'
     | '/configuracoes/estoque'
     | '/configuracoes/fluxo-atendimento'
+    | '/configuracoes/horario-funcionamento'
     | '/configuracoes/popup-diario'
     | '/configuracoes/usuarios'
     | '/configuracoes/zapi'
@@ -287,6 +299,7 @@ export interface FileRouteTypes {
     | '/configuracoes/encaminhamento'
     | '/configuracoes/estoque'
     | '/configuracoes/fluxo-atendimento'
+    | '/configuracoes/horario-funcionamento'
     | '/configuracoes/popup-diario'
     | '/configuracoes/usuarios'
     | '/configuracoes/zapi'
@@ -418,6 +431,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConfiguracoesPopupDiarioRouteImport
       parentRoute: typeof ConfiguracoesRoute
     }
+    '/configuracoes/horario-funcionamento': {
+      id: '/configuracoes/horario-funcionamento'
+      path: '/horario-funcionamento'
+      fullPath: '/configuracoes/horario-funcionamento'
+      preLoaderRoute: typeof ConfiguracoesHorarioFuncionamentoRouteImport
+      parentRoute: typeof ConfiguracoesRoute
+    }
     '/configuracoes/fluxo-atendimento': {
       id: '/configuracoes/fluxo-atendimento'
       path: '/fluxo-atendimento'
@@ -476,6 +496,7 @@ interface ConfiguracoesRouteChildren {
   ConfiguracoesEncaminhamentoRoute: typeof ConfiguracoesEncaminhamentoRoute
   ConfiguracoesEstoqueRoute: typeof ConfiguracoesEstoqueRoute
   ConfiguracoesFluxoAtendimentoRoute: typeof ConfiguracoesFluxoAtendimentoRoute
+  ConfiguracoesHorarioFuncionamentoRoute: typeof ConfiguracoesHorarioFuncionamentoRoute
   ConfiguracoesPopupDiarioRoute: typeof ConfiguracoesPopupDiarioRoute
   ConfiguracoesUsuariosRoute: typeof ConfiguracoesUsuariosRoute
   ConfiguracoesZapiRoute: typeof ConfiguracoesZapiRoute
@@ -488,6 +509,8 @@ const ConfiguracoesRouteChildren: ConfiguracoesRouteChildren = {
   ConfiguracoesEncaminhamentoRoute: ConfiguracoesEncaminhamentoRoute,
   ConfiguracoesEstoqueRoute: ConfiguracoesEstoqueRoute,
   ConfiguracoesFluxoAtendimentoRoute: ConfiguracoesFluxoAtendimentoRoute,
+  ConfiguracoesHorarioFuncionamentoRoute:
+    ConfiguracoesHorarioFuncionamentoRoute,
   ConfiguracoesPopupDiarioRoute: ConfiguracoesPopupDiarioRoute,
   ConfiguracoesUsuariosRoute: ConfiguracoesUsuariosRoute,
   ConfiguracoesZapiRoute: ConfiguracoesZapiRoute,
