@@ -233,15 +233,49 @@ export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
             // Run bot only on incoming customer messages — skip for groups
             if (!p.fromMe && text && !isGroupMessage) {
               try {
-                await processIncomingForBot({
-                  channelId,
-                  chatId,
-                  phone,
-                  contactName: p.senderName || existing?.contact_name || null,
-                  incomingText: text,
-                });
+                // Checa horário de funcionamento ANTES do bot
+                const bh = await loadBusinessHoursSettings(supabaseAdmin);
+                const withinHours = bh ? isWithinBusinessHours(bh) : true;
+
+                if (bh && bh.is_enabled && !withinHours) {
+                  // Fora do horário: envia mensagem de ausência (com cooldown) e NÃO executa bot
+                  const canSend = await shouldSendOutOfHoursMessage(
+                    supabaseAdmin,
+                    phone,
+                    bh.cooldown_minutes,
+                  );
+                  if (canSend && bh.out_of_hours_message?.trim()) {
+                    try {
+                      const creds = await loadZapiChannel(supabaseAdmin, channelId);
+                      await zapiSendText(creds, phone, bh.out_of_hours_message);
+                      await supabaseAdmin.from("zapi_messages").insert({
+                        chat_id: chatId,
+                        from_me: true,
+                        text: bh.out_of_hours_message,
+                        status: "sent",
+                      });
+                      await logOutOfHoursMessage(
+                        supabaseAdmin,
+                        phone,
+                        chatId ?? null,
+                        bh.out_of_hours_message,
+                      );
+                    } catch (err) {
+                      console.error("[zapi-webhook] failed to send out-of-hours message:", err);
+                    }
+                  }
+                } else {
+                  // Dentro do horário (ou checagem desabilitada): segue para o fluxo do bot
+                  await processIncomingForBot({
+                    channelId,
+                    chatId,
+                    phone,
+                    contactName: p.senderName || existing?.contact_name || null,
+                    incomingText: text,
+                  });
+                }
               } catch (e) {
-                console.error("[zapi-webhook] bot error:", e);
+                console.error("[zapi-webhook] bot/business-hours error:", e);
               }
             }
           }
