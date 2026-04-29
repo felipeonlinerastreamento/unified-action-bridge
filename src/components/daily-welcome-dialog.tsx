@@ -144,24 +144,26 @@ export function DailyWelcomeDialog() {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-amber-500" />
-            Bom dia, {profile?.name?.split(" ")[0] || "tudo certo?"}
+            {settings?.greeting_text || "Bom dia"}, {profile?.name?.split(" ")[0] || "tudo certo?"}
           </DialogTitle>
           <DialogDescription>Resumo das suas atividades pendentes hoje.</DialogDescription>
         </DialogHeader>
 
         {/* Motivational quote */}
-        <div className="rounded-lg border bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 p-4">
-          {quote ? (
-            <>
-              <p className="text-sm italic leading-relaxed">"{quote.content}"</p>
-              {quote.author && (
-                <p className="text-xs text-muted-foreground mt-2 text-right">— {quote.author}</p>
-              )}
-            </>
-          ) : (
-            <p className="text-sm text-muted-foreground">Carregando inspiração do dia…</p>
-          )}
-        </div>
+        {showQuote && (
+          <div className="rounded-lg border bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 p-4">
+            {quote ? (
+              <>
+                <p className="text-sm italic leading-relaxed">"{quote.content}"</p>
+                {quote.author && (
+                  <p className="text-xs text-muted-foreground mt-2 text-right">— {quote.author}</p>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">Carregando inspiração do dia…</p>
+            )}
+          </div>
+        )}
 
         <ScrollArea className="max-h-[40vh] pr-2">
           <div className="space-y-3">
