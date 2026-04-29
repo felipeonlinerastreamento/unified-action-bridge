@@ -5,6 +5,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { loadZapiChannel, zapiFetch, zapiGetStatus, zapiSendText } from "./zapi.server";
+import { isGroupPhoneIdentifier } from "./chat-utils";
 
 // ------------ Status / chats list ------------
 
@@ -65,6 +66,9 @@ export const listAllOpenChats = createServerFn({ method: "POST" })
         }
 
         for (const row of finalizedRows || []) {
+          // Skip group chats: once finalized they should NOT auto-reopen
+          // because groups receive constant inbound messages from members.
+          if (isGroupPhoneIdentifier(row.phone)) continue;
           const latest = latestByChat.get(row.id);
           if (latest && latest.from_me === false) {
             reactivatedRows.push({ ...row, status: "aguardando" });
