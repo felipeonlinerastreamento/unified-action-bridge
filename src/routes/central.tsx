@@ -31,6 +31,7 @@ import {
   getChatDetail,
   getChatMessages,
   sendText,
+  sendMedia,
   finalizeChat,
   createChat,
   getChannelStatus,
