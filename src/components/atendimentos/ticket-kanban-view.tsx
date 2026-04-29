@@ -6,6 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useTesteEquipamentoSettings } from "@/hooks/use-teste-equipamento-settings";
+import { useAuth } from "@/hooks/use-auth";
 import { finalizeTicketWithFlow } from "@/lib/ticket-finalize-flow";
 import { LiberacaoBadge } from "./liberacao-badge";
 
@@ -38,6 +39,8 @@ export function TicketKanbanView({ tickets, onSelect, onRefetch }: TicketKanbanV
     },
   });
   const { data: teSettings } = useTesteEquipamentoSettings();
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole("admin");
 
   const grouped = useMemo(() => {
     const map: Record<string, any[]> = {};
@@ -59,6 +62,7 @@ export function TicketKanbanView({ tickets, onSelect, onRefetch }: TicketKanbanV
         ticket,
         userId: user?.id || null,
         teSettings,
+        bypassRouting: isAdmin,
       });
       if (res.error) {
         toast.error("Erro ao finalizar: " + res.error);
