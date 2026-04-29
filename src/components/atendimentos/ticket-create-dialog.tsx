@@ -98,6 +98,8 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
   const isLiberacao = isLiberacaoCategory(category);
   const [liberacaoItems, setLiberacaoItems] = useState<LiberacaoLineItem[]>([]);
   const [liberacaoDate, setLiberacaoDate] = useState<string>("");
+  const isSuprimento = isSuprimentoCategory(category);
+  const [suprimentoItems, setSuprimentoItems] = useState<SuprimentoLineItem[]>([]);
 
   const getAuthHeaders = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
