@@ -72,36 +72,46 @@ export function DailyWelcomeDialog() {
       : aiQuote
     : null;
 
+  const showReminders = settings?.show_reminders !== false;
+  const showTickets = settings?.show_tickets !== false;
+  const showTasks = settings?.show_tasks !== false;
+
   const { data: pending } = useQuery({
-    queryKey: ["daily-pending", user?.id],
+    queryKey: ["daily-pending", user?.id, showReminders, showTickets, showTasks],
     enabled: open && !!user?.id,
     queryFn: async () => {
       if (!user?.id) return { reminders: [], tickets: [], tasks: [] };
       const nowIso = new Date().toISOString();
 
       const [remindersRes, ticketsRes, tasksRes] = await Promise.all([
-        supabase
-          .from("ticket_reminders")
-          .select("id, ticket_id, reminder_date, reminder_note")
-          .eq("created_by", user.id)
-          .eq("is_dismissed", false)
-          .lte("reminder_date", nowIso)
-          .order("reminder_date", { ascending: true })
-          .limit(20),
-        supabase
-          .from("service_tickets")
-          .select("id, attendance_id, contact_name, status, priority, category")
-          .eq("assigned_to", user.id)
-          .in("status", ["aberto", "em_andamento"] as any)
-          .order("created_at", { ascending: false })
-          .limit(20),
-        supabase
-          .from("tasks" as any)
-          .select("id, title, due_date, priority")
-          .eq("assigned_to", user.id)
-          .neq("status", "completed")
-          .order("due_date", { ascending: true, nullsFirst: false })
-          .limit(20),
+        showReminders
+          ? supabase
+              .from("ticket_reminders")
+              .select("id, ticket_id, reminder_date, reminder_note")
+              .eq("created_by", user.id)
+              .eq("is_dismissed", false)
+              .lte("reminder_date", nowIso)
+              .order("reminder_date", { ascending: true })
+              .limit(20)
+          : Promise.resolve({ data: [] as any[] }),
+        showTickets
+          ? supabase
+              .from("service_tickets")
+              .select("id, attendance_id, contact_name, status, priority, category")
+              .eq("assigned_to", user.id)
+              .in("status", ["aberto", "em_andamento"] as any)
+              .order("created_at", { ascending: false })
+              .limit(20)
+          : Promise.resolve({ data: [] as any[] }),
+        showTasks
+          ? supabase
+              .from("tasks" as any)
+              .select("id, title, due_date, priority")
+              .eq("assigned_to", user.id)
+              .neq("status", "completed")
+              .order("due_date", { ascending: true, nullsFirst: false })
+              .limit(20)
+          : Promise.resolve({ data: [] as any[] }),
       ]);
 
       return {
