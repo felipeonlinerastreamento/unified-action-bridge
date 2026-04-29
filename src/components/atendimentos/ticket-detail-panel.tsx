@@ -150,6 +150,8 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   });
 
   const userId = currentUser?.id ?? null;
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole("admin");
 
   const addComment = async () => {
     if (!comment.trim() || !ticket?.id) return;
