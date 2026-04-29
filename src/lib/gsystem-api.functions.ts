@@ -892,7 +892,7 @@ export const createPendenciaFromAtendimento = createServerFn({ method: "POST" })
     }).parse
   )
   .handler(async ({ data, context }) => {
-    const { gsystemApiFetch } = await import("@/lib/gsystem-api.server");
+    const { gsystemApiFetch, findOrCreateGSystemClientByCompany } = await import("@/lib/gsystem-api.server");
     const { supabase } = context;
 
     let clienteKey: string | null = null;
@@ -913,9 +913,11 @@ export const createPendenciaFromAtendimento = createServerFn({ method: "POST" })
           companyName = company?.name || "";
           observacao = `Sub-cliente: ${subClient.name} | Tel: ${subClient.phone}${subClient.notes ? ` | ${subClient.notes}` : ""}`;
 
-          if (company?.cnpj) {
-            clienteKey = await findOrCreateGSystemClient(gsystemApiFetch, company.cnpj, company.name, subClient.phone);
-          }
+          clienteKey = await findOrCreateGSystemClientByCompany({
+            name: company?.name || subClient.name,
+            cnpj: company?.cnpj || null,
+            phone: subClient.phone || data.contactPhone || null,
+          });
         }
       }
 
@@ -930,9 +932,11 @@ export const createPendenciaFromAtendimento = createServerFn({ method: "POST" })
         if (company) {
           companyName = company.name;
           const phone = company.phone || data.contactPhone || "";
-          if (company.cnpj) {
-            clienteKey = await findOrCreateGSystemClient(gsystemApiFetch, company.cnpj, company.name, phone);
-          }
+          clienteKey = await findOrCreateGSystemClientByCompany({
+            name: company.name,
+            cnpj: company.cnpj || null,
+            phone,
+          });
         }
       }
 
