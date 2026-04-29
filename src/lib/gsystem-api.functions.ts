@@ -950,19 +950,31 @@ export const createPendenciaFromAtendimento = createServerFn({ method: "POST" })
 
         if (contact) {
           const company = contact.companies as any;
-          if (company?.cnpj) {
+          if (company) {
             companyName = company.name;
-            clienteKey = await findOrCreateGSystemClient(gsystemApiFetch, company.cnpj, company.name, contact.phone);
+            clienteKey = await findOrCreateGSystemClientByCompany({
+              name: company.name || contact.name,
+              cnpj: company.cnpj || null,
+              phone: contact.phone || null,
+            });
           } else {
             // Create basic client from CRM contact
-            clienteKey = await findOrCreateGSystemClient(gsystemApiFetch, null, contact.name, contact.phone);
+            clienteKey = await findOrCreateGSystemClientByCompany({
+              name: contact.name,
+              cnpj: null,
+              phone: contact.phone || null,
+            });
           }
         }
       }
 
       // 4. Fallback: create basic client from contact info
       if (!clienteKey && (data.contactName || data.contactPhone)) {
-        clienteKey = await findOrCreateGSystemClient(gsystemApiFetch, null, data.contactName || "Contato", data.contactPhone || "");
+        clienteKey = await findOrCreateGSystemClientByCompany({
+          name: data.contactName || "Contato",
+          cnpj: null,
+          phone: data.contactPhone || null,
+        });
       }
 
       // Build pendência body
@@ -989,6 +1001,7 @@ export const createPendenciaFromAtendimento = createServerFn({ method: "POST" })
       if (clienteKey) {
         pendenciaBody.Cliente = clienteKey;
       }
+      pendenciaBody.Veiculos = [];
 
       console.log("[Pendencia] Creating pendência:", JSON.stringify(pendenciaBody).substring(0, 500));
 
