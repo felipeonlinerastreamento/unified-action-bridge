@@ -42,14 +42,20 @@ export function DailyWelcomeDialog() {
     staleTime: 1000 * 60 * 5,
   });
 
-  // Decide whether to show on mount
+  // Decide whether to show on mount (once per day per user)
   useEffect(() => {
     if (!isAuthenticated || !user?.id) return;
     if (settings && settings.is_enabled === false) return;
-    const key = `${STORAGE_PREFIX}${user.id}:${todayKey()}`;
     if (typeof window === "undefined") return;
+    const key = `${STORAGE_PREFIX}${user.id}:${todayKey()}`;
     if (!localStorage.getItem(key)) {
-      const t = setTimeout(() => setOpen(true), 600);
+      const t = setTimeout(() => {
+        // Mark as shown immediately so reloads/navigations don't reopen it today
+        try {
+          localStorage.setItem(key, "1");
+        } catch {}
+        setOpen(true);
+      }, 600);
       return () => clearTimeout(t);
     }
   }, [isAuthenticated, user?.id, settings]);
