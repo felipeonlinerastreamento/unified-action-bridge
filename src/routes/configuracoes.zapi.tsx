@@ -40,6 +40,7 @@ function ZapiPage() {
         </div>
 
         <ZapiConnectionConfig />
+        <BusinessHoursForm />
         <ZapiBotFlowEditor />
         <ZapiMessageTemplatesConfig />
         <ZapiQuickRepliesConfig />
