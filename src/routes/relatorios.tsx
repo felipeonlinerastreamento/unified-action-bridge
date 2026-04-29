@@ -784,6 +784,10 @@ function RelatoriosPage() {
                 </CardContent>
               </Card>
             </TabsContent>
+
+            <TabsContent value="notificacoes" className="space-y-4">
+              <NotificationsReadReport dateFrom={dateFrom} dateTo={dateTo} />
+            </TabsContent>
           </Tabs>
         </div>
       </div>
