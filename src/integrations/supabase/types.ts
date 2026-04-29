@@ -1225,35 +1225,89 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_campaigns: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          created_by_name: string
+          id: string
+          message: string
+          recipients_count: number
+          show_as_popup: boolean
+          target_id: string | null
+          target_label: string
+          target_type: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string
+          id?: string
+          message?: string
+          recipients_count?: number
+          show_as_popup?: boolean
+          target_id?: string | null
+          target_label?: string
+          target_type: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string
+          id?: string
+          message?: string
+          recipients_count?: number
+          show_as_popup?: boolean
+          target_id?: string | null
+          target_label?: string
+          target_type?: string
+          title?: string
+        }
+        Relationships: []
+      }
       notifications: {
         Row: {
+          campaign_id: string | null
           created_at: string
           id: string
           is_read: boolean
           message: string
           metadata: Json | null
+          popup_dismissed_at: string | null
+          read_at: string | null
+          show_as_popup: boolean
           ticket_id: string | null
           title: string
           type: string
           user_id: string
         }
         Insert: {
+          campaign_id?: string | null
           created_at?: string
           id?: string
           is_read?: boolean
           message?: string
           metadata?: Json | null
+          popup_dismissed_at?: string | null
+          read_at?: string | null
+          show_as_popup?: boolean
           ticket_id?: string | null
           title: string
           type: string
           user_id: string
         }
         Update: {
+          campaign_id?: string | null
           created_at?: string
           id?: string
           is_read?: boolean
           message?: string
           metadata?: Json | null
+          popup_dismissed_at?: string | null
+          read_at?: string | null
+          show_as_popup?: boolean
           ticket_id?: string | null
           title?: string
           type?: string

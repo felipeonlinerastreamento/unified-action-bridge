@@ -22,6 +22,7 @@ import {
   Moon,
   CheckSquare,
   List,
+  Bell,
 } from "lucide-react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
@@ -70,6 +71,7 @@ const configSubItems = [
   { title: "Encaminhamento", url: "/configuracoes/encaminhamento", icon: ArrowRightLeft },
   { title: "Popup Diário", url: "/configuracoes/popup-diario", icon: Sun },
   { title: "Usuários", url: "/configuracoes/usuarios", icon: UserCog },
+  { title: "Notificações", url: "/configuracoes/notificacoes", icon: Bell },
 ];
 
 export function AppSidebar() {

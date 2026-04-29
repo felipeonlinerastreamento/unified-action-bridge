@@ -3,6 +3,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { NotificationsBell } from "@/components/notifications-bell";
 import { DailyWelcomeDialog } from "@/components/daily-welcome-dialog";
+import { NotificationPopup } from "@/components/notification-popup";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -18,6 +19,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
       <DailyWelcomeDialog />
+      <NotificationPopup />
       <Toaster />
     </SidebarProvider>
   );
