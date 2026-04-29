@@ -793,6 +793,7 @@ export type Database = {
           created_at: string
           id: string
           quote_date: string
+          user_id: string | null
         }
         Insert: {
           author?: string | null
@@ -800,6 +801,7 @@ export type Database = {
           created_at?: string
           id?: string
           quote_date: string
+          user_id?: string | null
         }
         Update: {
           author?: string | null
@@ -807,6 +809,7 @@ export type Database = {
           created_at?: string
           id?: string
           quote_date?: string
+          user_id?: string | null
         }
         Relationships: []
       }
