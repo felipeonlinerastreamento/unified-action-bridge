@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { AppLayout } from "@/components/app-layout";
 import { TarefasContent } from "@/components/tarefas/tarefas-content";
 
-export const Route = createFileRoute("/atendimentos/tarefas")({
+export const Route = createFileRoute("/atendimentos_/tarefas")({
   component: TarefasPage,
 });
 
