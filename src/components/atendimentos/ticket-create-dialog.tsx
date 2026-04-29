@@ -91,6 +91,7 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
   const [loading, setLoading] = useState(false);
 
   const isCorreios = (category || "").toLowerCase().includes("correios");
+  const showTracking = isCorreios || isSuprimentoCategory(category);
   const { data: trackingSettings } = useTrackingSettings();
   const { data: teSettings } = useTesteEquipamentoSettings();
   const isTesteEquip = isTesteEquipamentoCategory(category, teSettings);
