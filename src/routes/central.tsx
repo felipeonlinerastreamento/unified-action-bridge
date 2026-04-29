@@ -92,6 +92,8 @@ import {
   Zap,
   EyeOff,
   AtSign,
+  Tag,
+  Trash2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -736,6 +738,9 @@ function CentralPage() {
   const [identForm, setIdentForm] = useState<{ name: string; phone: string; email: string; notes: string; companyId: string; contactType: "PF" | "PJ"; categoryId: string }>({ name: "", phone: "", email: "", notes: "", companyId: "", contactType: "PF", categoryId: "" });
   const [companySearch, setCompanySearch] = useState("");
   const [subClientSearch, setSubClientSearch] = useState("");
+  const [crmCategoryDraft, setCrmCategoryDraft] = useState("");
+  const [editingCrmCategoryId, setEditingCrmCategoryId] = useState<string | null>(null);
+  const [editingCrmCategoryName, setEditingCrmCategoryName] = useState("");
 
   // Inline edit for contact name in the "Contato" tab
   const [editingContactName, setEditingContactName] = useState(false);
@@ -838,6 +843,51 @@ function CentralPage() {
       return data || [];
     },
     staleTime: 60_000,
+  });
+
+  const createCrmCategoryMutation = useMutation({
+    mutationFn: async () => {
+      const name = crmCategoryDraft.trim();
+      if (!name) throw new Error("Informe o nome da categoria");
+      const { error } = await supabase.from("crm_categories").insert({ name, description: "" });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Categoria criada");
+      setCrmCategoryDraft("");
+      queryClient.invalidateQueries({ queryKey: ["crm-categories"] });
+    },
+    onError: (err: any) => toast.error(err?.message || "Erro ao criar categoria"),
+  });
+
+  const updateCrmCategoryMutation = useMutation({
+    mutationFn: async () => {
+      const name = editingCrmCategoryName.trim();
+      if (!editingCrmCategoryId || !name) throw new Error("Informe o nome da categoria");
+      const { error } = await supabase.from("crm_categories").update({ name }).eq("id", editingCrmCategoryId);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Categoria atualizada");
+      setEditingCrmCategoryId(null);
+      setEditingCrmCategoryName("");
+      queryClient.invalidateQueries({ queryKey: ["crm-categories"] });
+    },
+    onError: (err: any) => toast.error(err?.message || "Erro ao atualizar categoria"),
+  });
+
+  const deleteCrmCategoryMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("crm_categories").delete().eq("id", id);
+      if (error) throw error;
+      return id;
+    },
+    onSuccess: (id) => {
+      toast.success("Categoria removida");
+      if (identForm.categoryId === id) setIdentForm((f) => ({ ...f, categoryId: "" }));
+      queryClient.invalidateQueries({ queryKey: ["crm-categories"] });
+    },
+    onError: (err: any) => toast.error(err?.message || "Erro ao remover categoria"),
   });
 
   // Create CRM contact mutation
@@ -3134,7 +3184,7 @@ function CentralPage() {
                   </div>
                 </div>
                 {identForm.contactType === "PJ" && (
-                  <div>
+                  <div className="space-y-2">
                     <Label className="text-xs">Categoria (PJ)</Label>
                     <Select
                       value={identForm.categoryId || "none"}
@@ -3156,6 +3206,100 @@ function CentralPage() {
                         )}
                       </SelectContent>
                     </Select>
+                    <div className="rounded-md border border-border p-2 space-y-2">
+                      <div className="flex gap-2">
+                        <Input
+                          value={crmCategoryDraft}
+                          onChange={(e) => setCrmCategoryDraft(e.target.value)}
+                          placeholder="Nova categoria PJ"
+                          className="h-8 text-xs"
+                        />
+                        <Button
+                          type="button"
+                          size="icon"
+                          className="h-8 w-8 shrink-0"
+                          onClick={() => createCrmCategoryMutation.mutate()}
+                          disabled={!crmCategoryDraft.trim() || createCrmCategoryMutation.isPending}
+                          title="Criar categoria"
+                        >
+                          {createCrmCategoryMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                        </Button>
+                      </div>
+                      <div className="max-h-32 overflow-y-auto space-y-1">
+                        {crmCategories.length === 0 ? (
+                          <p className="text-xs text-muted-foreground flex items-center gap-1 py-1">
+                            <Tag className="h-3 w-3" /> Nenhuma categoria cadastrada
+                          </p>
+                        ) : (
+                          crmCategories.map((c: any) => (
+                            <div key={c.id} className="flex items-center gap-1 rounded-md px-1 py-0.5 hover:bg-accent/50">
+                              {editingCrmCategoryId === c.id ? (
+                                <>
+                                  <Input
+                                    value={editingCrmCategoryName}
+                                    onChange={(e) => setEditingCrmCategoryName(e.target.value)}
+                                    className="h-7 text-xs"
+                                    autoFocus
+                                  />
+                                  <Button
+                                    type="button"
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7 shrink-0"
+                                    onClick={() => updateCrmCategoryMutation.mutate()}
+                                    disabled={!editingCrmCategoryName.trim() || updateCrmCategoryMutation.isPending}
+                                    title="Salvar categoria"
+                                  >
+                                    {updateCrmCategoryMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7 shrink-0"
+                                    onClick={() => { setEditingCrmCategoryId(null); setEditingCrmCategoryName(""); }}
+                                    title="Cancelar edição"
+                                  >
+                                    <X className="h-3 w-3" />
+                                  </Button>
+                                </>
+                              ) : (
+                                <>
+                                  <button
+                                    type="button"
+                                    className="flex-1 truncate text-left text-xs py-1"
+                                    onClick={() => setIdentForm((f) => ({ ...f, categoryId: c.id }))}
+                                  >
+                                    {identForm.categoryId === c.id ? "✓ " : ""}{c.name}
+                                  </button>
+                                  <Button
+                                    type="button"
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7 shrink-0"
+                                    onClick={() => { setEditingCrmCategoryId(c.id); setEditingCrmCategoryName(c.name || ""); }}
+                                    title="Editar categoria"
+                                  >
+                                    <Pencil className="h-3 w-3" />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-7 w-7 shrink-0"
+                                    onClick={() => { if (confirm("Remover esta categoria?")) deleteCrmCategoryMutation.mutate(c.id); }}
+                                    disabled={deleteCrmCategoryMutation.isPending}
+                                    title="Excluir categoria"
+                                  >
+                                    <Trash2 className="h-3 w-3 text-destructive" />
+                                  </Button>
+                                </>
+                              )}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                    </div>
                   </div>
                 )}
                 <div>
