@@ -64,6 +64,48 @@ export async function zapiSendText(channel: ZapiChannelCreds, phone: string, mes
   return zapiFetch(channel, "/send-text", "POST", { phone, message });
 }
 
+/**
+ * Send media (audio, image, video, document) via Z-API.
+ * `dataUrl` MUST be a base64 data URL (e.g. "data:audio/ogg;base64,...").
+ */
+export async function zapiSendMedia(
+  channel: ZapiChannelCreds,
+  phone: string,
+  kind: "audio" | "image" | "video" | "document",
+  dataUrl: string,
+  opts?: { fileName?: string; caption?: string; extension?: string }
+) {
+  if (kind === "audio") {
+    return zapiFetch(channel, "/send-audio", "POST", {
+      phone,
+      audio: dataUrl,
+      viewOnce: false,
+      waveform: true,
+    });
+  }
+  if (kind === "image") {
+    return zapiFetch(channel, "/send-image", "POST", {
+      phone,
+      image: dataUrl,
+      caption: opts?.caption || "",
+    });
+  }
+  if (kind === "video") {
+    return zapiFetch(channel, "/send-video", "POST", {
+      phone,
+      video: dataUrl,
+      caption: opts?.caption || "",
+    });
+  }
+  // document — Z-API requires extension in path
+  const ext = (opts?.extension || (opts?.fileName?.split(".").pop() ?? "pdf")).toLowerCase();
+  return zapiFetch(channel, `/send-document/${encodeURIComponent(ext)}`, "POST", {
+    phone,
+    document: dataUrl,
+    fileName: opts?.fileName || `arquivo.${ext}`,
+  });
+}
+
 export async function zapiGetStatus(channel: ZapiChannelCreds) {
   return zapiFetch(channel, "/status", "GET");
 }

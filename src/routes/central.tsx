@@ -31,6 +31,7 @@ import {
   getChatDetail,
   getChatMessages,
   sendText,
+  sendMedia,
   finalizeChat,
   createChat,
   getChannelStatus,
@@ -113,6 +114,8 @@ import { formatProtocol } from "@/lib/protocol-format";
 import { ChatTags, type ChatTag } from "@/components/central/chat-tags";
 import { MessageStatusTicks } from "@/components/central/message-status-ticks";
 import { TypingIndicator } from "@/components/central/typing-indicator";
+import { MessageMediaContent } from "@/components/central/message-media";
+import { AudioRecorderButton } from "@/components/central/audio-recorder-button";
 import { useZapiRealtime } from "@/hooks/use-zapi-realtime";
 import { isGroupChat } from "@/lib/chat-utils";
 import {
@@ -172,6 +175,8 @@ interface GMessage {
   isPrivate?: boolean;
   isDeleted?: boolean;
   typeMessage?: number;
+  mediaUrl?: string | null;
+  mediaType?: string | null;
   _status?: string; // "sent" | "delivered" | "read" (from zapi_messages.status)
 }
 
@@ -1167,6 +1172,58 @@ function CentralPage() {
     onError: (err: any) => toast.error(err?.message || "Erro ao enviar mensagem"),
   });
 
+  // Send media (audio / image / video / document)
+  const mediaMutation = useMutation({
+    mutationFn: async (input: {
+      kind: "audio" | "image" | "video" | "document";
+      dataUrl: string;
+      fileName?: string;
+      caption?: string;
+      extension?: string;
+    }) => {
+      if (!selectedChatId) throw new Error("Selecione uma conversa");
+      return sendMedia({
+        data: { chatId: selectedChatId, ...input },
+        ...await getAuthHeaders(),
+      });
+    },
+    onSuccess: (_d, vars) => {
+      const labels: Record<string, string> = {
+        audio: "Áudio enviado",
+        image: "Imagem enviada",
+        video: "Vídeo enviado",
+        document: "Documento enviado",
+      };
+      toast.success(labels[vars.kind] || "Mídia enviada");
+      queryClient.invalidateQueries({ queryKey: ["chat-detail", selectedChannelId, selectedChatId] });
+      queryClient.invalidateQueries({ queryKey: ["zapi-messages"] });
+    },
+    onError: (err: any) => toast.error(err?.message || "Erro ao enviar mídia"),
+  });
+
+  // File picker handler (attach button)
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const handleFilePicked = async (file: File) => {
+    if (!file) return;
+    if (file.size > 12 * 1024 * 1024) {
+      toast.error("Arquivo muito grande (máx. 12 MB)");
+      return;
+    }
+    const kind: "image" | "video" | "audio" | "document" =
+      file.type.startsWith("image/") ? "image" :
+      file.type.startsWith("video/") ? "video" :
+      file.type.startsWith("audio/") ? "audio" :
+      "document";
+    const ext = (file.name.split(".").pop() || "bin").toLowerCase();
+    const dataUrl = await new Promise<string>((resolve, reject) => {
+      const r = new FileReader();
+      r.onerror = () => reject(r.error);
+      r.onload = () => resolve(String(r.result || ""));
+      r.readAsDataURL(file);
+    });
+    await mediaMutation.mutateAsync({ kind, dataUrl, fileName: file.name, extension: ext });
+  };
+
   // Finalize chat
   const finalizeMutation = useMutation({
     mutationFn: async ({ notes, status, tipoPendencia, skipClosingMessage: skipMsg }: { notes?: string; status?: string; tipoPendencia?: string; skipClosingMessage?: boolean } = {}) => {
@@ -2152,7 +2209,14 @@ function CentralPage() {
                               {isPrivate && (
                                 <p className="text-[10px] font-medium mb-1 opacity-60">🔒 Nota privada</p>
                               )}
-                              <p className="whitespace-pre-wrap break-words">{msg.text}</p>
+                              {msg.mediaUrl && (
+                                <div className="mb-1">
+                                  <MessageMediaContent mediaUrl={msg.mediaUrl} mediaType={msg.mediaType} />
+                                </div>
+                              )}
+                              {msg.text && (
+                                <p className="whitespace-pre-wrap break-words">{msg.text}</p>
+                              )}
                               <div className={`flex items-center justify-end gap-1 mt-1 ${isMe ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
                                 {msg.dhMessage || msg.utcDhMessage ? (
                                   <span className="text-[10px]">
@@ -2230,6 +2294,37 @@ function CentralPage() {
                           });
                           setMessageInput((prev) => prev ? `${prev} ${resolved}` : resolved);
                         }}
+                      />
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*,audio/*,video/*,application/pdf,.doc,.docx,.xls,.xlsx,.txt,.zip"
+                        className="hidden"
+                        onChange={(e) => {
+                          const f = e.target.files?.[0];
+                          if (f) handleFilePicked(f);
+                          if (fileInputRef.current) fileInputRef.current.value = "";
+                        }}
+                      />
+                      <Button
+                        size="icon"
+                        variant="outline"
+                        type="button"
+                        title="Anexar arquivo"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={mediaMutation.isPending || chatDetail?.status === 3 || whisperMode}
+                      >
+                        {mediaMutation.isPending ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Paperclip className="h-4 w-4" />
+                        )}
+                      </Button>
+                      <AudioRecorderButton
+                        disabled={mediaMutation.isPending || chatDetail?.status === 3 || whisperMode}
+                        onRecorded={async (dataUrl) =>
+                          mediaMutation.mutateAsync({ kind: "audio", dataUrl })
+                        }
                       />
                       <Input
                         placeholder={whisperMode ? "Sussurro interno (não vai para o cliente)" : "Digite uma mensagem..."}
