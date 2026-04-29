@@ -150,15 +150,17 @@ export const syncTicketToGsystem = createServerFn({ method: "POST" })
 
     const descricao = lines.join("\n");
 
-    // Look up the active channel for GSystem token
-    const { data: channels } = await supabase
-      .from("channels")
-      .select("id, token")
-      .eq("is_active", true)
-      .limit(1);
-    const channel = channels?.[0];
-    if (!channel?.token) {
-      return { ok: false, error: "Nenhum canal GSystem ativo configurado" };
+    // GSystem sync uses the server-side credentials configured in secrets.
+    // A Z-API channel is only useful to keep the optional local mapping context,
+    // so the sync must not fail when there is no active WhatsApp channel.
+    let mappingChannelId: string | null = ticket.channel_id || null;
+    if (!mappingChannelId) {
+      const { data: channels } = await supabase
+        .from("channels")
+        .select("id")
+        .eq("is_active", true)
+        .limit(1);
+      mappingChannelId = channels?.[0]?.id || null;
     }
 
     // Build the pendência body. GSystem requires `TipoPendencia` (the Key of
@@ -286,12 +288,13 @@ export const syncTicketToGsystem = createServerFn({ method: "POST" })
       // Persist mapping in entity_links for future reference
       if (pendenciaKey) {
         try {
-          await supabase.from("entity_links").insert({
+          const linkPayload: Record<string, unknown> = {
             entity_type: "pendencia",
             local_id: String(ticket.id),
             external_id: String(pendenciaKey),
-            channel_id: channel.id,
-          });
+          };
+          if (mappingChannelId) linkPayload.channel_id = mappingChannelId;
+          await supabase.from("entity_links").insert(linkPayload as any);
         } catch {
           // ignore duplicate
         }
