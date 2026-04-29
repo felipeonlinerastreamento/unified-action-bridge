@@ -74,10 +74,10 @@ export function NotificationsBell() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative h-8 w-8">
-          <Bell className="h-4 w-4" />
+        <Button variant="ghost" size="icon" className="relative h-11 w-11">
+          <Bell className="h-6 w-6" />
           {unread > 0 && (
-            <Badge className="absolute -top-1 -right-1 h-4 min-w-[16px] px-1 bg-red-600 text-white text-[10px]">
+            <Badge className="absolute -top-0.5 -right-0.5 h-5 min-w-[20px] px-1 bg-red-600 text-white text-[11px] font-bold">
               {unread > 9 ? "9+" : unread}
             </Badge>
           )}
