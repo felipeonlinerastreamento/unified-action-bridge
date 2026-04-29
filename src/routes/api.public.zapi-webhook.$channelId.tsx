@@ -238,7 +238,14 @@ export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
                 const withinHours = bh ? isWithinBusinessHours(bh) : true;
 
                 if (bh && bh.is_enabled && !withinHours) {
-                  // Fora do horário: envia mensagem de ausência (com cooldown) e NÃO executa bot
+                  // Fora do horário: envia mensagem de ausência (com cooldown) e NÃO executa bot.
+                  // Também reseta qualquer bot_state pendente para evitar que, na próxima
+                  // mensagem do cliente, o bot retome um fluxo antigo (ex.: pedir CPF/CNPJ).
+                  await supabaseAdmin
+                    .from("zapi_chats")
+                    .update({ bot_state: {}, status: "aguardando" })
+                    .eq("id", chatId);
+
                   const canSend = await shouldSendOutOfHoursMessage(
                     supabaseAdmin,
                     phone,
