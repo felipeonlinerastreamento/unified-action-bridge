@@ -867,6 +867,100 @@ export const getParametros = createServerFn({ method: "POST" })
     return gsystemApiFetch("/parametros");
   });
 
+export const forceSyncGsystemClientes = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { gsystemApiFetch } = await import("@/lib/gsystem-api.server");
+    const { supabase } = context;
+
+    const unwrapList = (payload: any): any[] => {
+      if (Array.isArray(payload)) return payload;
+      for (const key of ["Items", "items", "Data", "data", "Dados", "dados", "Resultado", "resultado", "Results", "results"]) {
+        if (Array.isArray(payload?.[key])) return payload[key];
+      }
+      return [];
+    };
+    const pick = (item: any, keys: string[]) => {
+      for (const key of keys) {
+        const value = item?.[key];
+        if (value !== undefined && value !== null && String(value).trim()) return String(value).trim();
+      }
+      return "";
+    };
+    const cleanDigits = (value: string) => value.replace(/\D/g, "");
+
+    const payload = await gsystemApiFetch("/clientes", "GET");
+    const clientes = unwrapList(payload).slice(0, 2000);
+
+    let created = 0;
+    let updated = 0;
+    let linked = 0;
+    let skipped = 0;
+
+    for (const cliente of clientes) {
+      const externalId = pick(cliente, ["Key", "key", "Id", "id", "ID", "Codigo", "codigo", "Código", "Code", "code"]);
+      const name = pick(cliente, ["Nome", "nome", "RazaoSocial", "razaoSocial", "RazãoSocial", "NomeFantasia", "nomeFantasia", "DisplayName", "displayName"]);
+      const cnpj = cleanDigits(pick(cliente, ["CpfCnpj", "cpfCnpj", "cpf_cnpj", "CNPJ", "cnpj", "CPF", "cpf"]));
+      const phone = cleanDigits(pick(cliente, ["Telefone", "telefone", "Celular", "celular", "Fone", "fone"]));
+      if (!name) {
+        skipped++;
+        continue;
+      }
+
+      let companyId: string | null = null;
+      const byCnpj = cnpj
+        ? await supabase.from("companies").select("id").eq("cnpj", cnpj).limit(1)
+        : { data: [] as any[] };
+      companyId = byCnpj.data?.[0]?.id || null;
+
+      if (!companyId) {
+        const { data: byName } = await supabase.from("companies").select("id").eq("name", name).limit(1);
+        companyId = byName?.[0]?.id || null;
+      }
+
+      if (companyId) {
+        const { error } = await supabase
+          .from("companies")
+          .update({ cnpj: cnpj || null, phone: phone || null })
+          .eq("id", companyId);
+        if (!error) updated++;
+      } else {
+        const { data: inserted, error } = await supabase
+          .from("companies")
+          .insert({ name, cnpj: cnpj || null, phone: phone || null })
+          .select("id")
+          .single();
+        if (error || !inserted) {
+          skipped++;
+          continue;
+        }
+        companyId = inserted.id;
+        created++;
+      }
+
+      if (companyId && externalId) {
+        const { data: existingLink } = await supabase
+          .from("entity_links")
+          .select("id")
+          .eq("entity_type", "cliente")
+          .eq("local_id", String(companyId))
+          .eq("external_id", String(externalId))
+          .limit(1);
+        if (!existingLink?.length) {
+          const { error } = await supabase.from("entity_links").insert({
+            entity_type: "cliente",
+            local_id: String(companyId),
+            external_id: String(externalId),
+            metadata: { source: "force_sync_gsystem", synced_at: new Date().toISOString() },
+          } as any);
+          if (!error) linked++;
+        }
+      }
+    }
+
+    return { success: true, total: clientes.length, created, updated, linked, skipped };
+  });
+
 // ============================================================
 // PENDÊNCIAS - ORQUESTRAÇÃO DE ATENDIMENTO
 // ============================================================
