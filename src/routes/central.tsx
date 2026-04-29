@@ -114,6 +114,8 @@ import { formatProtocol } from "@/lib/protocol-format";
 import { ChatTags, type ChatTag } from "@/components/central/chat-tags";
 import { MessageStatusTicks } from "@/components/central/message-status-ticks";
 import { TypingIndicator } from "@/components/central/typing-indicator";
+import { MessageMediaContent } from "@/components/central/message-media";
+import { AudioRecorderButton } from "@/components/central/audio-recorder-button";
 import { useZapiRealtime } from "@/hooks/use-zapi-realtime";
 import { isGroupChat } from "@/lib/chat-utils";
 import {
