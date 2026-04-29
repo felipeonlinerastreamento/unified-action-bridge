@@ -88,8 +88,8 @@ export async function pollEmailChannel(channelId: string): Promise<PollResult> {
       let companyId: string | null = null;
       try {
         const { data: contact } = await supabaseAdmin
-          .from("contacts").select("company_id").eq("email", fromAddr).maybeSingle();
-        if (contact?.company_id) companyId = contact.company_id;
+          .from("crm_contacts").select("company_id").eq("email", fromAddr).maybeSingle();
+        if (contact && (contact as any).company_id) companyId = (contact as any).company_id;
       } catch {}
 
       // Cria ticket

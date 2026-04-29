@@ -33,16 +33,15 @@ export const upsertEmailChannel = createServerFn({ method: "POST" })
   .inputValidator((input: unknown) => upsertSchema.parse(input))
   .handler(async ({ data, context }) => {
     const { userId } = context;
-    const payload = { ...data, created_by: userId };
     if (data.id) {
-      const { id, ...rest } = payload;
+      const { id, ...rest } = data;
       const { data: row, error } = await supabaseAdmin
         .from("email_channels").update(rest).eq("id", id).select().single();
       if (error) throw new Error(error.message);
       return { channel: row };
     }
     const { data: row, error } = await supabaseAdmin
-      .from("email_channels").insert(payload).select().single();
+      .from("email_channels").insert({ ...data, created_by: userId }).select().single();
     if (error) throw new Error(error.message);
     return { channel: row };
   });
