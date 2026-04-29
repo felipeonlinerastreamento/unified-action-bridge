@@ -92,6 +92,8 @@ import {
   Zap,
   EyeOff,
   AtSign,
+  Tag,
+  Trash2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -736,6 +738,9 @@ function CentralPage() {
   const [identForm, setIdentForm] = useState<{ name: string; phone: string; email: string; notes: string; companyId: string; contactType: "PF" | "PJ"; categoryId: string }>({ name: "", phone: "", email: "", notes: "", companyId: "", contactType: "PF", categoryId: "" });
   const [companySearch, setCompanySearch] = useState("");
   const [subClientSearch, setSubClientSearch] = useState("");
+  const [crmCategoryDraft, setCrmCategoryDraft] = useState("");
+  const [editingCrmCategoryId, setEditingCrmCategoryId] = useState<string | null>(null);
+  const [editingCrmCategoryName, setEditingCrmCategoryName] = useState("");
 
   // Inline edit for contact name in the "Contato" tab
   const [editingContactName, setEditingContactName] = useState(false);
