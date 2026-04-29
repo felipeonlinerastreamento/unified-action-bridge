@@ -771,6 +771,54 @@ export type Database = {
         }
         Relationships: []
       }
+      daily_welcome_settings: {
+        Row: {
+          greeting_text: string
+          id: string
+          is_enabled: boolean
+          manual_quote: string | null
+          manual_quote_author: string | null
+          quote_source: string
+          reset_hour: number
+          show_quote: boolean
+          show_reminders: boolean
+          show_tasks: boolean
+          show_tickets: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          greeting_text?: string
+          id?: string
+          is_enabled?: boolean
+          manual_quote?: string | null
+          manual_quote_author?: string | null
+          quote_source?: string
+          reset_hour?: number
+          show_quote?: boolean
+          show_reminders?: boolean
+          show_tasks?: boolean
+          show_tickets?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          greeting_text?: string
+          id?: string
+          is_enabled?: boolean
+          manual_quote?: string | null
+          manual_quote_author?: string | null
+          quote_source?: string
+          reset_hour?: number
+          show_quote?: boolean
+          show_reminders?: boolean
+          show_tasks?: boolean
+          show_tickets?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       entity_links: {
         Row: {
           channel_id: string | null

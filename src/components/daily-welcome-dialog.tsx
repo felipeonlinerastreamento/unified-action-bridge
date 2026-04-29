@@ -27,55 +27,91 @@ export function DailyWelcomeDialog() {
   const { user, profile, isAuthenticated } = useAuth();
   const [open, setOpen] = useState(false);
 
+  // Load global settings (admin/gestor configurable)
+  const { data: settings } = useQuery({
+    queryKey: ["daily-welcome-settings"],
+    enabled: isAuthenticated,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("daily_welcome_settings" as any)
+        .select("*")
+        .limit(1)
+        .maybeSingle();
+      return (data as any) || null;
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+
   // Decide whether to show on mount
   useEffect(() => {
     if (!isAuthenticated || !user?.id) return;
+    if (settings && settings.is_enabled === false) return;
     const key = `${STORAGE_PREFIX}${user.id}:${todayKey()}`;
     if (typeof window === "undefined") return;
     if (!localStorage.getItem(key)) {
-      // Small delay so it doesn't fight with route hydration
       const t = setTimeout(() => setOpen(true), 600);
       return () => clearTimeout(t);
     }
-  }, [isAuthenticated, user?.id]);
+  }, [isAuthenticated, user?.id, settings]);
 
-  const { data: quote } = useQuery({
+  const showQuote = settings?.show_quote !== false;
+  const quoteSource: "ai" | "manual" = settings?.quote_source === "manual" ? "manual" : "ai";
+
+  const { data: aiQuote } = useQuery({
     queryKey: ["daily-quote", todayKey()],
     queryFn: () => getDailyQuote(),
-    enabled: open,
-    staleTime: 1000 * 60 * 60, // 1h
+    enabled: open && showQuote && quoteSource === "ai",
+    staleTime: 1000 * 60 * 60,
   });
 
+  const quote = showQuote
+    ? quoteSource === "manual"
+      ? settings?.manual_quote
+        ? { content: settings.manual_quote, author: settings.manual_quote_author || "" }
+        : null
+      : aiQuote
+    : null;
+
+  const showReminders = settings?.show_reminders !== false;
+  const showTickets = settings?.show_tickets !== false;
+  const showTasks = settings?.show_tasks !== false;
+
   const { data: pending } = useQuery({
-    queryKey: ["daily-pending", user?.id],
+    queryKey: ["daily-pending", user?.id, showReminders, showTickets, showTasks],
     enabled: open && !!user?.id,
     queryFn: async () => {
       if (!user?.id) return { reminders: [], tickets: [], tasks: [] };
       const nowIso = new Date().toISOString();
 
       const [remindersRes, ticketsRes, tasksRes] = await Promise.all([
-        supabase
-          .from("ticket_reminders")
-          .select("id, ticket_id, reminder_date, reminder_note")
-          .eq("created_by", user.id)
-          .eq("is_dismissed", false)
-          .lte("reminder_date", nowIso)
-          .order("reminder_date", { ascending: true })
-          .limit(20),
-        supabase
-          .from("service_tickets")
-          .select("id, attendance_id, contact_name, status, priority, category")
-          .eq("assigned_to", user.id)
-          .in("status", ["aberto", "em_andamento"] as any)
-          .order("created_at", { ascending: false })
-          .limit(20),
-        supabase
-          .from("tasks" as any)
-          .select("id, title, due_date, priority")
-          .eq("assigned_to", user.id)
-          .neq("status", "completed")
-          .order("due_date", { ascending: true, nullsFirst: false })
-          .limit(20),
+        showReminders
+          ? supabase
+              .from("ticket_reminders")
+              .select("id, ticket_id, reminder_date, reminder_note")
+              .eq("created_by", user.id)
+              .eq("is_dismissed", false)
+              .lte("reminder_date", nowIso)
+              .order("reminder_date", { ascending: true })
+              .limit(20)
+          : Promise.resolve({ data: [] as any[] }),
+        showTickets
+          ? supabase
+              .from("service_tickets")
+              .select("id, attendance_id, contact_name, status, priority, category")
+              .eq("assigned_to", user.id)
+              .in("status", ["aberto", "em_andamento"] as any)
+              .order("created_at", { ascending: false })
+              .limit(20)
+          : Promise.resolve({ data: [] as any[] }),
+        showTasks
+          ? supabase
+              .from("tasks" as any)
+              .select("id, title, due_date, priority")
+              .eq("assigned_to", user.id)
+              .neq("status", "completed")
+              .order("due_date", { ascending: true, nullsFirst: false })
+              .limit(20)
+          : Promise.resolve({ data: [] as any[] }),
       ]);
 
       return {
@@ -108,24 +144,26 @@ export function DailyWelcomeDialog() {
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-amber-500" />
-            Bom dia, {profile?.name?.split(" ")[0] || "tudo certo?"}
+            {settings?.greeting_text || "Bom dia"}, {profile?.name?.split(" ")[0] || "tudo certo?"}
           </DialogTitle>
           <DialogDescription>Resumo das suas atividades pendentes hoje.</DialogDescription>
         </DialogHeader>
 
         {/* Motivational quote */}
-        <div className="rounded-lg border bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 p-4">
-          {quote ? (
-            <>
-              <p className="text-sm italic leading-relaxed">"{quote.content}"</p>
-              {quote.author && (
-                <p className="text-xs text-muted-foreground mt-2 text-right">— {quote.author}</p>
-              )}
-            </>
-          ) : (
-            <p className="text-sm text-muted-foreground">Carregando inspiração do dia…</p>
-          )}
-        </div>
+        {showQuote && (
+          <div className="rounded-lg border bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/20 dark:to-orange-950/20 p-4">
+            {quote ? (
+              <>
+                <p className="text-sm italic leading-relaxed">"{quote.content}"</p>
+                {quote.author && (
+                  <p className="text-xs text-muted-foreground mt-2 text-right">— {quote.author}</p>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">Carregando inspiração do dia…</p>
+            )}
+          </div>
+        )}
 
         <ScrollArea className="max-h-[40vh] pr-2">
           <div className="space-y-3">
