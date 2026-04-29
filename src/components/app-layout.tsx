@@ -2,6 +2,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { NotificationsBell } from "@/components/notifications-bell";
+import { DailyWelcomeDialog } from "@/components/daily-welcome-dialog";
 
 export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -16,7 +17,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           <main className="flex-1 overflow-auto p-4 md:p-6">{children}</main>
         </div>
       </div>
+      <DailyWelcomeDialog />
       <Toaster />
     </SidebarProvider>
   );
 }
+
