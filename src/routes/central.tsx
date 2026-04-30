@@ -1486,12 +1486,14 @@ function CentralPage() {
             const phone = contactPhone?.replace(/\D/g, "") || "";
             const isGSystemSector = !rule.target_sector_id.includes("-"); // UUIDs have dashes, GSystem IDs don't
 
-            if (phone && rule.target_sector_id) {
+            if (rule.target_sector_id) {
               try {
                 let newAttendanceId: string | null = null;
 
-                if (isGSystemSector) {
-                  // GSystem sector: create chat via GSystem API
+                // Only create GSystem chat for individual contacts with phone.
+                // Groups have no single contact phone — skip GSystem chat creation
+                // but still create the local routed ticket below.
+                if (isGSystemSector && phone && !isGroup) {
                   const authH = await getAuthHeaders();
                   const newChat = await createChat({
                     data: {
@@ -1505,11 +1507,12 @@ function CentralPage() {
                   newAttendanceId = newChat?.attendanceId || null;
                 }
 
-                // Create service ticket for the routed attendance
+                // Create service ticket for the routed attendance (works for both
+                // individual contacts and groups).
                 if (rule.auto_create_ticket) {
                   await supabase.from("service_tickets").insert({
                     attendance_id: newAttendanceId || `auto-${Date.now()}`,
-                    contact_phone: phone,
+                    contact_phone: phone || null,
                     contact_name: chatDetail?.contact?.name || chatDetail?.description || null,
                     company_id: currentTicket?.company_id || null,
                     channel_id: selectedChannelId,
@@ -1517,7 +1520,7 @@ function CentralPage() {
                     status: "aberto",
                     sector: rule.target_sector_name || null,
                     category: rule.category_label || tipoPendencia || null,
-                    notes: `Encaminhado automaticamente do atendimento ${selectedChatId} — ${rule.category_label}`,
+                    notes: `Encaminhado automaticamente do ${isGroup ? "grupo" : "atendimento"} ${selectedChatId} — ${rule.category_label}`,
                   });
                 }
 
