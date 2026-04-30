@@ -3464,7 +3464,6 @@ function CentralPage() {
                   return;
                 }
                 let notesToSend = finalizeNotes || "";
-                let notesToSend = finalizeNotes || "";
                 if (isTesteEquipamentoCategory(tipoLabel, teSettings)) {
                   notesToSend = buildTesteEquipamentoNotes(teData, notesToSend);
                 }
