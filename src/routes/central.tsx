@@ -85,6 +85,9 @@ import {
   PanelRightClose,
   PanelRightOpen,
   ChevronsUpDown,
+  ChevronDown,
+  ChevronUp,
+  MoreHorizontal,
   Check,
   CheckCheck,
   Pencil,
@@ -287,6 +290,7 @@ function CentralPage() {
   const isMobile = useIsMobile();
   const [showLeftPanel, setShowLeftPanel] = useState(true);
   const [showRightPanel, setShowRightPanel] = useState(true);
+  const [headerExpanded, setHeaderExpanded] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const aiChatEndRef = useRef<HTMLDivElement>(null);
   const lastIdentFormSeedRef = useRef<string>("");
