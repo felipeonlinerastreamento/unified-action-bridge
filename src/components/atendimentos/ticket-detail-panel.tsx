@@ -3,6 +3,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { getTiposPendencia } from "@/lib/gsystem-api.functions";
+import { formatTicketProtocol } from "@/lib/protocol-format";
 import { toast } from "sonner";
 import {
   Sheet,
@@ -518,7 +519,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2 text-base">
             {ticket.contact_name || ticket.attendance_id || "Ticket"}
-            <Badge variant="outline" className="text-xs">#{ticket.id?.substring(0, 8)}</Badge>
+            <Badge variant="outline" className="text-xs">#{formatTicketProtocol(ticket)}</Badge>
           </SheetTitle>
           <div className="flex items-center gap-2 pt-1">
             <Button size="sm" variant="outline" onClick={() => setTaskDialogOpen(true)}>
