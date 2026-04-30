@@ -144,7 +144,7 @@ export function TicketFiltersBar({ filters, onChange, tickets, profiles, open, o
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por nome, descrição, placa, telefone..."
+            placeholder="Buscar por protocolo, nome, descrição, placa, telefone..."
             className="pl-9 h-9"
             value={filters.search}
             onChange={(e) => set({ search: e.target.value })}
