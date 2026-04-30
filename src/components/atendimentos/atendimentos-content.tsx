@@ -90,12 +90,24 @@ export function AtendimentosContent() {
           if (!suprimentoByTicket[it.ticket_id]) suprimentoByTicket[it.ticket_id] = [];
           suprimentoByTicket[it.ticket_id].push(it);
         }
+
+        // Buscar agentes adicionais (ticket_agents) para cada ticket
+        var agentsByTicket: Record<string, string[]> = {};
+        const { data: agents } = await supabase
+          .from("ticket_agents")
+          .select("ticket_id, user_id")
+          .in("ticket_id", ids);
+        for (const a of (agents as any[]) || []) {
+          if (!agentsByTicket[a.ticket_id]) agentsByTicket[a.ticket_id] = [];
+          agentsByTicket[a.ticket_id].push(a.user_id);
+        }
       }
       return list.map((t: any) => ({
         ...t,
         last_comment_at: lastByTicket[t.id] || null,
         liberacao_items: liberacaoByTicket[t.id] || [],
         suprimento_items: suprimentoByTicket[t.id] || [],
+        agent_user_ids: (typeof agentsByTicket !== "undefined" ? agentsByTicket[t.id] : undefined) || [],
       }));
     },
     refetchInterval: 30000,
