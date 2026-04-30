@@ -63,7 +63,7 @@ export function TicketKanbanView({ tickets, onSelect, onRefetch }: TicketKanbanV
         ticket,
         userId: user?.id || null,
         teSettings,
-        bypassRouting: isAdmin,
+        bypassRouting: false,
       });
       if (res.error) {
         toast.error("Erro ao finalizar: " + res.error);
