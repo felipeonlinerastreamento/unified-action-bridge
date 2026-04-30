@@ -1798,7 +1798,7 @@ function CentralPage() {
     const resolved = applyQuickReplyVars(reply.content || "", {
       operatorName: profile?.name,
       contactName: chatDetail?.contact?.name || chatDetail?.description,
-      protocol: formatTicketProtocol(currentTicket, chatDetail?.protocol || selectedChatId),
+      protocol: currentTicket?.protocol_number != null ? formatTicketProtocol(currentTicket) : "",
     });
     return text.slice(0, match.index! + match[1].length) + resolved;
   };
@@ -2143,7 +2143,7 @@ function CentralPage() {
                           <div className="flex items-center gap-2 flex-wrap">
                             <p className="text-xs text-muted-foreground truncate">
                               {chatDetail?.contact?.secondaryName || chatDetail?.contact?.number}
-                              {(currentTicket?.protocol_number || chatDetail?.protocol) && ` • #${formatTicketProtocol(currentTicket, chatDetail?.protocol || selectedChatId)}`}
+                              {currentTicket?.protocol_number != null && ` • #${formatTicketProtocol(currentTicket)}`}
                             </p>
                             {companyLookup && (
                               <Badge variant="secondary" className="text-[10px] gap-1 max-w-[160px]">
@@ -2550,7 +2550,7 @@ function CentralPage() {
                           const resolved = applyQuickReplyVars(text, {
                             operatorName: profile?.name,
                             contactName: chatDetail?.contact?.name || chatDetail?.description,
-                            protocol: formatTicketProtocol(currentTicket, chatDetail?.protocol || selectedChatId),
+                            protocol: currentTicket?.protocol_number != null ? formatTicketProtocol(currentTicket) : "",
                           });
                           setMessageInput((prev) => prev ? `${prev} ${resolved}` : resolved);
                         }}
@@ -2903,8 +2903,8 @@ function CentralPage() {
                         <Separator />
 
                         <div className="space-y-3">
-                          {(currentTicket?.protocol_number || chatDetail.protocol) && (
-                            <DetailRow label="Protocolo" value={`#${formatTicketProtocol(currentTicket, chatDetail.protocol || selectedChatId)}`} mono />
+                          {currentTicket?.protocol_number != null && (
+                            <DetailRow label="Protocolo" value={`#${formatTicketProtocol(currentTicket)}`} mono />
                           )}
                           {statusInfo && (
                             <div>
