@@ -1636,10 +1636,10 @@ function CentralPage() {
         }
       }
       // Save Liberação items if applicable
-      if (currentTicket && liberacaoItems.length > 0) {
+      if (ticketRef && liberacaoItems.length > 0) {
         try {
           const rows = liberacaoItems.map((it) => ({
-            ticket_id: currentTicket.id,
+            ticket_id: ticketRef!.id,
             item_id: it.item_id,
             item_name: it.item_name,
             quantity: it.quantity,
@@ -1650,7 +1650,7 @@ function CentralPage() {
             await supabase
               .from("service_tickets")
               .update({ liberacao_date: new Date(liberacaoDate).toISOString() } as any)
-              .eq("id", currentTicket.id);
+              .eq("id", ticketRef.id);
           }
         } catch (e: any) {
           console.error("[Finalize] error saving liberacao items:", e?.message);
