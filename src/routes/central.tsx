@@ -3458,6 +3458,12 @@ function CentralPage() {
                   return;
                 }
                 const tipoLabel = tiposPendencia.find((t) => t.Key === finalizeTipoPendencia)?.Descricao || "";
+                const isNaoCategorizar = /n[aã]o\s*categorizar/i.test(tipoLabel);
+                if (isNaoCategorizar && !isAdmin && !finalizeNotes.trim()) {
+                  toast.error('Observação é obrigatória quando a categoria for "Não categorizar".');
+                  return;
+                }
+                const tipoLabel = tiposPendencia.find((t) => t.Key === finalizeTipoPendencia)?.Descricao || "";
                 let notesToSend = finalizeNotes || "";
                 if (isTesteEquipamentoCategory(tipoLabel, teSettings)) {
                   notesToSend = buildTesteEquipamentoNotes(teData, notesToSend);
