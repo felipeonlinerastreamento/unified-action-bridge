@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CalendarIcon, X, Search, Filter } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatProtocol } from "@/lib/protocol-format";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
