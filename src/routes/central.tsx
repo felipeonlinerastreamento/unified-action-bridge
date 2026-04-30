@@ -1602,14 +1602,16 @@ function CentralPage() {
     onSuccess: async (result) => {
       // Ensure a local ticket exists (covers groups / race conditions where
       // auto-create didn't finish before the user clicked "Finalizar").
+      // IMPORTANT: do NOT filter by status here — the mutationFn just set it
+      // to "finalizado", and we want to re-route THAT same ticket.
       let ticketRef = currentTicket;
-      if (!ticketRef && result?.ticketId) {
+      if (result?.ticketId) {
         const { data } = await supabase
           .from("service_tickets")
           .select("*")
           .eq("id", result.ticketId)
           .maybeSingle();
-        ticketRef = (data as any) || null;
+        if (data) ticketRef = data as any;
       }
       if (!ticketRef && selectedChatId) {
         try {
@@ -1617,7 +1619,6 @@ function CentralPage() {
             .from("service_tickets")
             .select("*")
             .eq("attendance_id", selectedChatId)
-            .neq("status", "finalizado")
             .order("created_at", { ascending: false })
             .limit(1);
           if (existing && existing.length > 0) {
