@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as RelatoriosRouteImport } from './routes/relatorios'
+import { Route as OkrRouteImport } from './routes/okr'
 import { Route as EstoqueRouteImport } from './routes/estoque'
 import { Route as EmpresasRouteImport } from './routes/empresas'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -24,6 +25,7 @@ import { Route as HooksRefreshTrackingRouteImport } from './routes/hooks/refresh
 import { Route as ConfiguracoesZapiRouteImport } from './routes/configuracoes.zapi'
 import { Route as ConfiguracoesUsuariosRouteImport } from './routes/configuracoes.usuarios'
 import { Route as ConfiguracoesPopupDiarioRouteImport } from './routes/configuracoes.popup-diario'
+import { Route as ConfiguracoesOkrRouteImport } from './routes/configuracoes.okr'
 import { Route as ConfiguracoesNotificacoesRouteImport } from './routes/configuracoes.notificacoes'
 import { Route as ConfiguracoesFluxoAtendimentoRouteImport } from './routes/configuracoes.fluxo-atendimento'
 import { Route as ConfiguracoesEstoqueRouteImport } from './routes/configuracoes.estoque'
@@ -37,6 +39,11 @@ import { Route as ApiPublicZapiWebhookChannelIdRouteImport } from './routes/api.
 const RelatoriosRoute = RelatoriosRouteImport.update({
   id: '/relatorios',
   path: '/relatorios',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OkrRoute = OkrRouteImport.update({
+  id: '/okr',
+  path: '/okr',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EstoqueRoute = EstoqueRouteImport.update({
@@ -110,6 +117,11 @@ const ConfiguracoesPopupDiarioRoute =
     path: '/popup-diario',
     getParentRoute: () => ConfiguracoesRoute,
   } as any)
+const ConfiguracoesOkrRoute = ConfiguracoesOkrRouteImport.update({
+  id: '/okr',
+  path: '/okr',
+  getParentRoute: () => ConfiguracoesRoute,
+} as any)
 const ConfiguracoesNotificacoesRoute =
   ConfiguracoesNotificacoesRouteImport.update({
     id: '/notificacoes',
@@ -172,6 +184,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
+  '/okr': typeof OkrRoute
   '/relatorios': typeof RelatoriosRoute
   '/atendimentos/tarefas': typeof AtendimentosTarefasRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
@@ -180,6 +193,7 @@ export interface FileRoutesByFullPath {
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
   '/configuracoes/fluxo-atendimento': typeof ConfiguracoesFluxoAtendimentoRoute
   '/configuracoes/notificacoes': typeof ConfiguracoesNotificacoesRoute
+  '/configuracoes/okr': typeof ConfiguracoesOkrRoute
   '/configuracoes/popup-diario': typeof ConfiguracoesPopupDiarioRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
@@ -197,6 +211,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
+  '/okr': typeof OkrRoute
   '/relatorios': typeof RelatoriosRoute
   '/atendimentos/tarefas': typeof AtendimentosTarefasRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
@@ -205,6 +220,7 @@ export interface FileRoutesByTo {
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
   '/configuracoes/fluxo-atendimento': typeof ConfiguracoesFluxoAtendimentoRoute
   '/configuracoes/notificacoes': typeof ConfiguracoesNotificacoesRoute
+  '/configuracoes/okr': typeof ConfiguracoesOkrRoute
   '/configuracoes/popup-diario': typeof ConfiguracoesPopupDiarioRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
@@ -224,6 +240,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
+  '/okr': typeof OkrRoute
   '/relatorios': typeof RelatoriosRoute
   '/atendimentos_/tarefas': typeof AtendimentosTarefasRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
@@ -232,6 +249,7 @@ export interface FileRoutesById {
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
   '/configuracoes/fluxo-atendimento': typeof ConfiguracoesFluxoAtendimentoRoute
   '/configuracoes/notificacoes': typeof ConfiguracoesNotificacoesRoute
+  '/configuracoes/okr': typeof ConfiguracoesOkrRoute
   '/configuracoes/popup-diario': typeof ConfiguracoesPopupDiarioRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
@@ -252,6 +270,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/empresas'
     | '/estoque'
+    | '/okr'
     | '/relatorios'
     | '/atendimentos/tarefas'
     | '/configuracoes/assistente-ia'
@@ -260,6 +279,7 @@ export interface FileRouteTypes {
     | '/configuracoes/estoque'
     | '/configuracoes/fluxo-atendimento'
     | '/configuracoes/notificacoes'
+    | '/configuracoes/okr'
     | '/configuracoes/popup-diario'
     | '/configuracoes/usuarios'
     | '/configuracoes/zapi'
@@ -277,6 +297,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/empresas'
     | '/estoque'
+    | '/okr'
     | '/relatorios'
     | '/atendimentos/tarefas'
     | '/configuracoes/assistente-ia'
@@ -285,6 +306,7 @@ export interface FileRouteTypes {
     | '/configuracoes/estoque'
     | '/configuracoes/fluxo-atendimento'
     | '/configuracoes/notificacoes'
+    | '/configuracoes/okr'
     | '/configuracoes/popup-diario'
     | '/configuracoes/usuarios'
     | '/configuracoes/zapi'
@@ -303,6 +325,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/empresas'
     | '/estoque'
+    | '/okr'
     | '/relatorios'
     | '/atendimentos_/tarefas'
     | '/configuracoes/assistente-ia'
@@ -311,6 +334,7 @@ export interface FileRouteTypes {
     | '/configuracoes/estoque'
     | '/configuracoes/fluxo-atendimento'
     | '/configuracoes/notificacoes'
+    | '/configuracoes/okr'
     | '/configuracoes/popup-diario'
     | '/configuracoes/usuarios'
     | '/configuracoes/zapi'
@@ -330,6 +354,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   EmpresasRoute: typeof EmpresasRoute
   EstoqueRoute: typeof EstoqueRoute
+  OkrRoute: typeof OkrRoute
   RelatoriosRoute: typeof RelatoriosRoute
   AtendimentosTarefasRoute: typeof AtendimentosTarefasRoute
   HooksRefreshTrackingRoute: typeof HooksRefreshTrackingRoute
@@ -344,6 +369,13 @@ declare module '@tanstack/react-router' {
       path: '/relatorios'
       fullPath: '/relatorios'
       preLoaderRoute: typeof RelatoriosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/okr': {
+      id: '/okr'
+      path: '/okr'
+      fullPath: '/okr'
+      preLoaderRoute: typeof OkrRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/estoque': {
@@ -444,6 +476,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConfiguracoesPopupDiarioRouteImport
       parentRoute: typeof ConfiguracoesRoute
     }
+    '/configuracoes/okr': {
+      id: '/configuracoes/okr'
+      path: '/okr'
+      fullPath: '/configuracoes/okr'
+      preLoaderRoute: typeof ConfiguracoesOkrRouteImport
+      parentRoute: typeof ConfiguracoesRoute
+    }
     '/configuracoes/notificacoes': {
       id: '/configuracoes/notificacoes'
       path: '/notificacoes'
@@ -517,6 +556,7 @@ interface ConfiguracoesRouteChildren {
   ConfiguracoesEstoqueRoute: typeof ConfiguracoesEstoqueRoute
   ConfiguracoesFluxoAtendimentoRoute: typeof ConfiguracoesFluxoAtendimentoRoute
   ConfiguracoesNotificacoesRoute: typeof ConfiguracoesNotificacoesRoute
+  ConfiguracoesOkrRoute: typeof ConfiguracoesOkrRoute
   ConfiguracoesPopupDiarioRoute: typeof ConfiguracoesPopupDiarioRoute
   ConfiguracoesUsuariosRoute: typeof ConfiguracoesUsuariosRoute
   ConfiguracoesZapiRoute: typeof ConfiguracoesZapiRoute
@@ -530,6 +570,7 @@ const ConfiguracoesRouteChildren: ConfiguracoesRouteChildren = {
   ConfiguracoesEstoqueRoute: ConfiguracoesEstoqueRoute,
   ConfiguracoesFluxoAtendimentoRoute: ConfiguracoesFluxoAtendimentoRoute,
   ConfiguracoesNotificacoesRoute: ConfiguracoesNotificacoesRoute,
+  ConfiguracoesOkrRoute: ConfiguracoesOkrRoute,
   ConfiguracoesPopupDiarioRoute: ConfiguracoesPopupDiarioRoute,
   ConfiguracoesUsuariosRoute: ConfiguracoesUsuariosRoute,
   ConfiguracoesZapiRoute: ConfiguracoesZapiRoute,
@@ -550,6 +591,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   EmpresasRoute: EmpresasRoute,
   EstoqueRoute: EstoqueRoute,
+  OkrRoute: OkrRoute,
   RelatoriosRoute: RelatoriosRoute,
   AtendimentosTarefasRoute: AtendimentosTarefasRoute,
   HooksRefreshTrackingRoute: HooksRefreshTrackingRoute,
