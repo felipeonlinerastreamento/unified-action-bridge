@@ -287,10 +287,13 @@ export function applyTicketFilters(tickets: any[], filters: TicketFilters): any[
   return tickets.filter((t) => {
     // Text search
     if (filters.search) {
-      const q = filters.search.toLowerCase();
+      const q = filters.search.toLowerCase().replace(/^#/, "").trim();
+      const protocolFromAttendance = t.attendance_id ? formatProtocol(t.attendance_id) : "";
+      const protocolFromId = t.id ? formatProtocol(t.id) : "";
       const searchable = [
         t.contact_name, t.notes, t.plate, t.contact_phone,
         t.attendance_id, t.category, t.sector, t.companies?.name,
+        t.protocol, protocolFromAttendance, protocolFromId,
       ].filter(Boolean).join(" ").toLowerCase();
       if (!searchable.includes(q)) return false;
     }
