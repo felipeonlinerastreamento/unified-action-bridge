@@ -2005,236 +2005,268 @@ function CentralPage() {
                 </div>
               ) : (
                 <>
-                  {/* Chat header */}
-                  <div className="p-2 sm:p-3 border-b flex items-center justify-between gap-2 bg-muted/30 flex-wrap">
-                    <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                      {/* Mobile: show button to open chat list */}
-                      {!showLeftPanel && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="shrink-0 h-7 w-7 md:hidden"
-                          onClick={() => setShowLeftPanel(true)}
-                          title="Mostrar lista"
-                        >
-                          <PanelLeftOpen className="h-4 w-4" />
-                        </Button>
-                      )}
-                      <Avatar className="h-9 w-9 shrink-0">
-                        {chatDetail?.contact?.linkImage &&
-                          !chatDetail.contact.linkImage.includes("avatar-default") && (
-                            <AvatarImage src={chatDetail.contact.linkImage} />
-                          )}
-                        <AvatarFallback className="text-xs bg-primary/10 text-primary">
-                          {(chatDetail?.description || chatDetail?.contact?.name || "?").substring(0, 2).toUpperCase()}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="min-w-0">
-                        <p className="text-sm font-medium text-foreground truncate">
-                          {chatDetail?.description || chatDetail?.contact?.name || "Contato"}
-                        </p>
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <p className="text-xs text-muted-foreground truncate">
-                            {chatDetail?.contact?.secondaryName || chatDetail?.contact?.number}
-                            {chatDetail?.protocol && ` • #${formatProtocol(chatDetail.protocol)}`}
+                  {/* Chat header — barra essencial + cascata expansível */}
+                  <div className="border-b bg-muted/30">
+                    {/* Linha 1: identidade + ações primárias */}
+                    <div className="p-2 sm:p-3 flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
+                        {!showLeftPanel && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="shrink-0 h-7 w-7 md:hidden"
+                            onClick={() => setShowLeftPanel(true)}
+                            title="Mostrar lista"
+                          >
+                            <PanelLeftOpen className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Avatar className="h-9 w-9 shrink-0">
+                          {chatDetail?.contact?.linkImage &&
+                            !chatDetail.contact.linkImage.includes("avatar-default") && (
+                              <AvatarImage src={chatDetail.contact.linkImage} />
+                            )}
+                          <AvatarFallback className="text-xs bg-primary/10 text-primary">
+                            {(chatDetail?.description || chatDetail?.contact?.name || "?").substring(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0">
+                          <p className="text-sm font-medium text-foreground truncate">
+                            {chatDetail?.description || chatDetail?.contact?.name || "Contato"}
                           </p>
-                          {companyLookup && (
-                            <Badge variant="secondary" className="text-[10px] gap-1 max-w-[160px]">
-                              <Building2 className="h-2.5 w-2.5 shrink-0" />
-                              <span className="truncate">{companyLookup.name}</span>
-                            </Badge>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <p className="text-xs text-muted-foreground truncate">
+                              {chatDetail?.contact?.secondaryName || chatDetail?.contact?.number}
+                              {chatDetail?.protocol && ` • #${formatProtocol(chatDetail.protocol)}`}
+                            </p>
+                            {companyLookup && (
+                              <Badge variant="secondary" className="text-[10px] gap-1 max-w-[160px]">
+                                <Building2 className="h-2.5 w-2.5 shrink-0" />
+                                <span className="truncate">{companyLookup.name}</span>
+                              </Badge>
+                            )}
+                            {/* Resumo dos controles quando recolhido */}
+                            {!headerExpanded && statusInfo && (
+                              <Badge variant="outline" className={`text-[10px] ${statusInfo.color}`}>
+                                {statusInfo.label}
+                              </Badge>
+                            )}
+                            {!headerExpanded && detectedPlates.length > 0 && (
+                              <Badge variant="outline" className="text-[10px] border-blue-300 text-blue-700">
+                                🚗 {detectedPlates[detectedPlates.length - 1]}
+                              </Badge>
+                            )}
+                          </div>
+                          {localZapiChat?.id && (
+                            <div className="mt-1.5">
+                              <ChatTags
+                                chatRowId={localZapiChat.id}
+                                initialTags={(localZapiChat.tags as unknown as ChatTag[]) || []}
+                                size="xs"
+                              />
+                            </div>
                           )}
                         </div>
-                        {localZapiChat?.id && (
-                          <div className="mt-1.5">
-                            <ChatTags
-                              chatRowId={localZapiChat.id}
-                              initialTags={(localZapiChat.tags as unknown as ChatTag[]) || []}
-                              size="xs"
-                            />
-                          </div>
-                        )}
+                      </div>
+                      <div className="flex items-center gap-1 shrink-0">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          title={isUnidentified ? "Identifique o contato antes de finalizar" : "Finalizar atendimento"}
+                          onClick={() => {
+                            if (isUnidentified) {
+                              toast.error("É obrigatório identificar o contato antes de finalizar o atendimento.");
+                              return;
+                            }
+                            if (!finalizeTipoPendencia) {
+                              toast.error("Selecione a categoria do atendimento antes de finalizar.");
+                              setHeaderExpanded(true);
+                              return;
+                            }
+                            const tipoLabel = tiposPendencia.find((t) => t.Key === finalizeTipoPendencia)?.Descricao || "";
+                            if (isTesteEquipamentoCategory(tipoLabel, teSettings)) {
+                              setShowTeDialog(true);
+                              return;
+                            }
+                            if (isLiberacaoCategory(tipoLabel)) {
+                              setShowLiberacaoDialog(true);
+                              return;
+                            }
+                            setShowFinalizeConfirm(true);
+                          }}
+                          disabled={finalizeMutation.isPending}
+                          className="gap-1 h-8"
+                        >
+                          <CheckCircle2 className="h-4 w-4" />
+                          <span className="hidden sm:inline">Finalizar</span>
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-8 gap-1 px-2"
+                          onClick={() => setHeaderExpanded((v) => !v)}
+                          title={headerExpanded ? "Recolher controles" : "Mostrar controles"}
+                          aria-expanded={headerExpanded}
+                        >
+                          <MoreHorizontal className="h-4 w-4" />
+                          {headerExpanded ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                        </Button>
                       </div>
                     </div>
-                    <div className="flex items-center gap-1 flex-wrap justify-end">
-                      {/* Operador responsável (clicável para alterar) */}
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 mr-1 text-[10px] gap-1"
-                            title="Clique para alterar o operador responsável"
-                          >
-                            <UserPlus className="h-3 w-3" />
-                            <span className="text-muted-foreground">Resp.:</span>
-                            <strong className="font-bold">
-                              {(chatDetail as any)?.assignedFirstName || "atribuir"}
-                            </strong>
-                            <ChevronsUpDown className="ml-0.5 h-3 w-3 opacity-50" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[240px] p-0" align="end">
-                          <Command>
-                            <CommandInput placeholder="Buscar operador..." className="text-xs h-8" />
-                            <CommandList>
-                              <CommandEmpty className="text-xs py-3 text-center">
-                                Nenhum operador encontrado
-                              </CommandEmpty>
-                              <CommandGroup heading="Atribuir responsável">
-                                {gsystemUsersList.map((op: any) => {
-                                  const isCurrent = (chatDetail as any)?.assignedUserId === op.id;
-                                  return (
-                                    <CommandItem
-                                      key={op.id}
-                                      value={op.name || op.id}
-                                      onSelect={async () => {
-                                        if (isCurrent) return;
-                                        try {
-                                          await transferChat({
-                                            data: {
-                                              channelId: selectedChannelId,
-                                              chatId: selectedChatId!,
-                                              userId: op.id,
-                                            },
-                                            ...(await getAuthHeaders()),
-                                          });
-                                          toast.success(`Atendimento atribuído a ${op.name}`);
-                                          queryClient.invalidateQueries({
-                                            queryKey: ["chat-detail", selectedChannelId, selectedChatId],
-                                          });
-                                          refetchChats();
-                                        } catch (e: any) {
-                                          toast.error(e?.message || "Erro ao alterar responsável");
-                                        }
-                                      }}
-                                      className="text-xs"
-                                    >
-                                      <Check
-                                        className={`mr-2 h-3 w-3 ${isCurrent ? "opacity-100" : "opacity-0"}`}
-                                      />
-                                      {op.name || "Sem nome"}
-                                    </CommandItem>
-                                  );
-                                })}
-                              </CommandGroup>
-                            </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
-                      {(() => {
-                        const detail = chatDetail as any;
-                        const respId = detail?.assignedUserId;
-                        const coAgents: Array<{ userId: string }> = detail?.coAgents || [];
-                        const canJoin = !!user?.id && !!respId && respId !== user.id && !coAgents.some((a) => a.userId === user.id);
-                        if (!canJoin) return null;
-                        return (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 mr-2 text-xs"
-                            onClick={async () => {
-                              try {
-                                await joinChatAsCoAgent({ data: { chatId: selectedChatId! }, ...(await getAuthHeaders()) });
-                                toast.success("Você entrou na conversa como co-atendente");
-                                queryClient.invalidateQueries({ queryKey: ["chat-detail", selectedChannelId, selectedChatId] });
-                              } catch (e: any) {
-                                toast.error(e?.message || "Erro ao entrar");
-                              }
-                            }}
-                          >
-                            <UserPlus className="h-3 w-3 mr-1" /> Entrar na conversa
-                          </Button>
-                        );
-                      })()}
-                      {statusInfo && (
-                        <Badge variant="outline" className={`text-xs mr-2 ${statusInfo.color}`}>
-                          {statusInfo.label}
-                        </Badge>
-                      )}
-                      {detectedPlates.length > 0 && (
-                        <Badge variant="outline" className="text-xs mr-2 border-blue-300 text-blue-700">
-                          🚗 {detectedPlates[detectedPlates.length - 1]}
-                        </Badge>
-                      )}
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button variant="outline" role="combobox" className="w-[180px] h-8 text-xs justify-between">
-                            {finalizeTipoPendencia
-                              ? (() => {
-                                  const found = tiposPendencia.find((t) => t.Key === finalizeTipoPendencia);
-                                  return found ? (found.Descricao || "Sem nome") : "Categoria...";
-                                })()
-                              : (tiposPendenciaError ? "Erro ao carregar" : "Categoria...")}
-                            <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-[220px] p-0" align="start">
-                          <Command>
-                            <CommandInput placeholder="Buscar categoria..." className="text-xs h-8" />
-                            <CommandList>
-                              <CommandEmpty className="text-xs py-3 text-center">Nenhuma categoria encontrada</CommandEmpty>
-                              <CommandGroup>
-                                {tiposPendencia.map((tipo) => {
-                                  const key = tipo.Key || "";
-                                  const label = tipo.Descricao || "Sem nome";
-                                  return (
-                                    <CommandItem
-                                      key={key}
-                                      value={label}
-                                      onSelect={() => setFinalizeTipoPendencia(key)}
-                                      className="text-xs"
-                                    >
-                                      <Check className={`mr-2 h-3 w-3 ${finalizeTipoPendencia === key ? "opacity-100" : "opacity-0"}`} />
-                                      {label}
-                                    </CommandItem>
-                                  );
-                                })}
-                              </CommandGroup>
-                            </CommandList>
-                          </Command>
-                        </PopoverContent>
-                      </Popover>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title="Transferir"
-                        onClick={() => setShowTransferModal(true)}
-                      >
-                        <ArrowRightLeft className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        title={isUnidentified ? "Identifique o contato antes de finalizar" : "Finalizar"}
-                        onClick={() => {
-                          if (isUnidentified) {
-                            toast.error("É obrigatório identificar o contato antes de finalizar o atendimento.");
-                            return;
-                          }
-                          if (!finalizeTipoPendencia) {
-                            toast.error("Selecione a categoria do atendimento antes de finalizar.");
-                            return;
-                          }
-                          // If category is Teste de Equipamento, require extra fields first
-                          const tipoLabel = tiposPendencia.find((t) => t.Key === finalizeTipoPendencia)?.Descricao || "";
-                          if (isTesteEquipamentoCategory(tipoLabel, teSettings)) {
-                            setShowTeDialog(true);
-                            return;
-                          }
-                          if (isLiberacaoCategory(tipoLabel)) {
-                            setShowLiberacaoDialog(true);
-                            return;
-                          }
-                          setShowFinalizeConfirm(true);
-                        }}
-                        disabled={finalizeMutation.isPending}
-                        className="gap-1"
-                      >
-                        <CheckCircle2 className="h-4 w-4" />
-                        Finalizar
-                      </Button>
-                    </div>
+
+                    {/* Linha 2: controles secundários em cascata */}
+                    {headerExpanded && (
+                      <div className="px-2 sm:px-3 pb-2 pt-0 flex items-center gap-1 flex-wrap border-t border-border/40">
+                        {/* Operador responsável */}
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="h-7 text-[10px] gap-1"
+                              title="Clique para alterar o operador responsável"
+                            >
+                              <UserPlus className="h-3 w-3" />
+                              <span className="text-muted-foreground">Resp.:</span>
+                              <strong className="font-bold">
+                                {(chatDetail as any)?.assignedFirstName || "atribuir"}
+                              </strong>
+                              <ChevronsUpDown className="ml-0.5 h-3 w-3 opacity-50" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[240px] p-0" align="end">
+                            <Command>
+                              <CommandInput placeholder="Buscar operador..." className="text-xs h-8" />
+                              <CommandList>
+                                <CommandEmpty className="text-xs py-3 text-center">
+                                  Nenhum operador encontrado
+                                </CommandEmpty>
+                                <CommandGroup heading="Atribuir responsável">
+                                  {gsystemUsersList.map((op: any) => {
+                                    const isCurrent = (chatDetail as any)?.assignedUserId === op.id;
+                                    return (
+                                      <CommandItem
+                                        key={op.id}
+                                        value={op.name || op.id}
+                                        onSelect={async () => {
+                                          if (isCurrent) return;
+                                          try {
+                                            await transferChat({
+                                              data: {
+                                                channelId: selectedChannelId,
+                                                chatId: selectedChatId!,
+                                                userId: op.id,
+                                              },
+                                              ...(await getAuthHeaders()),
+                                            });
+                                            toast.success(`Atendimento atribuído a ${op.name}`);
+                                            queryClient.invalidateQueries({
+                                              queryKey: ["chat-detail", selectedChannelId, selectedChatId],
+                                            });
+                                            refetchChats();
+                                          } catch (e: any) {
+                                            toast.error(e?.message || "Erro ao alterar responsável");
+                                          }
+                                        }}
+                                        className="text-xs"
+                                      >
+                                        <Check
+                                          className={`mr-2 h-3 w-3 ${isCurrent ? "opacity-100" : "opacity-0"}`}
+                                        />
+                                        {op.name || "Sem nome"}
+                                      </CommandItem>
+                                    );
+                                  })}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                        {(() => {
+                          const detail = chatDetail as any;
+                          const respId = detail?.assignedUserId;
+                          const coAgents: Array<{ userId: string }> = detail?.coAgents || [];
+                          const canJoin = !!user?.id && !!respId && respId !== user.id && !coAgents.some((a) => a.userId === user.id);
+                          if (!canJoin) return null;
+                          return (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs"
+                              onClick={async () => {
+                                try {
+                                  await joinChatAsCoAgent({ data: { chatId: selectedChatId! }, ...(await getAuthHeaders()) });
+                                  toast.success("Você entrou na conversa como co-atendente");
+                                  queryClient.invalidateQueries({ queryKey: ["chat-detail", selectedChannelId, selectedChatId] });
+                                } catch (e: any) {
+                                  toast.error(e?.message || "Erro ao entrar");
+                                }
+                              }}
+                            >
+                              <UserPlus className="h-3 w-3 mr-1" /> Entrar
+                            </Button>
+                          );
+                        })()}
+                        {statusInfo && (
+                          <Badge variant="outline" className={`text-xs ${statusInfo.color}`}>
+                            {statusInfo.label}
+                          </Badge>
+                        )}
+                        {detectedPlates.length > 0 && (
+                          <Badge variant="outline" className="text-xs border-blue-300 text-blue-700">
+                            🚗 {detectedPlates[detectedPlates.length - 1]}
+                          </Badge>
+                        )}
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button variant="outline" role="combobox" className="w-[180px] h-7 text-xs justify-between">
+                              {finalizeTipoPendencia
+                                ? (() => {
+                                    const found = tiposPendencia.find((t) => t.Key === finalizeTipoPendencia);
+                                    return found ? (found.Descricao || "Sem nome") : "Categoria...";
+                                  })()
+                                : (tiposPendenciaError ? "Erro ao carregar" : "Categoria...")}
+                              <ChevronsUpDown className="ml-1 h-3 w-3 shrink-0 opacity-50" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-[220px] p-0" align="start">
+                            <Command>
+                              <CommandInput placeholder="Buscar categoria..." className="text-xs h-8" />
+                              <CommandList>
+                                <CommandEmpty className="text-xs py-3 text-center">Nenhuma categoria encontrada</CommandEmpty>
+                                <CommandGroup>
+                                  {tiposPendencia.map((tipo) => {
+                                    const key = tipo.Key || "";
+                                    const label = tipo.Descricao || "Sem nome";
+                                    return (
+                                      <CommandItem
+                                        key={key}
+                                        value={label}
+                                        onSelect={() => setFinalizeTipoPendencia(key)}
+                                        className="text-xs"
+                                      >
+                                        <Check className={`mr-2 h-3 w-3 ${finalizeTipoPendencia === key ? "opacity-100" : "opacity-0"}`} />
+                                        {label}
+                                      </CommandItem>
+                                    );
+                                  })}
+                                </CommandGroup>
+                              </CommandList>
+                            </Command>
+                          </PopoverContent>
+                        </Popover>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 gap-1 text-xs"
+                          title="Transferir"
+                          onClick={() => setShowTransferModal(true)}
+                        >
+                          <ArrowRightLeft className="h-3.5 w-3.5" />
+                          Transferir
+                        </Button>
+                      </div>
+                    )}
                   </div>
 
                   {/* Messages */}
