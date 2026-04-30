@@ -21,7 +21,6 @@ export const Route = createFileRoute("/configuracoes/status-usuarios")({
 interface UserStatus {
   user_id: string;
   name: string | null;
-  email: string | null;
   is_chat_available: boolean;
   last_seen_at: string | null;
   roles: string[];
@@ -50,7 +49,7 @@ function StatusUsuariosPage() {
       const [{ data: profiles }, { data: roles }] = await Promise.all([
         supabase
           .from("profiles")
-          .select("user_id, name, email, is_chat_available, last_seen_at"),
+          .select("user_id, name, is_chat_available, last_seen_at"),
         supabase.from("user_roles").select("user_id, role"),
       ]);
 
@@ -64,7 +63,6 @@ function StatusUsuariosPage() {
         (profiles || []).map((p: any) => ({
           user_id: p.user_id,
           name: p.name,
-          email: p.email,
           is_chat_available: p.is_chat_available ?? true,
           last_seen_at: p.last_seen_at,
           roles: rolesByUser[p.user_id] || [],
@@ -102,10 +100,7 @@ function StatusUsuariosPage() {
   const filtered = users.filter((u) => {
     if (!search.trim()) return true;
     const q = search.toLowerCase();
-    return (
-      (u.name || "").toLowerCase().includes(q) ||
-      (u.email || "").toLowerCase().includes(q)
-    );
+    return (u.name || "").toLowerCase().includes(q);
   });
 
   const onlineCount = filtered.filter((u) => isOnline(u.last_seen_at)).length;
@@ -148,7 +143,7 @@ function StatusUsuariosPage() {
             <div className="relative w-64 max-w-full">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar por nome ou email..."
+                placeholder="Buscar por nome..."
                 className="pl-9 h-9"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
