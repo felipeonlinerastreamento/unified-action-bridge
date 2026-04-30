@@ -154,11 +154,19 @@ export function TicketKanbanView({ tickets, onSelect, onRefetch }: TicketKanbanV
                         <Layers className="h-3 w-3" /> {t.sector}
                       </span>
                     )}
-                    {t.assigned_to && (
-                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <User className="h-3 w-3" /> {profiles.find((p: any) => p.user_id === t.assigned_to)?.name || "Atribuído"}
-                      </span>
-                    )}
+                    {(() => {
+                      const agentIds: string[] = Array.isArray(t.agent_user_ids) ? t.agent_user_ids : [];
+                      const allIds = Array.from(new Set([t.assigned_to, ...agentIds].filter(Boolean)));
+                      const names = allIds
+                        .map((id) => profiles.find((p: any) => p.user_id === id)?.name)
+                        .filter(Boolean);
+                      return (
+                        <span className="flex items-center gap-1 text-xs text-muted-foreground truncate" title={names.join(", ")}>
+                          <User className="h-3 w-3 shrink-0" />
+                          <span className="truncate">{names.length ? names.join(", ") : "Sem operador"}</span>
+                        </span>
+                      );
+                    })()}
                     {t.created_at && (
                       <span className="flex items-center gap-1 text-xs text-muted-foreground" title="Criação">
                         <Clock className="h-3 w-3" />
