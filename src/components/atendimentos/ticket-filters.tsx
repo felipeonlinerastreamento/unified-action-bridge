@@ -284,10 +284,10 @@ export function TicketFiltersBar({ filters, onChange, tickets, profiles, open, o
 
 /** Apply filters to tickets array */
 export function applyTicketFilters(tickets: any[], filters: TicketFilters): any[] {
-  return tickets.filter((t) => {
-    // Text search
-    if (filters.search) {
-      const q = filters.search.toLowerCase().replace(/^#/, "").trim();
+  // When the search bar has any text, ignore all other filters and match only by search
+  if (filters.search && filters.search.trim()) {
+    const q = filters.search.toLowerCase().replace(/^#/, "").trim();
+    return tickets.filter((t) => {
       const protocolNumber = formatTicketProtocol(t);
       const protocolFromAttendance = t.attendance_id ? formatProtocol(t.attendance_id) : "";
       const protocolFromId = t.id ? formatProtocol(t.id) : "";
@@ -296,8 +296,11 @@ export function applyTicketFilters(tickets: any[], filters: TicketFilters): any[
         t.attendance_id, t.category, t.sector, t.companies?.name,
         t.protocol, protocolNumber, protocolFromAttendance, protocolFromId,
       ].filter(Boolean).join(" ").toLowerCase();
-      if (!searchable.includes(q)) return false;
-    }
+      return searchable.includes(q);
+    });
+  }
+
+  return tickets.filter((t) => {
 
     // Status
     if (filters.status === "abertos_em_andamento") {
