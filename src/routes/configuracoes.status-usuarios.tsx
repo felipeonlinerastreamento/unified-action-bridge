@@ -175,7 +175,6 @@ function StatusUsuariosPage() {
                       <TableRow key={u.user_id}>
                         <TableCell>
                           <div className="font-medium text-sm">{u.name || "(sem nome)"}</div>
-                          <div className="text-xs text-muted-foreground">{u.email || "—"}</div>
                         </TableCell>
                         <TableCell>
                           <div className="flex flex-wrap gap-1">
