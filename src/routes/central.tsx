@@ -1241,6 +1241,23 @@ function CentralPage() {
     onError: (err: any) => toast.error(err?.message || "Erro ao enviar mensagem"),
   });
 
+  // Delete a sent message for everyone (Z-API)
+  const deleteMessageMutation = useMutation({
+    mutationFn: async (messageId: string) => {
+      return deleteMessage({
+        data: { messageId },
+        ...await getAuthHeaders(),
+      });
+    },
+    onSuccess: () => {
+      toast.success("Mensagem apagada para todos");
+      queryClient.invalidateQueries({ queryKey: ["chat-detail", selectedChannelId, selectedChatId] });
+      queryClient.invalidateQueries({ queryKey: ["zapi-messages"] });
+      queryClient.invalidateQueries({ queryKey: ["chat-messages"] });
+    },
+    onError: (err: any) => toast.error(err?.message || "Erro ao apagar mensagem"),
+  });
+
   // Send media (audio / image / video / document)
   const mediaMutation = useMutation({
     mutationFn: async (input: {
