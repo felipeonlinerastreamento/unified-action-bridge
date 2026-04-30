@@ -3,6 +3,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CalendarIcon, X, Search, Filter } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { formatProtocol } from "@/lib/protocol-format";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -143,7 +144,7 @@ export function TicketFiltersBar({ filters, onChange, tickets, profiles, open, o
         <div className="relative flex-1 max-w-md">
           <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Buscar por nome, descrição, placa, telefone..."
+            placeholder="Buscar por protocolo, nome, descrição, placa, telefone..."
             className="pl-9 h-9"
             value={filters.search}
             onChange={(e) => set({ search: e.target.value })}
@@ -286,10 +287,13 @@ export function applyTicketFilters(tickets: any[], filters: TicketFilters): any[
   return tickets.filter((t) => {
     // Text search
     if (filters.search) {
-      const q = filters.search.toLowerCase();
+      const q = filters.search.toLowerCase().replace(/^#/, "").trim();
+      const protocolFromAttendance = t.attendance_id ? formatProtocol(t.attendance_id) : "";
+      const protocolFromId = t.id ? formatProtocol(t.id) : "";
       const searchable = [
         t.contact_name, t.notes, t.plate, t.contact_phone,
         t.attendance_id, t.category, t.sector, t.companies?.name,
+        t.protocol, protocolFromAttendance, protocolFromId,
       ].filter(Boolean).join(" ").toLowerCase();
       if (!searchable.includes(q)) return false;
     }
