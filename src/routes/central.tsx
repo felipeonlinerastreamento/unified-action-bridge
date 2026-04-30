@@ -1798,7 +1798,7 @@ function CentralPage() {
     const resolved = applyQuickReplyVars(reply.content || "", {
       operatorName: profile?.name,
       contactName: chatDetail?.contact?.name || chatDetail?.description,
-      protocol: formatTicketProtocol(currentTicket, chatDetail?.protocol || selectedChatId),
+      protocol: currentTicket?.protocol_number != null ? formatTicketProtocol(currentTicket) : "",
     });
     return text.slice(0, match.index! + match[1].length) + resolved;
   };
