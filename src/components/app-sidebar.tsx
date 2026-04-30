@@ -24,6 +24,7 @@ import {
   List,
   Bell,
   Target,
+  Activity,
 } from "lucide-react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
@@ -73,6 +74,7 @@ const configSubItems = [
   { title: "Encaminhamento", url: "/configuracoes/encaminhamento", icon: ArrowRightLeft },
   { title: "Popup Diário", url: "/configuracoes/popup-diario", icon: Sun },
   { title: "Usuários", url: "/configuracoes/usuarios", icon: UserCog },
+  { title: "Status de Usuários", url: "/configuracoes/status-usuarios", icon: Activity },
   { title: "Notificações", url: "/configuracoes/notificacoes", icon: Bell },
   { title: "OKR (Ciclos)", url: "/configuracoes/okr", icon: Target },
 ];
