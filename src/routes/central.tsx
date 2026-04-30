@@ -1051,6 +1051,7 @@ function CentralPage() {
         .from("service_tickets")
         .select("id")
         .eq("attendance_id", selectedChatId)
+        .neq("status", "finalizado")
         .limit(1);
       if (existing && existing.length > 0) return;
 
