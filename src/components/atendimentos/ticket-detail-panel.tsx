@@ -354,7 +354,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
     if (!ticket?.id) return;
 
     if (newStatus === "finalizado") {
-      const res = await finalizeTicketWithFlow({ ticket, userId, teSettings, bypassRouting: isAdmin });
+      const res = await finalizeTicketWithFlow({ ticket, userId, teSettings, bypassRouting: false });
       if (res.error) {
         toast.error("Erro ao finalizar: " + res.error);
         return;
