@@ -89,6 +89,7 @@ import {
   ChevronDown,
   ChevronUp,
   MoreHorizontal,
+  MoreVertical,
   Check,
   CheckCheck,
   Pencil,
