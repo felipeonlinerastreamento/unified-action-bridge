@@ -31,7 +31,7 @@ export const upsertOkrCycle = createServerFn({ method: "POST" })
     if (data.id) {
       const { id, ...rest } = payload;
       const { data: row, error } = await context.supabase
-        .from("okr_cycles").update(rest).eq("id", id).select().single();
+        .from("okr_cycles").update(rest).eq("id", id as string).select().single();
       if (error) throw error;
       return row;
     }
@@ -86,7 +86,7 @@ export const upsertObjective = createServerFn({ method: "POST" })
     if (data.id) {
       const { id, ...rest } = payload;
       const { data: row, error } = await context.supabase
-        .from("okr_objectives").update(rest).eq("id", id).select().single();
+        .from("okr_objectives").update(rest).eq("id", id as string).select().single();
       if (error) throw error;
       return row;
     }
@@ -130,7 +130,7 @@ export const upsertKeyResult = createServerFn({ method: "POST" })
     if (data.id) {
       const { id, ...rest } = data;
       const { data: row, error } = await context.supabase
-        .from("okr_key_results").update(rest).eq("id", id).select().single();
+        .from("okr_key_results").update(rest).eq("id", id as string).select().single();
       if (error) throw error;
       return row;
     }
