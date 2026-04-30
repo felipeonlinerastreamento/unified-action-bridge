@@ -3463,7 +3463,7 @@ function CentralPage() {
                   toast.error('Observação é obrigatória quando a categoria for "Não categorizar".');
                   return;
                 }
-                const tipoLabel = tiposPendencia.find((t) => t.Key === finalizeTipoPendencia)?.Descricao || "";
+                let notesToSend = finalizeNotes || "";
                 let notesToSend = finalizeNotes || "";
                 if (isTesteEquipamentoCategory(tipoLabel, teSettings)) {
                   notesToSend = buildTesteEquipamentoNotes(teData, notesToSend);
