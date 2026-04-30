@@ -39,6 +39,7 @@ import {
   listGSystemUsers,
   transferChat,
   joinChatAsCoAgent,
+  deleteMessage,
 } from "@/lib/gsystem.functions";
 import {
   createPendenciaFromAtendimento,
