@@ -1668,7 +1668,8 @@ function CentralPage() {
             userId: session?.user?.id || null,
             teSettings,
             registerStatusComment: false,
-            bypassRouting: isAdmin,
+            // Sempre aplicar encaminhamento configurado, inclusive para admins
+            bypassRouting: false,
           });
           if (res.routed && res.routedTo) {
             toast.success(`Encaminhado para ${res.routedTo.sector}`);
