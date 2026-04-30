@@ -39,6 +39,7 @@ import {
   listGSystemUsers,
   transferChat,
   joinChatAsCoAgent,
+  deleteMessage,
 } from "@/lib/gsystem.functions";
 import {
   createPendenciaFromAtendimento,
@@ -1240,6 +1241,23 @@ function CentralPage() {
     onError: (err: any) => toast.error(err?.message || "Erro ao enviar mensagem"),
   });
 
+  // Delete a sent message for everyone (Z-API)
+  const deleteMessageMutation = useMutation({
+    mutationFn: async (messageId: string) => {
+      return deleteMessage({
+        data: { messageId },
+        ...await getAuthHeaders(),
+      });
+    },
+    onSuccess: () => {
+      toast.success("Mensagem apagada para todos");
+      queryClient.invalidateQueries({ queryKey: ["chat-detail", selectedChannelId, selectedChatId] });
+      queryClient.invalidateQueries({ queryKey: ["zapi-messages"] });
+      queryClient.invalidateQueries({ queryKey: ["chat-messages"] });
+    },
+    onError: (err: any) => toast.error(err?.message || "Erro ao apagar mensagem"),
+  });
+
   // Send media (audio / image / video / document)
   const mediaMutation = useMutation({
     mutationFn: async (input: {
@@ -2293,6 +2311,9 @@ function CentralPage() {
                         const isSystem = msg.isSystemMessage;
                         const isMe = msg.isSentByMe;
                         const isPrivate = msg.isPrivate;
+                        const isErased = msg.text === "🚫 Mensagem apagada";
+                        const canDelete =
+                          isMe && !isPrivate && !isErased && !!(msg as any).zapiMessageId;
 
                         if (isSystem) {
                           return (
@@ -2307,11 +2328,39 @@ function CentralPage() {
                         return (
                           <div
                             key={msg.IdMessage || idx}
-                            className={`flex ${isMe ? "justify-end" : "justify-start"}`}
+                            className={`group flex items-center gap-1 ${isMe ? "justify-end" : "justify-start"}`}
                           >
+                            {canDelete && (
+                              <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                  <Button
+                                    size="icon"
+                                    variant="ghost"
+                                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
+                                    title="Opções da mensagem"
+                                  >
+                                    <MoreHorizontal className="h-3.5 w-3.5" />
+                                  </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                  <DropdownMenuItem
+                                    className="text-destructive focus:text-destructive"
+                                    onClick={() => {
+                                      if (confirm("Apagar esta mensagem para todos? Esta ação não pode ser desfeita."))
+                                        deleteMessageMutation.mutate(msg.IdMessage as string);
+                                    }}
+                                  >
+                                    <Trash2 className="h-4 w-4 mr-2" />
+                                    Apagar para todos
+                                  </DropdownMenuItem>
+                                </DropdownMenuContent>
+                              </DropdownMenu>
+                            )}
                             <div
                               className={`max-w-[75%] rounded-lg px-3 py-2 text-sm ${
-                                isPrivate
+                                isErased
+                                  ? "bg-muted/50 text-muted-foreground italic border border-dashed"
+                                  : isPrivate
                                   ? "bg-amber-50 text-amber-900 border border-amber-200"
                                   : isMe
                                   ? "bg-primary text-primary-foreground"

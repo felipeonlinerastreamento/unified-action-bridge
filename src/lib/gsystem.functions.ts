@@ -19,4 +19,5 @@ export {
   listContacts,
   joinChatAsCoAgent,
   leaveChatAsCoAgent,
+  deleteMessage,
 } from "./zapi.functions";

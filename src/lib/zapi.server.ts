@@ -110,6 +110,22 @@ export async function zapiGetStatus(channel: ZapiChannelCreds) {
   return zapiFetch(channel, "/status", "GET");
 }
 
+/**
+ * Deletes a message in WhatsApp (for everyone) via Z-API.
+ * `owner=true` quando a mensagem foi enviada por nós, `false` quando recebida.
+ */
+export async function zapiDeleteMessage(
+  channel: ZapiChannelCreds,
+  params: { messageId: string; phone: string; owner: boolean }
+) {
+  const qs = new URLSearchParams({
+    messageId: params.messageId,
+    phone: params.phone,
+    owner: String(params.owner),
+  }).toString();
+  return zapiFetch(channel, `/messages?${qs}`, "DELETE");
+}
+
 function extractGroupName(payload: any): string | null {
   const candidates = [
     payload?.name,

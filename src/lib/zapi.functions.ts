@@ -4,7 +4,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
-import { loadZapiChannel, zapiFetch, zapiGetStatus, zapiSendText, zapiSendMedia } from "./zapi.server";
+import { loadZapiChannel, zapiFetch, zapiGetStatus, zapiSendText, zapiSendMedia, zapiDeleteMessage } from "./zapi.server";
 
 // ------------ Status / chats list ------------
 
@@ -226,6 +226,7 @@ export const getChatMessages = createServerFn({ method: "POST" })
 
       return {
         IdMessage: m.id,
+        zapiMessageId: m.zapi_message_id || null,
         senderName,
         senderUserId: authorId,
         senderFirstName: authorFirst,
@@ -615,4 +616,73 @@ export const listContacts = createServerFn({ method: "POST" })
         linkImage: r.contact_avatar,
       })),
     };
+  });
+
+// ------------ Delete message (for everyone, via Z-API) ------------
+//
+// Removes a previously sent message from WhatsApp on both sides. Marks the
+// local row as deleted (soft delete via text replacement) so the bubble
+// disappears from the UI. Only the operator who sent it (or an admin) can
+// trigger this from the chat — enforced in the handler.
+export const deleteMessage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    z.object({
+      messageId: z.string().uuid(), // local zapi_messages.id
+    }).parse
+  )
+  .handler(async ({ data, context }) => {
+    // Load the message + chat to get phone, channel and ownership info
+    const { data: msg, error: msgErr } = await context.supabase
+      .from("zapi_messages")
+      .select("id, chat_id, zapi_message_id, from_me, sent_by_user_id")
+      .eq("id", data.messageId)
+      .single();
+    if (msgErr || !msg) throw new Error("Mensagem não encontrada");
+    if (!msg.zapi_message_id) {
+      throw new Error("Não é possível excluir: mensagem ainda sem ID do WhatsApp");
+    }
+
+    const { data: chat, error: chatErr } = await context.supabase
+      .from("zapi_chats")
+      .select("phone, channel_id")
+      .eq("id", msg.chat_id)
+      .single();
+    if (chatErr || !chat) throw new Error("Conversa não encontrada");
+
+    // Permission check: must be the author OR an admin
+    const isAuthor = !!context.userId && msg.sent_by_user_id === context.userId;
+    let isAdmin = false;
+    if (!isAuthor && context.userId) {
+      const { data: roleRow } = await context.supabase
+        .from("user_roles")
+        .select("role")
+        .eq("user_id", context.userId)
+        .eq("role", "admin")
+        .maybeSingle();
+      isAdmin = !!roleRow;
+    }
+    if (!isAuthor && !isAdmin) {
+      throw new Error("Você só pode excluir mensagens enviadas por você");
+    }
+
+    const channel = await loadZapiChannel(context.supabase, chat.channel_id);
+
+    await zapiDeleteMessage(channel, {
+      messageId: msg.zapi_message_id,
+      phone: chat.phone,
+      owner: !!msg.from_me,
+    });
+
+    // Soft-delete locally so the UI hides it (renderer skips msg.isDeleted via text marker)
+    await context.supabase
+      .from("zapi_messages")
+      .update({
+        text: "🚫 Mensagem apagada",
+        media_url: null,
+        media_type: null,
+      })
+      .eq("id", data.messageId);
+
+    return { success: true };
   });
