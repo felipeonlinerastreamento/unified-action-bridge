@@ -545,11 +545,14 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
             <DetailRow label="Empresa" value={ticket.companies?.name} />
             <DetailRow label="Placa" value={ticket.plate} />
             <DetailRow label="Setor" value={ticket.sector} />
-            <DetailRow label="Responsável" value={
-              ticket.assigned_to
-                ? (profiles.find((p) => p.user_id === ticket.assigned_to)?.name || "Atribuído")
-                : null
-            } />
+            <DetailRow label="Responsável" value={(() => {
+              const agentIds: string[] = Array.isArray((ticket as any).agent_user_ids) ? (ticket as any).agent_user_ids : [];
+              const allIds = Array.from(new Set([ticket.assigned_to, ...agentIds].filter(Boolean)));
+              const names = allIds
+                .map((id) => profiles.find((p) => p.user_id === id)?.name)
+                .filter(Boolean);
+              return names.length ? names.join(", ") : "Sem operador";
+            })()} />
             <div className="flex gap-2 text-sm items-start">
               <span className="font-medium text-muted-foreground min-w-[120px] pt-1.5">Categoria:</span>
               <div className="flex-1 min-w-0">
