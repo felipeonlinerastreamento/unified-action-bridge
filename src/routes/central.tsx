@@ -1350,8 +1350,9 @@ function CentralPage() {
       // routing rules, etc.) NEVER block the actual chat finalization. The user
       // clicked "Finalizar" — the chat MUST be closed regardless of side-effects.
       try {
-      if (currentTicket) {
-        let pendenciaKey = currentTicket.pendencia_key;
+      const activeTicket = currentTicket || ticketForProtocol;
+      if (activeTicket) {
+        let pendenciaKey = activeTicket.pendencia_key;
 
         // If no pendência exists yet, create one now before finalizing
         if (!pendenciaKey) {
@@ -1362,8 +1363,8 @@ function CentralPage() {
                 attendanceId: selectedChatId,
                 contactPhone: contactPhone || undefined,
                 contactName: chatDetail?.contact?.name || chatDetail?.description || undefined,
-                companyId: currentTicket.company_id || undefined,
-                plate: currentTicket.plate || ticketPlate || undefined,
+                companyId: activeTicket.company_id || undefined,
+                plate: activeTicket.plate || ticketPlate || undefined,
                 notes: notes || undefined,
                 tipoPendencia: tipoPendencia || undefined,
                 status: status || undefined,
@@ -1375,7 +1376,7 @@ function CentralPage() {
               await supabase
                 .from("service_tickets")
                 .update({ pendencia_key: pendenciaKey } as any)
-                .eq("id", currentTicket.id);
+                .eq("id", activeTicket.id);
               console.log("[Finalize] Created missing pendência:", pendenciaKey);
             } else {
               console.warn("[Finalize] Could not create pendência:", pendResult?.message);
@@ -1414,10 +1415,10 @@ function CentralPage() {
           .update({
             status: "finalizado" as const,
             closed_at: new Date().toISOString(),
-            notes: notes || currentTicket.notes || null,
-            category: categoryLabel || currentTicket.category || null,
+            notes: notes || activeTicket.notes || null,
+            category: categoryLabel || activeTicket.category || null,
           })
-          .eq("id", currentTicket.id);
+          .eq("id", activeTicket.id);
       }
       // Check if this category triggers a service flow
       if (tipoPendencia) {
