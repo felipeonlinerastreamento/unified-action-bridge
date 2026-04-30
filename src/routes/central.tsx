@@ -2143,7 +2143,7 @@ function CentralPage() {
                           <div className="flex items-center gap-2 flex-wrap">
                             <p className="text-xs text-muted-foreground truncate">
                               {chatDetail?.contact?.secondaryName || chatDetail?.contact?.number}
-                              {(currentTicket?.protocol_number || chatDetail?.protocol) && ` • #${formatTicketProtocol(currentTicket, chatDetail?.protocol || selectedChatId)}`}
+                              {currentTicket?.protocol_number != null && ` • #${formatTicketProtocol(currentTicket)}`}
                             </p>
                             {companyLookup && (
                               <Badge variant="secondary" className="text-[10px] gap-1 max-w-[160px]">
