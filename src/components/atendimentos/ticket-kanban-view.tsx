@@ -149,11 +149,10 @@ export function TicketKanbanView({ tickets, onSelect, onRefetch }: TicketKanbanV
                         </span>
                       )}
                     </div>
-                    {t.sector && (
-                      <span className="flex items-center gap-1 text-xs text-muted-foreground">
-                        <Layers className="h-3 w-3" /> {t.sector}
-                      </span>
-                    )}
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground truncate" title={t.sector || "Sem setor"}>
+                      <Layers className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{t.sector || "Sem setor"}</span>
+                    </span>
                     {(() => {
                       const agentIds: string[] = Array.isArray(t.agent_user_ids) ? t.agent_user_ids : [];
                       const allIds = Array.from(new Set([t.assigned_to, ...agentIds].filter(Boolean)));
