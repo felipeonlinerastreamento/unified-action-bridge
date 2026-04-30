@@ -1104,12 +1104,11 @@ function CentralPage() {
     onSuccess: () => refetchTicket(),
   });
 
-  // Auto-create ticket on chat selection (groups also generate tickets in the same format)
-  useEffect(() => {
-    if (chatDetail && selectedChatId && !currentTicket && !createTicketMutation.isPending) {
-      createTicketMutation.mutate();
-    }
-  }, [chatDetail, selectedChatId, currentTicket]);
+  // NOTE: Tickets are no longer auto-created when a chat is opened.
+  // The atendimento (service_ticket) is created on demand only when the chat
+  // is finalized (see finalizeMutation around line ~1349). This keeps the
+  // "Atendimentos" list clean of in-progress conversations.
+  // The createTicketMutation above is still available if a manual trigger is added later.
 
   // Update ticket plate
   const updatePlateMutation = useMutation({
