@@ -226,6 +226,7 @@ export const getChatMessages = createServerFn({ method: "POST" })
 
       return {
         IdMessage: m.id,
+        zapiMessageId: m.zapi_message_id || null,
         senderName,
         senderUserId: authorId,
         senderFirstName: authorFirst,
