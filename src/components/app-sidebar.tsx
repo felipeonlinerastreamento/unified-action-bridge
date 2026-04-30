@@ -83,11 +83,19 @@ export function AppSidebar() {
   const { state } = useSidebar();
   const collapsed = state === "collapsed";
   const location = useLocation();
-  const { profile, signOut } = useAuth();
+  const { profile, signOut, hasRole } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const isAdmin = hasRole("admin");
 
   const isConfigActive = location.pathname.startsWith("/configuracoes");
   const isAtendimentosActive = location.pathname.startsWith("/atendimentos");
+
+  const adminOnlyUrls = new Set<string>([
+    "/dashboard",
+    "/estoque",
+    "/relatorios",
+    "/okr",
+  ]);
 
   return (
     <Sidebar collapsible="icon">
