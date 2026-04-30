@@ -1315,6 +1315,37 @@ function CentralPage() {
   // Finalize chat
   const finalizeMutation = useMutation({
     mutationFn: async ({ notes, status, tipoPendencia, skipClosingMessage: skipMsg }: { notes?: string; status?: string; tipoPendencia?: string; skipClosingMessage?: boolean } = {}) => {
+      let ticketForProtocol = currentTicket;
+      if (!ticketForProtocol && selectedChatId && chatDetail) {
+        const { data: existing } = await supabase
+          .from("service_tickets")
+          .select("*")
+          .eq("attendance_id", selectedChatId)
+          .neq("status", "finalizado")
+          .order("created_at", { ascending: false })
+          .limit(1);
+        if (existing && existing.length > 0) {
+          ticketForProtocol = existing[0] as any;
+        } else {
+          const { data: sess } = await supabase.auth.getSession();
+          const { data: created, error: createErr } = await supabase
+            .from("service_tickets")
+            .insert({
+              attendance_id: selectedChatId,
+              channel_id: selectedChannelId || null,
+              company_id: companyLookup?.id || null,
+              contact_phone: contactPhone || null,
+              contact_name: chatDetail.contact?.name || chatDetail.description || null,
+              plate: ticketPlate || null,
+              status: "aberto" as const,
+              opened_by: sess.session?.user?.id || null,
+            })
+            .select("*")
+            .single();
+          if (createErr) console.error("[Finalize] Failed to create protocol ticket:", createErr.message);
+          else ticketForProtocol = created as any;
+        }
+      }
       // Wrap all pre-finalization steps so that failures (pendência, ticket update,
       // routing rules, etc.) NEVER block the actual chat finalization. The user
       // clicked "Finalizar" — the chat MUST be closed regardless of side-effects.
@@ -1507,7 +1538,7 @@ function CentralPage() {
       // Send closing message with protocol number before finalizing
       // Admins can opt out via skipClosingMessage to silently close.
       if (!skipMsg) {
-        const protocolNumber = formatTicketProtocol(currentTicket, chatDetail?.protocol || selectedChatId);
+        const protocolNumber = formatTicketProtocol(ticketForProtocol, chatDetail?.protocol || selectedChatId);
         // Busca template editável; cai para o padrão se ainda não houver registro
         let templateContent = `Seu atendimento foi finalizado e desde já agradecemos pela atenção.\n\nSe você precisar de suporte no futuro, fique à vontade para falar conosco.\n\nTenha um ótimo dia!\n\nProtocolo desse atendimento: {protocolo}\n\nEsta é uma mensagem automática e não precisa responder.`;
         try {
