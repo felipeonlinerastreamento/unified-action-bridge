@@ -1596,12 +1596,20 @@ function CentralPage() {
           console.error("[Finalize] direct close also failed:", e?.message);
         }
       }
-      return { success: true };
+      return { success: true, ticketId: ticketForProtocol?.id || null };
     },
-    onSuccess: async () => {
+    onSuccess: async (result) => {
       // Ensure a local ticket exists (covers groups / race conditions where
       // auto-create didn't finish before the user clicked "Finalizar").
       let ticketRef = currentTicket;
+      if (!ticketRef && result?.ticketId) {
+        const { data } = await supabase
+          .from("service_tickets")
+          .select("*")
+          .eq("id", result.ticketId)
+          .maybeSingle();
+        ticketRef = (data as any) || null;
+      }
       if (!ticketRef && selectedChatId) {
         try {
           const { data: existing } = await supabase
