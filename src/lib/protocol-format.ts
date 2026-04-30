@@ -43,3 +43,13 @@ export function formatProtocol(raw: string | number | null | undefined): string 
   const mod = Number(n % 100000n);
   return String(mod).padStart(5, "0");
 }
+
+export function formatTicketProtocol(
+  ticket: { protocol_number?: number | null; protocol?: string | number | null; attendance_id?: string | null; id?: string | null } | null | undefined,
+  fallback?: string | number | null
+): string {
+  if (ticket?.protocol_number !== null && ticket?.protocol_number !== undefined) {
+    return formatProtocol(ticket.protocol_number);
+  }
+  return formatProtocol(fallback ?? ticket?.protocol ?? ticket?.attendance_id ?? ticket?.id);
+}
