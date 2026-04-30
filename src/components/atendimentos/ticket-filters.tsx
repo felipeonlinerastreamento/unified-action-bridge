@@ -313,8 +313,11 @@ export function applyTicketFilters(tickets: any[], filters: TicketFilters): any[
     // Sector
     if (filters.sector !== "todos" && t.sector !== filters.sector) return false;
 
-    // Assigned to
-    if (filters.assignedTo !== "todos" && t.assigned_to !== filters.assignedTo) return false;
+    // Assigned to (responsável principal OU agente adicional)
+    if (filters.assignedTo !== "todos") {
+      const agentIds: string[] = Array.isArray(t.agent_user_ids) ? t.agent_user_ids : [];
+      if (t.assigned_to !== filters.assignedTo && !agentIds.includes(filters.assignedTo)) return false;
+    }
 
     // Contact phone
     if (filters.contactPhone) {
