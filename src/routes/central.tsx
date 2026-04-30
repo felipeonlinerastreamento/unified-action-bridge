@@ -1568,15 +1568,57 @@ function CentralPage() {
       return { success: true };
     },
     onSuccess: async () => {
+      // Ensure a local ticket exists (covers groups / race conditions where
+      // auto-create didn't finish before the user clicked "Finalizar").
+      let ticketRef = currentTicket;
+      if (!ticketRef && selectedChatId) {
+        try {
+          const { data: existing } = await supabase
+            .from("service_tickets")
+            .select("*")
+            .eq("attendance_id", selectedChatId)
+            .neq("status", "finalizado")
+            .order("created_at", { ascending: false })
+            .limit(1);
+          if (existing && existing.length > 0) {
+            ticketRef = existing[0] as any;
+          } else {
+            const { data: sess } = await supabase.auth.getSession();
+            const { data: created, error: createErr } = await supabase
+              .from("service_tickets")
+              .insert({
+                attendance_id: selectedChatId,
+                channel_id: selectedChannelId || null,
+                company_id: companyLookup?.id || null,
+                contact_phone: contactPhone || null,
+                contact_name: chatDetail?.contact?.name || chatDetail?.description || null,
+                plate: ticketPlate || null,
+                status: "aberto" as const,
+                opened_by: sess.session?.user?.id || null,
+              })
+              .select("*")
+              .single();
+            if (createErr) {
+              console.error("[Finalize] Failed to create fallback ticket:", createErr.message);
+            } else {
+              ticketRef = created as any;
+              console.log("[Finalize] Created fallback ticket:", (created as any)?.id);
+            }
+          }
+        } catch (e: any) {
+          console.error("[Finalize] Fallback ticket creation error:", e?.message);
+        }
+      }
+
       // Apply auto-routing flow (TE / category rules) on the local ticket
-      if (currentTicket) {
+      if (ticketRef) {
         try {
           const fresh = await supabase
             .from("service_tickets")
             .select("*")
-            .eq("id", currentTicket.id)
+            .eq("id", ticketRef.id)
             .single();
-          const ticket = fresh.data || currentTicket;
+          const ticket = fresh.data || ticketRef;
           const res = await finalizeTicketWithFlow({
             ticket,
             userId: session?.user?.id || null,
