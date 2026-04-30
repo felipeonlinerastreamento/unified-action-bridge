@@ -60,8 +60,18 @@ export async function zapiFetch(
   return parsed ?? { success: true };
 }
 
+function zapiRecipientPhone(phone: string): string {
+  const raw = String(phone || "").trim();
+  if (!raw) return raw;
+  if (/-group$/i.test(raw)) return raw;
+  if (/@g\.us$/i.test(raw)) return raw.replace(/@g\.us$/i, "-group");
+
+  const digits = raw.replace(/\D/g, "");
+  return digits.length > 15 ? `${digits}-group` : digits;
+}
+
 export async function zapiSendText(channel: ZapiChannelCreds, phone: string, message: string) {
-  return zapiFetch(channel, "/send-text", "POST", { phone, message });
+  return zapiFetch(channel, "/send-text", "POST", { phone: zapiRecipientPhone(phone), message });
 }
 
 /**
@@ -77,7 +87,7 @@ export async function zapiSendMedia(
 ) {
   if (kind === "audio") {
     return zapiFetch(channel, "/send-audio", "POST", {
-      phone,
+      phone: zapiRecipientPhone(phone),
       audio: dataUrl,
       viewOnce: false,
       waveform: true,
@@ -85,14 +95,14 @@ export async function zapiSendMedia(
   }
   if (kind === "image") {
     return zapiFetch(channel, "/send-image", "POST", {
-      phone,
+      phone: zapiRecipientPhone(phone),
       image: dataUrl,
       caption: opts?.caption || "",
     });
   }
   if (kind === "video") {
     return zapiFetch(channel, "/send-video", "POST", {
-      phone,
+      phone: zapiRecipientPhone(phone),
       video: dataUrl,
       caption: opts?.caption || "",
     });
@@ -100,7 +110,7 @@ export async function zapiSendMedia(
   // document — Z-API requires extension in path
   const ext = (opts?.extension || (opts?.fileName?.split(".").pop() ?? "pdf")).toLowerCase();
   return zapiFetch(channel, `/send-document/${encodeURIComponent(ext)}`, "POST", {
-    phone,
+    phone: zapiRecipientPhone(phone),
     document: dataUrl,
     fileName: opts?.fileName || `arquivo.${ext}`,
   });
