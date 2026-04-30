@@ -2903,8 +2903,8 @@ function CentralPage() {
                         <Separator />
 
                         <div className="space-y-3">
-                          {(currentTicket?.protocol_number || chatDetail.protocol) && (
-                            <DetailRow label="Protocolo" value={`#${formatTicketProtocol(currentTicket, chatDetail.protocol || selectedChatId)}`} mono />
+                          {currentTicket?.protocol_number != null && (
+                            <DetailRow label="Protocolo" value={`#${formatTicketProtocol(currentTicket)}`} mono />
                           )}
                           {statusInfo && (
                             <div>
