@@ -386,12 +386,33 @@ export const sendText = createServerFn({ method: "POST" })
       text: outgoingText,
       status: "sent",
     });
+    // Operator interaction cancels the bot flow: assume chat and clear bot state
+    // so the automatic sector-routing menu is not re-sent.
+    const { data: currentChat } = await context.supabase
+      .from("zapi_chats")
+      .select("status, assigned_to")
+      .eq("id", data.chatId)
+      .maybeSingle();
+    const chatUpdate: {
+      last_message_at: string;
+      last_message_preview: string;
+      status?: string;
+      bot_state?: Record<string, never>;
+      assigned_to?: string;
+    } = {
+      last_message_at: new Date().toISOString(),
+      last_message_preview: outgoingText.slice(0, 120),
+    };
+    if (currentChat && currentChat.status !== "em_atendimento" && currentChat.status !== "finalizado") {
+      chatUpdate.status = "em_atendimento";
+      chatUpdate.bot_state = {};
+      if (!currentChat.assigned_to && context.userId) {
+        chatUpdate.assigned_to = context.userId;
+      }
+    }
     await context.supabase
       .from("zapi_chats")
-      .update({
-        last_message_at: new Date().toISOString(),
-        last_message_preview: outgoingText.slice(0, 120),
-      })
+      .update(chatUpdate)
       .eq("id", data.chatId);
 
     return { success: true, ...result };
