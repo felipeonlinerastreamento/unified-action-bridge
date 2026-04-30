@@ -2550,7 +2550,7 @@ function CentralPage() {
                           const resolved = applyQuickReplyVars(text, {
                             operatorName: profile?.name,
                             contactName: chatDetail?.contact?.name || chatDetail?.description,
-                            protocol: formatTicketProtocol(currentTicket, chatDetail?.protocol || selectedChatId),
+                            protocol: currentTicket?.protocol_number != null ? formatTicketProtocol(currentTicket) : "",
                           });
                           setMessageInput((prev) => prev ? `${prev} ${resolved}` : resolved);
                         }}
