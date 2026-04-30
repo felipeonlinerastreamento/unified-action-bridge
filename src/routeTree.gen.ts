@@ -24,6 +24,7 @@ import { Route as ConfiguracoesIndexRouteImport } from './routes/configuracoes.i
 import { Route as HooksRefreshTrackingRouteImport } from './routes/hooks/refresh-tracking'
 import { Route as ConfiguracoesZapiRouteImport } from './routes/configuracoes.zapi'
 import { Route as ConfiguracoesUsuariosRouteImport } from './routes/configuracoes.usuarios'
+import { Route as ConfiguracoesStatusUsuariosRouteImport } from './routes/configuracoes.status-usuarios'
 import { Route as ConfiguracoesPopupDiarioRouteImport } from './routes/configuracoes.popup-diario'
 import { Route as ConfiguracoesOkrRouteImport } from './routes/configuracoes.okr'
 import { Route as ConfiguracoesNotificacoesRouteImport } from './routes/configuracoes.notificacoes'
@@ -111,6 +112,12 @@ const ConfiguracoesUsuariosRoute = ConfiguracoesUsuariosRouteImport.update({
   path: '/usuarios',
   getParentRoute: () => ConfiguracoesRoute,
 } as any)
+const ConfiguracoesStatusUsuariosRoute =
+  ConfiguracoesStatusUsuariosRouteImport.update({
+    id: '/status-usuarios',
+    path: '/status-usuarios',
+    getParentRoute: () => ConfiguracoesRoute,
+  } as any)
 const ConfiguracoesPopupDiarioRoute =
   ConfiguracoesPopupDiarioRouteImport.update({
     id: '/popup-diario',
@@ -195,6 +202,7 @@ export interface FileRoutesByFullPath {
   '/configuracoes/notificacoes': typeof ConfiguracoesNotificacoesRoute
   '/configuracoes/okr': typeof ConfiguracoesOkrRoute
   '/configuracoes/popup-diario': typeof ConfiguracoesPopupDiarioRoute
+  '/configuracoes/status-usuarios': typeof ConfiguracoesStatusUsuariosRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
   '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
@@ -222,6 +230,7 @@ export interface FileRoutesByTo {
   '/configuracoes/notificacoes': typeof ConfiguracoesNotificacoesRoute
   '/configuracoes/okr': typeof ConfiguracoesOkrRoute
   '/configuracoes/popup-diario': typeof ConfiguracoesPopupDiarioRoute
+  '/configuracoes/status-usuarios': typeof ConfiguracoesStatusUsuariosRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
   '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
@@ -251,6 +260,7 @@ export interface FileRoutesById {
   '/configuracoes/notificacoes': typeof ConfiguracoesNotificacoesRoute
   '/configuracoes/okr': typeof ConfiguracoesOkrRoute
   '/configuracoes/popup-diario': typeof ConfiguracoesPopupDiarioRoute
+  '/configuracoes/status-usuarios': typeof ConfiguracoesStatusUsuariosRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
   '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
@@ -281,6 +291,7 @@ export interface FileRouteTypes {
     | '/configuracoes/notificacoes'
     | '/configuracoes/okr'
     | '/configuracoes/popup-diario'
+    | '/configuracoes/status-usuarios'
     | '/configuracoes/usuarios'
     | '/configuracoes/zapi'
     | '/hooks/refresh-tracking'
@@ -308,6 +319,7 @@ export interface FileRouteTypes {
     | '/configuracoes/notificacoes'
     | '/configuracoes/okr'
     | '/configuracoes/popup-diario'
+    | '/configuracoes/status-usuarios'
     | '/configuracoes/usuarios'
     | '/configuracoes/zapi'
     | '/hooks/refresh-tracking'
@@ -336,6 +348,7 @@ export interface FileRouteTypes {
     | '/configuracoes/notificacoes'
     | '/configuracoes/okr'
     | '/configuracoes/popup-diario'
+    | '/configuracoes/status-usuarios'
     | '/configuracoes/usuarios'
     | '/configuracoes/zapi'
     | '/hooks/refresh-tracking'
@@ -469,6 +482,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConfiguracoesUsuariosRouteImport
       parentRoute: typeof ConfiguracoesRoute
     }
+    '/configuracoes/status-usuarios': {
+      id: '/configuracoes/status-usuarios'
+      path: '/status-usuarios'
+      fullPath: '/configuracoes/status-usuarios'
+      preLoaderRoute: typeof ConfiguracoesStatusUsuariosRouteImport
+      parentRoute: typeof ConfiguracoesRoute
+    }
     '/configuracoes/popup-diario': {
       id: '/configuracoes/popup-diario'
       path: '/popup-diario'
@@ -558,6 +578,7 @@ interface ConfiguracoesRouteChildren {
   ConfiguracoesNotificacoesRoute: typeof ConfiguracoesNotificacoesRoute
   ConfiguracoesOkrRoute: typeof ConfiguracoesOkrRoute
   ConfiguracoesPopupDiarioRoute: typeof ConfiguracoesPopupDiarioRoute
+  ConfiguracoesStatusUsuariosRoute: typeof ConfiguracoesStatusUsuariosRoute
   ConfiguracoesUsuariosRoute: typeof ConfiguracoesUsuariosRoute
   ConfiguracoesZapiRoute: typeof ConfiguracoesZapiRoute
   ConfiguracoesIndexRoute: typeof ConfiguracoesIndexRoute
@@ -572,6 +593,7 @@ const ConfiguracoesRouteChildren: ConfiguracoesRouteChildren = {
   ConfiguracoesNotificacoesRoute: ConfiguracoesNotificacoesRoute,
   ConfiguracoesOkrRoute: ConfiguracoesOkrRoute,
   ConfiguracoesPopupDiarioRoute: ConfiguracoesPopupDiarioRoute,
+  ConfiguracoesStatusUsuariosRoute: ConfiguracoesStatusUsuariosRoute,
   ConfiguracoesUsuariosRoute: ConfiguracoesUsuariosRoute,
   ConfiguracoesZapiRoute: ConfiguracoesZapiRoute,
   ConfiguracoesIndexRoute: ConfiguracoesIndexRoute,
