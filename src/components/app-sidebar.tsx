@@ -23,6 +23,7 @@ import {
   CheckSquare,
   List,
   Bell,
+  Target,
 } from "lucide-react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
@@ -54,6 +55,7 @@ const mainItems = [
   { title: "Empresas", url: "/empresas", icon: Building2 },
   { title: "Estoque", url: "/estoque", icon: Boxes },
   { title: "Relatórios", url: "/relatorios", icon: BarChart3 },
+  { title: "OKR", url: "/okr", icon: Target },
 ];
 
 const atendimentosSubItems: { title: string; url: string; icon: typeof List }[] = [
@@ -72,6 +74,7 @@ const configSubItems = [
   { title: "Popup Diário", url: "/configuracoes/popup-diario", icon: Sun },
   { title: "Usuários", url: "/configuracoes/usuarios", icon: UserCog },
   { title: "Notificações", url: "/configuracoes/notificacoes", icon: Bell },
+  { title: "OKR (Ciclos)", url: "/configuracoes/okr", icon: Target },
 ];
 
 export function AppSidebar() {
