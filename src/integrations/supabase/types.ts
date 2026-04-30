@@ -1835,6 +1835,7 @@ export type Database = {
           pendencia_key: string | null
           plate: string | null
           priority: Database["public"]["Enums"]["ticket_priority"]
+          protocol_number: number
           reminder_date: string | null
           reminder_note: string | null
           reopened_at: string | null
@@ -1860,6 +1861,7 @@ export type Database = {
           pendencia_key?: string | null
           plate?: string | null
           priority?: Database["public"]["Enums"]["ticket_priority"]
+          protocol_number?: number
           reminder_date?: string | null
           reminder_note?: string | null
           reopened_at?: string | null
@@ -1885,6 +1887,7 @@ export type Database = {
           pendencia_key?: string | null
           plate?: string | null
           priority?: Database["public"]["Enums"]["ticket_priority"]
+          protocol_number?: number
           reminder_date?: string | null
           reminder_note?: string | null
           reopened_at?: string | null
