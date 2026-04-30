@@ -1148,13 +1148,20 @@ function CentralPage() {
   const { data: allCompanies = [], isLoading: companiesLoading } = useQuery({
     queryKey: ["gsystem-clientes-for-linking"],
     queryFn: async () => {
-      const result = await getClientes({
-        data: {},
-        ...await getAuthHeaders(),
-      });
-      const clients = Array.isArray(result) ? result : result?.data || result?.Data || [];
+      // Fetch GSystem clients and local companies in parallel
+      const [gsystemResult, localResult] = await Promise.all([
+        getClientes({
+          data: {},
+          ...await getAuthHeaders(),
+        }).catch(() => null),
+        supabase.from("companies").select("id, name, cnpj").order("name"),
+      ]);
 
-      return clients
+      const gsystemClients = Array.isArray(gsystemResult)
+        ? gsystemResult
+        : gsystemResult?.data || gsystemResult?.Data || [];
+
+      const fromGsystem = gsystemClients
         .map((c: any) => {
           const name = String(c.Nome || c.nome || c.RazaoSocial || c.razaoSocial || c.NomeFantasia || c.nomeFantasia || "").trim();
           const cnpj = String(c.CpfCnpj || c.cpfCnpj || c.CNPJ || c.cnpj || "").replace(/\D/g, "");
@@ -1166,10 +1173,33 @@ function CentralPage() {
             name: name || fantasia,
             cnpj,
             fantasia,
+            source: "gsystem" as const,
           };
         })
-        .filter((c: any) => c.value && c.name)
-        .filter((company: any, index: number, arr: any[]) => arr.findIndex((item) => item.value === company.value) === index);
+        .filter((c: any) => c.value && c.name);
+
+      const fromLocal = (localResult.data || []).map((c: any) => {
+        const name = String(c.name || "").trim();
+        const cnpj = String(c.cnpj || "").replace(/\D/g, "");
+        const value = cnpj ? `cnpj:${cnpj}` : name ? `nome:${name.toLowerCase()}` : "";
+        return {
+          value,
+          name,
+          cnpj,
+          fantasia: "",
+          source: "local" as const,
+        };
+      }).filter((c: any) => c.value && c.name);
+
+      // Merge — GSystem first, then add local entries that aren't duplicates
+      const merged = [...fromGsystem];
+      for (const local of fromLocal) {
+        if (!merged.find((m) => m.value === local.value)) {
+          merged.push(local);
+        }
+      }
+
+      return merged;
     },
     enabled: isAuthenticated,
     staleTime: 60000,
