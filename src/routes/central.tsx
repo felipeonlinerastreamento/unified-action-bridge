@@ -117,7 +117,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 import { WhisperToggle } from "@/components/central/whisper-toggle";
 import { QuickRepliesPopover } from "@/components/central/quick-replies-popover";
 import { applyQuickReplyVars } from "@/lib/quick-reply-vars";
-import { formatProtocol } from "@/lib/protocol-format";
+import { formatTicketProtocol } from "@/lib/protocol-format";
 import { ChatTags, type ChatTag } from "@/components/central/chat-tags";
 import { MessageStatusTicks } from "@/components/central/message-status-ticks";
 import { TypingIndicator } from "@/components/central/typing-indicator";
@@ -1315,12 +1315,44 @@ function CentralPage() {
   // Finalize chat
   const finalizeMutation = useMutation({
     mutationFn: async ({ notes, status, tipoPendencia, skipClosingMessage: skipMsg }: { notes?: string; status?: string; tipoPendencia?: string; skipClosingMessage?: boolean } = {}) => {
+      let ticketForProtocol = currentTicket;
+      if (!ticketForProtocol && selectedChatId && chatDetail) {
+        const { data: existing } = await supabase
+          .from("service_tickets")
+          .select("*")
+          .eq("attendance_id", selectedChatId)
+          .neq("status", "finalizado")
+          .order("created_at", { ascending: false })
+          .limit(1);
+        if (existing && existing.length > 0) {
+          ticketForProtocol = existing[0] as any;
+        } else {
+          const { data: sess } = await supabase.auth.getSession();
+          const { data: created, error: createErr } = await supabase
+            .from("service_tickets")
+            .insert({
+              attendance_id: selectedChatId,
+              channel_id: selectedChannelId || null,
+              company_id: companyLookup?.id || null,
+              contact_phone: contactPhone || null,
+              contact_name: chatDetail.contact?.name || chatDetail.description || null,
+              plate: ticketPlate || null,
+              status: "aberto" as const,
+              opened_by: sess.session?.user?.id || null,
+            })
+            .select("*")
+            .single();
+          if (createErr) console.error("[Finalize] Failed to create protocol ticket:", createErr.message);
+          else ticketForProtocol = created as any;
+        }
+      }
       // Wrap all pre-finalization steps so that failures (pendência, ticket update,
       // routing rules, etc.) NEVER block the actual chat finalization. The user
       // clicked "Finalizar" — the chat MUST be closed regardless of side-effects.
       try {
-      if (currentTicket) {
-        let pendenciaKey = currentTicket.pendencia_key;
+      const activeTicket = currentTicket || ticketForProtocol;
+      if (activeTicket) {
+        let pendenciaKey = activeTicket.pendencia_key;
 
         // If no pendência exists yet, create one now before finalizing
         if (!pendenciaKey) {
@@ -1331,8 +1363,8 @@ function CentralPage() {
                 attendanceId: selectedChatId,
                 contactPhone: contactPhone || undefined,
                 contactName: chatDetail?.contact?.name || chatDetail?.description || undefined,
-                companyId: currentTicket.company_id || undefined,
-                plate: currentTicket.plate || ticketPlate || undefined,
+                companyId: activeTicket.company_id || undefined,
+                plate: activeTicket.plate || ticketPlate || undefined,
                 notes: notes || undefined,
                 tipoPendencia: tipoPendencia || undefined,
                 status: status || undefined,
@@ -1344,7 +1376,7 @@ function CentralPage() {
               await supabase
                 .from("service_tickets")
                 .update({ pendencia_key: pendenciaKey } as any)
-                .eq("id", currentTicket.id);
+                .eq("id", activeTicket.id);
               console.log("[Finalize] Created missing pendência:", pendenciaKey);
             } else {
               console.warn("[Finalize] Could not create pendência:", pendResult?.message);
@@ -1383,10 +1415,10 @@ function CentralPage() {
           .update({
             status: "finalizado" as const,
             closed_at: new Date().toISOString(),
-            notes: notes || currentTicket.notes || null,
-            category: categoryLabel || currentTicket.category || null,
+            notes: notes || activeTicket.notes || null,
+            category: categoryLabel || activeTicket.category || null,
           })
-          .eq("id", currentTicket.id);
+          .eq("id", activeTicket.id);
       }
       // Check if this category triggers a service flow
       if (tipoPendencia) {
@@ -1507,7 +1539,7 @@ function CentralPage() {
       // Send closing message with protocol number before finalizing
       // Admins can opt out via skipClosingMessage to silently close.
       if (!skipMsg) {
-        const protocolNumber = formatProtocol(chatDetail?.protocol || selectedChatId);
+        const protocolNumber = formatTicketProtocol(ticketForProtocol, chatDetail?.protocol || selectedChatId);
         // Busca template editável; cai para o padrão se ainda não houver registro
         let templateContent = `Seu atendimento foi finalizado e desde já agradecemos pela atenção.\n\nSe você precisar de suporte no futuro, fique à vontade para falar conosco.\n\nTenha um ótimo dia!\n\nProtocolo desse atendimento: {protocolo}\n\nEsta é uma mensagem automática e não precisa responder.`;
         try {
@@ -1565,12 +1597,20 @@ function CentralPage() {
           console.error("[Finalize] direct close also failed:", e?.message);
         }
       }
-      return { success: true };
+      return { success: true, ticketId: ticketForProtocol?.id || null };
     },
-    onSuccess: async () => {
+    onSuccess: async (result) => {
       // Ensure a local ticket exists (covers groups / race conditions where
       // auto-create didn't finish before the user clicked "Finalizar").
       let ticketRef = currentTicket;
+      if (!ticketRef && result?.ticketId) {
+        const { data } = await supabase
+          .from("service_tickets")
+          .select("*")
+          .eq("id", result.ticketId)
+          .maybeSingle();
+        ticketRef = (data as any) || null;
+      }
       if (!ticketRef && selectedChatId) {
         try {
           const { data: existing } = await supabase
@@ -1754,7 +1794,7 @@ function CentralPage() {
     const resolved = applyQuickReplyVars(reply.content || "", {
       operatorName: profile?.name,
       contactName: chatDetail?.contact?.name || chatDetail?.description,
-      protocol: formatProtocol(chatDetail?.protocol),
+      protocol: formatTicketProtocol(currentTicket, chatDetail?.protocol || selectedChatId),
     });
     return text.slice(0, match.index! + match[1].length) + resolved;
   };
@@ -2099,7 +2139,7 @@ function CentralPage() {
                           <div className="flex items-center gap-2 flex-wrap">
                             <p className="text-xs text-muted-foreground truncate">
                               {chatDetail?.contact?.secondaryName || chatDetail?.contact?.number}
-                              {chatDetail?.protocol && ` • #${formatProtocol(chatDetail.protocol)}`}
+                              {(currentTicket?.protocol_number || chatDetail?.protocol) && ` • #${formatTicketProtocol(currentTicket, chatDetail?.protocol || selectedChatId)}`}
                             </p>
                             {companyLookup && (
                               <Badge variant="secondary" className="text-[10px] gap-1 max-w-[160px]">
@@ -2506,7 +2546,7 @@ function CentralPage() {
                           const resolved = applyQuickReplyVars(text, {
                             operatorName: profile?.name,
                             contactName: chatDetail?.contact?.name || chatDetail?.description,
-                            protocol: formatProtocol(chatDetail?.protocol),
+                            protocol: formatTicketProtocol(currentTicket, chatDetail?.protocol || selectedChatId),
                           });
                           setMessageInput((prev) => prev ? `${prev} ${resolved}` : resolved);
                         }}
@@ -2859,8 +2899,8 @@ function CentralPage() {
                         <Separator />
 
                         <div className="space-y-3">
-                          {chatDetail.protocol && (
-                            <DetailRow label="Protocolo" value={`#${formatProtocol(chatDetail.protocol)}`} mono />
+                          {(currentTicket?.protocol_number || chatDetail.protocol) && (
+                            <DetailRow label="Protocolo" value={`#${formatTicketProtocol(currentTicket, chatDetail.protocol || selectedChatId)}`} mono />
                           )}
                           {statusInfo && (
                             <div>

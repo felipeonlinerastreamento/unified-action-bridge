@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Building2, Clock, CheckCircle, MessageSquare, User, Layers, Package, MapPin } from "lucide-react";
 import { LiberacaoBadge } from "./liberacao-badge";
 import { SuprimentoBadge } from "./suprimento-badge";
+import { formatTicketProtocol } from "@/lib/protocol-format";
 
 interface TicketListViewProps {
   tickets: any[];
@@ -123,7 +124,7 @@ export function TicketListView({ tickets, onSelect, profiles = [] }: TicketListV
                 })()}
               </div>
               <span className="text-xs text-muted-foreground whitespace-nowrap">
-                #{t.id?.substring(0, 8)}
+                #{formatTicketProtocol(t)}
               </span>
             </div>
           </CardContent>

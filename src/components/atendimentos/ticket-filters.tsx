@@ -3,7 +3,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CalendarIcon, X, Search, Filter } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { formatProtocol } from "@/lib/protocol-format";
+import { formatProtocol, formatTicketProtocol } from "@/lib/protocol-format";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -288,12 +288,13 @@ export function applyTicketFilters(tickets: any[], filters: TicketFilters): any[
     // Text search
     if (filters.search) {
       const q = filters.search.toLowerCase().replace(/^#/, "").trim();
+      const protocolNumber = formatTicketProtocol(t);
       const protocolFromAttendance = t.attendance_id ? formatProtocol(t.attendance_id) : "";
       const protocolFromId = t.id ? formatProtocol(t.id) : "";
       const searchable = [
         t.contact_name, t.notes, t.plate, t.contact_phone,
         t.attendance_id, t.category, t.sector, t.companies?.name,
-        t.protocol, protocolFromAttendance, protocolFromId,
+        t.protocol, protocolNumber, protocolFromAttendance, protocolFromId,
       ].filter(Boolean).join(" ").toLowerCase();
       if (!searchable.includes(q)) return false;
     }

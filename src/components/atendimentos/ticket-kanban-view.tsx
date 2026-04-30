@@ -8,6 +8,7 @@ import { toast } from "sonner";
 import { useTesteEquipamentoSettings } from "@/hooks/use-teste-equipamento-settings";
 import { useAuth } from "@/hooks/use-auth";
 import { finalizeTicketWithFlow } from "@/lib/ticket-finalize-flow";
+import { formatTicketProtocol } from "@/lib/protocol-format";
 import { LiberacaoBadge } from "./liberacao-badge";
 
 interface TicketKanbanViewProps {
@@ -139,6 +140,7 @@ export function TicketKanbanView({ tickets, onSelect, onRefetch }: TicketKanbanV
                       <span className="text-xs font-medium truncate flex-1">
                         {t.contact_name || t.attendance_id || "Ticket"}
                       </span>
+                      <Badge variant="outline" className="text-[10px]">#{formatTicketProtocol(t)}</Badge>
                     </div>
                     <div className="flex items-center gap-2 text-xs text-muted-foreground">
                       {t.companies?.name && (
