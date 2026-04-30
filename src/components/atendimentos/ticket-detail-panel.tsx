@@ -537,6 +537,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
           </TabsList>
 
           <TabsContent value="detalhes" className="space-y-3 mt-3">
+            <DetailRow label="Protocolo" value={`#${formatTicketProtocol(ticket)}`} />
             <DetailRow label="Status" value={ticket.status} />
             <DetailRow label="Prioridade" value={getPriorityLabel(ticket.priority || "media")} />
             <DetailRow label="Contato" value={ticket.contact_name} />
