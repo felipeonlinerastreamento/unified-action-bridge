@@ -135,37 +135,36 @@ export function TicketKanbanView({ tickets, onSelect, onRefetch }: TicketKanbanV
                   onClick={() => onSelect(t)}
                 >
                   <CardContent className="p-3 space-y-1">
-                    <div className="flex items-center gap-2">
-                      <div className={`w-2 h-2 rounded-full ${getPriorityColor(t.priority || "media")}`} />
-                      <span className="text-xs font-medium truncate flex-1">
-                        {t.contact_name || t.attendance_id || "Ticket"}
-                      </span>
-                      <Badge variant="outline" className="text-[10px]">#{formatTicketProtocol(t)}</Badge>
-                    </div>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      {t.companies?.name && (
-                        <span className="flex items-center gap-1 truncate">
-                          <Building2 className="h-3 w-3" /> {t.companies.name}
-                        </span>
-                      )}
-                    </div>
-                    <span className="flex items-center gap-1 text-xs text-muted-foreground truncate" title={t.sector || "Sem setor"}>
-                      <Layers className="h-3 w-3 shrink-0" />
-                      <span className="truncate">{t.sector || "Sem setor"}</span>
-                    </span>
                     {(() => {
                       const agentIds: string[] = Array.isArray(t.agent_user_ids) ? t.agent_user_ids : [];
                       const allIds = Array.from(new Set([t.assigned_to, ...agentIds].filter(Boolean)));
                       const names = allIds
                         .map((id) => profiles.find((p: any) => p.user_id === id)?.name)
                         .filter(Boolean);
+                      const operatorLabel = names.length ? names.join(", ") : "Sem operador";
                       return (
-                        <span className="flex items-center gap-1 text-xs text-muted-foreground truncate" title={names.join(", ")}>
-                          <User className="h-3 w-3 shrink-0" />
-                          <span className="truncate">{names.length ? names.join(", ") : "Sem operador"}</span>
-                        </span>
+                        <div className="flex items-center gap-2">
+                          <div className={`w-2 h-2 rounded-full ${getPriorityColor(t.priority || "media")}`} />
+                          <span className="text-xs font-medium truncate flex-1" title={operatorLabel}>
+                            {operatorLabel}
+                          </span>
+                          <Badge variant="outline" className="text-[10px]">#{formatTicketProtocol(t)}</Badge>
+                        </div>
                       );
                     })()}
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground truncate" title={t.contact_name || ""}>
+                      <User className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{t.contact_name || t.attendance_id || "Sem cliente"}</span>
+                    </span>
+                    {t.companies?.name && (
+                      <span className="flex items-center gap-1 text-xs text-muted-foreground truncate">
+                        <Building2 className="h-3 w-3 shrink-0" /> <span className="truncate">{t.companies.name}</span>
+                      </span>
+                    )}
+                    <span className="flex items-center gap-1 text-xs text-muted-foreground truncate" title={t.sector || "Sem setor"}>
+                      <Layers className="h-3 w-3 shrink-0" />
+                      <span className="truncate">{t.sector || "Sem setor"}</span>
+                    </span>
                     {t.created_at && (
                       <span className="flex items-center gap-1 text-xs text-muted-foreground" title="Criação">
                         <Clock className="h-3 w-3" />
