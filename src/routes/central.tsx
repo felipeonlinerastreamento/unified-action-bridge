@@ -965,6 +965,7 @@ function CentralPage() {
         .from("service_tickets")
         .select("*")
         .eq("attendance_id", selectedChatId)
+        .neq("status", "finalizado")
         .order("created_at", { ascending: false })
         .limit(1);
       return data && data.length > 0 ? data[0] : null;
@@ -1050,6 +1051,7 @@ function CentralPage() {
         .from("service_tickets")
         .select("id")
         .eq("attendance_id", selectedChatId)
+        .neq("status", "finalizado")
         .limit(1);
       if (existing && existing.length > 0) return;
 
