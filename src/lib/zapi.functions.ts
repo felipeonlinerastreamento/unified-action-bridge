@@ -393,7 +393,13 @@ export const sendText = createServerFn({ method: "POST" })
       .select("status, assigned_to")
       .eq("id", data.chatId)
       .maybeSingle();
-    const chatUpdate: Record<string, unknown> = {
+    const chatUpdate: {
+      last_message_at: string;
+      last_message_preview: string;
+      status?: string;
+      bot_state?: Record<string, unknown>;
+      assigned_to?: string;
+    } = {
       last_message_at: new Date().toISOString(),
       last_message_preview: outgoingText.slice(0, 120),
     };
