@@ -3405,15 +3405,29 @@ function CentralPage() {
               />
             </div>
 
-            <div className="space-y-2">
-              <Label className="text-xs font-medium">Observação (opcional)</Label>
-              <Textarea
-                rows={2}
-                placeholder="Ex: Cliente solicitou suporte..."
-                value={finalizeNotes}
-                onChange={(e) => setFinalizeNotes(e.target.value)}
-              />
-            </div>
+            {(() => {
+              const tipoLabel = tiposPendencia.find((t) => t.Key === finalizeTipoPendencia)?.Descricao || "";
+              const isNaoCategorizar = /n[aã]o\s*categorizar/i.test(tipoLabel);
+              const obsRequired = isNaoCategorizar && !isAdmin;
+              return (
+                <div className="space-y-2">
+                  <Label className="text-xs font-medium">
+                    Observação {obsRequired ? <span className="text-destructive">*</span> : "(opcional)"}
+                  </Label>
+                  <Textarea
+                    rows={2}
+                    placeholder={obsRequired ? "Obrigatório para a categoria \"Não categorizar\"..." : "Ex: Cliente solicitou suporte..."}
+                    value={finalizeNotes}
+                    onChange={(e) => setFinalizeNotes(e.target.value)}
+                  />
+                  {obsRequired && (
+                    <p className="text-[11px] text-muted-foreground">
+                      Descreva o motivo do atendimento — observação obrigatória quando a categoria for "Não categorizar".
+                    </p>
+                  )}
+                </div>
+              );
+            })()}
 
             {isAdmin && (
               <div className="flex items-start gap-2 rounded-md border border-dashed p-3 bg-muted/30">
