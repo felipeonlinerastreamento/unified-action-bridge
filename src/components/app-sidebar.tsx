@@ -116,18 +116,20 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {/* Dashboard primeiro */}
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={location.pathname.startsWith("/dashboard")}
-                  tooltip="Dashboard"
-                >
-                  <Link to="/dashboard">
-                    <LayoutDashboard className="h-4 w-4" />
-                    <span>Dashboard</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {isAdmin && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={location.pathname.startsWith("/dashboard")}
+                    tooltip="Dashboard"
+                  >
+                    <Link to="/dashboard">
+                      <LayoutDashboard className="h-4 w-4" />
+                      <span>Dashboard</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
 
               {/* Atendimentos (link direto) */}
               <SidebarMenuItem>
@@ -144,7 +146,9 @@ export function AppSidebar() {
               </SidebarMenuItem>
 
               {/* Demais itens (pulando Dashboard) */}
-              {mainItems.slice(1).map((item) => (
+              {mainItems.slice(1)
+                .filter((item) => isAdmin || !adminOnlyUrls.has(item.url))
+                .map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
@@ -159,38 +163,40 @@ export function AppSidebar() {
                 </SidebarMenuItem>
               ))}
 
-              {/* Configurações com submenus */}
-              <Collapsible defaultOpen={isConfigActive} className="group/collapsible">
-                <SidebarMenuItem>
-                  <CollapsibleTrigger asChild>
-                    <SidebarMenuButton
-                      isActive={isConfigActive}
-                      tooltip="Configurações"
-                    >
-                      <Settings className="h-4 w-4" />
-                      <span>Configurações</span>
-                      <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
-                    </SidebarMenuButton>
-                  </CollapsibleTrigger>
-                  <CollapsibleContent>
-                    <SidebarMenuSub>
-                      {configSubItems.map((sub) => (
-                        <SidebarMenuSubItem key={sub.title}>
-                          <SidebarMenuSubButton
-                            asChild
-                            isActive={location.pathname === sub.url}
-                          >
-                            <Link to={sub.url}>
-                              <sub.icon className="h-3.5 w-3.5" />
-                              <span>{sub.title}</span>
-                            </Link>
-                          </SidebarMenuSubButton>
-                        </SidebarMenuSubItem>
-                      ))}
-                    </SidebarMenuSub>
-                  </CollapsibleContent>
-                </SidebarMenuItem>
-              </Collapsible>
+              {/* Configurações com submenus (admin only) */}
+              {isAdmin && (
+                <Collapsible defaultOpen={isConfigActive} className="group/collapsible">
+                  <SidebarMenuItem>
+                    <CollapsibleTrigger asChild>
+                      <SidebarMenuButton
+                        isActive={isConfigActive}
+                        tooltip="Configurações"
+                      >
+                        <Settings className="h-4 w-4" />
+                        <span>Configurações</span>
+                        <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                      </SidebarMenuButton>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <SidebarMenuSub>
+                        {configSubItems.map((sub) => (
+                          <SidebarMenuSubItem key={sub.title}>
+                            <SidebarMenuSubButton
+                              asChild
+                              isActive={location.pathname === sub.url}
+                            >
+                              <Link to={sub.url}>
+                                <sub.icon className="h-3.5 w-3.5" />
+                                <span>{sub.title}</span>
+                              </Link>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    </CollapsibleContent>
+                  </SidebarMenuItem>
+                </Collapsible>
+              )}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
