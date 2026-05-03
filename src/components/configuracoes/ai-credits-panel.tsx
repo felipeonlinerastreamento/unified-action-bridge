@@ -52,7 +52,7 @@ export function AiCreditsPanel() {
       .gte("created_at", since)
       .order("created_at", { ascending: false })
       .limit(5000);
-    const rows = (data || []) as UsageRow[];
+    const rows = ((data as unknown) as UsageRow[]) || [];
     setLogs(rows);
 
     const userIds = Array.from(new Set(rows.map((r) => r.user_id).filter(Boolean))) as string[];
