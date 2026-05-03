@@ -24,7 +24,9 @@ import {
   FileText,
   Send,
   MessageSquare,
+  Zap,
 } from "lucide-react";
+import { AiCreditsPanel } from "@/components/configuracoes/ai-credits-panel";
 
 export const Route = createFileRoute("/configuracoes/assistente-ia")({
   component: AssistenteIaConfigPage,
