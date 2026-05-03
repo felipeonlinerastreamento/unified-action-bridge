@@ -164,11 +164,76 @@ ${previousTicketsContext}`;
       });
     }
 
-    return new Response(response.body, {
+    // Estimate input tokens (~4 chars/token) for logging fallback
+    const inputChars = messages.reduce((acc: number, m: any) => acc + (m.content?.length || 0), 0);
+    const estInputTokens = Math.ceil(inputChars / 4);
+
+    const modelName = "google/gemini-3-flash-preview";
+    // Lovable AI Gateway pricing for gemini-flash-preview (approx, USD per 1M tokens)
+    const PRICE_IN = 0.075 / 1_000_000;
+    const PRICE_OUT = 0.30 / 1_000_000;
+
+    // Tee the response body so we can count tokens while streaming to client
+    const [clientStream, logStream] = response.body!.tee();
+
+    // Background: count output tokens from SSE stream and log usage
+    (async () => {
+      try {
+        const reader = logStream.getReader();
+        const decoder = new TextDecoder();
+        let outputText = "";
+        let usageFromApi: any = null;
+        let buf = "";
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buf += decoder.decode(value, { stream: true });
+          let idx: number;
+          while ((idx = buf.indexOf("\n")) !== -1) {
+            const line = buf.slice(0, idx).replace(/\r$/, "");
+            buf = buf.slice(idx + 1);
+            if (!line.startsWith("data: ")) continue;
+            const json = line.slice(6).trim();
+            if (json === "[DONE]") continue;
+            try {
+              const parsed = JSON.parse(json);
+              const delta = parsed.choices?.[0]?.delta?.content;
+              if (delta) outputText += delta;
+              if (parsed.usage) usageFromApi = parsed.usage;
+            } catch (_) { /* ignore */ }
+          }
+        }
+        const inputTokens = usageFromApi?.prompt_tokens ?? estInputTokens;
+        const outputTokens = usageFromApi?.completion_tokens ?? Math.ceil(outputText.length / 4);
+        const totalTokens = usageFromApi?.total_tokens ?? (inputTokens + outputTokens);
+        const cost = inputTokens * PRICE_IN + outputTokens * PRICE_OUT;
+
+        await supabase.from("ai_usage_logs").insert({
+          user_id: callerUserId,
+          feature: feature || mode || "chat",
+          model: modelName,
+          input_tokens: inputTokens,
+          output_tokens: outputTokens,
+          total_tokens: totalTokens,
+          estimated_cost_usd: cost,
+          metadata: { contact_phone: contactPhone || null },
+        });
+      } catch (err) {
+        console.error("usage log error:", err);
+      }
+    })();
+
+    return new Response(clientStream, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
   } catch (e) {
     console.error("ai-assistant error:", e);
+    return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Erro desconhecido" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+});
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Erro desconhecido" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
