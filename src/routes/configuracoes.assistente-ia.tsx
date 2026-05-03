@@ -24,7 +24,9 @@ import {
   FileText,
   Send,
   MessageSquare,
+  Zap,
 } from "lucide-react";
+import { AiCreditsPanel } from "@/components/configuracoes/ai-credits-panel";
 
 export const Route = createFileRoute("/configuracoes/assistente-ia")({
   component: AssistenteIaConfigPage,
@@ -280,7 +282,12 @@ function AssistenteIaConfigPage() {
             <TabsTrigger value="config">Configuração</TabsTrigger>
             <TabsTrigger value="docs">Base de Conhecimento</TabsTrigger>
             <TabsTrigger value="chat">Chat com IA</TabsTrigger>
+            <TabsTrigger value="credits"><Zap className="h-3.5 w-3.5 mr-1" /> Créditos</TabsTrigger>
           </TabsList>
+
+          <TabsContent value="credits" className="mt-4">
+            <AiCreditsPanel />
+          </TabsContent>
 
           {/* Config Tab */}
           <TabsContent value="config" className="mt-4 space-y-4">

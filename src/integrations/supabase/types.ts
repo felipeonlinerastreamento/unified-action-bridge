@@ -65,6 +65,45 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_usage_logs: {
+        Row: {
+          created_at: string
+          estimated_cost_usd: number
+          feature: string
+          id: string
+          input_tokens: number
+          metadata: Json
+          model: string
+          output_tokens: number
+          total_tokens: number
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          estimated_cost_usd?: number
+          feature?: string
+          id?: string
+          input_tokens?: number
+          metadata?: Json
+          model?: string
+          output_tokens?: number
+          total_tokens?: number
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          estimated_cost_usd?: number
+          feature?: string
+          id?: string
+          input_tokens?: number
+          metadata?: Json
+          model?: string
+          output_tokens?: number
+          total_tokens?: number
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       attendance_alert_settings: {
         Row: {
           created_at: string
