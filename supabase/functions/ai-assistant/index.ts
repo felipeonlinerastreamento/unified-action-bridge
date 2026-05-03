@@ -18,7 +18,18 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    const { chatMessages, contactPhone, contactName, attendanceStartTime, userMessage, mode } = await req.json();
+    const { chatMessages, contactPhone, contactName, attendanceStartTime, userMessage, mode, feature } = await req.json();
+
+    // Identify caller user (best-effort) for usage logging
+    let callerUserId: string | null = null;
+    try {
+      const authHeader = req.headers.get("Authorization") || "";
+      const token = authHeader.replace("Bearer ", "");
+      if (token) {
+        const { data: userData } = await supabase.auth.getUser(token);
+        callerUserId = userData?.user?.id ?? null;
+      }
+    } catch (_) { /* ignore */ }
 
     // Fetch AI config (system prompt / knowledge base / enabled flag)
     const { data: configRows } = await supabase
