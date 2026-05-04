@@ -305,6 +305,9 @@ function PopupSettingsForm() {
         </CardContent>
       </Card>
 
+      {/* Lembrete recorrente de pendências */}
+      <RecurringReminderSection />
+
       {/* Ações */}
       <div className="flex items-center justify-between gap-2">
         <Button variant="outline" onClick={previewPopup} className="gap-1">
