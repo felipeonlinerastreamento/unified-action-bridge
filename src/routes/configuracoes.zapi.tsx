@@ -48,6 +48,7 @@ function ZapiPage() {
         <ZapiBotFlowEditor />
         <ZapiMessageTemplatesConfig />
         <CsatConfig />
+        <MessageTriggersConfig />
         <ZapiQuickRepliesConfig />
       </div>
     </AppLayout>
