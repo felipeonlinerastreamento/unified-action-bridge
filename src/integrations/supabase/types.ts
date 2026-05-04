@@ -747,6 +747,33 @@ export type Database = {
           },
         ]
       }
+      compra_equipamento_items: {
+        Row: {
+          created_at: string
+          default_quantity: number
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_quantity?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_quantity?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       crm_categories: {
         Row: {
           created_at: string
@@ -2449,6 +2476,45 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      ticket_compra_equipamento_items: {
+        Row: {
+          created_at: string
+          delivered_at: string | null
+          delivered_by: string | null
+          id: string
+          item_id: string | null
+          item_name: string
+          quantity: number
+          status: string
+          ticket_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          delivered_at?: string | null
+          delivered_by?: string | null
+          id?: string
+          item_id?: string | null
+          item_name: string
+          quantity?: number
+          status?: string
+          ticket_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          delivered_at?: string | null
+          delivered_by?: string | null
+          id?: string
+          item_id?: string | null
+          item_name?: string
+          quantity?: number
+          status?: string
+          ticket_id?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       ticket_liberacao_items: {
         Row: {
