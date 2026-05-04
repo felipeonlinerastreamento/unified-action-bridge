@@ -1086,9 +1086,16 @@ export type Database = {
       }
       crm_opportunities: {
         Row: {
+          category_id: string | null
           closed_at: string | null
+          cnpj: string | null
           company_id: string | null
+          company_name: string | null
+          contact_email: string | null
           contact_id: string | null
+          contact_name: string | null
+          contact_phone: string | null
+          contract_items: Json
           created_at: string
           created_by: string | null
           expected_close_date: string | null
@@ -1106,9 +1113,16 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          category_id?: string | null
           closed_at?: string | null
+          cnpj?: string | null
           company_id?: string | null
+          company_name?: string | null
+          contact_email?: string | null
           contact_id?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          contract_items?: Json
           created_at?: string
           created_by?: string | null
           expected_close_date?: string | null
@@ -1126,9 +1140,16 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          category_id?: string | null
           closed_at?: string | null
+          cnpj?: string | null
           company_id?: string | null
+          company_name?: string | null
+          contact_email?: string | null
           contact_id?: string | null
+          contact_name?: string | null
+          contact_phone?: string | null
+          contract_items?: Json
           created_at?: string
           created_by?: string | null
           expected_close_date?: string | null
@@ -1146,6 +1167,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "crm_opportunities_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "crm_categories"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "crm_opportunities_company_id_fkey"
             columns: ["company_id"]

@@ -57,6 +57,13 @@ export const completeCrmTask = createServerFn({ method: "POST" })
   });
 
 // ============== OPPORTUNITIES ==============
+const contractItemSchema = z.object({
+  categoryId: z.string().uuid().nullable().optional(),
+  quantity: z.number().min(0).default(1),
+  activationValue: z.number().min(0).default(0),
+  monthlyValue: z.number().min(0).default(0),
+});
+
 const oppInput = z.object({
   id: z.string().uuid().optional(),
   title: z.string().min(1).max(200),
@@ -70,6 +77,13 @@ const oppInput = z.object({
   source: z.string().max(40).default("manual"),
   opportunity_type: z.enum(["new", "upsell", "renewal", "recovery"]).default("new"),
   notes: z.string().max(4000).default(""),
+  contact_name: z.string().max(200).nullable().optional(),
+  company_name: z.string().max(200).nullable().optional(),
+  contact_phone: z.string().max(40).nullable().optional(),
+  contact_email: z.string().max(200).nullable().optional(),
+  cnpj: z.string().max(40).nullable().optional(),
+  category_id: z.string().uuid().nullable().optional(),
+  contract_items: z.array(contractItemSchema).default([]),
 });
 
 export const upsertOpportunity = createServerFn({ method: "POST" })
