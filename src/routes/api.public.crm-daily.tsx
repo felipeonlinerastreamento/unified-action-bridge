@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { runCrmDailyJob } from "@/lib/crm.functions";
+import { runCrmDailyJob } from "@/lib/crm-daily.server";
 
 export const Route = createFileRoute("/api/public/crm-daily")({
   server: {
