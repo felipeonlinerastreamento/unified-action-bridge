@@ -45,6 +45,25 @@ export const listAllOpenChats = createServerFn({ method: "POST" })
         })
         .slice(0, 200);
 
+      // Build a map chatId -> from_me of the most recent message, so the
+      // chat list can show an up/down arrow indicating who sent the last
+      // message. We do this in one batched query to avoid N round-trips.
+      const chatIds = rows.map((r: any) => r.id).filter(Boolean);
+      const lastFromMeByChat: Record<string, boolean> = {};
+      if (chatIds.length > 0) {
+        const { data: recentMsgs } = await context.supabase
+          .from("zapi_messages")
+          .select("chat_id, from_me, created_at")
+          .in("chat_id", chatIds)
+          .order("created_at", { ascending: false })
+          .limit(1000);
+        for (const m of recentMsgs || []) {
+          if (!(m.chat_id in lastFromMeByChat)) {
+            lastFromMeByChat[m.chat_id] = !!m.from_me;
+          }
+        }
+      }
+
       // Map to gsystem-like ChatItem shape so the UI continues to work
       const chats = rows.map((r: any) => {
         const statusMap: Record<string, number> = {
@@ -53,6 +72,7 @@ export const listAllOpenChats = createServerFn({ method: "POST" })
           em_atendimento: 2,
           finalizado: 3,
         };
+        const lastIsMe = lastFromMeByChat[r.id];
         return {
           attendanceId: r.id,
           status: statusMap[r.status] ?? 1,
@@ -68,7 +88,11 @@ export const listAllOpenChats = createServerFn({ method: "POST" })
           channel: { id: r.channel_id },
           currentSector: r.sector_name ? { description: r.sector_name } : undefined,
           lastMessage: r.last_message_preview
-            ? { text: r.last_message_preview, utcDhMessage: r.last_message_at }
+            ? {
+                text: r.last_message_preview,
+                utcDhMessage: r.last_message_at,
+                sender: { isMe: lastIsMe === true },
+              }
             : undefined,
           utcDhStartChat: r.created_at,
           timeInWaiting: r.status === "aguardando" && r.last_message_at
