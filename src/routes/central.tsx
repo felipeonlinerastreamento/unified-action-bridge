@@ -1736,6 +1736,40 @@ function CentralPage() {
       } else {
         console.log("[Finalize] Skipping closing message (admin opt-out)");
       }
+
+      // CSAT — pesquisa de satisfação após finalização
+      try {
+        const { data: csat } = await supabase
+          .from("csat_settings" as any)
+          .select("is_enabled, message")
+          .maybeSingle();
+        if (csat && (csat as any).is_enabled && (csat as any).message && chatDetail?.contact?.phone) {
+          const csatMsg = (csat as any).message as string;
+          const phoneOnly = String(chatDetail.contact.phone).replace(/\D/g, "");
+          const authH2 = await getAuthHeaders();
+          await sendText({
+            data: {
+              channelId: selectedChannelId,
+              chatId: selectedChatId,
+              message: csatMsg,
+            },
+            ...authH2,
+          });
+          // registra pendência para o webhook capturar a resposta
+          await supabase.from("csat_pending" as any).insert({
+            channel_id: selectedChannelId,
+            chat_id: selectedChatId,
+            phone: phoneOnly,
+            contact_name: chatDetail?.contact?.name || chatDetail?.description || null,
+            ticket_id: ticketForProtocol?.id || null,
+            protocol: ticketForProtocol ? formatTicketProtocol(ticketForProtocol, chatDetail?.protocol || selectedChatId) : null,
+            operator_user_id: profile?.user_id || null,
+            operator_name: profile?.name || null,
+          });
+        }
+      } catch (csatErr: any) {
+        console.warn("[Finalize] CSAT step failed:", csatErr?.message);
+      }
       } catch (preErr: any) {
         console.error("[Finalize] pre-finalization step failed (continuing to close chat):", preErr?.message);
       }
