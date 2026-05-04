@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { OperatorPerformanceTab } from "@/components/relatorios/operator-performance-tab";
 import { RemindersTab } from "@/components/relatorios/reminders-tab";
+import { InactivityAlertsTab } from "@/components/relatorios/inactivity-alerts-tab";
 
 export const Route = createFileRoute("/relatorios")({
   component: RelatoriosPage,
@@ -350,7 +351,7 @@ function RelatoriosPage() {
 
         <div id="report-content">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-8">
+            <TabsList className="grid w-full grid-cols-9">
               <TabsTrigger value="atendimentos" className="gap-1 text-xs">
                 <MessageSquare className="h-3.5 w-3.5" /> Atendimentos
               </TabsTrigger>
@@ -374,6 +375,9 @@ function RelatoriosPage() {
               </TabsTrigger>
               <TabsTrigger value="lembretes" className="gap-1 text-xs">
                 <Bell className="h-3.5 w-3.5" /> Lembretes
+              </TabsTrigger>
+              <TabsTrigger value="inatividade" className="gap-1 text-xs">
+                <Bell className="h-3.5 w-3.5" /> Inatividade
               </TabsTrigger>
             </TabsList>
 
@@ -804,6 +808,10 @@ function RelatoriosPage() {
 
             <TabsContent value="lembretes" className="space-y-4">
               <RemindersTab dateFrom={dateFrom} dateTo={dateTo} />
+            </TabsContent>
+
+            <TabsContent value="inatividade" className="space-y-4">
+              <InactivityAlertsTab dateFrom={dateFrom} dateTo={dateTo} />
             </TabsContent>
           </Tabs>
         </div>
