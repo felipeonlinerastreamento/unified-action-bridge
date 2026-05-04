@@ -2209,6 +2209,15 @@ function CentralPage() {
                 files.forEach((f) => queueAttachment(f));
               }}
             >
+              {isDraggingFile && selectedChatId && !whisperMode && chatDetail?.status !== 3 && (
+                <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center rounded-lg border-2 border-dashed border-primary bg-primary/10 backdrop-blur-sm">
+                  <div className="flex flex-col items-center gap-2 text-primary">
+                    <Paperclip className="h-10 w-10" />
+                    <p className="text-sm font-semibold">Solte para anexar</p>
+                    <p className="text-xs text-muted-foreground">Você poderá revisar antes de enviar</p>
+                  </div>
+                </div>
+              )}
               {!selectedChatId ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3">
                   <MessageSquare className="h-12 w-12" />
