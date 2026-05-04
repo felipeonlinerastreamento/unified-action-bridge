@@ -256,6 +256,8 @@ function ChatListItem({
   const lastMsgTime = formatTime(chat.lastMessage?.utcDhMessage);
   const tags = chat.contact?.tags || [];
   const sectorName = chat.currentSector?.description;
+  const lastMsgIsMe = chat.lastMessage?.sender?.isMe;
+  const hasLastMsg = !!chat.lastMessage;
   const unread = chat.countUnreadMessages ?? 0;
   const { openChat } = useFloatingChats();
 
