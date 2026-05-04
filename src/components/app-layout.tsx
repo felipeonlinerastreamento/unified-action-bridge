@@ -43,6 +43,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <PendingReminderPopup />
       <NotificationPopup />
       <ChatInactivityAlert />
+      <MessageTriggerAlert />
       <Toaster />
     </SidebarProvider>
   );
