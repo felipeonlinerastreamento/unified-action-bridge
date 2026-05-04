@@ -390,6 +390,62 @@ export function MessageTriggersConfig() {
               </div>
             )}
 
+            <div className="space-y-3 rounded border p-3 bg-muted/30">
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={draft.create_ticket}
+                  onCheckedChange={(v) => setDraft({ ...draft, create_ticket: v })}
+                />
+                <Label className="flex items-center gap-2 font-medium text-sm">
+                  <Ticket className="h-4 w-4" /> Abrir chamado automaticamente
+                </Label>
+              </div>
+              {draft.create_ticket && (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>Setor do chamado</Label>
+                      <Select
+                        value={draft.ticket_sector || ""}
+                        onValueChange={(v) => setDraft({ ...draft, ticket_sector: v })}
+                      >
+                        <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                        <SelectContent>
+                          {(sectors as any[]).map((s) => (
+                            <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Prioridade</Label>
+                      <Select
+                        value={draft.ticket_priority}
+                        onValueChange={(v) => setDraft({ ...draft, ticket_priority: v })}
+                      >
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="baixa">Baixa</SelectItem>
+                          <SelectItem value="media">Média</SelectItem>
+                          <SelectItem value="alta">Alta</SelectItem>
+                          <SelectItem value="urgente">Urgente</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Observação inicial do chamado</Label>
+                    <Textarea
+                      rows={2}
+                      value={draft.ticket_note}
+                      onChange={(e) => setDraft({ ...draft, ticket_note: e.target.value })}
+                      placeholder="Ex.: Caso recorrente — verificar histórico do cliente"
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Cooldown (min)</Label>
