@@ -95,7 +95,7 @@ function CrmPage() {
     mutationFn: async () => {
       if (!form.name || !form.phone) throw new Error("Nome e telefone são obrigatórios");
       const { data: sess } = await supabase.auth.getSession();
-      const items = form.contactType === "PJ" ? form.items.filter(i => i.categoryId) : [];
+      const items = form.items.filter(i => i.categoryId);
       const activationTotal = items.reduce((s, i) => s + (Number(i.activationValue) || 0) * (Number(i.quantity) || 0), 0);
       const monthlyTotal = items.reduce((s, i) => s + (Number(i.monthlyValue) || 0) * (Number(i.quantity) || 0), 0);
       const payload: any = {
