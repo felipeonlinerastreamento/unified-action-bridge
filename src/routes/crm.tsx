@@ -667,7 +667,19 @@ function CrmPage() {
                     Gerencie em "Categorias"
                   </span>
                 </div>
-                <Select value={form.categoryId} onValueChange={(v) => setForm((f) => ({ ...f, categoryId: v }))}>
+                <Select
+                  value={form.categoryId}
+                  onValueChange={(v) =>
+                    setForm((f) => ({
+                      ...f,
+                      categoryId: v,
+                      items:
+                        f.items.length === 0
+                          ? [{ categoryId: v, quantity: 1, activationValue: 0, monthlyValue: 0 }]
+                          : f.items,
+                    }))
+                  }
+                >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione uma categoria PJ" />
                   </SelectTrigger>
