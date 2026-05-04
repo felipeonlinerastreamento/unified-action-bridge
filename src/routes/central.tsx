@@ -1321,27 +1321,69 @@ function CentralPage() {
     onError: (err: any) => toast.error(err?.message || "Erro ao enviar mídia"),
   });
 
-  // File picker handler (attach button)
+  // File picker handler (attach button) — adds to preview queue instead of sending directly
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const handleFilePicked = async (file: File) => {
-    if (!file) return;
+  const [pendingAttachments, setPendingAttachments] = useState<File[]>([]);
+  const [attachmentCaption, setAttachmentCaption] = useState("");
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const dragCounterRef = useRef(0);
+
+  const queueAttachment = (file: File) => {
+    if (!file) return false;
     if (file.size > 15 * 1024 * 1024) {
-      toast.error("Arquivo muito grande (máx. 15 MB)");
-      return;
+      toast.error(`"${file.name}" excede o limite de 15 MB`);
+      return false;
     }
-    const kind: "image" | "video" | "audio" | "document" =
-      file.type.startsWith("image/") ? "image" :
-      file.type.startsWith("video/") ? "video" :
-      file.type.startsWith("audio/") ? "audio" :
-      "document";
-    const ext = (file.name.split(".").pop() || "bin").toLowerCase();
-    const dataUrl = await new Promise<string>((resolve, reject) => {
-      const r = new FileReader();
-      r.onerror = () => reject(r.error);
-      r.onload = () => resolve(String(r.result || ""));
-      r.readAsDataURL(file);
-    });
-    await mediaMutation.mutateAsync({ kind, dataUrl, fileName: file.name, extension: ext });
+    setPendingAttachments((prev) => [...prev, file]);
+    return true;
+  };
+
+  const handleFilePicked = (file: File) => {
+    queueAttachment(file);
+  };
+
+  const removePendingAttachment = (idx: number) => {
+    setPendingAttachments((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const clearPendingAttachments = () => {
+    setPendingAttachments([]);
+    setAttachmentCaption("");
+  };
+
+  const sendPendingAttachments = async () => {
+    if (pendingAttachments.length === 0) return;
+    const files = [...pendingAttachments];
+    const caption = attachmentCaption.trim();
+    // Close preview immediately for snappy UX; toast on errors per file
+    clearPendingAttachments();
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      try {
+        const kind: "image" | "video" | "audio" | "document" =
+          file.type.startsWith("image/") ? "image" :
+          file.type.startsWith("video/") ? "video" :
+          file.type.startsWith("audio/") ? "audio" :
+          "document";
+        const ext = (file.name.split(".").pop() || "bin").toLowerCase();
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const r = new FileReader();
+          r.onerror = () => reject(r.error);
+          r.onload = () => resolve(String(r.result || ""));
+          r.readAsDataURL(file);
+        });
+        await mediaMutation.mutateAsync({
+          kind,
+          dataUrl,
+          fileName: file.name,
+          extension: ext,
+          // Apply caption only on the first attachment to avoid repetition
+          caption: i === 0 && caption ? caption : undefined,
+        });
+      } catch (err: any) {
+        toast.error(err?.message || `Erro ao enviar "${file.name}"`);
+      }
+    }
   };
 
   // Finalize chat
