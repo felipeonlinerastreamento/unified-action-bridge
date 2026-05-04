@@ -3,6 +3,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { NotificationsBell } from "@/components/notifications-bell";
 import { DailyWelcomeDialog } from "@/components/daily-welcome-dialog";
+import { PendingReminderPopup } from "@/components/pending-reminder-popup";
 import { NotificationPopup } from "@/components/notification-popup";
 import { ChatAvailabilityToggle } from "@/components/chat-availability-toggle";
 import { usePresence } from "@/hooks/use-presence";
@@ -30,6 +31,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         </div>
       </div>
       <DailyWelcomeDialog />
+      <PendingReminderPopup />
       <NotificationPopup />
       <Toaster />
     </SidebarProvider>
