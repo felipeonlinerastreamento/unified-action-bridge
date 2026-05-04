@@ -26,6 +26,7 @@ import {
   Loader2, BarChart3, PieChart as PieChartIcon, Activity, Bell, Trophy,
 } from "lucide-react";
 import { OperatorPerformanceTab } from "@/components/relatorios/operator-performance-tab";
+import { RemindersTab } from "@/components/relatorios/reminders-tab";
 
 export const Route = createFileRoute("/relatorios")({
   component: RelatoriosPage,
