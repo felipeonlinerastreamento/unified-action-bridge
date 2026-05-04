@@ -975,7 +975,7 @@ function CentralPage() {
   });
 
 // CRM contact lookup by phone (also checks ticket's corrected phone)
-  const { data: crmContactLookup } = useQuery({
+  const { data: crmContactLookup, isFetched: crmContactLookupFetched } = useQuery({
     queryKey: ["crm-contact-lookup", contactPhone, currentTicket?.contact_phone],
     queryFn: async () => {
       const phones = [contactPhone, currentTicket?.contact_phone].filter(Boolean) as string[];
