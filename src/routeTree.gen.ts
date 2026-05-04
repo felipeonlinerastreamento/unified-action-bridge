@@ -35,6 +35,7 @@ import { Route as ConfiguracoesCentralAtendimentoRouteImport } from './routes/co
 import { Route as ConfiguracoesAssistenteIaRouteImport } from './routes/configuracoes.assistente-ia'
 import { Route as AtendimentosTarefasRouteImport } from './routes/atendimentos_.tarefas'
 import { Route as ApiPublicEmailPollRouteImport } from './routes/api.public.email-poll'
+import { Route as ApiPublicCrmDailyRouteImport } from './routes/api.public.crm-daily'
 import { Route as ApiPublicZapiWebhookChannelIdRouteImport } from './routes/api.public.zapi-webhook.$channelId'
 
 const RelatoriosRoute = RelatoriosRouteImport.update({
@@ -174,6 +175,11 @@ const ApiPublicEmailPollRoute = ApiPublicEmailPollRouteImport.update({
   path: '/api/public/email-poll',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicCrmDailyRoute = ApiPublicCrmDailyRouteImport.update({
+  id: '/api/public/crm-daily',
+  path: '/api/public/crm-daily',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicZapiWebhookChannelIdRoute =
   ApiPublicZapiWebhookChannelIdRouteImport.update({
     id: '/api/public/zapi-webhook/$channelId',
@@ -207,6 +213,7 @@ export interface FileRoutesByFullPath {
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
   '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
   '/configuracoes/': typeof ConfiguracoesIndexRoute
+  '/api/public/crm-daily': typeof ApiPublicCrmDailyRoute
   '/api/public/email-poll': typeof ApiPublicEmailPollRoute
   '/api/public/zapi-webhook/$channelId': typeof ApiPublicZapiWebhookChannelIdRoute
 }
@@ -235,6 +242,7 @@ export interface FileRoutesByTo {
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
   '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
   '/configuracoes': typeof ConfiguracoesIndexRoute
+  '/api/public/crm-daily': typeof ApiPublicCrmDailyRoute
   '/api/public/email-poll': typeof ApiPublicEmailPollRoute
   '/api/public/zapi-webhook/$channelId': typeof ApiPublicZapiWebhookChannelIdRoute
 }
@@ -265,6 +273,7 @@ export interface FileRoutesById {
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
   '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
   '/configuracoes/': typeof ConfiguracoesIndexRoute
+  '/api/public/crm-daily': typeof ApiPublicCrmDailyRoute
   '/api/public/email-poll': typeof ApiPublicEmailPollRoute
   '/api/public/zapi-webhook/$channelId': typeof ApiPublicZapiWebhookChannelIdRoute
 }
@@ -296,6 +305,7 @@ export interface FileRouteTypes {
     | '/configuracoes/zapi'
     | '/hooks/refresh-tracking'
     | '/configuracoes/'
+    | '/api/public/crm-daily'
     | '/api/public/email-poll'
     | '/api/public/zapi-webhook/$channelId'
   fileRoutesByTo: FileRoutesByTo
@@ -324,6 +334,7 @@ export interface FileRouteTypes {
     | '/configuracoes/zapi'
     | '/hooks/refresh-tracking'
     | '/configuracoes'
+    | '/api/public/crm-daily'
     | '/api/public/email-poll'
     | '/api/public/zapi-webhook/$channelId'
   id:
@@ -353,6 +364,7 @@ export interface FileRouteTypes {
     | '/configuracoes/zapi'
     | '/hooks/refresh-tracking'
     | '/configuracoes/'
+    | '/api/public/crm-daily'
     | '/api/public/email-poll'
     | '/api/public/zapi-webhook/$channelId'
   fileRoutesById: FileRoutesById
@@ -371,6 +383,7 @@ export interface RootRouteChildren {
   RelatoriosRoute: typeof RelatoriosRoute
   AtendimentosTarefasRoute: typeof AtendimentosTarefasRoute
   HooksRefreshTrackingRoute: typeof HooksRefreshTrackingRoute
+  ApiPublicCrmDailyRoute: typeof ApiPublicCrmDailyRoute
   ApiPublicEmailPollRoute: typeof ApiPublicEmailPollRoute
   ApiPublicZapiWebhookChannelIdRoute: typeof ApiPublicZapiWebhookChannelIdRoute
 }
@@ -559,6 +572,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicEmailPollRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/crm-daily': {
+      id: '/api/public/crm-daily'
+      path: '/api/public/crm-daily'
+      fullPath: '/api/public/crm-daily'
+      preLoaderRoute: typeof ApiPublicCrmDailyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/zapi-webhook/$channelId': {
       id: '/api/public/zapi-webhook/$channelId'
       path: '/api/public/zapi-webhook/$channelId'
@@ -617,6 +637,7 @@ const rootRouteChildren: RootRouteChildren = {
   RelatoriosRoute: RelatoriosRoute,
   AtendimentosTarefasRoute: AtendimentosTarefasRoute,
   HooksRefreshTrackingRoute: HooksRefreshTrackingRoute,
+  ApiPublicCrmDailyRoute: ApiPublicCrmDailyRoute,
   ApiPublicEmailPollRoute: ApiPublicEmailPollRoute,
   ApiPublicZapiWebhookChannelIdRoute: ApiPublicZapiWebhookChannelIdRoute,
 }

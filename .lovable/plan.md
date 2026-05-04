@@ -1,84 +1,114 @@
-## Gatilhos por palavra-chave em mensagens
+# Plano CRM Estratégico — Versão Consolidada
 
-Sistema configurável que monitora mensagens recebidas no WhatsApp e dispara ações automáticas quando detecta palavras-chave (ex.: "Ignição ligado", "Urgente", "Recorrente").
+Incorpora a proposta original (organização, aniversários, pós-venda, recorrências) **+ Fase 4 (Inteligência e Vendas)**, com **Pipeline de Vendas e Alertas de Renovação antecipados para a Fase 2**.
 
-### Ações suportadas
-1. **Balão flutuante** — exibe alerta na tela para destinatários definidos (todos do setor, setor específico, usuários específicos, ou operador atribuído).
-2. **Encaminhamento automático** — move o chat para um setor (ex.: "Recorrente" → setor "Gestão") e registra evento.
-3. **(Opcional) Som** — beep ao disparar o balão.
+## Estrutura final do menu CRM
 
-### Banco de dados (nova migração)
+```text
+/crm
+ ├─ Visão Geral         → KPIs, agenda do dia, alertas de churn e renovação
+ ├─ Contatos            → PF/PJ, timeline unificada, indicado por
+ ├─ Pipeline            → Kanban de oportunidades (prospect → fechamento)
+ ├─ Pós-venda           → Réguas + NPS com gatilhos por nota
+ ├─ Recorrências        → Cadências automáticas
+ ├─ Aniversários        → Pessoas + Contratos (renovação)
+ ├─ Inteligência (RFM)  → Classificação VIP / Risco / Inativo
+ └─ Relatórios          → Funil, conversão, NPS, CAC, ticket médio
+```
 
-**`message_trigger_rules`**
-- `id`, `name`, `is_enabled`
-- `keywords jsonb` — lista de termos (ex.: `["ignição ligado", "urgente"]`)
-- `match_type` — `any` (qualquer palavra) | `all` | `regex`
-- `case_sensitive bool`
-- `action_type` — `floating_alert` | `transfer_sector` | `both`
-- `alert_message text`
-- `alert_target_type` — `assigned` | `all` | `sector` | `users`
-- `alert_target_sector_ids jsonb`, `alert_target_user_ids jsonb`
-- `transfer_sector_id`, `transfer_sector_name`, `transfer_note`
-- `sound_enabled bool`, `cooldown_minutes int`
-- `priority int` (ordem de avaliação)
+## Fase 1 — Fundamentos (organização)
+- `birth_date` em `crm_contacts` e `profiles`; `contact_role` (cliente/fornecedor/funcionário/parceiro).
+- `crm_tasks` (tarefas CRM independentes das operacionais).
+- `crm_message_templates` com **variáveis dinâmicas** (`{nome}`, `{empresa}`, `{ultimo_produto}`, `{dias_sem_compra}`, `{valor_ultimo_pedido}`).
+- Job diário (pg_cron 08:00) para aniversários (D+7 e D0) com lembrete flutuante.
+- Tela "Aniversários" (calendário + filtros).
+- Visão Geral com agenda do dia.
 
-**`message_trigger_logs`**
-- `id`, `rule_id`, `chat_id`, `message_id`, `phone`, `contact_name`
-- `matched_keyword`, `message_excerpt`
-- `action_taken jsonb`, `triggered_at`
-- `recipient_user_id`, `acknowledged_at` (para alertas)
+## Fase 2 — Receita imediata (Pipeline + Renovações + Pós-venda)
 
-RLS: leitura por autenticados; gestão por admin/gestor.
+### 2A. Pipeline de Vendas
+- `crm_opportunities`: contato, estágio, valor estimado, probabilidade %, data prevista, dono, origem, motivo de perda.
+- `crm_pipeline_stages` (configurável): Prospecção → Qualificação → Proposta → Negociação → Fechado-Ganho/Perdido.
+- Kanban drag-and-drop, filtros por dono/origem/valor.
+- KPIs: valor em pipeline, ticket médio, taxa de conversão por estágio, ciclo médio.
 
-### Detecção (webhook de entrada)
+### 2B. Renovações de contrato
+- Campos `contract_start`, `contract_end`, `contract_value`, `contract_recurrence` em `companies` e `crm_contacts`.
+- Job diário detecta vencimentos em **D-60, D-30, D-15, D-7** → cria oportunidade automática "Renovação" + tarefa para dono da conta.
+- Alerta flutuante para gestores comerciais.
 
-Em `src/routes/api.public.zapi-webhook.$channelId.tsx`, após persistir a mensagem inbound (e antes do CSAT/bot), avaliar regras ativas:
-- Normalizar texto (lowercase, sem acento).
-- Para cada regra, testar match.
-- Em match:
-  - Se `floating_alert` ou `both`: inserir log em `message_trigger_logs` para cada destinatário-alvo (resolvendo `assigned`/`sector`/`users`).
-  - Se `transfer_sector` ou `both`: atualizar `zapi_chats.sector_name`/`assigned_to` (limpar) e inserir registro em `attendance_event_logs`.
+### 2C. Pós-venda + NPS com gatilhos
+- `crm_postsale_rules` + `crm_postsale_steps` (D+1, D+7, D+30 configurável por setor/categoria).
+- Captura de NPS via WhatsApp; resposta dispara automação:
+  - **9–10 (Promotor)** → mensagem com link Google Reviews + convite indicação.
+  - **7–8 (Neutro)** → tarefa de follow-up qualitativo.
+  - **0–6 (Detrator)** → ticket "Gestão de Crise" prioridade alta para supervisão.
 
-### Balão flutuante (cliente)
+### 2D. Programa de indicações
+- Campo `referred_by_contact_id` em `crm_contacts`.
+- Relatório "Top indicadores" + bonificação manual rastreável.
 
-Novo componente `src/components/message-trigger-alert.tsx`, mesmo padrão do `chat-inactivity-alert.tsx`:
-- Realtime subscribe em `message_trigger_logs` filtrando `recipient_user_id = me` e `acknowledged_at IS NULL`.
-- Renderiza balão (vermelho para "Urgente", âmbar padrão) com palavra detectada, trecho da mensagem, contato e botões "Abrir conversa" / "Visto".
-- Som opcional + cooldown via `localStorage`.
-- Montar em `src/components/app-layout.tsx`.
+## Fase 3 — Relacionamento contínuo
+- Recorrências de atendimento (semanal/mensal/trimestral/anual) com tarefa automática.
+- Templates por evento (aniversário, pós-venda, renovação, recuperação).
+- Configurações em **Configurações → CRM**: cadências, antecedências, responsáveis padrão por categoria.
 
-### UI de configuração
+## Fase 4 — Inteligência e crescimento
 
-Novo card `src/components/configuracoes/message-triggers-config.tsx` adicionado em **Configurações → Z-API & Bot** (`src/routes/configuracoes.zapi.tsx`):
-- Lista de regras com toggle ativo/inativo, editar, excluir.
-- Modal de edição:
-  - Nome, palavras-chave (chips), tipo de match, case sensitive.
-  - Ação: alerta / transferência / ambas.
-  - Mensagem do alerta, destinatários (assigned/all/sector/users com pickers).
-  - Setor destino da transferência + observação.
-  - Som, cooldown, prioridade.
-- Pré-cadastrar 2 regras de exemplo (desativadas):
-  - "Ignição ligado" → alerta para todos do setor.
-  - "Urgente" → alerta para todos do setor + som.
-  - "Recorrente" → transferência para setor "Gestão".
+### 4A. RFM (Recência, Frequência, Valor)
+- View materializada `crm_rfm_scores` recalculada por job mensal (1º dia 02:00).
+- Score 1–5 em cada eixo → segmentos: **VIP, Fiel, Em risco, Inativo, Novo, Detrator**.
+- Filtros e badges nos contatos; campanhas direcionadas por segmento.
 
-### Auditoria
+### 4B. Alerta de churn
+- Detecta cliente recorrente sem interação por X dias (configurável por categoria).
+- Cria tarefa crítica de resgate + alerta para dono da conta.
 
-Nova aba **"Gatilhos"** em **Relatórios** (`src/components/relatorios/message-triggers-tab.tsx`):
-- KPIs: total de disparos, regra mais acionada, alertas pendentes.
-- Tabela com data, regra, palavra detectada, contato, ação tomada, destinatário, status (visto/pendente).
-- Exportação CSV.
+### 4C. Timeline unificada do cliente
+- Aba "Timeline" no detalhe do contato agregando:
+  - Compras / pedidos (GSystem)
+  - Tickets de atendimento
+  - Mensagens WhatsApp (Z-API)
+  - Respostas NPS
+  - Oportunidades e estágios
+  - Tarefas CRM concluídas
 
-### Arquivos
+### 4D. Dashboard Comercial
+- Funil de conversão por estágio
+- Ticket médio, ciclo médio, win rate
+- CAC (custo manual por canal de origem)
+- Receita prevista vs realizada
+- NPS consolidado (promotores, neutros, detratores)
+- Export CSV/XLSX/PDF
 
-Criar:
-- `supabase/migrations/..._message_triggers.sql`
-- `src/components/message-trigger-alert.tsx`
-- `src/components/configuracoes/message-triggers-config.tsx`
-- `src/components/relatorios/message-triggers-tab.tsx`
+## Detalhes técnicos
 
-Editar:
-- `src/routes/api.public.zapi-webhook.$channelId.tsx` (avaliação das regras)
-- `src/routes/configuracoes.zapi.tsx` (montar card)
-- `src/components/app-layout.tsx` (montar balão)
-- `src/routes/relatorios.tsx` (nova aba)
+**Migrations principais:**
+- `ALTER crm_contacts`: `birth_date`, `contact_role`, `referred_by_contact_id`, `rfm_segment`, `last_interaction_at`
+- `ALTER companies`: `contract_start`, `contract_end`, `contract_value`, `contract_recurrence`
+- `ALTER profiles`: `birth_date`
+- Novas: `crm_tasks`, `crm_message_templates`, `crm_pipeline_stages`, `crm_opportunities`, `crm_postsale_rules`, `crm_postsale_steps`, `crm_postsale_queue`, `crm_recurring_contacts`, `crm_nps_responses`, `crm_rfm_scores`
+- RLS: admin/gestor manage; atendente vê apenas o atribuído a ele
+
+**Server functions** (`src/lib/crm.functions.ts`, `crm-pipeline.functions.ts`, `crm-rfm.functions.ts`):
+- Listagens, mutações, daily/monthly jobs, render de templates com variáveis.
+
+**Cron** (rotas em `src/routes/api/public/hooks/`):
+- `crm-daily` (08:00) — aniversários, renovações, recorrências, churn, pós-venda
+- `crm-rfm-monthly` (1º dia 02:00) — recálculo RFM
+
+**Trigger ticket finalizado**: hook em `ticket-finalize.functions.ts` enfileira passos de pós-venda conforme regra ativa.
+
+**UI** (rotas):
+- `crm.tsx` vira layout `<Outlet/>`
+- `crm.index.tsx`, `crm.contatos.tsx`, `crm.pipeline.tsx`, `crm.pos-venda.tsx`, `crm.recorrencias.tsx`, `crm.aniversarios.tsx`, `crm.inteligencia.tsx`
+- `configuracoes.crm.tsx` (regras, cadências, templates, estágios)
+- Aba Timeline integrada ao detalhe do contato
+
+## Sequência de entrega aprovada
+1. **Fase 1** — Fundamentos
+2. **Fase 2** — Pipeline + Renovações + Pós-venda/NPS + Indicações
+3. **Fase 3** — Recorrências + Templates avançados
+4. **Fase 4** — RFM + Churn + Timeline + Dashboard Comercial
+
+Aprovando este plano, inicio pela **Fase 1 + Fase 2** (entrega de maior impacto financeiro) em sequência.
