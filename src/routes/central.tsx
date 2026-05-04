@@ -1449,7 +1449,7 @@ function CentralPage() {
 
   // Finalize chat
   const finalizeMutation = useMutation({
-    mutationFn: async ({ notes, status, tipoPendencia, skipClosingMessage: skipMsg }: { notes?: string; status?: string; tipoPendencia?: string; skipClosingMessage?: boolean } = {}) => {
+    mutationFn: async ({ notes, status, tipoPendencia, skipClosingMessage: skipMsg, escalateGestao }: { notes?: string; status?: string; tipoPendencia?: string; skipClosingMessage?: boolean; escalateGestao?: boolean } = {}) => {
       let ticketForProtocol = currentTicket;
       if (!ticketForProtocol && selectedChatId && chatDetail) {
         const { data: existing } = await supabase
