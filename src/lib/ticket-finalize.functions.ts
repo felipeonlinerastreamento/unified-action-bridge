@@ -215,8 +215,16 @@ export const syncTicketToGsystem = createServerFn({ method: "POST" })
           .select("user_id, gsystem_user_id")
           .in("user_id", candidateUserIds);
         if (links && links.length > 0) {
-          const first = links.find((l: any) => l.gsystem_user_id) || links[0];
-          if (first?.gsystem_user_id) colaboradorKey = String(first.gsystem_user_id);
+          // GSystem Colaborador must be a numeric Key. Older rows accidentally
+          // stored the Supabase UUID in gsystem_user_id (same as user_id),
+          // which the GSystem API rejects with 500 "Erro desconhecido".
+          // Filter to numeric values only.
+          const validLink = links.find(
+            (l: any) => l.gsystem_user_id && /^\d+$/.test(String(l.gsystem_user_id))
+          );
+          if (validLink?.gsystem_user_id) {
+            colaboradorKey = String(validLink.gsystem_user_id);
+          }
         }
       }
     } catch (e) {
