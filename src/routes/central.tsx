@@ -1780,6 +1780,7 @@ function CentralPage() {
       } catch (csatErr: any) {
         console.warn("[Finalize] CSAT step failed:", csatErr?.message);
       }
+      }
       } catch (preErr: any) {
         console.error("[Finalize] pre-finalization step failed (continuing to close chat):", preErr?.message);
       }
