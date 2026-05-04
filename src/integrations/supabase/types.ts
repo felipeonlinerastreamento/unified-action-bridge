@@ -3049,6 +3049,8 @@ export type Database = {
           is_whisper: boolean
           media_type: string | null
           media_url: string | null
+          participant_name: string | null
+          participant_phone: string | null
           sent_by_user_id: string | null
           status: string
           text: string | null
@@ -3064,6 +3066,8 @@ export type Database = {
           is_whisper?: boolean
           media_type?: string | null
           media_url?: string | null
+          participant_name?: string | null
+          participant_phone?: string | null
           sent_by_user_id?: string | null
           status?: string
           text?: string | null
@@ -3079,6 +3083,8 @@ export type Database = {
           is_whisper?: boolean
           media_type?: string | null
           media_url?: string | null
+          participant_name?: string | null
+          participant_phone?: string | null
           sent_by_user_id?: string | null
           status?: string
           text?: string | null
