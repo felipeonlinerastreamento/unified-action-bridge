@@ -428,8 +428,8 @@ export const sendMedia = createServerFn({ method: "POST" })
     z.object({
       chatId: z.string().min(1).max(255),
       kind: z.enum(["audio", "image", "video", "document"]),
-      // base64 data URL — capped at ~12MB encoded to stay safe with Worker payload limits
-      dataUrl: z.string().min(1).max(16_000_000),
+      // base64 data URL — capped at ~15MB encoded to stay safe with Worker payload limits
+      dataUrl: z.string().min(1).max(21_000_000),
       fileName: z.string().min(1).max(255).optional(),
       caption: z.string().max(2000).optional(),
       extension: z.string().min(1).max(10).optional(),

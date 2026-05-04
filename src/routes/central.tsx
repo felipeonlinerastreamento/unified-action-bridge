@@ -1325,8 +1325,8 @@ function CentralPage() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const handleFilePicked = async (file: File) => {
     if (!file) return;
-    if (file.size > 12 * 1024 * 1024) {
-      toast.error("Arquivo muito grande (máx. 12 MB)");
+    if (file.size > 15 * 1024 * 1024) {
+      toast.error("Arquivo muito grande (máx. 15 MB)");
       return;
     }
     const kind: "image" | "video" | "audio" | "document" =
