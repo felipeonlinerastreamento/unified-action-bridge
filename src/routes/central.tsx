@@ -1554,22 +1554,22 @@ function CentralPage() {
           }
         }
 
-        // Resolve category label from tipoPendencia key
-        let categoryLabel: string | null = null;
-        if (tipoPendencia) {
-          const found = tiposPendencia.find((t) => t.Key === tipoPendencia);
-          categoryLabel = found?.Descricao || tipoPendencia;
+        // O ticket recém-criado já foi inserido como "finalizado" com categoria.
+        // Aqui só atualizamos quando havia um ticket pré-existente (currentTicket
+        // ou existing), garantindo que ele transite corretamente para finalizado.
+        const wasJustCreated =
+          ticketForProtocol && ticketForProtocol.id === activeTicket.id && activeTicket.status === "finalizado";
+        if (!wasJustCreated) {
+          await supabase
+            .from("service_tickets")
+            .update({
+              status: "finalizado" as const,
+              closed_at: new Date().toISOString(),
+              notes: notes || activeTicket.notes || null,
+              category: resolvedCategoryLabel || activeTicket.category || null,
+            })
+            .eq("id", activeTicket.id);
         }
-
-        await supabase
-          .from("service_tickets")
-          .update({
-            status: "finalizado" as const,
-            closed_at: new Date().toISOString(),
-            notes: notes || activeTicket.notes || null,
-            category: categoryLabel || activeTicket.category || null,
-          })
-          .eq("id", activeTicket.id);
       }
       // Check if this category triggers a service flow
       if (tipoPendencia) {
