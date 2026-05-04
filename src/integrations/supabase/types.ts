@@ -1543,6 +1543,129 @@ export type Database = {
         }
         Relationships: []
       }
+      message_trigger_logs: {
+        Row: {
+          acknowledged_at: string | null
+          action_taken: Json
+          channel_id: string | null
+          chat_id: string | null
+          contact_name: string | null
+          id: string
+          matched_keyword: string
+          message_excerpt: string
+          message_id: string | null
+          phone: string | null
+          recipient_name: string
+          recipient_user_id: string | null
+          rule_id: string | null
+          rule_name: string
+          triggered_at: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          action_taken?: Json
+          channel_id?: string | null
+          chat_id?: string | null
+          contact_name?: string | null
+          id?: string
+          matched_keyword?: string
+          message_excerpt?: string
+          message_id?: string | null
+          phone?: string | null
+          recipient_name?: string
+          recipient_user_id?: string | null
+          rule_id?: string | null
+          rule_name?: string
+          triggered_at?: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          action_taken?: Json
+          channel_id?: string | null
+          chat_id?: string | null
+          contact_name?: string | null
+          id?: string
+          matched_keyword?: string
+          message_excerpt?: string
+          message_id?: string | null
+          phone?: string | null
+          recipient_name?: string
+          recipient_user_id?: string | null
+          rule_id?: string | null
+          rule_name?: string
+          triggered_at?: string
+        }
+        Relationships: []
+      }
+      message_trigger_rules: {
+        Row: {
+          action_type: string
+          alert_message: string
+          alert_target_sector_ids: Json
+          alert_target_type: string
+          alert_target_user_ids: Json
+          case_sensitive: boolean
+          cooldown_minutes: number
+          created_at: string
+          created_by: string | null
+          id: string
+          is_enabled: boolean
+          keywords: Json
+          match_type: string
+          name: string
+          priority: number
+          sound_enabled: boolean
+          transfer_note: string
+          transfer_sector_id: string | null
+          transfer_sector_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          action_type?: string
+          alert_message?: string
+          alert_target_sector_ids?: Json
+          alert_target_type?: string
+          alert_target_user_ids?: Json
+          case_sensitive?: boolean
+          cooldown_minutes?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_enabled?: boolean
+          keywords?: Json
+          match_type?: string
+          name: string
+          priority?: number
+          sound_enabled?: boolean
+          transfer_note?: string
+          transfer_sector_id?: string | null
+          transfer_sector_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          action_type?: string
+          alert_message?: string
+          alert_target_sector_ids?: Json
+          alert_target_type?: string
+          alert_target_user_ids?: Json
+          case_sensitive?: boolean
+          cooldown_minutes?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_enabled?: boolean
+          keywords?: Json
+          match_type?: string
+          name?: string
+          priority?: number
+          sound_enabled?: boolean
+          transfer_note?: string
+          transfer_sector_id?: string | null
+          transfer_sector_name?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       notification_campaigns: {
         Row: {
           created_at: string
