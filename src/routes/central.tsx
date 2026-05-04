@@ -1451,6 +1451,13 @@ function CentralPage() {
   // Finalize chat
   const finalizeMutation = useMutation({
     mutationFn: async ({ notes, status, tipoPendencia, skipClosingMessage: skipMsg, escalateGestao }: { notes?: string; status?: string; tipoPendencia?: string; skipClosingMessage?: boolean; escalateGestao?: boolean } = {}) => {
+      // Resolve category label antecipadamente para inserir já com a categoria correta
+      let resolvedCategoryLabel: string | null = null;
+      if (tipoPendencia) {
+        const found = tiposPendencia.find((t) => t.Key === tipoPendencia);
+        resolvedCategoryLabel = found?.Descricao || tipoPendencia;
+      }
+
       let ticketForProtocol = currentTicket;
       if (!ticketForProtocol && selectedChatId && chatDetail) {
         const { data: existing } = await supabase
@@ -1463,7 +1470,12 @@ function CentralPage() {
         if (existing && existing.length > 0) {
           ticketForProtocol = existing[0] as any;
         } else {
+          // IMPORTANTE: criar o ticket já como finalizado para evitar que conversas
+          // em andamento (que não chegaram a clicar em "Finalizar") apareçam na
+          // lista de Atendimentos como "aberto". O ticket só é persistido ao
+          // confirmar a finalização — nunca antes.
           const { data: sess } = await supabase.auth.getSession();
+          const nowIso = new Date().toISOString();
           const { data: created, error: createErr } = await supabase
             .from("service_tickets")
             .insert({
@@ -1473,8 +1485,11 @@ function CentralPage() {
               contact_phone: contactPhone || null,
               contact_name: chatDetail.contact?.name || chatDetail.description || null,
               plate: ticketPlate || null,
-              status: "aberto" as const,
+              status: "finalizado" as const,
+              category: resolvedCategoryLabel,
+              notes: notes || null,
               opened_by: sess.session?.user?.id || null,
+              closed_at: nowIso,
             })
             .select("*")
             .single();
@@ -1539,22 +1554,22 @@ function CentralPage() {
           }
         }
 
-        // Resolve category label from tipoPendencia key
-        let categoryLabel: string | null = null;
-        if (tipoPendencia) {
-          const found = tiposPendencia.find((t) => t.Key === tipoPendencia);
-          categoryLabel = found?.Descricao || tipoPendencia;
+        // O ticket recém-criado já foi inserido como "finalizado" com categoria.
+        // Aqui só atualizamos quando havia um ticket pré-existente (currentTicket
+        // ou existing), garantindo que ele transite corretamente para finalizado.
+        const wasJustCreated =
+          ticketForProtocol && ticketForProtocol.id === activeTicket.id && activeTicket.status === "finalizado";
+        if (!wasJustCreated) {
+          await supabase
+            .from("service_tickets")
+            .update({
+              status: "finalizado" as const,
+              closed_at: new Date().toISOString(),
+              notes: notes || activeTicket.notes || null,
+              category: resolvedCategoryLabel || activeTicket.category || null,
+            })
+            .eq("id", activeTicket.id);
         }
-
-        await supabase
-          .from("service_tickets")
-          .update({
-            status: "finalizado" as const,
-            closed_at: new Date().toISOString(),
-            notes: notes || activeTicket.notes || null,
-            category: categoryLabel || activeTicket.category || null,
-          })
-          .eq("id", activeTicket.id);
       }
       // Check if this category triggers a service flow
       if (tipoPendencia) {
@@ -1763,7 +1778,11 @@ function CentralPage() {
           if (existing && existing.length > 0) {
             ticketRef = existing[0] as any;
           } else {
+            // Fallback: o ticket NÃO foi criado pela mutation principal (race
+            // ou cenário de grupo). Cria já como "finalizado" para evitar deixar
+            // tickets "aberto" sem categoria na lista de Atendimentos.
             const { data: sess } = await supabase.auth.getSession();
+            const nowIso = new Date().toISOString();
             const { data: created, error: createErr } = await supabase
               .from("service_tickets")
               .insert({
@@ -1773,8 +1792,9 @@ function CentralPage() {
                 contact_phone: contactPhone || null,
                 contact_name: chatDetail?.contact?.name || chatDetail?.description || null,
                 plate: ticketPlate || null,
-                status: "aberto" as const,
+                status: "finalizado" as const,
                 opened_by: sess.session?.user?.id || null,
+                closed_at: nowIso,
               })
               .select("*")
               .single();
