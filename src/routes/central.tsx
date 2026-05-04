@@ -938,8 +938,8 @@ function CentralPage() {
 
       await createCrmContactWithCompany({
         data: {
-          companyName: selectedCompany?.name || undefined,
-          companyCnpj: selectedCompany?.cnpj || undefined,
+          companyName: selectedCompany?.name || identForm.companyNameInput || undefined,
+          companyCnpj: selectedCompany?.cnpj || identForm.cnpj || undefined,
           name: identForm.name,
           phone: identForm.phone || contactPhone,
           email: identForm.email || undefined,
@@ -947,6 +947,7 @@ function CentralPage() {
           ticketId: currentTicket?.id,
           contactType: identForm.contactType,
           categoryId: identForm.contactType === "PJ" ? (identForm.categoryId || undefined) : undefined,
+          contractItems: identForm.contactType === "PJ" ? identForm.items.filter(i => i.categoryId) : undefined,
         },
         ...await getAuthHeaders(),
       });
