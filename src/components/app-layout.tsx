@@ -7,9 +7,15 @@ import { PendingReminderPopup } from "@/components/pending-reminder-popup";
 import { NotificationPopup } from "@/components/notification-popup";
 import { ChatAvailabilityToggle } from "@/components/chat-availability-toggle";
 import { usePresence } from "@/hooks/use-presence";
+import { useOperatorSoundNotifications } from "@/hooks/use-operator-sound-notifications";
 
 function PresenceTracker() {
   usePresence();
+  return null;
+}
+
+function OperatorSoundTracker() {
+  useOperatorSoundNotifications();
   return null;
 }
 
@@ -17,6 +23,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <PresenceTracker />
+      <OperatorSoundTracker />
       <div className="min-h-screen flex w-full">
         <AppSidebar />
         <div className="flex-1 flex flex-col min-w-0">
