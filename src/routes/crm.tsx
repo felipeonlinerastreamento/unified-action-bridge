@@ -136,7 +136,7 @@ function CrmPage() {
   });
 
   const resetForm = () => {
-    setForm({ name: "", phone: "", email: "", notes: "", companyId: "", categoryId: "", contactType: "PF" });
+    setForm({ name: "", phone: "", email: "", notes: "", companyId: "", categoryId: "", contactType: "PF", items: [] });
     setEditingContact(null);
   };
 
