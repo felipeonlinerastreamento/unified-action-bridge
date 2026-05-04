@@ -228,7 +228,7 @@ export function PendingReminderPopup() {
       setOpen(true);
       if (settings?.sound_enabled) playBeep();
       try {
-        const { data: inserted } = await supabase
+        const res: any = await supabase
           .from("pending_reminder_dispatch_log" as any)
           .insert({
             user_id: user.id,
@@ -238,7 +238,8 @@ export function PendingReminderPopup() {
           } as any)
           .select("id")
           .single();
-        if (inserted?.id) setLogId(inserted.id);
+        const insertedId = res?.data?.id as string | undefined;
+        if (insertedId) setLogId(insertedId);
       } catch (e) {
         console.warn("[pending-reminder] log insert failed", e);
       }
