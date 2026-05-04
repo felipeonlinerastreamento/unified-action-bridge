@@ -273,6 +273,8 @@ function EncaminhamentoPage() {
 
         <CompraEquipamentoConfig />
 
+        <EscalonamentoGestaoConfig />
+
         <Card>
           <CardHeader>
             <CardTitle>Regras de Encaminhamento</CardTitle>
