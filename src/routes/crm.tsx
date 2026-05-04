@@ -109,6 +109,7 @@ function CrmPage() {
         contract_items: items,
         activation_total: activationTotal,
         monthly_total: monthlyTotal,
+        contact_source: form.source || null,
         created_by: sess.session?.user?.id || null,
       };
 
