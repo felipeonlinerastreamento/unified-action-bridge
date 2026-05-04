@@ -1606,6 +1606,7 @@ export type Database = {
           alert_target_user_ids: Json
           case_sensitive: boolean
           cooldown_minutes: number
+          create_ticket: boolean
           created_at: string
           created_by: string | null
           id: string
@@ -1615,6 +1616,9 @@ export type Database = {
           name: string
           priority: number
           sound_enabled: boolean
+          ticket_note: string | null
+          ticket_priority: string
+          ticket_sector: string | null
           transfer_note: string
           transfer_sector_id: string | null
           transfer_sector_name: string | null
@@ -1628,6 +1632,7 @@ export type Database = {
           alert_target_user_ids?: Json
           case_sensitive?: boolean
           cooldown_minutes?: number
+          create_ticket?: boolean
           created_at?: string
           created_by?: string | null
           id?: string
@@ -1637,6 +1642,9 @@ export type Database = {
           name: string
           priority?: number
           sound_enabled?: boolean
+          ticket_note?: string | null
+          ticket_priority?: string
+          ticket_sector?: string | null
           transfer_note?: string
           transfer_sector_id?: string | null
           transfer_sector_name?: string | null
@@ -1650,6 +1658,7 @@ export type Database = {
           alert_target_user_ids?: Json
           case_sensitive?: boolean
           cooldown_minutes?: number
+          create_ticket?: boolean
           created_at?: string
           created_by?: string | null
           id?: string
@@ -1659,6 +1668,9 @@ export type Database = {
           name?: string
           priority?: number
           sound_enabled?: boolean
+          ticket_note?: string | null
+          ticket_priority?: string
+          ticket_sector?: string | null
           transfer_note?: string
           transfer_sector_id?: string | null
           transfer_sector_name?: string | null
