@@ -641,6 +641,7 @@ function CentralPage() {
   // Reset plate when changing chat
   useEffect(() => {
     setTicketPlate("");
+    setReplyingTo(null);
   }, [selectedChatId]);
 
   // Company lookup by contact phone
