@@ -427,5 +427,3 @@ function X({ className }: { className?: string }) {
   );
 }
 
-// Suppress unused import warnings if effect not used
-void useEffect;
