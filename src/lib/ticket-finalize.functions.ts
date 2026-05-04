@@ -214,7 +214,7 @@ export const syncTicketToGsystem = createServerFn({ method: "POST" })
       if (candidateUserIds.length > 0) {
         const { data: links } = await supabase
           .from("user_gsystem_links")
-          .select("user_id, gsystem_user_id")
+          .select("user_id, gsystem_user_id, gsystem_user_name")
           .in("user_id", candidateUserIds);
         if (links && links.length > 0) {
           // GSystem Colaborador must be a numeric Key. Older rows accidentally
