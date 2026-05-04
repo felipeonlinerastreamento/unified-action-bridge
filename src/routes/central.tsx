@@ -1451,6 +1451,13 @@ function CentralPage() {
   // Finalize chat
   const finalizeMutation = useMutation({
     mutationFn: async ({ notes, status, tipoPendencia, skipClosingMessage: skipMsg, escalateGestao }: { notes?: string; status?: string; tipoPendencia?: string; skipClosingMessage?: boolean; escalateGestao?: boolean } = {}) => {
+      // Resolve category label antecipadamente para inserir já com a categoria correta
+      let resolvedCategoryLabel: string | null = null;
+      if (tipoPendencia) {
+        const found = tiposPendencia.find((t) => t.Key === tipoPendencia);
+        resolvedCategoryLabel = found?.Descricao || tipoPendencia;
+      }
+
       let ticketForProtocol = currentTicket;
       if (!ticketForProtocol && selectedChatId && chatDetail) {
         const { data: existing } = await supabase
@@ -1463,7 +1470,12 @@ function CentralPage() {
         if (existing && existing.length > 0) {
           ticketForProtocol = existing[0] as any;
         } else {
+          // IMPORTANTE: criar o ticket já como finalizado para evitar que conversas
+          // em andamento (que não chegaram a clicar em "Finalizar") apareçam na
+          // lista de Atendimentos como "aberto". O ticket só é persistido ao
+          // confirmar a finalização — nunca antes.
           const { data: sess } = await supabase.auth.getSession();
+          const nowIso = new Date().toISOString();
           const { data: created, error: createErr } = await supabase
             .from("service_tickets")
             .insert({
@@ -1473,8 +1485,11 @@ function CentralPage() {
               contact_phone: contactPhone || null,
               contact_name: chatDetail.contact?.name || chatDetail.description || null,
               plate: ticketPlate || null,
-              status: "aberto" as const,
+              status: "finalizado" as const,
+              category: resolvedCategoryLabel,
+              notes: notes || null,
               opened_by: sess.session?.user?.id || null,
+              closed_at: nowIso,
             })
             .select("*")
             .single();
