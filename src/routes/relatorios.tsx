@@ -350,7 +350,7 @@ function RelatoriosPage() {
 
         <div id="report-content">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-7">
+            <TabsList className="grid w-full grid-cols-8">
               <TabsTrigger value="atendimentos" className="gap-1 text-xs">
                 <MessageSquare className="h-3.5 w-3.5" /> Atendimentos
               </TabsTrigger>
@@ -371,6 +371,9 @@ function RelatoriosPage() {
               </TabsTrigger>
               <TabsTrigger value="notificacoes" className="gap-1 text-xs">
                 <Bell className="h-3.5 w-3.5" /> Notificações
+              </TabsTrigger>
+              <TabsTrigger value="lembretes" className="gap-1 text-xs">
+                <Bell className="h-3.5 w-3.5" /> Lembretes
               </TabsTrigger>
             </TabsList>
 
