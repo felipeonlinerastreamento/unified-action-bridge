@@ -4043,6 +4043,99 @@ function CentralPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Attachment preview dialog (drag, paste, or attach button) */}
+      <Dialog
+        open={pendingAttachments.length > 0}
+        onOpenChange={(open) => { if (!open) clearPendingAttachments(); }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              Enviar {pendingAttachments.length > 1 ? `${pendingAttachments.length} arquivos` : "arquivo"}
+            </DialogTitle>
+            <DialogDescription>
+              Revise os anexos antes de enviar para o contato.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+            {pendingAttachments.map((file, idx) => {
+              const isImage = file.type.startsWith("image/");
+              const isVideo = file.type.startsWith("video/");
+              const isAudio = file.type.startsWith("audio/");
+              const url = URL.createObjectURL(file);
+              const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+              return (
+                <div key={`${file.name}-${idx}`} className="flex items-start gap-3 rounded-md border p-2 bg-muted/30">
+                  <div className="shrink-0 w-20 h-20 rounded overflow-hidden bg-background flex items-center justify-center">
+                    {isImage ? (
+                      <img src={url} alt={file.name} className="w-full h-full object-cover" onLoad={() => URL.revokeObjectURL(url)} />
+                    ) : isVideo ? (
+                      <video src={url} className="w-full h-full object-cover" muted />
+                    ) : isAudio ? (
+                      <Paperclip className="h-8 w-8 text-muted-foreground" />
+                    ) : (
+                      <Paperclip className="h-8 w-8 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate" title={file.name}>{file.name}</p>
+                    <p className="text-xs text-muted-foreground">{sizeMb} MB · {file.type || "arquivo"}</p>
+                    {isAudio && <audio src={url} controls className="mt-1 w-full h-8" />}
+                  </div>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7 shrink-0"
+                    onClick={() => removePendingAttachment(idx)}
+                    title="Remover"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="attachment-caption" className="text-xs">Legenda (opcional)</Label>
+            <Textarea
+              id="attachment-caption"
+              value={attachmentCaption}
+              onChange={(e) => setAttachmentCaption(e.target.value)}
+              placeholder="Adicione uma mensagem para acompanhar o(s) arquivo(s)..."
+              rows={2}
+              className="text-sm"
+            />
+          </div>
+          <div className="flex items-center justify-between gap-2 pt-2">
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={mediaMutation.isPending}
+            >
+              <Paperclip className="h-4 w-4 mr-2" />
+              Adicionar mais
+            </Button>
+            <div className="flex gap-2">
+              <Button variant="ghost" onClick={clearPendingAttachments} disabled={mediaMutation.isPending}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={sendPendingAttachments}
+                disabled={mediaMutation.isPending || pendingAttachments.length === 0}
+              >
+                {mediaMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4 mr-2" />
+                )}
+                Enviar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Floating chat windows layer */}
       <FloatingChatsLayer onOpenInPanel={(id) => setSelectedChatId(id)} />
     </AppLayout>
