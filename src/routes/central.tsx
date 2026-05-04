@@ -1222,12 +1222,20 @@ function CentralPage() {
         };
       }).filter((c: any) => c.value && c.name);
 
-      // Merge — GSystem first, then add local entries that aren't duplicates
-      const merged = [...fromGsystem];
-      for (const local of fromLocal) {
-        if (!merged.find((m) => m.value === local.value)) {
-          merged.push(local);
-        }
+      // Dedupe — by value AND by normalized name (catches duplicates without CNPJ)
+      const merged: any[] = [];
+      const seenValues = new Set<string>();
+      const seenNames = new Set<string>();
+      const normName = (n: string) =>
+        n.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, " ").trim();
+
+      for (const c of [...fromGsystem, ...fromLocal]) {
+        const nameKey = normName(c.name);
+        if (seenValues.has(c.value)) continue;
+        if (nameKey && seenNames.has(nameKey)) continue;
+        seenValues.add(c.value);
+        if (nameKey) seenNames.add(nameKey);
+        merged.push(c);
       }
 
       return merged;
