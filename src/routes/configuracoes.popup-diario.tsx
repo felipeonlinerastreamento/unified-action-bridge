@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sparkles, Bell, MessageSquare, CheckSquare, Loader2, Save, Eye, Repeat, Users, Briefcase, Volume2, Send, ShieldCheck } from "lucide-react";
+import { Sparkles, Bell, MessageSquare, CheckSquare, Loader2, Save, Eye, Repeat, Users, Briefcase, Volume2, Send, ShieldCheck, AlertTriangle } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -308,6 +308,9 @@ function PopupSettingsForm() {
 
       {/* Lembrete recorrente de pendências */}
       <RecurringReminderSection />
+
+      {/* Alerta de inatividade em chats */}
+      <ChatInactivityAlertSection />
 
       {/* Ações */}
       <div className="flex items-center justify-between gap-2">
@@ -684,3 +687,223 @@ function RecurringReminderSection() {
   );
 }
 
+
+// ============================================================
+// Alerta de inatividade em chats
+// ============================================================
+
+interface InactivitySettings {
+  id?: string;
+  is_enabled: boolean;
+  inactivity_minutes: number;
+  alert_message: string;
+  target_type: "assigned" | "all" | "sector" | "users";
+  target_sector_ids: string[];
+  target_user_ids: string[];
+  requires_acknowledge: boolean;
+  sound_enabled: boolean;
+  cooldown_minutes: number;
+  only_business_hours: boolean;
+}
+
+const INACTIVITY_DEFAULTS: InactivitySettings = {
+  is_enabled: false,
+  inactivity_minutes: 15,
+  alert_message: "Necessário interação",
+  target_type: "assigned",
+  target_sector_ids: [],
+  target_user_ids: [],
+  requires_acknowledge: true,
+  sound_enabled: false,
+  cooldown_minutes: 30,
+  only_business_hours: true,
+};
+
+function ChatInactivityAlertSection() {
+  const [s, setS] = useState<InactivitySettings>(INACTIVITY_DEFAULTS);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [sectors, setSectors] = useState<{ id: string; name: string }[]>([]);
+  const [users, setUsers] = useState<{ user_id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      const [cfgRes, secRes, userRes] = await Promise.all([
+        supabase.from("chat_inactivity_alert_settings" as any).select("*").limit(1).maybeSingle(),
+        supabase.from("sectors").select("id, name").eq("is_active", true).order("name"),
+        supabase.from("profiles").select("user_id, name").order("name"),
+      ]);
+      if (cfgRes.data) setS({ ...INACTIVITY_DEFAULTS, ...(cfgRes.data as any) });
+      setSectors((secRes.data as any) || []);
+      setUsers((userRes.data as any) || []);
+      setLoading(false);
+    })();
+  }, []);
+
+  function toggleArrayItem(arr: string[], v: string): string[] {
+    return arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v];
+  }
+
+  async function save() {
+    setSaving(true);
+    const { id, ...payload } = s;
+    const { data: { user } } = await supabase.auth.getUser();
+    const updateData: any = { ...payload, updated_by: user?.id, updated_at: new Date().toISOString() };
+    let error;
+    if (id) {
+      ({ error } = await supabase.from("chat_inactivity_alert_settings" as any).update(updateData).eq("id", id));
+    } else {
+      ({ error } = await supabase.from("chat_inactivity_alert_settings" as any).insert(updateData));
+      const { data } = await supabase.from("chat_inactivity_alert_settings" as any).select("*").limit(1).maybeSingle();
+      if (data) setS({ ...INACTIVITY_DEFAULTS, ...(data as any) });
+    }
+    if (error) toast.error("Erro ao salvar: " + error.message);
+    else toast.success("Configuração de inatividade salva");
+    setSaving(false);
+  }
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="py-8 flex justify-center">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 text-amber-500" />
+          Alerta de inatividade em chats
+        </CardTitle>
+        <CardDescription>
+          Exibe um balão flutuante "Necessário interação" para chats parados há um certo tempo sem resposta.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <Label className="text-sm font-medium">Ativar alerta de inatividade</Label>
+            <p className="text-xs text-muted-foreground">Quando desativado, o balão nunca aparece.</p>
+          </div>
+          <Switch checked={s.is_enabled} onCheckedChange={(v) => setS({ ...s, is_enabled: v })} />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Tempo de inatividade (minutos)</Label>
+            <Input
+              type="number"
+              min={1}
+              max={1440}
+              value={s.inactivity_minutes}
+              onChange={(e) => setS({ ...s, inactivity_minutes: Math.max(1, Math.min(1440, Number(e.target.value) || 15)) })}
+            />
+            <p className="text-[10px] text-muted-foreground">A partir desse tempo sem nova mensagem o alerta dispara.</p>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Cooldown (minutos)</Label>
+            <Input
+              type="number"
+              min={1}
+              max={1440}
+              value={s.cooldown_minutes}
+              onChange={(e) => setS({ ...s, cooldown_minutes: Math.max(1, Math.min(1440, Number(e.target.value) || 30)) })}
+            />
+            <p className="text-[10px] text-muted-foreground">Tempo mínimo entre dois alertas para o mesmo chat.</p>
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label className="text-xs font-medium">Mensagem exibida</Label>
+          <Input
+            value={s.alert_message}
+            onChange={(e) => setS({ ...s, alert_message: e.target.value })}
+            placeholder="Necessário interação"
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-xs font-medium">Quem recebe o alerta</Label>
+          <Select
+            value={s.target_type}
+            onValueChange={(v: "assigned" | "all" | "sector" | "users") => setS({ ...s, target_type: v })}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="assigned">Apenas o operador atribuído ao chat</SelectItem>
+              <SelectItem value="all">Todos os usuários</SelectItem>
+              <SelectItem value="sector">Usuários de setores específicos</SelectItem>
+              <SelectItem value="users">Usuários selecionados</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {s.target_type === "sector" && (
+            <div className="border rounded-md p-3 max-h-44 overflow-auto space-y-1.5">
+              {sectors.length === 0 && <p className="text-xs text-muted-foreground">Nenhum setor ativo cadastrado.</p>}
+              {sectors.map((sec) => {
+                const checked = s.target_sector_ids.includes(sec.id);
+                return (
+                  <label key={sec.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <Checkbox
+                      checked={checked}
+                      onCheckedChange={() => setS({ ...s, target_sector_ids: toggleArrayItem(s.target_sector_ids, sec.id) })}
+                    />
+                    {sec.name}
+                  </label>
+                );
+              })}
+            </div>
+          )}
+
+          {s.target_type === "users" && (
+            <div className="border rounded-md p-3 max-h-44 overflow-auto space-y-1.5">
+              {users.length === 0 && <p className="text-xs text-muted-foreground">Nenhum usuário encontrado.</p>}
+              {users.map((u) => {
+                const checked = s.target_user_ids.includes(u.user_id);
+                return (
+                  <label key={u.user_id} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <Checkbox
+                      checked={checked}
+                      onCheckedChange={() => setS({ ...s, target_user_ids: toggleArrayItem(s.target_user_ids, u.user_id) })}
+                    />
+                    {u.name || u.user_id}
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <ToggleRow
+            icon={<Volume2 className="h-4 w-4 text-emerald-500" />}
+            label="Som ao disparar"
+            description="Toca um aviso sonoro quando o balão aparece."
+            checked={s.sound_enabled}
+            onChange={(v) => setS({ ...s, sound_enabled: v })}
+          />
+          <ToggleRow
+            icon={<ShieldCheck className="h-4 w-4 text-rose-500" />}
+            label="Exigir confirmação"
+            description='Usuário precisa clicar em "Visto" para fechar o balão.'
+            checked={s.requires_acknowledge}
+            onChange={(v) => setS({ ...s, requires_acknowledge: v })}
+          />
+        </div>
+
+        <div className="flex items-center justify-end pt-2 border-t">
+          <Button onClick={save} disabled={saving} className="gap-1">
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            Salvar configuração
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}

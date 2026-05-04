@@ -644,6 +644,105 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_inactivity_alert_logs: {
+        Row: {
+          acknowledged_at: string | null
+          alert_message: string
+          assigned_user_id: string | null
+          chat_id: string | null
+          chat_phone: string | null
+          contact_name: string | null
+          id: string
+          inactivity_minutes: number
+          last_message_at: string | null
+          last_message_from_me: boolean | null
+          metadata: Json
+          recipient_name: string
+          recipient_user_id: string
+          triggered_at: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          alert_message?: string
+          assigned_user_id?: string | null
+          chat_id?: string | null
+          chat_phone?: string | null
+          contact_name?: string | null
+          id?: string
+          inactivity_minutes?: number
+          last_message_at?: string | null
+          last_message_from_me?: boolean | null
+          metadata?: Json
+          recipient_name?: string
+          recipient_user_id: string
+          triggered_at?: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          alert_message?: string
+          assigned_user_id?: string | null
+          chat_id?: string | null
+          chat_phone?: string | null
+          contact_name?: string | null
+          id?: string
+          inactivity_minutes?: number
+          last_message_at?: string | null
+          last_message_from_me?: boolean | null
+          metadata?: Json
+          recipient_name?: string
+          recipient_user_id?: string
+          triggered_at?: string
+        }
+        Relationships: []
+      }
+      chat_inactivity_alert_settings: {
+        Row: {
+          alert_message: string
+          cooldown_minutes: number
+          id: string
+          inactivity_minutes: number
+          is_enabled: boolean
+          only_business_hours: boolean
+          requires_acknowledge: boolean
+          sound_enabled: boolean
+          target_sector_ids: Json
+          target_type: string
+          target_user_ids: Json
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          alert_message?: string
+          cooldown_minutes?: number
+          id?: string
+          inactivity_minutes?: number
+          is_enabled?: boolean
+          only_business_hours?: boolean
+          requires_acknowledge?: boolean
+          sound_enabled?: boolean
+          target_sector_ids?: Json
+          target_type?: string
+          target_user_ids?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          alert_message?: string
+          cooldown_minutes?: number
+          id?: string
+          inactivity_minutes?: number
+          is_enabled?: boolean
+          only_business_hours?: boolean
+          requires_acknowledge?: boolean
+          sound_enabled?: boolean
+          target_sector_ids?: Json
+          target_type?: string
+          target_user_ids?: Json
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       companies: {
         Row: {
           cnpj: string | null

@@ -5,6 +5,7 @@ import { NotificationsBell } from "@/components/notifications-bell";
 import { DailyWelcomeDialog } from "@/components/daily-welcome-dialog";
 import { PendingReminderPopup } from "@/components/pending-reminder-popup";
 import { NotificationPopup } from "@/components/notification-popup";
+import { ChatInactivityAlert } from "@/components/chat-inactivity-alert";
 import { ChatAvailabilityToggle } from "@/components/chat-availability-toggle";
 import { usePresence } from "@/hooks/use-presence";
 import { useOperatorSoundNotifications } from "@/hooks/use-operator-sound-notifications";
@@ -40,6 +41,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
       <DailyWelcomeDialog />
       <PendingReminderPopup />
       <NotificationPopup />
+      <ChatInactivityAlert />
       <Toaster />
     </SidebarProvider>
   );
