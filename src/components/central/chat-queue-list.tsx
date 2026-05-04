@@ -322,9 +322,24 @@ function ChatListItem({
         <div className="flex-1 min-w-0">
           {/* Row 1: Name + time/unread */}
           <div className="flex items-center justify-between gap-1">
-            <p className="text-sm font-medium truncate" style={{ color: sla.bg }}>
-              {name}
-            </p>
+            <div className="flex items-center gap-1 min-w-0 flex-1">
+              {hasLastMsg && (
+                lastMsgIsMe ? (
+                  <ArrowUp
+                    className="h-3.5 w-3.5 shrink-0 text-blue-500"
+                    aria-label="Última mensagem do operador"
+                  />
+                ) : (
+                  <ArrowDown
+                    className="h-3.5 w-3.5 shrink-0 text-blue-500"
+                    aria-label="Última mensagem do cliente"
+                  />
+                )
+              )}
+              <p className="text-sm font-medium truncate" style={{ color: sla.bg }}>
+                {name}
+              </p>
+            </div>
             <div className="flex items-center gap-1 shrink-0">
               {lastMsgTime && (
                 <span className="text-[10px] text-muted-foreground">{lastMsgTime}</span>
