@@ -642,12 +642,23 @@ export const createChat = createServerFn({ method: "POST" })
           channel_id: data.channelId,
           phone,
           status: "em_atendimento",
+          assigned_to: context.userId,
           last_message_at: new Date().toISOString(),
         })
         .select("id")
         .single();
       if (error || !created) throw new Error(error?.message || "Erro ao criar conversa");
       chatId = created.id;
+    } else {
+      // Garante que a conversa existente apareça na Central para quem iniciou
+      await context.supabase
+        .from("zapi_chats")
+        .update({
+          status: "em_atendimento",
+          assigned_to: context.userId,
+          last_message_at: new Date().toISOString(),
+        })
+        .eq("id", chatId);
     }
 
     if (data.message) {
