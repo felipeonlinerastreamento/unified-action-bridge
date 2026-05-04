@@ -2616,6 +2616,10 @@ function CentralPage() {
                           mediaMutation.mutateAsync({ kind: "audio", dataUrl })
                         }
                       />
+                      <EmojiPickerButton
+                        disabled={sendMutation.isPending || chatDetail?.status === 3}
+                        onPick={(emoji) => setMessageInput((prev) => `${prev}${emoji}`)}
+                      />
                       <Textarea
                         placeholder={whisperMode ? "Sussurro interno (não vai para o cliente). Shift+Enter para nova linha." : "Digite uma mensagem... (Shift+Enter para nova linha)"}
                         value={messageInput}
