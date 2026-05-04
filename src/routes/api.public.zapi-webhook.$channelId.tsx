@@ -220,6 +220,17 @@ export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
           }
 
           if (chatId) {
+            // For groups, persist the actual participant (sender) so the UI can
+            // show "who in the group sent this message" — without this the chat
+            // shows incoming group messages with no author label.
+            const participantPhoneRaw = p.participantPhone ? String(p.participantPhone) : null;
+            const participantPhone = isGroupMessage && participantPhoneRaw
+              ? participantPhoneRaw.replace(/\D/g, "") || null
+              : null;
+            const participantName = isGroupMessage && !p.fromMe
+              ? (p.senderName || null)
+              : null;
+
             await supabaseAdmin.from("zapi_messages").insert({
               chat_id: chatId,
               zapi_message_id: p.messageId || null,
@@ -228,7 +239,9 @@ export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
               media_url: mediaUrl,
               media_type: mediaType,
               status: p.fromMe ? "sent" : "delivered",
-            });
+              participant_name: participantName,
+              participant_phone: participantPhone,
+            } as any);
 
             // Run bot only on incoming customer messages — skip for groups
             if (!p.fromMe && text && !isGroupMessage) {

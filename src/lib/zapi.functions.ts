@@ -222,6 +222,8 @@ export const getChatMessages = createServerFn({ method: "POST" })
       let senderName: string | undefined;
       if (m.is_whisper) senderName = authorFirst ? `🤫 Sussurro · ${authorFirst}` : "🤫 Sussurro";
       else if (m.from_me) senderName = authorFirst || "Você";
+      // Incoming group message: show the participant (group member) who sent it
+      else if (m.participant_name || m.participant_phone) senderName = m.participant_name || m.participant_phone;
       else senderName = undefined;
 
       return {
