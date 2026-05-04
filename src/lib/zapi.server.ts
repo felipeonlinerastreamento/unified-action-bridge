@@ -70,8 +70,19 @@ function zapiRecipientPhone(phone: string): string {
   return digits.length > 15 ? `${digits}-group` : digits;
 }
 
-export async function zapiSendText(channel: ZapiChannelCreds, phone: string, message: string) {
-  return zapiFetch(channel, "/send-text", "POST", { phone: zapiRecipientPhone(phone), message });
+export async function zapiSendText(
+  channel: ZapiChannelCreds,
+  phone: string,
+  message: string,
+  opts?: { messageId?: string },
+) {
+  const payload: Record<string, unknown> = {
+    phone: zapiRecipientPhone(phone),
+    message,
+  };
+  // Z-API: passar messageId faz a mensagem ser enviada como resposta/citação
+  if (opts?.messageId) payload.messageId = opts.messageId;
+  return zapiFetch(channel, "/send-text", "POST", payload);
 }
 
 /**

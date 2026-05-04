@@ -100,6 +100,8 @@ import {
   Tag,
   Trash2,
   UserCircle2,
+  Reply,
+  CornerDownRight,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -187,6 +189,7 @@ interface GMessage {
   mediaUrl?: string | null;
   mediaType?: string | null;
   _status?: string; // "sent" | "delivered" | "read" (from zapi_messages.status)
+  replyTo?: { id: string; text: string; author: string } | null;
 }
 
 interface ChatItem {
@@ -263,6 +266,11 @@ function CentralPage() {
   const [selectedChatId, setSelectedChatId] = useState<string>("");
   const [messageInput, setMessageInput] = useState("");
   const [whisperMode, setWhisperMode] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<{
+    id: string;
+    text: string;
+    author: string;
+  } | null>(null);
   const [nicknameMode, setNicknameMode] = useState(false);
   const [quickRepliesOpen, setQuickRepliesOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
@@ -635,6 +643,7 @@ function CentralPage() {
   // Reset plate when changing chat
   useEffect(() => {
     setTicketPlate("");
+    setReplyingTo(null);
   }, [selectedChatId]);
 
   // Company lookup by contact phone
@@ -1256,7 +1265,11 @@ function CentralPage() {
 
   // Send message (or whisper)
   const sendMutation = useMutation({
-    mutationFn: async ({ text, whisper }: { text: string; whisper: boolean }) => {
+    mutationFn: async ({
+      text,
+      whisper,
+      replyToMessageId,
+    }: { text: string; whisper: boolean; replyToMessageId?: string | null }) => {
       if (whisper) {
         // Whisper: persist locally only, never sent to client via Z-API
         const { data: chatRow } = await supabase
@@ -1268,6 +1281,26 @@ function CentralPage() {
         if (!chatRow) {
           throw new Error("Sussurro indisponível: este chat ainda não está vinculado a um chat Z-API local.");
         }
+        // Snapshot da citação (se houver)
+        let replyToText: string | null = null;
+        let replyToAuthor: string | null = null;
+        if (replyToMessageId) {
+          const { data: orig } = await supabase
+            .from("zapi_messages")
+            .select("text, media_type, from_me, sent_by_user_id, participant_name")
+            .eq("id", replyToMessageId)
+            .maybeSingle();
+          if (orig) {
+            replyToText = (orig as any).text
+              ? String((orig as any).text).slice(0, 200)
+              : (orig as any).media_type
+                ? `[${(orig as any).media_type}]`
+                : "[mídia]";
+            replyToAuthor = (orig as any).from_me
+              ? "Você"
+              : (orig as any).participant_name || null;
+          }
+        }
         const { error } = await supabase.from("zapi_messages").insert({
           chat_id: chatRow.id,
           from_me: true,
@@ -1275,17 +1308,26 @@ function CentralPage() {
           whisper_author: session?.user?.id || null,
           text,
           status: "sent",
+          reply_to_message_id: replyToMessageId || null,
+          reply_to_text: replyToText,
+          reply_to_author: replyToAuthor,
         });
         if (error) throw error;
         return { whisper: true };
       }
       return sendText({
-        data: { channelId: selectedChannelId, chatId: selectedChatId, message: text },
+        data: {
+          channelId: selectedChannelId,
+          chatId: selectedChatId,
+          message: text,
+          replyToMessageId: replyToMessageId || undefined,
+        },
         ...await getAuthHeaders(),
       });
     },
     onSuccess: (_data, vars) => {
       setMessageInput("");
+      setReplyingTo(null);
       toast.success(vars.whisper ? "Sussurro registrado" : "Mensagem enviada");
       queryClient.invalidateQueries({ queryKey: ["chat-detail", selectedChannelId, selectedChatId] });
       queryClient.invalidateQueries({ queryKey: ["zapi-messages"] });
@@ -1869,7 +1911,11 @@ function CentralPage() {
       nicknameMode && !whisperMode && operatorName
         ? `*${operatorName}:* ${messageInput.trim()}`
         : messageInput.trim();
-    sendMutation.mutate({ text, whisper: whisperMode });
+    sendMutation.mutate({
+      text,
+      whisper: whisperMode,
+      replyToMessageId: replyingTo?.id || null,
+    });
   };
 
   // Quick replies disponíveis para expansão de atalhos digitados (ex: /bd)
@@ -2551,34 +2597,57 @@ function CentralPage() {
                           );
                         }
 
+                        const canReply = !isErased && !!msg.IdMessage;
+
                         return (
                           <div
                             key={msg.IdMessage || idx}
+                            id={msg.IdMessage ? `msg-${msg.IdMessage}` : undefined}
                             className={`group flex items-center gap-1 ${isMe ? "justify-end" : "justify-start"}`}
                           >
-                            {canDelete && (
+                            {(canReply || canDelete) && (
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <Button
                                     size="icon"
                                     variant="ghost"
-                                    className="h-7 w-7 opacity-60 hover:opacity-100 transition-opacity"
+                                    className="h-7 w-7 opacity-0 group-hover:opacity-70 hover:opacity-100 transition-opacity"
                                     title="Opções da mensagem"
                                   >
                                     <MoreVertical className="h-4 w-4" />
                                   </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem
-                                    className="text-destructive focus:text-destructive"
-                                    onClick={() => {
-                                      if (confirm("Apagar esta mensagem para todos? Esta ação não pode ser desfeita."))
-                                        deleteMessageMutation.mutate(msg.IdMessage as string);
-                                    }}
-                                  >
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    Apagar para todos
-                                  </DropdownMenuItem>
+                                <DropdownMenuContent align={isMe ? "end" : "start"}>
+                                  {canReply && (
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        const snippet = (msg.text || (msg.mediaType ? `[${msg.mediaType}]` : "[mídia]")).slice(0, 200);
+                                        const author = isMe
+                                          ? (msg.senderFirstName || "Você")
+                                          : (msg.senderName || chatDetail?.contact?.name || chatDetail?.description || "");
+                                        setReplyingTo({
+                                          id: msg.IdMessage as string,
+                                          text: snippet,
+                                          author,
+                                        });
+                                      }}
+                                    >
+                                      <Reply className="h-4 w-4 mr-2" />
+                                      Responder
+                                    </DropdownMenuItem>
+                                  )}
+                                  {canDelete && (
+                                    <DropdownMenuItem
+                                      className="text-destructive focus:text-destructive"
+                                      onClick={() => {
+                                        if (confirm("Apagar esta mensagem para todos? Esta ação não pode ser desfeita."))
+                                          deleteMessageMutation.mutate(msg.IdMessage as string);
+                                      }}
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-2" />
+                                      Apagar para todos
+                                    </DropdownMenuItem>
+                                  )}
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             )}
@@ -2593,6 +2662,33 @@ function CentralPage() {
                                   : "bg-muted text-foreground"
                               }`}
                             >
+                              {msg.replyTo && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (!msg.replyTo?.id) return;
+                                    const el = document.getElementById(`msg-${msg.replyTo.id}`);
+                                    if (el) {
+                                      el.scrollIntoView({ behavior: "smooth", block: "center" });
+                                      el.classList.add("ring-2", "ring-primary");
+                                      setTimeout(() => el.classList.remove("ring-2", "ring-primary"), 1500);
+                                    }
+                                  }}
+                                  className={`block w-full text-left mb-1.5 rounded border-l-2 px-2 py-1 text-xs hover:opacity-80 transition-opacity ${
+                                    isMe
+                                      ? "border-primary-foreground/60 bg-primary-foreground/10"
+                                      : "border-primary bg-background/60"
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-1 font-semibold opacity-80">
+                                    <CornerDownRight className="h-3 w-3" />
+                                    {msg.replyTo.author || "Mensagem"}
+                                  </div>
+                                  <div className="opacity-70 truncate whitespace-pre-wrap line-clamp-2">
+                                    {msg.replyTo.text || "[mensagem]"}
+                                  </div>
+                                </button>
+                              )}
                               {!isMe && msg.senderName && (
                                 <p className="text-xs font-medium mb-1 opacity-70">{msg.senderName}</p>
                               )}
@@ -2638,6 +2734,28 @@ function CentralPage() {
 
                   {/* Input */}
                   <div className="p-3 border-t space-y-2">
+                    {replyingTo && (
+                      <div className="flex items-start gap-2 rounded-md border-l-4 border-primary bg-muted/60 px-3 py-2">
+                        <Reply className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
+                        <div className="min-w-0 flex-1">
+                          <div className="text-xs font-semibold text-primary">
+                            Respondendo a {replyingTo.author || "mensagem"}
+                          </div>
+                          <div className="text-xs text-muted-foreground line-clamp-2 whitespace-pre-wrap break-words">
+                            {replyingTo.text}
+                          </div>
+                        </div>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6 shrink-0"
+                          onClick={() => setReplyingTo(null)}
+                          title="Cancelar resposta"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
                     <div className="flex gap-2">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
