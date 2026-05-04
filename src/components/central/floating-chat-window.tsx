@@ -420,7 +420,7 @@ export function FloatingChatWindow({ state, onOpenInPanel }: Props) {
             onChange={(e) => setInput(e.target.value)}
             placeholder={whisperMode ? "Sussurro interno..." : "Mensagem... (Shift+Enter = nova linha)"}
             rows={1}
-            className={`text-xs min-h-[32px] max-h-24 resize-none py-1.5 ${whisperMode ? "border-amber-400 focus-visible:ring-amber-400" : ""}`}
+            className={`text-xs min-h-[32px] resize-none py-1.5 overflow-y-auto ${whisperMode ? "border-amber-400 focus-visible:ring-amber-400" : ""}`}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
