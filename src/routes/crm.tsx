@@ -23,8 +23,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
   Search, UserPlus, Building2, Loader2, Trash2, Edit, Users, Tag,
+  Cake, TrendingUp, ListTodo,
 } from "lucide-react";
 import { CrmCategories } from "@/components/crm/crm-categories";
+import { CrmBirthdaysTab } from "@/components/crm/crm-birthdays-tab";
+import { CrmPipelineTab } from "@/components/crm/crm-pipeline-tab";
+import { CrmTasksTab } from "@/components/crm/crm-tasks-tab";
 
 export const Route = createFileRoute("/crm")({
   component: CrmPage,
@@ -252,8 +256,17 @@ function CrmPage() {
           <h1 className="text-2xl font-bold text-foreground">CRM</h1>
         </div>
 
-        <Tabs defaultValue="contatos">
-          <TabsList>
+        <Tabs defaultValue="tarefas">
+          <TabsList className="flex-wrap h-auto">
+            <TabsTrigger value="tarefas" className="gap-1">
+              <ListTodo className="h-4 w-4" /> Tarefas
+            </TabsTrigger>
+            <TabsTrigger value="pipeline" className="gap-1">
+              <TrendingUp className="h-4 w-4" /> Pipeline
+            </TabsTrigger>
+            <TabsTrigger value="aniversarios" className="gap-1">
+              <Cake className="h-4 w-4" /> Aniversários
+            </TabsTrigger>
             <TabsTrigger value="contatos" className="gap-1">
               <Users className="h-4 w-4" /> Contatos
             </TabsTrigger>
@@ -264,6 +277,10 @@ function CrmPage() {
               <Tag className="h-4 w-4" /> Categorias
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="tarefas" className="mt-4"><CrmTasksTab /></TabsContent>
+          <TabsContent value="pipeline" className="mt-4"><CrmPipelineTab /></TabsContent>
+          <TabsContent value="aniversarios" className="mt-4"><CrmBirthdaysTab /></TabsContent>
 
           <TabsContent value="contatos" className="space-y-4 mt-4">
             <div className="flex items-center justify-between flex-wrap gap-2">
