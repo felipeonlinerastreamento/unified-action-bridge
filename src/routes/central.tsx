@@ -3979,6 +3979,7 @@ function CentralPage() {
                   status: finalizeStatus,
                   tipoPendencia: finalizeTipoPendencia,
                   skipClosingMessage: isAdmin && skipClosingMessage,
+                  escalateGestao: isAdmin && escalateToGestao,
                 });
               }}
               disabled={!finalizeTipoPendencia || finalizeMutation.isPending}
