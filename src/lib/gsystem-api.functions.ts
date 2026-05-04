@@ -993,7 +993,7 @@ export const createPendenciaFromAtendimento = createServerFn({ method: "POST" })
     }).parse
   )
   .handler(async ({ data, context }) => {
-    const { gsystemApiFetch, findOrCreateGSystemClientByCompany, getDefaultColaboradorKey } = await import("@/lib/gsystem-api.server");
+    const { gsystemApiFetch, findOrCreateGSystemClientByCompany, getDefaultColaboradorKey, findGSystemColaboradorKeyByName } = await import("@/lib/gsystem-api.server");
     const { supabase, userId } = context;
 
     let clienteKey: string | null = null;
@@ -1084,10 +1084,14 @@ export const createPendenciaFromAtendimento = createServerFn({ method: "POST" })
       if (userId) {
         const { data: userLink } = await supabase
           .from("user_gsystem_links")
-          .select("gsystem_user_id")
+          .select("gsystem_user_id, gsystem_user_name")
           .eq("user_id", userId)
           .maybeSingle();
-        if (userLink?.gsystem_user_id) colaboradorKey = String(userLink.gsystem_user_id);
+        if (userLink?.gsystem_user_id && /^\d+$/.test(String(userLink.gsystem_user_id))) {
+          colaboradorKey = String(userLink.gsystem_user_id);
+        } else if (userLink?.gsystem_user_name) {
+          colaboradorKey = await findGSystemColaboradorKeyByName(String(userLink.gsystem_user_name));
+        }
       }
       if (!colaboradorKey && process.env.GSYSTEM_DEFAULT_COLABORADOR_KEY) {
         colaboradorKey = String(process.env.GSYSTEM_DEFAULT_COLABORADOR_KEY);
