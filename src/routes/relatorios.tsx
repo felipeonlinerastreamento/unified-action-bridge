@@ -801,6 +801,10 @@ function RelatoriosPage() {
             <TabsContent value="notificacoes" className="space-y-4">
               <NotificationsReadReport dateFrom={dateFrom} dateTo={dateTo} />
             </TabsContent>
+
+            <TabsContent value="lembretes" className="space-y-4">
+              <RemindersTab dateFrom={dateFrom} dateTo={dateTo} />
+            </TabsContent>
           </Tabs>
         </div>
       </div>
