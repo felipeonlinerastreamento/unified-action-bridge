@@ -99,6 +99,7 @@ import {
   AtSign,
   Tag,
   Trash2,
+  UserCircle2,
 } from "lucide-react";
 import {
   DropdownMenu,
