@@ -1836,6 +1836,57 @@ function CentralPage() {
           console.error("[Finalize] error saving liberacao items:", e?.message);
         }
       }
+
+      // Escalonamento para Gestão (admin)
+      if (result?.escalateGestao) {
+        try {
+          const { data: cfg } = await supabase
+            .from("escalation_gestao_settings" as any)
+            .select("*")
+            .limit(1)
+            .maybeSingle();
+          const sectorName = (cfg as any)?.target_sector_name || "Gestão";
+          const defaultNotes = (cfg as any)?.default_notes || "Atendimento escalado para análise da Gestão";
+          const defaultCategory = (cfg as any)?.default_category || "Escalado para Gestão";
+          const sourceTicket = ticketRef;
+          const protocolBase = sourceTicket
+            ? formatTicketProtocol(sourceTicket as any, chatDetail?.protocol || selectedChatId)
+            : (chatDetail?.protocol || selectedChatId);
+
+          const { error: insErr } = await supabase.from("service_tickets").insert({
+            attendance_id: `gestao-${Date.now()}`,
+            channel_id: selectedChannelId || null,
+            company_id: sourceTicket?.company_id || companyLookup?.id || null,
+            contact_phone: contactPhone || null,
+            contact_name: chatDetail?.contact?.name || chatDetail?.description || null,
+            plate: sourceTicket?.plate || ticketPlate || null,
+            status: "aberto" as const,
+            opened_by: session?.user?.id || null,
+            sector: sectorName,
+            category: defaultCategory,
+            notes: `${defaultNotes}\n\nProtocolo de origem: ${protocolBase}`,
+            escalated_to_gestao: true,
+            escalated_from_ticket_id: sourceTicket?.id || null,
+          } as any);
+          if (insErr) {
+            console.error("[Escalonar] erro ao criar ticket de gestão:", insErr.message);
+            toast.error("Falha ao escalar para Gestão: " + insErr.message);
+          } else {
+            // marca o ticket de origem
+            if (sourceTicket?.id) {
+              await supabase
+                .from("service_tickets")
+                .update({ escalated_to_gestao: true } as any)
+                .eq("id", sourceTicket.id);
+            }
+            toast.success(`Atendimento escalado para o setor ${sectorName}`);
+          }
+        } catch (e: any) {
+          console.error("[Escalonar] exceção:", e?.message);
+          toast.error("Erro ao escalar para Gestão");
+        }
+      }
+
       toast.success("Atendimento finalizado");
       setSelectedChatId("");
       setShowFinalizeConfirm(false);
