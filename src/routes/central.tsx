@@ -2624,10 +2624,34 @@ function CentralPage() {
                         onPick={(emoji: string) => setMessageInput((prev) => `${prev}${emoji}`)}
                       />
                       <Textarea
-                        placeholder={whisperMode ? "Sussurro interno (não vai para o cliente). Shift+Enter para nova linha." : "Digite uma mensagem... (Shift+Enter para nova linha)"}
+                        placeholder={whisperMode ? "Sussurro interno (não vai para o cliente). Shift+Enter para nova linha." : "Digite uma mensagem... (Shift+Enter para nova linha, Ctrl+V para colar arquivos)"}
                         value={messageInput}
                         onChange={(e) => setMessageInput(e.target.value)}
                         onKeyDown={handleKeyDown}
+                        onPaste={(e) => {
+                          if (whisperMode || chatDetail?.status === 3) return;
+                          const items = e.clipboardData?.items;
+                          if (!items || items.length === 0) return;
+                          const files: File[] = [];
+                          for (let i = 0; i < items.length; i++) {
+                            const it = items[i];
+                            if (it.kind === "file") {
+                              const f = it.getAsFile();
+                              if (f) files.push(f);
+                            }
+                          }
+                          if (files.length === 0) return;
+                          e.preventDefault();
+                          (async () => {
+                            for (const f of files) {
+                              try {
+                                await handleFilePicked(f);
+                              } catch (err: any) {
+                                toast.error(err?.message || "Erro ao enviar arquivo colado");
+                              }
+                            }
+                          })();
+                        }}
                         disabled={sendMutation.isPending || chatDetail?.status === 3}
                         rows={1}
                         className={`flex-1 min-h-[36px] resize-none py-2 overflow-y-auto ${whisperMode ? "border-amber-400 focus-visible:ring-amber-400" : ""}`}
