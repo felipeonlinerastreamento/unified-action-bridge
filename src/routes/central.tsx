@@ -288,6 +288,7 @@ function CentralPage() {
   const [showFinalizeConfirm, setShowFinalizeConfirm] = useState(false);
   const [finalizeNotes, setFinalizeNotes] = useState("");
   const [skipClosingMessage, setSkipClosingMessage] = useState(false);
+  const [escalateToGestao, setEscalateToGestao] = useState(false);
   const [finalizeStatus, setFinalizeStatus] = useState<string>("A resolver");
   const [finalizeTipoPendencia, setFinalizeTipoPendencia] = useState<string>("");
   const [showTeDialog, setShowTeDialog] = useState(false);
