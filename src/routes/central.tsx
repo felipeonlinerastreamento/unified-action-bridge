@@ -100,6 +100,8 @@ import {
   Tag,
   Trash2,
   UserCircle2,
+  Reply,
+  CornerDownRight,
 } from "lucide-react";
 import {
   DropdownMenu,
