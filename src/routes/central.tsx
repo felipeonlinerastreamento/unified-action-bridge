@@ -1743,9 +1743,9 @@ function CentralPage() {
           .from("csat_settings" as any)
           .select("is_enabled, message")
           .maybeSingle();
-        if (csat && (csat as any).is_enabled && (csat as any).message && chatDetail?.contact?.phone) {
+        if (csat && (csat as any).is_enabled && (csat as any).message && contactPhone) {
           const csatMsg = (csat as any).message as string;
-          const phoneOnly = String(chatDetail.contact.phone).replace(/\D/g, "");
+          const phoneOnly = String(contactPhone).replace(/\D/g, "");
           const authH2 = await getAuthHeaders();
           await sendText({
             data: {
@@ -1763,7 +1763,7 @@ function CentralPage() {
             contact_name: chatDetail?.contact?.name || chatDetail?.description || null,
             ticket_id: ticketForProtocol?.id || null,
             protocol: ticketForProtocol ? formatTicketProtocol(ticketForProtocol, chatDetail?.protocol || selectedChatId) : null,
-            operator_user_id: profile?.user_id || null,
+            operator_user_id: user?.id || null,
             operator_name: profile?.name || null,
           });
         }
