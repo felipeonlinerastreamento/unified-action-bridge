@@ -1263,7 +1263,11 @@ function CentralPage() {
 
   // Send message (or whisper)
   const sendMutation = useMutation({
-    mutationFn: async ({ text, whisper }: { text: string; whisper: boolean }) => {
+    mutationFn: async ({
+      text,
+      whisper,
+      replyToMessageId,
+    }: { text: string; whisper: boolean; replyToMessageId?: string | null }) => {
       if (whisper) {
         // Whisper: persist locally only, never sent to client via Z-API
         const { data: chatRow } = await supabase
@@ -1275,6 +1279,26 @@ function CentralPage() {
         if (!chatRow) {
           throw new Error("Sussurro indisponível: este chat ainda não está vinculado a um chat Z-API local.");
         }
+        // Snapshot da citação (se houver)
+        let replyToText: string | null = null;
+        let replyToAuthor: string | null = null;
+        if (replyToMessageId) {
+          const { data: orig } = await supabase
+            .from("zapi_messages")
+            .select("text, media_type, from_me, sent_by_user_id, participant_name")
+            .eq("id", replyToMessageId)
+            .maybeSingle();
+          if (orig) {
+            replyToText = (orig as any).text
+              ? String((orig as any).text).slice(0, 200)
+              : (orig as any).media_type
+                ? `[${(orig as any).media_type}]`
+                : "[mídia]";
+            replyToAuthor = (orig as any).from_me
+              ? "Você"
+              : (orig as any).participant_name || null;
+          }
+        }
         const { error } = await supabase.from("zapi_messages").insert({
           chat_id: chatRow.id,
           from_me: true,
@@ -1282,17 +1306,26 @@ function CentralPage() {
           whisper_author: session?.user?.id || null,
           text,
           status: "sent",
+          reply_to_message_id: replyToMessageId || null,
+          reply_to_text: replyToText,
+          reply_to_author: replyToAuthor,
         });
         if (error) throw error;
         return { whisper: true };
       }
       return sendText({
-        data: { channelId: selectedChannelId, chatId: selectedChatId, message: text },
+        data: {
+          channelId: selectedChannelId,
+          chatId: selectedChatId,
+          message: text,
+          replyToMessageId: replyToMessageId || undefined,
+        },
         ...await getAuthHeaders(),
       });
     },
     onSuccess: (_data, vars) => {
       setMessageInput("");
+      setReplyingTo(null);
       toast.success(vars.whisper ? "Sussurro registrado" : "Mensagem enviada");
       queryClient.invalidateQueries({ queryKey: ["chat-detail", selectedChannelId, selectedChatId] });
       queryClient.invalidateQueries({ queryKey: ["zapi-messages"] });
