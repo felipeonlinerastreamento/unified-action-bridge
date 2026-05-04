@@ -818,9 +818,7 @@ function CrmPage() {
                       </div>
                     </div>
                   )}
-                </div>
-              </div>
-            )}
+            </div>
             <div>
               <Label>Observações</Label>
               <Textarea rows={3} value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} />
