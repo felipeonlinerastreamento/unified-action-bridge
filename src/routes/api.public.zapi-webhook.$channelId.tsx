@@ -29,9 +29,37 @@ const PayloadSchema = z.object({
   audio: z.object({ audioUrl: z.string().optional() }).optional(),
   video: z.object({ videoUrl: z.string().optional() }).optional(),
   document: z.object({ documentUrl: z.string().optional() }).optional(),
+  contact: z.object({
+    displayName: z.string().optional(),
+    vCard: z.string().optional(),
+    phones: z.array(z.any()).optional(),
+  }).passthrough().optional(),
+  contacts: z.array(z.any()).optional(),
   status: z.string().optional(),
   ids: z.array(z.string()).optional(),
 }).passthrough();
+
+function buildVCardFromContact(c: any): { vcard: string; name: string } | null {
+  if (!c) return null;
+  if (typeof c.vCard === "string" && c.vCard.trim()) {
+    const nameMatch = /FN(?:;[^:]*)?:(.+)/i.exec(c.vCard);
+    return { vcard: c.vCard, name: c.displayName || nameMatch?.[1]?.trim() || "Contato" };
+  }
+  const name = c.displayName || c.name || "Contato";
+  const phones: string[] = [];
+  if (Array.isArray(c.phones)) {
+    for (const p of c.phones) {
+      if (typeof p === "string") phones.push(p);
+      else if (p?.phone) phones.push(String(p.phone));
+      else if (p?.number) phones.push(String(p.number));
+    }
+  }
+  if (!phones.length && !name) return null;
+  const lines = ["BEGIN:VCARD", "VERSION:3.0", `FN:${name}`];
+  for (const ph of phones) lines.push(`TEL;TYPE=CELL:${ph}`);
+  lines.push("END:VCARD");
+  return { vcard: lines.join("\n"), name };
+}
 
 // Z-API event types that carry actual message content
 const MESSAGE_EVENT_TYPES = new Set([
@@ -106,7 +134,9 @@ export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
 
         // Incoming/outgoing message — only process actual message events
         const eventType = String(p.type || "");
-        const hasContent = !!(p.text?.message || p.image || p.audio || p.video || p.document);
+        const firstContact = p.contact || (Array.isArray(p.contacts) ? p.contacts[0] : null);
+        const hasContact = !!firstContact;
+        const hasContent = !!(p.text?.message || p.image || p.audio || p.video || p.document || hasContact);
         const isMessageEvent = MESSAGE_EVENT_TYPES.has(eventType) || (!eventType && hasContent);
 
         if (p.phone && isMessageEvent) {
@@ -131,6 +161,8 @@ export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
             ? (groupDisplayName || p.senderName || null)
             : (p.senderName || null);
 
+          const contactCard = hasContact ? buildVCardFromContact(firstContact) : null;
+
           const text =
             p.text?.message ||
             p.image?.caption ||
@@ -138,6 +170,7 @@ export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
             (p.audio ? "[áudio]" : null) ||
             (p.video ? "[vídeo]" : null) ||
             (p.document ? "[documento]" : null) ||
+            (contactCard ? `[contato] ${contactCard.name}` : null) ||
             "";
 
           // Skip empty events that have no content (status callbacks, presence echoes, etc.)
@@ -147,8 +180,11 @@ export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
           }
 
           const mediaUrl =
-            p.image?.imageUrl || p.audio?.audioUrl || p.video?.videoUrl || p.document?.documentUrl || null;
-          const mediaType = p.image ? "image" : p.audio ? "audio" : p.video ? "video" : p.document ? "document" : null;
+            p.image?.imageUrl || p.audio?.audioUrl || p.video?.videoUrl || p.document?.documentUrl
+            || (contactCard
+              ? `data:text/vcard;charset=utf-8,${encodeURIComponent(contactCard.vcard)}`
+              : null);
+          const mediaType = p.image ? "image" : p.audio ? "audio" : p.video ? "video" : p.document ? "document" : contactCard ? "contact" : null;
 
           // Upsert chat
           const { data: existing } = await supabaseAdmin
