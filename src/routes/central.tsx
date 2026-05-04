@@ -1743,6 +1743,11 @@ function CentralPage() {
       }
 
       // CSAT — pesquisa de satisfação após finalização
+      // Respeita o opt-out do admin: se "Finalizar sem enviar mensagem" foi marcado,
+      // não envia nem a mensagem de encerramento nem a pesquisa CSAT.
+      if (skipMsg) {
+        console.log("[Finalize] Skipping CSAT (admin opt-out)");
+      } else {
       try {
         const { data: csat } = await supabase
           .from("csat_settings" as any)
@@ -1774,6 +1779,7 @@ function CentralPage() {
         }
       } catch (csatErr: any) {
         console.warn("[Finalize] CSAT step failed:", csatErr?.message);
+      }
       }
       } catch (preErr: any) {
         console.error("[Finalize] pre-finalization step failed (continuing to close chat):", preErr?.message);
