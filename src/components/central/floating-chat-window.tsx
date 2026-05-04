@@ -3,6 +3,7 @@ import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -408,11 +409,12 @@ export function FloatingChatWindow({ state, onOpenInPanel }: Props) {
         <div className="flex gap-1.5">
           <QuickRepliesPopover size="sm" onPick={(text) => setInput((prev) => prev ? `${prev} ${text}` : text)} />
           <WhisperToggle size="sm" active={whisperMode} onToggle={() => setWhisperMode((v) => !v)} />
-          <Input
+          <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder={whisperMode ? "Sussurro interno..." : "Digite uma mensagem..."}
-            className={`text-xs h-8 ${whisperMode ? "border-amber-400 focus-visible:ring-amber-400" : ""}`}
+            placeholder={whisperMode ? "Sussurro interno..." : "Mensagem... (Shift+Enter = nova linha)"}
+            rows={1}
+            className={`text-xs min-h-[32px] max-h-24 resize-none py-1.5 ${whisperMode ? "border-amber-400 focus-visible:ring-amber-400" : ""}`}
             onKeyDown={(e) => {
               if (e.key === "Enter" && !e.shiftKey) {
                 e.preventDefault();
