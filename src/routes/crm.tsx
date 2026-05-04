@@ -686,9 +686,11 @@ function CrmPage() {
                 <p className="text-[11px] text-muted-foreground">
                   Categorias só se aplicam a Pessoa Jurídica. Para criar, editar ou excluir, abra a aba <strong>Categorias</strong>.
                 </p>
+              </div>
+            )}
 
-                <div className="pt-2 mt-2 border-t border-border space-y-2">
-                  <div className="flex items-center justify-between">
+            <div className="rounded-md border border-border bg-muted/30 p-3 space-y-2">
+                <div className="flex items-center justify-between">
                     <Label className="text-xs uppercase tracking-wide text-muted-foreground">
                       Itens contratados
                     </Label>
