@@ -102,6 +102,7 @@ import {
   UserCircle2,
   Reply,
   CornerDownRight,
+  ShieldAlert,
 } from "lucide-react";
 import {
   DropdownMenu,
