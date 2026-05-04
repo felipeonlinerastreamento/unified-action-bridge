@@ -1620,6 +1620,63 @@ export type Database = {
         }
         Relationships: []
       }
+      pending_reminder_settings: {
+        Row: {
+          id: string
+          interval_hours: number
+          is_enabled: boolean
+          min_total_to_show: number
+          quiet_end: string
+          quiet_start: string
+          show_my_tickets: boolean
+          show_open_chats: boolean
+          show_sector_tickets: boolean
+          sound_enabled: boolean
+          target_sector_ids: string[]
+          target_type: string
+          target_user_ids: string[]
+          updated_at: string
+          updated_by: string | null
+          weekdays: number[]
+        }
+        Insert: {
+          id?: string
+          interval_hours?: number
+          is_enabled?: boolean
+          min_total_to_show?: number
+          quiet_end?: string
+          quiet_start?: string
+          show_my_tickets?: boolean
+          show_open_chats?: boolean
+          show_sector_tickets?: boolean
+          sound_enabled?: boolean
+          target_sector_ids?: string[]
+          target_type?: string
+          target_user_ids?: string[]
+          updated_at?: string
+          updated_by?: string | null
+          weekdays?: number[]
+        }
+        Update: {
+          id?: string
+          interval_hours?: number
+          is_enabled?: boolean
+          min_total_to_show?: number
+          quiet_end?: string
+          quiet_start?: string
+          show_my_tickets?: boolean
+          show_open_chats?: boolean
+          show_sector_tickets?: boolean
+          sound_enabled?: boolean
+          target_sector_ids?: string[]
+          target_type?: string
+          target_user_ids?: string[]
+          updated_at?: string
+          updated_by?: string | null
+          weekdays?: number[]
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           attendance_target_minutes: number | null
