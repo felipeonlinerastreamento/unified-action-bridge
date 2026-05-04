@@ -1,7 +1,7 @@
 import { useEffect, useState, useCallback, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { Bell, MessageSquare, Briefcase, Users, ArrowRight, Clock } from "lucide-react";
+import { Bell, MessageSquare, Briefcase, Users, ArrowRight, ShieldCheck } from "lucide-react";
 import {
   Dialog,
   DialogContent,
@@ -12,11 +12,13 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useAuth } from "@/hooks/use-auth";
 import { supabase } from "@/integrations/supabase/client";
 
 const STORAGE_PREFIX = "pending-reminder:last:";
+const SEEN_DISPATCH_PREFIX = "pending-reminder:dispatch-seen:";
 
 type Settings = {
   id: string;
@@ -33,6 +35,7 @@ type Settings = {
   show_sector_tickets: boolean;
   min_total_to_show: number;
   sound_enabled: boolean;
+  requires_acknowledge: boolean;
 };
 
 function nowMinutes() {
@@ -78,6 +81,9 @@ export function PendingReminderPopup() {
   const { user, isAuthenticated } = useAuth();
   const [open, setOpen] = useState(false);
   const [tick, setTick] = useState(0);
+  const [acknowledged, setAcknowledged] = useState(false);
+  const [logId, setLogId] = useState<string | null>(null);
+  const [triggerType, setTriggerType] = useState<"auto" | "manual">("auto");
   const lastEvalRef = useRef<number>(0);
 
   // Settings
@@ -132,8 +138,8 @@ export function PendingReminderPopup() {
     };
   }, []);
 
-  // Elegibilidade
-  const eligible = (() => {
+  // Elegibilidade (auto)
+  const eligibleAuto = (() => {
     if (!isAuthenticated || !user?.id || !settings) return false;
     if (!settings.is_enabled) return false;
     const dow = new Date().getDay();
@@ -158,9 +164,9 @@ export function PendingReminderPopup() {
       settings?.show_my_tickets,
       settings?.show_sector_tickets,
       (userSectors?.names || []).join("|"),
-      tick, // reavalia periodicamente
+      tick,
     ],
-    enabled: eligible,
+    enabled: isAuthenticated && !!user?.id && !!settings,
     staleTime: 30_000,
     queryFn: async () => {
       if (!user?.id || !settings) {
@@ -197,7 +203,6 @@ export function PendingReminderPopup() {
           : Promise.resolve({ data: [] as any[] }),
       ]);
 
-      // Tira do "setor" os que já estão em "meus"
       const mineIds = new Set((myRes.data || []).map((t: any) => t.id));
       const sectorTickets = (sectorRes.data || []).filter((t: any) => !mineIds.has(t.id));
 
@@ -214,13 +219,40 @@ export function PendingReminderPopup() {
     (pending?.myTickets.length || 0) +
     (pending?.sectorTickets.length || 0);
 
-  // Decide se abre
+  // Função comum: abre o popup e registra log
+  const openPopup = useCallback(
+    async (trigger: "auto" | "manual", dispatchId?: string | null) => {
+      if (!user?.id) return;
+      setTriggerType(trigger);
+      setAcknowledged(false);
+      setOpen(true);
+      if (settings?.sound_enabled) playBeep();
+      try {
+        const res: any = await supabase
+          .from("pending_reminder_dispatch_log" as any)
+          .insert({
+            user_id: user.id,
+            trigger_type: trigger,
+            dispatch_id: dispatchId || null,
+            total_pending: totalPending,
+          } as any)
+          .select("id")
+          .single();
+        const insertedId = res?.data?.id as string | undefined;
+        if (insertedId) setLogId(insertedId);
+      } catch (e) {
+        console.warn("[pending-reminder] log insert failed", e);
+      }
+    },
+    [user?.id, settings?.sound_enabled, totalPending],
+  );
+
+  // Decide se abre — fluxo automático
   useEffect(() => {
-    if (!eligible || !settings || !user?.id || !pending) return;
+    if (!eligibleAuto || !settings || !user?.id || !pending) return;
     if (typeof window === "undefined") return;
     if (open) return;
 
-    // throttle interno: só reavalia a cada 30s
     const now = Date.now();
     if (now - lastEvalRef.current < 30_000) return;
     lastEvalRef.current = now;
@@ -232,30 +264,76 @@ export function PendingReminderPopup() {
 
     if (now - last < intervalMs) return;
     if (totalPending < (settings.min_total_to_show || 1)) {
-      // Sem pendências: não abre, mas marca timestamp para evitar re-checagem agressiva
       localStorage.setItem(key, String(now));
       return;
     }
 
-    // Evita conflito com outros diálogos já abertos
     const otherOpen = document.querySelector('[role="dialog"][data-state="open"]');
     if (otherOpen) return;
 
     localStorage.setItem(key, String(now));
-    setOpen(true);
-    if (settings.sound_enabled) playBeep();
-  }, [eligible, settings, user?.id, pending, totalPending, open, tick]);
+    openPopup("auto");
+  }, [eligibleAuto, settings, user?.id, pending, totalPending, open, tick, openPopup]);
 
-  const dismiss = useCallback(() => setOpen(false), []);
-  const snooze = useCallback(() => {
-    if (!user?.id || !settings) return setOpen(false);
-    const key = `${STORAGE_PREFIX}${user.id}`;
-    // Adia 15min: simula "última exibição" como se fosse intervalo - 15min atrás
-    const intervalMs = Math.max(15, settings.interval_hours * 60) * 60 * 1000;
-    const fakeLast = Date.now() - intervalMs + 15 * 60 * 1000;
-    localStorage.setItem(key, String(fakeLast));
+  // Realtime: disparo manual
+  useEffect(() => {
+    if (!isAuthenticated || !user?.id) return;
+    const channel = supabase
+      .channel(`pending-reminder-dispatches-${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "pending_reminder_dispatches" },
+        async (payload) => {
+          const row = payload.new as any;
+          if (!row?.id) return;
+
+          // Evita duplicar: marca dispatch como visto
+          const seenKey = `${SEEN_DISPATCH_PREFIX}${row.id}`;
+          if (localStorage.getItem(seenKey)) return;
+          localStorage.setItem(seenKey, String(Date.now()));
+
+          // Verifica se este usuário é alvo
+          let matches = false;
+          if (row.target_type === "all") matches = true;
+          else if (row.target_type === "users") {
+            matches = Array.isArray(row.target_user_ids) && row.target_user_ids.includes(user.id);
+          } else if (row.target_type === "sector") {
+            const mine = userSectors?.ids || [];
+            const allowed: string[] = Array.isArray(row.target_sector_ids) ? row.target_sector_ids : [];
+            matches = mine.some((id) => allowed.includes(id));
+          }
+          if (!matches) return;
+
+          // Não acumula em cima de outro popup já aberto
+          if (open) return;
+
+          openPopup("manual", row.id);
+        },
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [isAuthenticated, user?.id, userSectors?.ids, open, openPopup]);
+
+  const requireAck = settings?.requires_acknowledge !== false;
+
+  const confirm = useCallback(async () => {
+    if (requireAck && !acknowledged) return;
+    if (logId) {
+      try {
+        await supabase
+          .from("pending_reminder_dispatch_log" as any)
+          .update({ acknowledged_at: new Date().toISOString() } as any)
+          .eq("id", logId);
+      } catch (e) {
+        console.warn("[pending-reminder] ack update failed", e);
+      }
+    }
     setOpen(false);
-  }, [user?.id, settings]);
+    setLogId(null);
+    setAcknowledged(false);
+  }, [requireAck, acknowledged, logId]);
 
   if (!isAuthenticated) return null;
 
@@ -263,21 +341,44 @@ export function PendingReminderPopup() {
     <Dialog
       open={open}
       onOpenChange={(v) => {
-        if (!v) dismiss();
+        // Bloqueia fechamento por click-out / ESC quando exige confirmação
+        if (!v && requireAck && !acknowledged) return;
+        if (!v) confirm();
       }}
     >
-      <DialogContent className="max-w-lg">
+      <DialogContent
+        className={`max-w-lg ${requireAck && !acknowledged ? "[&>button.absolute]:hidden" : ""}`}
+        onPointerDownOutside={(e) => {
+          if (requireAck && !acknowledged) e.preventDefault();
+        }}
+        onEscapeKeyDown={(e) => {
+          if (requireAck && !acknowledged) e.preventDefault();
+        }}
+        onInteractOutside={(e) => {
+          if (requireAck && !acknowledged) e.preventDefault();
+        }}
+      >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Bell className="h-5 w-5 text-primary" />
             Lembrete de pendências
+            {triggerType === "manual" && (
+              <Badge variant="outline" className="text-[10px] py-0 h-5">
+                disparo manual
+              </Badge>
+            )}
           </DialogTitle>
           <DialogDescription>
             Você tem <strong>{totalPending}</strong> {totalPending === 1 ? "item" : "itens"} aguardando atenção.
+            {requireAck && (
+              <span className="block mt-1 text-amber-600 text-xs">
+                É necessário confirmar para continuar usando o sistema.
+              </span>
+            )}
           </DialogDescription>
         </DialogHeader>
 
-        <ScrollArea className="max-h-[50vh] pr-2">
+        <ScrollArea className="max-h-[45vh] pr-2">
           <div className="space-y-3">
             {pending && pending.chats.length > 0 && (
               <Section
@@ -285,7 +386,7 @@ export function PendingReminderPopup() {
                 title="Chats em aberto"
                 count={pending.chats.length}
                 href="/central"
-                onNavigate={dismiss}
+                onNavigate={() => {/* navegação livre, mas dialog continua bloqueante */}}
               >
                 {pending.chats.slice(0, 5).map((c: any) => (
                   <div key={c.id} className="text-xs p-2 rounded-md border bg-card">
@@ -313,7 +414,6 @@ export function PendingReminderPopup() {
                 title="Meus atendimentos"
                 count={pending.myTickets.length}
                 href="/atendimentos"
-                onNavigate={dismiss}
               >
                 {pending.myTickets.slice(0, 5).map((t: any) => (
                   <div key={t.id} className="text-xs p-2 rounded-md border bg-card flex items-center gap-2">
@@ -336,7 +436,6 @@ export function PendingReminderPopup() {
                 title="Atendimentos do meu setor"
                 count={pending.sectorTickets.length}
                 href="/atendimentos"
-                onNavigate={dismiss}
               >
                 {pending.sectorTickets.slice(0, 5).map((t: any) => (
                   <div key={t.id} className="text-xs p-2 rounded-md border bg-card flex items-center gap-2">
@@ -361,13 +460,36 @@ export function PendingReminderPopup() {
           </div>
         </ScrollArea>
 
-        <DialogFooter className="flex-col sm:flex-row gap-2">
-          <Button variant="outline" size="sm" onClick={snooze} className="gap-1">
-            <Clock className="h-3 w-3" />
-            Adiar 15 min
-          </Button>
-          <Button onClick={dismiss} size="sm">
-            OK, entendi
+        {requireAck && (
+          <label
+            htmlFor="ack-checkbox"
+            className="flex items-start gap-2 rounded-md border bg-muted/40 px-3 py-2 cursor-pointer hover:bg-muted/60 transition-colors"
+          >
+            <Checkbox
+              id="ack-checkbox"
+              checked={acknowledged}
+              onCheckedChange={(v) => setAcknowledged(!!v)}
+              className="mt-0.5"
+            />
+            <div className="text-sm">
+              <span className="font-medium flex items-center gap-1">
+                <ShieldCheck className="h-3.5 w-3.5 text-primary" />
+                Irei verificar e categorizar todos
+              </span>
+              <p className="text-xs text-muted-foreground">
+                Marque para confirmar que vai revisar as pendências listadas acima.
+              </p>
+            </div>
+          </label>
+        )}
+
+        <DialogFooter>
+          <Button
+            onClick={confirm}
+            size="sm"
+            disabled={requireAck && !acknowledged}
+          >
+            Confirmar
           </Button>
         </DialogFooter>
       </DialogContent>

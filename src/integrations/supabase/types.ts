@@ -1647,6 +1647,69 @@ export type Database = {
         }
         Relationships: []
       }
+      pending_reminder_dispatch_log: {
+        Row: {
+          acknowledged_at: string | null
+          dispatch_id: string | null
+          id: string
+          metadata: Json
+          shown_at: string
+          total_pending: number
+          trigger_type: string
+          user_id: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          dispatch_id?: string | null
+          id?: string
+          metadata?: Json
+          shown_at?: string
+          total_pending?: number
+          trigger_type?: string
+          user_id: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          dispatch_id?: string | null
+          id?: string
+          metadata?: Json
+          shown_at?: string
+          total_pending?: number
+          trigger_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      pending_reminder_dispatches: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          note: string
+          target_sector_ids: string[]
+          target_type: string
+          target_user_ids: string[]
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string
+          target_sector_ids?: string[]
+          target_type?: string
+          target_user_ids?: string[]
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          note?: string
+          target_sector_ids?: string[]
+          target_type?: string
+          target_user_ids?: string[]
+        }
+        Relationships: []
+      }
       pending_reminder_settings: {
         Row: {
           id: string
@@ -1655,6 +1718,7 @@ export type Database = {
           min_total_to_show: number
           quiet_end: string
           quiet_start: string
+          requires_acknowledge: boolean
           show_my_tickets: boolean
           show_open_chats: boolean
           show_sector_tickets: boolean
@@ -1673,6 +1737,7 @@ export type Database = {
           min_total_to_show?: number
           quiet_end?: string
           quiet_start?: string
+          requires_acknowledge?: boolean
           show_my_tickets?: boolean
           show_open_chats?: boolean
           show_sector_tickets?: boolean
@@ -1691,6 +1756,7 @@ export type Database = {
           min_total_to_show?: number
           quiet_end?: string
           quiet_start?: string
+          requires_acknowledge?: boolean
           show_my_tickets?: boolean
           show_open_chats?: boolean
           show_sector_tickets?: boolean

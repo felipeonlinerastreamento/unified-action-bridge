@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sparkles, Bell, MessageSquare, CheckSquare, Loader2, Save, Eye, Repeat, Users, Briefcase, Volume2 } from "lucide-react";
+import { Sparkles, Bell, MessageSquare, CheckSquare, Loader2, Save, Eye, Repeat, Users, Briefcase, Volume2, Send, ShieldCheck } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -377,6 +377,7 @@ interface RecurringSettings {
   show_sector_tickets: boolean;
   min_total_to_show: number;
   sound_enabled: boolean;
+  requires_acknowledge: boolean;
 }
 
 const RECURRING_DEFAULTS: RecurringSettings = {
@@ -393,6 +394,7 @@ const RECURRING_DEFAULTS: RecurringSettings = {
   show_sector_tickets: true,
   min_total_to_show: 1,
   sound_enabled: false,
+  requires_acknowledge: true,
 };
 
 const WEEKDAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -442,6 +444,19 @@ function RecurringReminderSection() {
     const keys = Object.keys(localStorage).filter((k) => k.startsWith("pending-reminder:last:"));
     keys.forEach((k) => localStorage.removeItem(k));
     toast.success("Lembrete será reavaliado em até 60s — ou recarregue a página");
+  }
+
+  async function dispatchNow() {
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase.from("pending_reminder_dispatches" as any).insert({
+      created_by: user?.id,
+      target_type: s.target_type,
+      target_sector_ids: s.target_sector_ids,
+      target_user_ids: s.target_user_ids,
+      note: "Disparo manual via configuração",
+    } as any);
+    if (error) toast.error("Erro ao disparar: " + error.message);
+    else toast.success("Lembrete disparado para os destinatários selecionados");
   }
 
   function toggleWeekday(d: number) {
