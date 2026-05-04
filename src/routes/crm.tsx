@@ -46,7 +46,8 @@ function CrmPage() {
   const [typeFilter, setTypeFilter] = useState<"all" | "PF" | "PJ">("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<any>(null);
-  const [form, setForm] = useState({ name: "", phone: "", email: "", notes: "", companyId: "", categoryId: "", contactType: "PF" as "PF" | "PJ" });
+  type ContractItem = { categoryId: string; quantity: number; activationValue: number; monthlyValue: number };
+  const [form, setForm] = useState({ name: "", phone: "", email: "", notes: "", companyId: "", categoryId: "", contactType: "PF" as "PF" | "PJ", items: [] as ContractItem[] });
 
   const { data: contacts = [], isLoading: contactsLoading } = useQuery({
     queryKey: ["crm-contacts"],
