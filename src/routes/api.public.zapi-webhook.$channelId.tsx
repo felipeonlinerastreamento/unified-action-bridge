@@ -10,6 +10,7 @@ import {
   shouldSendOutOfHoursMessage,
   logOutOfHoursMessage,
 } from "@/lib/business-hours.server";
+import { evaluateMessageTriggers } from "@/lib/message-triggers.server";
 
 // Z-API webhook payload (loose schema — Z-API sends many event shapes)
 const PayloadSchema = z.object({
