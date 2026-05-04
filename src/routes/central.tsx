@@ -1735,7 +1735,7 @@ function CentralPage() {
           console.error("[Finalize] direct close also failed:", e?.message);
         }
       }
-      return { success: true, ticketId: ticketForProtocol?.id || null };
+      return { success: true, ticketId: ticketForProtocol?.id || null, escalateGestao: !!escalateGestao };
     },
     onSuccess: async (result) => {
       // Ensure a local ticket exists (covers groups / race conditions where
