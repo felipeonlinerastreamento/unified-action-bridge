@@ -24,6 +24,18 @@ export function useZapiRealtime(opts: { channelId?: string; chatId?: string } = 
           queryClient.invalidateQueries({ queryKey: ["all-open-chats", channelId] });
         }
       )
+      // Also listen to ANY new message in this channel's chats so the list
+      // (and the up/down arrow indicating last sender) refreshes instantly,
+      // even when the operator sends an outbound message that only inserts
+      // into zapi_messages without updating zapi_chats yet.
+      .on(
+        "postgres_changes",
+        { event: "INSERT", schema: "public", table: "zapi_messages" },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["all-open-chats", channelId] });
+          queryClient.invalidateQueries({ queryKey: ["zapi-chats", channelId] });
+        }
+      )
       .subscribe();
 
     return () => {
