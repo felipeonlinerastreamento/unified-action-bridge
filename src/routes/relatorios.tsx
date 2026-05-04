@@ -28,6 +28,7 @@ import {
 import { OperatorPerformanceTab } from "@/components/relatorios/operator-performance-tab";
 import { RemindersTab } from "@/components/relatorios/reminders-tab";
 import { InactivityAlertsTab } from "@/components/relatorios/inactivity-alerts-tab";
+import { CsatReportTab } from "@/components/relatorios/csat-report-tab";
 
 export const Route = createFileRoute("/relatorios")({
   component: RelatoriosPage,
@@ -378,6 +379,9 @@ function RelatoriosPage() {
               </TabsTrigger>
               <TabsTrigger value="inatividade" className="gap-1 text-xs">
                 <Bell className="h-3.5 w-3.5" /> Inatividade
+              </TabsTrigger>
+              <TabsTrigger value="csat" className="gap-1 text-xs">
+                <Trophy className="h-3.5 w-3.5" /> CSAT
               </TabsTrigger>
             </TabsList>
 
@@ -812,6 +816,11 @@ function RelatoriosPage() {
 
             <TabsContent value="inatividade" className="space-y-4">
               <InactivityAlertsTab dateFrom={dateFrom} dateTo={dateTo} />
+            </TabsContent>
+
+            <TabsContent value="csat" className="space-y-4">
+              <CsatReportTab dateFrom={dateFrom} dateTo={dateTo} operatorFilter={operatorFilter} />
+            </TabsContent>
             </TabsContent>
           </Tabs>
         </div>
