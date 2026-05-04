@@ -29,9 +29,37 @@ const PayloadSchema = z.object({
   audio: z.object({ audioUrl: z.string().optional() }).optional(),
   video: z.object({ videoUrl: z.string().optional() }).optional(),
   document: z.object({ documentUrl: z.string().optional() }).optional(),
+  contact: z.object({
+    displayName: z.string().optional(),
+    vCard: z.string().optional(),
+    phones: z.array(z.any()).optional(),
+  }).passthrough().optional(),
+  contacts: z.array(z.any()).optional(),
   status: z.string().optional(),
   ids: z.array(z.string()).optional(),
 }).passthrough();
+
+function buildVCardFromContact(c: any): { vcard: string; name: string } | null {
+  if (!c) return null;
+  if (typeof c.vCard === "string" && c.vCard.trim()) {
+    const nameMatch = /FN(?:;[^:]*)?:(.+)/i.exec(c.vCard);
+    return { vcard: c.vCard, name: c.displayName || nameMatch?.[1]?.trim() || "Contato" };
+  }
+  const name = c.displayName || c.name || "Contato";
+  const phones: string[] = [];
+  if (Array.isArray(c.phones)) {
+    for (const p of c.phones) {
+      if (typeof p === "string") phones.push(p);
+      else if (p?.phone) phones.push(String(p.phone));
+      else if (p?.number) phones.push(String(p.number));
+    }
+  }
+  if (!phones.length && !name) return null;
+  const lines = ["BEGIN:VCARD", "VERSION:3.0", `FN:${name}`];
+  for (const ph of phones) lines.push(`TEL;TYPE=CELL:${ph}`);
+  lines.push("END:VCARD");
+  return { vcard: lines.join("\n"), name };
+}
 
 // Z-API event types that carry actual message content
 const MESSAGE_EVENT_TYPES = new Set([
