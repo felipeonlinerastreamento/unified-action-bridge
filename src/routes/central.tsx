@@ -264,6 +264,11 @@ function CentralPage() {
   const [selectedChatId, setSelectedChatId] = useState<string>("");
   const [messageInput, setMessageInput] = useState("");
   const [whisperMode, setWhisperMode] = useState(false);
+  const [replyingTo, setReplyingTo] = useState<{
+    id: string;
+    text: string;
+    author: string;
+  } | null>(null);
   const [nicknameMode, setNicknameMode] = useState(false);
   const [quickRepliesOpen, setQuickRepliesOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
