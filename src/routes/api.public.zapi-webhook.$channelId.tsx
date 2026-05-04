@@ -134,7 +134,9 @@ export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
 
         // Incoming/outgoing message — only process actual message events
         const eventType = String(p.type || "");
-        const hasContent = !!(p.text?.message || p.image || p.audio || p.video || p.document);
+        const firstContact = p.contact || (Array.isArray(p.contacts) ? p.contacts[0] : null);
+        const hasContact = !!firstContact;
+        const hasContent = !!(p.text?.message || p.image || p.audio || p.video || p.document || hasContact);
         const isMessageEvent = MESSAGE_EVENT_TYPES.has(eventType) || (!eventType && hasContent);
 
         if (p.phone && isMessageEvent) {
@@ -159,6 +161,8 @@ export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
             ? (groupDisplayName || p.senderName || null)
             : (p.senderName || null);
 
+          const contactCard = hasContact ? buildVCardFromContact(firstContact) : null;
+
           const text =
             p.text?.message ||
             p.image?.caption ||
@@ -166,6 +170,7 @@ export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
             (p.audio ? "[áudio]" : null) ||
             (p.video ? "[vídeo]" : null) ||
             (p.document ? "[documento]" : null) ||
+            (contactCard ? `[contato] ${contactCard.name}` : null) ||
             "";
 
           // Skip empty events that have no content (status callbacks, presence echoes, etc.)
@@ -175,8 +180,11 @@ export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
           }
 
           const mediaUrl =
-            p.image?.imageUrl || p.audio?.audioUrl || p.video?.videoUrl || p.document?.documentUrl || null;
-          const mediaType = p.image ? "image" : p.audio ? "audio" : p.video ? "video" : p.document ? "document" : null;
+            p.image?.imageUrl || p.audio?.audioUrl || p.video?.videoUrl || p.document?.documentUrl
+            || (contactCard
+              ? `data:text/vcard;charset=utf-8,${encodeURIComponent(contactCard.vcard)}`
+              : null);
+          const mediaType = p.image ? "image" : p.audio ? "audio" : p.video ? "video" : p.document ? "document" : contactCard ? "contact" : null;
 
           // Upsert chat
           const { data: existing } = await supabaseAdmin
