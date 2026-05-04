@@ -179,6 +179,90 @@ export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
             return new Response("ok");
           }
 
+          // CSAT capture: if there is a pending satisfaction survey for this
+          // phone+channel and the customer just replied, record the rating
+          // (1/2/3) and DO NOT reopen the chat or run the bot.
+          if (!p.fromMe && !isGroupMessage && text) {
+            try {
+              const { data: pending } = await supabaseAdmin
+                .from("csat_pending" as any)
+                .select("*")
+                .eq("channel_id", channelId)
+                .eq("phone", phone)
+                .gte("expires_at", new Date().toISOString())
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+              if (pending) {
+                const m = String(text).trim().match(/[123]/);
+                const score = m ? Number(m[0]) : null;
+                if (score) {
+                  const labelMap: Record<number, string> = { 1: "Ruim", 2: "Bom", 3: "Ótimo" };
+                  await supabaseAdmin.from("csat_responses" as any).insert({
+                    channel_id: (pending as any).channel_id,
+                    chat_id: (pending as any).chat_id,
+                    phone: (pending as any).phone,
+                    contact_name: (pending as any).contact_name,
+                    ticket_id: (pending as any).ticket_id,
+                    protocol: (pending as any).protocol,
+                    operator_user_id: (pending as any).operator_user_id,
+                    operator_name: (pending as any).operator_name,
+                    score,
+                    score_label: labelMap[score],
+                    raw_response: String(text).slice(0, 500),
+                  });
+                  await supabaseAdmin.from("csat_pending" as any).delete().eq("id", (pending as any).id);
+
+                  // Persist incoming message in the (already finalized) chat for history
+                  if ((pending as any).chat_id) {
+                    await supabaseAdmin.from("zapi_messages").insert({
+                      chat_id: (pending as any).chat_id,
+                      zapi_message_id: p.messageId || null,
+                      from_me: false,
+                      text,
+                      status: "delivered",
+                    } as any);
+                  }
+
+                  // Send thanks
+                  try {
+                    const { data: cset } = await supabaseAdmin
+                      .from("csat_settings" as any)
+                      .select("thanks_message")
+                      .maybeSingle();
+                    const thanks = (cset as any)?.thanks_message || "Obrigado pela sua avaliação!";
+                    const creds = await loadZapiChannel(supabaseAdmin, channelId);
+                    await zapiSendText(creds, phone, thanks);
+                    if ((pending as any).chat_id) {
+                      await supabaseAdmin.from("zapi_messages").insert({
+                        chat_id: (pending as any).chat_id,
+                        from_me: true,
+                        text: thanks,
+                        status: "sent",
+                      });
+                    }
+                  } catch (thanksErr) {
+                    console.warn("[zapi-webhook] csat thanks send failed:", thanksErr);
+                  }
+                  return new Response("ok");
+                }
+                // Resposta inválida (não é 1/2/3): apenas ignora — não reabre o chat
+                if ((pending as any).chat_id) {
+                  await supabaseAdmin.from("zapi_messages").insert({
+                    chat_id: (pending as any).chat_id,
+                    zapi_message_id: p.messageId || null,
+                    from_me: false,
+                    text,
+                    status: "delivered",
+                  } as any);
+                }
+                return new Response("ok");
+              }
+            } catch (csatErr) {
+              console.warn("[zapi-webhook] csat capture failed:", csatErr);
+            }
+          }
+
           const mediaUrl =
             p.image?.imageUrl || p.audio?.audioUrl || p.video?.videoUrl || p.document?.documentUrl
             || (contactCard
