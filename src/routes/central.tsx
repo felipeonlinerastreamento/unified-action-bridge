@@ -2723,15 +2723,7 @@ function CentralPage() {
                           }
                           if (files.length === 0) return;
                           e.preventDefault();
-                          (async () => {
-                            for (const f of files) {
-                              try {
-                                await handleFilePicked(f);
-                              } catch (err: any) {
-                                toast.error(err?.message || "Erro ao enviar arquivo colado");
-                              }
-                            }
-                          })();
+                          files.forEach((f) => queueAttachment(f));
                         }}
                         disabled={sendMutation.isPending || chatDetail?.status === 3}
                         rows={1}
