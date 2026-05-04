@@ -916,6 +916,7 @@ export type Database = {
           category_id: string | null
           company_id: string | null
           contact_role: string
+          contact_source: string | null
           contact_type: string
           contract_items: Json
           created_at: string
@@ -937,6 +938,7 @@ export type Database = {
           category_id?: string | null
           company_id?: string | null
           contact_role?: string
+          contact_source?: string | null
           contact_type?: string
           contract_items?: Json
           created_at?: string
@@ -958,6 +960,7 @@ export type Database = {
           category_id?: string | null
           company_id?: string | null
           contact_role?: string
+          contact_source?: string | null
           contact_type?: string
           contract_items?: Json
           created_at?: string

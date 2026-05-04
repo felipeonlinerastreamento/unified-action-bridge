@@ -1,0 +1,1 @@
+ALTER TABLE public.crm_contacts ADD COLUMN IF NOT EXISTS contact_source text;
