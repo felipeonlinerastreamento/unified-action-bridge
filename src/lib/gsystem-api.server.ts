@@ -272,6 +272,51 @@ function getClientName(client: any) {
   );
 }
 
+function getColaboradorName(colaborador: any) {
+  return String(
+    colaborador?.Nome || colaborador?.nome || colaborador?.Name || colaborador?.name ||
+      colaborador?.DisplayName || colaborador?.displayName || colaborador?.Descricao || colaborador?.descricao ||
+      colaborador?.Usuario || colaborador?.usuario || colaborador?.Login || colaborador?.login || ""
+  ).trim();
+}
+
+export async function listGSystemColaboradores(): Promise<Array<{ id: string; name: string; status?: string }>> {
+  const endpoints = ["/colaboradores", "/Colaboradores", "/usuarios", "/Usuarios"];
+  for (const ep of endpoints) {
+    try {
+      const data = await gsystemApiFetch(ep, "GET");
+      const list = unwrapGsystemList(data);
+      const colaboradores = list
+        .map((item: any) => {
+          const id = pickGsystemKey(item);
+          const name = getColaboradorName(item) || (id ? `Colaborador ${id}` : "");
+          const active = item?.Ativo ?? item?.ativo ?? item?.Ativado ?? item?.ativado ?? true;
+          return id && active !== false ? { id: String(id), name, status: "ONLINE" } : null;
+        })
+        .filter(Boolean) as Array<{ id: string; name: string; status?: string }>;
+      if (colaboradores.length > 0) return colaboradores;
+    } catch (err) {
+      console.log(`[GSystem] ${ep} colaboradores lookup failed:`, String(err).substring(0, 200));
+    }
+  }
+  return [];
+}
+
+export async function findGSystemColaboradorKeyByName(name: string): Promise<string | null> {
+  const target = normalizeSearchText(name || "");
+  if (!target) return null;
+
+  const colaboradores = await listGSystemColaboradores();
+  const exact = colaboradores.find((c) => normalizeSearchText(c.name) === target);
+  if (exact?.id) return exact.id;
+
+  const partial = colaboradores.filter((c) => {
+    const candidate = normalizeSearchText(c.name);
+    return candidate && (candidate.includes(target) || target.includes(candidate));
+  });
+  return partial.length === 1 ? partial[0].id : null;
+}
+
 let cachedColaboradorKey: string | null = null;
 let cachedColaboradorAt = 0;
 
@@ -286,24 +331,12 @@ export async function getDefaultColaboradorKey(): Promise<string | null> {
     return cachedColaboradorKey;
   }
 
-  const endpoints = ["/colaboradores", "/Colaboradores", "/usuarios", "/Usuarios"];
-  for (const ep of endpoints) {
-    try {
-      const data = await gsystemApiFetch(ep, "GET");
-      const list = Array.isArray(data) ? data : (data?.Items || data?.items || data?.Data || data?.data || []);
-      if (Array.isArray(list) && list.length > 0) {
-        const first = list.find((x: any) => (x?.Ativo ?? x?.ativo ?? true)) || list[0];
-        const key = pickGsystemKey(first);
-        if (key) {
-          cachedColaboradorKey = String(key);
-          cachedColaboradorAt = now;
-          console.log(`[GSystem] Default Colaborador resolved from ${ep}:`, cachedColaboradorKey);
-          return cachedColaboradorKey;
-        }
-      }
-    } catch (err) {
-      console.log(`[GSystem] ${ep} lookup failed:`, String(err).substring(0, 200));
-    }
+  const colaboradores = await listGSystemColaboradores();
+  if (colaboradores.length > 0) {
+    cachedColaboradorKey = colaboradores[0].id;
+    cachedColaboradorAt = now;
+    console.log("[GSystem] Default Colaborador resolved:", cachedColaboradorKey);
+    return cachedColaboradorKey;
   }
   return null;
 }

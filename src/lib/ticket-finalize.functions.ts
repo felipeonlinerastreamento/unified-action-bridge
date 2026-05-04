@@ -14,7 +14,7 @@ export const syncTicketToGsystem = createServerFn({ method: "POST" })
     }).parse
   )
   .handler(async ({ data, context }) => {
-    const { supabase } = context;
+    const { supabase, userId } = context;
 
     // Load the ticket with company
     const { data: ticket, error: tErr } = await supabase
@@ -204,6 +204,8 @@ export const syncTicketToGsystem = createServerFn({ method: "POST" })
     try {
       const candidateUserIds: string[] = [];
       if (ticket.assigned_to) candidateUserIds.push(ticket.assigned_to);
+      if (ticket.opened_by && !candidateUserIds.includes(ticket.opened_by)) candidateUserIds.push(ticket.opened_by);
+      if (userId && !candidateUserIds.includes(userId)) candidateUserIds.push(userId);
       for (const c of comments || []) {
         if (c.user_id && !candidateUserIds.includes(c.user_id)) {
           candidateUserIds.push(c.user_id);
@@ -212,7 +214,7 @@ export const syncTicketToGsystem = createServerFn({ method: "POST" })
       if (candidateUserIds.length > 0) {
         const { data: links } = await supabase
           .from("user_gsystem_links")
-          .select("user_id, gsystem_user_id")
+          .select("user_id, gsystem_user_id, gsystem_user_name")
           .in("user_id", candidateUserIds);
         if (links && links.length > 0) {
           // GSystem Colaborador must be a numeric Key. Older rows accidentally
@@ -224,6 +226,12 @@ export const syncTicketToGsystem = createServerFn({ method: "POST" })
           );
           if (validLink?.gsystem_user_id) {
             colaboradorKey = String(validLink.gsystem_user_id);
+          } else {
+            const namedLink = links.find((l: any) => String(l.gsystem_user_name || "").trim());
+            if (namedLink?.gsystem_user_name) {
+              const { findGSystemColaboradorKeyByName } = await import("@/lib/gsystem-api.server");
+              colaboradorKey = await findGSystemColaboradorKeyByName(String(namedLink.gsystem_user_name));
+            }
           }
         }
       }
