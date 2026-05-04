@@ -123,6 +123,7 @@ import { MessageStatusTicks } from "@/components/central/message-status-ticks";
 import { TypingIndicator } from "@/components/central/typing-indicator";
 import { MessageMediaContent } from "@/components/central/message-media";
 import { AudioRecorderButton } from "@/components/central/audio-recorder-button";
+import { EmojiPickerButton } from "@/components/central/emoji-picker-button";
 import { useZapiRealtime } from "@/hooks/use-zapi-realtime";
 import { isGroupChat } from "@/lib/chat-utils";
 import {
@@ -2615,6 +2616,10 @@ function CentralPage() {
                         onRecorded={async (dataUrl) =>
                           mediaMutation.mutateAsync({ kind: "audio", dataUrl })
                         }
+                      />
+                      <EmojiPickerButton
+                        disabled={sendMutation.isPending || chatDetail?.status === 3}
+                        onPick={(emoji: string) => setMessageInput((prev) => `${prev}${emoji}`)}
                       />
                       <Textarea
                         placeholder={whisperMode ? "Sussurro interno (não vai para o cliente). Shift+Enter para nova linha." : "Digite uma mensagem... (Shift+Enter para nova linha)"}
