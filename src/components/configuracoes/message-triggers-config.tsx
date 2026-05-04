@@ -33,6 +33,10 @@ type Rule = {
   sound_enabled: boolean;
   cooldown_minutes: number;
   priority: number;
+  create_ticket: boolean;
+  ticket_sector: string | null;
+  ticket_priority: string;
+  ticket_note: string;
 };
 
 const EMPTY: Omit<Rule, "id"> = {
