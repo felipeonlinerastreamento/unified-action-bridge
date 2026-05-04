@@ -1321,27 +1321,69 @@ function CentralPage() {
     onError: (err: any) => toast.error(err?.message || "Erro ao enviar mídia"),
   });
 
-  // File picker handler (attach button)
+  // File picker handler (attach button) — adds to preview queue instead of sending directly
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const handleFilePicked = async (file: File) => {
-    if (!file) return;
+  const [pendingAttachments, setPendingAttachments] = useState<File[]>([]);
+  const [attachmentCaption, setAttachmentCaption] = useState("");
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const dragCounterRef = useRef(0);
+
+  const queueAttachment = (file: File) => {
+    if (!file) return false;
     if (file.size > 15 * 1024 * 1024) {
-      toast.error("Arquivo muito grande (máx. 15 MB)");
-      return;
+      toast.error(`"${file.name}" excede o limite de 15 MB`);
+      return false;
     }
-    const kind: "image" | "video" | "audio" | "document" =
-      file.type.startsWith("image/") ? "image" :
-      file.type.startsWith("video/") ? "video" :
-      file.type.startsWith("audio/") ? "audio" :
-      "document";
-    const ext = (file.name.split(".").pop() || "bin").toLowerCase();
-    const dataUrl = await new Promise<string>((resolve, reject) => {
-      const r = new FileReader();
-      r.onerror = () => reject(r.error);
-      r.onload = () => resolve(String(r.result || ""));
-      r.readAsDataURL(file);
-    });
-    await mediaMutation.mutateAsync({ kind, dataUrl, fileName: file.name, extension: ext });
+    setPendingAttachments((prev) => [...prev, file]);
+    return true;
+  };
+
+  const handleFilePicked = (file: File) => {
+    queueAttachment(file);
+  };
+
+  const removePendingAttachment = (idx: number) => {
+    setPendingAttachments((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  const clearPendingAttachments = () => {
+    setPendingAttachments([]);
+    setAttachmentCaption("");
+  };
+
+  const sendPendingAttachments = async () => {
+    if (pendingAttachments.length === 0) return;
+    const files = [...pendingAttachments];
+    const caption = attachmentCaption.trim();
+    // Close preview immediately for snappy UX; toast on errors per file
+    clearPendingAttachments();
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
+      try {
+        const kind: "image" | "video" | "audio" | "document" =
+          file.type.startsWith("image/") ? "image" :
+          file.type.startsWith("video/") ? "video" :
+          file.type.startsWith("audio/") ? "audio" :
+          "document";
+        const ext = (file.name.split(".").pop() || "bin").toLowerCase();
+        const dataUrl = await new Promise<string>((resolve, reject) => {
+          const r = new FileReader();
+          r.onerror = () => reject(r.error);
+          r.onload = () => resolve(String(r.result || ""));
+          r.readAsDataURL(file);
+        });
+        await mediaMutation.mutateAsync({
+          kind,
+          dataUrl,
+          fileName: file.name,
+          extension: ext,
+          // Apply caption only on the first attachment to avoid repetition
+          caption: i === 0 && caption ? caption : undefined,
+        });
+      } catch (err: any) {
+        toast.error(err?.message || `Erro ao enviar "${file.name}"`);
+      }
+    }
   };
 
   // Finalize chat
@@ -2136,7 +2178,46 @@ function CentralPage() {
             )}
 
             {/* Chat area */}
-            <div className="flex-1 min-w-0 border rounded-lg flex flex-col bg-card overflow-hidden">
+            <div
+              className="flex-1 min-w-0 border rounded-lg flex flex-col bg-card overflow-hidden relative"
+              onDragEnter={(e) => {
+                if (!selectedChatId || whisperMode || chatDetail?.status === 3) return;
+                if (!Array.from(e.dataTransfer?.types || []).includes("Files")) return;
+                e.preventDefault();
+                dragCounterRef.current += 1;
+                setIsDraggingFile(true);
+              }}
+              onDragOver={(e) => {
+                if (!selectedChatId || whisperMode || chatDetail?.status === 3) return;
+                if (!Array.from(e.dataTransfer?.types || []).includes("Files")) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "copy";
+              }}
+              onDragLeave={(e) => {
+                if (!isDraggingFile) return;
+                e.preventDefault();
+                dragCounterRef.current = Math.max(0, dragCounterRef.current - 1);
+                if (dragCounterRef.current === 0) setIsDraggingFile(false);
+              }}
+              onDrop={(e) => {
+                if (!selectedChatId || whisperMode || chatDetail?.status === 3) return;
+                const files = Array.from(e.dataTransfer?.files || []);
+                if (files.length === 0) return;
+                e.preventDefault();
+                dragCounterRef.current = 0;
+                setIsDraggingFile(false);
+                files.forEach((f) => queueAttachment(f));
+              }}
+            >
+              {isDraggingFile && selectedChatId && !whisperMode && chatDetail?.status !== 3 && (
+                <div className="pointer-events-none absolute inset-0 z-30 flex items-center justify-center rounded-lg border-2 border-dashed border-primary bg-primary/10 backdrop-blur-sm">
+                  <div className="flex flex-col items-center gap-2 text-primary">
+                    <Paperclip className="h-10 w-10" />
+                    <p className="text-sm font-semibold">Solte para anexar</p>
+                    <p className="text-xs text-muted-foreground">Você poderá revisar antes de enviar</p>
+                  </div>
+                </div>
+              )}
               {!selectedChatId ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3">
                   <MessageSquare className="h-12 w-12" />
@@ -2642,15 +2723,7 @@ function CentralPage() {
                           }
                           if (files.length === 0) return;
                           e.preventDefault();
-                          (async () => {
-                            for (const f of files) {
-                              try {
-                                await handleFilePicked(f);
-                              } catch (err: any) {
-                                toast.error(err?.message || "Erro ao enviar arquivo colado");
-                              }
-                            }
-                          })();
+                          files.forEach((f) => queueAttachment(f));
                         }}
                         disabled={sendMutation.isPending || chatDetail?.status === 3}
                         rows={1}
@@ -3966,6 +4039,99 @@ function CentralPage() {
               {createChatMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
               Iniciar Conversa
             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Attachment preview dialog (drag, paste, or attach button) */}
+      <Dialog
+        open={pendingAttachments.length > 0}
+        onOpenChange={(open) => { if (!open) clearPendingAttachments(); }}
+      >
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>
+              Enviar {pendingAttachments.length > 1 ? `${pendingAttachments.length} arquivos` : "arquivo"}
+            </DialogTitle>
+            <DialogDescription>
+              Revise os anexos antes de enviar para o contato.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 max-h-[50vh] overflow-y-auto pr-1">
+            {pendingAttachments.map((file, idx) => {
+              const isImage = file.type.startsWith("image/");
+              const isVideo = file.type.startsWith("video/");
+              const isAudio = file.type.startsWith("audio/");
+              const url = URL.createObjectURL(file);
+              const sizeMb = (file.size / (1024 * 1024)).toFixed(2);
+              return (
+                <div key={`${file.name}-${idx}`} className="flex items-start gap-3 rounded-md border p-2 bg-muted/30">
+                  <div className="shrink-0 w-20 h-20 rounded overflow-hidden bg-background flex items-center justify-center">
+                    {isImage ? (
+                      <img src={url} alt={file.name} className="w-full h-full object-cover" onLoad={() => URL.revokeObjectURL(url)} />
+                    ) : isVideo ? (
+                      <video src={url} className="w-full h-full object-cover" muted />
+                    ) : isAudio ? (
+                      <Paperclip className="h-8 w-8 text-muted-foreground" />
+                    ) : (
+                      <Paperclip className="h-8 w-8 text-muted-foreground" />
+                    )}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium truncate" title={file.name}>{file.name}</p>
+                    <p className="text-xs text-muted-foreground">{sizeMb} MB · {file.type || "arquivo"}</p>
+                    {isAudio && <audio src={url} controls className="mt-1 w-full h-8" />}
+                  </div>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-7 w-7 shrink-0"
+                    onClick={() => removePendingAttachment(idx)}
+                    title="Remover"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              );
+            })}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="attachment-caption" className="text-xs">Legenda (opcional)</Label>
+            <Textarea
+              id="attachment-caption"
+              value={attachmentCaption}
+              onChange={(e) => setAttachmentCaption(e.target.value)}
+              placeholder="Adicione uma mensagem para acompanhar o(s) arquivo(s)..."
+              rows={2}
+              className="text-sm"
+            />
+          </div>
+          <div className="flex items-center justify-between gap-2 pt-2">
+            <Button
+              variant="outline"
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={mediaMutation.isPending}
+            >
+              <Paperclip className="h-4 w-4 mr-2" />
+              Adicionar mais
+            </Button>
+            <div className="flex gap-2">
+              <Button variant="ghost" onClick={clearPendingAttachments} disabled={mediaMutation.isPending}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={sendPendingAttachments}
+                disabled={mediaMutation.isPending || pendingAttachments.length === 0}
+              >
+                {mediaMutation.isPending ? (
+                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4 mr-2" />
+                )}
+                Enviar
+              </Button>
+            </div>
           </div>
         </DialogContent>
       </Dialog>
