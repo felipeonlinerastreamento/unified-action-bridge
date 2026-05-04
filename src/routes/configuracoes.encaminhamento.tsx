@@ -45,6 +45,7 @@ import { TrackingSedexConfig } from "@/components/configuracoes/tracking-sedex-c
 import { TesteEquipamentoConfig } from "@/components/configuracoes/teste-equipamento-config";
 import { LiberacaoEquipamentoConfig } from "@/components/configuracoes/liberacao-equipamento-config";
 import { SuprimentoConfig } from "@/components/configuracoes/suprimento-config";
+import { CompraEquipamentoConfig } from "@/components/configuracoes/compra-equipamento-config";
 
 export const Route = createFileRoute("/configuracoes/encaminhamento")({
   component: EncaminhamentoPage,
@@ -268,6 +269,8 @@ function EncaminhamentoPage() {
         <LiberacaoEquipamentoConfig />
 
         <SuprimentoConfig />
+
+        <CompraEquipamentoConfig />
 
         <Card>
           <CardHeader>
