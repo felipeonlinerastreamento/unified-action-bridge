@@ -24,6 +24,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { listGSystemUsers, listSectors, listAllOpenChats } from "@/lib/gsystem.functions";
+import { getGSystemColaboradores } from "@/lib/gsystem-api.functions";
 import { createUser, updateUserRole, updateUserName, deleteUser, resetUserPassword, updateUserGroup } from "@/lib/user-admin.functions";
 import { toast } from "sonner";
 import {
@@ -167,13 +168,12 @@ function UsuariosConfigPage() {
   const { data: gsystemAgents = [] } = useQuery({
     queryKey: ["gsystem-agents", firstChannelId],
     queryFn: async () => {
-      if (!firstChannelId) return [];
       try {
-        const result = await listGSystemUsers({ data: { channelId: firstChannelId } });
+        const result = await getGSystemColaboradores();
         return Array.isArray(result) ? (result as GSystemAgent[]) : [];
       } catch { return []; }
     },
-    enabled: !!firstChannelId,
+    enabled: isAuthenticated && isAdmin,
   });
 
   const { data: gsystemSectors = [] } = useQuery({
