@@ -2178,7 +2178,37 @@ function CentralPage() {
             )}
 
             {/* Chat area */}
-            <div className="flex-1 min-w-0 border rounded-lg flex flex-col bg-card overflow-hidden">
+            <div
+              className="flex-1 min-w-0 border rounded-lg flex flex-col bg-card overflow-hidden relative"
+              onDragEnter={(e) => {
+                if (!selectedChatId || whisperMode || chatDetail?.status === 3) return;
+                if (!Array.from(e.dataTransfer?.types || []).includes("Files")) return;
+                e.preventDefault();
+                dragCounterRef.current += 1;
+                setIsDraggingFile(true);
+              }}
+              onDragOver={(e) => {
+                if (!selectedChatId || whisperMode || chatDetail?.status === 3) return;
+                if (!Array.from(e.dataTransfer?.types || []).includes("Files")) return;
+                e.preventDefault();
+                e.dataTransfer.dropEffect = "copy";
+              }}
+              onDragLeave={(e) => {
+                if (!isDraggingFile) return;
+                e.preventDefault();
+                dragCounterRef.current = Math.max(0, dragCounterRef.current - 1);
+                if (dragCounterRef.current === 0) setIsDraggingFile(false);
+              }}
+              onDrop={(e) => {
+                if (!selectedChatId || whisperMode || chatDetail?.status === 3) return;
+                const files = Array.from(e.dataTransfer?.files || []);
+                if (files.length === 0) return;
+                e.preventDefault();
+                dragCounterRef.current = 0;
+                setIsDraggingFile(false);
+                files.forEach((f) => queueAttachment(f));
+              }}
+            >
               {!selectedChatId ? (
                 <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground gap-3">
                   <MessageSquare className="h-12 w-12" />
