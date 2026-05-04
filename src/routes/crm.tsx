@@ -47,7 +47,7 @@ function CrmPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<any>(null);
   type ContractItem = { categoryId: string; quantity: number; activationValue: number; monthlyValue: number };
-  const [form, setForm] = useState({ name: "", phone: "", email: "", notes: "", companyId: "", categoryId: "", contactType: "PF" as "PF" | "PJ", items: [] as ContractItem[] });
+  const [form, setForm] = useState({ name: "", phone: "", email: "", notes: "", companyId: "", categoryId: "", contactType: "PF" as "PF" | "PJ", source: "", items: [] as ContractItem[] });
 
   const { data: contacts = [], isLoading: contactsLoading } = useQuery({
     queryKey: ["crm-contacts"],
@@ -95,7 +95,7 @@ function CrmPage() {
     mutationFn: async () => {
       if (!form.name || !form.phone) throw new Error("Nome e telefone são obrigatórios");
       const { data: sess } = await supabase.auth.getSession();
-      const items = form.contactType === "PJ" ? form.items.filter(i => i.categoryId) : [];
+      const items = form.items.filter(i => i.categoryId);
       const activationTotal = items.reduce((s, i) => s + (Number(i.activationValue) || 0) * (Number(i.quantity) || 0), 0);
       const monthlyTotal = items.reduce((s, i) => s + (Number(i.monthlyValue) || 0) * (Number(i.quantity) || 0), 0);
       const payload: any = {
@@ -109,6 +109,7 @@ function CrmPage() {
         contract_items: items,
         activation_total: activationTotal,
         monthly_total: monthlyTotal,
+        contact_source: form.source || null,
         created_by: sess.session?.user?.id || null,
       };
 
@@ -142,7 +143,7 @@ function CrmPage() {
   });
 
   const resetForm = () => {
-    setForm({ name: "", phone: "", email: "", notes: "", companyId: "", categoryId: "", contactType: "PF", items: [] });
+    setForm({ name: "", phone: "", email: "", notes: "", companyId: "", categoryId: "", contactType: "PF", source: "", items: [] });
     setEditingContact(null);
   };
 
@@ -157,6 +158,7 @@ function CrmPage() {
       categoryId: contact.category_id || "",
       contactType: (contact.contact_type === "PJ" ? "PJ" : "PF"),
       items: Array.isArray(contact.contract_items) ? contact.contract_items : [],
+      source: contact.contact_source || "",
     });
     setDialogOpen(true);
   };
@@ -631,6 +633,30 @@ function CrmPage() {
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <Label>Origem do contato</Label>
+              <Select
+                value={form.source || "none"}
+                onValueChange={(v) => setForm((f) => ({ ...f, source: v === "none" ? "" : v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a origem" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Não informado</SelectItem>
+                  <SelectItem value="indicacao">Indicação</SelectItem>
+                  <SelectItem value="site">Site</SelectItem>
+                  <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                  <SelectItem value="instagram">Instagram</SelectItem>
+                  <SelectItem value="facebook">Facebook</SelectItem>
+                  <SelectItem value="google">Google</SelectItem>
+                  <SelectItem value="evento">Evento</SelectItem>
+                  <SelectItem value="prospec_ativa">Prospecção ativa</SelectItem>
+                  <SelectItem value="cliente_existente">Cliente existente</SelectItem>
+                  <SelectItem value="outro">Outro</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             {form.contactType === "PJ" && (
               <div className="rounded-md border border-border bg-muted/30 p-3 space-y-2">
                 <div className="flex items-center justify-between">
@@ -660,9 +686,11 @@ function CrmPage() {
                 <p className="text-[11px] text-muted-foreground">
                   Categorias só se aplicam a Pessoa Jurídica. Para criar, editar ou excluir, abra a aba <strong>Categorias</strong>.
                 </p>
+              </div>
+            )}
 
-                <div className="pt-2 mt-2 border-t border-border space-y-2">
-                  <div className="flex items-center justify-between">
+            <div className="rounded-md border border-border bg-muted/30 p-3 space-y-2">
+                <div className="flex items-center justify-between">
                     <Label className="text-xs uppercase tracking-wide text-muted-foreground">
                       Itens contratados
                     </Label>
@@ -790,9 +818,7 @@ function CrmPage() {
                       </div>
                     </div>
                   )}
-                </div>
-              </div>
-            )}
+            </div>
             <div>
               <Label>Observações</Label>
               <Textarea rows={3} value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} />
