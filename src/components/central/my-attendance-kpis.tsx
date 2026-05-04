@@ -127,7 +127,10 @@ export function MyAttendanceKpis() {
       return totalMs / rows.length / 60000;
     },
     enabled: !!user?.id,
-    refetchInterval: 60000,
+    refetchInterval: 30000,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
+    staleTime: 15000,
   });
 
   const meta = useMemo(() => {
