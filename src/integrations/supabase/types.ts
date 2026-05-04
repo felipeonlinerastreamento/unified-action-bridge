@@ -954,6 +954,123 @@ export type Database = {
           },
         ]
       }
+      csat_pending: {
+        Row: {
+          channel_id: string
+          chat_id: string
+          contact_name: string | null
+          created_at: string
+          expires_at: string
+          id: string
+          operator_name: string | null
+          operator_user_id: string | null
+          phone: string
+          protocol: string | null
+          ticket_id: string | null
+        }
+        Insert: {
+          channel_id: string
+          chat_id: string
+          contact_name?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          operator_name?: string | null
+          operator_user_id?: string | null
+          phone: string
+          protocol?: string | null
+          ticket_id?: string | null
+        }
+        Update: {
+          channel_id?: string
+          chat_id?: string
+          contact_name?: string | null
+          created_at?: string
+          expires_at?: string
+          id?: string
+          operator_name?: string | null
+          operator_user_id?: string | null
+          phone?: string
+          protocol?: string | null
+          ticket_id?: string | null
+        }
+        Relationships: []
+      }
+      csat_responses: {
+        Row: {
+          channel_id: string | null
+          chat_id: string | null
+          contact_name: string | null
+          created_at: string
+          id: string
+          operator_name: string | null
+          operator_user_id: string | null
+          phone: string | null
+          protocol: string | null
+          raw_response: string | null
+          score: number
+          score_label: string
+          ticket_id: string | null
+        }
+        Insert: {
+          channel_id?: string | null
+          chat_id?: string | null
+          contact_name?: string | null
+          created_at?: string
+          id?: string
+          operator_name?: string | null
+          operator_user_id?: string | null
+          phone?: string | null
+          protocol?: string | null
+          raw_response?: string | null
+          score: number
+          score_label: string
+          ticket_id?: string | null
+        }
+        Update: {
+          channel_id?: string | null
+          chat_id?: string | null
+          contact_name?: string | null
+          created_at?: string
+          id?: string
+          operator_name?: string | null
+          operator_user_id?: string | null
+          phone?: string | null
+          protocol?: string | null
+          raw_response?: string | null
+          score?: number
+          score_label?: string
+          ticket_id?: string | null
+        }
+        Relationships: []
+      }
+      csat_settings: {
+        Row: {
+          id: string
+          is_enabled: boolean
+          message: string
+          thanks_message: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          is_enabled?: boolean
+          message?: string
+          thanks_message?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          is_enabled?: boolean
+          message?: string
+          thanks_message?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       daily_motivational_quotes: {
         Row: {
           author: string | null
