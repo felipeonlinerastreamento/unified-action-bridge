@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { Plus, Trash2, Pencil, Zap, Tag, Bell, ArrowRightLeft } from "lucide-react";
+import { Plus, Trash2, Pencil, Zap, Tag, Bell, ArrowRightLeft, Ticket } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -33,6 +33,10 @@ type Rule = {
   sound_enabled: boolean;
   cooldown_minutes: number;
   priority: number;
+  create_ticket: boolean;
+  ticket_sector: string | null;
+  ticket_priority: string;
+  ticket_note: string;
 };
 
 const EMPTY: Omit<Rule, "id"> = {
@@ -52,6 +56,10 @@ const EMPTY: Omit<Rule, "id"> = {
   sound_enabled: false,
   cooldown_minutes: 5,
   priority: 100,
+  create_ticket: false,
+  ticket_sector: null,
+  ticket_priority: "alta",
+  ticket_note: "",
 };
 
 export function MessageTriggersConfig() {
@@ -381,6 +389,62 @@ export function MessageTriggersConfig() {
                 </div>
               </div>
             )}
+
+            <div className="space-y-3 rounded border p-3 bg-muted/30">
+              <div className="flex items-center gap-2">
+                <Switch
+                  checked={draft.create_ticket}
+                  onCheckedChange={(v) => setDraft({ ...draft, create_ticket: v })}
+                />
+                <Label className="flex items-center gap-2 font-medium text-sm">
+                  <Ticket className="h-4 w-4" /> Abrir chamado automaticamente
+                </Label>
+              </div>
+              {draft.create_ticket && (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>Setor do chamado</Label>
+                      <Select
+                        value={draft.ticket_sector || ""}
+                        onValueChange={(v) => setDraft({ ...draft, ticket_sector: v })}
+                      >
+                        <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                        <SelectContent>
+                          {(sectors as any[]).map((s) => (
+                            <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Prioridade</Label>
+                      <Select
+                        value={draft.ticket_priority}
+                        onValueChange={(v) => setDraft({ ...draft, ticket_priority: v })}
+                      >
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="baixa">Baixa</SelectItem>
+                          <SelectItem value="media">Média</SelectItem>
+                          <SelectItem value="alta">Alta</SelectItem>
+                          <SelectItem value="urgente">Urgente</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Observação inicial do chamado</Label>
+                    <Textarea
+                      rows={2}
+                      value={draft.ticket_note}
+                      onChange={(e) => setDraft({ ...draft, ticket_note: e.target.value })}
+                      placeholder="Ex.: Caso recorrente — verificar histórico do cliente"
+                    />
+                  </div>
+                </>
+              )}
+            </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
