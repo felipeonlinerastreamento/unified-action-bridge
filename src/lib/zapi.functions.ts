@@ -243,6 +243,13 @@ export const getChatMessages = createServerFn({ method: "POST" })
         isPrivate: !!m.is_whisper,
         isSystemMessage: false,
         _status: m.status,
+        replyTo: m.reply_to_message_id
+          ? {
+              id: m.reply_to_message_id as string,
+              text: (m.reply_to_text as string | null) || "",
+              author: (m.reply_to_author as string | null) || "",
+            }
+          : null,
       };
     });
     return { data: messages, messages };
