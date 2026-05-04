@@ -446,6 +446,19 @@ function RecurringReminderSection() {
     toast.success("Lembrete será reavaliado em até 60s — ou recarregue a página");
   }
 
+  async function dispatchNow() {
+    const { data: { user } } = await supabase.auth.getUser();
+    const { error } = await supabase.from("pending_reminder_dispatches" as any).insert({
+      created_by: user?.id,
+      target_type: s.target_type,
+      target_sector_ids: s.target_sector_ids,
+      target_user_ids: s.target_user_ids,
+      note: "Disparo manual via configuração",
+    } as any);
+    if (error) toast.error("Erro ao disparar: " + error.message);
+    else toast.success("Lembrete disparado para os destinatários selecionados");
+  }
+
   function toggleWeekday(d: number) {
     const set = new Set(s.weekdays);
     if (set.has(d)) set.delete(d);
