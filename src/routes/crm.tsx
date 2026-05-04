@@ -633,6 +633,30 @@ function CrmPage() {
                 </SelectContent>
               </Select>
             </div>
+            <div>
+              <Label>Origem do contato</Label>
+              <Select
+                value={form.source || "none"}
+                onValueChange={(v) => setForm((f) => ({ ...f, source: v === "none" ? "" : v }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a origem" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Não informado</SelectItem>
+                  <SelectItem value="indicacao">Indicação</SelectItem>
+                  <SelectItem value="site">Site</SelectItem>
+                  <SelectItem value="whatsapp">WhatsApp</SelectItem>
+                  <SelectItem value="instagram">Instagram</SelectItem>
+                  <SelectItem value="facebook">Facebook</SelectItem>
+                  <SelectItem value="google">Google</SelectItem>
+                  <SelectItem value="evento">Evento</SelectItem>
+                  <SelectItem value="prospec_ativa">Prospecção ativa</SelectItem>
+                  <SelectItem value="cliente_existente">Cliente existente</SelectItem>
+                  <SelectItem value="outro">Outro</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             {form.contactType === "PJ" && (
               <div className="rounded-md border border-border bg-muted/30 p-3 space-y-2">
                 <div className="flex items-center justify-between">
