@@ -2271,6 +2271,12 @@ function CentralPage() {
                           <p className="text-sm font-medium text-foreground truncate">
                             {chatDetail?.description || chatDetail?.contact?.name || "Contato"}
                           </p>
+                          {assignedOperator && (
+                            <p className="text-[11px] text-muted-foreground truncate flex items-center gap-1">
+                              <UserCircle2 className="h-3 w-3" />
+                              <span>Operador: <span className="font-medium text-foreground">{assignedOperator}</span></span>
+                            </p>
+                          )}
                           <div className="flex items-center gap-2 flex-wrap">
                             <p className="text-xs text-muted-foreground truncate">
                               {chatDetail?.contact?.secondaryName || chatDetail?.contact?.number}
