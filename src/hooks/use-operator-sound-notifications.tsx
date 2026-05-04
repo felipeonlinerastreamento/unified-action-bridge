@@ -75,7 +75,7 @@ export function useOperatorSoundNotifications() {
           // Verifica se o chat pertence ao usuário atual
           const { data: chat } = await supabase
             .from("zapi_chats")
-            .select("assigned_to, contact_name, contact_phone, status")
+            .select("assigned_to, contact_name, status")
             .eq("id", msg.chat_id)
             .maybeSingle();
           if (!chat || chat.assigned_to !== user.id) return;
