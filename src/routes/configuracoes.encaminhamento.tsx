@@ -46,6 +46,7 @@ import { TesteEquipamentoConfig } from "@/components/configuracoes/teste-equipam
 import { LiberacaoEquipamentoConfig } from "@/components/configuracoes/liberacao-equipamento-config";
 import { SuprimentoConfig } from "@/components/configuracoes/suprimento-config";
 import { CompraEquipamentoConfig } from "@/components/configuracoes/compra-equipamento-config";
+import { EscalonamentoGestaoConfig } from "@/components/configuracoes/escalonamento-gestao-config";
 
 export const Route = createFileRoute("/configuracoes/encaminhamento")({
   component: EncaminhamentoPage,
@@ -271,6 +272,8 @@ function EncaminhamentoPage() {
         <SuprimentoConfig />
 
         <CompraEquipamentoConfig />
+
+        <EscalonamentoGestaoConfig />
 
         <Card>
           <CardHeader>

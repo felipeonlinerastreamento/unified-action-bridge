@@ -102,6 +102,7 @@ import {
   UserCircle2,
   Reply,
   CornerDownRight,
+  ShieldAlert,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -288,6 +289,7 @@ function CentralPage() {
   const [showFinalizeConfirm, setShowFinalizeConfirm] = useState(false);
   const [finalizeNotes, setFinalizeNotes] = useState("");
   const [skipClosingMessage, setSkipClosingMessage] = useState(false);
+  const [escalateToGestao, setEscalateToGestao] = useState(false);
   const [finalizeStatus, setFinalizeStatus] = useState<string>("A resolver");
   const [finalizeTipoPendencia, setFinalizeTipoPendencia] = useState<string>("");
   const [showTeDialog, setShowTeDialog] = useState(false);
@@ -1448,7 +1450,7 @@ function CentralPage() {
 
   // Finalize chat
   const finalizeMutation = useMutation({
-    mutationFn: async ({ notes, status, tipoPendencia, skipClosingMessage: skipMsg }: { notes?: string; status?: string; tipoPendencia?: string; skipClosingMessage?: boolean } = {}) => {
+    mutationFn: async ({ notes, status, tipoPendencia, skipClosingMessage: skipMsg, escalateGestao }: { notes?: string; status?: string; tipoPendencia?: string; skipClosingMessage?: boolean; escalateGestao?: boolean } = {}) => {
       let ticketForProtocol = currentTicket;
       if (!ticketForProtocol && selectedChatId && chatDetail) {
         const { data: existing } = await supabase
@@ -1734,7 +1736,7 @@ function CentralPage() {
           console.error("[Finalize] direct close also failed:", e?.message);
         }
       }
-      return { success: true, ticketId: ticketForProtocol?.id || null };
+      return { success: true, ticketId: ticketForProtocol?.id || null, escalateGestao: !!escalateGestao };
     },
     onSuccess: async (result) => {
       // Ensure a local ticket exists (covers groups / race conditions where
@@ -1835,6 +1837,57 @@ function CentralPage() {
           console.error("[Finalize] error saving liberacao items:", e?.message);
         }
       }
+
+      // Escalonamento para Gestão (admin)
+      if (result?.escalateGestao) {
+        try {
+          const { data: cfg } = await supabase
+            .from("escalation_gestao_settings" as any)
+            .select("*")
+            .limit(1)
+            .maybeSingle();
+          const sectorName = (cfg as any)?.target_sector_name || "Gestão";
+          const defaultNotes = (cfg as any)?.default_notes || "Atendimento escalado para análise da Gestão";
+          const defaultCategory = (cfg as any)?.default_category || "Escalado para Gestão";
+          const sourceTicket = ticketRef;
+          const protocolBase = sourceTicket
+            ? formatTicketProtocol(sourceTicket as any, chatDetail?.protocol || selectedChatId)
+            : (chatDetail?.protocol || selectedChatId);
+
+          const { error: insErr } = await supabase.from("service_tickets").insert({
+            attendance_id: `gestao-${Date.now()}`,
+            channel_id: selectedChannelId || null,
+            company_id: sourceTicket?.company_id || companyLookup?.id || null,
+            contact_phone: contactPhone || null,
+            contact_name: chatDetail?.contact?.name || chatDetail?.description || null,
+            plate: sourceTicket?.plate || ticketPlate || null,
+            status: "aberto" as const,
+            opened_by: session?.user?.id || null,
+            sector: sectorName,
+            category: defaultCategory,
+            notes: `${defaultNotes}\n\nProtocolo de origem: ${protocolBase}`,
+            escalated_to_gestao: true,
+            escalated_from_ticket_id: sourceTicket?.id || null,
+          } as any);
+          if (insErr) {
+            console.error("[Escalonar] erro ao criar ticket de gestão:", insErr.message);
+            toast.error("Falha ao escalar para Gestão: " + insErr.message);
+          } else {
+            // marca o ticket de origem
+            if (sourceTicket?.id) {
+              await supabase
+                .from("service_tickets")
+                .update({ escalated_to_gestao: true } as any)
+                .eq("id", sourceTicket.id);
+            }
+            toast.success(`Atendimento escalado para o setor ${sectorName}`);
+          }
+        } catch (e: any) {
+          console.error("[Escalonar] exceção:", e?.message);
+          toast.error("Erro ao escalar para Gestão");
+        }
+      }
+
       toast.success("Atendimento finalizado");
       setSelectedChatId("");
       setShowFinalizeConfirm(false);
@@ -1845,6 +1898,7 @@ function CentralPage() {
       setLiberacaoItems([]);
       setLiberacaoDate("");
       setSkipClosingMessage(false);
+      setEscalateToGestao(false);
       refetchChats();
     },
     onError: (err: any) => toast.error(err?.message || "Erro ao finalizar"),
@@ -2359,6 +2413,29 @@ function CentralPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
+                        {isAdmin && (
+                          <Button
+                            variant={escalateToGestao ? "default" : "outline"}
+                            size="sm"
+                            title={
+                              escalateToGestao
+                                ? "Ao finalizar, abrirá novo atendimento para o setor Gestão (clique para desativar)"
+                                : "Marcar para escalar este atendimento para o setor Gestão ao finalizar"
+                            }
+                            onClick={() => {
+                              setEscalateToGestao((v) => {
+                                const next = !v;
+                                if (next) toast.info("Ao finalizar, será aberto um chamado para o setor Gestão.");
+                                else toast.message("Escalonamento para Gestão cancelado.");
+                                return next;
+                              });
+                            }}
+                            className={`gap-1 h-8 ${escalateToGestao ? "bg-amber-500 hover:bg-amber-600 text-white" : ""}`}
+                          >
+                            <ShieldAlert className="h-4 w-4" />
+                            <span className="hidden sm:inline">Gestão</span>
+                          </Button>
+                        )}
                         <Button
                           variant="outline"
                           size="sm"
@@ -3926,6 +4003,7 @@ function CentralPage() {
                   status: finalizeStatus,
                   tipoPendencia: finalizeTipoPendencia,
                   skipClosingMessage: isAdmin && skipClosingMessage,
+                  escalateGestao: isAdmin && escalateToGestao,
                 });
               }}
               disabled={!finalizeTipoPendencia || finalizeMutation.isPending}
