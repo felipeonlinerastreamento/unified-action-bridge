@@ -3,6 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Building2, Clock, CheckCircle, MessageSquare, User, Layers, Package, MapPin } from "lucide-react";
 import { LiberacaoBadge } from "./liberacao-badge";
 import { SuprimentoBadge } from "./suprimento-badge";
+import { CompraEquipamentoBadge } from "./compra-equipamento-badge";
 import { formatTicketProtocol } from "@/lib/protocol-format";
 
 interface TicketListViewProps {
@@ -64,6 +65,7 @@ export function TicketListView({ tickets, onSelect, profiles = [] }: TicketListV
                   {getPriorityBadge(t.priority || "media")}
                   <LiberacaoBadge ticket={t} />
                   <SuprimentoBadge ticket={t} />
+                  <CompraEquipamentoBadge ticket={t} />
                 </div>
                 <div className="flex items-center gap-4 text-xs text-muted-foreground flex-wrap">
                   {t.companies?.name && (
