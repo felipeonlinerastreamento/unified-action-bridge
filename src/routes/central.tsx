@@ -2734,6 +2734,28 @@ function CentralPage() {
 
                   {/* Input */}
                   <div className="p-3 border-t space-y-2">
+                    {replyingTo && (
+                      <div className="flex items-start gap-2 rounded-md border-l-4 border-primary bg-muted/60 px-3 py-2">
+                        <Reply className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
+                        <div className="min-w-0 flex-1">
+                          <div className="text-xs font-semibold text-primary">
+                            Respondendo a {replyingTo.author || "mensagem"}
+                          </div>
+                          <div className="text-xs text-muted-foreground line-clamp-2 whitespace-pre-wrap break-words">
+                            {replyingTo.text}
+                          </div>
+                        </div>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6 shrink-0"
+                          onClick={() => setReplyingTo(null)}
+                          title="Cancelar resposta"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
                     <div className="flex gap-2">
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
