@@ -958,7 +958,7 @@ function CentralPage() {
   });
 
   // Service ticket for this attendance
-  const { data: currentTicket, refetch: refetchTicket } = useQuery({
+  const { data: currentTicket, refetch: refetchTicket, isFetched: currentTicketFetched } = useQuery({
     queryKey: ["service-ticket", selectedChatId],
     queryFn: async () => {
       if (!selectedChatId) return null;
