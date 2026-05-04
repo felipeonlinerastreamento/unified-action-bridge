@@ -254,7 +254,7 @@ export function computeSectorBottlenecks(tickets: TicketRow[]): BottleneckRow[] 
     }
     acc.set(key, cur);
   }
-  const rows = Array.from(acc.values()).map((v) => ({
+  const rows: BottleneckRow[] = Array.from(acc.values()).map((v) => ({
     sector: v.sector,
     category: v.category,
     total: v.total,
