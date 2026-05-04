@@ -660,7 +660,7 @@ function CentralPage() {
   const isContactTyping = !!(localZapiChat?.bot_state as any)?.is_typing;
 
   // Nome do operador atualmente atribuído ao chat (exibido no header)
-  const assignedOperatorId = (localZapiChat as any)?.assigned_to || currentTicket?.assigned_to || null;
+  const assignedOperatorId = (localZapiChat as any)?.assigned_to || null;
   const { data: assignedOperator } = useQuery({
     queryKey: ["assigned-operator-name", assignedOperatorId],
     queryFn: async () => {
