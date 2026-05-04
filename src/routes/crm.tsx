@@ -23,7 +23,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
   Search, UserPlus, Building2, Loader2, Trash2, Edit, Users, Tag,
-  Cake, TrendingUp, ListTodo,
+  Cake, TrendingUp, ListTodo, Plus, X,
 } from "lucide-react";
 import { CrmCategories } from "@/components/crm/crm-categories";
 import { CrmBirthdaysTab } from "@/components/crm/crm-birthdays-tab";
