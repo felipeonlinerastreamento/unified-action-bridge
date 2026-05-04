@@ -95,6 +95,9 @@ function CrmPage() {
     mutationFn: async () => {
       if (!form.name || !form.phone) throw new Error("Nome e telefone são obrigatórios");
       const { data: sess } = await supabase.auth.getSession();
+      const items = form.contactType === "PJ" ? form.items.filter(i => i.categoryId) : [];
+      const activationTotal = items.reduce((s, i) => s + (Number(i.activationValue) || 0) * (Number(i.quantity) || 0), 0);
+      const monthlyTotal = items.reduce((s, i) => s + (Number(i.monthlyValue) || 0) * (Number(i.quantity) || 0), 0);
       const payload: any = {
         name: form.name,
         phone: form.phone,
@@ -103,6 +106,9 @@ function CrmPage() {
         company_id: form.companyId || null,
         category_id: form.contactType === "PJ" ? (form.categoryId || null) : null,
         contact_type: form.contactType,
+        contract_items: items,
+        activation_total: activationTotal,
+        monthly_total: monthlyTotal,
         created_by: sess.session?.user?.id || null,
       };
 
