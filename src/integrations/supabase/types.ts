@@ -1076,6 +1076,42 @@ export type Database = {
           },
         ]
       }
+      escalation_gestao_settings: {
+        Row: {
+          default_category: string
+          default_notes: string
+          id: string
+          is_enabled: boolean
+          notify_on_escalation: boolean
+          target_sector_id: string | null
+          target_sector_name: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          default_category?: string
+          default_notes?: string
+          id?: string
+          is_enabled?: boolean
+          notify_on_escalation?: boolean
+          target_sector_id?: string | null
+          target_sector_name?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          default_category?: string
+          default_notes?: string
+          id?: string
+          is_enabled?: boolean
+          notify_on_escalation?: boolean
+          target_sector_id?: string | null
+          target_sector_name?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       integration_logs: {
         Row: {
           channel_id: string | null
@@ -2023,6 +2059,8 @@ export type Database = {
           contact_name: string | null
           contact_phone: string | null
           created_at: string
+          escalated_from_ticket_id: string | null
+          escalated_to_gestao: boolean
           id: string
           liberacao_date: string | null
           notes: string | null
@@ -2049,6 +2087,8 @@ export type Database = {
           contact_name?: string | null
           contact_phone?: string | null
           created_at?: string
+          escalated_from_ticket_id?: string | null
+          escalated_to_gestao?: boolean
           id?: string
           liberacao_date?: string | null
           notes?: string | null
@@ -2075,6 +2115,8 @@ export type Database = {
           contact_name?: string | null
           contact_phone?: string | null
           created_at?: string
+          escalated_from_ticket_id?: string | null
+          escalated_to_gestao?: boolean
           id?: string
           liberacao_date?: string | null
           notes?: string | null
