@@ -150,6 +150,7 @@ function CrmPage() {
       companyId: contact.company_id || "",
       categoryId: contact.category_id || "",
       contactType: (contact.contact_type === "PJ" ? "PJ" : "PF"),
+      items: Array.isArray(contact.contract_items) ? contact.contract_items : [],
     });
     setDialogOpen(true);
   };
