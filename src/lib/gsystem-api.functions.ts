@@ -390,6 +390,13 @@ export const getTiposPendencia = createServerFn({ method: "POST" })
     return [];
   });
 
+export const getGSystemColaboradores = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async () => {
+    const { listGSystemColaboradores } = await import("@/lib/gsystem-api.server");
+    return listGSystemColaboradores();
+  });
+
 // PLANOS
 // ============================================================
 
