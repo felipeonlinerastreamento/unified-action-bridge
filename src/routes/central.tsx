@@ -2616,13 +2616,14 @@ function CentralPage() {
                           mediaMutation.mutateAsync({ kind: "audio", dataUrl })
                         }
                       />
-                      <Input
-                        placeholder={whisperMode ? "Sussurro interno (não vai para o cliente)" : "Digite uma mensagem..."}
+                      <Textarea
+                        placeholder={whisperMode ? "Sussurro interno (não vai para o cliente). Shift+Enter para nova linha." : "Digite uma mensagem... (Shift+Enter para nova linha)"}
                         value={messageInput}
                         onChange={(e) => setMessageInput(e.target.value)}
                         onKeyDown={handleKeyDown}
                         disabled={sendMutation.isPending || chatDetail?.status === 3}
-                        className={`flex-1 ${whisperMode ? "border-amber-400 focus-visible:ring-amber-400" : ""}`}
+                        rows={1}
+                        className={`flex-1 min-h-[36px] max-h-32 resize-none py-2 ${whisperMode ? "border-amber-400 focus-visible:ring-amber-400" : ""}`}
                       />
                       <Button
                         onClick={handleSend}
