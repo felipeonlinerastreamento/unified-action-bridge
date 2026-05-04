@@ -655,11 +655,25 @@ function RecurringReminderSection() {
           </div>
         </div>
 
-        <div className="flex items-center justify-between gap-2 pt-2 border-t">
-          <Button variant="outline" onClick={preview} className="gap-1">
-            <Eye className="h-4 w-4" />
-            Pré-visualizar
-          </Button>
+        <ToggleRow
+          icon={<ShieldCheck className="h-4 w-4 text-rose-500" />}
+          label="Exigir confirmação para fechar"
+          description='O usuário deve marcar "Irei verificar e categorizar todos" para conseguir continuar.'
+          checked={s.requires_acknowledge}
+          onChange={(v) => setS({ ...s, requires_acknowledge: v })}
+        />
+
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-2 border-t">
+          <div className="flex flex-wrap gap-2">
+            <Button variant="outline" onClick={preview} className="gap-1">
+              <Eye className="h-4 w-4" />
+              Pré-visualizar
+            </Button>
+            <Button variant="secondary" onClick={dispatchNow} className="gap-1">
+              <Send className="h-4 w-4" />
+              Enviar agora
+            </Button>
+          </div>
           <Button onClick={save} disabled={saving} className="gap-1">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Salvar lembrete

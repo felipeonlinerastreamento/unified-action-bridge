@@ -26,6 +26,7 @@ import {
   Loader2, BarChart3, PieChart as PieChartIcon, Activity, Bell, Trophy,
 } from "lucide-react";
 import { OperatorPerformanceTab } from "@/components/relatorios/operator-performance-tab";
+import { RemindersTab } from "@/components/relatorios/reminders-tab";
 
 export const Route = createFileRoute("/relatorios")({
   component: RelatoriosPage,
@@ -349,7 +350,7 @@ function RelatoriosPage() {
 
         <div id="report-content">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-7">
+            <TabsList className="grid w-full grid-cols-8">
               <TabsTrigger value="atendimentos" className="gap-1 text-xs">
                 <MessageSquare className="h-3.5 w-3.5" /> Atendimentos
               </TabsTrigger>
@@ -370,6 +371,9 @@ function RelatoriosPage() {
               </TabsTrigger>
               <TabsTrigger value="notificacoes" className="gap-1 text-xs">
                 <Bell className="h-3.5 w-3.5" /> Notificações
+              </TabsTrigger>
+              <TabsTrigger value="lembretes" className="gap-1 text-xs">
+                <Bell className="h-3.5 w-3.5" /> Lembretes
               </TabsTrigger>
             </TabsList>
 
@@ -796,6 +800,10 @@ function RelatoriosPage() {
 
             <TabsContent value="notificacoes" className="space-y-4">
               <NotificationsReadReport dateFrom={dateFrom} dateTo={dateTo} />
+            </TabsContent>
+
+            <TabsContent value="lembretes" className="space-y-4">
+              <RemindersTab dateFrom={dateFrom} dateTo={dateTo} />
             </TabsContent>
           </Tabs>
         </div>
