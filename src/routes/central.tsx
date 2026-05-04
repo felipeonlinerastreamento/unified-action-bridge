@@ -2597,34 +2597,57 @@ function CentralPage() {
                           );
                         }
 
+                        const canReply = !isErased && !!msg.IdMessage;
+
                         return (
                           <div
                             key={msg.IdMessage || idx}
+                            id={msg.IdMessage ? `msg-${msg.IdMessage}` : undefined}
                             className={`group flex items-center gap-1 ${isMe ? "justify-end" : "justify-start"}`}
                           >
-                            {canDelete && (
+                            {(canReply || canDelete) && (
                               <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
                                   <Button
                                     size="icon"
                                     variant="ghost"
-                                    className="h-7 w-7 opacity-60 hover:opacity-100 transition-opacity"
+                                    className="h-7 w-7 opacity-0 group-hover:opacity-70 hover:opacity-100 transition-opacity"
                                     title="Opções da mensagem"
                                   >
                                     <MoreVertical className="h-4 w-4" />
                                   </Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                  <DropdownMenuItem
-                                    className="text-destructive focus:text-destructive"
-                                    onClick={() => {
-                                      if (confirm("Apagar esta mensagem para todos? Esta ação não pode ser desfeita."))
-                                        deleteMessageMutation.mutate(msg.IdMessage as string);
-                                    }}
-                                  >
-                                    <Trash2 className="h-4 w-4 mr-2" />
-                                    Apagar para todos
-                                  </DropdownMenuItem>
+                                <DropdownMenuContent align={isMe ? "end" : "start"}>
+                                  {canReply && (
+                                    <DropdownMenuItem
+                                      onClick={() => {
+                                        const snippet = (msg.text || (msg.mediaType ? `[${msg.mediaType}]` : "[mídia]")).slice(0, 200);
+                                        const author = isMe
+                                          ? (msg.senderFirstName || "Você")
+                                          : (msg.senderName || chatDetail?.contact?.name || chatDetail?.description || "");
+                                        setReplyingTo({
+                                          id: msg.IdMessage as string,
+                                          text: snippet,
+                                          author,
+                                        });
+                                      }}
+                                    >
+                                      <Reply className="h-4 w-4 mr-2" />
+                                      Responder
+                                    </DropdownMenuItem>
+                                  )}
+                                  {canDelete && (
+                                    <DropdownMenuItem
+                                      className="text-destructive focus:text-destructive"
+                                      onClick={() => {
+                                        if (confirm("Apagar esta mensagem para todos? Esta ação não pode ser desfeita."))
+                                          deleteMessageMutation.mutate(msg.IdMessage as string);
+                                      }}
+                                    >
+                                      <Trash2 className="h-4 w-4 mr-2" />
+                                      Apagar para todos
+                                    </DropdownMenuItem>
+                                  )}
                                 </DropdownMenuContent>
                               </DropdownMenu>
                             )}
@@ -2639,6 +2662,33 @@ function CentralPage() {
                                   : "bg-muted text-foreground"
                               }`}
                             >
+                              {msg.replyTo && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    if (!msg.replyTo?.id) return;
+                                    const el = document.getElementById(`msg-${msg.replyTo.id}`);
+                                    if (el) {
+                                      el.scrollIntoView({ behavior: "smooth", block: "center" });
+                                      el.classList.add("ring-2", "ring-primary");
+                                      setTimeout(() => el.classList.remove("ring-2", "ring-primary"), 1500);
+                                    }
+                                  }}
+                                  className={`block w-full text-left mb-1.5 rounded border-l-2 px-2 py-1 text-xs hover:opacity-80 transition-opacity ${
+                                    isMe
+                                      ? "border-primary-foreground/60 bg-primary-foreground/10"
+                                      : "border-primary bg-background/60"
+                                  }`}
+                                >
+                                  <div className="flex items-center gap-1 font-semibold opacity-80">
+                                    <CornerDownRight className="h-3 w-3" />
+                                    {msg.replyTo.author || "Mensagem"}
+                                  </div>
+                                  <div className="opacity-70 truncate whitespace-pre-wrap line-clamp-2">
+                                    {msg.replyTo.text || "[mensagem]"}
+                                  </div>
+                                </button>
+                              )}
                               {!isMe && msg.senderName && (
                                 <p className="text-xs font-medium mb-1 opacity-70">{msg.senderName}</p>
                               )}
