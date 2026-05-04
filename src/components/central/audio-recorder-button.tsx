@@ -1,6 +1,6 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Mic, Square, Loader2 } from "lucide-react";
+import { Mic, Square, Loader2, Trash2, Send } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -34,10 +34,18 @@ function blobToDataUrl(blob: Blob): Promise<string> {
   });
 }
 
+type Preview = {
+  blobUrl: string;
+  dataUrl: string;
+  mime: string;
+  durationMs: number;
+};
+
 export function AudioRecorderButton({ onRecorded, disabled, size = "icon", className }: Props) {
   const [recording, setRecording] = useState(false);
   const [busy, setBusy] = useState(false);
   const [elapsed, setElapsed] = useState(0);
+  const [preview, setPreview] = useState<Preview | null>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const streamRef = useRef<MediaStream | null>(null);
@@ -52,6 +60,13 @@ export function AudioRecorderButton({ onRecorded, disabled, size = "icon", class
       tickRef.current = null;
     }
   };
+
+  // Free the preview blob URL when discarded/replaced
+  useEffect(() => {
+    return () => {
+      if (preview?.blobUrl) URL.revokeObjectURL(preview.blobUrl);
+    };
+  }, [preview?.blobUrl]);
 
   const handleStart = async () => {
     try {
@@ -84,13 +99,12 @@ export function AudioRecorderButton({ onRecorded, disabled, size = "icon", class
             toast.error("Áudio muito curto.");
             return;
           }
-          setBusy(true);
           const dataUrl = await blobToDataUrl(blob);
-          await onRecorded(dataUrl, finalMime, durationMs);
+          const blobUrl = URL.createObjectURL(blob);
+          setPreview({ blobUrl, dataUrl, mime: finalMime, durationMs });
         } catch (err: any) {
-          toast.error(err?.message || "Falha ao enviar áudio");
+          toast.error(err?.message || "Falha ao processar áudio");
         } finally {
-          setBusy(false);
           stopTracks();
         }
       };
@@ -123,11 +137,62 @@ export function AudioRecorderButton({ onRecorded, disabled, size = "icon", class
     setRecording(false);
   };
 
+  const handleDiscard = () => {
+    if (preview?.blobUrl) URL.revokeObjectURL(preview.blobUrl);
+    setPreview(null);
+  };
+
+  const handleSend = async () => {
+    if (!preview) return;
+    setBusy(true);
+    try {
+      await onRecorded(preview.dataUrl, preview.mime, preview.durationMs);
+      if (preview.blobUrl) URL.revokeObjectURL(preview.blobUrl);
+      setPreview(null);
+    } catch (err: any) {
+      toast.error(err?.message || "Falha ao enviar áudio");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   if (busy) {
     return (
       <Button size={size} variant="outline" disabled className={className} title="Enviando áudio...">
         <Loader2 className="h-4 w-4 animate-spin" />
       </Button>
+    );
+  }
+
+  if (preview) {
+    return (
+      <div className={cn("flex items-center gap-1.5 rounded-md border bg-background px-2 py-1", className)}>
+        <audio
+          src={preview.blobUrl}
+          controls
+          preload="metadata"
+          className="h-8 max-w-[200px]"
+        />
+        <Button
+          size="icon"
+          variant="ghost"
+          onClick={handleDiscard}
+          title="Excluir gravação"
+          type="button"
+          className="h-8 w-8 text-destructive hover:text-destructive"
+        >
+          <Trash2 className="h-4 w-4" />
+        </Button>
+        <Button
+          size="icon"
+          onClick={handleSend}
+          title="Enviar áudio"
+          type="button"
+          className="h-8 w-8"
+        >
+          <Send className="h-4 w-4" />
+        </Button>
+      </div>
     );
   }
 
@@ -140,7 +205,7 @@ export function AudioRecorderButton({ onRecorded, disabled, size = "icon", class
         variant="destructive"
         onClick={handleStop}
         className={cn("gap-2", className)}
-        title="Parar e enviar"
+        title="Parar gravação"
       >
         <Square className="h-3.5 w-3.5 fill-current" />
         <span className="text-xs tabular-nums">{mm}:{ss}</span>
