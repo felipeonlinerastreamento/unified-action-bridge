@@ -61,6 +61,7 @@ export function AtendimentosContent() {
       const lastByTicket: Record<string, string> = {};
       const liberacaoByTicket: Record<string, any[]> = {};
       const suprimentoByTicket: Record<string, any[]> = {};
+      const compraEquipByTicket: Record<string, any[]> = {};
       if (ids.length > 0) {
         const { data: comments } = await supabase
           .from("ticket_comments")
@@ -91,6 +92,16 @@ export function AtendimentosContent() {
           suprimentoByTicket[it.ticket_id].push(it);
         }
 
+        // Buscar itens de Compra Equipamento/Chip dos tickets em lote
+        const { data: ceItems } = await supabase
+          .from("ticket_compra_equipamento_items" as any)
+          .select("ticket_id, status, quantity, item_name, delivered_at")
+          .in("ticket_id", ids);
+        for (const it of (ceItems as any[]) || []) {
+          if (!compraEquipByTicket[it.ticket_id]) compraEquipByTicket[it.ticket_id] = [];
+          compraEquipByTicket[it.ticket_id].push(it);
+        }
+
         // Buscar agentes adicionais (ticket_agents) para cada ticket
         var agentsByTicket: Record<string, string[]> = {};
         const { data: agents } = await supabase
@@ -107,6 +118,7 @@ export function AtendimentosContent() {
         last_comment_at: lastByTicket[t.id] || null,
         liberacao_items: liberacaoByTicket[t.id] || [],
         suprimento_items: suprimentoByTicket[t.id] || [],
+        compra_equipamento_items: compraEquipByTicket[t.id] || [],
         agent_user_ids: (typeof agentsByTicket !== "undefined" ? agentsByTicket[t.id] : undefined) || [],
       }));
     },
