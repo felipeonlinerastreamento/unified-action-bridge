@@ -188,6 +188,7 @@ export const createCrmContactWithCompany = createServerFn({ method: "POST" })
     const contactType = data.contactType === "PJ" ? "PJ" : "PF";
     const categoryId = contactType === "PJ" ? (data.categoryId || null) : null;
 
+    const items = (data.contractItems || []).filter((i) => i.categoryId);
     const { data: created, error } = await supabase
       .from("crm_contacts")
       .insert({
@@ -199,6 +200,7 @@ export const createCrmContactWithCompany = createServerFn({ method: "POST" })
         created_by: userId ?? null,
         contact_type: contactType,
         category_id: categoryId,
+        contract_items: items as any,
       })
       .select("id")
       .single();
