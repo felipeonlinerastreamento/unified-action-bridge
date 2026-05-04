@@ -676,7 +676,7 @@ function CentralPage() {
     return na === nb || na.endsWith(nb) || nb.endsWith(na);
   }, [normalizePhone]);
 
-  const { data: companyLookup } = useQuery({
+  const { data: companyLookup, isFetched: companyLookupFetched } = useQuery({
     queryKey: ["company-lookup", contactPhone],
     queryFn: async () => {
       if (!contactPhone) return null;
