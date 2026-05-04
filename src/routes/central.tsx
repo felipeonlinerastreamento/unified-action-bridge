@@ -99,6 +99,7 @@ import {
   AtSign,
   Tag,
   Trash2,
+  UserCircle2,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -646,7 +647,7 @@ function CentralPage() {
       if (!selectedChannelId || !contactPhone) return null;
       const { data } = await supabase
         .from("zapi_chats")
-        .select("id, tags, bot_state")
+        .select("id, tags, bot_state, assigned_to")
         .eq("channel_id", selectedChannelId)
         .eq("phone", contactPhone)
         .maybeSingle();
@@ -658,6 +659,23 @@ function CentralPage() {
 
   // Contact "typing..." indicator from Z-API presence webhook (stored in zapi_chats.bot_state)
   const isContactTyping = !!(localZapiChat?.bot_state as any)?.is_typing;
+
+  // Nome do operador atualmente atribuído ao chat (exibido no header)
+  const assignedOperatorId = (localZapiChat as any)?.assigned_to || null;
+  const { data: assignedOperator } = useQuery({
+    queryKey: ["assigned-operator-name", assignedOperatorId],
+    queryFn: async () => {
+      if (!assignedOperatorId) return null;
+      const { data } = await supabase
+        .from("profiles")
+        .select("name")
+        .eq("user_id", assignedOperatorId)
+        .maybeSingle();
+      return data?.name || null;
+    },
+    enabled: !!assignedOperatorId,
+    staleTime: 60_000,
+  });
 
   // Wire realtime updates for chat list and current chat messages
   useZapiRealtime({ channelId: selectedChannelId, chatId: localZapiChat?.id });
@@ -2254,6 +2272,12 @@ function CentralPage() {
                           <p className="text-sm font-medium text-foreground truncate">
                             {chatDetail?.description || chatDetail?.contact?.name || "Contato"}
                           </p>
+                          {assignedOperator && (
+                            <p className="text-[11px] text-muted-foreground truncate flex items-center gap-1">
+                              <UserCircle2 className="h-3 w-3" />
+                              <span>Operador: <span className="font-medium text-foreground">{assignedOperator}</span></span>
+                            </p>
+                          )}
                           <div className="flex items-center gap-2 flex-wrap">
                             <p className="text-xs text-muted-foreground truncate">
                               {chatDetail?.contact?.secondaryName || chatDetail?.contact?.number}
