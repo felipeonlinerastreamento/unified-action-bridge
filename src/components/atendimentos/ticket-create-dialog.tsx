@@ -56,6 +56,12 @@ import {
   validateSuprimentoItems,
   type SuprimentoLineItem,
 } from "./suprimento-fields";
+import { isCompraEquipamentoCategory } from "@/hooks/use-compra-equipamento";
+import {
+  CompraEquipamentoFields,
+  validateCompraEquipamentoItems,
+  type CompraEquipamentoLineItem,
+} from "./compra-equipamento-fields";
 
 interface TicketCreateDialogProps {
   open: boolean;
@@ -101,6 +107,8 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
   const [liberacaoDate, setLiberacaoDate] = useState<string>("");
   const isSuprimento = isSuprimentoCategory(category);
   const [suprimentoItems, setSuprimentoItems] = useState<SuprimentoLineItem[]>([]);
+  const isCompraEquip = isCompraEquipamentoCategory(category);
+  const [compraEquipItems, setCompraEquipItems] = useState<CompraEquipamentoLineItem[]>([]);
 
   const getAuthHeaders = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -188,6 +196,7 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
     setLiberacaoItems([]);
     setLiberacaoDate("");
     setSuprimentoItems([]);
+    setCompraEquipItems([]);
   };
 
   const ensureLocalCompany = async (cliente: GsystemCliente): Promise<string | null> => {
@@ -281,6 +290,14 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
         return;
       }
     }
+    // Validate Compra Equipamento/Chip items
+    if (isCompraEquip) {
+      const err = validateCompraEquipamentoItems(compraEquipItems);
+      if (err) {
+        toast.error(err);
+        return;
+      }
+    }
     setLoading(true);
     try {
       const companyId = await ensureLocalCompany(selectedCliente);
@@ -354,6 +371,24 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
         if (supErr) {
           console.error("Erro ao salvar itens de suprimento", supErr);
           toast.error("Ticket criado, mas falhou ao salvar itens de compra.");
+        }
+      }
+
+      // Insert compra equipamento/chip items
+      if (created?.id && isCompraEquip && compraEquipItems.length > 0) {
+        const rows = compraEquipItems.map((it) => ({
+          ticket_id: created.id,
+          item_id: it.item_id,
+          item_name: it.item_name,
+          quantity: it.quantity,
+          status: "pendente",
+        }));
+        const { error: ceErr } = await supabase
+          .from("ticket_compra_equipamento_items" as any)
+          .insert(rows);
+        if (ceErr) {
+          console.error("Erro ao salvar itens de compra equipamento", ceErr);
+          toast.error("Ticket criado, mas falhou ao salvar itens de compra equipamento.");
         }
       }
 
@@ -569,6 +604,9 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
           )}
           {isSuprimento && (
             <SuprimentoFields items={suprimentoItems} onChange={setSuprimentoItems} />
+          )}
+          {isCompraEquip && (
+            <CompraEquipamentoFields items={compraEquipItems} onChange={setCompraEquipItems} />
           )}
           <div className="space-y-1">
             <label className="text-xs font-medium">Observações</label>
