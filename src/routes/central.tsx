@@ -829,6 +829,9 @@ function CentralPage() {
       companyId: "",
       contactType: "PF",
       categoryId: "",
+      cnpj: "",
+      companyNameInput: "",
+      items: [],
     });
     setIdentTab("vincular");
     setChangingCompany(false);
