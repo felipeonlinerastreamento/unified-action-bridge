@@ -23,8 +23,9 @@ import {
 } from "recharts";
 import {
   MessageSquare, Clock, Users, Building2, Package, TrendingUp,
-  Loader2, BarChart3, PieChart as PieChartIcon, Activity, Bell,
+  Loader2, BarChart3, PieChart as PieChartIcon, Activity, Bell, Trophy,
 } from "lucide-react";
+import { OperatorPerformanceTab } from "@/components/relatorios/operator-performance-tab";
 
 export const Route = createFileRoute("/relatorios")({
   component: RelatoriosPage,
@@ -348,9 +349,12 @@ function RelatoriosPage() {
 
         <div id="report-content">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-6">
+            <TabsList className="grid w-full grid-cols-7">
               <TabsTrigger value="atendimentos" className="gap-1 text-xs">
                 <MessageSquare className="h-3.5 w-3.5" /> Atendimentos
+              </TabsTrigger>
+              <TabsTrigger value="desempenho" className="gap-1 text-xs">
+                <Trophy className="h-3.5 w-3.5" /> Desempenho
               </TabsTrigger>
               <TabsTrigger value="horarios" className="gap-1 text-xs">
                 <Clock className="h-3.5 w-3.5" /> Horários
@@ -368,6 +372,11 @@ function RelatoriosPage() {
                 <Bell className="h-3.5 w-3.5" /> Notificações
               </TabsTrigger>
             </TabsList>
+
+            {/* ========== DESEMPENHO ========== */}
+            <TabsContent value="desempenho" className="space-y-4">
+              <OperatorPerformanceTab dateFrom={dateFrom} dateTo={dateTo} />
+            </TabsContent>
 
             {/* ========== ATENDIMENTOS ========== */}
             <TabsContent value="atendimentos" className="space-y-4">
