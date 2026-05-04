@@ -821,7 +821,6 @@ function RelatoriosPage() {
             <TabsContent value="csat" className="space-y-4">
               <CsatReportTab dateFrom={dateFrom} dateTo={dateTo} operatorFilter={operatorFilter} />
             </TabsContent>
-            </TabsContent>
           </Tabs>
         </div>
       </div>
