@@ -56,6 +56,10 @@ const EMPTY: Omit<Rule, "id"> = {
   sound_enabled: false,
   cooldown_minutes: 5,
   priority: 100,
+  create_ticket: false,
+  ticket_sector: null,
+  ticket_priority: "alta",
+  ticket_note: "",
 };
 
 export function MessageTriggersConfig() {
