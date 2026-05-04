@@ -19,6 +19,13 @@ const createSubClientSchema = z.object({
   ticketId: z.string().uuid().optional(),
 });
 
+const contractItemSchema = z.object({
+  categoryId: z.string().uuid().nullable().optional(),
+  quantity: z.number().min(0).default(1),
+  activationValue: z.number().min(0).default(0),
+  monthlyValue: z.number().min(0).default(0),
+});
+
 const createCrmContactSchema = z.object({
   companyName: z.string().min(1).max(255).optional(),
   companyCnpj: z.string().max(32).optional(),
@@ -30,6 +37,7 @@ const createCrmContactSchema = z.object({
   originalPhone: z.string().max(32).optional(),
   contactType: z.enum(["PF", "PJ"]).optional(),
   categoryId: z.string().uuid().optional(),
+  contractItems: z.array(contractItemSchema).optional(),
 });
 
 function cleanDigits(value?: string | null) {
