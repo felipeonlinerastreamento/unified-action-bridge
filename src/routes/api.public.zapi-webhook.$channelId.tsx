@@ -364,6 +364,28 @@ export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
               participant_phone: participantPhone,
             } as any);
 
+            // Evaluate keyword-trigger rules on inbound messages (skip groups & outbound)
+            if (!p.fromMe && text && !isGroupMessage) {
+              try {
+                const { data: chatRow } = await supabaseAdmin
+                  .from("zapi_chats")
+                  .select("assigned_to")
+                  .eq("id", chatId)
+                  .maybeSingle();
+                await evaluateMessageTriggers(supabaseAdmin, {
+                  channelId,
+                  chatId,
+                  phone,
+                  contactName: incomingContactName,
+                  text,
+                  assignedTo: (chatRow as any)?.assigned_to ?? null,
+                  messageId: p.messageId || null,
+                });
+              } catch (trigErr) {
+                console.warn("[zapi-webhook] message-triggers error:", trigErr);
+              }
+            }
+
             // Run bot only on incoming customer messages — skip for groups
             if (!p.fromMe && text && !isGroupMessage) {
               try {
