@@ -331,11 +331,48 @@ export const sendText = createServerFn({ method: "POST" })
       message: z.string().min(1).max(5000).optional(),
       text: z.string().min(1).max(5000).optional(),
       whisper: z.boolean().optional(),
+      replyToMessageId: z.string().uuid().optional(),
     }).parse
   )
   .handler(async ({ data, context }) => {
     const text = (data.message ?? data.text ?? "").trim();
     if (!text) throw new Error("Mensagem não pode estar vazia");
+
+    // Resolve dados da mensagem citada (se houver)
+    let replyToZapiMessageId: string | null = null;
+    let replyToText: string | null = null;
+    let replyToAuthor: string | null = null;
+    if (data.replyToMessageId) {
+      const { data: orig } = await context.supabase
+        .from("zapi_messages")
+        .select("id, zapi_message_id, text, from_me, sent_by_user_id, participant_name, media_type")
+        .eq("id", data.replyToMessageId)
+        .maybeSingle();
+      if (orig) {
+        replyToZapiMessageId = (orig as any).zapi_message_id || null;
+        const rawText = (orig as any).text || "";
+        const mediaType = (orig as any).media_type as string | null;
+        replyToText = rawText
+          ? rawText.slice(0, 200)
+          : mediaType
+            ? `[${mediaType}]`
+            : "[mídia]";
+        if ((orig as any).from_me) {
+          if ((orig as any).sent_by_user_id) {
+            const { data: prof } = await context.supabase
+              .from("profiles")
+              .select("name")
+              .eq("user_id", (orig as any).sent_by_user_id)
+              .maybeSingle();
+            replyToAuthor = prof?.name || "Você";
+          } else {
+            replyToAuthor = "Você";
+          }
+        } else {
+          replyToAuthor = (orig as any).participant_name || null;
+        }
+      }
+    }
 
     // Whisper: persist only, do NOT call Z-API
     if (data.whisper) {
@@ -347,6 +384,9 @@ export const sendText = createServerFn({ method: "POST" })
         sent_by_user_id: context.userId,
         text,
         status: "sent",
+        reply_to_message_id: data.replyToMessageId || null,
+        reply_to_text: replyToText,
+        reply_to_author: replyToAuthor,
       });
       if (insErr) throw new Error(insErr.message);
       return { success: true, whisper: true };
@@ -378,7 +418,9 @@ export const sendText = createServerFn({ method: "POST" })
       }
     }
 
-    const result = await zapiSendText(channel, chat.phone, outgoingText);
+    const result = await zapiSendText(channel, chat.phone, outgoingText, {
+      messageId: replyToZapiMessageId || undefined,
+    });
 
     await context.supabase.from("zapi_messages").insert({
       chat_id: data.chatId,
@@ -387,6 +429,9 @@ export const sendText = createServerFn({ method: "POST" })
       sent_by_user_id: context.userId,
       text: outgoingText,
       status: "sent",
+      reply_to_message_id: data.replyToMessageId || null,
+      reply_to_text: replyToText,
+      reply_to_author: replyToAuthor,
     });
     // Operator interaction cancels the bot flow: assume chat and clear bot state
     // so the automatic sector-routing menu is not re-sent.
