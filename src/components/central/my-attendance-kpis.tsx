@@ -1,5 +1,5 @@
-import { useMemo, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Card } from "@/components/ui/card";
@@ -21,7 +21,35 @@ function formatMinutes(mins: number | null): string {
 
 export function MyAttendanceKpis() {
   const { user } = useAuth();
+  const queryClient = useQueryClient();
   const [period, setPeriod] = useState<Period>("day");
+
+  // Realtime: invalida KPIs quando chats do usuário mudam
+  useEffect(() => {
+    if (!user?.id) return;
+    const channel = supabase
+      .channel(`my-kpis-${user.id}`)
+      .on(
+        "postgres_changes",
+        { event: "*", schema: "public", table: "zapi_chats", filter: `assigned_to=eq.${user.id}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["my-avg-attendance-time", user.id] });
+          queryClient.invalidateQueries({ queryKey: ["sector-open-chats"] });
+        }
+      )
+      .on(
+        "postgres_changes",
+        { event: "UPDATE", schema: "public", table: "zapi_chats" },
+        () => {
+          // Atualiza contagem do setor para qualquer mudança de status
+          queryClient.invalidateQueries({ queryKey: ["sector-open-chats"] });
+        }
+      )
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user?.id, queryClient]);
 
   // Setores do usuário
   const { data: mySectors = [] } = useQuery({
@@ -99,7 +127,10 @@ export function MyAttendanceKpis() {
       return totalMs / rows.length / 60000;
     },
     enabled: !!user?.id,
-    refetchInterval: 60000,
+    refetchInterval: 30000,
+    refetchIntervalInBackground: true,
+    refetchOnWindowFocus: true,
+    staleTime: 15000,
   });
 
   const meta = useMemo(() => {
