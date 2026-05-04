@@ -147,6 +147,22 @@ export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
           const isGroupMessage = isGroupPhoneIdentifier(rawPhone);
           const phone = rawPhone.replace(/\D/g, "");
 
+          // Determine whether this is truly an outbound message from the operator.
+          // Some Z-API events (notably when the customer uses a number associated
+          // with the connected account, or in certain device sync scenarios) arrive
+          // as ReceivedCallback but with `fromMe=true`. We must trust the event
+          // TYPE — `*ReceivedCallback` events are ALWAYS inbound regardless of the
+          // `fromMe` flag. Only `*SentCallback` events should be treated as outbound.
+          const isReceivedEvent =
+            eventType === "ReceivedCallback" || eventType === "MessageReceivedCallback";
+          const isSentEvent =
+            eventType === "SentCallback" || eventType === "MessageSentCallback";
+          const effectiveFromMe = isReceivedEvent ? false : (isSentEvent ? true : !!p.fromMe);
+          // Override the payload flag for the rest of the pipeline so all
+          // downstream branches (CSAT, reopen, queue, bot, after-hours) behave
+          // correctly regardless of what Z-API reported.
+          p.fromMe = effectiveFromMe;
+
           // For groups, prefer the group name (chatName/groupName) over the sender's name.
           // For direct chats, use senderName.
           let groupDisplayName = p.chatName || p.groupName || p.name || p.subject || null;
