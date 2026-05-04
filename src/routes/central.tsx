@@ -676,7 +676,7 @@ function CentralPage() {
     return na === nb || na.endsWith(nb) || nb.endsWith(na);
   }, [normalizePhone]);
 
-  const { data: companyLookup } = useQuery({
+  const { data: companyLookup, isFetched: companyLookupFetched } = useQuery({
     queryKey: ["company-lookup", contactPhone],
     queryFn: async () => {
       if (!contactPhone) return null;
@@ -721,7 +721,7 @@ function CentralPage() {
   });
 
   // Sub-client lookup by phone
-  const { data: subClientLookup } = useQuery({
+  const { data: subClientLookup, isFetched: subClientLookupFetched } = useQuery({
     queryKey: ["sub-client-lookup", contactPhone],
     queryFn: async () => {
       if (!contactPhone) return null;
@@ -958,7 +958,7 @@ function CentralPage() {
   });
 
   // Service ticket for this attendance
-  const { data: currentTicket, refetch: refetchTicket } = useQuery({
+  const { data: currentTicket, refetch: refetchTicket, isFetched: currentTicketFetched } = useQuery({
     queryKey: ["service-ticket", selectedChatId],
     queryFn: async () => {
       if (!selectedChatId) return null;
@@ -975,7 +975,7 @@ function CentralPage() {
   });
 
 // CRM contact lookup by phone (also checks ticket's corrected phone)
-  const { data: crmContactLookup } = useQuery({
+  const { data: crmContactLookup, isFetched: crmContactLookupFetched } = useQuery({
     queryKey: ["crm-contact-lookup", contactPhone, currentTicket?.contact_phone],
     queryFn: async () => {
       const phones = [contactPhone, currentTicket?.contact_phone].filter(Boolean) as string[];
@@ -995,8 +995,10 @@ function CentralPage() {
   // Group chats never require client identification
   const isGroup = isGroupChat(chatDetail);
 
-  // Identification modal — only for contacts without any existing link (and not groups)
-  const isUnidentified = !isGroup && !!chatDetail && !!contactPhone && !companyLookup && !subClientLookup && !crmContactLookup && !currentTicket?.company_id;
+  // Identification modal — only for contacts without any existing link (and not groups).
+  // Wait for ALL lookups to settle before deciding (otherwise modal flashes open while data loads).
+  const lookupsReady = companyLookupFetched && subClientLookupFetched && crmContactLookupFetched && currentTicketFetched;
+  const isUnidentified = lookupsReady && !isGroup && !!chatDetail && !!contactPhone && !companyLookup && !subClientLookup && !crmContactLookup && !currentTicket?.company_id;
 
   // Auto-open identification modal when contact is unidentified
   useEffect(() => {
