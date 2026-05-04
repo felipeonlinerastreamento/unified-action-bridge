@@ -83,11 +83,11 @@ export function CsatReportTab({ dateFrom, dateTo, operatorFilter }: Props) {
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <ReportKpiCard label="Total respostas" value={stats.total} icon={Star} />
-        <ReportKpiCard label="Nota média" value={stats.avg.toFixed(2)} icon={Star} />
-        <ReportKpiCard label="Ruim" value={stats.counts[1] || 0} icon={Star} />
-        <ReportKpiCard label="Bom" value={stats.counts[2] || 0} icon={Star} />
-        <ReportKpiCard label="Ótimo" value={stats.counts[3] || 0} icon={Star} />
+        <ReportKpiCard title="Total respostas" value={stats.total} icon={Star} />
+        <ReportKpiCard title="Nota média" value={stats.avg.toFixed(2)} icon={Star} />
+        <ReportKpiCard title="Ruim" value={stats.counts[1] || 0} icon={Star} />
+        <ReportKpiCard title="Bom" value={stats.counts[2] || 0} icon={Star} />
+        <ReportKpiCard title="Ótimo" value={stats.counts[3] || 0} icon={Star} />
       </div>
 
       <Card>
