@@ -357,3 +357,301 @@ function ToggleRow({
     </div>
   );
 }
+
+// ============================================================
+// Lembrete recorrente de pendências
+// ============================================================
+
+interface RecurringSettings {
+  id?: string;
+  is_enabled: boolean;
+  interval_hours: number;
+  quiet_start: string;
+  quiet_end: string;
+  weekdays: number[];
+  target_type: "all" | "sector" | "users";
+  target_sector_ids: string[];
+  target_user_ids: string[];
+  show_open_chats: boolean;
+  show_my_tickets: boolean;
+  show_sector_tickets: boolean;
+  min_total_to_show: number;
+  sound_enabled: boolean;
+}
+
+const RECURRING_DEFAULTS: RecurringSettings = {
+  is_enabled: false,
+  interval_hours: 2,
+  quiet_start: "08:00",
+  quiet_end: "18:00",
+  weekdays: [1, 2, 3, 4, 5],
+  target_type: "all",
+  target_sector_ids: [],
+  target_user_ids: [],
+  show_open_chats: true,
+  show_my_tickets: true,
+  show_sector_tickets: true,
+  min_total_to_show: 1,
+  sound_enabled: false,
+};
+
+const WEEKDAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+
+function RecurringReminderSection() {
+  const [s, setS] = useState<RecurringSettings>(RECURRING_DEFAULTS);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [sectors, setSectors] = useState<{ id: string; name: string }[]>([]);
+  const [users, setUsers] = useState<{ user_id: string; name: string }[]>([]);
+
+  useEffect(() => {
+    (async () => {
+      const [cfgRes, secRes, userRes] = await Promise.all([
+        supabase.from("pending_reminder_settings" as any).select("*").limit(1).maybeSingle(),
+        supabase.from("sectors").select("id, name").eq("is_active", true).order("name"),
+        supabase.from("profiles").select("user_id, name").order("name"),
+      ]);
+      if (cfgRes.data) setS({ ...RECURRING_DEFAULTS, ...(cfgRes.data as any) });
+      setSectors((secRes.data as any) || []);
+      setUsers((userRes.data as any) || []);
+      setLoading(false);
+    })();
+  }, []);
+
+  async function save() {
+    setSaving(true);
+    const { id, ...payload } = s;
+    const { data: { user } } = await supabase.auth.getUser();
+    const updateData: any = { ...payload, updated_by: user?.id };
+    let error;
+    if (id) {
+      ({ error } = await supabase.from("pending_reminder_settings" as any).update(updateData).eq("id", id));
+    } else {
+      ({ error } = await supabase.from("pending_reminder_settings" as any).insert(updateData));
+      // recarrega para obter o id
+      const { data } = await supabase.from("pending_reminder_settings" as any).select("*").limit(1).maybeSingle();
+      if (data) setS({ ...RECURRING_DEFAULTS, ...(data as any) });
+    }
+    if (error) toast.error("Erro ao salvar: " + error.message);
+    else toast.success("Lembrete recorrente salvo");
+    setSaving(false);
+  }
+
+  function preview() {
+    if (typeof window === "undefined") return;
+    const keys = Object.keys(localStorage).filter((k) => k.startsWith("pending-reminder:last:"));
+    keys.forEach((k) => localStorage.removeItem(k));
+    toast.success("Lembrete será reavaliado em até 60s — ou recarregue a página");
+  }
+
+  function toggleWeekday(d: number) {
+    const set = new Set(s.weekdays);
+    if (set.has(d)) set.delete(d);
+    else set.add(d);
+    setS({ ...s, weekdays: Array.from(set).sort() });
+  }
+
+  function toggleArrayItem(arr: string[], v: string): string[] {
+    return arr.includes(v) ? arr.filter((x) => x !== v) : [...arr, v];
+  }
+
+  if (loading) {
+    return (
+      <Card>
+        <CardContent className="py-8 flex justify-center">
+          <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <Repeat className="h-4 w-4 text-primary" />
+          Lembrete recorrente de pendências
+        </CardTitle>
+        <CardDescription>
+          Reabre o popup periodicamente lembrando o operador de chats e atendimentos em aberto.
+        </CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <div className="flex items-center justify-between">
+          <div>
+            <Label className="text-sm font-medium">Ativar lembrete recorrente</Label>
+            <p className="text-xs text-muted-foreground">Quando desativado, este popup nunca aparece.</p>
+          </div>
+          <Switch checked={s.is_enabled} onCheckedChange={(v) => setS({ ...s, is_enabled: v })} />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">A cada (horas)</Label>
+            <Input
+              type="number"
+              step="0.25"
+              min={0.25}
+              max={24}
+              value={s.interval_hours}
+              onChange={(e) => setS({ ...s, interval_hours: Math.max(0.25, Math.min(24, Number(e.target.value) || 1)) })}
+            />
+            <p className="text-[10px] text-muted-foreground">Aceita decimais (ex.: 0.5 = 30 min).</p>
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Janela ativa — início</Label>
+            <Input
+              type="time"
+              value={s.quiet_start}
+              onChange={(e) => setS({ ...s, quiet_start: e.target.value })}
+            />
+          </div>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Janela ativa — fim</Label>
+            <Input
+              type="time"
+              value={s.quiet_end}
+              onChange={(e) => setS({ ...s, quiet_end: e.target.value })}
+            />
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-xs font-medium">Dias da semana</Label>
+          <div className="flex flex-wrap gap-2">
+            {WEEKDAY_LABELS.map((label, idx) => {
+              const active = s.weekdays.includes(idx);
+              return (
+                <button
+                  key={idx}
+                  type="button"
+                  onClick={() => toggleWeekday(idx)}
+                  className={`px-3 py-1 rounded-md text-xs border transition-colors ${
+                    active
+                      ? "bg-primary text-primary-foreground border-primary"
+                      : "bg-background hover:bg-muted"
+                  }`}
+                >
+                  {label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-xs font-medium">Destinatários</Label>
+          <Select
+            value={s.target_type}
+            onValueChange={(v: "all" | "sector" | "users") => setS({ ...s, target_type: v })}
+          >
+            <SelectTrigger>
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os usuários</SelectItem>
+              <SelectItem value="sector">Apenas usuários de setores específicos</SelectItem>
+              <SelectItem value="users">Usuários selecionados</SelectItem>
+            </SelectContent>
+          </Select>
+
+          {s.target_type === "sector" && (
+            <div className="border rounded-md p-3 max-h-44 overflow-auto space-y-1.5">
+              {sectors.length === 0 && <p className="text-xs text-muted-foreground">Nenhum setor ativo cadastrado.</p>}
+              {sectors.map((sec) => {
+                const checked = s.target_sector_ids.includes(sec.id);
+                return (
+                  <label key={sec.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <Checkbox
+                      checked={checked}
+                      onCheckedChange={() => setS({ ...s, target_sector_ids: toggleArrayItem(s.target_sector_ids, sec.id) })}
+                    />
+                    {sec.name}
+                  </label>
+                );
+              })}
+            </div>
+          )}
+
+          {s.target_type === "users" && (
+            <div className="border rounded-md p-3 max-h-44 overflow-auto space-y-1.5">
+              {users.length === 0 && <p className="text-xs text-muted-foreground">Nenhum usuário encontrado.</p>}
+              {users.map((u) => {
+                const checked = s.target_user_ids.includes(u.user_id);
+                return (
+                  <label key={u.user_id} className="flex items-center gap-2 text-sm cursor-pointer">
+                    <Checkbox
+                      checked={checked}
+                      onCheckedChange={() => setS({ ...s, target_user_ids: toggleArrayItem(s.target_user_ids, u.user_id) })}
+                    />
+                    {u.name || u.user_id}
+                  </label>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label className="text-xs font-medium">Conteúdo exibido</Label>
+          <ToggleRow
+            icon={<MessageSquare className="h-4 w-4 text-blue-500" />}
+            label="Chats em aberto"
+            description="Conversas Z-API aguardando atendimento ou em andamento."
+            checked={s.show_open_chats}
+            onChange={(v) => setS({ ...s, show_open_chats: v })}
+          />
+          <ToggleRow
+            icon={<Briefcase className="h-4 w-4 text-amber-500" />}
+            label="Meus atendimentos"
+            description="Tickets atribuídos ao usuário (em aberto ou em andamento)."
+            checked={s.show_my_tickets}
+            onChange={(v) => setS({ ...s, show_my_tickets: v })}
+          />
+          <ToggleRow
+            icon={<Users className="h-4 w-4 text-purple-500" />}
+            label="Atendimentos do meu setor"
+            description="Tickets em aberto/andamento dos setores que o usuário pertence."
+            checked={s.show_sector_tickets}
+            onChange={(v) => setS({ ...s, show_sector_tickets: v })}
+          />
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+          <div className="space-y-1.5">
+            <Label className="text-xs font-medium">Mostrar somente se houver pelo menos</Label>
+            <Input
+              type="number"
+              min={0}
+              max={100}
+              value={s.min_total_to_show}
+              onChange={(e) => setS({ ...s, min_total_to_show: Math.max(0, Number(e.target.value) || 0) })}
+            />
+            <p className="text-[10px] text-muted-foreground">Soma de chats + atendimentos. Use 0 para sempre abrir.</p>
+          </div>
+          <div className="flex items-end">
+            <ToggleRow
+              icon={<Volume2 className="h-4 w-4 text-emerald-500" />}
+              label="Som ao abrir"
+              description="Toca um aviso sonoro quando o popup aparece."
+              checked={s.sound_enabled}
+              onChange={(v) => setS({ ...s, sound_enabled: v })}
+            />
+          </div>
+        </div>
+
+        <div className="flex items-center justify-between gap-2 pt-2 border-t">
+          <Button variant="outline" onClick={preview} className="gap-1">
+            <Eye className="h-4 w-4" />
+            Pré-visualizar
+          </Button>
+          <Button onClick={save} disabled={saving} className="gap-1">
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            Salvar lembrete
+          </Button>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
