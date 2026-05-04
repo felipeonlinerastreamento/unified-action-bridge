@@ -2413,6 +2413,29 @@ function CentralPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
+                        {isAdmin && (
+                          <Button
+                            variant={escalateToGestao ? "default" : "outline"}
+                            size="sm"
+                            title={
+                              escalateToGestao
+                                ? "Ao finalizar, abrirá novo atendimento para o setor Gestão (clique para desativar)"
+                                : "Marcar para escalar este atendimento para o setor Gestão ao finalizar"
+                            }
+                            onClick={() => {
+                              setEscalateToGestao((v) => {
+                                const next = !v;
+                                if (next) toast.info("Ao finalizar, será aberto um chamado para o setor Gestão.");
+                                else toast.message("Escalonamento para Gestão cancelado.");
+                                return next;
+                              });
+                            }}
+                            className={`gap-1 h-8 ${escalateToGestao ? "bg-amber-500 hover:bg-amber-600 text-white" : ""}`}
+                          >
+                            <ShieldAlert className="h-4 w-4" />
+                            <span className="hidden sm:inline">Gestão</span>
+                          </Button>
+                        )}
                         <Button
                           variant="outline"
                           size="sm"
