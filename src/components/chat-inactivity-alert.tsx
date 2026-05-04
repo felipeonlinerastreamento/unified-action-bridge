@@ -271,7 +271,7 @@ export function ChatInactivityAlert() {
         )}
         <div className="flex gap-2 pt-1">
           <Button asChild size="sm" variant="outline" className="flex-1">
-            <Link to="/" search={{ chat: visibleChat.id } as any} onClick={acknowledge}>
+            <Link to="/central" search={{ chat: visibleChat.id } as any} onClick={acknowledge}>
               Abrir conversa
             </Link>
           </Button>
