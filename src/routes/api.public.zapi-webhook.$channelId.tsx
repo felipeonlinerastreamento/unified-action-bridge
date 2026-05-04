@@ -247,17 +247,11 @@ export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
                   }
                   return new Response("ok");
                 }
-                // Resposta inválida (não é 1/2/3): apenas ignora — não reabre o chat
-                if ((pending as any).chat_id) {
-                  await supabaseAdmin.from("zapi_messages").insert({
-                    chat_id: (pending as any).chat_id,
-                    zapi_message_id: p.messageId || null,
-                    from_me: false,
-                    text,
-                    status: "delivered",
-                  } as any);
-                }
-                return new Response("ok");
+                // Resposta não é 1/2/3 → trata como nova conversa.
+                // Descarta o CSAT pendente e SEGUE o fluxo normal (reabre chat,
+                // executa bot ou envia mensagem fora-de-hora).
+                await supabaseAdmin.from("csat_pending" as any).delete().eq("id", (pending as any).id);
+                console.log("[zapi-webhook] csat pending discarded — continuing normal flow", { phone });
               }
             } catch (csatErr) {
               console.warn("[zapi-webhook] csat capture failed:", csatErr);
