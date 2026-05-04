@@ -3051,6 +3051,9 @@ export type Database = {
           media_url: string | null
           participant_name: string | null
           participant_phone: string | null
+          reply_to_author: string | null
+          reply_to_message_id: string | null
+          reply_to_text: string | null
           sent_by_user_id: string | null
           status: string
           text: string | null
@@ -3068,6 +3071,9 @@ export type Database = {
           media_url?: string | null
           participant_name?: string | null
           participant_phone?: string | null
+          reply_to_author?: string | null
+          reply_to_message_id?: string | null
+          reply_to_text?: string | null
           sent_by_user_id?: string | null
           status?: string
           text?: string | null
@@ -3085,6 +3091,9 @@ export type Database = {
           media_url?: string | null
           participant_name?: string | null
           participant_phone?: string | null
+          reply_to_author?: string | null
+          reply_to_message_id?: string | null
+          reply_to_text?: string | null
           sent_by_user_id?: string | null
           status?: string
           text?: string | null
@@ -3097,6 +3106,13 @@ export type Database = {
             columns: ["chat_id"]
             isOneToOne: false
             referencedRelation: "zapi_chats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "zapi_messages_reply_to_message_id_fkey"
+            columns: ["reply_to_message_id"]
+            isOneToOne: false
+            referencedRelation: "zapi_messages"
             referencedColumns: ["id"]
           },
         ]
