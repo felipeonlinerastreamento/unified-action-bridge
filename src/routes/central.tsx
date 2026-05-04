@@ -3908,6 +3908,65 @@ function CentralPage() {
                   <Label className="text-xs">E-mail</Label>
                   <Input type="email" value={identForm.email} onChange={(e) => setIdentForm((f) => ({ ...f, email: e.target.value }))} />
                 </div>
+                {identForm.contactType === "PJ" && (
+                  <>
+                    <div>
+                      <Label className="text-xs">Nome da empresa</Label>
+                      <Input value={identForm.companyNameInput} onChange={(e) => setIdentForm((f) => ({ ...f, companyNameInput: e.target.value }))} placeholder="Razão social / fantasia" />
+                    </div>
+                    <div>
+                      <Label className="text-xs">CNPJ</Label>
+                      <Input value={identForm.cnpj} onChange={(e) => setIdentForm((f) => ({ ...f, cnpj: e.target.value }))} placeholder="00.000.000/0000-00" />
+                    </div>
+                    <div className="rounded-md border border-border bg-muted/30 p-2 space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label className="text-xs uppercase tracking-wide text-muted-foreground">Itens contratados</Label>
+                        <Button type="button" size="sm" variant="outline" className="h-7 text-xs"
+                          onClick={() => setIdentForm((f) => ({ ...f, items: [...f.items, { categoryId: f.categoryId || "", quantity: 1, activationValue: 0, monthlyValue: 0 }] }))}>
+                          <Plus className="h-3 w-3 mr-1" /> Adicionar
+                        </Button>
+                      </div>
+                      {identForm.items.length === 0 ? (
+                        <p className="text-[11px] text-muted-foreground italic">Nenhum item.</p>
+                      ) : identForm.items.map((it, idx) => (
+                        <div key={idx} className="grid grid-cols-12 gap-1 items-end rounded-md border border-border bg-background p-1.5">
+                          <div className="col-span-12 sm:col-span-4">
+                            <Label className="text-[10px] text-muted-foreground">Categoria</Label>
+                            <Select value={it.categoryId} onValueChange={(v) => setIdentForm((f) => ({
+                              ...f, items: f.items.map((x, i) => i === idx ? { ...x, categoryId: v } : x)
+                            }))}>
+                              <SelectTrigger className="h-7 text-xs"><SelectValue placeholder="Selecionar" /></SelectTrigger>
+                              <SelectContent>
+                                {crmCategories.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="col-span-4 sm:col-span-2">
+                            <Label className="text-[10px] text-muted-foreground">Qtd</Label>
+                            <Input type="number" min={1} className="h-7 text-xs" value={it.quantity}
+                              onChange={(e) => setIdentForm((f) => ({ ...f, items: f.items.map((x, i) => i === idx ? { ...x, quantity: Number(e.target.value) || 0 } : x) }))} />
+                          </div>
+                          <div className="col-span-4 sm:col-span-2">
+                            <Label className="text-[10px] text-muted-foreground">Ativ.</Label>
+                            <Input type="number" min={0} step="0.01" className="h-7 text-xs" value={it.activationValue}
+                              onChange={(e) => setIdentForm((f) => ({ ...f, items: f.items.map((x, i) => i === idx ? { ...x, activationValue: Number(e.target.value) || 0 } : x) }))} />
+                          </div>
+                          <div className="col-span-3 sm:col-span-3">
+                            <Label className="text-[10px] text-muted-foreground">Mens.</Label>
+                            <Input type="number" min={0} step="0.01" className="h-7 text-xs" value={it.monthlyValue}
+                              onChange={(e) => setIdentForm((f) => ({ ...f, items: f.items.map((x, i) => i === idx ? { ...x, monthlyValue: Number(e.target.value) || 0 } : x) }))} />
+                          </div>
+                          <div className="col-span-1">
+                            <Button type="button" size="icon" variant="ghost" className="h-7 w-7"
+                              onClick={() => setIdentForm((f) => ({ ...f, items: f.items.filter((_, i) => i !== idx) }))}>
+                              <X className="h-3 w-3 text-destructive" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
                 <div>
                   <Label className="text-xs">Observações</Label>
                   <Textarea rows={2} value={identForm.notes} onChange={(e) => setIdentForm((f) => ({ ...f, notes: e.target.value }))} />
