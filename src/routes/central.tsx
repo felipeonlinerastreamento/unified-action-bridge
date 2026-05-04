@@ -1897,6 +1897,7 @@ function CentralPage() {
       setLiberacaoItems([]);
       setLiberacaoDate("");
       setSkipClosingMessage(false);
+      setEscalateToGestao(false);
       refetchChats();
     },
     onError: (err: any) => toast.error(err?.message || "Erro ao finalizar"),
