@@ -2628,7 +2628,7 @@ function CentralPage() {
                         onKeyDown={handleKeyDown}
                         disabled={sendMutation.isPending || chatDetail?.status === 3}
                         rows={1}
-                        className={`flex-1 min-h-[36px] max-h-32 resize-none py-2 ${whisperMode ? "border-amber-400 focus-visible:ring-amber-400" : ""}`}
+                        className={`flex-1 min-h-[36px] resize-none py-2 overflow-y-auto ${whisperMode ? "border-amber-400 focus-visible:ring-amber-400" : ""}`}
                       />
                       <Button
                         onClick={handleSend}
