@@ -911,16 +911,19 @@ export type Database = {
       }
       crm_contacts: {
         Row: {
+          activation_total: number
           birth_date: string | null
           category_id: string | null
           company_id: string | null
           contact_role: string
           contact_type: string
+          contract_items: Json
           created_at: string
           created_by: string | null
           email: string | null
           id: string
           last_interaction_at: string | null
+          monthly_total: number
           name: string
           notes: string | null
           phone: string
@@ -929,16 +932,19 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          activation_total?: number
           birth_date?: string | null
           category_id?: string | null
           company_id?: string | null
           contact_role?: string
           contact_type?: string
+          contract_items?: Json
           created_at?: string
           created_by?: string | null
           email?: string | null
           id?: string
           last_interaction_at?: string | null
+          monthly_total?: number
           name: string
           notes?: string | null
           phone: string
@@ -947,16 +953,19 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          activation_total?: number
           birth_date?: string | null
           category_id?: string | null
           company_id?: string | null
           contact_role?: string
           contact_type?: string
+          contract_items?: Json
           created_at?: string
           created_by?: string | null
           email?: string | null
           id?: string
           last_interaction_at?: string | null
+          monthly_total?: number
           name?: string
           notes?: string | null
           phone?: string
