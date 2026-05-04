@@ -347,7 +347,7 @@ export function PendingReminderPopup() {
       }}
     >
       <DialogContent
-        className="max-w-lg"
+        className={`max-w-lg ${requireAck && !acknowledged ? "[&>button.absolute]:hidden" : ""}`}
         onPointerDownOutside={(e) => {
           if (requireAck && !acknowledged) e.preventDefault();
         }}
@@ -357,7 +357,6 @@ export function PendingReminderPopup() {
         onInteractOutside={(e) => {
           if (requireAck && !acknowledged) e.preventDefault();
         }}
-        showCloseButton={!(requireAck && !acknowledged)}
       >
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
