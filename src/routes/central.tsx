@@ -995,8 +995,10 @@ function CentralPage() {
   // Group chats never require client identification
   const isGroup = isGroupChat(chatDetail);
 
-  // Identification modal — only for contacts without any existing link (and not groups)
-  const isUnidentified = !isGroup && !!chatDetail && !!contactPhone && !companyLookup && !subClientLookup && !crmContactLookup && !currentTicket?.company_id;
+  // Identification modal — only for contacts without any existing link (and not groups).
+  // Wait for ALL lookups to settle before deciding (otherwise modal flashes open while data loads).
+  const lookupsReady = companyLookupFetched && subClientLookupFetched && crmContactLookupFetched && currentTicketFetched;
+  const isUnidentified = lookupsReady && !isGroup && !!chatDetail && !!contactPhone && !companyLookup && !subClientLookup && !crmContactLookup && !currentTicket?.company_id;
 
   // Auto-open identification modal when contact is unidentified
   useEffect(() => {
