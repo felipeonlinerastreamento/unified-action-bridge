@@ -23,7 +23,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
   Search, UserPlus, Building2, Loader2, Trash2, Edit, Users, Tag,
-  Cake, TrendingUp, ListTodo,
+  Cake, TrendingUp, ListTodo, Plus, X,
 } from "lucide-react";
 import { CrmCategories } from "@/components/crm/crm-categories";
 import { CrmBirthdaysTab } from "@/components/crm/crm-birthdays-tab";
@@ -46,7 +46,8 @@ function CrmPage() {
   const [typeFilter, setTypeFilter] = useState<"all" | "PF" | "PJ">("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<any>(null);
-  const [form, setForm] = useState({ name: "", phone: "", email: "", notes: "", companyId: "", categoryId: "", contactType: "PF" as "PF" | "PJ" });
+  type ContractItem = { categoryId: string; quantity: number; activationValue: number; monthlyValue: number };
+  const [form, setForm] = useState({ name: "", phone: "", email: "", notes: "", companyId: "", categoryId: "", contactType: "PF" as "PF" | "PJ", items: [] as ContractItem[] });
 
   const { data: contacts = [], isLoading: contactsLoading } = useQuery({
     queryKey: ["crm-contacts"],
@@ -94,6 +95,9 @@ function CrmPage() {
     mutationFn: async () => {
       if (!form.name || !form.phone) throw new Error("Nome e telefone são obrigatórios");
       const { data: sess } = await supabase.auth.getSession();
+      const items = form.contactType === "PJ" ? form.items.filter(i => i.categoryId) : [];
+      const activationTotal = items.reduce((s, i) => s + (Number(i.activationValue) || 0) * (Number(i.quantity) || 0), 0);
+      const monthlyTotal = items.reduce((s, i) => s + (Number(i.monthlyValue) || 0) * (Number(i.quantity) || 0), 0);
       const payload: any = {
         name: form.name,
         phone: form.phone,
@@ -102,6 +106,9 @@ function CrmPage() {
         company_id: form.companyId || null,
         category_id: form.contactType === "PJ" ? (form.categoryId || null) : null,
         contact_type: form.contactType,
+        contract_items: items,
+        activation_total: activationTotal,
+        monthly_total: monthlyTotal,
         created_by: sess.session?.user?.id || null,
       };
 
@@ -135,7 +142,7 @@ function CrmPage() {
   });
 
   const resetForm = () => {
-    setForm({ name: "", phone: "", email: "", notes: "", companyId: "", categoryId: "", contactType: "PF" });
+    setForm({ name: "", phone: "", email: "", notes: "", companyId: "", categoryId: "", contactType: "PF", items: [] });
     setEditingContact(null);
   };
 
@@ -149,6 +156,7 @@ function CrmPage() {
       companyId: contact.company_id || "",
       categoryId: contact.category_id || "",
       contactType: (contact.contact_type === "PJ" ? "PJ" : "PF"),
+      items: Array.isArray(contact.contract_items) ? contact.contract_items : [],
     });
     setDialogOpen(true);
   };
@@ -570,7 +578,7 @@ function CrmPage() {
 
       {/* New/Edit Dialog */}
       <Dialog open={dialogOpen} onOpenChange={(open) => { setDialogOpen(open); if (!open) resetForm(); }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingContact ? "Editar Contato" : "Novo Contato CRM"}</DialogTitle>
           </DialogHeader>
@@ -652,6 +660,137 @@ function CrmPage() {
                 <p className="text-[11px] text-muted-foreground">
                   Categorias só se aplicam a Pessoa Jurídica. Para criar, editar ou excluir, abra a aba <strong>Categorias</strong>.
                 </p>
+
+                <div className="pt-2 mt-2 border-t border-border space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs uppercase tracking-wide text-muted-foreground">
+                      Itens contratados
+                    </Label>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      onClick={() =>
+                        setForm((f) => ({
+                          ...f,
+                          items: [...f.items, { categoryId: "", quantity: 1, activationValue: 0, monthlyValue: 0 }],
+                        }))
+                      }
+                    >
+                      <Plus className="h-3 w-3 mr-1" /> Adicionar item
+                    </Button>
+                  </div>
+
+                  {form.items.length === 0 ? (
+                    <p className="text-[11px] text-muted-foreground italic">
+                      Nenhum item adicionado. Use "Adicionar item" para registrar serviços contratados com valor de ativação e mensalidade.
+                    </p>
+                  ) : (
+                    <div className="space-y-2">
+                      {form.items.map((it, idx) => (
+                        <div key={idx} className="grid grid-cols-12 gap-2 items-end rounded-md border border-border bg-background p-2">
+                          <div className="col-span-12 sm:col-span-4">
+                            <Label className="text-[10px] text-muted-foreground">Categoria</Label>
+                            <Select
+                              value={it.categoryId}
+                              onValueChange={(v) =>
+                                setForm((f) => ({
+                                  ...f,
+                                  items: f.items.map((x, i) => (i === idx ? { ...x, categoryId: v } : x)),
+                                }))
+                              }
+                            >
+                              <SelectTrigger className="h-8 text-xs">
+                                <SelectValue placeholder="Selecionar" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {categories.map((c: any) => (
+                                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="col-span-4 sm:col-span-2">
+                            <Label className="text-[10px] text-muted-foreground">Qtd.</Label>
+                            <Input
+                              type="number"
+                              min={1}
+                              className="h-8 text-xs"
+                              value={it.quantity}
+                              onChange={(e) =>
+                                setForm((f) => ({
+                                  ...f,
+                                  items: f.items.map((x, i) => (i === idx ? { ...x, quantity: Number(e.target.value) || 0 } : x)),
+                                }))
+                              }
+                            />
+                          </div>
+                          <div className="col-span-4 sm:col-span-2">
+                            <Label className="text-[10px] text-muted-foreground">Ativação (R$)</Label>
+                            <Input
+                              type="number"
+                              min={0}
+                              step="0.01"
+                              className="h-8 text-xs"
+                              value={it.activationValue}
+                              onChange={(e) =>
+                                setForm((f) => ({
+                                  ...f,
+                                  items: f.items.map((x, i) => (i === idx ? { ...x, activationValue: Number(e.target.value) || 0 } : x)),
+                                }))
+                              }
+                            />
+                          </div>
+                          <div className="col-span-3 sm:col-span-3">
+                            <Label className="text-[10px] text-muted-foreground">Mensalidade (R$)</Label>
+                            <Input
+                              type="number"
+                              min={0}
+                              step="0.01"
+                              className="h-8 text-xs"
+                              value={it.monthlyValue}
+                              onChange={(e) =>
+                                setForm((f) => ({
+                                  ...f,
+                                  items: f.items.map((x, i) => (i === idx ? { ...x, monthlyValue: Number(e.target.value) || 0 } : x)),
+                                }))
+                              }
+                            />
+                          </div>
+                          <div className="col-span-1">
+                            <Button
+                              type="button"
+                              size="icon"
+                              variant="ghost"
+                              className="h-8 w-8"
+                              onClick={() =>
+                                setForm((f) => ({ ...f, items: f.items.filter((_, i) => i !== idx) }))
+                              }
+                            >
+                              <X className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </div>
+                        </div>
+                      ))}
+
+                      <div className="flex items-center justify-end gap-4 text-xs pt-1">
+                        <span className="text-muted-foreground">
+                          Total Ativação:{" "}
+                          <strong className="text-foreground">
+                            R$ {form.items.reduce((s, i) => s + (Number(i.activationValue) || 0) * (Number(i.quantity) || 0), 0).toFixed(2)}
+                          </strong>
+                        </span>
+                        <span className="text-muted-foreground">
+                          Total Mensal:{" "}
+                          <strong className="text-foreground">
+                            R$ {form.items.reduce((s, i) => s + (Number(i.monthlyValue) || 0) * (Number(i.quantity) || 0), 0).toFixed(2)}
+                          </strong>
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
             )}
             <div>
