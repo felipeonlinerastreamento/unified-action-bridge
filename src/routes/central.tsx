@@ -721,7 +721,7 @@ function CentralPage() {
   });
 
   // Sub-client lookup by phone
-  const { data: subClientLookup } = useQuery({
+  const { data: subClientLookup, isFetched: subClientLookupFetched } = useQuery({
     queryKey: ["sub-client-lookup", contactPhone],
     queryFn: async () => {
       if (!contactPhone) return null;
