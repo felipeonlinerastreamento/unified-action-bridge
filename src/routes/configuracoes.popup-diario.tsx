@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Sparkles, Bell, MessageSquare, CheckSquare, Loader2, Save, Eye, Repeat, Users, Briefcase, Volume2 } from "lucide-react";
+import { Sparkles, Bell, MessageSquare, CheckSquare, Loader2, Save, Eye, Repeat, Users, Briefcase, Volume2, Send, ShieldCheck } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -377,6 +377,7 @@ interface RecurringSettings {
   show_sector_tickets: boolean;
   min_total_to_show: number;
   sound_enabled: boolean;
+  requires_acknowledge: boolean;
 }
 
 const RECURRING_DEFAULTS: RecurringSettings = {
@@ -393,6 +394,7 @@ const RECURRING_DEFAULTS: RecurringSettings = {
   show_sector_tickets: true,
   min_total_to_show: 1,
   sound_enabled: false,
+  requires_acknowledge: true,
 };
 
 const WEEKDAY_LABELS = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
