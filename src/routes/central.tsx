@@ -187,6 +187,7 @@ interface GMessage {
   mediaUrl?: string | null;
   mediaType?: string | null;
   _status?: string; // "sent" | "delivered" | "read" (from zapi_messages.status)
+  replyTo?: { id: string; text: string; author: string } | null;
 }
 
 interface ChatItem {
