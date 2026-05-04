@@ -1909,7 +1909,11 @@ function CentralPage() {
       nicknameMode && !whisperMode && operatorName
         ? `*${operatorName}:* ${messageInput.trim()}`
         : messageInput.trim();
-    sendMutation.mutate({ text, whisper: whisperMode });
+    sendMutation.mutate({
+      text,
+      whisper: whisperMode,
+      replyToMessageId: replyingTo?.id || null,
+    });
   };
 
   // Quick replies disponíveis para expansão de atalhos digitados (ex: /bd)
