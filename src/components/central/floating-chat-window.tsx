@@ -18,6 +18,7 @@ import { QuickRepliesPopover } from "./quick-replies-popover";
 import { MessageStatusTicks } from "./message-status-ticks";
 import { TypingIndicator } from "./typing-indicator";
 import { MessageMediaContent } from "./message-media";
+import { EmojiPickerButton } from "./emoji-picker-button";
 
 interface Props {
   state: FloatingChatState;
@@ -409,6 +410,11 @@ export function FloatingChatWindow({ state, onOpenInPanel }: Props) {
         <div className="flex gap-1.5">
           <QuickRepliesPopover size="sm" onPick={(text) => setInput((prev) => prev ? `${prev} ${text}` : text)} />
           <WhisperToggle size="sm" active={whisperMode} onToggle={() => setWhisperMode((v) => !v)} />
+          <EmojiPickerButton
+            size="sm"
+            disabled={sendMutation.isPending}
+            onPick={(emoji: string) => setInput((prev) => `${prev}${emoji}`)}
+          />
           <Textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
