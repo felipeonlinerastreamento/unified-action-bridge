@@ -75,6 +75,39 @@ export function CrmPipelineTab() {
       return data || [];
     },
   });
+  const { data: owners = [] } = useQuery({
+    queryKey: ["crm-owners"],
+    enabled: isPrivileged,
+    queryFn: async () => {
+      const ids = Array.from(new Set(opps.map((o: any) => o.created_by || o.owner_id).filter(Boolean)));
+      if (ids.length === 0) return [] as { user_id: string; name: string }[];
+      const { data } = await supabase.from("profiles").select("user_id, name").in("user_id", ids);
+      return (data as any[]) || [];
+    },
+  });
+
+  const filteredOpps = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    const min = minValue ? Number(minValue) : null;
+    const max = maxValue ? Number(maxValue) : null;
+    return opps.filter((o: any) => {
+      // Owner scope
+      if (isPrivileged) {
+        if (ownerFilter === "mine" && o.created_by !== user?.id && o.owner_id !== user?.id) return false;
+        if (ownerFilter !== "mine" && ownerFilter !== "all" && o.created_by !== ownerFilter && o.owner_id !== ownerFilter) return false;
+      }
+      if (categoryFilter !== "all" && o.category_id !== categoryFilter) return false;
+      if (statusFilter !== "all" && o.status !== statusFilter) return false;
+      const v = Number(o.expected_value || 0);
+      if (min != null && v < min) return false;
+      if (max != null && v > max) return false;
+      if (term) {
+        const hay = `${o.title || ""} ${o.contact_name || ""} ${o.company_name || ""} ${o.crm_contacts?.name || ""} ${o.companies?.name || ""}`.toLowerCase();
+        if (!hay.includes(term)) return false;
+      }
+      return true;
+    });
+  }, [opps, ownerFilter, categoryFilter, statusFilter, minValue, maxValue, searchTerm, user?.id, isPrivileged]);
 
   const createCatMut = useMutation({
     mutationFn: async () => {
