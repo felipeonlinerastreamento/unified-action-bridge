@@ -37,6 +37,7 @@ const createCrmContactSchema = z.object({
   originalPhone: z.string().max(32).optional(),
   contactType: z.enum(["PF", "PJ"]).optional(),
   categoryId: z.string().uuid().optional(),
+  referralId: z.string().uuid().optional(),
   contractItems: z.array(contractItemSchema).optional(),
 });
 
