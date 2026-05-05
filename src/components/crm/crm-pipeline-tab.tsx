@@ -87,6 +87,15 @@ export function CrmPipelineTab() {
     },
   });
 
+  // All profiles for the "Responsável" (owner) picker in the create/edit dialog
+  const { data: allProfiles = [] } = useQuery({
+    queryKey: ["crm-all-profiles"],
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("user_id, name").order("name");
+      return (data as any[]) || [];
+    },
+  });
+
   const filteredOpps = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
     const min = minValue ? Number(minValue) : null;
