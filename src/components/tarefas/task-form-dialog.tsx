@@ -101,6 +101,13 @@ export function TaskFormDialog({ open, onClose, task, defaultTicketId }: Props) 
       is_group_task: isGroup,
       recurrence_type: (recurrenceType === "none" ? null : recurrenceType) as Task["recurrence_type"],
       recurrence_end_date: recurrenceEnd ? new Date(recurrenceEnd).toISOString() : null,
+      recurrence_day_of_week:
+        (recurrenceType === "weekly" || recurrenceType === "biweekly") && dayOfWeek !== "none"
+          ? Number(dayOfWeek)
+          : null,
+      recurrence_day_of_month:
+        recurrenceType === "monthly" && dayOfMonth ? Math.min(28, Math.max(1, Number(dayOfMonth))) : null,
+      admin_only_complete: adminOnlyComplete,
     };
 
     if (task) {
