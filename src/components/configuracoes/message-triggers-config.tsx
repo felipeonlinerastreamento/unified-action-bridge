@@ -161,15 +161,23 @@ export function MessageTriggersConfig() {
     qc.invalidateQueries({ queryKey: ["message-trigger-rules"] });
   };
 
+  const normalizeArr = (v: unknown): string[] => {
+    let arr: unknown = v;
+    if (typeof arr === "string") {
+      try { arr = JSON.parse(arr); } catch { arr = []; }
+    }
+    if (!Array.isArray(arr)) return [];
+    return arr.filter((x): x is string => typeof x === "string" && x.length > 0);
+  };
   const toggleSector = (sid: string) => {
-    const cur = new Set(draft.alert_target_sector_ids);
-    if (cur.has(sid)) cur.delete(sid); else cur.add(sid);
-    setDraft({ ...draft, alert_target_sector_ids: Array.from(cur) });
+    const cur = normalizeArr(draft.alert_target_sector_ids);
+    const next = cur.includes(sid) ? cur.filter((x) => x !== sid) : [...cur, sid];
+    setDraft({ ...draft, alert_target_sector_ids: next });
   };
   const toggleUser = (uid: string) => {
-    const cur = new Set(draft.alert_target_user_ids);
-    if (cur.has(uid)) cur.delete(uid); else cur.add(uid);
-    setDraft({ ...draft, alert_target_user_ids: Array.from(cur) });
+    const cur = normalizeArr(draft.alert_target_user_ids);
+    const next = cur.includes(uid) ? cur.filter((x) => x !== uid) : [...cur, uid];
+    setDraft({ ...draft, alert_target_user_ids: next });
   };
 
   const actionLabel = useMemo(() => ({
