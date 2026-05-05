@@ -50,6 +50,7 @@ import {
 import { SubClientLinker } from "@/components/central/sub-client-linker";
 import { ContactPicker, type PickedContact } from "@/components/central/contact-picker";
 import { ReferralPicker } from "@/components/crm/referral-picker";
+import { ContactHistoryPanel } from "@/components/central/contact-history-panel";
 import {
   createCrmContactWithCompany,
   createSubClientWithParentCompany,
