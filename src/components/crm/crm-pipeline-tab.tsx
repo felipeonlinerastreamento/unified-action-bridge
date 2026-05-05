@@ -481,7 +481,7 @@ export function CrmPipelineTab() {
                 <SelectTrigger><SelectValue placeholder="Selecionar responsável" /></SelectTrigger>
                 <SelectContent>
                   {user?.id && !allProfiles.find((p: any) => p.user_id === user.id) && (
-                    <SelectItem value={user.id}>{profileNameFor(user.id, allProfiles) || "Eu"}</SelectItem>
+                    <SelectItem value={user.id}>Eu</SelectItem>
                   )}
                   {allProfiles.map((p: any) => (
                     <SelectItem key={p.user_id} value={p.user_id}>
