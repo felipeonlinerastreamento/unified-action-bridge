@@ -126,12 +126,13 @@ export function CrmPipelineTab() {
       const items = form.items.filter((i: ContractItem) => i.categoryId);
       await upsertOpportunity({
         data: {
+          id: editingId || undefined,
           title: form.title,
           expected_value: activationTotal + monthlyTotal,
           probability: Number(form.probability || stage?.default_probability || 0),
           opportunity_type: form.opportunity_type,
           notes: form.notes,
-          stage_id: stage?.id,
+          stage_id: editingId ? undefined : stage?.id,
           source: "manual",
           contact_name: form.contact_name || null,
           company_name: form.company_name || null,
@@ -141,17 +142,48 @@ export function CrmPipelineTab() {
           category_id: form.category_id || null,
           referral_id: form.referral_id || null,
           contract_items: items,
-        },
+        } as any,
       });
     },
     onSuccess: () => {
-      toast.success("Oportunidade criada");
+      toast.success(editingId ? "Oportunidade atualizada" : "Oportunidade criada");
       setOpen(false);
+      setEditingId(null);
       setForm(emptyForm);
       qc.invalidateQueries({ queryKey: ["crm-opportunities"] });
     },
     onError: (e: any) => toast.error(e.message),
   });
+
+  const deleteMut = useMutation({
+    mutationFn: async (id: string) => {
+      await deleteOpportunity({ data: { id } });
+    },
+    onSuccess: () => {
+      toast.success("Oportunidade removida");
+      qc.invalidateQueries({ queryKey: ["crm-opportunities"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const openEdit = (o: any) => {
+    setEditingId(o.id);
+    setForm({
+      title: o.title || "",
+      probability: o.probability ?? 25,
+      opportunity_type: o.opportunity_type || "new",
+      notes: o.notes || "",
+      contact_name: o.contact_name || "",
+      company_name: o.company_name || "",
+      contact_phone: o.contact_phone || "",
+      contact_email: o.contact_email || "",
+      cnpj: o.cnpj || "",
+      category_id: o.category_id || "",
+      referral_id: o.referral_id || "",
+      items: Array.isArray(o.contract_items) ? o.contract_items : [],
+    });
+    setOpen(true);
+  };
 
   const moveMut = useMutation({
     mutationFn: async ({ id, stage_id }: { id: string; stage_id: string }) => {
