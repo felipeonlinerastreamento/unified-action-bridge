@@ -50,6 +50,7 @@ import {
 import { SubClientLinker } from "@/components/central/sub-client-linker";
 import { ContactPicker, type PickedContact } from "@/components/central/contact-picker";
 import { ReferralPicker } from "@/components/crm/referral-picker";
+import { ContactHistoryPanel } from "@/components/central/contact-history-panel";
 import {
   createCrmContactWithCompany,
   createSubClientWithParentCompany,
@@ -1182,6 +1183,25 @@ function CentralPage() {
     },
     enabled: !!activePlate && isAuthenticated,
   });
+
+  // Contact history: tickets for this contact phone (regardless of plate)
+  const { data: contactHistory = [] } = useQuery({
+    queryKey: ["contact-history", contactPhone, selectedChatId],
+    queryFn: async () => {
+      if (!contactPhone) return [];
+      const clean = normalizePhone(contactPhone);
+      if (!clean) return [];
+      const { data } = await supabase
+        .from("service_tickets")
+        .select("*, companies(name)")
+        .ilike("contact_phone", `%${clean.slice(-10)}%`)
+        .order("created_at", { ascending: false })
+        .limit(40);
+      return (data || []).filter((t: any) => t.attendance_id !== selectedChatId);
+    },
+    enabled: !!contactPhone && isAuthenticated,
+  });
+
 
   // All companies: GSystem clients (synced with Contatos menu)
   const { data: allCompanies = [], isLoading: companiesLoading } = useQuery({
@@ -3419,60 +3439,35 @@ function CentralPage() {
                           </p>
                         </div>
 
-                        {activePlate ? (
-                          <>
-                            <p className="text-xs text-muted-foreground">
-                              Chamados com a placa <Badge variant="outline" className="text-xs">{activePlate}</Badge>
-                            </p>
-                            {plateHistory.length === 0 ? (
-                              <p className="text-sm text-muted-foreground py-4 text-center">
-                                Nenhum atendimento anterior para esta placa.
-                              </p>
-                            ) : (
-                              <div className="space-y-2">
-                                {plateHistory.map((ticket: any) => (
-                                  <div key={ticket.id} className="border rounded-md p-3 space-y-1">
-                                    <div className="flex items-center justify-between">
-                                      <p className="text-sm font-medium text-foreground">
-                                        {ticket.contact_name || "Sem nome"}
-                                      </p>
-                                      <Badge
-                                        variant="outline"
-                                        className={`text-[10px] ${
-                                          ticket.status === "finalizado"
-                                            ? "border-muted text-muted-foreground"
-                                            : ticket.status === "em_andamento"
-                                            ? "border-emerald-300 text-emerald-700"
-                                            : "border-amber-300 text-amber-700"
-                                        }`}
-                                      >
-                                        {ticket.status}
-                                      </Badge>
-                                    </div>
-                                    {ticket.companies?.name && (
-                                      <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                        <Building2 className="h-3 w-3" /> {ticket.companies.name}
-                                      </p>
-                                    )}
-                                    <p className="text-xs text-muted-foreground">
-                                      {new Date(ticket.created_at).toLocaleDateString("pt-BR")} — {ticket.plate}
-                                    </p>
-                                    {ticket.notes && (
-                                      <p className="text-xs text-foreground mt-1">{ticket.notes}</p>
-                                    )}
-                                  </div>
-                                ))}
+                        {(() => {
+                          const merged = [
+                            ...(contactHistory as any[]),
+                            ...((plateHistory as any[]).filter(
+                              (p) => !(contactHistory as any[]).some((c) => c.id === p.id),
+                            )),
+                          ];
+                          if (!merged.length) {
+                            return (
+                              <div className="text-center py-8 text-muted-foreground">
+                                <p className="text-sm">Sem atendimentos anteriores</p>
+                                <p className="text-xs mt-1">
+                                  Histórico aparecerá conforme novos chamados forem abertos para este contato ou placa.
+                                </p>
                               </div>
-                            )}
-                          </>
-                        ) : (
-                          <div className="text-center py-8 text-muted-foreground">
-                            <p className="text-sm">Nenhuma placa identificada</p>
-                            <p className="text-xs mt-1">
-                              Informe uma placa na aba "Empresa" ou aguarde a detecção automática nas mensagens.
-                            </p>
-                          </div>
-                        )}
+                            );
+                          }
+                          return (
+                            <>
+                              {activePlate && (
+                                <p className="text-xs text-muted-foreground">
+                                  Inclui chamados com a placa{" "}
+                                  <Badge variant="outline" className="text-xs">{activePlate}</Badge>
+                                </p>
+                              )}
+                              <ContactHistoryPanel tickets={merged as any} />
+                            </>
+                          );
+                        })()}
                       </div>
                     </ScrollArea>
                   </TabsContent>
