@@ -138,6 +138,7 @@ export function CrmPipelineTab() {
           contact_email: form.contact_email || null,
           cnpj: form.cnpj || null,
           category_id: form.category_id || null,
+          referral_id: form.referral_id || null,
           contract_items: items,
         },
       });
