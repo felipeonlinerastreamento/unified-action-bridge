@@ -3503,6 +3503,51 @@ function CentralPage() {
 
                           <Separator />
                           <DetailRow label="Mensagens" value={`${messages.length} mensagem(ns)`} />
+
+                          {crmContactLookup && (
+                            <>
+                              <Separator />
+                              <div className="space-y-2">
+                                <div className="flex items-center justify-between">
+                                  <p className="text-xs text-muted-foreground uppercase tracking-wider">CRM / Pipeline</p>
+                                  <Badge variant="secondary" className="text-[10px]">
+                                    <UserPlus className="h-2.5 w-2.5 mr-1" />
+                                    Contato CRM
+                                  </Badge>
+                                </div>
+                                {contactOpportunities.length > 0 ? (
+                                  <div className="space-y-1">
+                                    {contactOpportunities.slice(0, 3).map((o: any) => (
+                                      <div key={o.id} className="flex items-center justify-between text-xs border rounded p-2">
+                                        <span className="truncate">{o.title}</span>
+                                        <Badge variant="outline" className="text-[10px]">{o.status}</Badge>
+                                      </div>
+                                    ))}
+                                    <Button
+                                      size="sm"
+                                      variant="outline"
+                                      className="w-full"
+                                      onClick={() => createOpportunityMutation.mutate()}
+                                      disabled={createOpportunityMutation.isPending}
+                                    >
+                                      {createOpportunityMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Plus className="h-3 w-3 mr-2" />}
+                                      Nova oportunidade no Pipeline
+                                    </Button>
+                                  </div>
+                                ) : (
+                                  <Button
+                                    size="sm"
+                                    className="w-full"
+                                    onClick={() => createOpportunityMutation.mutate()}
+                                    disabled={createOpportunityMutation.isPending}
+                                  >
+                                    {createOpportunityMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Plus className="h-3 w-3 mr-2" />}
+                                    Criar oportunidade no Pipeline
+                                  </Button>
+                                )}
+                              </div>
+                            </>
+                          )}
                         </div>
                       </div>
                     </ScrollArea>
