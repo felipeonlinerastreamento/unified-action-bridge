@@ -213,27 +213,25 @@ export const upsertPostsaleRule = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     const { supabase } = context;
     let id = data.id;
+    const baseFields = {
+      name: data.name,
+      trigger_type: data.trigger_type,
+      trigger_sector: data.trigger_sector ?? null,
+      trigger_category: data.trigger_category ?? null,
+      trigger_stage_id: data.trigger_stage_id ?? null,
+      trigger_category_id: data.trigger_category_id ?? null,
+      final_category_id: data.final_category_id ?? null,
+      final_stage_id: data.final_stage_id ?? null,
+      is_active: data.is_active,
+    };
     if (id) {
-      const { error } = await supabase
-        .from("crm_postsale_rules")
-        .update({
-          name: data.name,
-          trigger_sector: data.trigger_sector ?? null,
-          trigger_category: data.trigger_category ?? null,
-          is_active: data.is_active,
-        })
-        .eq("id", id);
+      const { error } = await supabase.from("crm_postsale_rules").update(baseFields).eq("id", id);
       if (error) throw new Error(error.message);
       await supabase.from("crm_postsale_steps").delete().eq("rule_id", id);
     } else {
       const { data: row, error } = await supabase
         .from("crm_postsale_rules")
-        .insert({
-          name: data.name,
-          trigger_sector: data.trigger_sector ?? null,
-          trigger_category: data.trigger_category ?? null,
-          is_active: data.is_active,
-        })
+        .insert(baseFields)
         .select("id")
         .single();
       if (error) throw new Error(error.message);
@@ -249,11 +247,31 @@ export const upsertPostsaleRule = createServerFn({ method: "POST" })
           title: s.title,
           description: s.description,
           template_id: s.template_id ?? null,
+          move_to_category_id: s.move_to_category_id ?? null,
+          move_to_stage_id: s.move_to_stage_id ?? null,
         }))
       );
       if (stepsErr) throw new Error(stepsErr.message);
     }
     return { id };
+  });
+
+export const deleteOpportunity = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ id: z.string().uuid() }).parse)
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.from("crm_opportunities").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
+  });
+
+export const deletePostsaleRule = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ id: z.string().uuid() }).parse)
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.from("crm_postsale_rules").delete().eq("id", data.id);
+    if (error) throw new Error(error.message);
+    return { ok: true };
   });
 
 // ============== TEMPLATES ==============
