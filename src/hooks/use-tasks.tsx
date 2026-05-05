@@ -22,6 +22,9 @@ export interface Task {
   recurrence_type: RecurrenceType;
   recurrence_interval: number | null;
   recurrence_end_date: string | null;
+  recurrence_day_of_week: number | null;
+  recurrence_day_of_month: number | null;
+  admin_only_complete: boolean;
   parent_task_id: string | null;
   ticket_id: string | null;
   completed_at: string | null;
