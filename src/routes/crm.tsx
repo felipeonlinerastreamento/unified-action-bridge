@@ -23,12 +23,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
   Search, UserPlus, Building2, Loader2, Trash2, Edit, Users, Tag,
-  Cake, TrendingUp, ListTodo, Plus, X,
+  Cake, TrendingUp, ListTodo, Plus, X, Workflow,
 } from "lucide-react";
 import { CrmCategories } from "@/components/crm/crm-categories";
 import { CrmBirthdaysTab } from "@/components/crm/crm-birthdays-tab";
 import { CrmPipelineTab } from "@/components/crm/crm-pipeline-tab";
 import { CrmTasksTab } from "@/components/crm/crm-tasks-tab";
+import { CrmFlowsTab } from "@/components/crm/crm-flows-tab";
 
 export const Route = createFileRoute("/crm")({
   component: CrmPage,
