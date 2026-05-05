@@ -34,6 +34,7 @@ const emptyForm = {
 export function CrmPipelineTab() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<any>(emptyForm);
   const [catDraft, setCatDraft] = useState("");
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
