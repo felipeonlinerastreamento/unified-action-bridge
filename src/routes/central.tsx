@@ -1183,6 +1183,25 @@ function CentralPage() {
     enabled: !!activePlate && isAuthenticated,
   });
 
+  // Contact history: tickets for this contact phone (regardless of plate)
+  const { data: contactHistory = [] } = useQuery({
+    queryKey: ["contact-history", contactPhone, selectedChatId],
+    queryFn: async () => {
+      if (!contactPhone) return [];
+      const clean = normalizePhone(contactPhone);
+      if (!clean) return [];
+      const { data } = await supabase
+        .from("service_tickets")
+        .select("*, companies(name)")
+        .ilike("contact_phone", `%${clean.slice(-10)}%`)
+        .order("created_at", { ascending: false })
+        .limit(40);
+      return (data || []).filter((t: any) => t.attendance_id !== selectedChatId);
+    },
+    enabled: !!contactPhone && isAuthenticated,
+  });
+
+
   // All companies: GSystem clients (synced with Contatos menu)
   const { data: allCompanies = [], isLoading: companiesLoading } = useQuery({
     queryKey: ["gsystem-clientes-for-linking"],
