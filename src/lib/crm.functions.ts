@@ -178,12 +178,19 @@ export const upsertRecurringContact = createServerFn({ method: "POST" })
     return { id: row!.id };
   });
 
-// ============== POSTSALE RULES ==============
+// ============== POSTSALE / FLOW RULES ==============
 const ruleInput = z.object({
   id: z.string().uuid().optional(),
   name: z.string().min(1).max(200),
+  trigger_type: z
+    .enum(["sector", "pipeline_stage", "contact_category", "opportunity_lost"])
+    .default("sector"),
   trigger_sector: z.string().max(120).nullable().optional(),
   trigger_category: z.string().max(120).nullable().optional(),
+  trigger_stage_id: z.string().uuid().nullable().optional(),
+  trigger_category_id: z.string().uuid().nullable().optional(),
+  final_category_id: z.string().uuid().nullable().optional(),
+  final_stage_id: z.string().uuid().nullable().optional(),
   is_active: z.boolean().default(true),
   steps: z
     .array(
@@ -193,6 +200,8 @@ const ruleInput = z.object({
         title: z.string().min(1).max(200),
         description: z.string().max(2000).default(""),
         template_id: z.string().uuid().nullable().optional(),
+        move_to_category_id: z.string().uuid().nullable().optional(),
+        move_to_stage_id: z.string().uuid().nullable().optional(),
       })
     )
     .default([]),
