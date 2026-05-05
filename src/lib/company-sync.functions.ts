@@ -201,6 +201,7 @@ export const createCrmContactWithCompany = createServerFn({ method: "POST" })
         created_by: userId ?? null,
         contact_type: contactType,
         category_id: categoryId,
+        referral_id: data.referralId || null,
         contract_items: items as any,
       })
       .select("id")
