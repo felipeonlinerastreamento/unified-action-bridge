@@ -209,12 +209,14 @@ export async function evaluateMessageTriggers(
         } as any);
       } catch (e: any) {
         console.warn("[triggers] create_ticket exception:", e?.message);
-        await admin.from("attendance_event_logs").insert({
-          event_type: "trigger_ticket_failed",
-          chat_id: args.chatId,
-          message: `Falha ao criar chamado pelo gatilho "${rule.name}": ${e?.message || e}`,
-          metadata: { rule_id: rule.id, matched_keyword: matched } as any,
-        } as any).catch(() => {});
+        try {
+          await admin.from("attendance_event_logs").insert({
+            event_type: "trigger_ticket_failed",
+            chat_id: args.chatId,
+            message: `Falha ao criar chamado pelo gatilho "${rule.name}": ${e?.message || e}`,
+            metadata: { rule_id: rule.id, matched_keyword: matched } as any,
+          } as any);
+        } catch { /* ignore */ }
       }
     }
 
