@@ -107,7 +107,7 @@ export function TaskDetailPanel({
 
       qc.invalidateQueries({ queryKey: ["task-completion-history", task.id] });
       toast.success(
-        task.recurrence_type && task.recurrence_type !== "none"
+        task.recurrence_type
           ? "Concluído. Tarefa reagendada para o próximo ciclo."
           : "Tarefa concluída."
       );
@@ -310,7 +310,7 @@ export function TaskDetailPanel({
           <DialogHeader>
             <DialogTitle>Concluir tarefa</DialogTitle>
             <DialogDescription>
-              {task.recurrence_type && task.recurrence_type !== "none"
+              {task.recurrence_type
                 ? "Ao concluir, a tarefa será reagendada para o próximo ciclo. Um comentário é obrigatório e ficará no histórico."
                 : "Um comentário é obrigatório e ficará registrado no histórico."}
             </DialogDescription>
