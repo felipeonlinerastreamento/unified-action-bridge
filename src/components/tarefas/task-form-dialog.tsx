@@ -30,6 +30,8 @@ const RECURRENCE_OPTIONS = [
 
 export function TaskFormDialog({ open, onClose, task, defaultTicketId }: Props) {
   const { createTask, updateTask, categories, profiles } = useTasks();
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole("admin");
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
