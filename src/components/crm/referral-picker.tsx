@@ -14,6 +14,14 @@ interface Props {
   label?: string;
 }
 
+interface ReferralItem {
+  id: string;
+  name: string;
+}
+
+const getErrorMessage = (error: unknown) =>
+  error instanceof Error ? error.message : "Não foi possível salvar a indicação";
+
 export function ReferralPicker({ value, onChange, label = "Indicação" }: Props) {
   const qc = useQueryClient();
   const [managerOpen, setManagerOpen] = useState(false);
@@ -21,7 +29,7 @@ export function ReferralPicker({ value, onChange, label = "Indicação" }: Props
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingName, setEditingName] = useState("");
 
-  const { data: items = [] } = useQuery({
+  const { data: items = [] } = useQuery<ReferralItem[]>({
     queryKey: ["crm-referrals"],
     queryFn: async () => {
       const { data } = await supabase
@@ -46,7 +54,7 @@ export function ReferralPicker({ value, onChange, label = "Indicação" }: Props
       qc.invalidateQueries({ queryKey: ["crm-referrals"] });
       toast.success("Indicação criada");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e) => toast.error(getErrorMessage(e)),
   });
 
   const updateMut = useMutation({
@@ -64,7 +72,7 @@ export function ReferralPicker({ value, onChange, label = "Indicação" }: Props
       qc.invalidateQueries({ queryKey: ["crm-referrals"] });
       toast.success("Atualizada");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e) => toast.error(getErrorMessage(e)),
   });
 
   const deleteMut = useMutation({
@@ -78,7 +86,7 @@ export function ReferralPicker({ value, onChange, label = "Indicação" }: Props
       qc.invalidateQueries({ queryKey: ["crm-referrals"] });
       toast.success("Removida");
     },
-    onError: (e: any) => toast.error(e.message),
+    onError: (e) => toast.error(getErrorMessage(e)),
   });
 
   return (
@@ -99,7 +107,7 @@ export function ReferralPicker({ value, onChange, label = "Indicação" }: Props
         <SelectTrigger className="h-9"><SelectValue placeholder="Selecione..." /></SelectTrigger>
         <SelectContent>
           <SelectItem value="none">Sem indicação</SelectItem>
-          {items.map((c: any) => (
+          {items.map((c) => (
             <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
           ))}
         </SelectContent>
@@ -129,7 +137,7 @@ export function ReferralPicker({ value, onChange, label = "Indicação" }: Props
             <p className="text-xs text-muted-foreground flex items-center gap-1 py-1">
               <Tag className="h-3 w-3" /> Nenhuma indicação
             </p>
-          ) : items.map((c: any) => (
+          ) : items.map((c) => (
             <div key={c.id} className="flex items-center gap-1 rounded-md px-1 py-0.5 hover:bg-accent/50">
               {editingId === c.id ? (
                 <>
