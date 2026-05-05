@@ -1,114 +1,89 @@
-# Plano CRM Estratégico — Versão Consolidada
+## 1. Editar oportunidades existentes no Pipeline
 
-Incorpora a proposta original (organização, aniversários, pós-venda, recorrências) **+ Fase 4 (Inteligência e Vendas)**, com **Pipeline de Vendas e Alertas de Renovação antecipados para a Fase 2**.
+Hoje os cards do Kanban (`src/components/crm/crm-pipeline-tab.tsx`) só permitem mover de etapa. Vou:
 
-## Estrutura final do menu CRM
+- Adicionar botão "Editar" (ícone lápis) em cada card de oportunidade.
+- Reaproveitar o mesmo `Dialog` do "Nova oportunidade" — quando `editingId` está setado, ele carrega os dados da oportunidade (título, contato, empresa, categoria, indicação, itens, probabilidade, observações, tipo) e ao salvar chama `upsertOpportunity({ data: { id: editingId, ... } })` (já suportado no server function).
+- Botão "Excluir" com confirmação (DELETE em `crm_opportunities`).
+- Limpar form / `editingId` ao fechar o dialog.
 
-```text
-/crm
- ├─ Visão Geral         → KPIs, agenda do dia, alertas de churn e renovação
- ├─ Contatos            → PF/PJ, timeline unificada, indicado por
- ├─ Pipeline            → Kanban de oportunidades (prospect → fechamento)
- ├─ Pós-venda           → Réguas + NPS com gatilhos por nota
- ├─ Recorrências        → Cadências automáticas
- ├─ Aniversários        → Pessoas + Contratos (renovação)
- ├─ Inteligência (RFM)  → Classificação VIP / Risco / Inativo
- └─ Relatórios          → Funil, conversão, NPS, CAC, ticket médio
+## 2. Nova aba "Fluxos & Lembretes" no CRM
+
+Adicionar uma nova `TabsTrigger` em `src/routes/crm.tsx` chamada **"Fluxos"** (ícone `Workflow`), apontando para um novo componente `src/components/crm/crm-flows-tab.tsx`.
+
+### Modelo de dados (migração)
+
+Reutilizar a infra existente `crm_postsale_rules` + `crm_postsale_steps` (já presente no banco e processada diariamente em `src/lib/crm-daily.server.ts`), expandindo-a para servir também ao pipeline comercial:
+
+```sql
+ALTER TABLE crm_postsale_rules
+  ADD COLUMN trigger_type text NOT NULL DEFAULT 'sector',
+  -- 'sector' (atual) | 'pipeline_stage' | 'opportunity_lost' | 'contact_category' | 'birthday'
+  ADD COLUMN trigger_stage_id uuid REFERENCES crm_pipeline_stages(id),
+  ADD COLUMN trigger_category_id uuid REFERENCES crm_categories(id),
+  ADD COLUMN final_category_id uuid REFERENCES crm_categories(id),
+  -- ao terminar todos os steps move o contato/oportunidade para esta categoria
+  ADD COLUMN final_stage_id uuid REFERENCES crm_pipeline_stages(id);
+
+ALTER TABLE crm_postsale_steps
+  ADD COLUMN move_to_category_id uuid REFERENCES crm_categories(id),
+  ADD COLUMN move_to_stage_id uuid REFERENCES crm_pipeline_stages(id);
+  -- step pode opcionalmente já reclassificar antes do final
 ```
 
-## Fase 1 — Fundamentos (organização)
-- `birth_date` em `crm_contacts` e `profiles`; `contact_role` (cliente/fornecedor/funcionário/parceiro).
-- `crm_tasks` (tarefas CRM independentes das operacionais).
-- `crm_message_templates` com **variáveis dinâmicas** (`{nome}`, `{empresa}`, `{ultimo_produto}`, `{dias_sem_compra}`, `{valor_ultimo_pedido}`).
-- Job diário (pg_cron 08:00) para aniversários (D+7 e D0) com lembrete flutuante.
-- Tela "Aniversários" (calendário + filtros).
-- Visão Geral com agenda do dia.
+A fila `crm_postsale_queue` já existe e cria tarefas em `crm_tasks`. Estendê-la para também aceitar `opportunity_id`:
 
-## Fase 2 — Receita imediata (Pipeline + Renovações + Pós-venda)
+```sql
+ALTER TABLE crm_postsale_queue
+  ADD COLUMN opportunity_id uuid REFERENCES crm_opportunities(id) ON DELETE CASCADE;
+```
 
-### 2A. Pipeline de Vendas
-- `crm_opportunities`: contato, estágio, valor estimado, probabilidade %, data prevista, dono, origem, motivo de perda.
-- `crm_pipeline_stages` (configurável): Prospecção → Qualificação → Proposta → Negociação → Fechado-Ganho/Perdido.
-- Kanban drag-and-drop, filtros por dono/origem/valor.
-- KPIs: valor em pipeline, ticket médio, taxa de conversão por estágio, ciclo médio.
+### UI da aba (crm-flows-tab.tsx)
 
-### 2B. Renovações de contrato
-- Campos `contract_start`, `contract_end`, `contract_value`, `contract_recurrence` em `companies` e `crm_contacts`.
-- Job diário detecta vencimentos em **D-60, D-30, D-15, D-7** → cria oportunidade automática "Renovação" + tarefa para dono da conta.
-- Alerta flutuante para gestores comerciais.
+- Lista de regras (cards) com nome, gatilho legível ("Quando entrar na etapa Proposta Enviada"), nº de passos, switch ativo/inativo.
+- Dialog de edição com:
+  - **Nome**
+  - **Gatilho**: select de tipo + select dependente (etapa do pipeline / categoria / setor).
+  - **Passos** (lista ordenável): `delay_days` (input) + `action_type` (whatsapp / task / email / nps) + `title` + `description/template` + opção "Reclassificar para categoria X" no passo.
+  - **Ao final**: select "Mover contato para categoria…" e/ou "Mover oportunidade para etapa…".
+- Botão "Adicionar passo" (já modelado em `upsertPostsaleRule`).
 
-### 2C. Pós-venda + NPS com gatilhos
-- `crm_postsale_rules` + `crm_postsale_steps` (D+1, D+7, D+30 configurável por setor/categoria).
-- Captura de NPS via WhatsApp; resposta dispara automação:
-  - **9–10 (Promotor)** → mensagem com link Google Reviews + convite indicação.
-  - **7–8 (Neutro)** → tarefa de follow-up qualitativo.
-  - **0–6 (Detrator)** → ticket "Gestão de Crise" prioridade alta para supervisão.
+Salvar via `upsertPostsaleRule` (estender o validador para aceitar os novos campos).
 
-### 2D. Programa de indicações
-- Campo `referred_by_contact_id` em `crm_contacts`.
-- Relatório "Top indicadores" + bonificação manual rastreável.
+### Disparo automático
 
-## Fase 3 — Relacionamento contínuo
-- Recorrências de atendimento (semanal/mensal/trimestral/anual) com tarefa automática.
-- Templates por evento (aniversário, pós-venda, renovação, recuperação).
-- Configurações em **Configurações → CRM**: cadências, antecedências, responsáveis padrão por categoria.
+- **Trigger por etapa do pipeline**: criar trigger PG em `crm_opportunities` que, quando `stage_id` muda, insere registros em `crm_postsale_queue` para cada `crm_postsale_steps` da regra correspondente, com `scheduled_for = now() + delay_days`.
+- **Trigger por categoria do contato**: trigger em `crm_contacts` (insert/update de `category_id`).
+- **Trigger por setor (já existe)**: mantido.
+- O job diário `crm-daily.server.ts` já processa a fila — apenas estender para também executar `move_to_category_id`/`move_to_stage_id` no passo correspondente.
 
-## Fase 4 — Inteligência e crescimento
+## 3. Exemplo concreto (caso do usuário)
 
-### 4A. RFM (Recência, Frequência, Valor)
-- View materializada `crm_rfm_scores` recalculada por job mensal (1º dia 02:00).
-- Score 1–5 em cada eixo → segmentos: **VIP, Fiel, Em risco, Inativo, Novo, Detrator**.
-- Filtros e badges nos contatos; campanhas direcionadas por segmento.
+Uma regra "Acompanhamento de Proposta" com:
+- Gatilho: etapa **Proposta Enviada**
+- Passo 1: D+3 → WhatsApp "Olá, confirmou recebimento da proposta?"
+- Passo 2: D+6 → WhatsApp "Posso esclarecer alguma dúvida?"
+- Passo 3: D+13 → Tarefa "Ligar para fechar"
+- Final: mover contato para categoria **"Lead frio – reativar"**
 
-### 4B. Alerta de churn
-- Detecta cliente recorrente sem interação por X dias (configurável por categoria).
-- Cria tarefa crítica de resgate + alerta para dono da conta.
+## 4. Outros fluxos sugeridos para o menu comercial
 
-### 4C. Timeline unificada do cliente
-- Aba "Timeline" no detalhe do contato agregando:
-  - Compras / pedidos (GSystem)
-  - Tickets de atendimento
-  - Mensagens WhatsApp (Z-API)
-  - Respostas NPS
-  - Oportunidades e estágios
-  - Tarefas CRM concluídas
+Podem virar templates pré-prontos no botão "Criar a partir de template":
 
-### 4D. Dashboard Comercial
-- Funil de conversão por estágio
-- Ticket médio, ciclo médio, win rate
-- CAC (custo manual por canal de origem)
-- Receita prevista vs realizada
-- NPS consolidado (promotores, neutros, detratores)
-- Export CSV/XLSX/PDF
+1. **Boas-vindas pós-venda** — D+1 agradecimento, D+7 onboarding, D+30 NPS.
+2. **Renovação de contrato** — D-60 alerta gestor, D-30 WhatsApp cliente, D-15 ligação, D-7 e-mail formal.
+3. **Recuperação de oportunidade perdida** — após 60/120/180 dias da perda, reabordagem leve; muda categoria para "Reciclagem".
+4. **Reativação de cliente inativo** — sem atendimentos há 90 dias → mensagem + tarefa para gestor de conta.
+5. **Aniversário do cliente / da empresa** — mensagem automática (já existe aba Aniversários, integrar).
+6. **Pesquisa CSAT pós-fechamento** — 7 dias após oportunidade ganha.
+7. **Cobrança / boleto vencido** — D+1, D+5, D+10 com escalonamento.
+8. **Cross-sell por categoria** — após X dias na categoria "Cliente ativo", oferecer produto complementar.
+9. **Indicação (referral)** — 30 dias após ganho, pedir indicação ao contato.
+10. **Lead sem resposta** — 3 tentativas de contato em D+0/D+2/D+5; sem resposta → categoria "Lead morto".
 
 ## Detalhes técnicos
 
-**Migrations principais:**
-- `ALTER crm_contacts`: `birth_date`, `contact_role`, `referred_by_contact_id`, `rfm_segment`, `last_interaction_at`
-- `ALTER companies`: `contract_start`, `contract_end`, `contract_value`, `contract_recurrence`
-- `ALTER profiles`: `birth_date`
-- Novas: `crm_tasks`, `crm_message_templates`, `crm_pipeline_stages`, `crm_opportunities`, `crm_postsale_rules`, `crm_postsale_steps`, `crm_postsale_queue`, `crm_recurring_contacts`, `crm_nps_responses`, `crm_rfm_scores`
-- RLS: admin/gestor manage; atendente vê apenas o atribuído a ele
-
-**Server functions** (`src/lib/crm.functions.ts`, `crm-pipeline.functions.ts`, `crm-rfm.functions.ts`):
-- Listagens, mutações, daily/monthly jobs, render de templates com variáveis.
-
-**Cron** (rotas em `src/routes/api/public/hooks/`):
-- `crm-daily` (08:00) — aniversários, renovações, recorrências, churn, pós-venda
-- `crm-rfm-monthly` (1º dia 02:00) — recálculo RFM
-
-**Trigger ticket finalizado**: hook em `ticket-finalize.functions.ts` enfileira passos de pós-venda conforme regra ativa.
-
-**UI** (rotas):
-- `crm.tsx` vira layout `<Outlet/>`
-- `crm.index.tsx`, `crm.contatos.tsx`, `crm.pipeline.tsx`, `crm.pos-venda.tsx`, `crm.recorrencias.tsx`, `crm.aniversarios.tsx`, `crm.inteligencia.tsx`
-- `configuracoes.crm.tsx` (regras, cadências, templates, estágios)
-- Aba Timeline integrada ao detalhe do contato
-
-## Sequência de entrega aprovada
-1. **Fase 1** — Fundamentos
-2. **Fase 2** — Pipeline + Renovações + Pós-venda/NPS + Indicações
-3. **Fase 3** — Recorrências + Templates avançados
-4. **Fase 4** — RFM + Churn + Timeline + Dashboard Comercial
-
-Aprovando este plano, inicio pela **Fase 1 + Fase 2** (entrega de maior impacto financeiro) em sequência.
+- **Arquivos novos**: `src/components/crm/crm-flows-tab.tsx`, migração SQL.
+- **Arquivos editados**: `src/components/crm/crm-pipeline-tab.tsx` (editar/excluir), `src/routes/crm.tsx` (nova aba), `src/lib/crm.functions.ts` (estender `upsertPostsaleRule` + nova `deleteOpportunity` + `enqueuePipelineFlow`), `src/lib/crm-daily.server.ts` (executar `move_to_*`).
+- **RLS**: as novas colunas herdam as policies existentes das tabelas (admin/gestor escrevem, atendentes leem).
+- **Sem novos secrets** — usa Lovable Cloud + WhatsApp já configurado.
