@@ -122,7 +122,7 @@ export function ContactHistoryPanel({
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
                           <span className="text-xs font-medium text-foreground truncate">
-                            {formatTicketProtocol(t.protocol_number)} ·{" "}
+                            {formatTicketProtocol(t)} ·{" "}
                             {t.category || "Atendimento"}
                           </span>
                           <Badge
@@ -262,7 +262,7 @@ function FullTicketDialog({
         <DialogHeader>
           <DialogTitle className="text-base">
             {ticket
-              ? `${formatTicketProtocol(ticket.protocol_number)} · ${ticket.category || "Atendimento"}`
+              ? `${formatTicketProtocol(ticket)} · ${ticket.category || "Atendimento"}`
               : "Atendimento"}
           </DialogTitle>
         </DialogHeader>
