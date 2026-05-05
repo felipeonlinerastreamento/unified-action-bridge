@@ -23,12 +23,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
   Search, UserPlus, Building2, Loader2, Trash2, Edit, Users, Tag,
-  Cake, TrendingUp, ListTodo, Plus, X,
+  Cake, TrendingUp, ListTodo, Plus, X, Workflow,
 } from "lucide-react";
 import { CrmCategories } from "@/components/crm/crm-categories";
 import { CrmBirthdaysTab } from "@/components/crm/crm-birthdays-tab";
 import { CrmPipelineTab } from "@/components/crm/crm-pipeline-tab";
 import { CrmTasksTab } from "@/components/crm/crm-tasks-tab";
+import { CrmFlowsTab } from "@/components/crm/crm-flows-tab";
 
 export const Route = createFileRoute("/crm")({
   component: CrmPage,
@@ -274,6 +275,9 @@ function CrmPage() {
             <TabsTrigger value="pipeline" className="gap-1">
               <TrendingUp className="h-4 w-4" /> Pipeline
             </TabsTrigger>
+            <TabsTrigger value="fluxos" className="gap-1">
+              <Workflow className="h-4 w-4" /> Fluxos
+            </TabsTrigger>
             <TabsTrigger value="aniversarios" className="gap-1">
               <Cake className="h-4 w-4" /> Aniversários
             </TabsTrigger>
@@ -290,6 +294,7 @@ function CrmPage() {
 
           <TabsContent value="tarefas" className="mt-4"><CrmTasksTab /></TabsContent>
           <TabsContent value="pipeline" className="mt-4"><CrmPipelineTab /></TabsContent>
+          <TabsContent value="fluxos" className="mt-4"><CrmFlowsTab /></TabsContent>
           <TabsContent value="aniversarios" className="mt-4"><CrmBirthdaysTab /></TabsContent>
 
           <TabsContent value="contatos" className="space-y-4 mt-4">

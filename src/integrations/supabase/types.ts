@@ -1264,6 +1264,7 @@ export type Database = {
           error: string | null
           executed_at: string | null
           id: string
+          opportunity_id: string | null
           rule_id: string | null
           scheduled_for: string
           status: string
@@ -1278,6 +1279,7 @@ export type Database = {
           error?: string | null
           executed_at?: string | null
           id?: string
+          opportunity_id?: string | null
           rule_id?: string | null
           scheduled_for: string
           status?: string
@@ -1292,6 +1294,7 @@ export type Database = {
           error?: string | null
           executed_at?: string | null
           id?: string
+          opportunity_id?: string | null
           rule_id?: string | null
           scheduled_for?: string
           status?: string
@@ -1305,6 +1308,13 @@ export type Database = {
             columns: ["contact_id"]
             isOneToOne: false
             referencedRelation: "crm_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_postsale_queue_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "crm_opportunities"
             referencedColumns: ["id"]
           },
           {
@@ -1340,32 +1350,76 @@ export type Database = {
       crm_postsale_rules: {
         Row: {
           created_at: string
+          final_category_id: string | null
+          final_stage_id: string | null
           id: string
           is_active: boolean
           name: string
           trigger_category: string | null
+          trigger_category_id: string | null
           trigger_sector: string | null
+          trigger_stage_id: string | null
+          trigger_type: string
           updated_at: string
         }
         Insert: {
           created_at?: string
+          final_category_id?: string | null
+          final_stage_id?: string | null
           id?: string
           is_active?: boolean
           name: string
           trigger_category?: string | null
+          trigger_category_id?: string | null
           trigger_sector?: string | null
+          trigger_stage_id?: string | null
+          trigger_type?: string
           updated_at?: string
         }
         Update: {
           created_at?: string
+          final_category_id?: string | null
+          final_stage_id?: string | null
           id?: string
           is_active?: boolean
           name?: string
           trigger_category?: string | null
+          trigger_category_id?: string | null
           trigger_sector?: string | null
+          trigger_stage_id?: string | null
+          trigger_type?: string
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "crm_postsale_rules_final_category_id_fkey"
+            columns: ["final_category_id"]
+            isOneToOne: false
+            referencedRelation: "crm_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_postsale_rules_final_stage_id_fkey"
+            columns: ["final_stage_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipeline_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_postsale_rules_trigger_category_id_fkey"
+            columns: ["trigger_category_id"]
+            isOneToOne: false
+            referencedRelation: "crm_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_postsale_rules_trigger_stage_id_fkey"
+            columns: ["trigger_stage_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipeline_stages"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       crm_postsale_steps: {
         Row: {
@@ -1374,6 +1428,8 @@ export type Database = {
           delay_days: number
           description: string | null
           id: string
+          move_to_category_id: string | null
+          move_to_stage_id: string | null
           position: number
           rule_id: string
           template_id: string | null
@@ -1385,6 +1441,8 @@ export type Database = {
           delay_days?: number
           description?: string | null
           id?: string
+          move_to_category_id?: string | null
+          move_to_stage_id?: string | null
           position?: number
           rule_id: string
           template_id?: string | null
@@ -1396,12 +1454,28 @@ export type Database = {
           delay_days?: number
           description?: string | null
           id?: string
+          move_to_category_id?: string | null
+          move_to_stage_id?: string | null
           position?: number
           rule_id?: string
           template_id?: string | null
           title?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "crm_postsale_steps_move_to_category_id_fkey"
+            columns: ["move_to_category_id"]
+            isOneToOne: false
+            referencedRelation: "crm_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_postsale_steps_move_to_stage_id_fkey"
+            columns: ["move_to_stage_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipeline_stages"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "crm_postsale_steps_rule_id_fkey"
             columns: ["rule_id"]

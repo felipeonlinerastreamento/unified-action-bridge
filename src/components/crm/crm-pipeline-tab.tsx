@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Loader2, DollarSign, TrendingUp, X, Pencil, Check, Trash2, Tag } from "lucide-react";
 import { toast } from "sonner";
-import { upsertOpportunity, moveOpportunityStage } from "@/lib/crm.functions";
+import { upsertOpportunity, moveOpportunityStage, deleteOpportunity } from "@/lib/crm.functions";
 import { ReferralPicker } from "@/components/crm/referral-picker";
 
 type ContractItem = { categoryId: string; quantity: number; activationValue: number; monthlyValue: number };
@@ -34,6 +34,7 @@ const emptyForm = {
 export function CrmPipelineTab() {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<any>(emptyForm);
   const [catDraft, setCatDraft] = useState("");
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
@@ -125,12 +126,13 @@ export function CrmPipelineTab() {
       const items = form.items.filter((i: ContractItem) => i.categoryId);
       await upsertOpportunity({
         data: {
+          id: editingId || undefined,
           title: form.title,
           expected_value: activationTotal + monthlyTotal,
           probability: Number(form.probability || stage?.default_probability || 0),
           opportunity_type: form.opportunity_type,
           notes: form.notes,
-          stage_id: stage?.id,
+          stage_id: editingId ? undefined : stage?.id,
           source: "manual",
           contact_name: form.contact_name || null,
           company_name: form.company_name || null,
@@ -140,17 +142,48 @@ export function CrmPipelineTab() {
           category_id: form.category_id || null,
           referral_id: form.referral_id || null,
           contract_items: items,
-        },
+        } as any,
       });
     },
     onSuccess: () => {
-      toast.success("Oportunidade criada");
+      toast.success(editingId ? "Oportunidade atualizada" : "Oportunidade criada");
       setOpen(false);
+      setEditingId(null);
       setForm(emptyForm);
       qc.invalidateQueries({ queryKey: ["crm-opportunities"] });
     },
     onError: (e: any) => toast.error(e.message),
   });
+
+  const deleteMut = useMutation({
+    mutationFn: async (id: string) => {
+      await deleteOpportunity({ data: { id } });
+    },
+    onSuccess: () => {
+      toast.success("Oportunidade removida");
+      qc.invalidateQueries({ queryKey: ["crm-opportunities"] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const openEdit = (o: any) => {
+    setEditingId(o.id);
+    setForm({
+      title: o.title || "",
+      probability: o.probability ?? 25,
+      opportunity_type: o.opportunity_type || "new",
+      notes: o.notes || "",
+      contact_name: o.contact_name || "",
+      company_name: o.company_name || "",
+      contact_phone: o.contact_phone || "",
+      contact_email: o.contact_email || "",
+      cnpj: o.cnpj || "",
+      category_id: o.category_id || "",
+      referral_id: o.referral_id || "",
+      items: Array.isArray(o.contract_items) ? o.contract_items : [],
+    });
+    setOpen(true);
+  };
 
   const moveMut = useMutation({
     mutationFn: async ({ id, stage_id }: { id: string; stage_id: string }) => {
@@ -173,7 +206,7 @@ export function CrmPipelineTab() {
 
       <div className="flex justify-between items-center">
         <h3 className="text-sm font-semibold flex items-center gap-1"><TrendingUp className="h-4 w-4" /> Pipeline</h3>
-        <Button size="sm" onClick={() => setOpen(true)}><Plus className="h-4 w-4 mr-1" /> Nova oportunidade</Button>
+        <Button size="sm" onClick={() => { setEditingId(null); setForm(emptyForm); setOpen(true); }}><Plus className="h-4 w-4 mr-1" /> Nova oportunidade</Button>
       </div>
 
       <div className="grid gap-3 overflow-x-auto" style={{ gridTemplateColumns: `repeat(${stages.length}, minmax(220px, 1fr))` }}>
@@ -210,6 +243,14 @@ export function CrmPipelineTab() {
                         ))}
                       </SelectContent>
                     </Select>
+                    <div className="flex gap-1 pt-1">
+                      <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[10px] flex-1" onClick={() => openEdit(o)}>
+                        <Pencil className="h-3 w-3 mr-1" /> Editar
+                      </Button>
+                      <Button type="button" size="icon" variant="ghost" className="h-6 w-6" onClick={() => { if (confirm("Excluir oportunidade?")) deleteMut.mutate(o.id); }}>
+                        <Trash2 className="h-3 w-3 text-destructive" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
                 {stageOpps.length === 0 && <p className="text-[11px] text-muted-foreground p-2">Vazio</p>}
@@ -219,9 +260,9 @@ export function CrmPipelineTab() {
         })}
       </div>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setEditingId(null); setForm(emptyForm); } }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Nova oportunidade</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editingId ? "Editar oportunidade" : "Nova oportunidade"}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div><Label>Título *</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
 
@@ -372,7 +413,7 @@ export function CrmPipelineTab() {
             <div><Label>Notas</Label><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
             <Button className="w-full" disabled={!form.title || createMut.isPending} onClick={() => createMut.mutate()}>
               {createMut.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              <DollarSign className="h-4 w-4 mr-1" /> Criar
+              <DollarSign className="h-4 w-4 mr-1" /> {editingId ? "Salvar alterações" : "Criar"}
             </Button>
           </div>
         </DialogContent>

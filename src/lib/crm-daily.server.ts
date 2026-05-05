@@ -158,12 +158,13 @@ export async function runCrmDailyJob() {
 
   const { data: queue } = await supabaseAdmin
     .from("crm_postsale_queue")
-    .select("*, crm_postsale_steps(title, description, action_type)")
+    .select("*, crm_postsale_steps(title, description, action_type, move_to_category_id, move_to_stage_id), crm_postsale_rules(final_category_id, final_stage_id)")
     .eq("status", "pending")
     .lte("scheduled_for", today.toISOString())
     .limit(200);
   for (const q of queue || []) {
-    const step = q.crm_postsale_steps as any;
+    const step = (q as any).crm_postsale_steps;
+    const rule = (q as any).crm_postsale_rules;
     const { data: t } = await supabaseAdmin
       .from("crm_tasks")
       .insert({
@@ -178,11 +179,40 @@ export async function runCrmDailyJob() {
       })
       .select("id")
       .single();
+
+    // Apply per-step reclassification
+    if (step?.move_to_category_id && q.contact_id) {
+      await supabaseAdmin.from("crm_contacts").update({ category_id: step.move_to_category_id }).eq("id", q.contact_id);
+    }
+    if (step?.move_to_stage_id && (q as any).opportunity_id) {
+      await supabaseAdmin.from("crm_opportunities").update({ stage_id: step.move_to_stage_id }).eq("id", (q as any).opportunity_id);
+    }
+
     await supabaseAdmin
       .from("crm_postsale_queue")
       .update({ status: "done", executed_at: today.toISOString(), task_id: t?.id })
       .eq("id", q.id);
     summary.postsale++;
+
+    // If this was the last pending step of the queue for this rule+target, apply final moves
+    const targetFilter: any = (q as any).opportunity_id
+      ? { opportunity_id: (q as any).opportunity_id }
+      : { contact_id: q.contact_id };
+    const { data: pendingLeft } = await supabaseAdmin
+      .from("crm_postsale_queue")
+      .select("id")
+      .eq("rule_id", q.rule_id as string)
+      .eq("status", "pending")
+      .match(targetFilter)
+      .limit(1);
+    if ((!pendingLeft || pendingLeft.length === 0) && rule) {
+      if (rule.final_category_id && q.contact_id) {
+        await supabaseAdmin.from("crm_contacts").update({ category_id: rule.final_category_id }).eq("id", q.contact_id);
+      }
+      if (rule.final_stage_id && (q as any).opportunity_id) {
+        await supabaseAdmin.from("crm_opportunities").update({ stage_id: rule.final_stage_id }).eq("id", (q as any).opportunity_id);
+      }
+    }
   }
 
   return summary;
