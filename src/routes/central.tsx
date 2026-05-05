@@ -949,6 +949,7 @@ function CentralPage() {
           ticketId: currentTicket?.id,
           contactType: identForm.contactType,
           categoryId: identForm.contactType === "PJ" ? (identForm.categoryId || undefined) : undefined,
+          referralId: identForm.referralId || undefined,
           contractItems: identForm.contactType === "PJ" ? identForm.items.filter(i => i.categoryId) : undefined,
         },
         ...await getAuthHeaders(),
