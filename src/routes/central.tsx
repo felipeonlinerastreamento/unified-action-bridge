@@ -1780,10 +1780,40 @@ function CentralPage() {
             operator_user_id: user?.id || null,
             operator_name: profile?.name || null,
           });
+        } catch (csatErr: any) {
+          console.warn("[Finalize] CSAT step failed:", csatErr?.message);
         }
-      } catch (csatErr: any) {
-        console.warn("[Finalize] CSAT step failed:", csatErr?.message);
-      }
+      } else {
+        // Sem CSAT: envia a mensagem de finalização tradicional
+        let templateContent = `Seu atendimento foi finalizado e desde já agradecemos pela atenção.\n\nSe você precisar de suporte no futuro, fique à vontade para falar conosco.\n\nTenha um ótimo dia!\n\nProtocolo desse atendimento: {protocolo}\n\nEsta é uma mensagem automática e não precisa responder.`;
+        try {
+          const { data: tpl } = await supabase
+            .from("zapi_message_templates" as any)
+            .select("content")
+            .eq("key", "finalizacao")
+            .maybeSingle();
+          if (tpl && (tpl as any).content) templateContent = (tpl as any).content;
+        } catch (e) {
+          console.warn("[Finalize] Failed to load template, using default", e);
+        }
+        const closingMessage = applyQuickReplyVars(templateContent, {
+          operatorName: profile?.name,
+          contactName: chatDetail?.contact?.name || chatDetail?.description,
+          protocol: String(protocolNumber),
+        });
+        try {
+          const authH = await getAuthHeaders();
+          await sendText({
+            data: {
+              channelId: selectedChannelId,
+              chatId: selectedChatId,
+              message: closingMessage,
+            },
+            ...authH,
+          });
+        } catch (err: any) {
+          console.warn("[Finalize] Error sending closing message:", err.message);
+        }
       }
       } catch (preErr: any) {
         console.error("[Finalize] pre-finalization step failed (continuing to close chat):", preErr?.message);
