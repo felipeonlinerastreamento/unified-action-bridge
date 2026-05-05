@@ -8,12 +8,15 @@ import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { MessageSquare, Bold, Save } from "lucide-react";
 
-const TEMPLATE_KEYS: Array<{ key: string; label: string; description: string; vars: string[] }> = [
+const DEFAULT_FINALIZACAO = `Seu atendimento foi finalizado e desde já agradecemos pela atenção.\n\nSe você precisar de suporte no futuro, fique à vontade para falar conosco.\n\nTenha um ótimo dia!\n\nProtocolo desse atendimento: {protocolo}\n\nEsta é uma mensagem automática e não precisa responder.`;
+
+const TEMPLATE_KEYS: Array<{ key: string; label: string; description: string; vars: string[]; defaultContent: string }> = [
   {
     key: "finalizacao",
     label: "Mensagem de finalização do atendimento",
-    description: "Enviada automaticamente ao cliente quando o operador finaliza o atendimento.",
+    description: "Enviada automaticamente ao cliente quando o operador finaliza o atendimento (somente quando o CSAT está desativado).",
     vars: ["{protocolo}", "{nome_contato}", "{nome_operador}"],
+    defaultContent: DEFAULT_FINALIZACAO,
   },
 ];
 
@@ -31,9 +34,11 @@ export function ZapiMessageTemplatesConfig() {
   });
 
   useEffect(() => {
-    if (!templates.length) return;
     const next: Record<string, string> = {};
-    for (const t of templates) next[t.key] = t.content || "";
+    for (const meta of TEMPLATE_KEYS) {
+      const existing = templates.find((t: any) => t.key === meta.key);
+      next[meta.key] = (existing?.content && existing.content.trim()) || meta.defaultContent;
+    }
     setDrafts((prev) => ({ ...next, ...prev }));
   }, [templates]);
 

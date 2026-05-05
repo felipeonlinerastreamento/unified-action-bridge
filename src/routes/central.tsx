@@ -1726,11 +1726,65 @@ function CentralPage() {
         }
       }
 
-      // Send closing message with protocol number before finalizing
-      // Admins can opt out via skipClosingMessage to silently close.
-      if (!skipMsg) {
-        const protocolNumber = formatTicketProtocol(ticketForProtocol, chatDetail?.protocol || selectedChatId);
-        // Busca template editável; cai para o padrão se ainda não houver registro
+      // Mensagens de encerramento.
+      // Regra: se CSAT estiver ativo, enviamos APENAS a mensagem de CSAT
+      // (que já anuncia o encerramento e pede a avaliação). Se CSAT estiver
+      // desativado, enviamos a mensagem de finalização tradicional.
+      // Admins podem optar por não enviar nada via skipClosingMessage.
+      const protocolNumber = formatTicketProtocol(ticketForProtocol, chatDetail?.protocol || selectedChatId);
+
+      // Carrega configuração de CSAT primeiro para decidir o que enviar.
+      let csatEnabled = false;
+      let csatMessage = "";
+      try {
+        const { data: csat } = await supabase
+          .from("csat_settings" as any)
+          .select("is_enabled, message")
+          .maybeSingle();
+        if (csat && (csat as any).is_enabled && (csat as any).message) {
+          csatEnabled = true;
+          csatMessage = (csat as any).message as string;
+        }
+      } catch (e) {
+        console.warn("[Finalize] Failed to load CSAT settings", e);
+      }
+
+      if (skipMsg) {
+        console.log("[Finalize] Skipping closing message and CSAT (admin opt-out)");
+      } else if (csatEnabled && contactPhone) {
+        // Envia somente a mensagem de CSAT (substitui a de finalização)
+        try {
+          const csatMsg = applyQuickReplyVars(csatMessage, {
+            operatorName: profile?.name,
+            contactName: chatDetail?.contact?.name || chatDetail?.description,
+            protocol: String(protocolNumber),
+          });
+          const phoneOnly = String(contactPhone).replace(/\D/g, "");
+          const authH2 = await getAuthHeaders();
+          await sendText({
+            data: {
+              channelId: selectedChannelId,
+              chatId: selectedChatId,
+              message: csatMsg,
+            },
+            ...authH2,
+          });
+          // registra pendência para o webhook capturar a resposta
+          await supabase.from("csat_pending" as any).insert({
+            channel_id: selectedChannelId,
+            chat_id: selectedChatId,
+            phone: phoneOnly,
+            contact_name: chatDetail?.contact?.name || chatDetail?.description || null,
+            ticket_id: ticketForProtocol?.id || null,
+            protocol: ticketForProtocol ? formatTicketProtocol(ticketForProtocol, chatDetail?.protocol || selectedChatId) : null,
+            operator_user_id: user?.id || null,
+            operator_name: profile?.name || null,
+          });
+        } catch (csatErr: any) {
+          console.warn("[Finalize] CSAT step failed:", csatErr?.message);
+        }
+      } else {
+        // Sem CSAT: envia a mensagem de finalização tradicional
         let templateContent = `Seu atendimento foi finalizado e desde já agradecemos pela atenção.\n\nSe você precisar de suporte no futuro, fique à vontade para falar conosco.\n\nTenha um ótimo dia!\n\nProtocolo desse atendimento: {protocolo}\n\nEsta é uma mensagem automática e não precisa responder.`;
         try {
           const { data: tpl } = await supabase
@@ -1757,52 +1811,9 @@ function CentralPage() {
             },
             ...authH,
           });
-          console.log("[Finalize] Closing message sent successfully");
         } catch (err: any) {
           console.warn("[Finalize] Error sending closing message:", err.message);
         }
-      } else {
-        console.log("[Finalize] Skipping closing message (admin opt-out)");
-      }
-
-      // CSAT — pesquisa de satisfação após finalização
-      // Respeita o opt-out do admin: se "Finalizar sem enviar mensagem" foi marcado,
-      // não envia nem a mensagem de encerramento nem a pesquisa CSAT.
-      if (skipMsg) {
-        console.log("[Finalize] Skipping CSAT (admin opt-out)");
-      } else {
-      try {
-        const { data: csat } = await supabase
-          .from("csat_settings" as any)
-          .select("is_enabled, message")
-          .maybeSingle();
-        if (csat && (csat as any).is_enabled && (csat as any).message && contactPhone) {
-          const csatMsg = (csat as any).message as string;
-          const phoneOnly = String(contactPhone).replace(/\D/g, "");
-          const authH2 = await getAuthHeaders();
-          await sendText({
-            data: {
-              channelId: selectedChannelId,
-              chatId: selectedChatId,
-              message: csatMsg,
-            },
-            ...authH2,
-          });
-          // registra pendência para o webhook capturar a resposta
-          await supabase.from("csat_pending" as any).insert({
-            channel_id: selectedChannelId,
-            chat_id: selectedChatId,
-            phone: phoneOnly,
-            contact_name: chatDetail?.contact?.name || chatDetail?.description || null,
-            ticket_id: ticketForProtocol?.id || null,
-            protocol: ticketForProtocol ? formatTicketProtocol(ticketForProtocol, chatDetail?.protocol || selectedChatId) : null,
-            operator_user_id: user?.id || null,
-            operator_name: profile?.name || null,
-          });
-        }
-      } catch (csatErr: any) {
-        console.warn("[Finalize] CSAT step failed:", csatErr?.message);
-      }
       }
       } catch (preErr: any) {
         console.error("[Finalize] pre-finalization step failed (continuing to close chat):", preErr?.message);
