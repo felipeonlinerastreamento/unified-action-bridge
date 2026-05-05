@@ -162,6 +162,10 @@ import {
 
 export const Route = createFileRoute("/central")({
   component: CentralPageWithFloating,
+  validateSearch: (s: Record<string, unknown>) => ({
+    chat: typeof s.chat === "string" ? s.chat : undefined,
+    channel: typeof s.channel === "string" ? s.channel : undefined,
+  }),
 });
 
 function CentralPageWithFloating() {
