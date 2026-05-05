@@ -337,28 +337,36 @@ export function MessageTriggersConfig() {
                 {draft.alert_target_type === "sector" && (
                   <div className="max-h-40 overflow-y-auto space-y-1 rounded border p-2">
                     {(sectors as any[]).map((s) => (
-                      <label htmlFor={`trigger-sector-${s.id}`} key={s.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <div
+                        key={s.id}
+                        onClick={() => toggleSector(s.id)}
+                        className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/40 rounded px-1 py-0.5"
+                      >
                         <Checkbox
-                          id={`trigger-sector-${s.id}`}
                           checked={normalizeArr(draft.alert_target_sector_ids).includes(s.id)}
                           onCheckedChange={() => toggleSector(s.id)}
+                          onClick={(e) => e.stopPropagation()}
                         />
-                        {s.name}
-                      </label>
+                        <span>{s.name}</span>
+                      </div>
                     ))}
                   </div>
                 )}
                 {draft.alert_target_type === "users" && (
                   <div className="max-h-40 overflow-y-auto space-y-1 rounded border p-2">
                     {(users as any[]).map((u) => (
-                      <label htmlFor={`trigger-user-${u.user_id}`} key={u.user_id} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <div
+                        key={u.user_id}
+                        onClick={() => toggleUser(u.user_id)}
+                        className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/40 rounded px-1 py-0.5"
+                      >
                         <Checkbox
-                          id={`trigger-user-${u.user_id}`}
                           checked={normalizeArr(draft.alert_target_user_ids).includes(u.user_id)}
                           onCheckedChange={() => toggleUser(u.user_id)}
+                          onClick={(e) => e.stopPropagation()}
                         />
-                        {u.name || u.user_id}
-                      </label>
+                        <span>{u.name || u.user_id}</span>
+                      </div>
                     ))}
                   </div>
                 )}
