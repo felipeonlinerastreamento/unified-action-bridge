@@ -3976,6 +3976,10 @@ function CentralPage() {
                     </div>
                   </>
                 )}
+                <ReferralPicker
+                  value={identForm.referralId}
+                  onChange={(id) => setIdentForm((f) => ({ ...f, referralId: id || "" }))}
+                />
                 <div>
                   <Label className="text-xs">Observações</Label>
                   <Textarea rows={2} value={identForm.notes} onChange={(e) => setIdentForm((f) => ({ ...f, notes: e.target.value }))} />
