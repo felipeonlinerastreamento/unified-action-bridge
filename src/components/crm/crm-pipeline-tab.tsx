@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Plus, Loader2, DollarSign, TrendingUp, X, Pencil, Check, Trash2, Tag } from "lucide-react";
 import { toast } from "sonner";
-import { upsertOpportunity, moveOpportunityStage } from "@/lib/crm.functions";
+import { upsertOpportunity, moveOpportunityStage, deleteOpportunity } from "@/lib/crm.functions";
 import { ReferralPicker } from "@/components/crm/referral-picker";
 
 type ContractItem = { categoryId: string; quantity: number; activationValue: number; monthlyValue: number };
