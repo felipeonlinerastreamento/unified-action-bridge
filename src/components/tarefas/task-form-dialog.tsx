@@ -43,6 +43,9 @@ export function TaskFormDialog({ open, onClose, task, defaultTicketId }: Props) 
   const [assignedTo, setAssignedTo] = useState<string>("none");
   const [recurrenceType, setRecurrenceType] = useState<string>("none");
   const [recurrenceEnd, setRecurrenceEnd] = useState<string>("");
+  const [dayOfWeek, setDayOfWeek] = useState<string>("none");
+  const [dayOfMonth, setDayOfMonth] = useState<string>("");
+  const [adminOnlyComplete, setAdminOnlyComplete] = useState(false);
   const [isGroup, setIsGroup] = useState(false);
   const [participantIds, setParticipantIds] = useState<string[]>([]);
 
