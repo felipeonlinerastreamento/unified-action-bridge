@@ -833,6 +833,7 @@ function CentralPage() {
       cnpj: "",
       companyNameInput: "",
       items: [],
+      referralId: "",
     });
     setIdentTab("vincular");
     setChangingCompany(false);
