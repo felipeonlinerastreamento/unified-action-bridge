@@ -195,6 +195,7 @@ export function CrmPipelineTab() {
           cnpj: form.cnpj || null,
           category_id: form.category_id || null,
           referral_id: form.referral_id || null,
+          owner_id: form.owner_id || null,
           contract_items: items,
         } as any,
       });
