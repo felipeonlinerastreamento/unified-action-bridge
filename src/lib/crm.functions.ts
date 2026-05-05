@@ -83,6 +83,7 @@ const oppInput = z.object({
   contact_email: z.string().max(200).nullable().optional(),
   cnpj: z.string().max(40).nullable().optional(),
   category_id: z.string().uuid().nullable().optional(),
+  referral_id: z.string().uuid().nullable().optional(),
   contract_items: z.array(contractItemSchema).default([]),
 });
 

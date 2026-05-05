@@ -37,6 +37,7 @@ const createCrmContactSchema = z.object({
   originalPhone: z.string().max(32).optional(),
   contactType: z.enum(["PF", "PJ"]).optional(),
   categoryId: z.string().uuid().optional(),
+  referralId: z.string().uuid().optional(),
   contractItems: z.array(contractItemSchema).optional(),
 });
 
@@ -200,6 +201,7 @@ export const createCrmContactWithCompany = createServerFn({ method: "POST" })
         created_by: userId ?? null,
         contact_type: contactType,
         category_id: categoryId,
+        referral_id: data.referralId || null,
         contract_items: items as any,
       })
       .select("id")

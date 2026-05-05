@@ -928,6 +928,7 @@ export type Database = {
           name: string
           notes: string | null
           phone: string
+          referral_id: string | null
           referred_by_contact_id: string | null
           rfm_segment: string | null
           updated_at: string
@@ -950,6 +951,7 @@ export type Database = {
           name: string
           notes?: string | null
           phone: string
+          referral_id?: string | null
           referred_by_contact_id?: string | null
           rfm_segment?: string | null
           updated_at?: string
@@ -972,6 +974,7 @@ export type Database = {
           name?: string
           notes?: string | null
           phone?: string
+          referral_id?: string | null
           referred_by_contact_id?: string | null
           rfm_segment?: string | null
           updated_at?: string
@@ -989,6 +992,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_contacts_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "crm_referrals"
             referencedColumns: ["id"]
           },
           {
@@ -1106,6 +1116,7 @@ export type Database = {
           opportunity_type: string
           owner_id: string | null
           probability: number
+          referral_id: string | null
           source: string | null
           stage_id: string | null
           status: string
@@ -1133,6 +1144,7 @@ export type Database = {
           opportunity_type?: string
           owner_id?: string | null
           probability?: number
+          referral_id?: string | null
           source?: string | null
           stage_id?: string | null
           status?: string
@@ -1160,6 +1172,7 @@ export type Database = {
           opportunity_type?: string
           owner_id?: string | null
           probability?: number
+          referral_id?: string | null
           source?: string | null
           stage_id?: string | null
           status?: string
@@ -1186,6 +1199,13 @@ export type Database = {
             columns: ["contact_id"]
             isOneToOne: false
             referencedRelation: "crm_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_opportunities_referral_id_fkey"
+            columns: ["referral_id"]
+            isOneToOne: false
+            referencedRelation: "crm_referrals"
             referencedColumns: ["id"]
           },
           {
@@ -1457,6 +1477,36 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      crm_referrals: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       crm_tasks: {
         Row: {

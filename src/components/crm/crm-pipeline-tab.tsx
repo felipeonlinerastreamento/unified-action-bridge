@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Plus, Loader2, DollarSign, TrendingUp, X, Pencil, Check, Trash2, Tag } from "lucide-react";
 import { toast } from "sonner";
 import { upsertOpportunity, moveOpportunityStage } from "@/lib/crm.functions";
+import { ReferralPicker } from "@/components/crm/referral-picker";
 
 type ContractItem = { categoryId: string; quantity: number; activationValue: number; monthlyValue: number };
 
@@ -26,6 +27,7 @@ const emptyForm = {
   contact_email: "",
   cnpj: "",
   category_id: "",
+  referral_id: "",
   items: [] as ContractItem[],
 };
 
@@ -136,6 +138,7 @@ export function CrmPipelineTab() {
           contact_email: form.contact_email || null,
           cnpj: form.cnpj || null,
           category_id: form.category_id || null,
+          referral_id: form.referral_id || null,
           contract_items: items,
         },
       });
@@ -307,6 +310,8 @@ export function CrmPipelineTab() {
                 </div>
               </div>
             </div>
+
+            <ReferralPicker value={form.referral_id} onChange={(id) => setForm((f: any) => ({ ...f, referral_id: id || "" }))} />
 
             <div className="rounded-md border border-border bg-muted/30 p-3 space-y-2">
               <div className="flex items-center justify-between">

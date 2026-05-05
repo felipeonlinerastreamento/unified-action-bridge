@@ -49,6 +49,7 @@ import {
 } from "@/lib/gsystem-api.functions";
 import { SubClientLinker } from "@/components/central/sub-client-linker";
 import { ContactPicker, type PickedContact } from "@/components/central/contact-picker";
+import { ReferralPicker } from "@/components/crm/referral-picker";
 import {
   createCrmContactWithCompany,
   createSubClientWithParentCompany,
@@ -772,7 +773,7 @@ function CentralPage() {
   // Identification modal form state
   const [identTab, setIdentTab] = useState<"vincular" | "subcliente" | "vincular-sub" | "crm">("vincular");
   type IdentContractItem = { categoryId: string; quantity: number; activationValue: number; monthlyValue: number };
-  const [identForm, setIdentForm] = useState<{ name: string; phone: string; email: string; notes: string; companyId: string; contactType: "PF" | "PJ"; categoryId: string; cnpj: string; companyNameInput: string; items: IdentContractItem[] }>({ name: "", phone: "", email: "", notes: "", companyId: "", contactType: "PF", categoryId: "", cnpj: "", companyNameInput: "", items: [] });
+  const [identForm, setIdentForm] = useState<{ name: string; phone: string; email: string; notes: string; companyId: string; contactType: "PF" | "PJ"; categoryId: string; cnpj: string; companyNameInput: string; items: IdentContractItem[]; referralId: string }>({ name: "", phone: "", email: "", notes: "", companyId: "", contactType: "PF", categoryId: "", cnpj: "", companyNameInput: "", items: [], referralId: "" });
   const [companySearch, setCompanySearch] = useState("");
   const [subClientSearch, setSubClientSearch] = useState("");
   const [crmCategoryDraft, setCrmCategoryDraft] = useState("");
@@ -832,6 +833,7 @@ function CentralPage() {
       cnpj: "",
       companyNameInput: "",
       items: [],
+      referralId: "",
     });
     setIdentTab("vincular");
     setChangingCompany(false);
@@ -947,6 +949,7 @@ function CentralPage() {
           ticketId: currentTicket?.id,
           contactType: identForm.contactType,
           categoryId: identForm.contactType === "PJ" ? (identForm.categoryId || undefined) : undefined,
+          referralId: identForm.referralId || undefined,
           contractItems: identForm.contactType === "PJ" ? identForm.items.filter(i => i.categoryId) : undefined,
         },
         ...await getAuthHeaders(),
@@ -3973,6 +3976,10 @@ function CentralPage() {
                     </div>
                   </>
                 )}
+                <ReferralPicker
+                  value={identForm.referralId}
+                  onChange={(id) => setIdentForm((f) => ({ ...f, referralId: id || "" }))}
+                />
                 <div>
                   <Label className="text-xs">Observações</Label>
                   <Textarea rows={2} value={identForm.notes} onChange={(e) => setIdentForm((f) => ({ ...f, notes: e.target.value }))} />
