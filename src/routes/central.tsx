@@ -981,6 +981,62 @@ function CentralPage() {
     onError: (err: any) => toast.error(err?.message || "Erro ao cadastrar contato CRM"),
   });
 
+  // Create CRM opportunity (Pipeline) from current contact
+  const createOpportunityMutation = useMutation({
+    mutationFn: async () => {
+      if (!crmContactLookup) throw new Error("Cadastre o contato no CRM primeiro");
+      const { data: stages } = await supabase
+        .from("crm_pipeline_stages")
+        .select("id, position, is_won, is_lost")
+        .eq("is_won", false)
+        .eq("is_lost", false)
+        .order("position", { ascending: true })
+        .limit(1);
+      const firstStage = stages?.[0];
+      if (!firstStage) throw new Error("Nenhum estágio do pipeline configurado");
+
+      const { error } = await supabase.from("crm_opportunities").insert({
+        title: `Oportunidade — ${crmContactLookup.name}`,
+        contact_id: crmContactLookup.id,
+        company_id: crmContactLookup.company_id || null,
+        stage_id: firstStage.id,
+        contact_name: crmContactLookup.name,
+        contact_phone: crmContactLookup.phone,
+        contact_email: crmContactLookup.email,
+        company_name: (crmContactLookup as any).companies?.name || null,
+        category_id: (crmContactLookup as any).category_id || null,
+        referral_id: (crmContactLookup as any).referral_id || null,
+        contract_items: (crmContactLookup as any).contract_items || [],
+        owner_id: user?.id || null,
+        created_by: user?.id || null,
+        source: "central",
+        status: "open",
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Oportunidade criada no Pipeline");
+      queryClient.invalidateQueries({ queryKey: ["crm-opportunities"] });
+      queryClient.invalidateQueries({ queryKey: ["contact-opportunities", crmContactLookup?.id] });
+    },
+    onError: (err: any) => toast.error(err?.message || "Erro ao criar oportunidade"),
+  });
+
+  // Existing opportunities for this contact (to avoid duplicates / show link)
+  const { data: contactOpportunities = [] } = useQuery({
+    queryKey: ["contact-opportunities", crmContactLookup?.id],
+    queryFn: async () => {
+      if (!crmContactLookup?.id) return [];
+      const { data } = await supabase
+        .from("crm_opportunities")
+        .select("id, title, status, stage_id")
+        .eq("contact_id", crmContactLookup.id)
+        .order("created_at", { ascending: false });
+      return data || [];
+    },
+    enabled: !!crmContactLookup?.id && isAuthenticated,
+  });
+
   // Link company directly (for "vincular" tab)
   const linkCompanyDirectMutation = useMutation({
     mutationFn: async (selectedValue: string) => {
