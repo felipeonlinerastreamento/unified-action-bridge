@@ -64,6 +64,15 @@ async function insertSystemComment(
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
+function normalizeFlowText(value: string | null | undefined) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/\s+/g, " ")
+    .trim()
+    .toLowerCase();
+}
+
 /**
  * When a ticket is bound to a Z-API chat (attendance_id is a UUID matching a
  * row in zapi_chats), finalizing the ticket must also remove that chat from
@@ -117,23 +126,42 @@ export async function finalizeTicketWithFlow(
       | "aberto"
       | "em_andamento";
 
-    // Re-fetch live sector to detect "already routed" — when the ticket is
-    // already in the TE target sector, a second click on "Finalizar" must
-    // actually finalize (status=finalizado) instead of re-routing forever.
+    // Re-fetch live state and routing history to detect "already routed" —
+    // when the ticket is already in the TE target sector, a second click on
+    // "Finalizar" must actually finalize instead of re-routing forever.
     let liveSectorTE: string | null = ticket.sector ?? null;
+    let hasPreviousTERoute = false;
     try {
-      const { data: fresh } = await supabase
-        .from("service_tickets")
-        .select("sector")
-        .eq("id", ticket.id)
-        .maybeSingle();
+      const [{ data: fresh }, { data: assignments }, { data: routeComments }] = await Promise.all([
+        supabase.from("service_tickets").select("sector").eq("id", ticket.id).maybeSingle(),
+        supabase
+          .from("ticket_assignments")
+          .select("sector_name")
+          .eq("ticket_id", ticket.id)
+          .order("created_at", { ascending: false })
+          .limit(10),
+        supabase
+          .from("ticket_comments")
+          .select("content")
+          .eq("ticket_id", ticket.id)
+          .eq("comment_type", "encaminhamento")
+          .order("created_at", { ascending: false })
+          .limit(10),
+      ]);
       if (fresh?.sector !== undefined) liveSectorTE = fresh.sector;
+      const targetNorm = normalizeFlowText(targetSector);
+      hasPreviousTERoute = Boolean(
+        assignments?.some((a: any) => normalizeFlowText(a.sector_name) === targetNorm) ||
+          routeComments?.some((c: any) => {
+            const content = normalizeFlowText(c.content);
+            return content.includes("encaminhado automaticamente") && content.includes(targetNorm);
+          })
+      );
     } catch {
       // ignore
     }
     const alreadyRoutedTE =
-      String(liveSectorTE || "").trim().toLowerCase() ===
-      String(targetSector || "").trim().toLowerCase();
+      normalizeFlowText(liveSectorTE) === normalizeFlowText(targetSector) || hasPreviousTERoute;
 
     if (alreadyRoutedTE) {
       // Standard finalize — skip routing, skip duplicate gsystem sync
