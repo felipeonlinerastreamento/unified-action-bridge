@@ -26,6 +26,7 @@ const emptyForm = {
   contact_email: "",
   cnpj: "",
   category_id: "",
+  referral_id: "",
   items: [] as ContractItem[],
 };
 
