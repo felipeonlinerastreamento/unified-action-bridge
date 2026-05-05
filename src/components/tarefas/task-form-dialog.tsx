@@ -224,6 +224,40 @@ export function TaskFormDialog({ open, onClose, task, defaultTicketId }: Props) 
                     <Sparkles className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
                     Ao concluir esta tarefa, ela será reaberta automaticamente com a próxima data de vencimento.
                   </p>
+
+                  {(recurrenceType === "weekly" || recurrenceType === "biweekly") && (
+                    <div>
+                      <Label className="text-xs">Dia da semana</Label>
+                      <Select value={dayOfWeek} onValueChange={setDayOfWeek}>
+                        <SelectTrigger><SelectValue placeholder="Mesmo dia da última" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Mesmo dia da última</SelectItem>
+                          <SelectItem value="0">Domingo</SelectItem>
+                          <SelectItem value="1">Segunda-feira</SelectItem>
+                          <SelectItem value="2">Terça-feira</SelectItem>
+                          <SelectItem value="3">Quarta-feira</SelectItem>
+                          <SelectItem value="4">Quinta-feira</SelectItem>
+                          <SelectItem value="5">Sexta-feira</SelectItem>
+                          <SelectItem value="6">Sábado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {recurrenceType === "monthly" && (
+                    <div>
+                      <Label className="text-xs">Dia do mês (1-28)</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={28}
+                        value={dayOfMonth}
+                        onChange={(e) => setDayOfMonth(e.target.value)}
+                        placeholder="Ex: 5"
+                      />
+                    </div>
+                  )}
+
                   <div>
                     <Label className="text-xs">Data final da recorrência (opcional)</Label>
                     <Input type="date" value={recurrenceEnd} onChange={(e) => setRecurrenceEnd(e.target.value)} />
@@ -231,6 +265,19 @@ export function TaskFormDialog({ open, onClose, task, defaultTicketId }: Props) 
                 </div>
               )}
             </div>
+
+            {isAdmin && (
+              <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 p-3">
+                <div className="flex items-start gap-2">
+                  <Lock className="h-4 w-4 text-amber-600 mt-0.5" />
+                  <div>
+                    <Label>Somente Admin pode concluir</Label>
+                    <p className="text-xs text-muted-foreground">Trava a finalização para perfil administrador</p>
+                  </div>
+                </div>
+                <Switch checked={adminOnlyComplete} onCheckedChange={setAdminOnlyComplete} />
+              </div>
+            )}
 
             <div className="flex items-center justify-between rounded-lg border p-3">
               <div>
