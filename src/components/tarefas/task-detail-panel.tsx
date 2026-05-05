@@ -1,14 +1,26 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Pencil, Trash2, Send, Repeat } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Pencil, Trash2, Send, Repeat, Lock, CheckCircle2, History } from "lucide-react";
 import { useTasks, useTaskComments, type Task } from "@/hooks/use-tasks";
 import { useAuth } from "@/hooks/use-auth";
 import { TaskFormDialog } from "./task-form-dialog";
+import { supabase } from "@/integrations/supabase/client";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 export function TaskDetailPanel({
   task,
@@ -19,11 +31,34 @@ export function TaskDetailPanel({
   open: boolean;
   onClose: () => void;
 }) {
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
+  const isAdmin = hasRole("admin");
   const { updateTask, deleteTask, addComment, profiles } = useTasks();
   const { data: comments = [] } = useTaskComments(task?.id ?? null);
+  const qc = useQueryClient();
   const [editOpen, setEditOpen] = useState(false);
   const [newComment, setNewComment] = useState("");
+  const [completeOpen, setCompleteOpen] = useState(false);
+  const [completeComment, setCompleteComment] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+
+  const { data: history = [] } = useQuery({
+    queryKey: ["task-completion-history", task?.id],
+    enabled: !!task?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("task_completion_history" as any)
+        .select("*")
+        .eq("task_id", task!.id)
+        .order("completed_at", { ascending: false });
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+  });
+
+  useEffect(() => {
+    if (!completeOpen) setCompleteComment("");
+  }, [completeOpen]);
 
   if (!task) return null;
 
@@ -43,7 +78,57 @@ export function TaskDetailPanel({
     onClose();
   };
 
-  const canDelete = user?.id === task.created_by;
+  const canDelete = user?.id === task.created_by || isAdmin;
+  const adminLocked = !!task.admin_only_complete;
+  const canComplete = !adminLocked || isAdmin;
+
+  const handleConfirmComplete = async () => {
+    if (!completeComment.trim()) {
+      toast.error("Comentário obrigatório para concluir");
+      return;
+    }
+    if (!user?.id) return;
+    setSubmitting(true);
+    try {
+      // Insert history BEFORE completing (trigger will roll the date forward)
+      const { error: histErr } = await supabase.from("task_completion_history" as any).insert({
+        task_id: task.id,
+        completed_by: user.id,
+        comment: completeComment.trim(),
+        scheduled_for: task.due_date,
+        recurrence_type: task.recurrence_type,
+      } as any);
+      if (histErr) throw histErr;
+
+      await updateTask.mutateAsync({
+        id: task.id,
+        updates: { status: "completed", completed_at: new Date().toISOString() } as any,
+      });
+
+      qc.invalidateQueries({ queryKey: ["task-completion-history", task.id] });
+      toast.success(
+        task.recurrence_type && task.recurrence_type !== "none"
+          ? "Concluído. Tarefa reagendada para o próximo ciclo."
+          : "Tarefa concluída."
+      );
+      setCompleteOpen(false);
+    } catch (e: any) {
+      toast.error(e.message || "Falha ao concluir");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const recurrenceLabel = (t?: string | null) => {
+    switch (t) {
+      case "daily": return "Diária";
+      case "weekly": return "Semanal";
+      case "biweekly": return "Quinzenal";
+      case "monthly": return "Mensal";
+      case "yearly": return "Anual";
+      default: return t || "—";
+    }
+  };
 
   return (
     <>
@@ -61,7 +146,13 @@ export function TaskDetailPanel({
                 {task.recurrence_type && (
                   <Badge variant="outline" className="gap-1">
                     <Repeat className="h-3 w-3" />
-                    {task.recurrence_type}
+                    {recurrenceLabel(task.recurrence_type)}
+                  </Badge>
+                )}
+                {adminLocked && (
+                  <Badge variant="outline" className="gap-1 border-amber-400 text-amber-700 dark:text-amber-400">
+                    <Lock className="h-3 w-3" />
+                    Conclusão restrita ao Admin
                   </Badge>
                 )}
               </div>
@@ -105,13 +196,45 @@ export function TaskDetailPanel({
 
               {task.recurrence_type && (
                 <div className="rounded-lg border border-dashed border-primary/30 bg-primary/5 p-3 text-xs text-muted-foreground">
-                  Recorrência <strong>{task.recurrence_type}</strong>
-                  {task.recurrence_end_date && <> até {new Date(task.recurrence_end_date).toLocaleDateString("pt-BR")}</>}.
+                  Recorrência <strong>{recurrenceLabel(task.recurrence_type)}</strong>
+                  {task.recurrence_day_of_week != null && (
+                    <> · dia {["Dom","Seg","Ter","Qua","Qui","Sex","Sáb"][task.recurrence_day_of_week]}</>
+                  )}
+                  {task.recurrence_day_of_month != null && <> · dia {task.recurrence_day_of_month} do mês</>}
+                  {task.recurrence_end_date && <> · até {new Date(task.recurrence_end_date).toLocaleDateString("pt-BR")}</>}.
                   Ao concluir, a tarefa será reaberta com a próxima data automaticamente.
                 </div>
               )}
 
               <Separator />
+
+              {history.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
+                    <History className="h-3.5 w-3.5" /> Histórico de conclusões ({history.length})
+                  </p>
+                  <div className="space-y-2">
+                    {history.map((h) => {
+                      const author = profiles.find((p) => p.user_id === h.completed_by);
+                      return (
+                        <div key={h.id} className="rounded-lg border bg-muted/30 p-2">
+                          <div className="flex justify-between items-center text-xs text-muted-foreground mb-1">
+                            <span className="font-medium">{author?.name || "Usuário"}</span>
+                            <span>{new Date(h.completed_at).toLocaleString("pt-BR")}</span>
+                          </div>
+                          <p className="text-sm whitespace-pre-wrap">{h.comment}</p>
+                          {h.scheduled_for && (
+                            <p className="text-[10px] text-muted-foreground mt-1">
+                              Vencimento original: {new Date(h.scheduled_for).toLocaleString("pt-BR")}
+                            </p>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                  <Separator className="mt-3" />
+                </div>
+              )}
 
               <div>
                 <p className="text-xs font-medium text-muted-foreground mb-2">Comentários ({comments.length})</p>
@@ -156,10 +279,13 @@ export function TaskDetailPanel({
               {task.status !== "completed" && (
                 <Button
                   size="sm"
-                  onClick={() => updateTask.mutate({ id: task.id, updates: { status: "completed" } })}
+                  onClick={() => setCompleteOpen(true)}
+                  disabled={!canComplete}
+                  title={!canComplete ? "Apenas administradores podem concluir" : undefined}
                   className="flex-1"
                 >
-                  Concluir
+                  <CheckCircle2 className="h-3.5 w-3.5 mr-1" />
+                  Concluir agora
                 </Button>
               )}
               {canDelete && (
@@ -168,11 +294,47 @@ export function TaskDetailPanel({
                 </Button>
               )}
             </div>
+            {!canComplete && (
+              <p className="text-[11px] text-amber-600 flex items-center gap-1">
+                <Lock className="h-3 w-3" /> Esta tarefa só pode ser concluída por um administrador.
+              </p>
+            )}
           </div>
         </SheetContent>
       </Sheet>
 
       <TaskFormDialog open={editOpen} onClose={() => setEditOpen(false)} task={task} />
+
+      <Dialog open={completeOpen} onOpenChange={setCompleteOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Concluir tarefa</DialogTitle>
+            <DialogDescription>
+              {task.recurrence_type && task.recurrence_type !== "none"
+                ? "Ao concluir, a tarefa será reagendada para o próximo ciclo. Um comentário é obrigatório e ficará no histórico."
+                : "Um comentário é obrigatório e ficará registrado no histórico."}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label>Comentário de conclusão *</Label>
+            <Textarea
+              value={completeComment}
+              onChange={(e) => setCompleteComment(e.target.value)}
+              rows={4}
+              placeholder="Descreva o que foi feito..."
+              autoFocus
+            />
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCompleteOpen(false)} disabled={submitting}>
+              Cancelar
+            </Button>
+            <Button onClick={handleConfirmComplete} disabled={submitting || !completeComment.trim()}>
+              {submitting ? "Concluindo..." : "Confirmar conclusão"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   );
 }
