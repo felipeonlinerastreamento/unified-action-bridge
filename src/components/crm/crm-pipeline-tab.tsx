@@ -472,6 +472,29 @@ export function CrmPipelineTab() {
 
             <ReferralPicker value={form.referral_id} onChange={(id) => setForm((f: any) => ({ ...f, referral_id: id || "" }))} />
 
+            <div>
+              <Label>Responsável</Label>
+              <Select
+                value={form.owner_id || (user?.id ?? "")}
+                onValueChange={(v) => setForm((f: any) => ({ ...f, owner_id: v }))}
+              >
+                <SelectTrigger><SelectValue placeholder="Selecionar responsável" /></SelectTrigger>
+                <SelectContent>
+                  {user?.id && !allProfiles.find((p: any) => p.user_id === user.id) && (
+                    <SelectItem value={user.id}>{profileNameFor(user.id, allProfiles) || "Eu"}</SelectItem>
+                  )}
+                  {allProfiles.map((p: any) => (
+                    <SelectItem key={p.user_id} value={p.user_id}>
+                      {p.name || p.user_id.slice(0, 8)}{p.user_id === user?.id ? " (você)" : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                A oportunidade aparecerá no pipeline do responsável escolhido.
+              </p>
+            </div>
+
             <div className="rounded-md border border-border bg-muted/30 p-3 space-y-2">
               <div className="flex items-center justify-between">
                 <Label className="text-xs uppercase tracking-wide text-muted-foreground">Itens da proposta</Label>
