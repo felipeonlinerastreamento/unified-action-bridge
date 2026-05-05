@@ -162,6 +162,10 @@ import {
 
 export const Route = createFileRoute("/central")({
   component: CentralPageWithFloating,
+  validateSearch: (s: Record<string, unknown>) => ({
+    chat: typeof s.chat === "string" ? s.chat : undefined,
+    channel: typeof s.channel === "string" ? s.channel : undefined,
+  }),
 });
 
 function CentralPageWithFloating() {
@@ -375,11 +379,20 @@ function CentralPage() {
     enabled: isAuthenticated,
   });
 
+  const search = Route.useSearch();
   useEffect(() => {
     if (channels.length > 0 && !selectedChannelId) {
-      setSelectedChannelId(channels[0].id);
+      setSelectedChannelId(search.channel || channels[0].id);
     }
-  }, [channels, selectedChannelId]);
+  }, [channels, selectedChannelId, search.channel]);
+
+  useEffect(() => {
+    if (search.chat && search.chat !== selectedChatId) {
+      setSelectedChatId(search.chat);
+      if (search.channel) setSelectedChannelId(search.channel);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [search.chat, search.channel]);
 
   const getAuthHeaders = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();

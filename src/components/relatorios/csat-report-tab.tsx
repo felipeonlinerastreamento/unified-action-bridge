@@ -1,5 +1,6 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Link } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +10,8 @@ import {
 } from "@/components/ui/table";
 import { ReportKpiCard } from "@/components/relatorios/report-kpi-card";
 import { exportToCSV } from "@/components/relatorios/export-utils";
-import { Loader2, Star, Download } from "lucide-react";
+import { Loader2, Star, Download, MessageSquare, X } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface Props {
   dateFrom: string;
@@ -18,6 +20,8 @@ interface Props {
 }
 
 export function CsatReportTab({ dateFrom, dateTo, operatorFilter }: Props) {
+  const [scoreFilter, setScoreFilter] = useState<number | null>(null);
+
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ["csat-report", dateFrom, dateTo, operatorFilter],
     queryFn: async () => {
@@ -43,13 +47,17 @@ export function CsatReportTab({ dateFrom, dateTo, operatorFilter }: Props) {
       sum += Number(r.score) || 0;
     }
     const avg = total ? sum / total : 0;
-    const satisfaction = total ? ((counts[2] + counts[3]) / total) * 100 : 0;
-    return { total, counts, avg, satisfaction };
+    return { total, counts, avg };
   }, [rows]);
+
+  const filteredRows = useMemo(
+    () => (scoreFilter == null ? rows : rows.filter((r: any) => Number(r.score) === scoreFilter)),
+    [rows, scoreFilter],
+  );
 
   const handleExport = () => {
     exportToCSV(
-      rows.map((r: any) => ({
+      filteredRows.map((r: any) => ({
         Data: new Date(r.created_at).toLocaleString("pt-BR"),
         Contato: r.contact_name || "",
         Telefone: r.phone || "",
@@ -80,25 +88,50 @@ export function CsatReportTab({ dateFrom, dateTo, operatorFilter }: Props) {
     );
   }
 
+  const toggleScore = (s: number) => setScoreFilter((prev) => (prev === s ? null : s));
+
+  const kpiBtnClass = (active: boolean) =>
+    cn(
+      "text-left transition-all rounded-lg",
+      "hover:ring-2 hover:ring-primary/40 cursor-pointer",
+      active && "ring-2 ring-primary",
+    );
+
   return (
     <div className="space-y-4">
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <ReportKpiCard title="Total respostas" value={stats.total} icon={Star} />
-        <ReportKpiCard title="Nota média" value={stats.avg.toFixed(2)} icon={Star} />
-        <ReportKpiCard title="Ruim" value={stats.counts[1] || 0} icon={Star} />
-        <ReportKpiCard title="Bom" value={stats.counts[2] || 0} icon={Star} />
-        <ReportKpiCard title="Ótimo" value={stats.counts[3] || 0} icon={Star} />
+        <div><ReportKpiCard title="Total respostas" value={stats.total} icon={Star} /></div>
+        <div><ReportKpiCard title="Nota média" value={stats.avg.toFixed(2)} icon={Star} /></div>
+        <button type="button" onClick={() => toggleScore(1)} className={kpiBtnClass(scoreFilter === 1)}>
+          <ReportKpiCard title="Ruim 😒" value={stats.counts[1] || 0} icon={Star} subtitle="Clique para filtrar" />
+        </button>
+        <button type="button" onClick={() => toggleScore(2)} className={kpiBtnClass(scoreFilter === 2)}>
+          <ReportKpiCard title="Bom 😊" value={stats.counts[2] || 0} icon={Star} subtitle="Clique para filtrar" />
+        </button>
+        <button type="button" onClick={() => toggleScore(3)} className={kpiBtnClass(scoreFilter === 3)}>
+          <ReportKpiCard title="Ótimo 😍" value={stats.counts[3] || 0} icon={Star} subtitle="Clique para filtrar" />
+        </button>
       </div>
 
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base">Histórico de avaliações</CardTitle>
-          <Button size="sm" variant="outline" onClick={handleExport} disabled={!rows.length}>
+          <div className="flex items-center gap-2">
+            <CardTitle className="text-base">Histórico de avaliações</CardTitle>
+            {scoreFilter != null && (
+              <Badge variant="outline" className="gap-1">
+                Filtro: {labelBadge(scoreFilter)}
+                <button onClick={() => setScoreFilter(null)} className="ml-1" aria-label="Limpar filtro">
+                  <X className="h-3 w-3" />
+                </button>
+              </Badge>
+            )}
+          </div>
+          <Button size="sm" variant="outline" onClick={handleExport} disabled={!filteredRows.length}>
             <Download className="h-4 w-4 mr-1" /> Exportar CSV
           </Button>
         </CardHeader>
         <CardContent>
-          {rows.length === 0 ? (
+          {filteredRows.length === 0 ? (
             <p className="text-sm text-muted-foreground py-6 text-center">
               Nenhuma avaliação registrada no período.
             </p>
@@ -112,10 +145,11 @@ export function CsatReportTab({ dateFrom, dateTo, operatorFilter }: Props) {
                   <TableHead>Operador</TableHead>
                   <TableHead>Protocolo</TableHead>
                   <TableHead>Avaliação</TableHead>
+                  <TableHead className="text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {rows.map((r: any) => (
+                {filteredRows.map((r: any) => (
                   <TableRow key={r.id}>
                     <TableCell className="text-xs">{new Date(r.created_at).toLocaleString("pt-BR")}</TableCell>
                     <TableCell>{r.contact_name || "—"}</TableCell>
@@ -123,6 +157,20 @@ export function CsatReportTab({ dateFrom, dateTo, operatorFilter }: Props) {
                     <TableCell>{r.operator_name || "—"}</TableCell>
                     <TableCell className="text-xs font-mono">{r.protocol || "—"}</TableCell>
                     <TableCell>{labelBadge(r.score)}</TableCell>
+                    <TableCell className="text-right">
+                      {r.chat_id ? (
+                        <Button asChild size="sm" variant="ghost" title="Abrir conversa">
+                          <Link
+                            to="/central"
+                            search={{ chat: r.chat_id, channel: r.channel_id || undefined }}
+                          >
+                            <MessageSquare className="h-4 w-4" />
+                          </Link>
+                        </Button>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
