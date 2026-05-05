@@ -311,6 +311,8 @@ export function CrmPipelineTab() {
               </div>
             </div>
 
+            <ReferralPicker value={form.referral_id} onChange={(id) => setForm((f: any) => ({ ...f, referral_id: id || "" }))} />
+
             <div className="rounded-md border border-border bg-muted/30 p-3 space-y-2">
               <div className="flex items-center justify-between">
                 <Label className="text-xs uppercase tracking-wide text-muted-foreground">Itens da proposta</Label>
