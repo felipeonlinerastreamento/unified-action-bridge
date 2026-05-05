@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Loader2, DollarSign, TrendingUp, X, Pencil, Check, Trash2, Tag } from "lucide-react";
+import { Plus, Loader2, DollarSign, TrendingUp, X, Pencil, Check, Trash2, Tag, Search } from "lucide-react";
 import { toast } from "sonner";
 import { upsertOpportunity, moveOpportunityStage, deleteOpportunity } from "@/lib/crm.functions";
 import { ReferralPicker } from "@/components/crm/referral-picker";
@@ -33,12 +34,22 @@ const emptyForm = {
 
 export function CrmPipelineTab() {
   const qc = useQueryClient();
+  const { user, hasRole } = useAuth();
+  const isPrivileged = hasRole("admin") || hasRole("gestor");
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<any>(emptyForm);
   const [catDraft, setCatDraft] = useState("");
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
   const [editingCatName, setEditingCatName] = useState("");
+
+  // Filters
+  const [ownerFilter, setOwnerFilter] = useState<string>("mine"); // mine | all | <userId>
+  const [searchTerm, setSearchTerm] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [minValue, setMinValue] = useState<string>("");
+  const [maxValue, setMaxValue] = useState<string>("");
 
   const { data: stages = [] } = useQuery({
     queryKey: ["crm-stages"],
@@ -64,6 +75,39 @@ export function CrmPipelineTab() {
       return data || [];
     },
   });
+  const { data: owners = [] } = useQuery({
+    queryKey: ["crm-owners"],
+    enabled: isPrivileged,
+    queryFn: async () => {
+      const ids = Array.from(new Set(opps.map((o: any) => o.created_by || o.owner_id).filter(Boolean)));
+      if (ids.length === 0) return [] as { user_id: string; name: string }[];
+      const { data } = await supabase.from("profiles").select("user_id, name").in("user_id", ids);
+      return (data as any[]) || [];
+    },
+  });
+
+  const filteredOpps = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+    const min = minValue ? Number(minValue) : null;
+    const max = maxValue ? Number(maxValue) : null;
+    return opps.filter((o: any) => {
+      // Owner scope
+      if (isPrivileged) {
+        if (ownerFilter === "mine" && o.created_by !== user?.id && o.owner_id !== user?.id) return false;
+        if (ownerFilter !== "mine" && ownerFilter !== "all" && o.created_by !== ownerFilter && o.owner_id !== ownerFilter) return false;
+      }
+      if (categoryFilter !== "all" && o.category_id !== categoryFilter) return false;
+      if (statusFilter !== "all" && o.status !== statusFilter) return false;
+      const v = Number(o.expected_value || 0);
+      if (min != null && v < min) return false;
+      if (max != null && v > max) return false;
+      if (term) {
+        const hay = `${o.title || ""} ${o.contact_name || ""} ${o.company_name || ""} ${o.crm_contacts?.name || ""} ${o.companies?.name || ""}`.toLowerCase();
+        if (!hay.includes(term)) return false;
+      }
+      return true;
+    });
+  }, [opps, ownerFilter, categoryFilter, statusFilter, minValue, maxValue, searchTerm, user?.id, isPrivileged]);
 
   const createCatMut = useMutation({
     mutationFn: async () => {
@@ -100,8 +144,8 @@ export function CrmPipelineTab() {
   });
 
   const totals = useMemo(() => {
-    const open = opps.filter((o: any) => o.status === "open");
-    const won = opps.filter((o: any) => o.status === "won");
+    const open = filteredOpps.filter((o: any) => o.status === "open");
+    const won = filteredOpps.filter((o: any) => o.status === "won");
     const valOpen = open.reduce((s: number, o: any) => s + Number(o.expected_value || 0), 0);
     const weighted = open.reduce(
       (s: number, o: any) => s + Number(o.expected_value || 0) * (Number(o.probability || 0) / 100),
@@ -109,7 +153,7 @@ export function CrmPipelineTab() {
     );
     const valWon = won.reduce((s: number, o: any) => s + Number(o.expected_value || 0), 0);
     return { count: open.length, valOpen, weighted, valWon };
-  }, [opps]);
+  }, [filteredOpps]);
 
   const activationTotal = useMemo(
     () => form.items.reduce((s: number, i: ContractItem) => s + (Number(i.activationValue) || 0) * (Number(i.quantity) || 0), 0),
@@ -209,9 +253,71 @@ export function CrmPipelineTab() {
         <Button size="sm" onClick={() => { setEditingId(null); setForm(emptyForm); setOpen(true); }}><Plus className="h-4 w-4 mr-1" /> Nova oportunidade</Button>
       </div>
 
+      {/* Filters */}
+      <div className="flex flex-wrap items-end gap-2 p-3 rounded-lg border bg-card">
+        <div className="flex-1 min-w-[180px]">
+          <Label className="text-[10px] text-muted-foreground">Buscar (título, contato, empresa)</Label>
+          <div className="relative">
+            <Search className="h-3 w-3 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-8 text-xs pl-7" placeholder="Nome..." />
+          </div>
+        </div>
+        {isPrivileged && (
+          <div>
+            <Label className="text-[10px] text-muted-foreground">Responsável</Label>
+            <Select value={ownerFilter} onValueChange={setOwnerFilter}>
+              <SelectTrigger className="h-8 text-xs w-[170px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="mine">Meus cadastros</SelectItem>
+                <SelectItem value="all">Todos</SelectItem>
+                {owners.map((o: any) => (
+                  <SelectItem key={o.user_id} value={o.user_id}>{o.name || o.user_id.slice(0, 8)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        <div>
+          <Label className="text-[10px] text-muted-foreground">Categoria</Label>
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="h-8 text-xs w-[150px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas</SelectItem>
+              {categories.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-[10px] text-muted-foreground">Status</Label>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="h-8 text-xs w-[130px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="open">Aberto</SelectItem>
+              <SelectItem value="won">Ganho</SelectItem>
+              <SelectItem value="lost">Perdido</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-[10px] text-muted-foreground">Valor mín.</Label>
+          <Input type="number" value={minValue} onChange={(e) => setMinValue(e.target.value)} className="h-8 text-xs w-[100px]" placeholder="0" />
+        </div>
+        <div>
+          <Label className="text-[10px] text-muted-foreground">Valor máx.</Label>
+          <Input type="number" value={maxValue} onChange={(e) => setMaxValue(e.target.value)} className="h-8 text-xs w-[100px]" placeholder="∞" />
+        </div>
+        {(searchTerm || categoryFilter !== "all" || statusFilter !== "all" || minValue || maxValue || (isPrivileged && ownerFilter !== "mine")) && (
+          <Button size="sm" variant="ghost" onClick={() => { setSearchTerm(""); setCategoryFilter("all"); setStatusFilter("all"); setMinValue(""); setMaxValue(""); setOwnerFilter("mine"); }}>
+            <X className="h-3 w-3 mr-1" /> Limpar
+          </Button>
+        )}
+        <Badge variant="secondary" className="ml-auto">{filteredOpps.length} resultado(s)</Badge>
+      </div>
+
       <div className="grid gap-3 overflow-x-auto" style={{ gridTemplateColumns: `repeat(${stages.length}, minmax(220px, 1fr))` }}>
         {stages.map((s: any) => {
-          const stageOpps = opps.filter((o: any) => o.stage_id === s.id);
+          const stageOpps = filteredOpps.filter((o: any) => o.stage_id === s.id);
           const stageVal = stageOpps.reduce((sum: number, o: any) => sum + Number(o.expected_value || 0), 0);
           return (
             <Card key={s.id} className="bg-muted/30">
