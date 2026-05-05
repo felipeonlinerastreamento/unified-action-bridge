@@ -260,9 +260,9 @@ export function CrmPipelineTab() {
         })}
       </div>
 
-      <Dialog open={open} onOpenChange={setOpen}>
+      <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setEditingId(null); setForm(emptyForm); } }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>Nova oportunidade</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{editingId ? "Editar oportunidade" : "Nova oportunidade"}</DialogTitle></DialogHeader>
           <div className="space-y-3">
             <div><Label>Título *</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
 
