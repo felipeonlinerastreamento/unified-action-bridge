@@ -144,8 +144,8 @@ export function CrmPipelineTab() {
   });
 
   const totals = useMemo(() => {
-    const open = opps.filter((o: any) => o.status === "open");
-    const won = opps.filter((o: any) => o.status === "won");
+    const open = filteredOpps.filter((o: any) => o.status === "open");
+    const won = filteredOpps.filter((o: any) => o.status === "won");
     const valOpen = open.reduce((s: number, o: any) => s + Number(o.expected_value || 0), 0);
     const weighted = open.reduce(
       (s: number, o: any) => s + Number(o.expected_value || 0) * (Number(o.probability || 0) / 100),
@@ -153,7 +153,7 @@ export function CrmPipelineTab() {
     );
     const valWon = won.reduce((s: number, o: any) => s + Number(o.expected_value || 0), 0);
     return { count: open.length, valOpen, weighted, valWon };
-  }, [opps]);
+  }, [filteredOpps]);
 
   const activationTotal = useMemo(
     () => form.items.reduce((s: number, i: ContractItem) => s + (Number(i.activationValue) || 0) * (Number(i.quantity) || 0), 0),
