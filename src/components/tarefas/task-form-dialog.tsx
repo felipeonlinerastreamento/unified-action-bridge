@@ -9,7 +9,8 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTasks, type Task, type TaskPriority, type TaskStatus } from "@/hooks/use-tasks";
-import { Sparkles } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { Sparkles, Lock } from "lucide-react";
 
 type Props = {
   open: boolean;
@@ -29,6 +30,8 @@ const RECURRENCE_OPTIONS = [
 
 export function TaskFormDialog({ open, onClose, task, defaultTicketId }: Props) {
   const { createTask, updateTask, categories, profiles } = useTasks();
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole("admin");
 
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -40,6 +43,9 @@ export function TaskFormDialog({ open, onClose, task, defaultTicketId }: Props) 
   const [assignedTo, setAssignedTo] = useState<string>("none");
   const [recurrenceType, setRecurrenceType] = useState<string>("none");
   const [recurrenceEnd, setRecurrenceEnd] = useState<string>("");
+  const [dayOfWeek, setDayOfWeek] = useState<string>("none");
+  const [dayOfMonth, setDayOfMonth] = useState<string>("");
+  const [adminOnlyComplete, setAdminOnlyComplete] = useState(false);
   const [isGroup, setIsGroup] = useState(false);
   const [participantIds, setParticipantIds] = useState<string[]>([]);
 
@@ -56,6 +62,9 @@ export function TaskFormDialog({ open, onClose, task, defaultTicketId }: Props) 
         setAssignedTo(task.assigned_to || "none");
         setRecurrenceType(task.recurrence_type || "none");
         setRecurrenceEnd(task.recurrence_end_date ? task.recurrence_end_date.slice(0, 10) : "");
+        setDayOfWeek(task.recurrence_day_of_week != null ? String(task.recurrence_day_of_week) : "none");
+        setDayOfMonth(task.recurrence_day_of_month != null ? String(task.recurrence_day_of_month) : "");
+        setAdminOnlyComplete(!!task.admin_only_complete);
         setIsGroup(task.is_group_task);
         setParticipantIds((task.participants || []).map((p) => p.user_id));
       } else {
@@ -69,6 +78,9 @@ export function TaskFormDialog({ open, onClose, task, defaultTicketId }: Props) 
         setAssignedTo("none");
         setRecurrenceType("none");
         setRecurrenceEnd("");
+        setDayOfWeek("none");
+        setDayOfMonth("");
+        setAdminOnlyComplete(false);
         setIsGroup(false);
         setParticipantIds([]);
       }
@@ -89,6 +101,13 @@ export function TaskFormDialog({ open, onClose, task, defaultTicketId }: Props) 
       is_group_task: isGroup,
       recurrence_type: (recurrenceType === "none" ? null : recurrenceType) as Task["recurrence_type"],
       recurrence_end_date: recurrenceEnd ? new Date(recurrenceEnd).toISOString() : null,
+      recurrence_day_of_week:
+        (recurrenceType === "weekly" || recurrenceType === "biweekly") && dayOfWeek !== "none"
+          ? Number(dayOfWeek)
+          : null,
+      recurrence_day_of_month:
+        recurrenceType === "monthly" && dayOfMonth ? Math.min(28, Math.max(1, Number(dayOfMonth))) : null,
+      admin_only_complete: adminOnlyComplete,
     };
 
     if (task) {
@@ -205,6 +224,40 @@ export function TaskFormDialog({ open, onClose, task, defaultTicketId }: Props) 
                     <Sparkles className="h-3.5 w-3.5 text-primary shrink-0 mt-0.5" />
                     Ao concluir esta tarefa, ela será reaberta automaticamente com a próxima data de vencimento.
                   </p>
+
+                  {(recurrenceType === "weekly" || recurrenceType === "biweekly") && (
+                    <div>
+                      <Label className="text-xs">Dia da semana</Label>
+                      <Select value={dayOfWeek} onValueChange={setDayOfWeek}>
+                        <SelectTrigger><SelectValue placeholder="Mesmo dia da última" /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="none">Mesmo dia da última</SelectItem>
+                          <SelectItem value="0">Domingo</SelectItem>
+                          <SelectItem value="1">Segunda-feira</SelectItem>
+                          <SelectItem value="2">Terça-feira</SelectItem>
+                          <SelectItem value="3">Quarta-feira</SelectItem>
+                          <SelectItem value="4">Quinta-feira</SelectItem>
+                          <SelectItem value="5">Sexta-feira</SelectItem>
+                          <SelectItem value="6">Sábado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {recurrenceType === "monthly" && (
+                    <div>
+                      <Label className="text-xs">Dia do mês (1-28)</Label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={28}
+                        value={dayOfMonth}
+                        onChange={(e) => setDayOfMonth(e.target.value)}
+                        placeholder="Ex: 5"
+                      />
+                    </div>
+                  )}
+
                   <div>
                     <Label className="text-xs">Data final da recorrência (opcional)</Label>
                     <Input type="date" value={recurrenceEnd} onChange={(e) => setRecurrenceEnd(e.target.value)} />
@@ -212,6 +265,19 @@ export function TaskFormDialog({ open, onClose, task, defaultTicketId }: Props) 
                 </div>
               )}
             </div>
+
+            {isAdmin && (
+              <div className="flex items-center justify-between rounded-lg border border-amber-200 bg-amber-50 dark:bg-amber-950/20 p-3">
+                <div className="flex items-start gap-2">
+                  <Lock className="h-4 w-4 text-amber-600 mt-0.5" />
+                  <div>
+                    <Label>Somente Admin pode concluir</Label>
+                    <p className="text-xs text-muted-foreground">Trava a finalização para perfil administrador</p>
+                  </div>
+                </div>
+                <Switch checked={adminOnlyComplete} onCheckedChange={setAdminOnlyComplete} />
+              </div>
+            )}
 
             <div className="flex items-center justify-between rounded-lg border p-3">
               <div>
