@@ -49,6 +49,7 @@ import {
 } from "@/lib/gsystem-api.functions";
 import { SubClientLinker } from "@/components/central/sub-client-linker";
 import { ContactPicker, type PickedContact } from "@/components/central/contact-picker";
+import { ReferralPicker } from "@/components/crm/referral-picker";
 import {
   createCrmContactWithCompany,
   createSubClientWithParentCompany,
