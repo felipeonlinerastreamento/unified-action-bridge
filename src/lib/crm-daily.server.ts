@@ -201,7 +201,7 @@ export async function runCrmDailyJob() {
     const { data: pendingLeft } = await supabaseAdmin
       .from("crm_postsale_queue")
       .select("id")
-      .eq("rule_id", q.rule_id)
+      .eq("rule_id", q.rule_id as string)
       .eq("status", "pending")
       .match(targetFilter)
       .limit(1);
