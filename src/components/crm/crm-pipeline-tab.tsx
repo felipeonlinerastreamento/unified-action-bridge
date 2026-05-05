@@ -413,7 +413,7 @@ export function CrmPipelineTab() {
             <div><Label>Notas</Label><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
             <Button className="w-full" disabled={!form.title || createMut.isPending} onClick={() => createMut.mutate()}>
               {createMut.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-              <DollarSign className="h-4 w-4 mr-1" /> Criar
+              <DollarSign className="h-4 w-4 mr-1" /> {editingId ? "Salvar alterações" : "Criar"}
             </Button>
           </div>
         </DialogContent>
