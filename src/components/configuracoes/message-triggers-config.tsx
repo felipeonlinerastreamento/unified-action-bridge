@@ -337,9 +337,10 @@ export function MessageTriggersConfig() {
                 {draft.alert_target_type === "sector" && (
                   <div className="max-h-40 overflow-y-auto space-y-1 rounded border p-2">
                     {(sectors as any[]).map((s) => (
-                      <label key={s.id} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <label htmlFor={`trigger-sector-${s.id}`} key={s.id} className="flex items-center gap-2 text-sm cursor-pointer">
                         <Checkbox
-                          checked={draft.alert_target_sector_ids.includes(s.id)}
+                          id={`trigger-sector-${s.id}`}
+                          checked={normalizeArr(draft.alert_target_sector_ids).includes(s.id)}
                           onCheckedChange={() => toggleSector(s.id)}
                         />
                         {s.name}
@@ -350,9 +351,10 @@ export function MessageTriggersConfig() {
                 {draft.alert_target_type === "users" && (
                   <div className="max-h-40 overflow-y-auto space-y-1 rounded border p-2">
                     {(users as any[]).map((u) => (
-                      <label key={u.user_id} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <label htmlFor={`trigger-user-${u.user_id}`} key={u.user_id} className="flex items-center gap-2 text-sm cursor-pointer">
                         <Checkbox
-                          checked={draft.alert_target_user_ids.includes(u.user_id)}
+                          id={`trigger-user-${u.user_id}`}
+                          checked={normalizeArr(draft.alert_target_user_ids).includes(u.user_id)}
                           onCheckedChange={() => toggleUser(u.user_id)}
                         />
                         {u.name || u.user_id}
