@@ -243,6 +243,14 @@ export function CrmPipelineTab() {
                         ))}
                       </SelectContent>
                     </Select>
+                    <div className="flex gap-1 pt-1">
+                      <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[10px] flex-1" onClick={() => openEdit(o)}>
+                        <Pencil className="h-3 w-3 mr-1" /> Editar
+                      </Button>
+                      <Button type="button" size="icon" variant="ghost" className="h-6 w-6" onClick={() => { if (confirm("Excluir oportunidade?")) deleteMut.mutate(o.id); }}>
+                        <Trash2 className="h-3 w-3 text-destructive" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
                 {stageOpps.length === 0 && <p className="text-[11px] text-muted-foreground p-2">Vazio</p>}
