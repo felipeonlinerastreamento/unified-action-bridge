@@ -156,20 +156,65 @@ export async function evaluateMessageTriggers(
       }
     }
 
-    // Auto-create ticket DISATIVADO por decisão de produto:
-    // tickets (atendimentos) só devem ser criados quando o operador
-    // clicar em "Finalizar" no chat. Mantemos apenas o registro do
-    // evento para auditoria, sem inserir em service_tickets.
+    // Auto-create ticket quando a regra do gatilho pedir.
     if (rule.create_ticket) {
       try {
+        // Tenta vincular empresa pelo telefone do contato
+        let companyId: string | null = null;
+        try {
+          const { data: contact } = await admin
+            .from("crm_contacts")
+            .select("company_id")
+            .eq("phone", args.phone)
+            .maybeSingle();
+          if (contact && (contact as any).company_id) companyId = (contact as any).company_id;
+        } catch { /* ignore */ }
+
+        const ts = Date.now().toString(36).toUpperCase();
+        const rand = Math.random().toString(36).slice(2, 6).toUpperCase();
+        const attendanceId = `GT-${ts}-${rand}`;
+
+        const noteHeader = rule.ticket_note?.trim()
+          ? `${rule.ticket_note.trim()}\n\n`
+          : "";
+        const notes = `${noteHeader}🔔 Gatilho "${rule.name}" disparado (palavra: "${matched}")\nMensagem: ${excerpt}`.slice(0, 8000);
+
+        const { data: ticket, error: tErr } = await admin
+          .from("service_tickets")
+          .insert({
+            attendance_id: attendanceId,
+            contact_phone: args.phone,
+            contact_name: args.contactName || args.phone,
+            status: "aberto",
+            priority: rule.ticket_priority || "media",
+            category: rule.name,
+            sector: rule.ticket_sector || rule.transfer_sector_name || null,
+            company_id: companyId,
+            assigned_to: args.assignedTo,
+            notes,
+          } as any)
+          .select()
+          .single();
+
+        if (tErr) throw tErr;
+
+        actionTaken.ticket_created = (ticket as any)?.id || true;
+        actionTaken.ticket_attendance_id = attendanceId;
+
         await admin.from("attendance_event_logs").insert({
-          event_type: "trigger_ticket_skipped",
+          event_type: "trigger_ticket_created",
           chat_id: args.chatId,
-          message: `Gatilho "${rule.name}" pediu abertura de chamado, mas a criação automática está desativada (palavra: "${matched}").`,
-          metadata: { rule_id: rule.id, matched_keyword: matched } as any,
+          message: `Gatilho "${rule.name}" abriu chamado ${attendanceId} (palavra: "${matched}")`,
+          metadata: { rule_id: rule.id, matched_keyword: matched, ticket_id: (ticket as any)?.id } as any,
         } as any);
       } catch (e: any) {
-        console.warn("[triggers] create_ticket log exception:", e?.message);
+        console.warn("[triggers] create_ticket exception:", e?.message);
+        await admin.from("attendance_event_logs").insert({
+          event_type: "trigger_ticket_failed",
+          chat_id: args.chatId,
+          message: `Falha ao criar chamado pelo gatilho "${rule.name}": ${e?.message || e}`,
+          metadata: { rule_id: rule.id, matched_keyword: matched } as any,
+        } as any).catch(() => {});
       }
     }
 
