@@ -29,6 +29,7 @@ const emptyForm = {
   cnpj: "",
   category_id: "",
   referral_id: "",
+  owner_id: "",
   items: [] as ContractItem[],
 };
 
@@ -82,6 +83,15 @@ export function CrmPipelineTab() {
       const ids = Array.from(new Set(opps.map((o: any) => o.created_by || o.owner_id).filter(Boolean)));
       if (ids.length === 0) return [] as { user_id: string; name: string }[];
       const { data } = await supabase.from("profiles").select("user_id, name").in("user_id", ids);
+      return (data as any[]) || [];
+    },
+  });
+
+  // All profiles for the "Responsável" (owner) picker in the create/edit dialog
+  const { data: allProfiles = [] } = useQuery({
+    queryKey: ["crm-all-profiles"],
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("user_id, name").order("name");
       return (data as any[]) || [];
     },
   });
@@ -185,6 +195,7 @@ export function CrmPipelineTab() {
           cnpj: form.cnpj || null,
           category_id: form.category_id || null,
           referral_id: form.referral_id || null,
+          owner_id: form.owner_id || null,
           contract_items: items,
         } as any,
       });
@@ -224,6 +235,7 @@ export function CrmPipelineTab() {
       cnpj: o.cnpj || "",
       category_id: o.category_id || "",
       referral_id: o.referral_id || "",
+      owner_id: o.owner_id || "",
       items: Array.isArray(o.contract_items) ? o.contract_items : [],
     });
     setOpen(true);
@@ -459,6 +471,29 @@ export function CrmPipelineTab() {
             </div>
 
             <ReferralPicker value={form.referral_id} onChange={(id) => setForm((f: any) => ({ ...f, referral_id: id || "" }))} />
+
+            <div>
+              <Label>Responsável</Label>
+              <Select
+                value={form.owner_id || (user?.id ?? "")}
+                onValueChange={(v) => setForm((f: any) => ({ ...f, owner_id: v }))}
+              >
+                <SelectTrigger><SelectValue placeholder="Selecionar responsável" /></SelectTrigger>
+                <SelectContent>
+                  {user?.id && !allProfiles.find((p: any) => p.user_id === user.id) && (
+                    <SelectItem value={user.id}>Eu</SelectItem>
+                  )}
+                  {allProfiles.map((p: any) => (
+                    <SelectItem key={p.user_id} value={p.user_id}>
+                      {p.name || p.user_id.slice(0, 8)}{p.user_id === user?.id ? " (você)" : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-[10px] text-muted-foreground mt-1">
+                A oportunidade aparecerá no pipeline do responsável escolhido.
+              </p>
+            </div>
 
             <div className="rounded-md border border-border bg-muted/30 p-3 space-y-2">
               <div className="flex items-center justify-between">
