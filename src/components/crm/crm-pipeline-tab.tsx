@@ -253,9 +253,71 @@ export function CrmPipelineTab() {
         <Button size="sm" onClick={() => { setEditingId(null); setForm(emptyForm); setOpen(true); }}><Plus className="h-4 w-4 mr-1" /> Nova oportunidade</Button>
       </div>
 
+      {/* Filters */}
+      <div className="flex flex-wrap items-end gap-2 p-3 rounded-lg border bg-card">
+        <div className="flex-1 min-w-[180px]">
+          <Label className="text-[10px] text-muted-foreground">Buscar (título, contato, empresa)</Label>
+          <div className="relative">
+            <Search className="h-3 w-3 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-8 text-xs pl-7" placeholder="Nome..." />
+          </div>
+        </div>
+        {isPrivileged && (
+          <div>
+            <Label className="text-[10px] text-muted-foreground">Responsável</Label>
+            <Select value={ownerFilter} onValueChange={setOwnerFilter}>
+              <SelectTrigger className="h-8 text-xs w-[170px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="mine">Meus cadastros</SelectItem>
+                <SelectItem value="all">Todos</SelectItem>
+                {owners.map((o: any) => (
+                  <SelectItem key={o.user_id} value={o.user_id}>{o.name || o.user_id.slice(0, 8)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+        <div>
+          <Label className="text-[10px] text-muted-foreground">Categoria</Label>
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="h-8 text-xs w-[150px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas</SelectItem>
+              {categories.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-[10px] text-muted-foreground">Status</Label>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="h-8 text-xs w-[130px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="open">Aberto</SelectItem>
+              <SelectItem value="won">Ganho</SelectItem>
+              <SelectItem value="lost">Perdido</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-[10px] text-muted-foreground">Valor mín.</Label>
+          <Input type="number" value={minValue} onChange={(e) => setMinValue(e.target.value)} className="h-8 text-xs w-[100px]" placeholder="0" />
+        </div>
+        <div>
+          <Label className="text-[10px] text-muted-foreground">Valor máx.</Label>
+          <Input type="number" value={maxValue} onChange={(e) => setMaxValue(e.target.value)} className="h-8 text-xs w-[100px]" placeholder="∞" />
+        </div>
+        {(searchTerm || categoryFilter !== "all" || statusFilter !== "all" || minValue || maxValue || (isPrivileged && ownerFilter !== "mine")) && (
+          <Button size="sm" variant="ghost" onClick={() => { setSearchTerm(""); setCategoryFilter("all"); setStatusFilter("all"); setMinValue(""); setMaxValue(""); setOwnerFilter("mine"); }}>
+            <X className="h-3 w-3 mr-1" /> Limpar
+          </Button>
+        )}
+        <Badge variant="secondary" className="ml-auto">{filteredOpps.length} resultado(s)</Badge>
+      </div>
+
       <div className="grid gap-3 overflow-x-auto" style={{ gridTemplateColumns: `repeat(${stages.length}, minmax(220px, 1fr))` }}>
         {stages.map((s: any) => {
-          const stageOpps = opps.filter((o: any) => o.stage_id === s.id);
+          const stageOpps = filteredOpps.filter((o: any) => o.stage_id === s.id);
           const stageVal = stageOpps.reduce((sum: number, o: any) => sum + Number(o.expected_value || 0), 0);
           return (
             <Card key={s.id} className="bg-muted/30">
