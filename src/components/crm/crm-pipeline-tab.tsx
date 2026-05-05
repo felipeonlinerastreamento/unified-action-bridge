@@ -235,6 +235,7 @@ export function CrmPipelineTab() {
       cnpj: o.cnpj || "",
       category_id: o.category_id || "",
       referral_id: o.referral_id || "",
+      owner_id: o.owner_id || "",
       items: Array.isArray(o.contract_items) ? o.contract_items : [],
     });
     setOpen(true);
