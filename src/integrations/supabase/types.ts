@@ -3334,6 +3334,50 @@ export type Database = {
           },
         ]
       }
+      task_completion_history: {
+        Row: {
+          comment: string
+          completed_at: string
+          completed_by: string
+          created_at: string
+          id: string
+          next_scheduled_for: string | null
+          recurrence_type: string | null
+          scheduled_for: string | null
+          task_id: string
+        }
+        Insert: {
+          comment: string
+          completed_at?: string
+          completed_by: string
+          created_at?: string
+          id?: string
+          next_scheduled_for?: string | null
+          recurrence_type?: string | null
+          scheduled_for?: string | null
+          task_id: string
+        }
+        Update: {
+          comment?: string
+          completed_at?: string
+          completed_by?: string
+          created_at?: string
+          id?: string
+          next_scheduled_for?: string | null
+          recurrence_type?: string | null
+          scheduled_for?: string | null
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_completion_history_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       task_participants: {
         Row: {
           created_at: string
@@ -3365,6 +3409,7 @@ export type Database = {
       }
       tasks: {
         Row: {
+          admin_only_complete: boolean
           assigned_to: string | null
           category_id: string | null
           completed_at: string | null
@@ -3376,6 +3421,8 @@ export type Database = {
           is_group_task: boolean
           parent_task_id: string | null
           priority: string
+          recurrence_day_of_month: number | null
+          recurrence_day_of_week: number | null
           recurrence_end_date: string | null
           recurrence_interval: number | null
           recurrence_type: string | null
@@ -3386,6 +3433,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          admin_only_complete?: boolean
           assigned_to?: string | null
           category_id?: string | null
           completed_at?: string | null
@@ -3397,6 +3445,8 @@ export type Database = {
           is_group_task?: boolean
           parent_task_id?: string | null
           priority?: string
+          recurrence_day_of_month?: number | null
+          recurrence_day_of_week?: number | null
           recurrence_end_date?: string | null
           recurrence_interval?: number | null
           recurrence_type?: string | null
@@ -3407,6 +3457,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          admin_only_complete?: boolean
           assigned_to?: string | null
           category_id?: string | null
           completed_at?: string | null
@@ -3418,6 +3469,8 @@ export type Database = {
           is_group_task?: boolean
           parent_task_id?: string | null
           priority?: string
+          recurrence_day_of_month?: number | null
+          recurrence_day_of_week?: number | null
           recurrence_end_date?: string | null
           recurrence_interval?: number | null
           recurrence_type?: string | null
