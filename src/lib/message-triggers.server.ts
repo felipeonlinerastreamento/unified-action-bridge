@@ -156,51 +156,20 @@ export async function evaluateMessageTriggers(
       }
     }
 
-    // Auto-create ticket
+    // Auto-create ticket DISATIVADO por decisão de produto:
+    // tickets (atendimentos) só devem ser criados quando o operador
+    // clicar em "Finalizar" no chat. Mantemos apenas o registro do
+    // evento para auditoria, sem inserir em service_tickets.
     if (rule.create_ticket) {
       try {
-        // Skip if there is already an open ticket for this attendance
-        const { data: existing } = await admin
-          .from("service_tickets")
-          .select("id")
-          .eq("attendance_id", args.chatId)
-          .neq("status", "finalizado")
-          .limit(1);
-        if (!existing || existing.length === 0) {
-          const noteParts = [
-            `Aberto automaticamente pelo gatilho "${rule.name}" (palavra: "${matched}").`,
-            rule.ticket_note ? rule.ticket_note : "",
-            `Mensagem: ${excerpt}`,
-          ].filter(Boolean);
-          const { data: ins, error: tErr } = await admin
-            .from("service_tickets")
-            .insert({
-              attendance_id: args.chatId,
-              channel_id: args.channelId,
-              contact_phone: args.phone || null,
-              contact_name: args.contactName || null,
-              status: "aberto" as const,
-              priority: (rule.ticket_priority || "alta") as any,
-              sector: rule.ticket_sector || null,
-              notes: noteParts.join("\n"),
-            } as any)
-            .select("id")
-            .single();
-          if (tErr) {
-            console.warn("[triggers] create_ticket error:", tErr.message);
-          } else {
-            actionTaken.ticket_id = (ins as any)?.id;
-            actionTaken.ticket_sector = rule.ticket_sector;
-            await admin.from("attendance_event_logs").insert({
-              event_type: "trigger_ticket_created",
-              chat_id: args.chatId,
-              message: `Gatilho "${rule.name}" → chamado aberto para ${rule.ticket_sector || "(sem setor)"} (palavra: "${matched}")`,
-              metadata: { rule_id: rule.id, matched_keyword: matched, ticket_id: (ins as any)?.id } as any,
-            } as any);
-          }
-        }
+        await admin.from("attendance_event_logs").insert({
+          event_type: "trigger_ticket_skipped",
+          chat_id: args.chatId,
+          message: `Gatilho "${rule.name}" pediu abertura de chamado, mas a criação automática está desativada (palavra: "${matched}").`,
+          metadata: { rule_id: rule.id, matched_keyword: matched } as any,
+        } as any);
       } catch (e: any) {
-        console.warn("[triggers] create_ticket exception:", e?.message);
+        console.warn("[triggers] create_ticket log exception:", e?.message);
       }
     }
 
