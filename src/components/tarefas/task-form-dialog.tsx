@@ -9,7 +9,8 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useTasks, type Task, type TaskPriority, type TaskStatus } from "@/hooks/use-tasks";
-import { Sparkles } from "lucide-react";
+import { useAuth } from "@/hooks/use-auth";
+import { Sparkles, Lock } from "lucide-react";
 
 type Props = {
   open: boolean;
