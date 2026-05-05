@@ -117,6 +117,43 @@ export async function finalizeTicketWithFlow(
       | "aberto"
       | "em_andamento";
 
+    // Re-fetch live sector to detect "already routed" — when the ticket is
+    // already in the TE target sector, a second click on "Finalizar" must
+    // actually finalize (status=finalizado) instead of re-routing forever.
+    let liveSectorTE: string | null = ticket.sector ?? null;
+    try {
+      const { data: fresh } = await supabase
+        .from("service_tickets")
+        .select("sector")
+        .eq("id", ticket.id)
+        .maybeSingle();
+      if (fresh?.sector !== undefined) liveSectorTE = fresh.sector;
+    } catch {
+      // ignore
+    }
+    const alreadyRoutedTE =
+      String(liveSectorTE || "").trim().toLowerCase() ===
+      String(targetSector || "").trim().toLowerCase();
+
+    if (alreadyRoutedTE) {
+      // Standard finalize — skip routing, skip duplicate gsystem sync
+      // (a pendência was already created on the first finalize).
+      const { error } = await supabase
+        .from("service_tickets")
+        .update({
+          status: "finalizado" as const,
+          closed_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", ticket.id);
+      if (error) return { routed: false, error: error.message };
+      if (registerStatusComment) {
+        await insertSystemComment(ticket.id, userId, "Status alterado para finalizado", "status_change");
+      }
+      await closeLinkedZapiChat(ticket.attendance_id);
+      return { routed: false };
+    }
+
     const { error } = await supabase
       .from("service_tickets")
       .update({
