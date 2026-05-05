@@ -62,6 +62,9 @@ export function TaskFormDialog({ open, onClose, task, defaultTicketId }: Props) 
         setAssignedTo(task.assigned_to || "none");
         setRecurrenceType(task.recurrence_type || "none");
         setRecurrenceEnd(task.recurrence_end_date ? task.recurrence_end_date.slice(0, 10) : "");
+        setDayOfWeek(task.recurrence_day_of_week != null ? String(task.recurrence_day_of_week) : "none");
+        setDayOfMonth(task.recurrence_day_of_month != null ? String(task.recurrence_day_of_month) : "");
+        setAdminOnlyComplete(!!task.admin_only_complete);
         setIsGroup(task.is_group_task);
         setParticipantIds((task.participants || []).map((p) => p.user_id));
       } else {
@@ -75,6 +78,9 @@ export function TaskFormDialog({ open, onClose, task, defaultTicketId }: Props) 
         setAssignedTo("none");
         setRecurrenceType("none");
         setRecurrenceEnd("");
+        setDayOfWeek("none");
+        setDayOfMonth("");
+        setAdminOnlyComplete(false);
         setIsGroup(false);
         setParticipantIds([]);
       }
