@@ -34,12 +34,22 @@ const emptyForm = {
 
 export function CrmPipelineTab() {
   const qc = useQueryClient();
+  const { user, hasRole } = useAuth();
+  const isPrivileged = hasRole("admin") || hasRole("gestor");
   const [open, setOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<any>(emptyForm);
   const [catDraft, setCatDraft] = useState("");
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
   const [editingCatName, setEditingCatName] = useState("");
+
+  // Filters
+  const [ownerFilter, setOwnerFilter] = useState<string>("mine"); // mine | all | <userId>
+  const [searchTerm, setSearchTerm] = useState("");
+  const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [minValue, setMinValue] = useState<string>("");
+  const [maxValue, setMaxValue] = useState<string>("");
 
   const { data: stages = [] } = useQuery({
     queryKey: ["crm-stages"],
