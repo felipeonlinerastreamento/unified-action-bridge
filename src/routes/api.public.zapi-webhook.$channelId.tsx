@@ -484,8 +484,5 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
           }
         }
 
-        return new Response("ok");
-      },
-    },
-  },
-});
+}
+
