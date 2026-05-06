@@ -111,6 +111,36 @@ export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
         }
         const p: any = parsed.success ? parsed.data : body;
 
+        // Cap absoluto: jamais segurar a resposta do webhook por mais de 10s.
+        // Se a Z-API demora a responder (group-metadata, send-text, etc.), o
+        // worker pode ficar pendurado e a Z-API marca o endpoint como caído,
+        // parando de entregar eventos. Respondemos 200 cedo e descartamos o
+        // restante do trabalho silenciosamente em vez de bloquear o webhook.
+        const PROCESS_BUDGET_MS = 10_000;
+        const processing = (async () => {
+          await processWebhookPayload({ channelId, p });
+        })().catch((err) => {
+          console.error("[zapi-webhook] processing error:", err);
+        });
+        const timeout = new Promise<void>((resolve) =>
+          setTimeout(() => {
+            console.warn("[zapi-webhook] processing exceeded budget — returning 200 early", {
+              channelId,
+              type: p?.type,
+              phone: p?.phone,
+            });
+            resolve();
+          }, PROCESS_BUDGET_MS),
+        );
+        await Promise.race([processing, timeout]);
+        return new Response("ok");
+      },
+    },
+  },
+});
+
+async function processWebhookPayload({ channelId, p }: { channelId: string; p: any }) {
+
         // Status events: update message status
         if (p.type === "MessageStatusCallback" && p.status && p.ids) {
           const status = String(p.status).toLowerCase();
