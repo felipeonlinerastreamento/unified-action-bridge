@@ -430,39 +430,20 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               ? (p.senderName || null)
               : null;
 
-            // Upsert by (chat_id, zapi_message_id) — Z-API occasionally
-            // delivers the same messageId in multiple callbacks within seconds,
-            // which previously caused duplicated messages in the chat panel.
-            if (p.messageId) {
-              await supabaseAdmin
-                .from("zapi_messages")
-                .upsert(
-                  {
-                    chat_id: chatId,
-                    zapi_message_id: p.messageId,
-                    from_me: !!p.fromMe,
-                    text,
-                    media_url: mediaUrl,
-                    media_type: mediaType,
-                    status: p.fromMe ? "sent" : "delivered",
-                    participant_name: participantName,
-                    participant_phone: participantPhone,
-                  } as any,
-                  { onConflict: "chat_id,zapi_message_id", ignoreDuplicates: true },
-                );
-            } else {
-              await supabaseAdmin.from("zapi_messages").insert({
-                chat_id: chatId,
-                zapi_message_id: null,
-                from_me: !!p.fromMe,
-                text,
-                media_url: mediaUrl,
-                media_type: mediaType,
-                status: p.fromMe ? "sent" : "delivered",
-                participant_name: participantName,
-                participant_phone: participantPhone,
-              } as any);
-            }
+            // Persist without PostgREST upsert: the DB has a partial unique
+            // index for messageId dedupe, and `onConflict` cannot target that
+            // partial index reliably. A failing upsert was silently updating
+            // chat previews while dropping the actual message row.
+            await persistZapiMessage({
+              chatId,
+              messageId: p.messageId || null,
+              fromMe: !!p.fromMe,
+              text,
+              mediaUrl,
+              mediaType,
+              participantName,
+              participantPhone,
+            });
 
             // Evaluate keyword-trigger rules on inbound messages (inclui grupos)
             if (!p.fromMe && text) {
@@ -546,6 +527,52 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
           }
         }
 
+}
+
+async function persistZapiMessage(args: {
+  chatId: string;
+  messageId: string | null;
+  fromMe: boolean;
+  text: string;
+  mediaUrl: string | null;
+  mediaType: string | null;
+  participantName: string | null;
+  participantPhone: string | null;
+}) {
+  const row = {
+    chat_id: args.chatId,
+    zapi_message_id: args.messageId,
+    from_me: args.fromMe,
+    text: args.text,
+    media_url: args.mediaUrl,
+    media_type: args.mediaType,
+    status: args.fromMe ? "sent" : "delivered",
+    participant_name: args.participantName,
+    participant_phone: args.participantPhone,
+  } as any;
+
+  if (!args.messageId) {
+    const { error } = await supabaseAdmin.from("zapi_messages").insert(row);
+    if (error) console.error("[zapi-webhook] message insert failed:", error);
+    return;
+  }
+
+  const { data: existing, error: lookupError } = await supabaseAdmin
+    .from("zapi_messages")
+    .select("id")
+    .eq("chat_id", args.chatId)
+    .eq("zapi_message_id", args.messageId)
+    .maybeSingle();
+  if (lookupError) console.warn("[zapi-webhook] message lookup failed:", lookupError);
+
+  if ((existing as any)?.id) {
+    const { error } = await supabaseAdmin.from("zapi_messages").update(row).eq("id", (existing as any).id);
+    if (error) console.error("[zapi-webhook] message update failed:", error);
+    return;
+  }
+
+  const { error } = await supabaseAdmin.from("zapi_messages").insert(row);
+  if (error && error.code !== "23505") console.error("[zapi-webhook] message insert failed:", error);
 }
 
 const MEDIA_EXT: Record<string, string> = {
