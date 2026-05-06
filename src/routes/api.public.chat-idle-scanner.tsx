@@ -1,6 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { loadZapiChannel, zapiSendText } from "@/lib/zapi.server";
+import { isAuthorizedCronRequest, unauthorizedCronResponse } from "@/lib/cron-auth.server";
 
 type Rule = {
   id: string;
