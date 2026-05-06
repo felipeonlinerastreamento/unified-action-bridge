@@ -133,11 +133,13 @@ export function AtendimentosContent() {
       try {
         const { listAllProfiles } = await import("@/lib/user-admin.functions");
         const { data: { session } } = await supabase.auth.getSession();
-        const headers = { headers: { authorization: `Bearer ${session?.access_token}` } };
-        return (await listAllProfiles(headers)) || [];
+        const result = await listAllProfiles({
+          headers: { authorization: `Bearer ${session?.access_token ?? ""}` },
+        });
+        return Array.isArray(result) ? result : [];
       } catch {
         const { data } = await supabase.from("profiles").select("*");
-        return data || [];
+        return Array.isArray(data) ? data : [];
       }
     },
   });
