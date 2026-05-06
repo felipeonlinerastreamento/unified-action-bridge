@@ -47,6 +47,7 @@ import { LiberacaoEquipamentoConfig } from "@/components/configuracoes/liberacao
 import { SuprimentoConfig } from "@/components/configuracoes/suprimento-config";
 import { CompraEquipamentoConfig } from "@/components/configuracoes/compra-equipamento-config";
 import { EscalonamentoGestaoConfig } from "@/components/configuracoes/escalonamento-gestao-config";
+import { ChatIdleAutoMessagesConfig } from "@/components/configuracoes/chat-idle-auto-messages-config";
 
 export const Route = createFileRoute("/configuracoes/encaminhamento")({
   component: EncaminhamentoPage,
@@ -274,6 +275,8 @@ function EncaminhamentoPage() {
         <CompraEquipamentoConfig />
 
         <EscalonamentoGestaoConfig />
+
+        <ChatIdleAutoMessagesConfig />
 
         <Card>
           <CardHeader>

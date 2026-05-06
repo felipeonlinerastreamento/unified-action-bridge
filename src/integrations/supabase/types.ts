@@ -644,6 +644,98 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_idle_auto_message_logs: {
+        Row: {
+          channel_id: string | null
+          chat_id: string
+          contact_name: string | null
+          id: string
+          idle_minutes_at_send: number | null
+          message_sent: string | null
+          phone: string | null
+          rule_id: string | null
+          sent_at: string
+          target: string
+        }
+        Insert: {
+          channel_id?: string | null
+          chat_id: string
+          contact_name?: string | null
+          id?: string
+          idle_minutes_at_send?: number | null
+          message_sent?: string | null
+          phone?: string | null
+          rule_id?: string | null
+          sent_at?: string
+          target: string
+        }
+        Update: {
+          channel_id?: string | null
+          chat_id?: string
+          contact_name?: string | null
+          id?: string
+          idle_minutes_at_send?: number | null
+          message_sent?: string | null
+          phone?: string | null
+          rule_id?: string | null
+          sent_at?: string
+          target?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_idle_auto_message_logs_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "chat_idle_auto_messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      chat_idle_auto_messages: {
+        Row: {
+          apply_to_groups: boolean
+          channel_id: string | null
+          cooldown_minutes: number
+          created_at: string
+          id: string
+          idle_minutes: number
+          is_enabled: boolean
+          max_sends_per_ticket: number
+          message_template: string
+          name: string
+          target: string
+          updated_at: string
+        }
+        Insert: {
+          apply_to_groups?: boolean
+          channel_id?: string | null
+          cooldown_minutes?: number
+          created_at?: string
+          id?: string
+          idle_minutes?: number
+          is_enabled?: boolean
+          max_sends_per_ticket?: number
+          message_template: string
+          name: string
+          target: string
+          updated_at?: string
+        }
+        Update: {
+          apply_to_groups?: boolean
+          channel_id?: string | null
+          cooldown_minutes?: number
+          created_at?: string
+          id?: string
+          idle_minutes?: number
+          is_enabled?: boolean
+          max_sends_per_ticket?: number
+          message_template?: string
+          name?: string
+          target?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       chat_inactivity_alert_logs: {
         Row: {
           acknowledged_at: string | null

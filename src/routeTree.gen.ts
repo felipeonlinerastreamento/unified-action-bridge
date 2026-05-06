@@ -36,6 +36,7 @@ import { Route as ConfiguracoesAssistenteIaRouteImport } from './routes/configur
 import { Route as AtendimentosTarefasRouteImport } from './routes/atendimentos_.tarefas'
 import { Route as ApiPublicEmailPollRouteImport } from './routes/api.public.email-poll'
 import { Route as ApiPublicCrmDailyRouteImport } from './routes/api.public.crm-daily'
+import { Route as ApiPublicChatIdleScannerRouteImport } from './routes/api.public.chat-idle-scanner'
 import { Route as ApiPublicZapiWebhookChannelIdRouteImport } from './routes/api.public.zapi-webhook.$channelId'
 
 const RelatoriosRoute = RelatoriosRouteImport.update({
@@ -180,6 +181,12 @@ const ApiPublicCrmDailyRoute = ApiPublicCrmDailyRouteImport.update({
   path: '/api/public/crm-daily',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiPublicChatIdleScannerRoute =
+  ApiPublicChatIdleScannerRouteImport.update({
+    id: '/api/public/chat-idle-scanner',
+    path: '/api/public/chat-idle-scanner',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicZapiWebhookChannelIdRoute =
   ApiPublicZapiWebhookChannelIdRouteImport.update({
     id: '/api/public/zapi-webhook/$channelId',
@@ -213,6 +220,7 @@ export interface FileRoutesByFullPath {
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
   '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
   '/configuracoes/': typeof ConfiguracoesIndexRoute
+  '/api/public/chat-idle-scanner': typeof ApiPublicChatIdleScannerRoute
   '/api/public/crm-daily': typeof ApiPublicCrmDailyRoute
   '/api/public/email-poll': typeof ApiPublicEmailPollRoute
   '/api/public/zapi-webhook/$channelId': typeof ApiPublicZapiWebhookChannelIdRoute
@@ -242,6 +250,7 @@ export interface FileRoutesByTo {
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
   '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
   '/configuracoes': typeof ConfiguracoesIndexRoute
+  '/api/public/chat-idle-scanner': typeof ApiPublicChatIdleScannerRoute
   '/api/public/crm-daily': typeof ApiPublicCrmDailyRoute
   '/api/public/email-poll': typeof ApiPublicEmailPollRoute
   '/api/public/zapi-webhook/$channelId': typeof ApiPublicZapiWebhookChannelIdRoute
@@ -273,6 +282,7 @@ export interface FileRoutesById {
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
   '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
   '/configuracoes/': typeof ConfiguracoesIndexRoute
+  '/api/public/chat-idle-scanner': typeof ApiPublicChatIdleScannerRoute
   '/api/public/crm-daily': typeof ApiPublicCrmDailyRoute
   '/api/public/email-poll': typeof ApiPublicEmailPollRoute
   '/api/public/zapi-webhook/$channelId': typeof ApiPublicZapiWebhookChannelIdRoute
@@ -305,6 +315,7 @@ export interface FileRouteTypes {
     | '/configuracoes/zapi'
     | '/hooks/refresh-tracking'
     | '/configuracoes/'
+    | '/api/public/chat-idle-scanner'
     | '/api/public/crm-daily'
     | '/api/public/email-poll'
     | '/api/public/zapi-webhook/$channelId'
@@ -334,6 +345,7 @@ export interface FileRouteTypes {
     | '/configuracoes/zapi'
     | '/hooks/refresh-tracking'
     | '/configuracoes'
+    | '/api/public/chat-idle-scanner'
     | '/api/public/crm-daily'
     | '/api/public/email-poll'
     | '/api/public/zapi-webhook/$channelId'
@@ -364,6 +376,7 @@ export interface FileRouteTypes {
     | '/configuracoes/zapi'
     | '/hooks/refresh-tracking'
     | '/configuracoes/'
+    | '/api/public/chat-idle-scanner'
     | '/api/public/crm-daily'
     | '/api/public/email-poll'
     | '/api/public/zapi-webhook/$channelId'
@@ -383,6 +396,7 @@ export interface RootRouteChildren {
   RelatoriosRoute: typeof RelatoriosRoute
   AtendimentosTarefasRoute: typeof AtendimentosTarefasRoute
   HooksRefreshTrackingRoute: typeof HooksRefreshTrackingRoute
+  ApiPublicChatIdleScannerRoute: typeof ApiPublicChatIdleScannerRoute
   ApiPublicCrmDailyRoute: typeof ApiPublicCrmDailyRoute
   ApiPublicEmailPollRoute: typeof ApiPublicEmailPollRoute
   ApiPublicZapiWebhookChannelIdRoute: typeof ApiPublicZapiWebhookChannelIdRoute
@@ -579,6 +593,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicCrmDailyRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/chat-idle-scanner': {
+      id: '/api/public/chat-idle-scanner'
+      path: '/api/public/chat-idle-scanner'
+      fullPath: '/api/public/chat-idle-scanner'
+      preLoaderRoute: typeof ApiPublicChatIdleScannerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/zapi-webhook/$channelId': {
       id: '/api/public/zapi-webhook/$channelId'
       path: '/api/public/zapi-webhook/$channelId'
@@ -637,6 +658,7 @@ const rootRouteChildren: RootRouteChildren = {
   RelatoriosRoute: RelatoriosRoute,
   AtendimentosTarefasRoute: AtendimentosTarefasRoute,
   HooksRefreshTrackingRoute: HooksRefreshTrackingRoute,
+  ApiPublicChatIdleScannerRoute: ApiPublicChatIdleScannerRoute,
   ApiPublicCrmDailyRoute: ApiPublicCrmDailyRoute,
   ApiPublicEmailPollRoute: ApiPublicEmailPollRoute,
   ApiPublicZapiWebhookChannelIdRoute: ApiPublicZapiWebhookChannelIdRoute,
