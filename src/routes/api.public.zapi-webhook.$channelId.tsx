@@ -545,3 +545,53 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
 
 }
 
+const MEDIA_EXT: Record<string, string> = {
+  audio: "ogg",
+  video: "mp4",
+  image: "jpg",
+  document: "bin",
+};
+const MEDIA_MIME: Record<string, string> = {
+  audio: "audio/ogg",
+  video: "video/mp4",
+  image: "image/jpeg",
+  document: "application/octet-stream",
+};
+
+async function rehostMediaToStorage(
+  url: string,
+  mediaType: string,
+  channelId: string,
+  phone: string,
+): Promise<string> {
+  if (!url || url.startsWith("data:")) return url;
+  if (url.includes("/storage/v1/object/public/chat-media/")) return url;
+
+  const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+  if (!res.ok) throw new Error(`download ${res.status}`);
+  const contentType = res.headers.get("content-type") || MEDIA_MIME[mediaType] || "application/octet-stream";
+  const arrBuf = await res.arrayBuffer();
+
+  let ext = MEDIA_EXT[mediaType] || "bin";
+  const ctMatch = /\/([a-z0-9.+-]+)/i.exec(contentType);
+  if (ctMatch?.[1]) {
+    const sub = ctMatch[1].toLowerCase().replace("x-", "").split(";")[0];
+    if (sub === "mpeg") ext = "mp3";
+    else if (sub === "ogg" || sub === "opus") ext = "ogg";
+    else if (sub === "mp4") ext = mediaType === "audio" ? "m4a" : "mp4";
+    else if (sub === "webm") ext = "webm";
+    else if (sub === "jpeg" || sub === "jpg") ext = "jpg";
+    else if (sub === "png") ext = "png";
+    else if (sub === "pdf") ext = "pdf";
+  }
+
+  const key = `${channelId}/${phone}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
+  const { error: upErr } = await supabaseAdmin.storage
+    .from("chat-media")
+    .upload(key, arrBuf, { contentType, upsert: false, cacheControl: "31536000" });
+  if (upErr) throw upErr;
+
+  const { data: pub } = supabaseAdmin.storage.from("chat-media").getPublicUrl(key);
+  return pub.publicUrl;
+}
+
