@@ -20,16 +20,25 @@ serve(async (req) => {
 
     const { chatMessages, contactPhone, contactName, attendanceStartTime, userMessage, mode, feature } = await req.json();
 
-    // Identify caller user (best-effort) for usage logging
-    let callerUserId: string | null = null;
-    try {
-      const authHeader = req.headers.get("Authorization") || "";
-      const token = authHeader.replace("Bearer ", "");
-      if (token) {
-        const { data: userData } = await supabase.auth.getUser(token);
-        callerUserId = userData?.user?.id ?? null;
-      }
-    } catch (_) { /* ignore */ }
+    // ENFORCE authentication: every caller must present a valid Supabase JWT.
+    const authHeader = req.headers.get("Authorization") || "";
+    const token = authHeader.toLowerCase().startsWith("bearer ")
+      ? authHeader.slice(7).trim()
+      : "";
+    if (!token) {
+      return new Response(JSON.stringify({ error: "Não autenticado" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const { data: userData, error: userError } = await supabase.auth.getUser(token);
+    const callerUserId: string | null = userData?.user?.id ?? null;
+    if (userError || !callerUserId) {
+      return new Response(JSON.stringify({ error: "Token inválido" }), {
+        status: 401,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Fetch AI config (system prompt / knowledge base / enabled flag)
     const { data: configRows } = await supabase
