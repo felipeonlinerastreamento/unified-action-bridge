@@ -135,7 +135,7 @@ export const listAllOpenChats = createServerFn({ method: "POST" })
         };
       });
 
-      return { chats, users: [], total: chats.length };
+      return { chats, users, total: chats.length };
     } catch (err) {
       console.error("[listAllOpenChats] Error:", err);
       return { chats: [], users: [], total: 0, error: String(err) };
