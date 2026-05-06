@@ -4,9 +4,21 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getOutlookProfile } from "./outlook.server";
 
+async function assertAdminOrGestor(context: any): Promise<void> {
+  const { data: roleRow, error } = await context.supabase
+    .from("user_roles")
+    .select("role")
+    .eq("user_id", context.userId)
+    .in("role", ["admin", "gestor"])
+    .maybeSingle();
+  if (error) throw new Error(error.message);
+  if (!roleRow) throw new Error("Acesso restrito a admin ou gestor");
+}
+
 export const listEmailChannels = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
-  .handler(async () => {
+  .handler(async ({ context }) => {
+    await assertAdminOrGestor(context);
     const { data, error } = await supabaseAdmin
       .from("email_channels")
       .select("*")
@@ -32,6 +44,7 @@ export const upsertEmailChannel = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => upsertSchema.parse(input))
   .handler(async ({ data, context }) => {
+    await assertAdminOrGestor(context);
     const { userId } = context;
     if (data.id) {
       const { id, ...rest } = data;
@@ -49,7 +62,8 @@ export const upsertEmailChannel = createServerFn({ method: "POST" })
 export const deleteEmailChannel = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ id: z.string().uuid() }).parse(input))
-  .handler(async ({ data }) => {
+  .handler(async ({ data, context }) => {
+    await assertAdminOrGestor(context);
     const { error } = await supabaseAdmin.from("email_channels").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { success: true };
