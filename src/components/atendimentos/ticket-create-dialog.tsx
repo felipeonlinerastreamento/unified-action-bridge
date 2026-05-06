@@ -642,6 +642,9 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
           {isCompraEquip && (
             <CompraEquipamentoFields items={compraEquipItems} onChange={setCompraEquipItems} />
           )}
+          {isPerdidos && (
+            <PerdidosFields items={perdidosItems} onChange={setPerdidosItems} />
+          )}
           <div className="space-y-1">
             <label className="text-xs font-medium">Observações</label>
             <Textarea
