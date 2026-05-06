@@ -833,6 +833,10 @@ function RelatoriosPage() {
             <TabsContent value="gatilhos" className="space-y-4">
               <MessageTriggersTab dateFrom={dateFrom} dateTo={dateTo} />
             </TabsContent>
+
+            <TabsContent value="perdidos" className="space-y-4">
+              <PerdidosReportTab dateFrom={dateFrom} dateTo={dateTo} />
+            </TabsContent>
           </Tabs>
         </div>
       </div>
