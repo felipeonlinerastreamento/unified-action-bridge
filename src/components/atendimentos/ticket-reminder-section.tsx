@@ -48,6 +48,8 @@ export function TicketReminderSection({ ticketId, userId }: TicketReminderSectio
   const [note, setNote] = useState("");
   const [recurrence, setRecurrence] = useState<string>("none");
   const [recurrenceEnd, setRecurrenceEnd] = useState("");
+  const [recurrenceWeekday, setRecurrenceWeekday] = useState<string>("");
+  const [recurrenceTime, setRecurrenceTime] = useState<string>("");
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [completionComment, setCompletionComment] = useState("");
   const [showHistory, setShowHistory] = useState(false);
