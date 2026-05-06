@@ -2588,25 +2588,29 @@ function CentralPage() {
                           )}
                         </div>
                       </div>
-                      <div className="flex items-center gap-1 shrink-0">
+                       <div className="flex items-center gap-1 shrink-0">
                         {isAdmin && (
                           <Button
-                            variant={escalateToGestao ? "default" : "outline"}
+                            variant="outline"
                             size="sm"
-                            title={
-                              escalateToGestao
-                                ? "Ao finalizar, abrirá novo atendimento para o setor Gestão (clique para desativar)"
-                                : "Marcar para escalar este atendimento para o setor Gestão ao finalizar"
-                            }
-                            onClick={() => {
-                              setEscalateToGestao((v) => {
-                                const next = !v;
-                                if (next) toast.info("Ao finalizar, será aberto um chamado para o setor Gestão.");
-                                else toast.message("Escalonamento para Gestão cancelado.");
-                                return next;
+                            title="Abrir chamado imediato para o setor Gestão"
+                            onClick={async () => {
+                              const res = await escalateToGestaoHelper({
+                                channelId: selectedChannelId || null,
+                                companyId: companyLookup?.id || null,
+                                contactPhone: contactPhone || null,
+                                contactName: chatDetail?.contact?.name || chatDetail?.description || null,
+                                protocolBase: chatDetail?.protocol || selectedChatId,
+                                openedBy: session?.user?.id || null,
                               });
+                              if (res.success) {
+                                toast.success(`Chamado aberto para o setor ${res.sectorName}`);
+                                queryClient.invalidateQueries({ queryKey: ["service-tickets"] });
+                              } else {
+                                toast.error(res.error || "Falha ao abrir chamado de Gestão");
+                              }
                             }}
-                            className={`gap-1 h-8 ${escalateToGestao ? "bg-amber-500 hover:bg-amber-600 text-white" : ""}`}
+                            className="gap-1 h-8"
                           >
                             <ShieldAlert className="h-4 w-4" />
                             <span className="hidden sm:inline">Gestão</span>
