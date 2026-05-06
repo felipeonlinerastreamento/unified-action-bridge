@@ -354,7 +354,7 @@ function RelatoriosPage() {
 
         <div id="report-content">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-11">
+            <TabsList className="grid w-full grid-cols-12">
               <TabsTrigger value="gatilhos" className="gap-1 text-xs">
                 <Bell className="h-3.5 w-3.5" /> Gatilhos
               </TabsTrigger>
@@ -387,6 +387,9 @@ function RelatoriosPage() {
               </TabsTrigger>
               <TabsTrigger value="csat" className="gap-1 text-xs">
                 <Trophy className="h-3.5 w-3.5" /> CSAT
+              </TabsTrigger>
+              <TabsTrigger value="perdidos" className="gap-1 text-xs">
+                <PackageX className="h-3.5 w-3.5" /> Perdidos
               </TabsTrigger>
             </TabsList>
 
