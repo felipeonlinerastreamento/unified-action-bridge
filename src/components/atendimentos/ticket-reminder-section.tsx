@@ -271,16 +271,48 @@ export function TicketReminderSection({ ticketId, userId }: TicketReminderSectio
               </SelectContent>
             </Select>
           </div>
-          {recurrence !== "none" && (
+          {supportsWeekday && (
             <div className="space-y-1">
-              <label className="text-xs font-medium">Encerrar recorrência em (opcional)</label>
-              <Input
-                type="datetime-local"
-                value={recurrenceEnd}
-                onChange={(e) => setRecurrenceEnd(e.target.value)}
-                className="h-8 text-sm"
-              />
+              <label className="text-xs font-medium">Dia da semana (opcional)</label>
+              <Select value={recurrenceWeekday || "any"} onValueChange={(v) => setRecurrenceWeekday(v === "any" ? "" : v)}>
+                <SelectTrigger className="h-8 text-sm">
+                  <SelectValue placeholder="Qualquer dia" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="any" className="text-sm">Qualquer dia</SelectItem>
+                  {WEEKDAYS.map((d) => (
+                    <SelectItem key={d.value} value={d.value} className="text-sm">{d.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
+          )}
+          {recurrence !== "none" && (
+            <>
+              <div className="space-y-1">
+                <label className="text-xs font-medium flex items-center gap-1">
+                  <Clock className="h-3 w-3" /> Hora do lembrete (opcional)
+                </label>
+                <Input
+                  type="time"
+                  value={recurrenceTime}
+                  onChange={(e) => setRecurrenceTime(e.target.value)}
+                  className="h-8 text-sm"
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  Quando chegar a hora, o popup de lembrete será aberto.
+                </p>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Encerrar recorrência em (opcional)</label>
+                <Input
+                  type="datetime-local"
+                  value={recurrenceEnd}
+                  onChange={(e) => setRecurrenceEnd(e.target.value)}
+                  className="h-8 text-sm"
+                />
+              </div>
+            </>
           )}
           <div className="flex gap-2">
             <Button size="sm" onClick={addReminder} disabled={!date && recurrence === "none"} className="h-7 text-xs">
