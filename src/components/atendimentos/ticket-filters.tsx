@@ -37,6 +37,7 @@ export interface TicketFilters {
   contactPhone: string;
   assignedTo: string;
   trackingStatus: string;
+  recurring: string;
 }
 
 export const defaultFilters: TicketFilters = {
@@ -50,6 +51,7 @@ export const defaultFilters: TicketFilters = {
   contactPhone: "",
   assignedTo: "todos",
   trackingStatus: "todos",
+  recurring: "todos",
 };
 
 interface Props {
@@ -130,6 +132,7 @@ export function TicketFiltersBar({ filters, onChange, tickets, profiles, open, o
     if (filters.assignedTo !== "todos") c++;
     if (filters.search) c++;
     if (filters.trackingStatus !== "todos") c++;
+    if (filters.recurring !== "todos") c++;
     return c;
   }, [filters]);
 
@@ -238,6 +241,19 @@ export function TicketFiltersBar({ filters, onChange, tickets, profiles, open, o
               </Select>
             </div>
 
+            {/* Recurring */}
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Recorrente</label>
+              <Select value={filters.recurring} onValueChange={(v) => set({ recurring: v })}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos</SelectItem>
+                  <SelectItem value="sim">Apenas recorrentes</SelectItem>
+                  <SelectItem value="nao">Não recorrentes</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Date from */}
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground">Data Início</label>
@@ -312,6 +328,10 @@ export function applyTicketFilters(tickets: any[], filters: TicketFilters): any[
 
     // Category
     if (filters.category !== "todos" && t.category !== filters.category) return false;
+
+    // Recurring
+    if (filters.recurring === "sim" && !t.is_recurring) return false;
+    if (filters.recurring === "nao" && t.is_recurring) return false;
 
     // Sector
     if (filters.sector !== "todos" && t.sector !== filters.sector) return false;
