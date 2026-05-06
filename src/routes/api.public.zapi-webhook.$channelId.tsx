@@ -340,6 +340,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
             .maybeSingle();
 
           let chatId = existing?.id as string | undefined;
+          let justReopenedSilently = false;
           if (!chatId) {
             const { data: created } = await supabaseAdmin
               .from("zapi_chats")
@@ -361,7 +362,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
             // Without this, all incoming messages were silently swallowed by
             // the bot's "if status === 'finalizado' return false" guard,
             // making it look like new conversations were not appearing.
-            var shouldReopen =
+            const shouldReopen =
               !p.fromMe && existing.status === "finalizado";
             // For groups, ALWAYS prefer the latest group name (it can change),
             // overriding any previously stored sender name.
