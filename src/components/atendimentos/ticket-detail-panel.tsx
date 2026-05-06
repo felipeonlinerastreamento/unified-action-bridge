@@ -62,7 +62,6 @@ import {
 import { syncTicketToGsystem } from "@/lib/ticket-finalize.functions";
 import { finalizeTicketWithFlow } from "@/lib/ticket-finalize-flow";
 import { escalateToGestao as escalateToGestaoHelper } from "@/lib/escalate-gestao";
-import { formatTicketProtocol as formatProtocol } from "@/lib/protocol-format";
 import { Cloud, RefreshCcw } from "lucide-react";
 
 interface TicketDetailPanelProps {
