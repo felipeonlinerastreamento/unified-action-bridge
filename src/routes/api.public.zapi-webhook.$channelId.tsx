@@ -394,6 +394,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               // para evitar que o cliente receba boas-vindas após uma finalização recente.
               baseUpdate.status = "aguardando";
               baseUpdate.bot_state = {};
+              justReopenedSilently = true;
             }
             await supabaseAdmin
               .from("zapi_chats")
