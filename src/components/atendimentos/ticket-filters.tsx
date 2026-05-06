@@ -132,6 +132,7 @@ export function TicketFiltersBar({ filters, onChange, tickets, profiles, open, o
     if (filters.assignedTo !== "todos") c++;
     if (filters.search) c++;
     if (filters.trackingStatus !== "todos") c++;
+    if (filters.recurring !== "todos") c++;
     return c;
   }, [filters]);
 
