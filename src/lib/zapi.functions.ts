@@ -64,8 +64,35 @@ export const listAllOpenChats = createServerFn({ method: "POST" })
         }
       }
 
+      // Resolve assigned operators (assigned_to → profiles)
+      const assignedIds = Array.from(
+        new Set(rows.map((r: any) => r.assigned_to).filter(Boolean))
+      );
+      const profilesById: Record<string, { id: string; name: string }> = {};
+      if (assignedIds.length > 0) {
+        const { data: profs } = await context.supabase
+          .from("profiles")
+          .select("user_id, name")
+          .in("user_id", assignedIds);
+        for (const p of profs || []) {
+          profilesById[p.user_id] = { id: p.user_id, name: p.name || p.user_id };
+        }
+      }
+
+      // Also list all profiles (online operators) for the agent filter dropdown
+      const { data: allProfs } = await context.supabase
+        .from("profiles")
+        .select("user_id, name, is_chat_available, last_seen_at")
+        .order("name", { ascending: true });
+      const users = (allProfs || []).map((p: any) => ({
+        id: p.user_id,
+        name: p.name || p.user_id,
+        status: p.is_chat_available ? "ONLINE" : "OFFLINE",
+      }));
+
       // Map to gsystem-like ChatItem shape so the UI continues to work
       const chats = rows.map((r: any) => {
+        const assigned = r.assigned_to ? profilesById[r.assigned_to] : null;
         const statusMap: Record<string, number> = {
           bot: 0,
           aguardando: 1,
@@ -87,6 +114,8 @@ export const listAllOpenChats = createServerFn({ method: "POST" })
           },
           channel: { id: r.channel_id },
           currentSector: r.sector_name ? { description: r.sector_name } : undefined,
+          currentUser: assigned ? { id: assigned.id, name: assigned.name } : undefined,
+          _agentName: assigned?.name,
           lastMessage: r.last_message_preview
             ? {
                 text: r.last_message_preview,
@@ -106,7 +135,7 @@ export const listAllOpenChats = createServerFn({ method: "POST" })
         };
       });
 
-      return { chats, users: [], total: chats.length };
+      return { chats, users, total: chats.length };
     } catch (err) {
       console.error("[listAllOpenChats] Error:", err);
       return { chats: [], users: [], total: 0, error: String(err) };
