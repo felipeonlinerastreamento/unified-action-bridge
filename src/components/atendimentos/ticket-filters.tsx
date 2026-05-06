@@ -329,6 +329,10 @@ export function applyTicketFilters(tickets: any[], filters: TicketFilters): any[
     // Category
     if (filters.category !== "todos" && t.category !== filters.category) return false;
 
+    // Recurring
+    if (filters.recurring === "sim" && !t.is_recurring) return false;
+    if (filters.recurring === "nao" && t.is_recurring) return false;
+
     // Sector
     if (filters.sector !== "todos" && t.sector !== filters.sector) return false;
 
