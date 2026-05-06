@@ -54,6 +54,7 @@ import { TicketTrackingSection } from "./ticket-tracking-section";
 import { TicketLiberacaoSection } from "./ticket-liberacao-section";
 import { TicketSuprimentoSection } from "./ticket-suprimento-section";
 import { TicketCompraEquipamentoSection } from "./ticket-compra-equipamento-section";
+import { TicketPerdidosSection } from "./ticket-perdidos-section";
 import { TicketAttachmentsSection } from "./ticket-attachments-section";
 import {
   useTesteEquipamentoSettings,
