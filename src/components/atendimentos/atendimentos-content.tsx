@@ -112,6 +112,19 @@ export function AtendimentosContent() {
           if (!agentsByTicket[a.ticket_id]) agentsByTicket[a.ticket_id] = [];
           agentsByTicket[a.ticket_id].push(a.user_id);
         }
+
+        // Buscar lembretes recorrentes ativos para marcar chamados "recorrentes"
+        var recurringSet = new Set<string>();
+        const { data: recRem } = await supabase
+          .from("ticket_reminders")
+          .select("ticket_id, recurrence_type, is_dismissed")
+          .in("ticket_id", ids)
+          .eq("is_dismissed", false)
+          .not("recurrence_type", "is", null)
+          .neq("recurrence_type", "none");
+        for (const r of (recRem as any[]) || []) {
+          if (r.ticket_id) recurringSet.add(r.ticket_id);
+        }
       }
       return list.map((t: any) => ({
         ...t,
@@ -120,6 +133,7 @@ export function AtendimentosContent() {
         suprimento_items: suprimentoByTicket[t.id] || [],
         compra_equipamento_items: compraEquipByTicket[t.id] || [],
         agent_user_ids: (typeof agentsByTicket !== "undefined" ? agentsByTicket[t.id] : undefined) || [],
+        is_recurring: typeof recurringSet !== "undefined" ? recurringSet.has(t.id) : false,
       }));
     },
     refetchInterval: 30000,
