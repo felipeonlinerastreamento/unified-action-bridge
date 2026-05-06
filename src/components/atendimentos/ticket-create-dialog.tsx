@@ -408,6 +408,24 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
         }
       }
 
+      // Insert perdidos items
+      if (created?.id && isPerdidos && perdidosItems.length > 0) {
+        const rows = perdidosItems.map((it) => ({
+          ticket_id: created.id,
+          item_id: it.item_id,
+          item_name: it.item_name,
+          quantity: it.quantity,
+          unit_value: it.unit_value,
+        }));
+        const { error: pErr } = await supabase
+          .from("ticket_perdidos_items" as any)
+          .insert(rows);
+        if (pErr) {
+          console.error("Erro ao salvar itens perdidos", pErr);
+          toast.error("Ticket criado, mas falhou ao salvar itens perdidos.");
+        }
+      }
+
       toast.success("Ticket criado com sucesso");
       resetForm();
       onCreated();
