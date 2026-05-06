@@ -120,6 +120,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   const [savingCategory, setSavingCategory] = useState(false);
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [confirmFinalizeOpen, setConfirmFinalizeOpen] = useState(false);
+  const [finalizeObservation, setFinalizeObservation] = useState("");
   const { data: teSettings } = useTesteEquipamentoSettings();
 
   const getAuthHeaders = useCallback(async () => {
@@ -377,10 +378,43 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
     }
   };
 
-  const updateStatus = async (newStatus: string) => {
+  const updateStatus = async (newStatus: string, observation?: string) => {
     if (!ticket?.id) return;
 
     if (newStatus === "finalizado") {
+      // Se o ticket é recorrente, finalizar lembretes recorrentes ativos com a observação,
+      // arquivando no histórico e propagando para o próximo lembrete (via trigger handle_reminder_completion).
+      if (ticket.is_recurring) {
+        if (!observation || !observation.trim()) {
+          toast.error("Observação obrigatória para finalizar atendimentos recorrentes");
+          return;
+        }
+        const { data: activeRec } = await supabase
+          .from("ticket_reminders")
+          .select("id, recurrence_type")
+          .eq("ticket_id", ticket.id)
+          .eq("is_dismissed", false)
+          .not("recurrence_type", "is", null)
+          .neq("recurrence_type", "none");
+        for (const r of activeRec || []) {
+          await supabase
+            .from("ticket_reminders")
+            .update({
+              is_dismissed: true,
+              completion_comment: observation,
+              reminder_note: observation,
+              completed_at: new Date().toISOString(),
+              completed_by: userId,
+            } as any)
+            .eq("id", r.id);
+        }
+        await insertSystemComment(
+          ticket.id,
+          `Observação de finalização (recorrente): ${observation}`,
+          "sistema"
+        );
+      }
+
       const res = await finalizeTicketWithFlow({ ticket, userId, teSettings, bypassRouting: false });
       if (res.error) {
         toast.error("Erro ao finalizar: " + res.error);
@@ -388,6 +422,8 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
       }
       refetchComments();
       onRefetch();
+      queryClient.invalidateQueries({ queryKey: ["ticket-reminders", ticket.id] });
+      queryClient.invalidateQueries({ queryKey: ["ticket-reminder-history", ticket.id] });
       if (res.routed && res.routedTo) {
         toast.success(`Encaminhado para ${res.routedTo.sector}`);
         if (res.syncError) toast.error("Falha GSystem: " + res.syncError);
@@ -862,20 +898,37 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
           </TabsContent>
         </Tabs>
       </SheetContent>
-      <AlertDialog open={confirmFinalizeOpen} onOpenChange={setConfirmFinalizeOpen}>
+      <AlertDialog open={confirmFinalizeOpen} onOpenChange={(o) => { setConfirmFinalizeOpen(o); if (!o) setFinalizeObservation(""); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Finalizar atendimento?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação encerrará o ticket. Você poderá reabri-lo depois, se necessário.
+              {ticket.is_recurring
+                ? "Este é um atendimento recorrente. Informe uma observação — ela ficará no histórico e será usada como nota do próximo lembrete."
+                : "Esta ação encerrará o ticket. Você poderá reabri-lo depois, se necessário."}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {ticket.is_recurring && (
+            <Textarea
+              value={finalizeObservation}
+              onChange={(e) => setFinalizeObservation(e.target.value)}
+              placeholder="Observação obrigatória..."
+              className="min-h-[80px] text-sm"
+            />
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => {
+              disabled={ticket.is_recurring && !finalizeObservation.trim()}
+              onClick={(e) => {
+                if (ticket.is_recurring && !finalizeObservation.trim()) {
+                  e.preventDefault();
+                  return;
+                }
                 setConfirmFinalizeOpen(false);
-                updateStatus("finalizado");
+                const obs = finalizeObservation;
+                setFinalizeObservation("");
+                updateStatus("finalizado", obs);
               }}
             >
               Sim, finalizar
