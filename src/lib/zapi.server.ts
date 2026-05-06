@@ -36,10 +36,14 @@ export async function zapiFetch(
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (channel.zapi_client_token) headers["Client-Token"] = channel.zapi_client_token;
 
+  // Hard timeout para evitar que o webhook fique pendurado quando a Z-API
+  // demora a responder (causava timeout do worker e Z-API parava de entregar
+  // eventos). 8s é suficiente para chamadas normais.
   const res = await fetch(zapiUrl(channel, path), {
     method,
     headers,
     body: body ? JSON.stringify(body) : undefined,
+    signal: AbortSignal.timeout(8000),
   });
 
   const text = await res.text();
