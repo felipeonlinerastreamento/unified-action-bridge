@@ -132,10 +132,7 @@ export function AtendimentosContent() {
       // contornando a RLS de profiles que só permite o próprio perfil.
       try {
         const { listAllProfiles } = await import("@/lib/user-admin.functions");
-        const { data: { session } } = await supabase.auth.getSession();
-        const result = await listAllProfiles({
-          headers: { authorization: `Bearer ${session?.access_token ?? ""}` },
-        });
+        const result = await listAllProfiles();
         return Array.isArray(result) ? result : [];
       } catch {
         const { data } = await supabase.from("profiles").select("*");
