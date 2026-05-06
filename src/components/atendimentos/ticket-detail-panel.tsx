@@ -720,6 +720,35 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
                     <MessageSquare className="h-3.5 w-3.5" /> Voltar à conversa
                   </Button>
                 )}
+                {isAdmin && ticket.status !== "finalizado" && !ticket.escalated_to_gestao && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={async () => {
+                      const protocolBase = formatTicketProtocol(ticket as any, ticket.id);
+                      const res = await escalateToGestaoHelper({
+                        channelId: ticket.channel_id || null,
+                        companyId: ticket.company_id || null,
+                        contactPhone: ticket.contact_phone || null,
+                        contactName: ticket.contact_name || null,
+                        plate: ticket.plate || null,
+                        protocolBase,
+                        sourceTicketId: ticket.id,
+                        openedBy: userId,
+                      });
+                      if (res.success) {
+                        toast.success(`Chamado aberto para o setor ${res.sectorName}`);
+                        queryClient.invalidateQueries({ queryKey: ["service-tickets"] });
+                        onRefetch();
+                      } else {
+                        toast.error(res.error || "Falha ao abrir chamado de Gestão");
+                      }
+                    }}
+                    className="gap-1"
+                  >
+                    <ShieldAlert className="h-3.5 w-3.5" /> Gestão
+                  </Button>
+                )}
                 {canFinalize && (
                   <Button size="sm" variant="default" onClick={() => setConfirmFinalizeOpen(true)} className="gap-1">
                     <CheckCircle className="h-3.5 w-3.5" /> Finalizar
