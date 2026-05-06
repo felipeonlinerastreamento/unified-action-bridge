@@ -115,6 +115,8 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
   const [suprimentoItems, setSuprimentoItems] = useState<SuprimentoLineItem[]>([]);
   const isCompraEquip = isCompraEquipamentoCategory(category);
   const [compraEquipItems, setCompraEquipItems] = useState<CompraEquipamentoLineItem[]>([]);
+  const isPerdidos = isPerdidosCategory(category);
+  const [perdidosItems, setPerdidosItems] = useState<PerdidosLineItem[]>([]);
 
   const getAuthHeaders = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
