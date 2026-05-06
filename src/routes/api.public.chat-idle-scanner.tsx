@@ -116,6 +116,7 @@ async function processRule(rule: Rule, results: any[]) {
       await zapiSendText(creds, chat.phone, text);
 
       // Persist outgoing message + bump chat timestamps
+      // Persist outgoing message + bump chat timestamps
       await supabaseAdmin.from("zapi_messages").insert({
         chat_id: chat.id,
         from_me: true,
