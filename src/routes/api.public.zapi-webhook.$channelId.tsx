@@ -133,7 +133,7 @@ export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
           }, PROCESS_BUDGET_MS),
         );
         await Promise.race([processing, timeout]);
-        return new Response("ok");
+        return;
       },
     },
   },
@@ -151,7 +151,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               .update({ status: newStatus })
               .eq("zapi_message_id", mid);
           }
-          return new Response("ok");
+          return;
         }
 
         // Presence: typing — IGNORED on purpose.
@@ -160,7 +160,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
         // concurrently, which broke multi-step flows. Typing indicators are ephemeral
         // UI signals only and should not touch the bot state.
         if (p.type === "PresenceChatCallback") {
-          return new Response("ok");
+          return;
         }
 
         // Incoming/outgoing message — only process actual message events
@@ -223,7 +223,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
           // Skip empty events that have no content (status callbacks, presence echoes, etc.)
           if (!hasContent) {
             console.log("[zapi-webhook] skipping empty event", { type: eventType, phone });
-            return new Response("ok");
+            return;
           }
 
           // CSAT capture: if there is a pending satisfaction survey for this
@@ -291,7 +291,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                   } catch (thanksErr) {
                     console.warn("[zapi-webhook] csat thanks send failed:", thanksErr);
                   }
-                  return new Response("ok");
+                  return;
                 }
                 // Resposta não é 1/2/3 → trata como nova conversa.
                 // Descarta o CSAT pendente e SEGUE o fluxo normal (reabre chat,
