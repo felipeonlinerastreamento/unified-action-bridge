@@ -430,39 +430,20 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               ? (p.senderName || null)
               : null;
 
-            // Upsert by (chat_id, zapi_message_id) — Z-API occasionally
-            // delivers the same messageId in multiple callbacks within seconds,
-            // which previously caused duplicated messages in the chat panel.
-            if (p.messageId) {
-              await supabaseAdmin
-                .from("zapi_messages")
-                .upsert(
-                  {
-                    chat_id: chatId,
-                    zapi_message_id: p.messageId,
-                    from_me: !!p.fromMe,
-                    text,
-                    media_url: mediaUrl,
-                    media_type: mediaType,
-                    status: p.fromMe ? "sent" : "delivered",
-                    participant_name: participantName,
-                    participant_phone: participantPhone,
-                  } as any,
-                  { onConflict: "chat_id,zapi_message_id", ignoreDuplicates: true },
-                );
-            } else {
-              await supabaseAdmin.from("zapi_messages").insert({
-                chat_id: chatId,
-                zapi_message_id: null,
-                from_me: !!p.fromMe,
-                text,
-                media_url: mediaUrl,
-                media_type: mediaType,
-                status: p.fromMe ? "sent" : "delivered",
-                participant_name: participantName,
-                participant_phone: participantPhone,
-              } as any);
-            }
+            // Persist without PostgREST upsert: the DB has a partial unique
+            // index for messageId dedupe, and `onConflict` cannot target that
+            // partial index reliably. A failing upsert was silently updating
+            // chat previews while dropping the actual message row.
+            await persistZapiMessage({
+              chatId,
+              messageId: p.messageId || null,
+              fromMe: !!p.fromMe,
+              text,
+              mediaUrl,
+              mediaType,
+              participantName,
+              participantPhone,
+            });
 
             // Evaluate keyword-trigger rules on inbound messages (inclui grupos)
             if (!p.fromMe && text) {
