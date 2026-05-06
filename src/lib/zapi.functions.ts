@@ -114,6 +114,8 @@ export const listAllOpenChats = createServerFn({ method: "POST" })
           },
           channel: { id: r.channel_id },
           currentSector: r.sector_name ? { description: r.sector_name } : undefined,
+          currentUser: assigned ? { id: assigned.id, name: assigned.name } : undefined,
+          _agentName: assigned?.name,
           lastMessage: r.last_message_preview
             ? {
                 text: r.last_message_preview,
