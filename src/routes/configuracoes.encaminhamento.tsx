@@ -275,6 +275,8 @@ function EncaminhamentoPage() {
 
         <CompraEquipamentoConfig />
 
+        <PerdidosConfig />
+
         <EscalonamentoGestaoConfig />
 
         <ChatIdleAutoMessagesConfig />
