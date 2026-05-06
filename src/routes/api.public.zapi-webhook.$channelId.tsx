@@ -133,7 +133,10 @@ export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
           }, PROCESS_BUDGET_MS),
         );
         await Promise.race([processing, timeout]);
-        return;
+        return new Response(JSON.stringify({ ok: true }), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
       },
     },
   },
