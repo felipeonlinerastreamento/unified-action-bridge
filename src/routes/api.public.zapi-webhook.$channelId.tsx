@@ -529,6 +529,52 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
 
 }
 
+async function persistZapiMessage(args: {
+  chatId: string;
+  messageId: string | null;
+  fromMe: boolean;
+  text: string;
+  mediaUrl: string | null;
+  mediaType: string | null;
+  participantName: string | null;
+  participantPhone: string | null;
+}) {
+  const row = {
+    chat_id: args.chatId,
+    zapi_message_id: args.messageId,
+    from_me: args.fromMe,
+    text: args.text,
+    media_url: args.mediaUrl,
+    media_type: args.mediaType,
+    status: args.fromMe ? "sent" : "delivered",
+    participant_name: args.participantName,
+    participant_phone: args.participantPhone,
+  } as any;
+
+  if (!args.messageId) {
+    const { error } = await supabaseAdmin.from("zapi_messages").insert(row);
+    if (error) console.error("[zapi-webhook] message insert failed:", error);
+    return;
+  }
+
+  const { data: existing, error: lookupError } = await supabaseAdmin
+    .from("zapi_messages")
+    .select("id")
+    .eq("chat_id", args.chatId)
+    .eq("zapi_message_id", args.messageId)
+    .maybeSingle();
+  if (lookupError) console.warn("[zapi-webhook] message lookup failed:", lookupError);
+
+  if ((existing as any)?.id) {
+    const { error } = await supabaseAdmin.from("zapi_messages").update(row).eq("id", (existing as any).id);
+    if (error) console.error("[zapi-webhook] message update failed:", error);
+    return;
+  }
+
+  const { error } = await supabaseAdmin.from("zapi_messages").insert(row);
+  if (error && error.code !== "23505") console.error("[zapi-webhook] message insert failed:", error);
+}
+
 const MEDIA_EXT: Record<string, string> = {
   audio: "ogg",
   video: "mp4",
