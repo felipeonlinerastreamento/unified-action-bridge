@@ -388,11 +388,11 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                 : ((existing.unread_count || 0) + 1),
             };
             if (shouldReopen) {
-              console.log(`[zapi-webhook] reopening finalized chat for ${phone} → restarting bot flow`);
-              baseUpdate.status = "bot";
+              console.log(`[zapi-webhook] reopening finalized chat for ${phone} → silently to queue (no bot)`);
+              // Reabre silenciosamente para a fila — NÃO dispara o bot/menu novamente
+              // para evitar que o cliente receba boas-vindas após uma finalização recente.
+              baseUpdate.status = "aguardando";
               baseUpdate.bot_state = {};
-              baseUpdate.assigned_to = null;
-              baseUpdate.sector_name = null;
             }
             await supabaseAdmin
               .from("zapi_chats")
