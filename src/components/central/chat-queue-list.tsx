@@ -364,14 +364,25 @@ function ChatListItem({
                 {sectorName}
               </Badge>
             )}
-            {agentName && (
+          </div>
+
+          {/* Operator row: same hierarchy as client name */}
+          {agentName && (
+            <div className="flex items-center gap-1.5 mt-0.5">
               <span
-                className="text-[10px] font-semibold px-1.5 py-0 rounded-sm shrink-0 text-white leading-4"
+                className="inline-block h-2.5 w-2.5 rounded-full shrink-0"
                 style={{ backgroundColor: getAgentColor(agentName) }}
+                aria-hidden
+              />
+              <p
+                className="text-sm font-medium truncate"
+                style={{ color: getAgentColor(agentName) }}
+                title={`Operador: ${agentName}`}
               >
                 {agentName}
-              </span>
-            )}
+              </p>
+            </div>
+          )}
           </div>
 
           {/* Row 3: SLA time badge */}
