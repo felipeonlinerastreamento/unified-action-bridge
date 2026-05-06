@@ -133,7 +133,7 @@ async function processRule(rule: Rule, results: any[]) {
 
       // Log
       const idleMin = Math.floor(
-        (Date.now() - new Date(chat.last_message_at).getTime()) / 60_000,
+        (Date.now() - new Date(chat.last_message_at || new Date().toISOString()).getTime()) / 60_000,
       );
       await supabaseAdmin.from("chat_idle_auto_message_logs").insert({
         rule_id: rule.id,
