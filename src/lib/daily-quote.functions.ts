@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { createClient } from "@supabase/supabase-js";
 import { z } from "zod";
+import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
 const FALLBACK_QUOTES = [
   { content: "O sucesso é a soma de pequenos esforços repetidos dia após dia.", author: "Robert Collier" },
@@ -67,13 +68,14 @@ async function generateWithAI(seed: string): Promise<{ content: string; author: 
 }
 
 export const getDailyQuote = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
   .inputValidator((data: unknown) =>
-    z.object({ userId: z.string().uuid().optional() }).parse(data ?? {})
+    z.object({}).parse(data ?? {})
   )
-  .handler(async ({ data }) => {
+  .handler(async ({ context }) => {
     const supabase = getServiceSupabase();
     const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD
-    const userId = data.userId ?? null;
+    const userId = context.userId;
 
     // 1. Try existing quote for this user (or global) today
     const query = supabase
