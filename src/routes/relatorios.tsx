@@ -30,6 +30,7 @@ import { RemindersTab } from "@/components/relatorios/reminders-tab";
 import { InactivityAlertsTab } from "@/components/relatorios/inactivity-alerts-tab";
 import { CsatReportTab } from "@/components/relatorios/csat-report-tab";
 import { MessageTriggersTab } from "@/components/relatorios/message-triggers-tab";
+import { PerdidosReportTab } from "@/components/relatorios/perdidos-tab";
 
 export const Route = createFileRoute("/relatorios")({
   component: RelatoriosPage,
