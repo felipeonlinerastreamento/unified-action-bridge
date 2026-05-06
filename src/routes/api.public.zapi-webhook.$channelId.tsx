@@ -374,8 +374,8 @@ export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
               participant_phone: participantPhone,
             } as any);
 
-            // Evaluate keyword-trigger rules on inbound messages (skip groups & outbound)
-            if (!p.fromMe && text && !isGroupMessage) {
+            // Evaluate keyword-trigger rules on inbound messages (inclui grupos)
+            if (!p.fromMe && text) {
               try {
                 const { data: chatRow } = await supabaseAdmin
                   .from("zapi_chats")
