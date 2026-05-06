@@ -23,13 +23,14 @@ import {
 } from "recharts";
 import {
   MessageSquare, Clock, Users, Building2, Package, TrendingUp,
-  Loader2, BarChart3, PieChart as PieChartIcon, Activity, Bell, Trophy,
+  Loader2, BarChart3, PieChart as PieChartIcon, Activity, Bell, Trophy, PackageX,
 } from "lucide-react";
 import { OperatorPerformanceTab } from "@/components/relatorios/operator-performance-tab";
 import { RemindersTab } from "@/components/relatorios/reminders-tab";
 import { InactivityAlertsTab } from "@/components/relatorios/inactivity-alerts-tab";
 import { CsatReportTab } from "@/components/relatorios/csat-report-tab";
 import { MessageTriggersTab } from "@/components/relatorios/message-triggers-tab";
+import { PerdidosReportTab } from "@/components/relatorios/perdidos-tab";
 
 export const Route = createFileRoute("/relatorios")({
   component: RelatoriosPage,
@@ -353,7 +354,7 @@ function RelatoriosPage() {
 
         <div id="report-content">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-11">
+            <TabsList className="grid w-full grid-cols-12">
               <TabsTrigger value="gatilhos" className="gap-1 text-xs">
                 <Bell className="h-3.5 w-3.5" /> Gatilhos
               </TabsTrigger>
@@ -386,6 +387,9 @@ function RelatoriosPage() {
               </TabsTrigger>
               <TabsTrigger value="csat" className="gap-1 text-xs">
                 <Trophy className="h-3.5 w-3.5" /> CSAT
+              </TabsTrigger>
+              <TabsTrigger value="perdidos" className="gap-1 text-xs">
+                <PackageX className="h-3.5 w-3.5" /> Perdidos
               </TabsTrigger>
             </TabsList>
 
@@ -828,6 +832,10 @@ function RelatoriosPage() {
 
             <TabsContent value="gatilhos" className="space-y-4">
               <MessageTriggersTab dateFrom={dateFrom} dateTo={dateTo} />
+            </TabsContent>
+
+            <TabsContent value="perdidos" className="space-y-4">
+              <PerdidosReportTab dateFrom={dateFrom} dateTo={dateTo} />
             </TabsContent>
           </Tabs>
         </div>

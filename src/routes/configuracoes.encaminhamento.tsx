@@ -46,6 +46,7 @@ import { TesteEquipamentoConfig } from "@/components/configuracoes/teste-equipam
 import { LiberacaoEquipamentoConfig } from "@/components/configuracoes/liberacao-equipamento-config";
 import { SuprimentoConfig } from "@/components/configuracoes/suprimento-config";
 import { CompraEquipamentoConfig } from "@/components/configuracoes/compra-equipamento-config";
+import { PerdidosConfig } from "@/components/configuracoes/perdidos-config";
 import { EscalonamentoGestaoConfig } from "@/components/configuracoes/escalonamento-gestao-config";
 import { ChatIdleAutoMessagesConfig } from "@/components/configuracoes/chat-idle-auto-messages-config";
 
@@ -273,6 +274,8 @@ function EncaminhamentoPage() {
         <SuprimentoConfig />
 
         <CompraEquipamentoConfig />
+
+        <PerdidosConfig />
 
         <EscalonamentoGestaoConfig />
 

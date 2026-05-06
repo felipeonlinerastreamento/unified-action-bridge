@@ -62,6 +62,12 @@ import {
   validateCompraEquipamentoItems,
   type CompraEquipamentoLineItem,
 } from "./compra-equipamento-fields";
+import { isPerdidosCategory } from "@/hooks/use-perdidos";
+import {
+  PerdidosFields,
+  validatePerdidosItems,
+  type PerdidosLineItem,
+} from "./perdidos-fields";
 
 interface TicketCreateDialogProps {
   open: boolean;
@@ -109,6 +115,8 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
   const [suprimentoItems, setSuprimentoItems] = useState<SuprimentoLineItem[]>([]);
   const isCompraEquip = isCompraEquipamentoCategory(category);
   const [compraEquipItems, setCompraEquipItems] = useState<CompraEquipamentoLineItem[]>([]);
+  const isPerdidos = isPerdidosCategory(category);
+  const [perdidosItems, setPerdidosItems] = useState<PerdidosLineItem[]>([]);
 
   const getAuthHeaders = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -197,6 +205,7 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
     setLiberacaoDate("");
     setSuprimentoItems([]);
     setCompraEquipItems([]);
+    setPerdidosItems([]);
   };
 
   const ensureLocalCompany = async (cliente: GsystemCliente): Promise<string | null> => {
@@ -298,6 +307,14 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
         return;
       }
     }
+    // Validate Perdidos items
+    if (isPerdidos) {
+      const err = validatePerdidosItems(perdidosItems);
+      if (err) {
+        toast.error(err);
+        return;
+      }
+    }
     setLoading(true);
     try {
       const companyId = await ensureLocalCompany(selectedCliente);
@@ -389,6 +406,24 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
         if (ceErr) {
           console.error("Erro ao salvar itens de compra equipamento", ceErr);
           toast.error("Ticket criado, mas falhou ao salvar itens de compra equipamento.");
+        }
+      }
+
+      // Insert perdidos items
+      if (created?.id && isPerdidos && perdidosItems.length > 0) {
+        const rows = perdidosItems.map((it) => ({
+          ticket_id: created.id,
+          item_id: it.item_id,
+          item_name: it.item_name,
+          quantity: it.quantity,
+          unit_value: it.unit_value,
+        }));
+        const { error: pErr } = await supabase
+          .from("ticket_perdidos_items" as any)
+          .insert(rows);
+        if (pErr) {
+          console.error("Erro ao salvar itens perdidos", pErr);
+          toast.error("Ticket criado, mas falhou ao salvar itens perdidos.");
         }
       }
 
@@ -607,6 +642,9 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
           )}
           {isCompraEquip && (
             <CompraEquipamentoFields items={compraEquipItems} onChange={setCompraEquipItems} />
+          )}
+          {isPerdidos && (
+            <PerdidosFields items={perdidosItems} onChange={setPerdidosItems} />
           )}
           <div className="space-y-1">
             <label className="text-xs font-medium">Observações</label>

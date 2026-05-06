@@ -2955,6 +2955,36 @@ export type Database = {
         }
         Relationships: []
       }
+      perdidos_items: {
+        Row: {
+          created_at: string
+          default_quantity: number
+          default_unit_value: number
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_quantity?: number
+          default_unit_value?: number
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_quantity?: number
+          default_unit_value?: number
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           attendance_target_minutes: number | null
@@ -3876,6 +3906,57 @@ export type Database = {
           },
           {
             foreignKeyName: "ticket_liberacao_items_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "service_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ticket_perdidos_items: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          item_id: string | null
+          item_name: string
+          quantity: number
+          ticket_id: string
+          total_value: number | null
+          unit_value: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          item_id?: string | null
+          item_name: string
+          quantity?: number
+          ticket_id: string
+          total_value?: number | null
+          unit_value?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          item_id?: string | null
+          item_name?: string
+          quantity?: number
+          ticket_id?: string
+          total_value?: number | null
+          unit_value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_perdidos_items_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "perdidos_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_perdidos_items_ticket_id_fkey"
             columns: ["ticket_id"]
             isOneToOne: false
             referencedRelation: "service_tickets"

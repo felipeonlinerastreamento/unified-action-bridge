@@ -1,43 +1,90 @@
-## Problema
-Z-API retorna **HTTP 400** com `PoseidonException` ao enviar áudio. Esse erro acontece porque a Z-API só aceita áudios em **OGG/Opus** (ou MP3) no endpoint `/send-audio`. O `MediaRecorder` do navegador, em Chrome no Windows/Linux, geralmente cai para `audio/webm;codecs=opus` em vez de `audio/ogg;codecs=opus`, e o data URL vai com prefixo `data:audio/webm;...`. A Z-API valida pelo prefixo do data URL e rejeita com Poseidon.
 
-O conteúdo binário Opus é compatível — só o "container/MIME" anunciado precisa ser OGG.
+# Itens Perdidos — Plano de implementação
 
-## Correção (mínima e cirúrgica)
+Replica o padrão já consolidado de "Suprimento" / "Compra Equipamento", adicionando suporte a **valor unitário** por item (campo novo).
 
-### 1. `src/lib/zapi.server.ts` — `zapiSendMedia`
-No ramo `kind === "audio"`, normalizar o data URL antes de enviar para Z-API:
-- Se o prefixo for `data:audio/webm...` (ou qualquer coisa diferente de `audio/ogg`/`audio/mpeg`), reescrever o cabeçalho para `data:audio/ogg;codecs=opus;base64,` mantendo o payload base64 intacto.
-- Se já vier `audio/ogg` ou `audio/mpeg`/`audio/mp3`, enviar como está.
+## 1. Banco de dados (migração)
 
-```ts
-function normalizeAudioDataUrl(dataUrl: string): string {
-  const m = dataUrl.match(/^data:([^;,]+)(;[^,]*)?,(.+)$/);
-  if (!m) return dataUrl;
-  const mime = m[1].toLowerCase();
-  const payload = m[3];
-  if (mime === "audio/ogg" || mime === "audio/mpeg" || mime === "audio/mp3") return dataUrl;
-  // webm/opus, mp4, etc → reanunciar como ogg/opus (binário Opus é compatível)
-  return `data:audio/ogg;codecs=opus;base64,${payload}`;
-}
-```
+Duas novas tabelas com RLS no padrão das demais (admin/gestor gerenciam, atendentes leem/inserem nos próprios tickets).
 
-Usar dentro de `if (kind === "audio") { … audio: normalizeAudioDataUrl(dataUrl) … }`.
+**`perdidos_items`** (catálogo configurável)
+- `id uuid pk`, `name text not null`, `default_quantity int default 1`
+- `default_unit_value numeric(10,2) default 0` (valor unitário sugerido, opcional)
+- `is_active bool default true`, `created_at`, `updated_at`
 
-### 2. `src/components/central/audio-recorder-button.tsx` — `pickMimeType`
-Reordenar candidatos para priorizar formatos que a Z-API aceita nativamente, evitando a normalização quando possível:
-1. `audio/ogg;codecs=opus`
-2. `audio/mp4` (Safari → AAC; deixaremos a Z-API rejeitar via fallback no servidor se for o caso — Safari raramente suporta opus/ogg)
-3. `audio/webm;codecs=opus`
-4. `audio/webm`
+**`ticket_perdidos_items`** (itens vinculados ao chamado)
+- `id uuid pk`, `ticket_id uuid → service_tickets(id) on delete cascade`
+- `item_id uuid → perdidos_items(id)`, `item_name text` (snapshot)
+- `quantity int not null default 1`
+- `unit_value numeric(10,2) not null default 0`
+- `total_value numeric(12,2) generated always as (quantity * unit_value) stored`
+- `created_at`, `created_by`
 
-(Sem mudanças de UI/comportamento; apenas a ordem de preferência.)
+Índices: `ticket_id`, `item_id`. Triggers `update_updated_at_column` no catálogo.
 
-## Por que isso resolve
-- Em Chrome/Edge: o navegador grava em webm/opus → o servidor reanuncia como ogg/opus → Z-API aceita.
-- Em navegadores que já suportam ogg nativamente: passa direto.
-- Não exige conversão real de container (sem ffmpeg/wasm), o que manteria o áudio pequeno e a função de servidor rápida.
+RLS:
+- `perdidos_items`: SELECT autenticados; INSERT/UPDATE/DELETE apenas admin/gestor (`has_role`).
+- `ticket_perdidos_items`: SELECT/INSERT/DELETE para autenticados (mesmas regras já usadas em `ticket_suprimento_items`).
 
-## Fora de escopo
-- Suporte 100% a Safari/iOS (que grava em mp4/AAC). Pode ser tratado depois com transmuxing client-side ou enviando como documento.
-- Outras findings de segurança listadas no painel.
+## 2. Configurações > Encaminhamento
+
+Novo card `PerdidosConfig` em `src/components/configuracoes/perdidos-config.tsx` (clone de `suprimento-config.tsx` + campo extra "Valor unitário padrão" com `Input type=number step=0.01`). Renderizado em `src/routes/configuracoes.encaminhamento.tsx` logo após `<CompraEquipamentoConfig />`.
+
+Operações: criar / editar / excluir / ativar item do catálogo.
+
+## 3. Hook + componentes do chamado
+
+**`src/hooks/use-perdidos.tsx`** — segue `use-suprimento.tsx`:
+- `isPerdidosCategory(cat)` reconhece `"perdidos"`, `"perdido"`, `"itens perdidos"`.
+- `usePerdidosCatalog()`, `useTicketPerdidosItems(ticketId)`.
+- Tipos `PerdidosCatalogItem` (com `default_unit_value`) e `TicketPerdidosItem` (com `unit_value`, `total_value`).
+
+**`src/components/atendimentos/perdidos-fields.tsx`** — clone de `suprimento-fields.tsx` adicionando coluna **Valor unitário** (numeric) ao lado de Qtd, e exibindo o **subtotal por linha** + **total geral** no rodapé do card. Exporta `validatePerdidosItems` (item, qtd > 0, valor ≥ 0).
+
+**`src/components/atendimentos/ticket-perdidos-section.tsx`** — painel exibido no `ticket-detail-panel.tsx` quando categoria for "Perdidos". Lista itens já salvos, permite adicionar/remover (mesmas permissões dos demais).
+
+## 4. Integração com criação de atendimento
+
+Em `src/components/atendimentos/ticket-create-dialog.tsx`:
+- Importar `isPerdidosCategory`, `PerdidosFields`, `validatePerdidosItems`.
+- Estado `perdidosItems`.
+- Renderizar `<PerdidosFields>` quando `isPerdidos`.
+- Validar antes de submeter.
+- Após criar o ticket, inserir as linhas em `ticket_perdidos_items`.
+
+Em `ticket-detail-panel.tsx`: incluir `<TicketPerdidosSection ticketId={...} category={...} />` no mesmo bloco condicional dos demais módulos.
+
+## 5. Relatório de Itens Perdidos
+
+Novo componente `src/components/relatorios/perdidos-tab.tsx`:
+- Query Supabase em `ticket_perdidos_items` filtrando por `created_at` no intervalo do filtro global (`dateFrom`/`dateTo`), com join no ticket para protocolo/empresa.
+- KPIs (`ReportKpiCard`): Total de itens, Quantidade total, Valor total (R$).
+- Tabela: Data | Protocolo | Empresa | Item | Qtd | Valor unitário | Valor total.
+- Agrupamento por item (Bar/Pie chart usando Recharts já presente).
+- Botões "Exportar CSV / PDF" usando `exportToCSV` / `exportToPDF` já existentes em `export-utils.ts`.
+
+Em `src/routes/relatorios.tsx`:
+- Adicionar `<TabsTrigger value="perdidos">Itens Perdidos</TabsTrigger>` na lista.
+- Adicionar `<TabsContent value="perdidos"><PerdidosReportTab dateFrom={...} dateTo={...} /></TabsContent>`.
+
+## 6. Detalhes técnicos
+
+- Todos os acessos a tabelas novas via `supabase.from("perdidos_items" as any)` enquanto `types.ts` não regenera.
+- Valores monetários armazenados como `numeric` e formatados em UI com `Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" })`.
+- Sem alterações em edge functions; tudo client-side com RLS.
+
+## Arquivos a criar/editar
+
+Criar:
+- migração SQL (tabelas + RLS + triggers)
+- `src/components/configuracoes/perdidos-config.tsx`
+- `src/hooks/use-perdidos.tsx`
+- `src/components/atendimentos/perdidos-fields.tsx`
+- `src/components/atendimentos/ticket-perdidos-section.tsx`
+- `src/components/relatorios/perdidos-tab.tsx`
+
+Editar:
+- `src/routes/configuracoes.encaminhamento.tsx`
+- `src/components/atendimentos/ticket-create-dialog.tsx`
+- `src/components/atendimentos/ticket-detail-panel.tsx`
+- `src/routes/relatorios.tsx`
