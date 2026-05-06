@@ -324,12 +324,25 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
             }
           }
 
-          const mediaUrl =
+          const rawMediaUrl =
             p.image?.imageUrl || p.audio?.audioUrl || p.video?.videoUrl || p.document?.documentUrl
-            || (contactCard
-              ? `data:text/vcard;charset=utf-8,${encodeURIComponent(contactCard.vcard)}`
-              : null);
+            || null;
           const mediaType = p.image ? "image" : p.audio ? "audio" : p.video ? "video" : p.document ? "document" : contactCard ? "contact" : null;
+
+          // Z-API media URLs (Backblaze "temp-file-download/...") expire in
+          // a few minutes. Rehost into our public storage bucket so audio/
+          // video/image/document bubbles keep working over time.
+          let mediaUrl: string | null = rawMediaUrl;
+          if (rawMediaUrl && mediaType && mediaType !== "contact") {
+            try {
+              mediaUrl = await rehostMediaToStorage(rawMediaUrl, mediaType, channelId, phone);
+            } catch (err) {
+              console.warn("[zapi-webhook] media rehost failed, keeping original url:", err);
+            }
+          }
+          if (!mediaUrl && contactCard) {
+            mediaUrl = `data:text/vcard;charset=utf-8,${encodeURIComponent(contactCard.vcard)}`;
+          }
 
           // Upsert chat
           const { data: existing } = await supabaseAdmin
