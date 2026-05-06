@@ -241,6 +241,19 @@ export function TicketFiltersBar({ filters, onChange, tickets, profiles, open, o
               </Select>
             </div>
 
+            {/* Recurring */}
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Recorrente</label>
+              <Select value={filters.recurring} onValueChange={(v) => set({ recurring: v })}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos</SelectItem>
+                  <SelectItem value="sim">Apenas recorrentes</SelectItem>
+                  <SelectItem value="nao">Não recorrentes</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Date from */}
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground">Data Início</label>
