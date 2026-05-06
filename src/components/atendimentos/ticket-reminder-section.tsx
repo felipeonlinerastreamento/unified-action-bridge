@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bell, BellOff, Plus, Repeat, History, ChevronDown, ChevronUp } from "lucide-react";
+import { Bell, BellOff, Plus, Repeat, History, ChevronDown, ChevronUp, Clock } from "lucide-react";
 
 interface TicketReminderSectionProps {
   ticketId: string;
@@ -31,6 +31,16 @@ const RECURRENCE_LABEL: Record<string, string> = {
   yearly: "Anual",
 };
 
+const WEEKDAYS = [
+  { value: "0", label: "Domingo" },
+  { value: "1", label: "Segunda" },
+  { value: "2", label: "Terça" },
+  { value: "3", label: "Quarta" },
+  { value: "4", label: "Quinta" },
+  { value: "5", label: "Sexta" },
+  { value: "6", label: "Sábado" },
+];
+
 export function TicketReminderSection({ ticketId, userId }: TicketReminderSectionProps) {
   const queryClient = useQueryClient();
   const [showForm, setShowForm] = useState(false);
@@ -38,6 +48,8 @@ export function TicketReminderSection({ ticketId, userId }: TicketReminderSectio
   const [note, setNote] = useState("");
   const [recurrence, setRecurrence] = useState<string>("none");
   const [recurrenceEnd, setRecurrenceEnd] = useState("");
+  const [recurrenceWeekday, setRecurrenceWeekday] = useState<string>("");
+  const [recurrenceTime, setRecurrenceTime] = useState<string>("");
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [completionComment, setCompletionComment] = useState("");
   const [showHistory, setShowHistory] = useState(false);
@@ -76,7 +88,7 @@ export function TicketReminderSection({ ticketId, userId }: TicketReminderSectio
     enabled: !!ticketId,
   });
 
-  const computeNextFromRecurrence = (rec: string): Date => {
+  const computeNextFromRecurrence = (rec: string, weekday?: string, time?: string): Date => {
     const d = new Date();
     switch (rec) {
       case "daily": d.setDate(d.getDate() + 1); break;
@@ -85,8 +97,21 @@ export function TicketReminderSection({ ticketId, userId }: TicketReminderSectio
       case "monthly": d.setMonth(d.getMonth() + 1); break;
       case "yearly": d.setFullYear(d.getFullYear() + 1); break;
     }
+    if (weekday && (rec === "weekly" || rec === "biweekly" || rec === "monthly")) {
+      const target = parseInt(weekday, 10);
+      const current = d.getDay();
+      let diff = (target - current + 7) % 7;
+      if (diff === 0 && rec !== "monthly") diff = 7;
+      d.setDate(d.getDate() + diff);
+    }
+    if (time) {
+      const [h, m] = time.split(":").map((v) => parseInt(v, 10));
+      if (!isNaN(h)) d.setHours(h, isNaN(m) ? 0 : m, 0, 0);
+    }
     return d;
   };
+
+  const supportsWeekday = recurrence === "weekly" || recurrence === "biweekly" || recurrence === "monthly";
 
   const addReminder = async () => {
     const isRecurring = recurrence && recurrence !== "none";
@@ -94,8 +119,16 @@ export function TicketReminderSection({ ticketId, userId }: TicketReminderSectio
       toast.error("Selecione uma data para o lembrete");
       return;
     }
-    // Sem data + recorrência: gera automaticamente a próxima ocorrência
-    const finalDate = date ? new Date(date) : computeNextFromRecurrence(recurrence);
+    let finalDate: Date;
+    if (date) {
+      finalDate = new Date(date);
+      if (recurrenceTime) {
+        const [h, m] = recurrenceTime.split(":").map((v) => parseInt(v, 10));
+        if (!isNaN(h)) finalDate.setHours(h, isNaN(m) ? 0 : m, 0, 0);
+      }
+    } else {
+      finalDate = computeNextFromRecurrence(recurrence, recurrenceWeekday, recurrenceTime);
+    }
 
     const insertPayload: any = {
       ticket_id: ticketId,
@@ -122,7 +155,7 @@ export function TicketReminderSection({ ticketId, userId }: TicketReminderSectio
     await supabase.from("ticket_comments").insert({
       ticket_id: ticketId,
       user_id: userId,
-      content: `Lembrete definido para ${finalDate.toLocaleDateString("pt-BR")}${note ? `: ${note}` : ""}${recLabel}`,
+      content: `Lembrete definido para ${finalDate.toLocaleDateString("pt-BR")} ${finalDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}${note ? `: ${note}` : ""}${recLabel}`,
       comment_type: "sistema",
     });
 
@@ -130,6 +163,8 @@ export function TicketReminderSection({ ticketId, userId }: TicketReminderSectio
     setNote("");
     setRecurrence("none");
     setRecurrenceEnd("");
+    setRecurrenceWeekday("");
+    setRecurrenceTime("");
     setShowForm(false);
     refetch();
     queryClient.invalidateQueries({ queryKey: ["service-tickets"] });
@@ -236,16 +271,48 @@ export function TicketReminderSection({ ticketId, userId }: TicketReminderSectio
               </SelectContent>
             </Select>
           </div>
-          {recurrence !== "none" && (
+          {supportsWeekday && (
             <div className="space-y-1">
-              <label className="text-xs font-medium">Encerrar recorrência em (opcional)</label>
-              <Input
-                type="datetime-local"
-                value={recurrenceEnd}
-                onChange={(e) => setRecurrenceEnd(e.target.value)}
-                className="h-8 text-sm"
-              />
+              <label className="text-xs font-medium">Dia da semana (opcional)</label>
+              <Select value={recurrenceWeekday || "any"} onValueChange={(v) => setRecurrenceWeekday(v === "any" ? "" : v)}>
+                <SelectTrigger className="h-8 text-sm">
+                  <SelectValue placeholder="Qualquer dia" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="any" className="text-sm">Qualquer dia</SelectItem>
+                  {WEEKDAYS.map((d) => (
+                    <SelectItem key={d.value} value={d.value} className="text-sm">{d.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
+          )}
+          {recurrence !== "none" && (
+            <>
+              <div className="space-y-1">
+                <label className="text-xs font-medium flex items-center gap-1">
+                  <Clock className="h-3 w-3" /> Hora do lembrete (opcional)
+                </label>
+                <Input
+                  type="time"
+                  value={recurrenceTime}
+                  onChange={(e) => setRecurrenceTime(e.target.value)}
+                  className="h-8 text-sm"
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  Quando chegar a hora, o popup de lembrete será aberto.
+                </p>
+              </div>
+              <div className="space-y-1">
+                <label className="text-xs font-medium">Encerrar recorrência em (opcional)</label>
+                <Input
+                  type="datetime-local"
+                  value={recurrenceEnd}
+                  onChange={(e) => setRecurrenceEnd(e.target.value)}
+                  className="h-8 text-sm"
+                />
+              </div>
+            </>
           )}
           <div className="flex gap-2">
             <Button size="sm" onClick={addReminder} disabled={!date && recurrence === "none"} className="h-7 text-xs">
