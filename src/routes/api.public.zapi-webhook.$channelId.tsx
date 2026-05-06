@@ -361,7 +361,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
             // Without this, all incoming messages were silently swallowed by
             // the bot's "if status === 'finalizado' return false" guard,
             // making it look like new conversations were not appearing.
-            const shouldReopen =
+            var shouldReopen =
               !p.fromMe && existing.status === "finalizado";
             // For groups, ALWAYS prefer the latest group name (it can change),
             // overriding any previously stored sender name.
