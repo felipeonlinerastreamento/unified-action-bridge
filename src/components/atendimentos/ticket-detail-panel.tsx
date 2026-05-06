@@ -713,6 +713,11 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
                     <Clock className="h-3.5 w-3.5" /> Iniciar Atendimento
                   </Button>
                 )}
+                {ticket.contact_phone && (
+                  <Button size="sm" variant="outline" onClick={goToChat} className="gap-1">
+                    <MessageSquare className="h-3.5 w-3.5" /> Voltar à conversa
+                  </Button>
+                )}
                 {canFinalize && (
                   <Button size="sm" variant="default" onClick={() => setConfirmFinalizeOpen(true)} className="gap-1">
                     <CheckCircle className="h-3.5 w-3.5" /> Finalizar
