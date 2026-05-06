@@ -898,20 +898,37 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
           </TabsContent>
         </Tabs>
       </SheetContent>
-      <AlertDialog open={confirmFinalizeOpen} onOpenChange={setConfirmFinalizeOpen}>
+      <AlertDialog open={confirmFinalizeOpen} onOpenChange={(o) => { setConfirmFinalizeOpen(o); if (!o) setFinalizeObservation(""); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Finalizar atendimento?</AlertDialogTitle>
             <AlertDialogDescription>
-              Esta ação encerrará o ticket. Você poderá reabri-lo depois, se necessário.
+              {ticket.is_recurring
+                ? "Este é um atendimento recorrente. Informe uma observação — ela ficará no histórico e será usada como nota do próximo lembrete."
+                : "Esta ação encerrará o ticket. Você poderá reabri-lo depois, se necessário."}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {ticket.is_recurring && (
+            <Textarea
+              value={finalizeObservation}
+              onChange={(e) => setFinalizeObservation(e.target.value)}
+              placeholder="Observação obrigatória..."
+              className="min-h-[80px] text-sm"
+            />
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => {
+              disabled={ticket.is_recurring && !finalizeObservation.trim()}
+              onClick={(e) => {
+                if (ticket.is_recurring && !finalizeObservation.trim()) {
+                  e.preventDefault();
+                  return;
+                }
                 setConfirmFinalizeOpen(false);
-                updateStatus("finalizado");
+                const obs = finalizeObservation;
+                setFinalizeObservation("");
+                updateStatus("finalizado", obs);
               }}
             >
               Sim, finalizar
