@@ -7,7 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bell, BellOff, Plus, Repeat, History, ChevronDown, ChevronUp } from "lucide-react";
+import { Bell, BellOff, Plus, Repeat, History, ChevronDown, ChevronUp, Clock } from "lucide-react";
 
 interface TicketReminderSectionProps {
   ticketId: string;
@@ -30,6 +30,16 @@ const RECURRENCE_LABEL: Record<string, string> = {
   monthly: "Mensal",
   yearly: "Anual",
 };
+
+const WEEKDAYS = [
+  { value: "0", label: "Domingo" },
+  { value: "1", label: "Segunda" },
+  { value: "2", label: "Terça" },
+  { value: "3", label: "Quarta" },
+  { value: "4", label: "Quinta" },
+  { value: "5", label: "Sexta" },
+  { value: "6", label: "Sábado" },
+];
 
 export function TicketReminderSection({ ticketId, userId }: TicketReminderSectionProps) {
   const queryClient = useQueryClient();
