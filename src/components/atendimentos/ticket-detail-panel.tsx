@@ -120,6 +120,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   const [savingCategory, setSavingCategory] = useState(false);
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [confirmFinalizeOpen, setConfirmFinalizeOpen] = useState(false);
+  const [finalizeObservation, setFinalizeObservation] = useState("");
   const { data: teSettings } = useTesteEquipamentoSettings();
 
   const getAuthHeaders = useCallback(async () => {
