@@ -37,6 +37,7 @@ export interface TicketFilters {
   contactPhone: string;
   assignedTo: string;
   trackingStatus: string;
+  recurring: string;
 }
 
 export const defaultFilters: TicketFilters = {
@@ -50,6 +51,7 @@ export const defaultFilters: TicketFilters = {
   contactPhone: "",
   assignedTo: "todos",
   trackingStatus: "todos",
+  recurring: "todos",
 };
 
 interface Props {
