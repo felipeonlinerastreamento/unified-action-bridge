@@ -88,7 +88,7 @@ export function TicketReminderSection({ ticketId, userId }: TicketReminderSectio
     enabled: !!ticketId,
   });
 
-  const computeNextFromRecurrence = (rec: string): Date => {
+  const computeNextFromRecurrence = (rec: string, weekday?: string, time?: string): Date => {
     const d = new Date();
     switch (rec) {
       case "daily": d.setDate(d.getDate() + 1); break;
@@ -97,8 +97,21 @@ export function TicketReminderSection({ ticketId, userId }: TicketReminderSectio
       case "monthly": d.setMonth(d.getMonth() + 1); break;
       case "yearly": d.setFullYear(d.getFullYear() + 1); break;
     }
+    if (weekday && (rec === "weekly" || rec === "biweekly" || rec === "monthly")) {
+      const target = parseInt(weekday, 10);
+      const current = d.getDay();
+      let diff = (target - current + 7) % 7;
+      if (diff === 0 && rec !== "monthly") diff = 7;
+      d.setDate(d.getDate() + diff);
+    }
+    if (time) {
+      const [h, m] = time.split(":").map((v) => parseInt(v, 10));
+      if (!isNaN(h)) d.setHours(h, isNaN(m) ? 0 : m, 0, 0);
+    }
     return d;
   };
+
+  const supportsWeekday = recurrence === "weekly" || recurrence === "biweekly" || recurrence === "monthly";
 
   const addReminder = async () => {
     const isRecurring = recurrence && recurrence !== "none";
@@ -106,8 +119,16 @@ export function TicketReminderSection({ ticketId, userId }: TicketReminderSectio
       toast.error("Selecione uma data para o lembrete");
       return;
     }
-    // Sem data + recorrência: gera automaticamente a próxima ocorrência
-    const finalDate = date ? new Date(date) : computeNextFromRecurrence(recurrence);
+    let finalDate: Date;
+    if (date) {
+      finalDate = new Date(date);
+      if (recurrenceTime) {
+        const [h, m] = recurrenceTime.split(":").map((v) => parseInt(v, 10));
+        if (!isNaN(h)) finalDate.setHours(h, isNaN(m) ? 0 : m, 0, 0);
+      }
+    } else {
+      finalDate = computeNextFromRecurrence(recurrence, recurrenceWeekday, recurrenceTime);
+    }
 
     const insertPayload: any = {
       ticket_id: ticketId,
@@ -134,7 +155,7 @@ export function TicketReminderSection({ ticketId, userId }: TicketReminderSectio
     await supabase.from("ticket_comments").insert({
       ticket_id: ticketId,
       user_id: userId,
-      content: `Lembrete definido para ${finalDate.toLocaleDateString("pt-BR")}${note ? `: ${note}` : ""}${recLabel}`,
+      content: `Lembrete definido para ${finalDate.toLocaleDateString("pt-BR")} ${finalDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}${note ? `: ${note}` : ""}${recLabel}`,
       comment_type: "sistema",
     });
 
@@ -142,6 +163,8 @@ export function TicketReminderSection({ ticketId, userId }: TicketReminderSectio
     setNote("");
     setRecurrence("none");
     setRecurrenceEnd("");
+    setRecurrenceWeekday("");
+    setRecurrenceTime("");
     setShowForm(false);
     refetch();
     queryClient.invalidateQueries({ queryKey: ["service-tickets"] });
