@@ -230,6 +230,26 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
           // phone+channel and the customer just replied, record the rating
           // (1/2/3) and DO NOT reopen the chat or run the bot.
           if (!p.fromMe && !isGroupMessage && text) {
+            // Guard: Z-API may deliver the same incoming "1/2/3" via multiple
+            // callbacks within seconds. The first one consumes csat_pending;
+            // without this guard the duplicate falls through, reopens the
+            // finalized chat and re-triggers the bot menu. If we already
+            // recorded a CSAT response for this phone in the last 60s and the
+            // incoming text is just a single digit 1/2/3, ignore it.
+            const trimmed = String(text).trim();
+            if (/^[123]$/.test(trimmed)) {
+              const { data: recent } = await supabaseAdmin
+                .from("csat_responses" as any)
+                .select("id")
+                .eq("phone", phone)
+                .gte("created_at", new Date(Date.now() - 60_000).toISOString())
+                .limit(1)
+                .maybeSingle();
+              if (recent) {
+                console.log("[zapi-webhook] duplicate CSAT response ignored", { phone, text: trimmed });
+                return;
+              }
+            }
             try {
               const { data: pending } = await supabaseAdmin
                 .from("csat_pending" as any)
