@@ -673,7 +673,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
                             </div>
                           </div>
                         ) : (
-                          <p className="break-words">{c.content}</p>
+                          <p className="break-words whitespace-pre-wrap">{c.content}</p>
                         )}
                         <p className="text-xs text-muted-foreground mt-0.5">
                           {new Date(c.created_at).toLocaleString("pt-BR")}
