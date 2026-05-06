@@ -45,6 +45,7 @@ import {
   Check,
   X,
   Repeat,
+  ShieldAlert,
 } from "lucide-react";
 import { TaskFormDialog } from "@/components/tarefas/task-form-dialog";
 import { TicketReminderSection } from "./ticket-reminder-section";
