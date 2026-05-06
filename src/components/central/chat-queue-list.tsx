@@ -383,8 +383,6 @@ function ChatListItem({
               </p>
             </div>
           )}
-          </div>
-
           {/* Row 3: SLA time badge */}
           <div className="flex items-center gap-1.5 mt-1">
             <span
