@@ -1,4 +1,5 @@
 import { useState, useCallback, useEffect } from "react";
+import { useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -83,6 +84,28 @@ function getCommentIcon(type: string) {
 
 export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }: TicketDetailPanelProps) {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+
+  const goToChat = useCallback(async () => {
+    if (!ticket?.contact_phone) {
+      toast.error("Ticket sem telefone vinculado.");
+      return;
+    }
+    const phone = String(ticket.contact_phone).replace(/\D/g, "");
+    const { data: chat } = await supabase
+      .from("zapi_chats")
+      .select("id, channel_id")
+      .ilike("phone", `%${phone.slice(-10)}%`)
+      .order("last_message_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (!chat) {
+      toast.error("Conversa não encontrada na Central.");
+      return;
+    }
+    onClose();
+    navigate({ to: "/central", search: { chat: (chat as any).id, channel: (chat as any).channel_id } });
+  }, [ticket?.contact_phone, navigate, onClose]);
   const [comment, setComment] = useState("");
   const [forwardSector, setForwardSector] = useState("");
   const [forwardUser, setForwardUser] = useState("");
@@ -688,6 +711,11 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
                 {ticket.status === "reaberto" && (
                   <Button size="sm" variant="outline" onClick={() => updateStatus("em_andamento")} className="gap-1">
                     <Clock className="h-3.5 w-3.5" /> Iniciar Atendimento
+                  </Button>
+                )}
+                {ticket.contact_phone && (
+                  <Button size="sm" variant="outline" onClick={goToChat} className="gap-1">
+                    <MessageSquare className="h-3.5 w-3.5" /> Voltar à conversa
                   </Button>
                 )}
                 {canFinalize && (
