@@ -103,7 +103,7 @@ export async function zapiSendMedia(
   if (kind === "audio") {
     return zapiFetch(channel, "/send-audio", "POST", {
       phone: zapiRecipientPhone(phone),
-      audio: dataUrl,
+      audio: normalizeAudioDataUrl(dataUrl),
       viewOnce: false,
       waveform: true,
     });
