@@ -132,6 +132,7 @@ import { AudioRecorderButton } from "@/components/central/audio-recorder-button"
 import { EmojiPickerButton } from "@/components/central/emoji-picker-button";
 import { useZapiRealtime } from "@/hooks/use-zapi-realtime";
 import { isGroupChat } from "@/lib/chat-utils";
+import { resolveGroupTicketStart } from "@/lib/group-ticket-start";
 import {
   useTesteEquipamentoSettings,
   isTesteEquipamentoCategory,
@@ -1582,6 +1583,13 @@ function CentralPage() {
           // confirmar a finalização — nunca antes.
           const { data: sess } = await supabase.auth.getSession();
           const nowIso = new Date().toISOString();
+          // Para grupos: usa a primeira mensagem do operador no atendimento
+          // atual como created_at, refletindo o tempo real de atendimento.
+          let startIso = nowIso;
+          if (isGroupChat(chatDetail)) {
+            const groupStart = await resolveGroupTicketStart(selectedChatId, selectedChatId);
+            if (groupStart) startIso = groupStart;
+          }
           const { data: created, error: createErr } = await supabase
             .from("service_tickets")
             .insert({
@@ -1595,6 +1603,7 @@ function CentralPage() {
               category: resolvedCategoryLabel,
               notes: notes || null,
               opened_by: sess.session?.user?.id || null,
+              created_at: startIso,
               closed_at: nowIso,
             })
             .select("*")
@@ -1940,6 +1949,11 @@ function CentralPage() {
             // tickets "aberto" sem categoria na lista de Atendimentos.
             const { data: sess } = await supabase.auth.getSession();
             const nowIso = new Date().toISOString();
+            let startIso = nowIso;
+            if (chatDetail && isGroupChat(chatDetail)) {
+              const groupStart = await resolveGroupTicketStart(selectedChatId, selectedChatId);
+              if (groupStart) startIso = groupStart;
+            }
             const { data: created, error: createErr } = await supabase
               .from("service_tickets")
               .insert({
@@ -1951,6 +1965,7 @@ function CentralPage() {
                 plate: ticketPlate || null,
                 status: "finalizado" as const,
                 opened_by: sess.session?.user?.id || null,
+                created_at: startIso,
                 closed_at: nowIso,
               })
               .select("*")
