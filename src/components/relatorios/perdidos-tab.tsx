@@ -116,11 +116,7 @@ export function PerdidosReportTab({ dateFrom, dateTo }: Props) {
                   <CartesianGrid strokeDasharray="3 3" />
                   <XAxis dataKey="name" tick={{ fontSize: 11 }} />
                   <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip
-                    formatter={(value: any, key: string) =>
-                      key === "total" ? formatBRL(Number(value)) : value
-                    }
-                  />
+                  <Tooltip formatter={(value: any) => formatBRL(Number(value))} />
                   <Bar dataKey="total" name="Valor total" fill="hsl(var(--chart-1))" />
                 </BarChart>
               </ResponsiveContainer>
