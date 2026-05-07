@@ -301,7 +301,7 @@ function ChatListItem({
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(); } }}
       className={`w-full text-left px-3 py-2.5 border-b hover:bg-accent/50 transition-colors cursor-grab active:cursor-grabbing ${
         isSelected ? "bg-accent" : ""
-      }`}
+      } ${clientWaiting ? "animate-name-blink" : ""}`}
       title="Clique para abrir no painel ou arraste para fora para janela flutuante"
     >
       <div className="flex items-start gap-2.5">
