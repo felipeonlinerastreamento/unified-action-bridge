@@ -259,6 +259,7 @@ function ChatListItem({
   const lastMsgIsMe = chat.lastMessage?.sender?.isMe;
   const hasLastMsg = !!chat.lastMessage;
   const unread = chat.countUnreadMessages ?? 0;
+  const clientWaiting = hasLastMsg && lastMsgIsMe === false;
   const { openChat } = useFloatingChats();
 
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
