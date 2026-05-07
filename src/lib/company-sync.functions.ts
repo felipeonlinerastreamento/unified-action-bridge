@@ -105,20 +105,27 @@ export const linkPhoneToCompany = createServerFn({ method: "POST" })
     const cleanPhone = cleanDigits(data.phone);
 
     if (cleanPhone) {
-      // Check if phone link already exists
+      // phone_number has a GLOBAL unique constraint — check by phone alone.
       const { data: existingLinks } = await supabase
         .from("company_phones")
-        .select("id")
-        .eq("company_id", companyId)
+        .select("id, company_id")
         .eq("phone_number", cleanPhone)
         .limit(1);
 
-      if (!existingLinks || existingLinks.length === 0) {
+      const existing = existingLinks?.[0];
+      if (!existing) {
         const { error: insertError } = await supabase.from("company_phones").insert({
           company_id: companyId,
           phone_number: cleanPhone,
         });
         if (insertError) throw new Error(insertError.message);
+      } else if (existing.company_id !== companyId) {
+        // Re-point the phone link to the new company
+        const { error: updateError } = await supabase
+          .from("company_phones")
+          .update({ company_id: companyId })
+          .eq("id", existing.id);
+        if (updateError) throw new Error(updateError.message);
       }
     }
 
