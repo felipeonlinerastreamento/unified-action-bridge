@@ -141,3 +141,16 @@
     color: var(--color-foreground);
   }
 }
+
+@keyframes name-blink {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.animate-name-blink {
+  animation: name-blink 1.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-name-blink { animation: none; }
+}

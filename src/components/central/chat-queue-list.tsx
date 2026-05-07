@@ -259,6 +259,7 @@ function ChatListItem({
   const lastMsgIsMe = chat.lastMessage?.sender?.isMe;
   const hasLastMsg = !!chat.lastMessage;
   const unread = chat.countUnreadMessages ?? 0;
+  const clientWaiting = hasLastMsg && lastMsgIsMe === false;
   const { openChat } = useFloatingChats();
 
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
@@ -336,7 +337,7 @@ function ChatListItem({
                   />
                 )
               )}
-              <p className="text-sm font-medium truncate" style={{ color: sla.bg }}>
+              <p className={`text-sm truncate ${clientWaiting ? "font-bold animate-name-blink" : "font-medium"}`} style={{ color: sla.bg }}>
                 {name}
               </p>
             </div>
