@@ -148,7 +148,7 @@
 }
 
 .animate-name-blink {
-  animation: name-blink 1.4s ease-in-out infinite;
+  animation: name-blink 0.7s ease-in-out infinite;
 }
 
 @media (prefers-reduced-motion: reduce) {
