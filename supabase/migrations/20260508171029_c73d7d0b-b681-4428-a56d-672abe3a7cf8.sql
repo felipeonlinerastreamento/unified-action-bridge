@@ -1,0 +1,1 @@
+UPDATE public.zapi_chats SET status = 'finalizado' WHERE id = '8fd6f0ca-142b-4353-9530-607e404673e9' AND status = 'aguardando' AND closed_at IS NOT NULL;

@@ -468,6 +468,34 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               chatId = created?.id;
             }
           } else if (existing) {
+            // ECHO GUARD (early): se a Z-API entrega como ReceivedCallback o eco
+            // de uma mensagem que NÓS acabamos de enviar (ex.: prompt de CSAT
+            // logo após finalizar), precisamos descartá-lo ANTES de qualquer
+            // update — caso contrário o bloco de reopen abaixo reabriria o
+            // chat finalizado para "aguardando" sem motivo real.
+            if (!p.fromMe && !isGroupMessage && text) {
+              const trimmed = text.trim();
+              if (trimmed.length > 0) {
+                const since = new Date(Date.now() - 60_000).toISOString();
+                const { data: recentEcho } = await supabaseAdmin
+                  .from("zapi_messages")
+                  .select("id")
+                  .eq("chat_id", existing.id)
+                  .eq("from_me", true)
+                  .eq("text", trimmed)
+                  .gte("created_at", since)
+                  .limit(1)
+                  .maybeSingle();
+                if (recentEcho) {
+                  console.log("[zapi-webhook] dropping echo of own outbound message (early)", {
+                    chatId: existing.id,
+                    preview: trimmed.slice(0, 60),
+                  });
+                  return;
+                }
+              }
+            }
+
             // Reopen finalized chats when the customer sends a NEW message.
             // Without this, all incoming messages were silently swallowed by
             // the bot's "if status === 'finalizado' return false" guard,
