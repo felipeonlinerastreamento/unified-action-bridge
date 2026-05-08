@@ -32,7 +32,7 @@ import {
   CommandList,
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
-import { Check, ChevronsUpDown, Loader2, AlertCircle } from "lucide-react";
+import { Check, ChevronsUpDown, Loader2, AlertCircle, Maximize2, Minimize2 } from "lucide-react";
 import { getClientes, getTiposPendencia } from "@/lib/gsystem-api.functions";
 import { useTrackingSettings } from "@/hooks/use-tracking-settings";
 import {
