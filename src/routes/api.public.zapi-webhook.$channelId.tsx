@@ -178,7 +178,20 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
           // WhatsApp groups: raw phone may contain "@g.us", "<creator>-<timestamp>",
           // or arrive already normalized as a long numeric group id.
           const isGroupMessage = isGroupPhoneIdentifier(rawPhone);
-          const phone = rawPhone.replace(/\D/g, "");
+          // Mirror DB function `normalize_zapi_phone`: BR phones get DDI 55,
+          // LIDs (15+ digits) keep raw digits but the DB index treats them
+          // separately. We use the digits-only form to lookup; the unique
+          // index on `phone_normalized` (generated column) is the safety net.
+          const digitsOnly = rawPhone.replace(/\D/g, "");
+          const phone = isGroupMessage
+            ? digitsOnly
+            : (digitsOnly.length >= 15
+                ? digitsOnly
+                : (/^55\d{10,11}$/.test(digitsOnly)
+                    ? digitsOnly
+                    : (digitsOnly.length >= 10 && digitsOnly.length <= 11
+                        ? `55${digitsOnly}`
+                        : digitsOnly)));
 
           // Determine whether this is truly an outbound message from the operator.
           // Some Z-API events (notably when the customer uses a number associated
