@@ -446,9 +446,10 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
 
       // Insert purchase request + items
       if (created?.id && isPurchase && purchaseItems.length > 0) {
+        const { data: { user: authUser } } = await supabase.auth.getUser();
         const { data: req, error: reqErr } = await supabase
           .from("ticket_purchase_requests" as any)
-          .insert({ ticket_id: created.id, created_by: userIdRef })
+          .insert({ ticket_id: created.id, created_by: authUser?.id || null })
           .select("id")
           .single();
         if (reqErr) {
