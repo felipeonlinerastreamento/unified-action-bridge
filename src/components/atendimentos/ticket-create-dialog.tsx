@@ -214,6 +214,7 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
     setSuprimentoItems([]);
     setCompraEquipItems([]);
     setPerdidosItems([]);
+    setPurchaseItems([]);
   };
 
   const ensureLocalCompany = async (cliente: GsystemCliente): Promise<string | null> => {
