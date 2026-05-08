@@ -348,12 +348,45 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
           }
 
           // Upsert chat
-          const { data: existing } = await supabaseAdmin
+          let { data: existing } = await supabaseAdmin
             .from("zapi_chats")
             .select("id, contact_name, status, unread_count")
             .eq("channel_id", channelId)
             .eq("phone", phone)
             .maybeSingle();
+
+          // LID guard: WhatsApp sometimes sends a 15-digit "linked id" in
+          // `phone` instead of the real number (especially on SentCallback for
+          // own-account devices). That creates a duplicate chat for the same
+          // contact. If `phone` looks like a LID (15+ digits, not a group)
+          // and we don't already have a chat for it, try to resolve to an
+          // existing chat by sender name; if none, drop the event.
+          const isLidIdentifier =
+            !isGroupMessage && !existing && phone.length >= 15;
+          if (isLidIdentifier) {
+            const candidateName = (incomingContactName || "").trim();
+            if (candidateName) {
+              const { data: byName } = await supabaseAdmin
+                .from("zapi_chats")
+                .select("id, contact_name, status, unread_count")
+                .eq("channel_id", channelId)
+                .eq("contact_name", candidateName)
+                .order("last_message_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+              if (byName?.id) {
+                existing = byName;
+              }
+            }
+            if (!existing) {
+              console.log("[zapi-webhook] dropping LID-only event (no real-phone chat to merge into)", {
+                phone,
+                senderName: incomingContactName,
+                type: eventType,
+              });
+              return;
+            }
+          }
 
           let chatId = existing?.id as string | undefined;
           let justReopenedSilently = false;
