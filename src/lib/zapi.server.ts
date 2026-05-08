@@ -90,9 +90,9 @@ export async function zapiSendText(
 }
 
 /**
- * Z-API só aceita áudio em OGG/Opus (ou MP3) no /send-audio. O MediaRecorder
- * em Chrome geralmente entrega `audio/webm;codecs=opus`. O payload Opus é
- * compatível — só o cabeçalho do data URL precisa ser reanunciado como ogg.
+ * Z-API só aceita áudio em OGG/Opus (ou MP3) no /send-audio. O cliente já
+ * grava em OGG/Opus real (opus-recorder). Apenas garante o cabeçalho correto
+ * caso algum browser legado entregue outro tipo.
  */
 function normalizeAudioDataUrl(dataUrl: string): string {
   const m = dataUrl.match(/^data:([^;,]+)(?:;[^,]*)?,(.+)$/);
@@ -100,6 +100,7 @@ function normalizeAudioDataUrl(dataUrl: string): string {
   const mime = m[1].toLowerCase();
   const payload = m[2];
   if (mime === "audio/ogg" || mime === "audio/mpeg" || mime === "audio/mp3") return dataUrl;
+  // Fallback (não deveria ocorrer): repassa como ogg/opus.
   return `data:audio/ogg;codecs=opus;base64,${payload}`;
 }
 
