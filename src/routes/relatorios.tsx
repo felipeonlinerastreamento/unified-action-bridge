@@ -392,6 +392,9 @@ function RelatoriosPage() {
               <TabsTrigger value="perdidos" className="gap-1 text-xs">
                 <PackageX className="h-3.5 w-3.5" /> Perdidos
               </TabsTrigger>
+              <TabsTrigger value="compras" className="gap-1 text-xs">
+                <Package className="h-3.5 w-3.5" /> Compras
+              </TabsTrigger>
             </TabsList>
 
             {/* ========== DESEMPENHO ========== */}
