@@ -193,6 +193,19 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                         ? `55${digitsOnly}`
                         : digitsOnly)));
 
+          // Guard: events without a usable phone (e.g. malformed payloads or
+          // pure-LID without digits) used to create orphan chats with empty
+          // `phone`, which then could not be linked to WhatsApp nor replied
+          // to. Drop the event silently — there's nothing actionable.
+          if (!phone) {
+            console.log("[zapi-webhook] dropping event with empty phone", {
+              type: eventType,
+              rawPhone,
+              senderName: p.senderName,
+            });
+            return;
+          }
+
           // Determine whether this is truly an outbound message from the operator.
           // Some Z-API events (notably when the customer uses a number associated
           // with the connected account, or in certain device sync scenarios) arrive
