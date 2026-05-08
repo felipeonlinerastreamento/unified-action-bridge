@@ -4346,6 +4346,8 @@ export type Database = {
           assigned_to: string | null
           bot_state: Json
           channel_id: string
+          closed_at: string | null
+          closed_by_user_id: string | null
           contact_avatar: string | null
           contact_name: string | null
           created_at: string
@@ -4364,6 +4366,8 @@ export type Database = {
           assigned_to?: string | null
           bot_state?: Json
           channel_id: string
+          closed_at?: string | null
+          closed_by_user_id?: string | null
           contact_avatar?: string | null
           contact_name?: string | null
           created_at?: string
@@ -4382,6 +4386,8 @@ export type Database = {
           assigned_to?: string | null
           bot_state?: Json
           channel_id?: string
+          closed_at?: string | null
+          closed_by_user_id?: string | null
           contact_avatar?: string | null
           contact_name?: string | null
           created_at?: string

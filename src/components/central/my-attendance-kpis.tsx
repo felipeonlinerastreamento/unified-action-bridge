@@ -39,6 +39,13 @@ export function MyAttendanceKpis() {
       )
       .on(
         "postgres_changes",
+        { event: "*", schema: "public", table: "zapi_chats", filter: `closed_by_user_id=eq.${user.id}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["my-avg-attendance-time", user.id] });
+        }
+      )
+      .on(
+        "postgres_changes",
         { event: "UPDATE", schema: "public", table: "zapi_chats" },
         () => {
           // Atualiza contagem do setor para qualquer mudança de status
@@ -112,16 +119,16 @@ export function MyAttendanceKpis() {
 
       const { data } = await supabase
         .from("zapi_chats" as any)
-        .select("created_at, updated_at")
-        .eq("assigned_to", user.id)
+        .select("created_at, closed_at, updated_at")
+        .eq("closed_by_user_id", user.id)
         .eq("status", "finalizado")
-        .gte("updated_at", since.toISOString());
+        .gte("closed_at", since.toISOString());
 
       const rows = (data as any[]) || [];
       if (rows.length === 0) return null;
       const totalMs = rows.reduce((acc, r) => {
         const start = new Date(r.created_at).getTime();
-        const end = new Date(r.updated_at).getTime();
+        const end = new Date(r.closed_at ?? r.updated_at).getTime();
         return acc + Math.max(0, end - start);
       }, 0);
       return totalMs / rows.length / 60000;
