@@ -249,7 +249,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
           // CSAT capture: if there is a pending satisfaction survey for this
           // phone+channel and the customer just replied, record the rating
           // (1/2/3) and DO NOT reopen the chat or run the bot.
-          if (!p.fromMe && !isGroupMessage && text) {
+          if (!p.fromMe && !originalFromMe && !isGroupMessage && text) {
             // Guard: Z-API may deliver the same incoming "1/2/3" via multiple
             // callbacks within seconds. The first one consumes csat_pending;
             // without this guard the duplicate falls through, reopens the
@@ -281,8 +281,12 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                 .limit(1)
                 .maybeSingle();
               if (pending) {
-                const m = String(text).trim().match(/[123]/);
-                const score = m ? Number(m[0]) : null;
+                // Strict score extraction: only accept the digit as the start of a
+                // short reply (e.g. "3", "3 ", "3 obrigada") or "Nota 3" forms.
+                // Avoids matching the digits embedded in the CSAT prompt itself
+                // (which contains "[ 1 ] - Ruim", "[ 2 ] - Bom", "[ 3 ] - Ótimo").
+                const m = trimmed.match(/^([123])(?:\s|$)/) || trimmed.match(/^nota\s*([123])/i);
+                const score = m ? Number(m[1]) : null;
                 if (score) {
                   const labelMap: Record<number, string> = { 1: "Ruim", 2: "Bom", 3: "Ótimo" };
                   await supabaseAdmin.from("csat_responses" as any).insert({
