@@ -205,17 +205,6 @@ export function PurchaseReportTab({ dateFrom, dateTo }: Props) {
     exportToCSV(data, `compras-${dateFrom}-a-${dateTo}`);
   };
 
-  const handleExportPDF = () => {
-    const data = byItem.map((e) => ({
-      Item: e.name,
-      Compras: e.occurrences,
-      "Últ. preço": formatBRL(e.lastPrice),
-      Média: formatBRL(e.avg),
-      "Var %": e.variation.toFixed(1) + "%",
-    }));
-    exportToPDF(data, `Compras ${dateFrom} a ${dateTo}`);
-  };
-
   return (
     <div className="space-y-4">
       {/* KPIs */}
