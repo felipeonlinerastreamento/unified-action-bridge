@@ -107,6 +107,7 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
   const [sectorId, setSectorId] = useState("");
   const [trackingCode, setTrackingCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const [expanded, setExpanded] = useState(false);
 
   const isCorreios = (category || "").toLowerCase().includes("correios");
   const showTracking = isCorreios || isSuprimentoCategory(category);
