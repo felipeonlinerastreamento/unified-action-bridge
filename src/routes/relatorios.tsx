@@ -31,6 +31,7 @@ import { InactivityAlertsTab } from "@/components/relatorios/inactivity-alerts-t
 import { CsatReportTab } from "@/components/relatorios/csat-report-tab";
 import { MessageTriggersTab } from "@/components/relatorios/message-triggers-tab";
 import { PerdidosReportTab } from "@/components/relatorios/perdidos-tab";
+import { PurchaseReportTab } from "@/components/relatorios/purchase-report-tab";
 
 export const Route = createFileRoute("/relatorios")({
   component: RelatoriosPage,
@@ -390,6 +391,9 @@ function RelatoriosPage() {
               </TabsTrigger>
               <TabsTrigger value="perdidos" className="gap-1 text-xs">
                 <PackageX className="h-3.5 w-3.5" /> Perdidos
+              </TabsTrigger>
+              <TabsTrigger value="compras" className="gap-1 text-xs">
+                <Package className="h-3.5 w-3.5" /> Compras
               </TabsTrigger>
             </TabsList>
 
@@ -836,6 +840,10 @@ function RelatoriosPage() {
 
             <TabsContent value="perdidos" className="space-y-4">
               <PerdidosReportTab dateFrom={dateFrom} dateTo={dateTo} />
+            </TabsContent>
+
+            <TabsContent value="compras" className="space-y-4">
+              <PurchaseReportTab dateFrom={dateFrom} dateTo={dateTo} />
             </TabsContent>
           </Tabs>
         </div>

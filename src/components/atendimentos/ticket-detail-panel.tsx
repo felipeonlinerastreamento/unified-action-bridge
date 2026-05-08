@@ -54,6 +54,7 @@ import { TicketTrackingSection } from "./ticket-tracking-section";
 import { TicketLiberacaoSection } from "./ticket-liberacao-section";
 import { TicketSuprimentoSection } from "./ticket-suprimento-section";
 import { TicketCompraEquipamentoSection } from "./ticket-compra-equipamento-section";
+import { TicketPurchaseSection } from "./ticket-purchase-section";
 import { TicketPerdidosSection } from "./ticket-perdidos-section";
 import { TicketAttachmentsSection } from "./ticket-attachments-section";
 import {
@@ -660,6 +661,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
 
             <TicketTrackingSection ticketId={ticket.id} trackingCode={ticket.tracking_code || null} />
             <TicketLiberacaoSection ticket={ticket} userId={userId} onRefetch={onRefetch} />
+            <TicketPurchaseSection ticket={ticket} userId={userId} onRefetch={onRefetch} />
             <TicketSuprimentoSection ticket={ticket} userId={userId} onRefetch={onRefetch} />
             <TicketCompraEquipamentoSection ticket={ticket} userId={userId} onRefetch={onRefetch} />
             <TicketPerdidosSection ticket={ticket} userId={userId} onRefetch={onRefetch} />

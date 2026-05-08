@@ -3035,6 +3035,152 @@ export type Database = {
           },
         ]
       }
+      purchase_flow_config: {
+        Row: {
+          id: string
+          price_variation_threshold: number
+          require_expected_delivery: boolean
+          require_supplier: boolean
+          require_tracking: boolean
+          require_unit_price: boolean
+          show_expected_delivery: boolean
+          show_freight: boolean
+          show_seller_contact: boolean
+          show_supplier: boolean
+          show_tracking: boolean
+          show_unit_price: boolean
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          price_variation_threshold?: number
+          require_expected_delivery?: boolean
+          require_supplier?: boolean
+          require_tracking?: boolean
+          require_unit_price?: boolean
+          show_expected_delivery?: boolean
+          show_freight?: boolean
+          show_seller_contact?: boolean
+          show_supplier?: boolean
+          show_tracking?: boolean
+          show_unit_price?: boolean
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          price_variation_threshold?: number
+          require_expected_delivery?: boolean
+          require_supplier?: boolean
+          require_tracking?: boolean
+          require_unit_price?: boolean
+          show_expected_delivery?: boolean
+          show_freight?: boolean
+          show_seller_contact?: boolean
+          show_supplier?: boolean
+          show_tracking?: boolean
+          show_unit_price?: boolean
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      purchase_items: {
+        Row: {
+          created_at: string
+          default_quantity: number
+          id: string
+          is_active: boolean
+          item_type: string | null
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          default_quantity?: number
+          id?: string
+          is_active?: boolean
+          item_type?: string | null
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          default_quantity?: number
+          id?: string
+          is_active?: boolean
+          item_type?: string | null
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      purchase_supplier_contacts: {
+        Row: {
+          created_at: string
+          email: string | null
+          id: string
+          name: string
+          phone: string | null
+          role: string | null
+          supplier_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name: string
+          phone?: string | null
+          role?: string | null
+          supplier_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          id?: string
+          name?: string
+          phone?: string | null
+          role?: string | null
+          supplier_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "purchase_supplier_contacts_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      purchase_suppliers: {
+        Row: {
+          cnpj: string | null
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          notes: string | null
+          updated_at: string
+        }
+        Insert: {
+          cnpj?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Update: {
+          cnpj?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          notes?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       sector_groups: {
         Row: {
           created_at: string
@@ -3964,6 +4110,119 @@ export type Database = {
           },
         ]
       }
+      ticket_purchase_items: {
+        Row: {
+          created_at: string
+          delivered_at: string | null
+          delivered_by: string | null
+          id: string
+          item_id: string | null
+          item_name: string
+          quantity: number
+          request_id: string | null
+          status: string
+          ticket_id: string
+          unit_price: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          delivered_at?: string | null
+          delivered_by?: string | null
+          id?: string
+          item_id?: string | null
+          item_name: string
+          quantity?: number
+          request_id?: string | null
+          status?: string
+          ticket_id: string
+          unit_price?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          delivered_at?: string | null
+          delivered_by?: string | null
+          id?: string
+          item_id?: string | null
+          item_name?: string
+          quantity?: number
+          request_id?: string | null
+          status?: string
+          ticket_id?: string
+          unit_price?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_purchase_items_request_id_fkey"
+            columns: ["request_id"]
+            isOneToOne: false
+            referencedRelation: "ticket_purchase_requests"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ticket_purchase_requests: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          expected_delivery: string | null
+          freight: number
+          id: string
+          seller_contact: string | null
+          status: string
+          supplier_contact_id: string | null
+          supplier_id: string | null
+          ticket_id: string
+          tracking_code: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          expected_delivery?: string | null
+          freight?: number
+          id?: string
+          seller_contact?: string | null
+          status?: string
+          supplier_contact_id?: string | null
+          supplier_id?: string | null
+          ticket_id: string
+          tracking_code?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          expected_delivery?: string | null
+          freight?: number
+          id?: string
+          seller_contact?: string | null
+          status?: string
+          supplier_contact_id?: string | null
+          supplier_id?: string | null
+          ticket_id?: string
+          tracking_code?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_purchase_requests_supplier_contact_id_fkey"
+            columns: ["supplier_contact_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_supplier_contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_purchase_requests_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ticket_reminder_history: {
         Row: {
           completed_at: string
@@ -4555,7 +4814,29 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      v_purchase_item_history: {
+        Row: {
+          created_at: string | null
+          id: string | null
+          item_id: string | null
+          item_name: string | null
+          quantity: number | null
+          status: string | null
+          supplier_id: string | null
+          supplier_name: string | null
+          ticket_id: string | null
+          unit_price: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_purchase_requests_supplier_id_fkey"
+            columns: ["supplier_id"]
+            isOneToOne: false
+            referencedRelation: "purchase_suppliers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Functions: {
       has_role: {

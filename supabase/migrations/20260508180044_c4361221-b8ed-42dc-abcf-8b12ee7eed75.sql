@@ -1,0 +1,1 @@
+ALTER VIEW public.v_purchase_item_history SET (security_invoker = true);
