@@ -117,6 +117,25 @@ export function ChatAvailabilityToggle() {
             <span className="text-sm">Disponível</span>
             <Switch checked={available} onCheckedChange={toggle} disabled={loading} />
           </div>
+          <div className="space-y-2 pt-2 border-t">
+            <div className="flex items-center justify-between">
+              <span className="text-sm flex items-center gap-2">
+                {volume === 0 ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                Volume das notificações
+              </span>
+              <span className="text-xs text-muted-foreground tabular-nums">{Math.round(volume * 100)}%</span>
+            </div>
+            <Slider
+              value={[Math.round(volume * 100)]}
+              max={100}
+              step={5}
+              onValueChange={handleVolumeChange}
+              onValueCommit={(vals) => playPreviewBeep(((vals?.[0] ?? 0) / 100))}
+            />
+            <p className="text-[11px] text-muted-foreground">
+              Som de novas mensagens e encaminhamentos. Ajuste é por dispositivo.
+            </p>
+          </div>
         </div>
       </PopoverContent>
     </Popover>
