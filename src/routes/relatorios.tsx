@@ -841,6 +841,10 @@ function RelatoriosPage() {
             <TabsContent value="perdidos" className="space-y-4">
               <PerdidosReportTab dateFrom={dateFrom} dateTo={dateTo} />
             </TabsContent>
+
+            <TabsContent value="compras" className="space-y-4">
+              <PurchaseReportTab dateFrom={dateFrom} dateTo={dateTo} />
+            </TabsContent>
           </Tabs>
         </div>
       </div>
