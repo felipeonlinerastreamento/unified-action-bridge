@@ -203,6 +203,10 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
             eventType === "ReceivedCallback" || eventType === "MessageReceivedCallback";
           const isSentEvent =
             eventType === "SentCallback" || eventType === "MessageSentCallback";
+          // Preserve original payload flag — used to detect operator echoes
+          // (ReceivedCallback with fromMe=true) so we don't consume CSAT pending
+          // from our own outbound messages reflected by Z-API.
+          const originalFromMe = !!p.fromMe;
           const effectiveFromMe = isReceivedEvent ? false : (isSentEvent ? true : !!p.fromMe);
           // Override the payload flag for the rest of the pipeline so all
           // downstream branches (CSAT, reopen, queue, bot, after-hours) behave
