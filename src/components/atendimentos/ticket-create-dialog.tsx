@@ -487,9 +487,29 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && (resetForm(), onClose())}>
-      <DialogContent className="max-w-md max-h-[90vh] overflow-y-auto">
+      <DialogContent
+        className={cn(
+          "overflow-y-auto transition-all",
+          expanded
+            ? "max-w-[95vw] w-[95vw] max-h-[95vh] sm:max-w-[1200px]"
+            : "max-w-md max-h-[90vh]"
+        )}
+      >
         <DialogHeader>
-          <DialogTitle>Novo Ticket</DialogTitle>
+          <div className="flex items-center justify-between gap-2 pr-8">
+            <DialogTitle>Novo Ticket</DialogTitle>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-7 px-2 text-xs"
+              onClick={() => setExpanded((v) => !v)}
+              title={expanded ? "Reduzir" : "Expandir"}
+            >
+              {expanded ? <Minimize2 className="h-3.5 w-3.5 mr-1" /> : <Maximize2 className="h-3.5 w-3.5 mr-1" />}
+              {expanded ? "Reduzir" : "Expandir"}
+            </Button>
+          </div>
         </DialogHeader>
         <div className="space-y-3">
           {/* Company - first field, synced with GSystem (Contatos) */}
