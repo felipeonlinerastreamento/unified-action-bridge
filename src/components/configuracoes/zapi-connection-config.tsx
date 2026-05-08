@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Copy, Check, Wifi, WifiOff, Plus, RefreshCw, Loader2 } from "lucide-react";
-import { getChannelStatus } from "@/lib/zapi.functions";
+import { getChannelStatus, setupZapiWebhooks } from "@/lib/zapi.functions";
 
 export function ZapiConnectionConfig() {
   const qc = useQueryClient();
