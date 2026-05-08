@@ -270,9 +270,7 @@ function EncaminhamentoPage() {
 
         <LiberacaoEquipamentoConfig />
 
-        <SuprimentoConfig />
-
-        <CompraEquipamentoConfig />
+        <PurchaseConfig />
 
         <PerdidosConfig />
 
