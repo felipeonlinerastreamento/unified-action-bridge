@@ -32,8 +32,7 @@ export function AudioRecorderButton({ onRecorded, disabled, size = "icon", class
   const [busy, setBusy] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [preview, setPreview] = useState<Preview | null>(null);
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
+  const recorderRef = useRef<any>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const startedAtRef = useRef<number>(0);
   const tickRef = useRef<number | null>(null);
@@ -58,49 +57,64 @@ export function AudioRecorderButton({ onRecorded, disabled, size = "icon", class
     try {
       if (navigator.permissions) {
         try {
-          // @ts-ignore - microphone is widely supported in Chromium
+          // @ts-ignore
           const status = await navigator.permissions.query({ name: "microphone" as PermissionName });
           if (status.state === "denied") {
             toast.error("Microfone bloqueado. Habilite nas configurações do navegador.");
             return;
           }
         } catch {
-          // ignore — not all browsers support this
+          // ignore
         }
       }
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      streamRef.current = stream;
-      const mimeType = pickMimeType();
-      const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
-      chunksRef.current = [];
-      recorder.ondataavailable = (e) => {
-        if (e.data && e.data.size > 0) chunksRef.current.push(e.data);
-      };
-      recorder.onstop = async () => {
+
+      // Dynamic import — opus-recorder is browser-only and ships its own worker
+      const RecorderMod: any = await import("opus-recorder");
+      const Recorder = RecorderMod.default || RecorderMod;
+
+      const recorder = new Recorder({
+        encoderPath: "/opus-recorder/encoderWorker.min.js",
+        encoderApplication: 2048, // VOIP
+        encoderSampleRate: 16000, // WhatsApp voice notes
+        numberOfChannels: 1,
+        streamPages: false,
+        encoderBitRate: 24000,
+      });
+
+      recorder.ondataavailable = (typedArray: Uint8Array) => {
         try {
-          const finalMime = recorder.mimeType || mimeType || "audio/webm";
-          const blob = new Blob(chunksRef.current, { type: finalMime });
+          // Copy into a fresh ArrayBuffer to avoid SharedArrayBuffer typing issues
+          const ab = new ArrayBuffer(typedArray.byteLength);
+          new Uint8Array(ab).set(typedArray);
+          const blob = new Blob([ab], { type: "audio/ogg" });
           const durationMs = Date.now() - startedAtRef.current;
           if (blob.size < 800) {
             toast.error("Áudio muito curto.");
+            stopTracks();
             return;
           }
-          const dataUrl = await blobToDataUrl(blob);
-          const blobUrl = URL.createObjectURL(blob);
-          setPreview({ blobUrl, dataUrl, mime: finalMime, durationMs });
+          const reader = new FileReader();
+          reader.onload = () => {
+            const dataUrl = String(reader.result || "");
+            const blobUrl = URL.createObjectURL(blob);
+            setPreview({ blobUrl, dataUrl, mime: "audio/ogg", durationMs });
+          };
+          reader.readAsDataURL(blob);
         } catch (err: any) {
           toast.error(err?.message || "Falha ao processar áudio");
         } finally {
           stopTracks();
         }
       };
+
+      await recorder.start();
+      streamRef.current = recorder.stream || null;
       recorderRef.current = recorder;
       startedAtRef.current = Date.now();
       setElapsed(0);
       tickRef.current = window.setInterval(() => {
         setElapsed(Math.floor((Date.now() - startedAtRef.current) / 1000));
       }, 250);
-      recorder.start(250);
       setRecording(true);
     } catch (err: any) {
       stopTracks();
@@ -108,8 +122,6 @@ export function AudioRecorderButton({ onRecorded, disabled, size = "icon", class
         toast.error("Permissão do microfone negada.");
       } else if (err?.name === "NotFoundError") {
         toast.error("Nenhum microfone encontrado.");
-      } else if (err?.name === "NotReadableError") {
-        toast.error("Microfone em uso por outro aplicativo.");
       } else {
         toast.error(err?.message || "Não foi possível iniciar a gravação");
       }
@@ -117,8 +129,10 @@ export function AudioRecorderButton({ onRecorded, disabled, size = "icon", class
   };
 
   const handleStop = () => {
-    if (recorderRef.current && recorderRef.current.state !== "inactive") {
-      recorderRef.current.stop();
+    try {
+      recorderRef.current?.stop();
+    } catch {
+      // ignore
     }
     setRecording(false);
   };
