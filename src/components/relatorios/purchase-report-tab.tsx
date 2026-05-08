@@ -265,9 +265,6 @@ export function PurchaseReportTab({ dateFrom, dateTo }: Props) {
               <Button variant="outline" size="sm" onClick={handleExportCSV} className="gap-1">
                 <FileSpreadsheet className="h-4 w-4" /> CSV
               </Button>
-              <Button variant="outline" size="sm" onClick={handleExportPDF} className="gap-1">
-                <FileText className="h-4 w-4" /> PDF
-              </Button>
             </div>
           </div>
         </CardContent>
