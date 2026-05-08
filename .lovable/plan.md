@@ -1,41 +1,66 @@
 ## Problema
-Mensagens enviadas pelos operadores via sistema são gravadas corretamente com `from_me=true`, mas o webhook da Z-API depois sobrescreve para `from_me=false`, fazendo elas aparecerem do lado esquerdo do chat (como se fossem do cliente). Confirmado nos dados de `553184049398`: linhas com `sent_by_user_id` setado e `from_me=false`.
+No chat de Cecília Alves (5527999598630), o atendimento finalizado foi indevidamente reaberto e a mensagem "Obrigado pela sua avaliação!" apareceu como se viesse do cliente.
 
 ## Causa raiz
-1. `sendText` insere a mensagem com `from_me: true` + `sent_by_user_id` + `zapi_message_id` retornado pela Z-API.
-2. A Z-API envia um eco do envio como `ReceivedCallback` com `fromMe=true` (acontece quando o número/conta conectada aparece como sender em sincronizações de dispositivo).
-3. `api.public.zapi-webhook.$channelId.tsx` linhas 202-210 força `effectiveFromMe = false` para qualquer `ReceivedCallback`, ignorando o `fromMe` do payload.
-4. `persistZapiMessage` localiza a linha existente pelo `zapi_message_id`, dá `UPDATE` com `from_me: false, status: "delivered"` e destrói a marcação correta.
+1. Felipe finalizou o atendimento. Como CSAT está ativo, o sistema enviou a mensagem de CSAT (que contém o texto "[ 1 ] - Ruim 😒, [ 2 ] - Bom 😊, [ 3 ] - Ótimo 😍") via `sendText` e gravou `csat_pending`.
+2. A Z-API ecoou essa mensagem do operador como `ReceivedCallback` com `fromMe=true`. O webhook força `effectiveFromMe = false` para qualquer `ReceivedCallback` (linhas 196-210), então o eco entra no ramo de captura de CSAT (linha 248).
+3. O ramo de CSAT extrai score com `String(text).trim().match(/[123]/)` (linha 280) — regex frouxa que acha "1" dentro do próprio texto da pergunta de CSAT. Score 1 (Ruim) foi registrado no `csat_responses` (confirmado no DB: `raw_response` = a própria mensagem da pergunta de CSAT) e o `csat_pending` foi consumido.
+4. O webhook ainda enviou o `thanks_message` "Obrigado pela sua avaliação!" via `zapiSendText`. Esse envio foi gravado em `zapi_messages` com `from_me=true` mas sem `zapi_message_id`. Em seguida o eco da Z-API chegou como `ReceivedCallback` (fromMe=true → forçado a false) e foi inserido como NOVA linha (não casa pelo `zapi_message_id` porque o registro do envio não tinha um), aparecendo no chat do lado esquerdo.
+5. ~5 minutos depois a cliente respondeu de fato "3". `csat_pending` já não existia (foi consumido pelo eco) → caiu no fluxo de reabertura (linha 447) e o chat voltou para `aguardando`.
 
 ## Correção
-Em `src/routes/api.public.zapi-webhook.$channelId.tsx`, ajustar `persistZapiMessage` para que, ao encontrar uma linha pré-existente (mesmo `chat_id` + `zapi_message_id`), **nunca rebaixe `from_me=true` para `false` nem sobrescreva `sent_by_user_id`**. A linha já existe porque foi inserida pelo `sendText` do operador — o webhook deve apenas confirmar entrega, não reclassificar a direção.
 
-Mudança concreta na função `persistZapiMessage` (linhas 602-646):
+### 1. Tornar a extração do score de CSAT estrita (`src/routes/api.public.zapi-webhook.$channelId.tsx`)
+Trocar `String(text).trim().match(/[123]/)` por uma regex que só aceite a resposta isolada do cliente, tolerando espaços e emojis:
 
-- Buscar a linha existente trazendo também `from_me, sent_by_user_id`.
-- Se já existir e `from_me=true` (ou `sent_by_user_id` não nulo), montar um update **apenas com campos seguros**: `status`, `media_url`, `media_type`, `participant_name`, `participant_phone` — preservando `from_me` e `sent_by_user_id`.
-- Se a linha existente é genuinamente do cliente (`from_me=false` e `sent_by_user_id` nulo), manter o comportamento atual.
-- Para o `INSERT` novo (linha não existe), nada muda.
-
-Opcionalmente, no bloco 196-210 onde calculamos `effectiveFromMe`, adicionar comentário explicando que essa proteção secundária no `persistZapiMessage` é o que evita corrupção de mensagens do operador. Não vou tocar na regra do `effectiveFromMe` porque ela ainda é necessária para o caso original (cliente cujo número coincide com a conta — evitar que mensagens REAIS do cliente sejam salvas como `from_me=true`).
-
-## Backfill das mensagens já corrompidas
-Migration única para corrigir o histórico:
-```sql
-UPDATE public.zapi_messages
-SET from_me = true,
-    status = CASE WHEN status = 'delivered' THEN 'sent' ELSE status END
-WHERE from_me = false
-  AND sent_by_user_id IS NOT NULL;
+```ts
+const trimmed = String(text).trim();
+const m = trimmed.match(/^([123])(?:\s|$)/) || trimmed.match(/^nota\s*([123])/i);
+const score = m ? Number(m[1]) : null;
 ```
-Critério seguro: `sent_by_user_id` só é preenchido pelo fluxo de envio do operador; se está setado, a mensagem é necessariamente outbound.
+
+Assim o texto longo da pergunta de CSAT (que contém os dígitos 1, 2 e 3) não casa mais. Apenas respostas como `3`, `3 `, `3 obrigada`, `Nota 3` casam.
+
+### 2. Defesa adicional: ignorar ecos do próprio operador no ramo de CSAT
+Antes de chegar à seção CSAT, capturar o flag original `const originalFromMe = !!p.fromMe;` antes da linha 206 que o sobrescreve. No bloco da linha 248, adicionar:
+```ts
+if (!p.fromMe && !originalFromMe && !isGroupMessage && text) { ... }
+```
+Isso garante que ecos do operador (mesmo que cheguem como `ReceivedCallback`) nunca consomem `csat_pending` nem disparam o "thanks".
+
+### 3. Evitar a duplicata visual da mensagem de "thanks"
+Quando o webhook envia o `thanks` (linhas 318-326), gravar também o `zapi_message_id` retornado pelo `zapiSendText`. Hoje a inserção não inclui `zapi_message_id`, então quando o eco volta como `ReceivedCallback`, o `persistZapiMessage` não encontra o registro existente e cria uma segunda linha. Ajustar para:
+```ts
+const sendRes = await zapiSendText(creds, phone, thanks);
+const sentId = (sendRes as any)?.messageId || (sendRes as any)?.id || null;
+await supabaseAdmin.from("zapi_messages").insert({
+  chat_id: (pending as any).chat_id,
+  zapi_message_id: sentId,
+  from_me: true,
+  text: thanks,
+  status: "sent",
+});
+```
+Combinado com a proteção já existente em `persistZapiMessage` (não rebaixa `from_me=true` para `false`), o eco será apenas um UPDATE no mesmo registro, sem aparecer do lado do cliente.
+
+## Backfill / limpeza para o caso reportado
+Para o chat `42199bff-cf7e-4f06-b852-f7e0815c1415`:
+1. Apagar a resposta CSAT bogus:
+   `DELETE FROM csat_responses WHERE id = '0689c962-09f1-4092-957b-74a843d13e99';`
+2. Reverter o status do chat (estava finalizado e foi reaberto pela mensagem "3"):
+   `UPDATE zapi_chats SET status='finalizado' WHERE id='42199bff-cf7e-4f06-b852-f7e0815c1415';`
+3. (Opcional) Apagar a linha do "Obrigado pela sua avaliação!" duplicada do lado do cliente:
+   `DELETE FROM zapi_messages WHERE id = '464ee623-a998-41fd-b0bd-3baaab4593ad';`
+4. Registrar manualmente o score real (3 = Ótimo) que a cliente enviou às 13:08, se desejar manter histórico de CSAT correto.
+
+Confirmar com o usuário antes de aplicar o backfill.
 
 ## Validação
-1. Operador envia mensagem teste pelo sistema → aparece imediatamente à direita e **continua à direita** após o webhook processar (verificar no DB que `from_me` permanece `true`).
-2. Cliente envia mensagem → continua à esquerda, `from_me=false`, `sent_by_user_id=null`.
-3. Rodar `SELECT COUNT(*) FROM zapi_messages WHERE from_me=false AND sent_by_user_id IS NOT NULL` → deve retornar 0 após o backfill.
-4. Conferir no chat `553184049398` que as respostas de Davi e Fernanda voltam para o lado direito.
+1. Operador finaliza um chat com CSAT ativo → mensagem de pergunta sai uma vez, **não** dispara `csat_responses` automaticamente, **não** envia "thanks".
+2. Cliente responde "3" → `csat_responses` recebe score=3, `csat_pending` é consumido, `thanks` é enviado uma única vez e aparece **à direita**.
+3. Cliente responde algo que não é 1/2/3 (ex: "Obrigada") → `csat_pending` é descartado, fluxo normal segue (reabre chat). Comportamento atual mantido.
+4. Verificar no chat de Cecília que após o backfill ele volta a aparecer como finalizado.
 
 ## Arquivos
-- `src/routes/api.public.zapi-webhook.$channelId.tsx` — ajustar `persistZapiMessage`.
-- `supabase/migrations/<nova>.sql` — backfill das linhas existentes.
+- `src/routes/api.public.zapi-webhook.$channelId.tsx` — itens 1, 2 e 3.
+- `supabase/migrations/<nova>.sql` — backfill (apenas se aprovado).
