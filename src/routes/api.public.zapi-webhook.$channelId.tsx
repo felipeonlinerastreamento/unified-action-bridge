@@ -323,14 +323,17 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                       .maybeSingle();
                     const thanks = (cset as any)?.thanks_message || "Obrigado pela sua avaliação!";
                     const creds = await loadZapiChannel(supabaseAdmin, channelId);
-                    await zapiSendText(creds, phone, thanks);
+                    const sendRes: any = await zapiSendText(creds, phone, thanks);
+                    const sentId =
+                      sendRes?.messageId || sendRes?.id || sendRes?.zaapId || null;
                     if ((pending as any).chat_id) {
                       await supabaseAdmin.from("zapi_messages").insert({
                         chat_id: (pending as any).chat_id,
+                        zapi_message_id: sentId,
                         from_me: true,
                         text: thanks,
                         status: "sent",
-                      });
+                      } as any);
                     }
                   } catch (thanksErr) {
                     console.warn("[zapi-webhook] csat thanks send failed:", thanksErr);
