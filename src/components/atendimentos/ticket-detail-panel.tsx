@@ -46,6 +46,8 @@ import {
   X,
   Repeat,
   ShieldAlert,
+  Maximize2,
+  Minimize2,
 } from "lucide-react";
 import { TaskFormDialog } from "@/components/tarefas/task-form-dialog";
 import { TicketReminderSection } from "./ticket-reminder-section";
