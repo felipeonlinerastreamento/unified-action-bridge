@@ -1,12 +1,40 @@
 import { useEffect, useState } from "react";
-import { Circle } from "lucide-react";
+import { Circle, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
+import { Slider } from "@/components/ui/slider";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+
+const VOLUME_KEY = "operator_notification_volume";
+
+function loadVolume(): number {
+  try {
+    const v = Number(localStorage.getItem(VOLUME_KEY));
+    if (Number.isFinite(v) && v >= 0 && v <= 1) return v;
+  } catch {}
+  return 0.6;
+}
+
+function playPreviewBeep(vol: number) {
+  try {
+    const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
+    if (!Ctx || vol <= 0) return;
+    const ctx = new Ctx();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.frequency.value = 880;
+    gain.gain.value = Math.min(1, 0.5 * vol);
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.18);
+    setTimeout(() => ctx.close().catch(() => {}), 400);
+  } catch {}
+}
 
 export function ChatAvailabilityToggle() {
   const { user, isAuthenticated } = useAuth();
