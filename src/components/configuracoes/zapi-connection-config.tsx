@@ -10,7 +10,7 @@ import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Copy, Check, Wifi, WifiOff, Plus, RefreshCw, Loader2 } from "lucide-react";
-import { getChannelStatus } from "@/lib/zapi.functions";
+import { getChannelStatus, setupZapiWebhooks } from "@/lib/zapi.functions";
 
 export function ZapiConnectionConfig() {
   const qc = useQueryClient();
@@ -120,6 +120,26 @@ export function ZapiConnectionConfig() {
       else toast.error(`Desconectada: ${r?.error || "verifique credenciais"}`);
     },
     onError: (e: any) => toast.error(e?.message || "Erro ao testar"),
+  });
+
+  const setupHooksMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedId) throw new Error("Selecione um canal");
+      const { data: { session } } = await supabase.auth.getSession();
+      return await setupZapiWebhooks({
+        data: { channelId: selectedId },
+        headers: { authorization: `Bearer ${session?.access_token}` },
+      });
+    },
+    onSuccess: (r: any) => {
+      const failed = Object.entries(r?.results || {}).filter(([, v]: any) => !(v as any)?.ok);
+      if (failed.length === 0) {
+        toast.success("Webhooks Z-API configurados (inclui mensagens enviadas pelo celular)");
+      } else {
+        toast.warning(`Parcial: falhou em ${failed.map(([k]) => k).join(", ")}`);
+      }
+    },
+    onError: (e: any) => toast.error(e?.message || "Erro ao configurar webhooks"),
   });
 
   const copyWebhook = async () => {
@@ -234,6 +254,10 @@ export function ZapiConnectionConfig() {
               <Button variant="outline" onClick={() => testMutation.mutate()} disabled={testMutation.isPending}>
                 {testMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
                 Testar conexão
+              </Button>
+              <Button variant="secondary" onClick={() => setupHooksMutation.mutate()} disabled={setupHooksMutation.isPending}>
+                {setupHooksMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Configurar webhooks (incluir envios pelo celular)
               </Button>
             </div>
           </>

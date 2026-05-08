@@ -825,3 +825,56 @@ export const deleteMessage = createServerFn({ method: "POST" })
 
     return { success: true };
   });
+
+// ------------ Webhooks setup (notifySentByMe + URLs) ------------
+//
+// Z-API só dispara o evento de "mensagem enviada pelo dono do número"
+// (celular/WhatsApp Web fora do nosso sistema) se a flag
+// "receive-all-notifications" estiver ATIVA na instância. Esta server fn
+// configura todos os webhooks essenciais de uma vez para o canal:
+//   - on-message-received (entrada)
+//   - on-send             (saída via API)
+//   - message-status      (entregue/lido)
+//   - receive-all-notifications = true (espelha mensagens enviadas pelo celular)
+//
+// Webhook secret já existe no canal — apenas reanexamos a URL.
+
+export const setupZapiWebhooks = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ channelId: z.string().uuid() }).parse)
+  .handler(async ({ data, context }) => {
+    const channel = await loadZapiChannel(context.supabase, data.channelId);
+
+    // Buscar webhook_secret e montar URL pública estável
+    const { data: row } = await context.supabase
+      .from("channels")
+      .select("webhook_secret")
+      .eq("id", data.channelId)
+      .single();
+    const secret = (row as any)?.webhook_secret;
+    if (!secret) throw new Error("Canal sem webhook_secret configurado");
+
+    const projectId = "40ab25b5-cec0-4fe2-8de9-27bfd1074392";
+    const url = `https://project--${projectId}.lovable.app/api/public/zapi-webhook/${data.channelId}?secret=${secret}`;
+
+    const results: Record<string, { ok: boolean; error?: string }> = {};
+
+    const tryPut = async (path: string, body: unknown, label: string) => {
+      try {
+        await zapiFetch(channel, path, "PUT", body);
+        results[label] = { ok: true };
+      } catch (e: any) {
+        results[label] = { ok: false, error: String(e?.message || e) };
+      }
+    };
+
+    // Aponta TODOS os webhooks (received, send, status, delivery, presence,
+    // disconnected, connected) para a mesma URL com uma única chamada.
+    await tryPut("/update-every-webhooks", { value: url }, "all_webhooks");
+
+    // Liga "notifySentByMe" para que mensagens enviadas pelo celular/WhatsApp
+    // Web do dono do número também disparem o webhook on-send.
+    await tryPut("/update-notify-sent-by-me", { notifySentByMe: true }, "notify_sent_by_me");
+
+    return { url, results };
+  });
