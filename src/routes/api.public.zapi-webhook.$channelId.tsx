@@ -404,7 +404,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
           let chatId = existing?.id as string | undefined;
           let justReopenedSilently = false;
           if (!chatId) {
-            const { data: created } = await supabaseAdmin
+            const { data: created, error: insertError } = await supabaseAdmin
               .from("zapi_chats")
               .insert({
                 channel_id: channelId,
@@ -418,7 +418,31 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               })
               .select("id, contact_name")
               .single();
-            chatId = created?.id;
+            if (insertError) {
+              // Unique index `uniq_zapi_chats_channel_phone_norm` collided —
+              // another concurrent webhook just created the chat. Re-fetch by
+              // normalized phone and continue as if it already existed.
+              if ((insertError as { code?: string }).code === "23505") {
+                const { data: raced } = await supabaseAdmin
+                  .from("zapi_chats")
+                  .select("id, contact_name, status, unread_count")
+                  .eq("channel_id", channelId)
+                  .eq("phone", phone)
+                  .maybeSingle();
+                if (raced?.id) {
+                  existing = raced;
+                  chatId = raced.id;
+                } else {
+                  console.warn("[zapi-webhook] 23505 on insert but no row found by phone", { phone });
+                  return;
+                }
+              } else {
+                console.error("[zapi-webhook] failed to insert chat", insertError);
+                return;
+              }
+            } else {
+              chatId = created?.id;
+            }
           } else if (existing) {
             // Reopen finalized chats when the customer sends a NEW message.
             // Without this, all incoming messages were silently swallowed by
