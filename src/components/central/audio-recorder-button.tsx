@@ -11,20 +11,6 @@ type Props = {
   className?: string;
 };
 
-function pickMimeType(): string | undefined {
-  const candidates = [
-    "audio/ogg;codecs=opus",
-    "audio/webm;codecs=opus",
-    "audio/webm",
-    "audio/mp4",
-  ];
-  for (const t of candidates) {
-    // @ts-ignore
-    if (typeof MediaRecorder !== "undefined" && MediaRecorder.isTypeSupported?.(t)) return t;
-  }
-  return undefined;
-}
-
 function blobToDataUrl(blob: Blob): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
