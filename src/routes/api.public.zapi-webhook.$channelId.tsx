@@ -524,6 +524,35 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               ? (p.senderName || null)
               : null;
 
+            // ECHO GUARD: Z-API às vezes entrega como ReceivedCallback (fromMe=false)
+            // o eco da própria mensagem que ACABAMOS de enviar — especialmente quando
+            // a operadora está conectada a múltiplos dispositivos. Sem este filtro o
+            // bot reprocessa o próprio prompt como se fosse resposta do cliente
+            // (e o regex de "primeiro número" casa "[ 1 ] - …" dentro do menu,
+            // disparando rota incorreta).
+            if (!p.fromMe && !isGroupMessage && text) {
+              const trimmed = text.trim();
+              if (trimmed.length > 0) {
+                const since = new Date(Date.now() - 60_000).toISOString();
+                const { data: recentEcho } = await supabaseAdmin
+                  .from("zapi_messages")
+                  .select("id")
+                  .eq("chat_id", chatId)
+                  .eq("from_me", true)
+                  .eq("text", trimmed)
+                  .gte("created_at", since)
+                  .limit(1)
+                  .maybeSingle();
+                if (recentEcho) {
+                  console.log("[zapi-webhook] dropping echo of own outbound message", {
+                    chatId,
+                    preview: trimmed.slice(0, 60),
+                  });
+                  return;
+                }
+              }
+            }
+
             // Persist without PostgREST upsert: the DB has a partial unique
             // index for messageId dedupe, and `onConflict` cannot target that
             // partial index reliably. A failing upsert was silently updating
