@@ -40,6 +40,13 @@ export function ChatAvailabilityToggle() {
   const { user, isAuthenticated } = useAuth();
   const [available, setAvailable] = useState<boolean>(true);
   const [loading, setLoading] = useState(false);
+  const [volume, setVolume] = useState<number>(loadVolume);
+
+  const handleVolumeChange = (vals: number[]) => {
+    const v = Math.max(0, Math.min(1, (vals?.[0] ?? 0) / 100));
+    setVolume(v);
+    try { localStorage.setItem(VOLUME_KEY, String(v)); } catch {}
+  };
 
   useEffect(() => {
     if (!user?.id) return;
