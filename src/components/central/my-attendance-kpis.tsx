@@ -39,6 +39,13 @@ export function MyAttendanceKpis() {
       )
       .on(
         "postgres_changes",
+        { event: "*", schema: "public", table: "zapi_chats", filter: `closed_by_user_id=eq.${user.id}` },
+        () => {
+          queryClient.invalidateQueries({ queryKey: ["my-avg-attendance-time", user.id] });
+        }
+      )
+      .on(
+        "postgres_changes",
         { event: "UPDATE", schema: "public", table: "zapi_chats" },
         () => {
           // Atualiza contagem do setor para qualquer mudança de status
