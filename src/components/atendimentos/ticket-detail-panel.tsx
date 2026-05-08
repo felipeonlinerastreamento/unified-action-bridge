@@ -582,11 +582,20 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
 
   return (
     <Sheet open={open} onOpenChange={(o) => !o && onClose()}>
-      <SheetContent className="w-full sm:max-w-lg overflow-y-auto">
+      <SheetContent className={expanded ? "w-full sm:max-w-[95vw] lg:max-w-[1400px] overflow-y-auto" : "w-full sm:max-w-lg overflow-y-auto"}>
         <SheetHeader>
           <SheetTitle className="flex items-center gap-2 text-base">
             {ticket.contact_name || ticket.attendance_id || "Ticket"}
             <Badge variant="outline" className="text-xs">#{formatTicketProtocol(ticket)}</Badge>
+            <Button
+              size="sm"
+              variant="ghost"
+              className="ml-auto mr-8 h-7 px-2"
+              onClick={() => setExpanded((v) => !v)}
+              title={expanded ? "Reduzir" : "Expandir"}
+            >
+              {expanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
+            </Button>
           </SheetTitle>
           <div className="flex items-center gap-2 pt-1">
             <Button size="sm" variant="outline" onClick={() => setTaskDialogOpen(true)}>
