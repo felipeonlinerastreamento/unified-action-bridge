@@ -255,6 +255,10 @@ export function ZapiConnectionConfig() {
                 {testMutation.isPending ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-2" />}
                 Testar conexão
               </Button>
+              <Button variant="secondary" onClick={() => setupHooksMutation.mutate()} disabled={setupHooksMutation.isPending}>
+                {setupHooksMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Configurar webhooks (incluir envios pelo celular)
+              </Button>
             </div>
           </>
         )}
