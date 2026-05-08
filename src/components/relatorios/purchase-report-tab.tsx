@@ -25,19 +25,14 @@ import {
   AlertCircle,
   TrendingUp,
   TrendingDown,
-  ShoppingCart,
   Building2,
   Repeat,
   DollarSign,
   Loader2,
   FileSpreadsheet,
-  FileText,
 } from "lucide-react";
 import { ReportKpiCard } from "./report-kpi-card";
-import {
-  exportToCSV,
-  exportToPDF,
-} from "./export-utils";
+import { exportToCSV } from "./export-utils";
 import {
   usePurchaseFlowConfig,
   usePurchaseSuppliers,
