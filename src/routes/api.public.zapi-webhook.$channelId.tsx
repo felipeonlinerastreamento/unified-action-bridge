@@ -629,14 +629,30 @@ async function persistZapiMessage(args: {
 
   const { data: existing, error: lookupError } = await supabaseAdmin
     .from("zapi_messages")
-    .select("id")
+    .select("id, from_me, sent_by_user_id")
     .eq("chat_id", args.chatId)
     .eq("zapi_message_id", args.messageId)
     .maybeSingle();
   if (lookupError) console.warn("[zapi-webhook] message lookup failed:", lookupError);
 
   if ((existing as any)?.id) {
-    const { error } = await supabaseAdmin.from("zapi_messages").update(row).eq("id", (existing as any).id);
+    // Se a linha já existe e foi gravada como envio do operador (from_me=true
+    // ou sent_by_user_id setado pelo sendText), o webhook NÃO pode rebaixar
+    // a direção — apenas confirma entrega/atualiza metadados de mídia.
+    const wasOperatorSend =
+      (existing as any).from_me === true || (existing as any).sent_by_user_id != null;
+    const safeRow: any = wasOperatorSend
+      ? {
+          media_url: row.media_url,
+          media_type: row.media_type,
+          participant_name: row.participant_name,
+          participant_phone: row.participant_phone,
+        }
+      : row;
+    const { error } = await supabaseAdmin
+      .from("zapi_messages")
+      .update(safeRow)
+      .eq("id", (existing as any).id);
     if (error) console.error("[zapi-webhook] message update failed:", error);
     return;
   }
