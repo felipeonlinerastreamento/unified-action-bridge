@@ -859,49 +859,22 @@ export const setupZapiWebhooks = createServerFn({ method: "POST" })
 
     const results: Record<string, { ok: boolean; error?: string }> = {};
 
-    const callEndpoints = async (paths: string[], body: unknown, label: string) => {
-      let lastErr: any = null;
-      for (const path of paths) {
-        try {
-          await zapiFetch(channel, path, "PUT", body);
-          results[label] = { ok: true };
-          return;
-        } catch (e: any) {
-          lastErr = e;
-        }
+    const tryPut = async (path: string, body: unknown, label: string) => {
+      try {
+        await zapiFetch(channel, path, "PUT", body);
+        results[label] = { ok: true };
+      } catch (e: any) {
+        results[label] = { ok: false, error: String(e?.message || e) };
       }
-      results[label] = { ok: false, error: String(lastErr?.message || lastErr) };
     };
 
-    // Z-API expõe endpoints com nomes ligeiramente diferentes em versões da
-    // instância — tentamos as variações conhecidas e ficamos com a primeira
-    // que funcionar.
-    await callEndpoints(
-      ["/update-webhook-received", "/update-webhook-received-message"],
-      { value: url },
-      "received",
-    );
-    await callEndpoints(
-      ["/update-webhook-message-status", "/update-webhook-status"],
-      { value: url },
-      "status",
-    );
-    await callEndpoints(
-      ["/update-webhook-delivery", "/update-webhook-delivered"],
-      { value: url },
-      "delivery",
-    );
-    // Espelha mensagens enviadas pelo dono do número (celular / WhatsApp Web)
-    await callEndpoints(
-      ["/update-webhook-receive-all-notifications", "/update-every-update-webhook"],
-      { value: url },
-      "receive_all",
-    );
-    await callEndpoints(
-      ["/update-notify-send-by-me", "/update-webhook-notify-send-by-me"],
-      { value: true },
-      "notify_sent_by_me",
-    );
+    // Aponta TODOS os webhooks (received, send, status, delivery, presence,
+    // disconnected, connected) para a mesma URL com uma única chamada.
+    await tryPut("/update-every-webhooks", { value: url }, "all_webhooks");
+
+    // Liga "notifySentByMe" para que mensagens enviadas pelo celular/WhatsApp
+    // Web do dono do número também disparem o webhook on-send.
+    await tryPut("/update-notify-sent-by-me", { notifySentByMe: true }, "notify_sent_by_me");
 
     return { url, results };
   });
