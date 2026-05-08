@@ -68,6 +68,12 @@ import {
   validatePerdidosItems,
   type PerdidosLineItem,
 } from "./perdidos-fields";
+import { isPurchaseCategory } from "@/hooks/use-purchase-requests";
+import {
+  PurchaseFields,
+  validatePurchaseItems,
+  type PurchaseLineItem,
+} from "./purchase-fields";
 
 interface TicketCreateDialogProps {
   open: boolean;
@@ -117,6 +123,8 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
   const [compraEquipItems, setCompraEquipItems] = useState<CompraEquipamentoLineItem[]>([]);
   const isPerdidos = isPerdidosCategory(category);
   const [perdidosItems, setPerdidosItems] = useState<PerdidosLineItem[]>([]);
+  const isPurchase = isPurchaseCategory(category);
+  const [purchaseItems, setPurchaseItems] = useState<PurchaseLineItem[]>([]);
 
   const getAuthHeaders = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -206,6 +214,7 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
     setSuprimentoItems([]);
     setCompraEquipItems([]);
     setPerdidosItems([]);
+    setPurchaseItems([]);
   };
 
   const ensureLocalCompany = async (cliente: GsystemCliente): Promise<string | null> => {
@@ -310,6 +319,14 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
     // Validate Perdidos items
     if (isPerdidos) {
       const err = validatePerdidosItems(perdidosItems);
+      if (err) {
+        toast.error(err);
+        return;
+      }
+    }
+    // Validate Purchase items
+    if (isPurchase) {
+      const err = validatePurchaseItems(purchaseItems);
       if (err) {
         toast.error(err);
         return;
@@ -424,6 +441,37 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
         if (pErr) {
           console.error("Erro ao salvar itens perdidos", pErr);
           toast.error("Ticket criado, mas falhou ao salvar itens perdidos.");
+        }
+      }
+
+      // Insert purchase request + items
+      if (created?.id && isPurchase && purchaseItems.length > 0) {
+        const { data: { user: authUser } } = await supabase.auth.getUser();
+        const { data: req, error: reqErr } = await supabase
+          .from("ticket_purchase_requests" as any)
+          .insert({ ticket_id: created.id, created_by: authUser?.id || null })
+          .select("id")
+          .single();
+        if (reqErr) {
+          console.error("Erro ao criar solicitação de compra", reqErr);
+          toast.error("Ticket criado, mas falhou ao iniciar a solicitação de compra.");
+        } else {
+          const rows = purchaseItems.map((it) => ({
+            ticket_id: created.id,
+            request_id: (req as any)?.id || null,
+            item_id: it.item_id,
+            item_name: it.item_name,
+            quantity: it.quantity,
+            unit_price: it.unit_price || 0,
+            status: "pendente",
+          }));
+          const { error: piErr } = await supabase
+            .from("ticket_purchase_items" as any)
+            .insert(rows);
+          if (piErr) {
+            console.error("Erro ao salvar itens da solicitação de compra", piErr);
+            toast.error("Ticket criado, mas falhou ao salvar itens de compra.");
+          }
         }
       }
 
@@ -645,6 +693,9 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
           )}
           {isPerdidos && (
             <PerdidosFields items={perdidosItems} onChange={setPerdidosItems} />
+          )}
+          {isPurchase && (
+            <PurchaseFields items={purchaseItems} onChange={setPurchaseItems} />
           )}
           <div className="space-y-1">
             <label className="text-xs font-medium">Observações</label>
