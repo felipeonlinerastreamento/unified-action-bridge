@@ -825,3 +825,83 @@ export const deleteMessage = createServerFn({ method: "POST" })
 
     return { success: true };
   });
+
+// ------------ Webhooks setup (notifySentByMe + URLs) ------------
+//
+// Z-API só dispara o evento de "mensagem enviada pelo dono do número"
+// (celular/WhatsApp Web fora do nosso sistema) se a flag
+// "receive-all-notifications" estiver ATIVA na instância. Esta server fn
+// configura todos os webhooks essenciais de uma vez para o canal:
+//   - on-message-received (entrada)
+//   - on-send             (saída via API)
+//   - message-status      (entregue/lido)
+//   - receive-all-notifications = true (espelha mensagens enviadas pelo celular)
+//
+// Webhook secret já existe no canal — apenas reanexamos a URL.
+
+export const setupZapiWebhooks = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ channelId: z.string().uuid() }).parse)
+  .handler(async ({ data, context }) => {
+    const channel = await loadZapiChannel(context.supabase, data.channelId);
+
+    // Buscar webhook_secret e montar URL pública estável
+    const { data: row } = await context.supabase
+      .from("channels")
+      .select("webhook_secret")
+      .eq("id", data.channelId)
+      .single();
+    const secret = (row as any)?.webhook_secret;
+    if (!secret) throw new Error("Canal sem webhook_secret configurado");
+
+    const projectId = "40ab25b5-cec0-4fe2-8de9-27bfd1074392";
+    const url = `https://project--${projectId}.lovable.app/api/public/zapi-webhook/${data.channelId}?secret=${secret}`;
+
+    const results: Record<string, { ok: boolean; error?: string }> = {};
+
+    const callEndpoints = async (paths: string[], body: unknown, label: string) => {
+      let lastErr: any = null;
+      for (const path of paths) {
+        try {
+          await zapiFetch(channel, path, "PUT", body);
+          results[label] = { ok: true };
+          return;
+        } catch (e: any) {
+          lastErr = e;
+        }
+      }
+      results[label] = { ok: false, error: String(lastErr?.message || lastErr) };
+    };
+
+    // Z-API expõe endpoints com nomes ligeiramente diferentes em versões da
+    // instância — tentamos as variações conhecidas e ficamos com a primeira
+    // que funcionar.
+    await callEndpoints(
+      ["/update-webhook-received", "/update-webhook-received-message"],
+      { value: url },
+      "received",
+    );
+    await callEndpoints(
+      ["/update-webhook-message-status", "/update-webhook-status"],
+      { value: url },
+      "status",
+    );
+    await callEndpoints(
+      ["/update-webhook-delivery", "/update-webhook-delivered"],
+      { value: url },
+      "delivery",
+    );
+    // Espelha mensagens enviadas pelo dono do número (celular / WhatsApp Web)
+    await callEndpoints(
+      ["/update-webhook-receive-all-notifications", "/update-every-update-webhook"],
+      { value: url },
+      "receive_all",
+    );
+    await callEndpoints(
+      ["/update-notify-send-by-me", "/update-webhook-notify-send-by-me"],
+      { value: true },
+      "notify_sent_by_me",
+    );
+
+    return { url, results };
+  });
