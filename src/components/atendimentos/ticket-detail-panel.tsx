@@ -113,6 +113,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
     navigate({ to: "/central", search: { chat: (chat as any).id, channel: (chat as any).channel_id } });
   }, [ticket?.contact_phone, navigate, onClose]);
   const [comment, setComment] = useState("");
+  const [expanded, setExpanded] = useState(false);
   const [forwardSector, setForwardSector] = useState("");
   const [forwardUser, setForwardUser] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
