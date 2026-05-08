@@ -68,6 +68,12 @@ import {
   validatePerdidosItems,
   type PerdidosLineItem,
 } from "./perdidos-fields";
+import { isPurchaseCategory } from "@/hooks/use-purchase-requests";
+import {
+  PurchaseFields,
+  validatePurchaseItems,
+  type PurchaseLineItem,
+} from "./purchase-fields";
 
 interface TicketCreateDialogProps {
   open: boolean;
