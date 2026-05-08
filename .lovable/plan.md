@@ -1,48 +1,41 @@
-## Objetivo
-Garantir, no nível do banco, que **nunca** existam dois chats em `zapi_chats` para o mesmo contato no mesmo canal — independentemente do código que tente inserir.
+## Problema
+Mensagens enviadas pelos operadores via sistema são gravadas corretamente com `from_me=true`, mas o webhook da Z-API depois sobrescreve para `from_me=false`, fazendo elas aparecerem do lado esquerdo do chat (como se fossem do cliente). Confirmado nos dados de `553184049398`: linhas com `sent_by_user_id` setado e `from_me=false`.
 
-## 1. Função de normalização de telefone BR
-`public.normalize_zapi_phone(raw text) returns text`:
-- Remove tudo que não for dígito.
-- Se identificador for grupo (`@g.us` no original ou >= 16 dígitos sem padrão BR) → retorna como está (grupos podem coexistir, não normalizamos).
-- Se começar com `55` e tiver 12–13 dígitos → mantém.
-- Se tiver 10–11 dígitos (sem DDI) → prefixa `55`.
-- Se >= 15 dígitos sem ser grupo → trata como LID, retorna prefixo `lid:` + dígitos (para nunca colidir com telefone real).
-- IMMUTABLE, usada em índice.
+## Causa raiz
+1. `sendText` insere a mensagem com `from_me: true` + `sent_by_user_id` + `zapi_message_id` retornado pela Z-API.
+2. A Z-API envia um eco do envio como `ReceivedCallback` com `fromMe=true` (acontece quando o número/conta conectada aparece como sender em sincronizações de dispositivo).
+3. `api.public.zapi-webhook.$channelId.tsx` linhas 202-210 força `effectiveFromMe = false` para qualquer `ReceivedCallback`, ignorando o `fromMe` do payload.
+4. `persistZapiMessage` localiza a linha existente pelo `zapi_message_id`, dá `UPDATE` com `from_me: false, status: "delivered"` e destrói a marcação correta.
 
-## 2. Coluna gerada + índices únicos parciais
-- `ALTER TABLE zapi_chats ADD COLUMN phone_normalized text GENERATED ALWAYS AS (public.normalize_zapi_phone(phone)) STORED;`
-- Índice único parcial 1 — telefone:
-  `CREATE UNIQUE INDEX uniq_zapi_chats_channel_phone_norm ON zapi_chats(channel_id, phone_normalized) WHERE phone_normalized NOT LIKE 'lid:%';`
-- Índice único parcial 2 — nome (apenas chats não-grupo, com nome):
-  `CREATE UNIQUE INDEX uniq_zapi_chats_channel_contact_name ON zapi_chats(channel_id, lower(contact_name)) WHERE contact_name IS NOT NULL AND contact_name <> '' AND length(regexp_replace(phone, '\D','','g')) <= 14;`
+## Correção
+Em `src/routes/api.public.zapi-webhook.$channelId.tsx`, ajustar `persistZapiMessage` para que, ao encontrar uma linha pré-existente (mesmo `chat_id` + `zapi_message_id`), **nunca rebaixe `from_me=true` para `false` nem sobrescreva `sent_by_user_id`**. A linha já existe porque foi inserida pelo `sendText` do operador — o webhook deve apenas confirmar entrega, não reclassificar a direção.
 
-## 3. Trigger `BEFORE INSERT`
-`prevent_duplicate_zapi_chat()`:
-- Se já existir chat no mesmo `channel_id` com mesmo `phone_normalized` (não-LID) → `RAISE EXCEPTION 'duplicate_zapi_chat:<id_existente>'`.
-- Se já existir chat no mesmo `channel_id` com mesmo `lower(contact_name)` (e o novo não for grupo) → idem.
-- Webhook captura a exceção, extrai o id e roteia a mensagem para o chat existente em vez de falhar.
+Mudança concreta na função `persistZapiMessage` (linhas 602-646):
 
-## 4. Ajuste no webhook
-Em `src/routes/api.public.zapi-webhook.$channelId.tsx`:
-- Antes do upsert, normalizar `phone` com a mesma lógica do banco.
-- No `catch` da inserção do chat, detectar o erro `duplicate_zapi_chat:<uuid>` → carregar esse chat e seguir o fluxo normal.
+- Buscar a linha existente trazendo também `from_me, sent_by_user_id`.
+- Se já existir e `from_me=true` (ou `sent_by_user_id` não nulo), montar um update **apenas com campos seguros**: `status`, `media_url`, `media_type`, `participant_name`, `participant_phone` — preservando `from_me` e `sent_by_user_id`.
+- Se a linha existente é genuinamente do cliente (`from_me=false` e `sent_by_user_id` nulo), manter o comportamento atual.
+- Para o `INSERT` novo (linha não existe), nada muda.
 
-## 5. Pré-requisito: deduplicar antes de criar os índices
-Os índices únicos vão falhar enquanto existirem duplicatas. Antes da migração de schema, rodar a limpeza:
-- Para cada `(channel_id, phone_normalized)` ou `(channel_id, lower(contact_name))` com >1 chat (excluindo grupos e LIDs):
-  - Canônico = chat mais antigo com mais mensagens.
-  - Mover `zapi_messages` (descartando antes os duplicados por `zapi_message_id`), somar `unread_count`, manter `last_message_at` mais recente.
-  - Deletar os outros.
-- **Felipe e Natália preservados**: nomes iguais mas telefones reais distintos (sem padrão LID) — ficam separados; nesses casos só o índice de `contact_name` precisa de cuidado: vou usar `lower(contact_name) || '|' || phone_normalized` ou simplesmente NÃO criar o índice de nome, apenas o de telefone normalizado, e deixar o webhook fazer a checagem de nome só quando `phone` for LID.
+Opcionalmente, no bloco 196-210 onde calculamos `effectiveFromMe`, adicionar comentário explicando que essa proteção secundária no `persistZapiMessage` é o que evita corrupção de mensagens do operador. Não vou tocar na regra do `effectiveFromMe` porque ela ainda é necessária para o caso original (cliente cujo número coincide com a conta — evitar que mensagens REAIS do cliente sejam salvas como `from_me=true`).
 
-  → Decisão: **manter apenas o índice único de `phone_normalized`** e tratar match-por-nome dentro do webhook (já existe). Isso evita falsos positivos para homônimos legítimos.
-
-## Arquivos
-- `supabase/migrations/<nova>.sql` — função, dedupe, coluna gerada, índice único, trigger.
-- `src/routes/api.public.zapi-webhook.$channelId.tsx` — normalização e tratamento da exceção do trigger.
+## Backfill das mensagens já corrompidas
+Migration única para corrigir o histórico:
+```sql
+UPDATE public.zapi_messages
+SET from_me = true,
+    status = CASE WHEN status = 'delivered' THEN 'sent' ELSE status END
+WHERE from_me = false
+  AND sent_by_user_id IS NOT NULL;
+```
+Critério seguro: `sent_by_user_id` só é preenchido pelo fluxo de envio do operador; se está setado, a mensagem é necessariamente outbound.
 
 ## Validação
-- `SELECT channel_id, phone_normalized, COUNT(*) FROM zapi_chats GROUP BY 1,2 HAVING COUNT(*)>1` → vazio.
-- Tentar `INSERT` manual de chat duplicado → falha com `duplicate_zapi_chat:<id>`.
-- Enviar mensagem de teste por WhatsApp pelo celular do operador → cai no chat existente, sem criar duplicata.
+1. Operador envia mensagem teste pelo sistema → aparece imediatamente à direita e **continua à direita** após o webhook processar (verificar no DB que `from_me` permanece `true`).
+2. Cliente envia mensagem → continua à esquerda, `from_me=false`, `sent_by_user_id=null`.
+3. Rodar `SELECT COUNT(*) FROM zapi_messages WHERE from_me=false AND sent_by_user_id IS NOT NULL` → deve retornar 0 após o backfill.
+4. Conferir no chat `553184049398` que as respostas de Davi e Fernanda voltam para o lado direito.
+
+## Arquivos
+- `src/routes/api.public.zapi-webhook.$channelId.tsx` — ajustar `persistZapiMessage`.
+- `supabase/migrations/<nova>.sql` — backfill das linhas existentes.
