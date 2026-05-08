@@ -1,66 +1,93 @@
-## Problema
-No chat de Cecília Alves (5527999598630), o atendimento finalizado foi indevidamente reaberto e a mensagem "Obrigado pela sua avaliação!" apareceu como se viesse do cliente.
+## Objetivo
 
-## Causa raiz
-1. Felipe finalizou o atendimento. Como CSAT está ativo, o sistema enviou a mensagem de CSAT (que contém o texto "[ 1 ] - Ruim 😒, [ 2 ] - Bom 😊, [ 3 ] - Ótimo 😍") via `sendText` e gravou `csat_pending`.
-2. A Z-API ecoou essa mensagem do operador como `ReceivedCallback` com `fromMe=true`. O webhook força `effectiveFromMe = false` para qualquer `ReceivedCallback` (linhas 196-210), então o eco entra no ramo de captura de CSAT (linha 248).
-3. O ramo de CSAT extrai score com `String(text).trim().match(/[123]/)` (linha 280) — regex frouxa que acha "1" dentro do próprio texto da pergunta de CSAT. Score 1 (Ruim) foi registrado no `csat_responses` (confirmado no DB: `raw_response` = a própria mensagem da pergunta de CSAT) e o `csat_pending` foi consumido.
-4. O webhook ainda enviou o `thanks_message` "Obrigado pela sua avaliação!" via `zapiSendText`. Esse envio foi gravado em `zapi_messages` com `from_me=true` mas sem `zapi_message_id`. Em seguida o eco da Z-API chegou como `ReceivedCallback` (fromMe=true → forçado a false) e foi inserido como NOVA linha (não casa pelo `zapi_message_id` porque o registro do envio não tinha um), aparecendo no chat do lado esquerdo.
-5. ~5 minutos depois a cliente respondeu de fato "3". `csat_pending` já não existia (foi consumido pelo eco) → caiu no fluxo de reabertura (linha 447) e o chat voltou para `aguardando`.
+Unificar "Itens de Compra (Suprimento)" e "Itens de Compra (Equipamento/Chip)" em um único módulo **Solicitação de Compra**, com fluxo configurável, cadastro de fornecedores, painel de acompanhamento e relatórios analíticos.
 
-## Correção
+---
 
-### 1. Tornar a extração do score de CSAT estrita (`src/routes/api.public.zapi-webhook.$channelId.tsx`)
-Trocar `String(text).trim().match(/[123]/)` por uma regex que só aceite a resposta isolada do cliente, tolerando espaços e emojis:
+## 1. Configurações → Encaminhamento → "Solicitação de Compra"
 
-```ts
-const trimmed = String(text).trim();
-const m = trimmed.match(/^([123])(?:\s|$)/) || trimmed.match(/^nota\s*([123])/i);
-const score = m ? Number(m[1]) : null;
-```
+Substitui as duas seções atuais (Suprimento + Equipamento/Chip) por uma única aba **Solicitação de Compra** com 3 sub-abas:
 
-Assim o texto longo da pergunta de CSAT (que contém os dígitos 1, 2 e 3) não casa mais. Apenas respostas como `3`, `3 `, `3 obrigada`, `Nota 3` casam.
+### 1a. Itens (catálogo unificado)
+- Lista mesclada com todos os itens cadastrados nas duas tabelas antigas (preservados via migração).
+- Campos: Nome, Quantidade padrão, Tipo opcional (Suprimento/Equipamento/Outro — só rótulo, não restringe), Ativo.
+- CRUD igual ao atual.
 
-### 2. Defesa adicional: ignorar ecos do próprio operador no ramo de CSAT
-Antes de chegar à seção CSAT, capturar o flag original `const originalFromMe = !!p.fromMe;` antes da linha 206 que o sobrescreve. No bloco da linha 248, adicionar:
-```ts
-if (!p.fromMe && !originalFromMe && !isGroupMessage && text) { ... }
-```
-Isso garante que ecos do operador (mesmo que cheguem como `ReceivedCallback`) nunca consomem `csat_pending` nem disparam o "thanks".
+### 1b. Fornecedores (novo)
+Cadastro completo de fornecedores reutilizáveis:
+- Nome / Razão social
+- CNPJ (opcional)
+- **Observações** (campo livre multilinha)
+- **Contatos** (lista: nome, cargo, telefone, e-mail — múltiplos contatos por fornecedor)
+- Ativo / Inativo
 
-### 3. Evitar a duplicata visual da mensagem de "thanks"
-Quando o webhook envia o `thanks` (linhas 318-326), gravar também o `zapi_message_id` retornado pelo `zapiSendText`. Hoje a inserção não inclui `zapi_message_id`, então quando o eco volta como `ReceivedCallback`, o `persistZapiMessage` não encontra o registro existente e cria uma segunda linha. Ajustar para:
-```ts
-const sendRes = await zapiSendText(creds, phone, thanks);
-const sentId = (sendRes as any)?.messageId || (sendRes as any)?.id || null;
-await supabaseAdmin.from("zapi_messages").insert({
-  chat_id: (pending as any).chat_id,
-  zapi_message_id: sentId,
-  from_me: true,
-  text: thanks,
-  status: "sent",
-});
-```
-Combinado com a proteção já existente em `persistZapiMessage` (não rebaixa `from_me=true` para `false`), o eco será apenas um UPDATE no mesmo registro, sem aparecer do lado do cliente.
+### 1c. Configuração do Fluxo
+Toggles para definir quais campos aparecem no chamado e quais são obrigatórios:
+- Item, Quantidade, Valor unitário, Valor total (auto), Frete
+- Fornecedor (com botão "+ Novo fornecedor" inline)
+- Código de rastreio
+- Previsão de entrega
+- Contato do vendedor (autopreenchido a partir do fornecedor)
+- Limite de variação de preço aceitável (default: 10%) — usado nos alertas de relatório
 
-## Backfill / limpeza para o caso reportado
-Para o chat `42199bff-cf7e-4f06-b852-f7e0815c1415`:
-1. Apagar a resposta CSAT bogus:
-   `DELETE FROM csat_responses WHERE id = '0689c962-09f1-4092-957b-74a843d13e99';`
-2. Reverter o status do chat (estava finalizado e foi reaberto pela mensagem "3"):
-   `UPDATE zapi_chats SET status='finalizado' WHERE id='42199bff-cf7e-4f06-b852-f7e0815c1415';`
-3. (Opcional) Apagar a linha do "Obrigado pela sua avaliação!" duplicada do lado do cliente:
-   `DELETE FROM zapi_messages WHERE id = '464ee623-a998-41fd-b0bd-3baaab4593ad';`
-4. Registrar manualmente o score real (3 = Ótimo) que a cliente enviou às 13:08, se desejar manter histórico de CSAT correto.
+---
 
-Confirmar com o usuário antes de aplicar o backfill.
+## 2. Atendimentos — Categoria "Solicitação de Compra"
 
-## Validação
-1. Operador finaliza um chat com CSAT ativo → mensagem de pergunta sai uma vez, **não** dispara `csat_responses` automaticamente, **não** envia "thanks".
-2. Cliente responde "3" → `csat_responses` recebe score=3, `csat_pending` é consumido, `thanks` é enviado uma única vez e aparece **à direita**.
-3. Cliente responde algo que não é 1/2/3 (ex: "Obrigada") → `csat_pending` é descartado, fluxo normal segue (reabre chat). Comportamento atual mantido.
-4. Verificar no chat de Cecília que após o backfill ele volta a aparecer como finalizado.
+Quando ticket abre/é editado nessa categoria, o painel substitui os atuais `compra-equipamento-fields` e `suprimento-fields` por um único bloco:
 
-## Arquivos
-- `src/routes/api.public.zapi-webhook.$channelId.tsx` — itens 1, 2 e 3.
-- `supabase/migrations/<nova>.sql` — backfill (apenas se aprovado).
+- Tabela de itens (linhas): Item, Qtd, Valor Unit., Valor Total (calc.), Frete (rateado ou no rodapé).
+- Ao selecionar um item: mostra **"Última compra: R$ X,XX em DD/MM/AAAA — Fornecedor Y"** abaixo do campo de valor.
+- Campos do ticket (uma vez): Fornecedor (select com cadastro inline), Rastreio, Previsão de entrega, Contato vendedor.
+- Status de compra: Solicitado → Cotação → Comprado → Em transporte → Entregue.
+
+---
+
+## 3. Painel de Acompanhamento
+
+Ao filtrar categoria = "Solicitação de Compra" em Atendimentos:
+- KPIs no topo: Total em aberto (R$), Comprado no mês, Entregues, Atrasados (previsão vencida).
+- Visão tabela com colunas: Protocolo, Solicitante, Itens, Valor total, Fornecedor, Status, Previsão, Rastreio.
+- Toggle para visão Kanban por status de compra.
+
+---
+
+## 4. Relatórios → "Compras"
+
+Nova aba em `/relatorios`:
+
+**Dashboard (topo) — 3 KPIs:**
+1. Gasto total no período
+2. Saving acumulado (vs. média histórica)
+3. Itens com alerta de inflação (> limite configurado)
+
+**Filtros:** período, item, fornecedor, solicitante.
+
+**Seções:**
+- **Variação de preço por item** — tabela com último preço, média, mín, máx, variação %; linhas em vermelho quando variação > limite, em verde quando saving.
+- **Frequência de compra** — itens comprados ≥ N vezes em 30 dias (alerta de ineficiência sugerindo compra em volume).
+- **Concentração de fornecedores** — % do volume financeiro por fornecedor (alerta quando único fornecedor > 70%).
+- **Histórico por item** — gráfico de linha de preço unitário ao longo do tempo.
+
+**Exportação:** CSV e XLSX (com formatação condicional nas células de variação).
+
+---
+
+## Detalhes Técnicos
+
+### Migração de banco
+- Cria `purchase_items` (catálogo unificado), `purchase_suppliers`, `purchase_supplier_contacts`, `ticket_purchase_requests` (cabeçalho do ticket: fornecedor_id, frete, rastreio, previsão, contato), `ticket_purchase_items` (linhas: item_id, qtd, valor_unit, status).
+- Migra dados de `suprimento_items` + `compra_equipamento_items` → `purchase_items` (deduplicado por nome, mantém qtd padrão maior).
+- Migra `ticket_suprimento_items` + `ticket_compra_equipamento_items` → `ticket_purchase_items`.
+- Mantém tabelas antigas por 1 release como fallback (somente leitura).
+- View `v_purchase_item_history` para consultas de "última compra" e relatórios de variação.
+- Configuração do fluxo armazenada em `app_settings` (chave `purchase_flow_config` JSON).
+
+### Frontend
+- Novo hook `use-purchase-requests.tsx` substitui `use-suprimento` e `use-compra-equipamento`.
+- Novos componentes: `purchase-request-fields.tsx`, `purchase-supplier-picker.tsx`, `ticket-purchase-section.tsx`, `purchase-tracking-panel.tsx`, `purchase-config.tsx`, `purchase-suppliers-config.tsx`, `purchase-flow-config.tsx`.
+- Nova rota `/relatorios` aba "Compras" → `purchase-report-tab.tsx` usando Recharts.
+- Mantém detecção da categoria via keywords (adiciona "solicitação de compra") em `chat-utils` / hooks.
+
+### Compatibilidade
+- Categoria "Solicitação de Suprimento" e "Solicitação Compra Equipamento/Chip" passam a redirecionar internamente para o novo fluxo (badges/sections antigos viram wrappers).
