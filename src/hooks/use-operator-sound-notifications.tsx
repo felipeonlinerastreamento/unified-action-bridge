@@ -8,17 +8,28 @@ import { toast } from "sonner";
  *  - "message": som curto agudo para nova mensagem do cliente em chat assumido pelo operador
  *  - "forward": som duplo grave para encaminhamentos (chat ou ticket atribuído ao operador)
  */
+function getVolume(): number {
+  try {
+    const v = Number(localStorage.getItem("operator_notification_volume"));
+    if (Number.isFinite(v) && v >= 0 && v <= 1) return v;
+  } catch {}
+  return 0.6; // default mais alto
+}
+
 function playTone(kind: "message" | "forward") {
   try {
     const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
     if (!Ctx) return;
     const ctx = new Ctx();
+    const vol = getVolume();
+    if (vol <= 0) { ctx.close().catch(() => {}); return; }
 
-    const beep = (freq: number, start: number, duration: number, gainVal = 0.12) => {
+    const beep = (freq: number, start: number, duration: number, gainBase = 1) => {
       const osc = ctx.createOscillator();
       const gain = ctx.createGain();
       osc.frequency.value = freq;
-      gain.gain.value = gainVal;
+      // Multiplica pelo volume do usuário (0..1). Base ~0.5 para som mais audível.
+      gain.gain.value = Math.min(1, gainBase * 0.5 * vol);
       osc.connect(gain);
       gain.connect(ctx.destination);
       osc.start(ctx.currentTime + start);
@@ -28,9 +39,8 @@ function playTone(kind: "message" | "forward") {
     if (kind === "message") {
       beep(880, 0, 0.18);
     } else {
-      // Encaminhamento — dois bipes graves descendentes
-      beep(520, 0, 0.18, 0.14);
-      beep(380, 0.22, 0.25, 0.14);
+      beep(520, 0, 0.18);
+      beep(380, 0.22, 0.25);
     }
 
     setTimeout(() => ctx.close().catch(() => {}), 800);
