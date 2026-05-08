@@ -444,6 +444,36 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
         }
       }
 
+      // Insert purchase request + items
+      if (created?.id && isPurchase && purchaseItems.length > 0) {
+        const { data: req, error: reqErr } = await supabase
+          .from("ticket_purchase_requests" as any)
+          .insert({ ticket_id: created.id, created_by: userIdRef })
+          .select("id")
+          .single();
+        if (reqErr) {
+          console.error("Erro ao criar solicitação de compra", reqErr);
+          toast.error("Ticket criado, mas falhou ao iniciar a solicitação de compra.");
+        } else {
+          const rows = purchaseItems.map((it) => ({
+            ticket_id: created.id,
+            request_id: (req as any)?.id || null,
+            item_id: it.item_id,
+            item_name: it.item_name,
+            quantity: it.quantity,
+            unit_price: it.unit_price || 0,
+            status: "pendente",
+          }));
+          const { error: piErr } = await supabase
+            .from("ticket_purchase_items" as any)
+            .insert(rows);
+          if (piErr) {
+            console.error("Erro ao salvar itens da solicitação de compra", piErr);
+            toast.error("Ticket criado, mas falhou ao salvar itens de compra.");
+          }
+        }
+      }
+
       toast.success("Ticket criado com sucesso");
       resetForm();
       onCreated();
