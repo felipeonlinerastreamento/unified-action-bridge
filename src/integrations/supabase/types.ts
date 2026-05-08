@@ -4353,6 +4353,7 @@ export type Database = {
           last_message_at: string | null
           last_message_preview: string | null
           phone: string
+          phone_normalized: string | null
           sector_name: string | null
           status: string
           tags: Json
@@ -4370,6 +4371,7 @@ export type Database = {
           last_message_at?: string | null
           last_message_preview?: string | null
           phone: string
+          phone_normalized?: string | null
           sector_name?: string | null
           status?: string
           tags?: Json
@@ -4387,6 +4389,7 @@ export type Database = {
           last_message_at?: string | null
           last_message_preview?: string | null
           phone?: string
+          phone_normalized?: string | null
           sector_name?: string | null
           status?: string
           tags?: Json
@@ -4568,6 +4571,7 @@ export type Database = {
         Args: { _task_id: string; _user_id: string }
         Returns: boolean
       }
+      normalize_zapi_phone: { Args: { raw: string }; Returns: string }
       pick_least_loaded_agent: { Args: { _sector: string }; Returns: string }
     }
     Enums: {

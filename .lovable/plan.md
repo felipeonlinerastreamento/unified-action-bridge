@@ -1,43 +1,48 @@
-## Problema
+## Objetivo
+Garantir, no nível do banco, que **nunca** existam dois chats em `zapi_chats` para o mesmo contato no mesmo canal — independentemente do código que tente inserir.
 
-A contato **Cecília Alves** está duplicado no chat:
+## 1. Função de normalização de telefone BR
+`public.normalize_zapi_phone(raw text) returns text`:
+- Remove tudo que não for dígito.
+- Se identificador for grupo (`@g.us` no original ou >= 16 dígitos sem padrão BR) → retorna como está (grupos podem coexistir, não normalizamos).
+- Se começar com `55` e tiver 12–13 dígitos → mantém.
+- Se tiver 10–11 dígitos (sem DDI) → prefixa `55`.
+- Se >= 15 dígitos sem ser grupo → trata como LID, retorna prefixo `lid:` + dígitos (para nunca colidir com telefone real).
+- IMMUTABLE, usada em índice.
 
-| ID do chat | phone | Origem provável |
-|---|---|---|
-| `42199bff…` | `5527999598630` (real, E.164 BR) | mensagens recebidas/enviadas normais |
-| `384e045e…` | `274611736428555` (15 dígitos, formato LID do WhatsApp) | eventos da Z-API que vieram com o LID em `phone` no lugar do número real (acontece em alguns SentCallback / casos de "notify sent by me") |
+## 2. Coluna gerada + índices únicos parciais
+- `ALTER TABLE zapi_chats ADD COLUMN phone_normalized text GENERATED ALWAYS AS (public.normalize_zapi_phone(phone)) STORED;`
+- Índice único parcial 1 — telefone:
+  `CREATE UNIQUE INDEX uniq_zapi_chats_channel_phone_norm ON zapi_chats(channel_id, phone_normalized) WHERE phone_normalized NOT LIKE 'lid:%';`
+- Índice único parcial 2 — nome (apenas chats não-grupo, com nome):
+  `CREATE UNIQUE INDEX uniq_zapi_chats_channel_contact_name ON zapi_chats(channel_id, lower(contact_name)) WHERE contact_name IS NOT NULL AND contact_name <> '' AND length(regexp_replace(phone, '\D','','g')) <= 14;`
 
-Ambos têm mensagens reais — então não é só visual, são duas linhas distintas em `zapi_chats` para o mesmo contato.
+## 3. Trigger `BEFORE INSERT`
+`prevent_duplicate_zapi_chat()`:
+- Se já existir chat no mesmo `channel_id` com mesmo `phone_normalized` (não-LID) → `RAISE EXCEPTION 'duplicate_zapi_chat:<id_existente>'`.
+- Se já existir chat no mesmo `channel_id` com mesmo `lower(contact_name)` (e o novo não for grupo) → idem.
+- Webhook captura a exceção, extrai o id e roteia a mensagem para o chat existente em vez de falhar.
 
-## Causa raiz
+## 4. Ajuste no webhook
+Em `src/routes/api.public.zapi-webhook.$channelId.tsx`:
+- Antes do upsert, normalizar `phone` com a mesma lógica do banco.
+- No `catch` da inserção do chat, detectar o erro `duplicate_zapi_chat:<uuid>` → carregar esse chat e seguir o fluxo normal.
 
-O webhook `src/routes/api.public.zapi-webhook.$channelId.tsx` faz `upsert` por `(channel_id, phone)` confiando cegamente em `p.phone`. Quando a Z-API envia um identificador LID (`@lid`, normalmente 15+ dígitos sem DDI 55), criamos um chat novo em vez de mesclar com o existente.
+## 5. Pré-requisito: deduplicar antes de criar os índices
+Os índices únicos vão falhar enquanto existirem duplicatas. Antes da migração de schema, rodar a limpeza:
+- Para cada `(channel_id, phone_normalized)` ou `(channel_id, lower(contact_name))` com >1 chat (excluindo grupos e LIDs):
+  - Canônico = chat mais antigo com mais mensagens.
+  - Mover `zapi_messages` (descartando antes os duplicados por `zapi_message_id`), somar `unread_count`, manter `last_message_at` mais recente.
+  - Deletar os outros.
+- **Felipe e Natália preservados**: nomes iguais mas telefones reais distintos (sem padrão LID) — ficam separados; nesses casos só o índice de `contact_name` precisa de cuidado: vou usar `lower(contact_name) || '|' || phone_normalized` ou simplesmente NÃO criar o índice de nome, apenas o de telefone normalizado, e deixar o webhook fazer a checagem de nome só quando `phone` for LID.
 
-## Plano
+  → Decisão: **manter apenas o índice único de `phone_normalized`** e tratar match-por-nome dentro do webhook (já existe). Isso evita falsos positivos para homônimos legítimos.
 
-### 1. Mesclar duplicatas existentes (migration de dados)
-- Detectar pares no mesmo `channel_id` onde um `phone` é "real" (≤14 dígitos, começa com DDI) e outro é "LID-like" (15+ dígitos) e que compartilhem `contact_name`.
-- Para cada par:
-  - Mover todas as `zapi_messages` do chat LID para o chat real (`UPDATE chat_id`).
-  - Reaproveitar `last_message_at` mais recente, somar `unread_count`.
-  - Apagar o chat LID.
-- Aplicar especificamente ao caso da Cecília (`384e045e…` → `42199bff…`) e a quaisquer outros pares encontrados.
+## Arquivos
+- `supabase/migrations/<nova>.sql` — função, dedupe, coluna gerada, índice único, trigger.
+- `src/routes/api.public.zapi-webhook.$channelId.tsx` — normalização e tratamento da exceção do trigger.
 
-### 2. Prevenir nova duplicação no webhook
-Em `api.public.zapi-webhook.$channelId.tsx`, antes do upsert do chat:
-
-- Se `phone` parecer um LID (tamanho > 14 dígitos **e** não for grupo `@g.us`/`<id>-<ts>`):
-  - Tentar resolver para o telefone real consultando outros campos do payload (`p.participantPhone`, `p.senderPhone`, `p.chatPhone`) ou pelo `senderName` no mesmo `channel_id`.
-  - Se encontrar um chat real correspondente → usar o chat existente (sem criar novo).
-  - Se não encontrar → ignorar o evento e logar (`[zapi-webhook] dropping LID-only event`), em vez de criar um chat órfão.
-- Manter o tratamento normal para grupos (que já é detectado por `isGroupPhoneIdentifier`).
-
-### 3. Validação
-- Conferir no painel que só existe um card "Cecília Alves" e que o histórico está completo (mensagens dos dois chats juntas, em ordem cronológica).
-- Enviar uma nova mensagem pelo WhatsApp para reproduzir o cenário do SentCallback e confirmar que ela cai no chat existente, sem recriar o duplicado.
-
-### Arquivos a alterar
-- `supabase/migrations/<nova>.sql` — merge de dados (pontual + regra geral para LIDs órfãos).
-- `src/routes/api.public.zapi-webhook.$channelId.tsx` — bloquear criação de chat por identificador LID.
-
-Sem mudanças de UI.
+## Validação
+- `SELECT channel_id, phone_normalized, COUNT(*) FROM zapi_chats GROUP BY 1,2 HAVING COUNT(*)>1` → vazio.
+- Tentar `INSERT` manual de chat duplicado → falha com `duplicate_zapi_chat:<id>`.
+- Enviar mensagem de teste por WhatsApp pelo celular do operador → cai no chat existente, sem criar duplicata.
