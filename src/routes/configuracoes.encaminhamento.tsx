@@ -44,8 +44,7 @@ import { SectorsManagement } from "@/components/configuracoes/sectors-management
 import { TrackingSedexConfig } from "@/components/configuracoes/tracking-sedex-config";
 import { TesteEquipamentoConfig } from "@/components/configuracoes/teste-equipamento-config";
 import { LiberacaoEquipamentoConfig } from "@/components/configuracoes/liberacao-equipamento-config";
-import { SuprimentoConfig } from "@/components/configuracoes/suprimento-config";
-import { CompraEquipamentoConfig } from "@/components/configuracoes/compra-equipamento-config";
+import { PurchaseConfig } from "@/components/configuracoes/purchase-config";
 import { PerdidosConfig } from "@/components/configuracoes/perdidos-config";
 import { EscalonamentoGestaoConfig } from "@/components/configuracoes/escalonamento-gestao-config";
 import { ChatIdleAutoMessagesConfig } from "@/components/configuracoes/chat-idle-auto-messages-config";
