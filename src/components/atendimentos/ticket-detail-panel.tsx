@@ -661,6 +661,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
 
             <TicketTrackingSection ticketId={ticket.id} trackingCode={ticket.tracking_code || null} />
             <TicketLiberacaoSection ticket={ticket} userId={userId} onRefetch={onRefetch} />
+            <TicketPurchaseSection ticket={ticket} userId={userId} onRefetch={onRefetch} />
             <TicketSuprimentoSection ticket={ticket} userId={userId} onRefetch={onRefetch} />
             <TicketCompraEquipamentoSection ticket={ticket} userId={userId} onRefetch={onRefetch} />
             <TicketPerdidosSection ticket={ticket} userId={userId} onRefetch={onRefetch} />
