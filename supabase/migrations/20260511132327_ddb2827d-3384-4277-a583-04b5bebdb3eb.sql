@@ -1,0 +1,1 @@
+UPDATE public.zapi_chats SET status='aguardando', closed_at=NULL, closed_by_user_id=NULL, bot_state='{}'::jsonb, unread_count=GREATEST(unread_count,1) WHERE id='3f68b9ff-302c-4e25-a6fd-1f246422afd0';
