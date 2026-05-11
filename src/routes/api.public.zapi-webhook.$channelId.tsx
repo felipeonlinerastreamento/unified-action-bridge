@@ -220,7 +220,12 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
           // (ReceivedCallback with fromMe=true) so we don't consume CSAT pending
           // from our own outbound messages reflected by Z-API.
           const originalFromMe = !!p.fromMe;
-          const effectiveFromMe = isReceivedEvent ? false : (isSentEvent ? true : !!p.fromMe);
+          // ReceivedCallback com fromMe=true ocorre quando o operador envia
+          // pela mesma conta WhatsApp via outro dispositivo (Web/celular/outra
+          // instância). Devemos respeitar a flag para que a mensagem apareça
+          // no balão da direita. Apenas quando fromMe=false em ReceivedCallback
+          // tratamos como mensagem real do cliente.
+          const effectiveFromMe = isSentEvent ? true : !!p.fromMe;
           // Override the payload flag for the rest of the pipeline so all
           // downstream branches (CSAT, reopen, queue, bot, after-hours) behave
           // correctly regardless of what Z-API reported.
