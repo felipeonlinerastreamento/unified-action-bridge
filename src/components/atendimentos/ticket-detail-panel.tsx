@@ -438,13 +438,17 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
       return;
     }
 
-    const baseUpdate = {
+    const baseUpdate: any = {
       status: newStatus as "aberto" | "em_andamento" | "finalizado" | "reaberto",
       updated_at: new Date().toISOString(),
       closed_at: null as string | null,
       reopened_at: ticket.reopened_at as string | null,
     };
     if (newStatus === "reaberto") baseUpdate.reopened_at = new Date().toISOString();
+    if (newStatus === "finalizado") {
+      baseUpdate.closed_at = new Date().toISOString();
+      baseUpdate.closed_by = userId;
+    }
 
     const { error } = await supabase.from("service_tickets").update(baseUpdate).eq("id", ticket.id);
     if (error) {
@@ -669,6 +673,9 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
             <DetailRow label="Criado em" value={ticket.created_at ? new Date(ticket.created_at).toLocaleString("pt-BR") : null} />
             <DetailRow label="Criado por" value={ticket.opened_by ? (profiles.find((p) => p.user_id === ticket.opened_by)?.name || "—") : "—"} />
             <DetailRow label="Finalizado em" value={ticket.closed_at ? new Date(ticket.closed_at).toLocaleString("pt-BR") : null} />
+            {(ticket as any).closed_by ? (
+              <DetailRow label="Finalizado por" value={profiles.find((p) => p.user_id === (ticket as any).closed_by)?.name || "—"} />
+            ) : null}
             <DetailRow label="Reaberto em" value={ticket.reopened_at ? new Date(ticket.reopened_at).toLocaleString("pt-BR") : null} />
 
             <TicketTrackingSection ticketId={ticket.id} trackingCode={ticket.tracking_code || null} />

@@ -3383,6 +3383,7 @@ export type Database = {
           category: string | null
           channel_id: string | null
           closed_at: string | null
+          closed_by: string | null
           company_id: string | null
           contact_name: string | null
           contact_phone: string | null
@@ -3411,6 +3412,7 @@ export type Database = {
           category?: string | null
           channel_id?: string | null
           closed_at?: string | null
+          closed_by?: string | null
           company_id?: string | null
           contact_name?: string | null
           contact_phone?: string | null
@@ -3439,6 +3441,7 @@ export type Database = {
           category?: string | null
           channel_id?: string | null
           closed_at?: string | null
+          closed_by?: string | null
           company_id?: string | null
           contact_name?: string | null
           contact_phone?: string | null

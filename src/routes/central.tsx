@@ -1605,7 +1605,8 @@ function CentralPage() {
               opened_by: sess.session?.user?.id || null,
               created_at: startIso,
               closed_at: nowIso,
-            })
+              closed_by: sess.session?.user?.id || null,
+            } as any)
             .select("*")
             .single();
           if (createErr) console.error("[Finalize] Failed to create protocol ticket:", createErr.message);
@@ -1680,9 +1681,10 @@ function CentralPage() {
             .update({
               status: "finalizado" as const,
               closed_at: new Date().toISOString(),
+              closed_by: user?.id || null,
               notes: notes || activeTicket.notes || null,
               category: resolvedCategoryLabel || activeTicket.category || null,
-            })
+            } as any)
             .eq("id", activeTicket.id);
         }
       }
@@ -1967,7 +1969,8 @@ function CentralPage() {
                 opened_by: sess.session?.user?.id || null,
                 created_at: startIso,
                 closed_at: nowIso,
-              })
+                closed_by: sess.session?.user?.id || null,
+              } as any)
               .select("*")
               .single();
             if (createErr) {

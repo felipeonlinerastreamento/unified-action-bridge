@@ -105,8 +105,9 @@ export async function finalizeTicketWithFlow(
       .update({
         status: "finalizado" as const,
         closed_at: new Date().toISOString(),
+        closed_by: userId,
         updated_at: new Date().toISOString(),
-      })
+      } as any)
       .eq("id", ticket.id);
     if (error) return { routed: false, error: error.message };
     if (registerStatusComment) {
@@ -171,8 +172,9 @@ export async function finalizeTicketWithFlow(
         .update({
           status: "finalizado" as const,
           closed_at: new Date().toISOString(),
+          closed_by: userId,
           updated_at: new Date().toISOString(),
-        })
+        } as any)
         .eq("id", ticket.id);
       if (error) return { routed: false, error: error.message };
       if (registerStatusComment) {
@@ -371,8 +373,9 @@ export async function finalizeTicketWithFlow(
     .update({
       status: "finalizado" as const,
       closed_at: new Date().toISOString(),
+      closed_by: userId,
       updated_at: new Date().toISOString(),
-    })
+    } as any)
     .eq("id", ticket.id);
   if (error) return { routed: false, error: error.message };
 
