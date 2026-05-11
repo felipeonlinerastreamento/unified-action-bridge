@@ -387,7 +387,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
           // Upsert chat
           let { data: existing } = await supabaseAdmin
             .from("zapi_chats")
-            .select("id, contact_name, status, unread_count")
+            .select("id, contact_name, status, unread_count, closed_at")
             .eq("channel_id", channelId)
             .eq("phone", phone)
             .maybeSingle();
@@ -405,7 +405,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
             if (candidateName) {
               const { data: byName } = await supabaseAdmin
                 .from("zapi_chats")
-                .select("id, contact_name, status, unread_count")
+                .select("id, contact_name, status, unread_count, closed_at")
                 .eq("channel_id", channelId)
                 .eq("contact_name", candidateName)
                 .order("last_message_at", { ascending: false })
@@ -449,7 +449,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               if ((insertError as { code?: string }).code === "23505") {
                 const { data: raced } = await supabaseAdmin
                   .from("zapi_chats")
-                  .select("id, contact_name, status, unread_count")
+                  .select("id, contact_name, status, unread_count, closed_at")
                   .eq("channel_id", channelId)
                   .eq("phone", phone)
                   .maybeSingle();
