@@ -1969,7 +1969,8 @@ function CentralPage() {
                 opened_by: sess.session?.user?.id || null,
                 created_at: startIso,
                 closed_at: nowIso,
-              })
+                closed_by: sess.session?.user?.id || null,
+              } as any)
               .select("*")
               .single();
             if (createErr) {
