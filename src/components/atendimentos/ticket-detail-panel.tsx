@@ -438,13 +438,17 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
       return;
     }
 
-    const baseUpdate = {
+    const baseUpdate: any = {
       status: newStatus as "aberto" | "em_andamento" | "finalizado" | "reaberto",
       updated_at: new Date().toISOString(),
       closed_at: null as string | null,
       reopened_at: ticket.reopened_at as string | null,
     };
     if (newStatus === "reaberto") baseUpdate.reopened_at = new Date().toISOString();
+    if (newStatus === "finalizado") {
+      baseUpdate.closed_at = new Date().toISOString();
+      baseUpdate.closed_by = userId;
+    }
 
     const { error } = await supabase.from("service_tickets").update(baseUpdate).eq("id", ticket.id);
     if (error) {
