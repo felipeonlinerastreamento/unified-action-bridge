@@ -500,8 +500,15 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
             // Without this, all incoming messages were silently swallowed by
             // the bot's "if status === 'finalizado' return false" guard,
             // making it look like new conversations were not appearing.
+            //
+            // GROUPS: never auto-reopen. Group conversations keep receiving
+            // messages constantly (multiple participants), and once an
+            // operator finalizes the ticket the chat must stay closed until
+            // someone manually re-opens it from the Central. Otherwise every
+            // group message would put the chat back in "aguardando" and the
+            // ticket would seem to "continue on screen" right after finalize.
             const shouldReopen =
-              !p.fromMe && existing.status === "finalizado";
+              !p.fromMe && existing.status === "finalizado" && !isGroupMessage;
             // For groups, ALWAYS prefer the latest group name (it can change),
             // overriding any previously stored sender name.
             const nameToStore = isGroupMessage
