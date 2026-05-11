@@ -387,7 +387,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
           // Upsert chat
           let { data: existing } = await supabaseAdmin
             .from("zapi_chats")
-            .select("id, contact_name, status, unread_count")
+            .select("id, contact_name, status, unread_count, closed_at")
             .eq("channel_id", channelId)
             .eq("phone", phone)
             .maybeSingle();
@@ -405,7 +405,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
             if (candidateName) {
               const { data: byName } = await supabaseAdmin
                 .from("zapi_chats")
-                .select("id, contact_name, status, unread_count")
+                .select("id, contact_name, status, unread_count, closed_at")
                 .eq("channel_id", channelId)
                 .eq("contact_name", candidateName)
                 .order("last_message_at", { ascending: false })
@@ -449,7 +449,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               if ((insertError as { code?: string }).code === "23505") {
                 const { data: raced } = await supabaseAdmin
                   .from("zapi_chats")
-                  .select("id, contact_name, status, unread_count")
+                  .select("id, contact_name, status, unread_count, closed_at")
                   .eq("channel_id", channelId)
                   .eq("phone", phone)
                   .maybeSingle();
@@ -501,14 +501,17 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
             // the bot's "if status === 'finalizado' return false" guard,
             // making it look like new conversations were not appearing.
             //
-            // GROUPS: never auto-reopen. Group conversations keep receiving
-            // messages constantly (multiple participants), and once an
-            // operator finalizes the ticket the chat must stay closed until
-            // someone manually re-opens it from the Central. Otherwise every
-            // group message would put the chat back in "aguardando" and the
-            // ticket would seem to "continue on screen" right after finalize.
+            // Reabre tanto chats individuais quanto de grupo quando chega uma
+            // nova mensagem de cliente/participante (não do operador). Sem isto
+            // grupos finalizados desaparecem da Central mesmo recebendo novas
+            // mensagens. Para evitar reabertura por eco da própria mensagem de
+            // despedida, exigimos que tenha passado um intervalo mínimo desde
+            // o fechamento quando se trata de grupo.
+            const closedAtMs = existing.closed_at ? new Date(existing.closed_at).getTime() : 0;
+            const sinceCloseMs = closedAtMs ? Date.now() - closedAtMs : Number.POSITIVE_INFINITY;
+            const groupReopenGuard = isGroupMessage ? sinceCloseMs > 60_000 : true;
             const shouldReopen =
-              !p.fromMe && existing.status === "finalizado" && !isGroupMessage;
+              !p.fromMe && existing.status === "finalizado" && groupReopenGuard;
             // For groups, ALWAYS prefer the latest group name (it can change),
             // overriding any previously stored sender name.
             const nameToStore = isGroupMessage
