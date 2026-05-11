@@ -1681,9 +1681,10 @@ function CentralPage() {
             .update({
               status: "finalizado" as const,
               closed_at: new Date().toISOString(),
+              closed_by: user?.id || null,
               notes: notes || activeTicket.notes || null,
               category: resolvedCategoryLabel || activeTicket.category || null,
-            })
+            } as any)
             .eq("id", activeTicket.id);
         }
       }
