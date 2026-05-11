@@ -1605,7 +1605,8 @@ function CentralPage() {
               opened_by: sess.session?.user?.id || null,
               created_at: startIso,
               closed_at: nowIso,
-            })
+              closed_by: sess.session?.user?.id || null,
+            } as any)
             .select("*")
             .single();
           if (createErr) console.error("[Finalize] Failed to create protocol ticket:", createErr.message);
