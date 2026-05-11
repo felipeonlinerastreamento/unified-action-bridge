@@ -1,29 +1,25 @@
-## Objetivo
+# Correção: mensagens de outro canal aparecendo como recebidas
 
-Mostrar nos detalhes do atendimento, junto com "Criado por", uma nova linha **"Finalizado por"** indicando o usuário que finalizou o chamado.
+## Problema
+Mensagens enviadas pelo operador via outro dispositivo (WhatsApp Web, celular, outra instância da mesma conta) aparecem no chat **do lado esquerdo**, como se o cliente tivesse mandado.
 
-## O que será feito
+## Causa
+No webhook `src/routes/api.public.zapi-webhook.$channelId.tsx` (linhas 215–227), há uma regra que **força `fromMe = false` em todo evento `ReceivedCallback`**, ignorando a flag original quando ela vem `true`:
 
-1. **Banco de dados**
-   - Adicionar coluna `closed_by` (uuid) na tabela `service_tickets`.
-   - Preencher retroativamente, quando possível, usando o `closed_by_user_id` do `zapi_chats` vinculado (mesmo `attendance_id`).
+```ts
+const effectiveFromMe = isReceivedEvent ? false : (isSentEvent ? true : !!p.fromMe);
+```
 
-2. **Gravação automática ao finalizar**
-   Em todos os pontos onde um ticket vira `finalizado`, gravar `closed_by = usuário atual`:
-   - `src/lib/ticket-finalize-flow.ts` (finalização padrão e bypass admin).
-   - `src/routes/central.tsx` (finalização vinda do chat e fallback).
-   - `src/components/atendimentos/ticket-kanban-view.tsx` (drag para "Finalizado").
-   - `src/components/atendimentos/ticket-detail-panel.tsx` (mudança manual de status).
+A Z-API entrega mensagens enviadas por outro dispositivo da mesma conta como `ReceivedCallback` com `fromMe: true`. A regra atual descarta isso e grava `from_me = false`.
 
-3. **UI – Detalhes do atendimento**
-   Em `src/components/atendimentos/ticket-detail-panel.tsx`, logo abaixo de "Criado por", adicionar:
-   ```
-   Finalizado por: <nome do usuário>
-   ```
-   - Resolvido via lookup em `profiles` (mesmo padrão usado em "Criado por").
-   - Só aparece quando o ticket está finalizado e tem `closed_by`.
+## Correção
+Alterar apenas o cálculo de `effectiveFromMe`:
 
-## Fora do escopo
+- `SentCallback` → `true`
+- `ReceivedCallback` com `fromMe: true` → **`true`** (operador enviou de outro canal)
+- `ReceivedCallback` com `fromMe: false` → `false` (cliente)
+- demais casos → segue `!!p.fromMe`
 
-- Não altera relatórios, exports, kanban ou listas. Apenas o painel de detalhes.
-- Não cria histórico de "quem finalizou cada vez" (somente o último).
+## Escopo
+- **Sim:** ~3 linhas no webhook.
+- **Não afeta:** identificação/criação de chat (continua por `phone`), portanto **não cria chat duplicado**. Echo guards (`originalFromMe`) seguem usando o flag original e continuam funcionando. UI, banco, tickets e CSAT intactos.
