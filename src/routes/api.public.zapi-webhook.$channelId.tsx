@@ -354,6 +354,23 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                 participantPhone: null,
               });
             }
+
+            // Enviar mensagem automática (fallback caso /update-call-reject-message
+            // não esteja ativo na instância Z-API).
+            try {
+              const { data: chRow } = await supabaseAdmin
+                .from("channels")
+                .select("call_reject_enabled, call_reject_message")
+                .eq("id", channelId)
+                .maybeSingle();
+              const enabled = (chRow as any)?.call_reject_enabled;
+              const msg = (chRow as any)?.call_reject_message;
+              if ((enabled === undefined || enabled === true) && typeof msg === "string" && msg.trim()) {
+                await zapiSendText(channel, phoneN, msg);
+              }
+            } catch (sendErr) {
+              console.warn("[zapi-webhook] auto-reject send failed:", sendErr);
+            }
           } catch (callErr) {
             console.warn("[zapi-webhook] call event handling failed:", callErr);
           }
