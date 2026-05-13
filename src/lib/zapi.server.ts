@@ -92,7 +92,14 @@ export async function zapiSendText(
     message,
   };
   // Z-API: passar messageId faz a mensagem ser enviada como resposta/citação
-  if (opts?.messageId) payload.messageId = opts.messageId;
+  if (opts?.messageId) {
+    payload.messageId = opts.messageId;
+    console.log("[zapiSendText] payload com citação", {
+      phone: payload.phone,
+      messageId: opts.messageId,
+      messagePreview: message.slice(0, 60),
+    });
+  }
   return zapiFetch(channel, "/send-text", "POST", payload);
 }
 
