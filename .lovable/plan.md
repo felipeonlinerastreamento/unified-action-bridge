@@ -1,46 +1,79 @@
-## Problema
+## Causa do problema
 
-O webhook Z-API (`src/routes/api.public.zapi-webhook.$channelId.tsx`) hoje só reconhece mensagens de **texto, imagem, áudio, vídeo, documento e contato (vCard)**. Quando o cliente envia:
+Encontrei a raiz da falha. A Z-API **não envia** o tipo `CallReceivedCallback` (que o código atual procura). Segundo a doc oficial, chamadas chegam como:
 
-- **📍 Localização** (payload `p.location` com `latitude`/`longitude`) → o evento é considerado "sem conteúdo" (`hasContent = false`) e descartado silenciosamente. Nada aparece no chat.
-- **📞 Chamada recebida / perdida** (payload `type: "CallReceivedCallback"` com `callId`, `status`, `isVideoCall`) → cai fora do `MESSAGE_EVENT_TYPES` e também não é registrado.
+```json
+{
+  "type": "ReceivedCallback",
+  "notification": "CALL_VOICE" | "CALL_MISSED_VOICE" | "CALL_MISSED_VIDEO",
+  "callId": "...",
+  "phone": "...",
+  "fromMe": false
+}
+```
 
-Por isso o operador "perde" essas interações no painel mesmo elas existindo no WhatsApp.
+Como o tipo é `ReceivedCallback` (igual a mensagens normais) e não há `text/image/audio/...`, o evento cai na trilha geral, falha o `hasContent` e é descartado silenciosamente. Por isso nenhuma chamada aparece no chat.
 
-## Correção
+## O que vou alterar
 
-Tudo no webhook + componente de bolha (sem mexer em schema, RLS, realtime ou UI principal):
+### 1. Detecção correta do evento de chamada — `src/routes/api.public.zapi-webhook.$channelId.tsx`
 
-### 1. `src/routes/api.public.zapi-webhook.$channelId.tsx`
+Substituir a heurística atual por detecção baseada em `p.notification`:
 
-- Tratar `p.location`:
-  - Adicionar `p.location` em `hasContent`.
-  - Texto: `📍 Localização` (anexar `name` / `address` quando vierem).
-  - `mediaType = "location"`, `mediaUrl = https://www.google.com/maps?q=<lat>,<lng>` (ou `p.location.url` quando presente).
-  - Persistir junto ao fluxo existente de inserção em `zapi_messages` (preview da conversa = "📍 Localização").
-- Tratar chamadas:
-  - Reconhecer `type` `CallReceivedCallback` (e variantes `NotificationCallback` com `notificationType` relativo a chamada).
-  - Mapear status Z-API → texto:
-    - `missed` / `timeout` → `📞 Chamada perdida`
-    - `received` / `accepted` → `📞 Chamada recebida` (com duração quando vier)
-    - `rejected` → `📞 Chamada recusada`
-    - `offer` (toque) → ignorar (ruidoso) salvo se nenhum follow-up vier
-  - Inserir como mensagem do cliente (`from_me=false`), `media_type="call"`, sem `media_url`. Atualizar `last_message_*` da `zapi_chats` para o operador ver "Chamada perdida" na lista.
-- Manter **echo guards** e o fluxo de bot/queue existentes intactos — chamadas e localizações **não** disparam bot/CSAT, apenas registram a interação e marcam `unread_count++` quando aplicável.
+```ts
+const notification = String(p.notification || "").toUpperCase();
+const isCallEvent = notification.startsWith("CALL_");
+```
 
-### 2. `src/components/central/message-media.tsx`
+Mapeamento:
+- `CALL_VOICE` → "📞 Chamada recebida" (`mediaType: "call"`)
+- `CALL_MISSED_VOICE` → "📞 Chamada perdida" (`mediaType: "call_missed"`)
+- `CALL_MISSED_VIDEO` → "📞 Videochamada perdida" (`mediaType: "call_missed"`)
+- `CALL_VIDEO` → "📞 Videochamada recebida" (`mediaType: "call"`)
 
-Adicionar dois novos `mediaType` à bolha:
-- `"location"` → card com ícone `MapPin`, título "Localização compartilhada", endereço/nome quando vier, e link "Abrir no Google Maps".
-- `"call"` → bloco compacto com ícone `Phone`/`PhoneMissed` e cor de destaque para chamada perdida (token `text-destructive`).
+Manter `messageId = p.callId || p.messageId` para evitar duplicidade. Persistir como mensagem do cliente (`fromMe: false`), atualizar `last_message_preview`, `last_message_at` e incrementar `unread_count`. O bloco existente (linhas 240-322) já faz isso corretamente — só precisa receber o evento.
 
-### 3. `src/lib/zapi.functions.ts`
+### 2. Rejeição automática de chamadas + mensagem ao cliente
 
-Nenhuma alteração de schema — `getChatMessages` já repassa `media_url` / `media_type` brutos, então as novas bolhas funcionam imediatamente.
+A Z-API tem dois endpoints nativos para isso:
 
-## Critérios de aceite
+- `PUT /update-call-reject-auto` — `{ "value": true }` ativa rejeição automática de toda chamada de voz recebida.
+- `PUT /update-call-reject-message` — `{ "value": "..." }` define a mensagem que será enviada ao cliente após a rejeição.
 
-- Cliente envia localização no WhatsApp → aparece em tempo real no painel como bolha de localização clicável (Google Maps).
-- Cliente liga e operador não atende → aparece "📞 Chamada perdida" como mensagem do cliente, e o chat sobe na fila com badge não-lido.
-- Chamada atendida → aparece "📞 Chamada recebida" (com duração se Z-API enviar).
-- Nenhuma regressão em texto/imagem/áudio/vídeo/documento/contato, no bot, no CSAT, ou no fluxo de fila.
+Plano:
+
+a) **`src/lib/zapi.server.ts`**: adicionar dois helpers
+   - `zapiSetCallRejectAuto(channel, enabled: boolean)`
+   - `zapiSetCallRejectMessage(channel, message: string)`
+
+b) **`src/lib/zapi.functions.ts`**: criar server function `updateCallRejectionConfig({ channelId, enabled, message })` protegida com `requireSupabaseAuth` + role admin/gestor. Chama os dois helpers acima na Z-API e retorna o resultado. Não precisa armazenar nada no Supabase — a configuração vive na própria instância Z-API.
+
+c) **`src/components/configuracoes/zapi-connection-config.tsx`** (ou criar uma seção nova dentro de `configuracoes/zapi`): adicionar um card "Rejeição automática de chamadas" com:
+   - Switch "Rejeitar todas as chamadas recebidas" (default ligado).
+   - Textarea com a mensagem padrão pré-preenchida:
+     ```
+     *Essa é mensagem automática*
+
+     Esse número, por ser chat, não aceita ligações de WhatsApp, somente ligação normal.
+     ```
+   - Botão "Salvar" que chama `updateCallRejectionConfig`.
+
+d) Como a Z-API envia a mensagem automaticamente após rejeitar, **não é necessário** disparar nada extra no webhook. O código atual já vai registrar no chat o "📞 Chamada recusada" (vindo como `CALL_MISSED_VOICE` após a rejeição) + a mensagem automática que a própria Z-API envia será ecoada como `MessageStatusCallback`/`SentCallback` e aparecerá no histórico normalmente.
+
+### 3. Aplicar a configuração inicial
+
+Após o usuário aprovar este plano e a UI estar pronta, ele clica em "Salvar" para aplicar as configurações no canal Z-API ativo. Não há migração de banco necessária.
+
+## Arquivos a editar
+
+- `src/routes/api.public.zapi-webhook.$channelId.tsx` — corrigir detecção de chamada via `p.notification`.
+- `src/lib/zapi.server.ts` — helpers `zapiSetCallRejectAuto` e `zapiSetCallRejectMessage`.
+- `src/lib/zapi.functions.ts` — server function `updateCallRejectionConfig`.
+- `src/components/configuracoes/zapi-connection-config.tsx` — UI da seção de rejeição automática.
+
+## Critérios de aceitação
+
+- Chamada de voz/vídeo recebida aparece no chat como bolha 📞 (já existente em `message-media.tsx`).
+- Chamada perdida incrementa `unread_count` e move o chat para a fila.
+- Com rejeição automática ativada, o cliente recebe a mensagem padrão configurada e o operador vê tanto "📞 Chamada recusada" quanto a mensagem enviada no histórico.
+- Configuração persiste na instância Z-API (sobrevive a recargas).
