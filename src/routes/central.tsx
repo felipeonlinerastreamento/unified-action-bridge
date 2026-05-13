@@ -2929,7 +2929,7 @@ function CentralPage() {
                           );
                         }
 
-                        const canReply = !isErased && !!msg.IdMessage;
+                        const canReply = !isErased && !!msg.IdMessage && !!msg.zapiMessageId;
 
                         return (
                           <div
