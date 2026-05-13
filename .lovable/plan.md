@@ -1,68 +1,54 @@
-# Correção: chamadas detectadas mas mensagem não enviada + mensagens normais sendo marcadas como "call"
+## Diagnóstico
 
-## Diagnóstico (achei dois bugs sérios)
+O número `5531994730315` aparece em 3 chats distintos no banco:
 
-### Bug 1 — Detecção de chamada está pegando mensagens normais
-Em `api.public.zapi-webhook.$channelId.tsx` linhas 233–244, ampliamos `isCallEvent` com:
+| phone | phone_normalized | status |
+|---|---|---|
+| `5531994730315` (13 díg, com 9) | `5531994730315` | em_atendimento |
+| `553194730315` (12 díg, **sem o 9**) | `553194730315` | aguardando |
+| `lid:5531947303151592946780` (LID do WhatsApp) | `lid:...` | finalizado |
 
-```ts
-/call/i.test(eventType)
+**Causa raiz:** a função `normalize_zapi_phone` (SQL) e o normalizador do webhook aceitam tanto `^55\d{10}$` (12 díg) quanto `^55\d{11}$` (13 díg) como canônicos, sem inserir o "9" obrigatório de celular brasileiro. Resultado: o mesmo celular pode ter dois `phone_normalized` diferentes — e o índice único `(channel_id, phone_normalized)` não detecta a duplicata. A migração anterior de dedupe só fundiu chats que já compartilhavam o mesmo canônico, então não resolveu este caso.
+
+A função `zapiRecipientPhone` (envio) já insere o 9 corretamente — só a normalização de entrada/armazenamento estava inconsistente.
+
+## O que será feito
+
+### 1. Corrigir `normalize_zapi_phone` (migration)
+
+Para celulares BR de 12 dígitos no formato `55 + DDD + 8 dígitos começando com 6-9`, inserir o "9" para virar 13 dígitos canônicos. Fixos (DDD + 8 começando com 2-5) continuam como estão.
+
+```text
+55 DD 6XXXXXXX  →  55 DD 9 6XXXXXXX
+55 DD 7XXXXXXX  →  55 DD 9 7XXXXXXX
+55 DD 8XXXXXXX  →  55 DD 9 8XXXXXXX
+55 DD 9XXXXXXX  →  55 DD 9 9XXXXXXX
 ```
 
-Isso casa com `"SentCallback"`, `"ReceivedCallback"`, `"MessageStatusCallback"`, etc. — porque a substring "Call" aparece em "**Call**back". Resultado:
+### 2. Espelhar a regra no webhook
 
-- Várias mensagens normais (CSAT, áudios, "Obrigada", "[áudio]") foram salvas com `media_type='call'` (vide `zapi_messages` últimos 30 min).
-- Como a primeira condição que casa entra no `if (isCallEvent)` e dá `return` no fim, mensagens reais deixam de seguir o fluxo normal — bot, atribuição, triggers, etc.
+Em `src/routes/api.public.zapi-webhook.$channelId.tsx` (bloco de normalização ~linhas 386–399), aplicar o mesmo "inserir 9" antes de gravar/buscar o chat. Garante que mensagens novas nunca mais criem o registro de 12 dígitos.
 
-### Bug 2 — Auto-rejeição não envia mensagem
-O fluxo atual confia 100% no `/update-call-reject-message` da Z-API para enviar a mensagem automática. Se essa configuração não estiver ativa no instance, nada é enviado. Hoje **não enviamos a mensagem nós mesmos** quando detectamos a chamada.
+### 3. Re-executar dedupe
 
-## Plano
+Como o `phone_normalized` é coluna gerada (`STORED`), atualizar a função recalcula automaticamente para todas as linhas. Em seguida, rodar o mesmo loop de fusão da migração `20260513195004_…` para juntar os chats que agora compartilham o mesmo canônico:
 
-### 1. Restringir `isCallEvent` (sem regredir mensagens reais)
-Trocar a regra atual por:
+- Mantém o chat com mais mensagens (desempate: `last_message_at`).
+- Migra `zapi_messages`, `attendance_event_logs`, `chat_idle_auto_message_logs`, `chat_inactivity_alert_logs`, `csat_pending`, `csat_responses`, `message_trigger_logs`, `out_of_hours_message_log` para o chat mantido.
+- Soma `unread_count` e usa o `last_message_at` mais recente.
+- Remove os chats duplicados.
 
-```ts
-const isCallEvent =
-  notification.startsWith("CALL_") ||
-  eventType === "CallReceivedCallback" ||
-  eventType === "CallReceivedNotificationCallback" ||
-  // payload sem type reconhecido como mensagem, sem conteúdo, mas com callId
-  (hasCallId && !hasContent && !MESSAGE_EVENT_TYPES.has(eventType) &&
-   eventType !== "MessageStatusCallback" && eventType !== "PresenceChatCallback");
-```
+### 4. Caso específico do `lid:`
 
-Remover `/call/i.test(eventType)` e `/call/i.test(notification)` (substring `Callback` é a fonte do falso positivo).
+Identificadores LID do WhatsApp não têm como ser fundidos automaticamente sem mapeamento explícito (chat já está finalizado neste caso). Não vamos tentar adivinhar — fica fora do escopo.
 
-### 2. Enviar a mensagem automática nós mesmos
-Quando `isCallEvent && !p.fromMe`, após persistir a mensagem 📞:
-- Ler `call_reject_enabled` e `call_reject_message` do `channels` (já existem após migration anterior).
-- Se ativado, chamar `zapiSendText(channel, phoneN, message)` para garantir que o cliente receba a mensagem mesmo se a config da Z-API tiver expirado.
-- Logar erro mas não falhar o webhook.
+## Arquivos afetados
 
-### 3. Limpeza de dados (corrigir mensagens marcadas erradamente)
-Migration de cleanup: para `zapi_messages` com `media_type='call'` cujo `text` **não** começa com "📞", `from_me=true`, ou `text` claramente não-chamada → resetar `media_type` para `NULL` (texto/áudio normal). Filtro seguro:
+- Nova migração SQL: atualiza `normalize_zapi_phone` + roda dedupe.
+- `src/routes/api.public.zapi-webhook.$channelId.tsx`: ajuste no normalizador inline (~10 linhas).
 
-```sql
-UPDATE zapi_messages
-SET media_type = NULL
-WHERE media_type IN ('call','call_missed')
-  AND (from_me = true OR text NOT LIKE '📞%')
-  AND created_at > now() - interval '6 hours';
-```
+Nenhuma mudança de UI.
 
-(Limito a 6h para não tocar histórico antigo legítimo.)
+## Resultado esperado
 
-### 4. Validação
-- Pedir uma chamada de teste após deploy.
-- Conferir nos logs: aparece `[zapi-webhook] call event detected` apenas para chamadas reais.
-- Conferir no celular: cliente recebe a mensagem automática.
-- Conferir `zapi_messages`: novas mensagens normais não vêm mais com `media_type='call'`.
-
-## Arquivos
-- `src/routes/api.public.zapi-webhook.$channelId.tsx` (detecção + envio do auto-reply)
-- Migration SQL de limpeza
-
-## Não vou mexer
-- UI de configuração (já persiste `call_reject_enabled`/`call_reject_message`).
-- Lógica de mensagens normais além do `return` defensivo.
+Após a migração, o número `5531994730315` terá apenas 1 chat ativo no canal, mensagens consolidadas, e novos eventos do mesmo número (em qualquer formato 12/13 dígitos) sempre cairão no mesmo registro.
