@@ -864,7 +864,7 @@ export const setupZapiWebhooks = createServerFn({ method: "POST" })
     // Buscar webhook_secret e montar URL pública estável
     const { data: row } = await context.supabase
       .from("channels")
-      .select("webhook_secret")
+      .select("webhook_secret, call_reject_enabled, call_reject_message")
       .eq("id", data.channelId)
       .single();
     const secret = (row as any)?.webhook_secret;
@@ -891,6 +891,25 @@ export const setupZapiWebhooks = createServerFn({ method: "POST" })
     // Liga "notifySentByMe" para que mensagens enviadas pelo celular/WhatsApp
     // Web do dono do número também disparem o webhook on-send.
     await tryPut("/update-notify-sent-by-me", { notifySentByMe: true }, "notify_sent_by_me");
+
+    // Reaplica rejeição automática de chamadas conforme configurado no canal,
+    // garantindo idempotência caso a Z-API perca o estado.
+    const rejectEnabled = !!(row as any)?.call_reject_enabled;
+    const rejectMessage = (row as any)?.call_reject_message as string | null;
+    try {
+      await zapiSetCallRejectAuto(channel, rejectEnabled);
+      results.call_reject_auto = { ok: true };
+    } catch (e: any) {
+      results.call_reject_auto = { ok: false, error: String(e?.message || e) };
+    }
+    if (rejectEnabled && rejectMessage && rejectMessage.trim().length > 0) {
+      try {
+        await zapiSetCallRejectMessage(channel, rejectMessage);
+        results.call_reject_message = { ok: true };
+      } catch (e: any) {
+        results.call_reject_message = { ok: false, error: String(e?.message || e) };
+      }
+    }
 
     return { url, results };
   });
