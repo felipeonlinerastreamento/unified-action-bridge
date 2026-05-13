@@ -530,13 +530,25 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
           const rawMediaUrl =
             p.image?.imageUrl || p.audio?.audioUrl || p.video?.videoUrl || p.document?.documentUrl
             || null;
-          const mediaType = p.image ? "image" : p.audio ? "audio" : p.video ? "video" : p.document ? "document" : contactCard ? "contact" : null;
+          const mediaType = p.image
+            ? "image"
+            : p.audio
+              ? "audio"
+              : p.video
+                ? "video"
+                : p.document
+                  ? "document"
+                  : contactCard
+                    ? "contact"
+                    : hasLocation
+                      ? "location"
+                      : null;
 
           // Z-API media URLs (Backblaze "temp-file-download/...") expire in
           // a few minutes. Rehost into our public storage bucket so audio/
           // video/image/document bubbles keep working over time.
           let mediaUrl: string | null = rawMediaUrl;
-          if (rawMediaUrl && mediaType && mediaType !== "contact") {
+          if (rawMediaUrl && mediaType && mediaType !== "contact" && mediaType !== "location") {
             try {
               mediaUrl = await rehostMediaToStorage(rawMediaUrl, mediaType, channelId, phone);
             } catch (err) {
@@ -545,6 +557,12 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
           }
           if (!mediaUrl && contactCard) {
             mediaUrl = `data:text/vcard;charset=utf-8,${encodeURIComponent(contactCard.vcard)}`;
+          }
+          if (!mediaUrl && hasLocation) {
+            const lat = p.location?.latitude;
+            const lng = p.location?.longitude;
+            mediaUrl = p.location?.url
+              || (lat != null && lng != null ? `https://www.google.com/maps?q=${lat},${lng}` : null);
           }
 
           // Upsert chat
