@@ -230,18 +230,23 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
         const notification = String(p.notification || "").toUpperCase();
         const hasContent = !!(p.text?.message || p.image || p.audio || p.video || p.document || hasContact || hasLocation);
         const hasCallId = !!(p.callId || p.callid);
+        // IMPORTANTE: NÃO usar /call/i pois "Callback" contém "call" e
+        // marcaria todo SentCallback / ReceivedCallback / MessageStatusCallback
+        // como chamada — sequestrando mensagens normais.
         const isCallEvent =
           notification.startsWith("CALL_") ||
-          /call/i.test(notification) ||
-          /call/i.test(eventType) ||
           eventType === "CallReceivedCallback" ||
           eventType === "CallReceivedNotificationCallback" ||
           (eventType === "NotificationCallback" &&
             typeof p.notification === "string" &&
-            /call/i.test(p.notification)) ||
-          // Z-API às vezes entrega chamada como evento sem `type` reconhecível,
-          // mas com `callId` e sem nenhum conteúdo de mensagem.
-          (hasCallId && !hasContent && !MESSAGE_EVENT_TYPES.has(eventType));
+            p.notification.toUpperCase().startsWith("CALL_")) ||
+          // Payload sem type reconhecido como mensagem/status, sem conteúdo,
+          // mas com callId — variação rara da Z-API.
+          (hasCallId &&
+            !hasContent &&
+            !MESSAGE_EVENT_TYPES.has(eventType) &&
+            eventType !== "MessageStatusCallback" &&
+            eventType !== "PresenceChatCallback");
         const isMessageEvent = !isCallEvent && (MESSAGE_EVENT_TYPES.has(eventType) || (!eventType && hasContent));
 
         // Log diagnóstico: qualquer evento que não seja status/presence/mensagem
@@ -348,6 +353,24 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                 participantName: null,
                 participantPhone: null,
               });
+            }
+
+            // Enviar mensagem automática (fallback caso /update-call-reject-message
+            // não esteja ativo na instância Z-API).
+            try {
+              const { data: chRow } = await supabaseAdmin
+                .from("channels")
+                .select("call_reject_enabled, call_reject_message")
+                .eq("id", channelId)
+                .maybeSingle();
+              const enabled = (chRow as any)?.call_reject_enabled;
+              const msg = (chRow as any)?.call_reject_message;
+              if ((enabled === undefined || enabled === true) && typeof msg === "string" && msg.trim()) {
+                const creds = await loadZapiChannel(supabaseAdmin, channelId);
+                if (creds) await zapiSendText(creds, phoneN, msg);
+              }
+            } catch (sendErr) {
+              console.warn("[zapi-webhook] auto-reject send failed:", sendErr);
             }
           } catch (callErr) {
             console.warn("[zapi-webhook] call event handling failed:", callErr);
