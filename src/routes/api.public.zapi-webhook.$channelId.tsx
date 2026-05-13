@@ -316,12 +316,31 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               }
             }
 
-            const { data: existingChat } = await supabaseAdmin
-              .from("zapi_chats")
-              .select("id, unread_count, status, closed_at")
-              .eq("channel_id", channelId)
-              .eq("phone_normalized", phoneN)
-              .maybeSingle();
+            let existingChat: any = null;
+            const isLidIdentifier = !isGroup && phoneN.length >= 15;
+            const candidateName = String(p.senderName || "").trim();
+            if (isLidIdentifier && candidateName) {
+              const { data: byRealName } = await supabaseAdmin
+                .from("zapi_chats")
+                .select("id, phone, unread_count, status, closed_at")
+                .eq("channel_id", channelId)
+                .eq("contact_name", candidateName)
+                .not("phone_normalized", "like", "lid:%")
+                .order("last_message_at", { ascending: false })
+                .limit(5);
+              existingChat = byRealName?.find((chat: any) => chat.status !== "finalizado") || byRealName?.[0] || null;
+            }
+            if (!existingChat) {
+              const lookupPhone = isLidIdentifier ? `lid:${phoneN}` : phoneN;
+              const { data: byPhone } = await supabaseAdmin
+                .from("zapi_chats")
+                .select("id, phone, unread_count, status, closed_at")
+                .eq("channel_id", channelId)
+                .eq("phone_normalized", lookupPhone)
+                .order("last_message_at", { ascending: false })
+                .limit(1);
+              existingChat = byPhone?.[0] || null;
+            }
 
             let chatRowId: string | null = (existingChat as any)?.id || null;
             if (!chatRowId) {
@@ -375,7 +394,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               const msg = (chRow as any)?.call_reject_message;
               if ((enabled === undefined || enabled === true) && typeof msg === "string" && msg.trim()) {
                 const creds = await loadZapiChannel(supabaseAdmin, channelId);
-                if (creds) await zapiSendText(creds, phoneN, msg);
+                if (creds) await zapiSendText(creds, (existingChat as any)?.phone || phoneN, msg);
               }
             } catch (sendErr) {
               console.warn("[zapi-webhook] auto-reject send failed:", sendErr);
