@@ -70,6 +70,21 @@ const MESSAGE_EVENT_TYPES = new Set([
   "MessageSentCallback",
 ]);
 
+function normalizeIncomingPhone(rawPhone: string, isGroup: boolean): string {
+  if (isGroup) return rawPhone.replace(/\D/g, "");
+
+  let digits = rawPhone.replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.length >= 15) return digits;
+  if (digits.length >= 10 && digits.length <= 11) digits = `55${digits}`;
+
+  // BR mobile: canonical 55 + DDD + 9 + 8 digits.
+  if (/^55[1-9][0-9][6-9][0-9]{7}$/.test(digits)) {
+    return digits.slice(0, 4) + "9" + digits.slice(4);
+  }
+  return digits;
+}
+
 /**
  * Picks the least-loaded online operator for a sector. Falls back to
  * "Atendimento" when sector is empty/unknown. Returns null if nobody is
@@ -275,14 +290,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
           try {
             const rawPhone = String(p.phone);
             const isGroup = isGroupPhoneIdentifier(rawPhone);
-            const digits = rawPhone.replace(/\D/g, "");
-            const phoneN = isGroup
-              ? digits
-              : (digits.length >= 15
-                  ? digits
-                  : (/^55\d{10,11}$/.test(digits)
-                      ? digits
-                      : (digits.length >= 10 && digits.length <= 11 ? `55${digits}` : digits)));
+            const phoneN = normalizeIncomingPhone(rawPhone, isGroup);
             if (!phoneN) return;
 
             // Z-API real payload: notification = CALL_VOICE | CALL_MISSED_VOICE | CALL_VIDEO | CALL_MISSED_VIDEO
@@ -308,12 +316,39 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               }
             }
 
-            const { data: existingChat } = await supabaseAdmin
-              .from("zapi_chats")
-              .select("id, unread_count, status, closed_at")
-              .eq("channel_id", channelId)
-              .eq("phone", phoneN)
-              .maybeSingle();
+            let existingChat: any = null;
+            const isLidIdentifier = !isGroup && phoneN.length >= 15;
+            const candidateName = String(p.senderName || "").trim();
+            if (isLidIdentifier && candidateName) {
+              const { data: byRealName } = await supabaseAdmin
+                .from("zapi_chats")
+                .select("id, phone, unread_count, status, closed_at")
+                .eq("channel_id", channelId)
+                .eq("contact_name", candidateName)
+                .not("phone_normalized", "like", "lid:%")
+                .order("last_message_at", { ascending: false })
+                .limit(5);
+              existingChat = byRealName?.find((chat: any) => chat.status !== "finalizado") || null;
+            }
+            if (isLidIdentifier && !existingChat) {
+              console.log("[zapi-webhook] dropping LID-only call event (no active real-phone chat to merge into)", {
+                phone: phoneN,
+                senderName: p.senderName,
+                type: eventType,
+              });
+              return;
+            }
+            if (!existingChat) {
+              let query = supabaseAdmin
+                .from("zapi_chats")
+                .select("id, phone, unread_count, status, closed_at")
+                .eq("channel_id", channelId)
+                .order("last_message_at", { ascending: false })
+                .limit(1);
+              query = isGroup ? query.eq("phone", phoneN) : query.eq("phone_normalized", phoneN);
+              const { data: byPhone } = await query;
+              existingChat = byPhone?.[0] || null;
+            }
 
             let chatRowId: string | null = (existingChat as any)?.id || null;
             if (!chatRowId) {
@@ -367,7 +402,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               const msg = (chRow as any)?.call_reject_message;
               if ((enabled === undefined || enabled === true) && typeof msg === "string" && msg.trim()) {
                 const creds = await loadZapiChannel(supabaseAdmin, channelId);
-                if (creds) await zapiSendText(creds, phoneN, msg);
+                if (creds) await zapiSendText(creds, (existingChat as any)?.phone || phoneN, msg);
               }
             } catch (sendErr) {
               console.warn("[zapi-webhook] auto-reject send failed:", sendErr);
@@ -387,25 +422,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
           // LIDs (15+ digits) keep raw digits but the DB index treats them
           // separately. We use the digits-only form to lookup; the unique
           // index on `phone_normalized` (generated column) is the safety net.
-          const digitsOnly = rawPhone.replace(/\D/g, "");
-          // Canonicaliza para 13 dígitos (55+DDD+9+8) quando for celular BR
-          // de 12 dígitos sem o "9". Sem isso, o mesmo número entra duas
-          // vezes no banco (ex.: 553194730315 vs 5531994730315).
-          const ensureBrMobileNine = (d: string): string => {
-            if (/^55[1-9][0-9][6-9][0-9]{7}$/.test(d)) {
-              return d.slice(0, 4) + "9" + d.slice(4);
-            }
-            return d;
-          };
-          const phone = isGroupMessage
-            ? digitsOnly
-            : (digitsOnly.length >= 15
-                ? digitsOnly
-                : (/^55\d{10,11}$/.test(digitsOnly)
-                    ? ensureBrMobileNine(digitsOnly)
-                    : (digitsOnly.length >= 10 && digitsOnly.length <= 11
-                        ? ensureBrMobileNine(`55${digitsOnly}`)
-                        : digitsOnly)));
+          const phone = normalizeIncomingPhone(rawPhone, isGroupMessage);
 
           // Guard: events without a usable phone (e.g. malformed payloads or
           // pure-LID without digits) used to create orphan chats with empty
@@ -635,7 +652,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
             .from("zapi_chats")
             .select("id, contact_name, status, unread_count, closed_at")
             .eq("channel_id", channelId)
-            .eq("phone", phone)
+            .eq("phone_normalized", phone)
             .maybeSingle();
 
           // LID guard: WhatsApp sometimes sends a 15-digit "linked id" in
@@ -654,15 +671,13 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                 .select("id, contact_name, status, unread_count, closed_at")
                 .eq("channel_id", channelId)
                 .eq("contact_name", candidateName)
+                .not("phone_normalized", "like", "lid:%")
                 .order("last_message_at", { ascending: false })
-                .limit(1)
-                .maybeSingle();
-              if (byName?.id) {
-                existing = byName;
-              }
+                .limit(5);
+              existing = byName?.find((chat: any) => chat.status !== "finalizado") || null;
             }
             if (!existing) {
-              console.log("[zapi-webhook] dropping LID-only event (no real-phone chat to merge into)", {
+              console.log("[zapi-webhook] dropping LID-only event (no active real-phone chat to merge into)", {
                 phone,
                 senderName: incomingContactName,
                 type: eventType,
@@ -713,7 +728,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                   .from("zapi_chats")
                   .select("id, contact_name, status, unread_count, closed_at")
                   .eq("channel_id", channelId)
-                  .eq("phone", phone)
+                  .eq("phone_normalized", phone)
                   .maybeSingle();
                 if (raced?.id) {
                   existing = raced;
