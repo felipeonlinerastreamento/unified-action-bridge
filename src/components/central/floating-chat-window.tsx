@@ -91,25 +91,63 @@ export function FloatingChatWindow({ state, onOpenInPanel }: Props) {
   });
 
   // Messages
-  const { data: fullMessages } = useQuery({
+  const { data: fullMessagesResult } = useQuery({
     queryKey: ["floating-chat-messages", channelId, chatId],
     queryFn: async () => {
       try {
-        const result = await getChatMessages({
+        const result: any = await getChatMessages({
           data: { channelId, chatId },
           ...await getAuthHeaders(),
         });
         const msgs = Array.isArray(result) ? result : (result?.data || result?.messages || []);
-        return Array.isArray(msgs) ? (msgs as GMessage[]) : [];
+        const arr = Array.isArray(msgs) ? (msgs as GMessage[]) : [];
+        const hasMore = !!(result && typeof result === "object" && (result as any).hasMore);
+        return { messages: arr, hasMore };
       } catch {
-        return [] as GMessage[];
+        return { messages: [] as GMessage[], hasMore: false };
       }
     },
     enabled: !!channelId && !!chatId,
     refetchInterval: 5000,
   });
+  const fullMessages = fullMessagesResult?.messages;
+  const initialHasMore = !!fullMessagesResult?.hasMore;
 
-  const messages = (fullMessages && fullMessages.length > 0) ? fullMessages : ((chatDetail?.messages as GMessage[]) || []);
+  // Older messages pagination
+  const [olderMessages, setOlderMessages] = useState<GMessage[]>([]);
+  const [olderHasMore, setOlderHasMore] = useState<boolean | null>(null);
+  const [isLoadingOlder, setIsLoadingOlder] = useState(false);
+  useEffect(() => {
+    setOlderMessages([]);
+    setOlderHasMore(null);
+    setIsLoadingOlder(false);
+  }, [chatId]);
+
+  const liveMessages = (fullMessages && fullMessages.length > 0) ? fullMessages : ((chatDetail?.messages as GMessage[]) || []);
+  const messages = olderMessages.length > 0 ? [...olderMessages, ...liveMessages] : liveMessages;
+  const hasOlder = olderHasMore !== null ? olderHasMore : initialHasMore;
+
+  const loadOlderMessages = useCallback(async () => {
+    if (!channelId || !chatId || isLoadingOlder) return;
+    const oldest = messages[0] as any;
+    const before = oldest?.utcDhMessage;
+    if (!before) return;
+    setIsLoadingOlder(true);
+    try {
+      const result: any = await getChatMessages({
+        data: { channelId, chatId, before, limit: 500 },
+        ...await getAuthHeaders(),
+      });
+      const msgs = Array.isArray(result) ? result : (result?.data || result?.messages || []);
+      const arr = Array.isArray(msgs) ? (msgs as GMessage[]) : [];
+      setOlderMessages((prev) => [...arr, ...prev]);
+      setOlderHasMore(!!(result && typeof result === "object" && (result as any).hasMore));
+    } catch {
+      setOlderHasMore(false);
+    } finally {
+      setIsLoadingOlder(false);
+    }
+  }, [channelId, chatId, isLoadingOlder, messages]);
 
   // Local Z-API chat row → drives typing indicator (bot_state.is_typing) updated by the webhook
   const phoneForLookup = meta.phone || chatDetail?.contact?.number;
