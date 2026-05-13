@@ -339,13 +339,14 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               return;
             }
             if (!existingChat) {
-              const { data: byPhone } = await supabaseAdmin
+              let query = supabaseAdmin
                 .from("zapi_chats")
                 .select("id, phone, unread_count, status, closed_at")
                 .eq("channel_id", channelId)
-                .eq("phone_normalized", phoneN)
                 .order("last_message_at", { ascending: false })
                 .limit(1);
+              query = isGroup ? query.eq("phone", phoneN) : query.eq("phone_normalized", phoneN);
+              const { data: byPhone } = await query;
               existingChat = byPhone?.[0] || null;
             }
 
