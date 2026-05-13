@@ -599,6 +599,8 @@ export type Database = {
       channels: {
         Row: {
           bot_mode: string | null
+          call_reject_enabled: boolean
+          call_reject_message: string | null
           created_at: string
           created_by: string | null
           id: string
@@ -614,6 +616,8 @@ export type Database = {
         }
         Insert: {
           bot_mode?: string | null
+          call_reject_enabled?: boolean
+          call_reject_message?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -629,6 +633,8 @@ export type Database = {
         }
         Update: {
           bot_mode?: string | null
+          call_reject_enabled?: boolean
+          call_reject_message?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
