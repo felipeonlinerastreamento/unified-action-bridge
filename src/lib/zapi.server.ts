@@ -70,8 +70,15 @@ function zapiRecipientPhone(phone: string): string {
   if (/-group$/i.test(raw)) return raw;
   if (/@g\.us$/i.test(raw)) return raw.replace(/@g\.us$/i, "-group");
 
-  const digits = raw.replace(/\D/g, "");
-  return digits.length > 15 ? `${digits}-group` : digits;
+  let digits = raw.replace(/\D/g, "");
+  if (digits.length > 15) return `${digits}-group`;
+
+  // BR mobile: ensure the leading "9" after DDD (canonical 13 digits)
+  // 12 digits "55DD[6-9]XXXXXXX" → "55DD9[6-9]XXXXXXX"
+  if (/^55[1-9][0-9][6-9][0-9]{7}$/.test(digits)) {
+    digits = digits.slice(0, 4) + "9" + digits.slice(4);
+  }
+  return digits;
 }
 
 export async function zapiSendText(
