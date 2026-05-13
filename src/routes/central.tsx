@@ -180,6 +180,7 @@ function CentralPageWithFloating() {
 
 interface GMessage {
   IdMessage?: string;
+  zapiMessageId?: string | null;
   senderName?: string;
   senderUserId?: string;
   senderFirstName?: string;
@@ -2928,7 +2929,7 @@ function CentralPage() {
                           );
                         }
 
-                        const canReply = !isErased && !!msg.IdMessage;
+                        const canReply = !isErased && !!msg.IdMessage && !!msg.zapiMessageId;
 
                         return (
                           <div
