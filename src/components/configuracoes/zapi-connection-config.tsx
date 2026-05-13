@@ -25,6 +25,10 @@ export function ZapiConnectionConfig() {
     is_active: true,
   });
   const [copied, setCopied] = useState(false);
+  const DEFAULT_REJECT_MSG =
+    "*Essa é mensagem automática*\n\nEsse número, por ser chat, não aceita ligações de WhatsApp, somente ligação normal.";
+  const [rejectEnabled, setRejectEnabled] = useState(true);
+  const [rejectMessage, setRejectMessage] = useState(DEFAULT_REJECT_MSG);
 
   const { data: channels = [] } = useQuery({
     queryKey: ["channels-zapi-admin"],
