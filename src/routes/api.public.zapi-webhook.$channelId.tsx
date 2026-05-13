@@ -328,15 +328,22 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                 .not("phone_normalized", "like", "lid:%")
                 .order("last_message_at", { ascending: false })
                 .limit(5);
-              existingChat = byRealName?.find((chat: any) => chat.status !== "finalizado") || byRealName?.[0] || null;
+              existingChat = byRealName?.find((chat: any) => chat.status !== "finalizado") || null;
+            }
+            if (isLidIdentifier && !existingChat) {
+              console.log("[zapi-webhook] dropping LID-only call event (no active real-phone chat to merge into)", {
+                phone: phoneN,
+                senderName: p.senderName,
+                type: eventType,
+              });
+              return;
             }
             if (!existingChat) {
-              const lookupPhone = isLidIdentifier ? `lid:${phoneN}` : phoneN;
               const { data: byPhone } = await supabaseAdmin
                 .from("zapi_chats")
                 .select("id, phone, unread_count, status, closed_at")
                 .eq("channel_id", channelId)
-                .eq("phone_normalized", lookupPhone)
+                .eq("phone_normalized", phoneN)
                 .order("last_message_at", { ascending: false })
                 .limit(1);
               existingChat = byPhone?.[0] || null;
