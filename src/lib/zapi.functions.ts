@@ -214,13 +214,17 @@ export const getChatMessages = createServerFn({ method: "POST" })
     z.object({ channelId: z.string().uuid(), chatId: z.string().min(1).max(255) }).parse
   )
   .handler(async ({ data, context }) => {
-    const { data: rows, error } = await context.supabase
+    // Fetch the LATEST 500 messages (descending), then reverse to chronological
+    // order. Using ascending+limit returned the OLDEST 500, hiding every new
+    // message in chats with >500 history (typical in long-running groups).
+    const { data: rowsDesc, error } = await context.supabase
       .from("zapi_messages")
       .select("*")
       .eq("chat_id", data.chatId)
-      .order("created_at", { ascending: true })
+      .order("created_at", { ascending: false })
       .limit(500);
     if (error) return { data: [], messages: [] };
+    const rows = (rowsDesc || []).slice().reverse();
 
     // Collect distinct author user_ids to resolve names in a single query
     const userIds = Array.from(
