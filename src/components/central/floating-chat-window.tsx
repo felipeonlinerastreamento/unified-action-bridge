@@ -407,7 +407,8 @@ export function FloatingChatWindow({ state, onOpenInPanel }: Props) {
           ) : (
             messages.map((msg, i) => {
               const text = msg.text || "";
-              const hasMedia = !!(msg as any).mediaUrl;
+              const mt = (msg as any).mediaType;
+              const hasMedia = !!(msg as any).mediaUrl || mt === "call" || mt === "call_missed" || mt === "location";
               if (!text && !hasMedia && !msg.isSystemMessage) return null;
               if (msg.isSystemMessage) {
                 return (

@@ -226,8 +226,101 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
         const eventType = String(p.type || "");
         const firstContact = p.contact || (Array.isArray(p.contacts) ? p.contacts[0] : null);
         const hasContact = !!firstContact;
-        const hasContent = !!(p.text?.message || p.image || p.audio || p.video || p.document || hasContact);
+        const hasLocation = !!(p.location && (p.location.latitude != null || p.location.longitude != null));
+        const isCallEvent =
+          eventType === "CallReceivedCallback" ||
+          eventType === "CallReceivedNotificationCallback" ||
+          (eventType === "NotificationCallback" &&
+            typeof p.notification === "string" &&
+            /call/i.test(p.notification));
+        const hasContent = !!(p.text?.message || p.image || p.audio || p.video || p.document || hasContact || hasLocation);
         const isMessageEvent = MESSAGE_EVENT_TYPES.has(eventType) || (!eventType && hasContent);
+
+        // Call events: persist as a system-like message (📞) so the operator sees missed/received calls in the chat
+        if (isCallEvent && p.phone) {
+          try {
+            const rawPhone = String(p.phone);
+            const isGroup = isGroupPhoneIdentifier(rawPhone);
+            const digits = rawPhone.replace(/\D/g, "");
+            const phoneN = isGroup
+              ? digits
+              : (digits.length >= 15
+                  ? digits
+                  : (/^55\d{10,11}$/.test(digits)
+                      ? digits
+                      : (digits.length >= 10 && digits.length <= 11 ? `55${digits}` : digits)));
+            if (!phoneN) return;
+
+            const callStatus = String(p.callStatus || p.status || p.callType || "").toLowerCase();
+            const isVideo = !!(p.isVideoCall || p.isVideo);
+            const kind = isVideo ? "videochamada" : "chamada";
+            let callText = `📞 ${isVideo ? "Videochamada" : "Chamada"} recebida`;
+            if (callStatus.includes("miss") || callStatus.includes("timeout") || callStatus === "no_answer" || callStatus === "unanswered") {
+              callText = `📞 ${isVideo ? "Videochamada" : "Chamada"} perdida`;
+            } else if (callStatus.includes("reject") || callStatus.includes("declin")) {
+              callText = `📞 ${isVideo ? "Videochamada" : "Chamada"} recusada`;
+            } else if (p.callDuration || p.duration) {
+              const secs = Number(p.callDuration || p.duration) || 0;
+              if (secs > 0) {
+                const mm = Math.floor(secs / 60);
+                const ss = secs % 60;
+                callText = `📞 ${isVideo ? "Videochamada" : "Chamada"} atendida (${mm}:${String(ss).padStart(2, "0")})`;
+              }
+            }
+
+            const { data: existingChat } = await supabaseAdmin
+              .from("zapi_chats")
+              .select("id, unread_count, status, closed_at")
+              .eq("channel_id", channelId)
+              .eq("phone", phoneN)
+              .maybeSingle();
+
+            let chatRowId: string | null = (existingChat as any)?.id || null;
+            if (!chatRowId) {
+              const { data: created } = await supabaseAdmin
+                .from("zapi_chats")
+                .insert({
+                  channel_id: channelId,
+                  phone: phoneN,
+                  contact_name: p.senderName || phoneN,
+                  status: "aguardando",
+                  unread_count: 1,
+                  last_message_at: new Date().toISOString(),
+                  last_message_preview: callText,
+                } as any)
+                .select("id")
+                .maybeSingle();
+              chatRowId = (created as any)?.id || null;
+            } else {
+              await supabaseAdmin
+                .from("zapi_chats")
+                .update({
+                  last_message_at: new Date().toISOString(),
+                  last_message_preview: callText,
+                  unread_count: ((existingChat as any).unread_count || 0) + 1,
+                } as any)
+                .eq("id", chatRowId);
+            }
+
+            if (chatRowId) {
+              await persistZapiMessage({
+                chatId: chatRowId,
+                messageId: p.callId || p.messageId || null,
+                fromMe: false,
+                text: callText,
+                mediaUrl: null,
+                mediaType: callStatus.includes("miss") || callStatus.includes("timeout") || callStatus === "no_answer" || callStatus === "unanswered"
+                  ? "call_missed"
+                  : "call",
+                participantName: null,
+                participantPhone: null,
+              });
+            }
+          } catch (callErr) {
+            console.warn("[zapi-webhook] call event handling failed:", callErr);
+          }
+          return;
+        }
 
         if (p.phone && isMessageEvent) {
           const rawPhone = String(p.phone);
@@ -304,6 +397,14 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
 
           const contactCard = hasContact ? buildVCardFromContact(firstContact) : null;
 
+          const locationLabel = hasLocation
+            ? (() => {
+                const name = p.location?.name ? String(p.location.name).trim() : "";
+                const addr = p.location?.address ? String(p.location.address).trim() : "";
+                const extra = [name, addr].filter(Boolean).join(" · ");
+                return extra ? `📍 Localização — ${extra}` : "📍 Localização";
+              })()
+            : null;
           const text =
             p.text?.message ||
             p.image?.caption ||
@@ -312,6 +413,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
             (p.video ? "[vídeo]" : null) ||
             (p.document ? "[documento]" : null) ||
             (contactCard ? `[contato] ${contactCard.name}` : null) ||
+            locationLabel ||
             "";
 
           // Skip empty events that have no content (status callbacks, presence echoes, etc.)
@@ -428,13 +530,25 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
           const rawMediaUrl =
             p.image?.imageUrl || p.audio?.audioUrl || p.video?.videoUrl || p.document?.documentUrl
             || null;
-          const mediaType = p.image ? "image" : p.audio ? "audio" : p.video ? "video" : p.document ? "document" : contactCard ? "contact" : null;
+          const mediaType = p.image
+            ? "image"
+            : p.audio
+              ? "audio"
+              : p.video
+                ? "video"
+                : p.document
+                  ? "document"
+                  : contactCard
+                    ? "contact"
+                    : hasLocation
+                      ? "location"
+                      : null;
 
           // Z-API media URLs (Backblaze "temp-file-download/...") expire in
           // a few minutes. Rehost into our public storage bucket so audio/
           // video/image/document bubbles keep working over time.
           let mediaUrl: string | null = rawMediaUrl;
-          if (rawMediaUrl && mediaType && mediaType !== "contact") {
+          if (rawMediaUrl && mediaType && mediaType !== "contact" && mediaType !== "location") {
             try {
               mediaUrl = await rehostMediaToStorage(rawMediaUrl, mediaType, channelId, phone);
             } catch (err) {
@@ -443,6 +557,12 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
           }
           if (!mediaUrl && contactCard) {
             mediaUrl = `data:text/vcard;charset=utf-8,${encodeURIComponent(contactCard.vcard)}`;
+          }
+          if (!mediaUrl && hasLocation) {
+            const lat = p.location?.latitude;
+            const lng = p.location?.longitude;
+            mediaUrl = p.location?.url
+              || (lat != null && lng != null ? `https://www.google.com/maps?q=${lat},${lng}` : null);
           }
 
           // Upsert chat

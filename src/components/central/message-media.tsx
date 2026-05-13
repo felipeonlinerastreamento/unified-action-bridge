@@ -1,4 +1,4 @@
-import { FileText, Download, User, Phone } from "lucide-react";
+import { FileText, Download, User, Phone, MapPin, PhoneMissed, PhoneIncoming } from "lucide-react";
 
 type Props = {
   mediaUrl?: string | null;
@@ -41,7 +41,43 @@ function parseVCard(raw: string): { name: string | null; phones: string[] } | nu
  * Supports: audio, image, video, document, contact (vCard).
  */
 export function MessageMediaContent({ mediaUrl, mediaType, className, compact }: Props) {
-  if (!mediaUrl || !mediaType) return null;
+  if (!mediaType) return null;
+
+  if (mediaType === "call" || mediaType === "call_missed") {
+    const missed = mediaType === "call_missed";
+    const Icon = missed ? PhoneMissed : PhoneIncoming;
+    return (
+      <div
+        className={`inline-flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-xs ${
+          missed ? "border-destructive/40 bg-destructive/10 text-destructive" : "border-border bg-background/50"
+        } ${className || ""}`}
+      >
+        <Icon className="h-3.5 w-3.5 shrink-0" />
+        <span className="font-medium">{missed ? "Chamada perdida" : "Chamada de voz"}</span>
+      </div>
+    );
+  }
+
+  if (mediaType === "location") {
+    return (
+      <a
+        href={mediaUrl || "#"}
+        target="_blank"
+        rel="noreferrer"
+        className={`flex items-center gap-2 rounded-md border bg-background/50 px-3 py-2 hover:bg-background ${compact ? "max-w-[240px]" : "max-w-[280px]"} ${className || ""}`}
+      >
+        <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 shrink-0">
+          <MapPin className="h-4 w-4 text-primary" />
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="text-sm font-medium">Localização</div>
+          <div className="text-xs text-muted-foreground truncate">Abrir no Google Maps</div>
+        </div>
+      </a>
+    );
+  }
+
+  if (!mediaUrl) return null;
 
   if (mediaType === "audio") {
     return (

@@ -3034,7 +3034,7 @@ function CentralPage() {
                               {isPrivate && (
                                 <p className="text-[10px] font-medium mb-1 opacity-60">🔒 Nota privada</p>
                               )}
-                              {msg.mediaUrl && (
+                              {(msg.mediaUrl || msg.mediaType === "call" || msg.mediaType === "call_missed" || msg.mediaType === "location") && (
                                 <div className="mb-1">
                                   <MessageMediaContent mediaUrl={msg.mediaUrl} mediaType={msg.mediaType} />
                                 </div>

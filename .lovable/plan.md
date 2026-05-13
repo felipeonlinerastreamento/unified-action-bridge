@@ -1,58 +1,46 @@
-## Garantir acesso a todas as mensagens do histórico do chat
+## Problema
 
-### Confirmação de segurança dos dados
+O webhook Z-API (`src/routes/api.public.zapi-webhook.$channelId.tsx`) hoje só reconhece mensagens de **texto, imagem, áudio, vídeo, documento e contato (vCard)**. Quando o cliente envia:
 
-Nenhuma mensagem é apagada. O webhook (`api.public.zapi-webhook.$channelId.tsx`) só faz `INSERT`/`UPDATE` em `zapi_messages`. Não existe `DELETE`, job de limpeza, TTL ou trigger que remova histórico. O que limita hoje é apenas a quantidade buscada por requisição na UI.
+- **📍 Localização** (payload `p.location` com `latitude`/`longitude`) → o evento é considerado "sem conteúdo" (`hasContent = false`) e descartado silenciosamente. Nada aparece no chat.
+- **📞 Chamada recebida / perdida** (payload `type: "CallReceivedCallback"` com `callId`, `status`, `isVideoCall`) → cai fora do `MESSAGE_EVENT_TYPES` e também não é registrado.
 
-### Mudança no servidor — `src/lib/zapi.functions.ts` (`getChatMessages`)
+Por isso o operador "perde" essas interações no painel mesmo elas existindo no WhatsApp.
 
-Adicionar paginação opcional, mantendo o comportamento atual como padrão:
+## Correção
 
-- Novo input opcional: `before?: string` (ISO timestamp) e `limit?: number` (default 500, máx 500).
-- Quando `before` for informado, busca as `limit` mensagens **anteriores** a esse timestamp; quando não, mantém o comportamento atual (últimas 500 do chat).
-- Continua devolvendo em ordem cronológica crescente.
-- Resolução de nomes/whisper/responsável continua igual.
+Tudo no webhook + componente de bolha (sem mexer em schema, RLS, realtime ou UI principal):
 
-Pseudo-código:
+### 1. `src/routes/api.public.zapi-webhook.$channelId.tsx`
 
-```ts
-.inputValidator(z.object({
-  channelId: z.string().uuid(),
-  chatId: z.string().min(1).max(255),
-  before: z.string().datetime().optional(),
-  limit: z.number().int().min(1).max(500).optional(),
-}).parse)
+- Tratar `p.location`:
+  - Adicionar `p.location` em `hasContent`.
+  - Texto: `📍 Localização` (anexar `name` / `address` quando vierem).
+  - `mediaType = "location"`, `mediaUrl = https://www.google.com/maps?q=<lat>,<lng>` (ou `p.location.url` quando presente).
+  - Persistir junto ao fluxo existente de inserção em `zapi_messages` (preview da conversa = "📍 Localização").
+- Tratar chamadas:
+  - Reconhecer `type` `CallReceivedCallback` (e variantes `NotificationCallback` com `notificationType` relativo a chamada).
+  - Mapear status Z-API → texto:
+    - `missed` / `timeout` → `📞 Chamada perdida`
+    - `received` / `accepted` → `📞 Chamada recebida` (com duração quando vier)
+    - `rejected` → `📞 Chamada recusada`
+    - `offer` (toque) → ignorar (ruidoso) salvo se nenhum follow-up vier
+  - Inserir como mensagem do cliente (`from_me=false`), `media_type="call"`, sem `media_url`. Atualizar `last_message_*` da `zapi_chats` para o operador ver "Chamada perdida" na lista.
+- Manter **echo guards** e o fluxo de bot/queue existentes intactos — chamadas e localizações **não** disparam bot/CSAT, apenas registram a interação e marcam `unread_count++` quando aplicável.
 
-const lim = data.limit ?? 500;
-let q = context.supabase
-  .from("zapi_messages")
-  .select("*")
-  .eq("chat_id", data.chatId)
-  .order("created_at", { ascending: false })
-  .limit(lim);
-if (data.before) q = q.lt("created_at", data.before);
+### 2. `src/components/central/message-media.tsx`
 
-const { data: rowsDesc } = await q;
-const rows = (rowsDesc || []).slice().reverse();
-return { ..., hasMore: (rowsDesc?.length ?? 0) === lim };
-```
+Adicionar dois novos `mediaType` à bolha:
+- `"location"` → card com ícone `MapPin`, título "Localização compartilhada", endereço/nome quando vier, e link "Abrir no Google Maps".
+- `"call"` → bloco compacto com ícone `Phone`/`PhoneMissed` e cor de destaque para chamada perdida (token `text-destructive`).
 
-### Mudança na UI — painel do chat (`src/routes/central.tsx`)
+### 3. `src/lib/zapi.functions.ts`
 
-- Após o fetch inicial, se `hasMore = true`, mostrar no topo da lista um botão **"Carregar mensagens anteriores"** (ou auto-carregar quando o usuário rola até o topo).
-- Ao clicar/rolar, dispara nova chamada com `before = createdAt da mensagem mais antiga atualmente em tela`, anexa o resultado no início da lista e mantém a posição de scroll.
-- Repetir até `hasMore = false` (ou seja, até carregar a primeira mensagem do chat).
+Nenhuma alteração de schema — `getChatMessages` já repassa `media_url` / `media_type` brutos, então as novas bolhas funcionam imediatamente.
 
-### Mudança na janela flutuante — `src/components/central/floating-chat-window.tsx`
+## Critérios de aceite
 
-Aplicar o mesmo botão "Carregar anteriores" no topo (a janela usa o mesmo `getChatMessages`).
-
-### Sem mudanças
-
-- Webhook, gravação, RLS, schema, realtime, contadores.
-- Comportamento padrão (sem `before`) segue retornando as últimas 500 — a paginação é puramente aditiva.
-
-### Resultado para o usuário
-
-- A primeira renderização continua rápida (500 mensagens recentes).
-- Qualquer mensagem antiga, por mais antiga que seja, fica acessível clicando "Carregar anteriores" até chegar ao início — sem nenhuma mensagem descartada.
+- Cliente envia localização no WhatsApp → aparece em tempo real no painel como bolha de localização clicável (Google Maps).
+- Cliente liga e operador não atende → aparece "📞 Chamada perdida" como mensagem do cliente, e o chat sobe na fila com badge não-lido.
+- Chamada atendida → aparece "📞 Chamada recebida" (com duração se Z-API enviar).
+- Nenhuma regressão em texto/imagem/áudio/vídeo/documento/contato, no bot, no CSAT, ou no fluxo de fila.
