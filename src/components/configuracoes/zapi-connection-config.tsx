@@ -9,8 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Copy, Check, Wifi, WifiOff, Plus, RefreshCw, Loader2 } from "lucide-react";
-import { getChannelStatus, setupZapiWebhooks } from "@/lib/zapi.functions";
+import { Copy, Check, Wifi, WifiOff, Plus, RefreshCw, Loader2, PhoneOff } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { getChannelStatus, setupZapiWebhooks, updateCallRejectionConfig } from "@/lib/zapi.functions";
 
 export function ZapiConnectionConfig() {
   const qc = useQueryClient();
@@ -24,6 +25,10 @@ export function ZapiConnectionConfig() {
     is_active: true,
   });
   const [copied, setCopied] = useState(false);
+  const DEFAULT_REJECT_MSG =
+    "*Essa é mensagem automática*\n\nEsse número, por ser chat, não aceita ligações de WhatsApp, somente ligação normal.";
+  const [rejectEnabled, setRejectEnabled] = useState(true);
+  const [rejectMessage, setRejectMessage] = useState(DEFAULT_REJECT_MSG);
 
   const { data: channels = [] } = useQuery({
     queryKey: ["channels-zapi-admin"],
@@ -142,6 +147,23 @@ export function ZapiConnectionConfig() {
     onError: (e: any) => toast.error(e?.message || "Erro ao configurar webhooks"),
   });
 
+  const callRejectMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedId) throw new Error("Selecione um canal");
+      const { data: { session } } = await supabase.auth.getSession();
+      return await updateCallRejectionConfig({
+        data: { channelId: selectedId, enabled: rejectEnabled, message: rejectMessage },
+        headers: { authorization: `Bearer ${session?.access_token}` },
+      });
+    },
+    onSuccess: (r: any) => {
+      const failed = Object.entries(r?.results || {}).filter(([, v]: any) => !(v as any)?.ok);
+      if (failed.length === 0) toast.success("Rejeição de chamadas atualizada");
+      else toast.warning(`Parcial: falhou em ${failed.map(([k]) => k).join(", ")}`);
+    },
+    onError: (e: any) => toast.error(e?.message || "Erro ao atualizar"),
+  });
+
   const copyWebhook = async () => {
     await navigator.clipboard.writeText(webhookUrl);
     setCopied(true);
@@ -258,6 +280,38 @@ export function ZapiConnectionConfig() {
               <Button variant="secondary" onClick={() => setupHooksMutation.mutate()} disabled={setupHooksMutation.isPending}>
                 {setupHooksMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 Configurar webhooks (incluir envios pelo celular)
+              </Button>
+            </div>
+
+            <div className="rounded-lg border p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <PhoneOff className="h-4 w-4 text-muted-foreground" />
+                  <Label className="font-medium">Rejeição automática de chamadas</Label>
+                </div>
+                <Switch checked={rejectEnabled} onCheckedChange={setRejectEnabled} />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Quando ativado, toda ligação de WhatsApp recebida é recusada automaticamente
+                e o cliente recebe a mensagem abaixo.
+              </p>
+              <div className="space-y-1">
+                <Label className="text-xs">Mensagem automática enviada após recusar</Label>
+                <Textarea
+                  rows={4}
+                  value={rejectMessage}
+                  onChange={(e) => setRejectMessage(e.target.value)}
+                  disabled={!rejectEnabled}
+                  placeholder={DEFAULT_REJECT_MSG}
+                />
+              </div>
+              <Button
+                size="sm"
+                onClick={() => callRejectMutation.mutate()}
+                disabled={callRejectMutation.isPending}
+              >
+                {callRejectMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Salvar rejeição de chamadas
               </Button>
             </div>
           </>

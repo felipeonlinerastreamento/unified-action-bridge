@@ -4,7 +4,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
-import { loadZapiChannel, zapiFetch, zapiGetStatus, zapiSendText, zapiSendMedia, zapiDeleteMessage } from "./zapi.server";
+import { loadZapiChannel, zapiFetch, zapiGetStatus, zapiSendText, zapiSendMedia, zapiDeleteMessage, zapiSetCallRejectAuto, zapiSetCallRejectMessage } from "./zapi.server";
 
 // ------------ Status / chats list ------------
 
@@ -893,4 +893,38 @@ export const setupZapiWebhooks = createServerFn({ method: "POST" })
     await tryPut("/update-notify-sent-by-me", { notifySentByMe: true }, "notify_sent_by_me");
 
     return { url, results };
+  });
+
+// ------------ Rejeição automática de chamadas ------------
+
+export const updateCallRejectionConfig = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    z.object({
+      channelId: z.string().uuid(),
+      enabled: z.boolean(),
+      message: z.string().max(1000).optional(),
+    }).parse,
+  )
+  .handler(async ({ data, context }) => {
+    const channel = await loadZapiChannel(context.supabase, data.channelId);
+    const results: Record<string, { ok: boolean; error?: string }> = {};
+
+    try {
+      await zapiSetCallRejectAuto(channel, data.enabled);
+      results.auto = { ok: true };
+    } catch (e: any) {
+      results.auto = { ok: false, error: String(e?.message || e) };
+    }
+
+    if (data.enabled && data.message && data.message.trim().length > 0) {
+      try {
+        await zapiSetCallRejectMessage(channel, data.message);
+        results.message = { ok: true };
+      } catch (e: any) {
+        results.message = { ok: false, error: String(e?.message || e) };
+      }
+    }
+
+    return { results };
   });

@@ -227,14 +227,16 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
         const firstContact = p.contact || (Array.isArray(p.contacts) ? p.contacts[0] : null);
         const hasContact = !!firstContact;
         const hasLocation = !!(p.location && (p.location.latitude != null || p.location.longitude != null));
+        const notification = String(p.notification || "").toUpperCase();
         const isCallEvent =
+          notification.startsWith("CALL_") ||
           eventType === "CallReceivedCallback" ||
           eventType === "CallReceivedNotificationCallback" ||
           (eventType === "NotificationCallback" &&
             typeof p.notification === "string" &&
             /call/i.test(p.notification));
         const hasContent = !!(p.text?.message || p.image || p.audio || p.video || p.document || hasContact || hasLocation);
-        const isMessageEvent = MESSAGE_EVENT_TYPES.has(eventType) || (!eventType && hasContent);
+        const isMessageEvent = !isCallEvent && (MESSAGE_EVENT_TYPES.has(eventType) || (!eventType && hasContent));
 
         // Call events: persist as a system-like message (📞) so the operator sees missed/received calls in the chat
         if (isCallEvent && p.phone) {
@@ -251,20 +253,26 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                       : (digits.length >= 10 && digits.length <= 11 ? `55${digits}` : digits)));
             if (!phoneN) return;
 
+            // Z-API real payload: notification = CALL_VOICE | CALL_MISSED_VOICE | CALL_VIDEO | CALL_MISSED_VIDEO
             const callStatus = String(p.callStatus || p.status || p.callType || "").toLowerCase();
-            const isVideo = !!(p.isVideoCall || p.isVideo);
-            const kind = isVideo ? "videochamada" : "chamada";
-            let callText = `📞 ${isVideo ? "Videochamada" : "Chamada"} recebida`;
-            if (callStatus.includes("miss") || callStatus.includes("timeout") || callStatus === "no_answer" || callStatus === "unanswered") {
-              callText = `📞 ${isVideo ? "Videochamada" : "Chamada"} perdida`;
-            } else if (callStatus.includes("reject") || callStatus.includes("declin")) {
-              callText = `📞 ${isVideo ? "Videochamada" : "Chamada"} recusada`;
-            } else if (p.callDuration || p.duration) {
+            const isVideo = !!(p.isVideoCall || p.isVideo) || /VIDEO/.test(notification);
+            const isMissed =
+              notification.includes("MISSED") ||
+              callStatus.includes("miss") ||
+              callStatus.includes("timeout") ||
+              callStatus === "no_answer" ||
+              callStatus === "unanswered";
+            const isRejected = callStatus.includes("reject") || callStatus.includes("declin");
+            const label = isVideo ? "Videochamada" : "Chamada";
+            let callText = `📞 ${label} recebida`;
+            if (isMissed) callText = `📞 ${label} perdida`;
+            else if (isRejected) callText = `📞 ${label} recusada`;
+            else if (p.callDuration || p.duration) {
               const secs = Number(p.callDuration || p.duration) || 0;
               if (secs > 0) {
                 const mm = Math.floor(secs / 60);
                 const ss = secs % 60;
-                callText = `📞 ${isVideo ? "Videochamada" : "Chamada"} atendida (${mm}:${String(ss).padStart(2, "0")})`;
+                callText = `📞 ${label} atendida (${mm}:${String(ss).padStart(2, "0")})`;
               }
             }
 
@@ -309,9 +317,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                 fromMe: false,
                 text: callText,
                 mediaUrl: null,
-                mediaType: callStatus.includes("miss") || callStatus.includes("timeout") || callStatus === "no_answer" || callStatus === "unanswered"
-                  ? "call_missed"
-                  : "call",
+                mediaType: isMissed ? "call_missed" : "call",
                 participantName: null,
                 participantPhone: null,
               });
