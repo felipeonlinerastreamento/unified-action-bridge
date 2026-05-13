@@ -395,25 +395,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
           // LIDs (15+ digits) keep raw digits but the DB index treats them
           // separately. We use the digits-only form to lookup; the unique
           // index on `phone_normalized` (generated column) is the safety net.
-          const digitsOnly = rawPhone.replace(/\D/g, "");
-          // Canonicaliza para 13 dígitos (55+DDD+9+8) quando for celular BR
-          // de 12 dígitos sem o "9". Sem isso, o mesmo número entra duas
-          // vezes no banco (ex.: 553194730315 vs 5531994730315).
-          const ensureBrMobileNine = (d: string): string => {
-            if (/^55[1-9][0-9][6-9][0-9]{7}$/.test(d)) {
-              return d.slice(0, 4) + "9" + d.slice(4);
-            }
-            return d;
-          };
-          const phone = isGroupMessage
-            ? digitsOnly
-            : (digitsOnly.length >= 15
-                ? digitsOnly
-                : (/^55\d{10,11}$/.test(digitsOnly)
-                    ? ensureBrMobileNine(digitsOnly)
-                    : (digitsOnly.length >= 10 && digitsOnly.length <= 11
-                        ? ensureBrMobileNine(`55${digitsOnly}`)
-                        : digitsOnly)));
+          const phone = normalizeIncomingPhone(rawPhone, isGroupMessage);
 
           // Guard: events without a usable phone (e.g. malformed payloads or
           // pure-LID without digits) used to create orphan chats with empty
