@@ -663,15 +663,13 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                 .select("id, contact_name, status, unread_count, closed_at")
                 .eq("channel_id", channelId)
                 .eq("contact_name", candidateName)
+                .not("phone_normalized", "like", "lid:%")
                 .order("last_message_at", { ascending: false })
-                .limit(1)
-                .maybeSingle();
-              if (byName?.id) {
-                existing = byName;
-              }
+                .limit(5);
+              existing = byName?.find((chat: any) => chat.status !== "finalizado") || null;
             }
             if (!existing) {
-              console.log("[zapi-webhook] dropping LID-only event (no real-phone chat to merge into)", {
+              console.log("[zapi-webhook] dropping LID-only event (no active real-phone chat to merge into)", {
                 phone,
                 senderName: incomingContactName,
                 type: eventType,
