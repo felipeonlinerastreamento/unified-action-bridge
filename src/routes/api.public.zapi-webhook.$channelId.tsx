@@ -317,9 +317,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                 fromMe: false,
                 text: callText,
                 mediaUrl: null,
-                mediaType: callStatus.includes("miss") || callStatus.includes("timeout") || callStatus === "no_answer" || callStatus === "unanswered"
-                  ? "call_missed"
-                  : "call",
+                mediaType: isMissed ? "call_missed" : "call",
                 participantName: null,
                 participantPhone: null,
               });
