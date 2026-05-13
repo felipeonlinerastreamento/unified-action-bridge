@@ -230,18 +230,23 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
         const notification = String(p.notification || "").toUpperCase();
         const hasContent = !!(p.text?.message || p.image || p.audio || p.video || p.document || hasContact || hasLocation);
         const hasCallId = !!(p.callId || p.callid);
+        // IMPORTANTE: NÃO usar /call/i pois "Callback" contém "call" e
+        // marcaria todo SentCallback / ReceivedCallback / MessageStatusCallback
+        // como chamada — sequestrando mensagens normais.
         const isCallEvent =
           notification.startsWith("CALL_") ||
-          /call/i.test(notification) ||
-          /call/i.test(eventType) ||
           eventType === "CallReceivedCallback" ||
           eventType === "CallReceivedNotificationCallback" ||
           (eventType === "NotificationCallback" &&
             typeof p.notification === "string" &&
-            /call/i.test(p.notification)) ||
-          // Z-API às vezes entrega chamada como evento sem `type` reconhecível,
-          // mas com `callId` e sem nenhum conteúdo de mensagem.
-          (hasCallId && !hasContent && !MESSAGE_EVENT_TYPES.has(eventType));
+            p.notification.toUpperCase().startsWith("CALL_")) ||
+          // Payload sem type reconhecido como mensagem/status, sem conteúdo,
+          // mas com callId — variação rara da Z-API.
+          (hasCallId &&
+            !hasContent &&
+            !MESSAGE_EVENT_TYPES.has(eventType) &&
+            eventType !== "MessageStatusCallback" &&
+            eventType !== "PresenceChatCallback");
         const isMessageEvent = !isCallEvent && (MESSAGE_EVENT_TYPES.has(eventType) || (!eventType && hasContent));
 
         // Log diagnóstico: qualquer evento que não seja status/presence/mensagem
