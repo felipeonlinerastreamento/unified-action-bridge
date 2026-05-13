@@ -226,8 +226,101 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
         const eventType = String(p.type || "");
         const firstContact = p.contact || (Array.isArray(p.contacts) ? p.contacts[0] : null);
         const hasContact = !!firstContact;
-        const hasContent = !!(p.text?.message || p.image || p.audio || p.video || p.document || hasContact);
+        const hasLocation = !!(p.location && (p.location.latitude != null || p.location.longitude != null));
+        const isCallEvent =
+          eventType === "CallReceivedCallback" ||
+          eventType === "CallReceivedNotificationCallback" ||
+          (eventType === "NotificationCallback" &&
+            typeof p.notification === "string" &&
+            /call/i.test(p.notification));
+        const hasContent = !!(p.text?.message || p.image || p.audio || p.video || p.document || hasContact || hasLocation);
         const isMessageEvent = MESSAGE_EVENT_TYPES.has(eventType) || (!eventType && hasContent);
+
+        // Call events: persist as a system-like message (📞) so the operator sees missed/received calls in the chat
+        if (isCallEvent && p.phone) {
+          try {
+            const rawPhone = String(p.phone);
+            const isGroup = isGroupPhoneIdentifier(rawPhone);
+            const digits = rawPhone.replace(/\D/g, "");
+            const phoneN = isGroup
+              ? digits
+              : (digits.length >= 15
+                  ? digits
+                  : (/^55\d{10,11}$/.test(digits)
+                      ? digits
+                      : (digits.length >= 10 && digits.length <= 11 ? `55${digits}` : digits)));
+            if (!phoneN) return;
+
+            const callStatus = String(p.callStatus || p.status || p.callType || "").toLowerCase();
+            const isVideo = !!(p.isVideoCall || p.isVideo);
+            const kind = isVideo ? "videochamada" : "chamada";
+            let callText = `📞 ${isVideo ? "Videochamada" : "Chamada"} recebida`;
+            if (callStatus.includes("miss") || callStatus.includes("timeout") || callStatus === "no_answer" || callStatus === "unanswered") {
+              callText = `📞 ${isVideo ? "Videochamada" : "Chamada"} perdida`;
+            } else if (callStatus.includes("reject") || callStatus.includes("declin")) {
+              callText = `📞 ${isVideo ? "Videochamada" : "Chamada"} recusada`;
+            } else if (p.callDuration || p.duration) {
+              const secs = Number(p.callDuration || p.duration) || 0;
+              if (secs > 0) {
+                const mm = Math.floor(secs / 60);
+                const ss = secs % 60;
+                callText = `📞 ${isVideo ? "Videochamada" : "Chamada"} atendida (${mm}:${String(ss).padStart(2, "0")})`;
+              }
+            }
+
+            const { data: existingChat } = await supabaseAdmin
+              .from("zapi_chats")
+              .select("id, unread_count, status, closed_at")
+              .eq("channel_id", channelId)
+              .eq("phone", phoneN)
+              .maybeSingle();
+
+            let chatRowId: string | null = (existingChat as any)?.id || null;
+            if (!chatRowId) {
+              const { data: created } = await supabaseAdmin
+                .from("zapi_chats")
+                .insert({
+                  channel_id: channelId,
+                  phone: phoneN,
+                  contact_name: p.senderName || phoneN,
+                  status: "aguardando",
+                  unread_count: 1,
+                  last_message_at: new Date().toISOString(),
+                  last_message_preview: callText,
+                } as any)
+                .select("id")
+                .maybeSingle();
+              chatRowId = (created as any)?.id || null;
+            } else {
+              await supabaseAdmin
+                .from("zapi_chats")
+                .update({
+                  last_message_at: new Date().toISOString(),
+                  last_message_preview: callText,
+                  unread_count: ((existingChat as any).unread_count || 0) + 1,
+                } as any)
+                .eq("id", chatRowId);
+            }
+
+            if (chatRowId) {
+              await persistZapiMessage({
+                chatId: chatRowId,
+                messageId: p.callId || p.messageId || null,
+                fromMe: false,
+                text: callText,
+                mediaUrl: null,
+                mediaType: callStatus.includes("miss") || callStatus.includes("timeout") || callStatus === "no_answer" || callStatus === "unanswered"
+                  ? "call_missed"
+                  : "call",
+                participantName: null,
+                participantPhone: null,
+              });
+            }
+          } catch (callErr) {
+            console.warn("[zapi-webhook] call event handling failed:", callErr);
+          }
+          return;
+        }
 
         if (p.phone && isMessageEvent) {
           const rawPhone = String(p.phone);
