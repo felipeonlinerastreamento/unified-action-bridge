@@ -489,6 +489,20 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
           let chatId = existing?.id as string | undefined;
           let justReopenedSilently = false;
           if (!chatId) {
+            // Groups never go through the bot, and inbound own-channel
+            // messages also bypass the bot — in both cases pre-assign the
+            // chat to the least-loaded operator so it does not sit
+            // unattended in the queue. Individual chats from real customers
+            // start in "bot" status so the welcome flow can run.
+            const preAssignForNew = isGroupMessage || !!p.fromMe;
+            let initialAssigned: string | null = null;
+            let initialSector: string | null = null;
+            let initialStatus: "bot" | "em_atendimento" | "aguardando" = "bot";
+            if (preAssignForNew) {
+              initialSector = "Atendimento";
+              initialAssigned = await pickLeastLoadedAgent(initialSector);
+              initialStatus = initialAssigned ? "em_atendimento" : "aguardando";
+            }
             const { data: created, error: insertError } = await supabaseAdmin
               .from("zapi_chats")
               .insert({
@@ -496,7 +510,9 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                 phone,
                 contact_name: incomingContactName,
                 contact_avatar: p.senderPhoto || null,
-                status: "bot",
+                status: initialStatus,
+                assigned_to: initialAssigned,
+                sector_name: initialSector,
                 last_message_at: new Date().toISOString(),
                 last_message_preview: text.slice(0, 120),
                 unread_count: p.fromMe ? 0 : 1,
