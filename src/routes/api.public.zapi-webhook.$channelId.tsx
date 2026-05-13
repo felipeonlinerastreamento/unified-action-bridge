@@ -397,6 +397,14 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
 
           const contactCard = hasContact ? buildVCardFromContact(firstContact) : null;
 
+          const locationLabel = hasLocation
+            ? (() => {
+                const name = p.location?.name ? String(p.location.name).trim() : "";
+                const addr = p.location?.address ? String(p.location.address).trim() : "";
+                const extra = [name, addr].filter(Boolean).join(" · ");
+                return extra ? `📍 Localização — ${extra}` : "📍 Localização";
+              })()
+            : null;
           const text =
             p.text?.message ||
             p.image?.caption ||
@@ -405,6 +413,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
             (p.video ? "[vídeo]" : null) ||
             (p.document ? "[documento]" : null) ||
             (contactCard ? `[contato] ${contactCard.name}` : null) ||
+            locationLabel ||
             "";
 
           // Skip empty events that have no content (status callbacks, presence echoes, etc.)
