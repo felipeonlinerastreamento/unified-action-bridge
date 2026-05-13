@@ -204,3 +204,19 @@ export async function zapiGetGroupName(channel: ZapiChannelCreds, groupPhone: st
 
   return null;
 }
+
+/**
+ * Ativa/desativa rejeição automática de chamadas de voz/vídeo no número conectado.
+ * Z-API: PUT /update-call-reject-auto  body { value: boolean }
+ */
+export async function zapiSetCallRejectAuto(channel: ZapiChannelCreds, enabled: boolean) {
+  return zapiFetch(channel, "/update-call-reject-auto", "PUT", { value: !!enabled });
+}
+
+/**
+ * Define a mensagem enviada após rejeitar automaticamente uma chamada.
+ * Requer rejeição automática ativa. Z-API: PUT /update-call-reject-message
+ */
+export async function zapiSetCallRejectMessage(channel: ZapiChannelCreds, message: string) {
+  return zapiFetch(channel, "/update-call-reject-message", "PUT", { value: message });
+}
