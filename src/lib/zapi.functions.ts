@@ -421,10 +421,21 @@ export const sendText = createServerFn({ method: "POST" })
     if (data.replyToMessageId) {
       const { data: orig } = await context.supabase
         .from("zapi_messages")
-        .select("id, zapi_message_id, text, from_me, sent_by_user_id, participant_name, media_type")
+        .select("id, chat_id, zapi_message_id, text, from_me, sent_by_user_id, participant_name, media_type")
         .eq("id", data.replyToMessageId)
         .maybeSingle();
-      if (orig) {
+      if (!orig) {
+        console.warn("[sendText reply] mensagem original não encontrada", {
+          replyToMessageId: data.replyToMessageId,
+          chatId: data.chatId,
+        });
+      } else if ((orig as any).chat_id !== data.chatId) {
+        console.warn("[sendText reply] mensagem original pertence a outro chat — citação ignorada", {
+          replyToMessageId: data.replyToMessageId,
+          origChatId: (orig as any).chat_id,
+          chatId: data.chatId,
+        });
+      } else {
         replyToZapiMessageId = (orig as any).zapi_message_id || null;
         const rawText = (orig as any).text || "";
         const mediaType = (orig as any).media_type as string | null;
@@ -446,6 +457,12 @@ export const sendText = createServerFn({ method: "POST" })
           }
         } else {
           replyToAuthor = (orig as any).participant_name || null;
+        }
+        if (!replyToZapiMessageId) {
+          console.warn("[sendText reply] mensagem original sem zapi_message_id — Z-API não citará", {
+            replyToMessageId: data.replyToMessageId,
+            chatId: data.chatId,
+          });
         }
       }
     }
