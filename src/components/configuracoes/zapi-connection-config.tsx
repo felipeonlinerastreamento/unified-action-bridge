@@ -9,8 +9,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Copy, Check, Wifi, WifiOff, Plus, RefreshCw, Loader2 } from "lucide-react";
-import { getChannelStatus, setupZapiWebhooks } from "@/lib/zapi.functions";
+import { Copy, Check, Wifi, WifiOff, Plus, RefreshCw, Loader2, PhoneOff } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { getChannelStatus, setupZapiWebhooks, updateCallRejectionConfig } from "@/lib/zapi.functions";
 
 export function ZapiConnectionConfig() {
   const qc = useQueryClient();
