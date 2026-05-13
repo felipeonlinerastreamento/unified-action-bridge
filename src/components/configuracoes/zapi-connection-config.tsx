@@ -147,6 +147,23 @@ export function ZapiConnectionConfig() {
     onError: (e: any) => toast.error(e?.message || "Erro ao configurar webhooks"),
   });
 
+  const callRejectMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedId) throw new Error("Selecione um canal");
+      const { data: { session } } = await supabase.auth.getSession();
+      return await updateCallRejectionConfig({
+        data: { channelId: selectedId, enabled: rejectEnabled, message: rejectMessage },
+        headers: { authorization: `Bearer ${session?.access_token}` },
+      });
+    },
+    onSuccess: (r: any) => {
+      const failed = Object.entries(r?.results || {}).filter(([, v]: any) => !(v as any)?.ok);
+      if (failed.length === 0) toast.success("Rejeição de chamadas atualizada");
+      else toast.warning(`Parcial: falhou em ${failed.map(([k]) => k).join(", ")}`);
+    },
+    onError: (e: any) => toast.error(e?.message || "Erro ao atualizar"),
+  });
+
   const copyWebhook = async () => {
     await navigator.clipboard.writeText(webhookUrl);
     setCopied(true);
