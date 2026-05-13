@@ -511,9 +511,24 @@ export const sendText = createServerFn({ method: "POST" })
       }
     }
 
+    if (data.replyToMessageId) {
+      console.log("[sendText reply] enviando ao Z-API com citação", {
+        chatId: data.chatId,
+        phone: chat.phone,
+        replyToMessageId: data.replyToMessageId,
+        zapiMessageIdQuoted: replyToZapiMessageId,
+      });
+    }
     const result = await zapiSendText(channel, chat.phone, outgoingText, {
       messageId: replyToZapiMessageId || undefined,
     });
+    if (data.replyToMessageId) {
+      console.log("[sendText reply] resposta Z-API", {
+        replyToMessageId: data.replyToMessageId,
+        zapiMessageIdQuoted: replyToZapiMessageId,
+        result: result ? { messageId: (result as any).messageId, id: (result as any).id } : null,
+      });
+    }
 
     await context.supabase.from("zapi_messages").insert({
       chat_id: data.chatId,
