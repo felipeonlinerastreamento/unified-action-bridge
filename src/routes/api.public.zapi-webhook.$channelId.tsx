@@ -70,6 +70,21 @@ const MESSAGE_EVENT_TYPES = new Set([
   "MessageSentCallback",
 ]);
 
+function normalizeIncomingPhone(rawPhone: string, isGroup: boolean): string {
+  if (isGroup) return rawPhone.replace(/\D/g, "");
+
+  let digits = rawPhone.replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.length >= 15) return digits;
+  if (digits.length >= 10 && digits.length <= 11) digits = `55${digits}`;
+
+  // BR mobile: canonical 55 + DDD + 9 + 8 digits.
+  if (/^55[1-9][0-9][6-9][0-9]{7}$/.test(digits)) {
+    return digits.slice(0, 4) + "9" + digits.slice(4);
+  }
+  return digits;
+}
+
 /**
  * Picks the least-loaded online operator for a sector. Falls back to
  * "Atendimento" when sector is empty/unknown. Returns null if nobody is
