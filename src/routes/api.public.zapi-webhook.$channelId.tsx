@@ -70,6 +70,62 @@ const MESSAGE_EVENT_TYPES = new Set([
   "MessageSentCallback",
 ]);
 
+/**
+ * Picks the least-loaded online operator for a sector. Falls back to
+ * "Atendimento" when sector is empty/unknown. Returns null if nobody is
+ * available — caller keeps the chat unassigned (chat goes to the queue).
+ */
+async function pickLeastLoadedAgent(sector: string | null | undefined): Promise<string | null> {
+  const sec = (sector || "").trim() || "Atendimento";
+  try {
+    const { data } = await supabaseAdmin.rpc("pick_least_loaded_agent", { _sector: sec });
+    return (data as string | null) || null;
+  } catch (err) {
+    console.warn("[zapi-webhook] pick_least_loaded_agent failed", err);
+    return null;
+  }
+}
+
+/**
+ * Ensures an open service_ticket exists for the chat (attendance_id = chatId).
+ * Creates one when missing. Used on chat reopen so a NEW protocol is generated
+ * automatically, even when the previous CSAT was not answered.
+ */
+async function ensureOpenTicketForChat(args: {
+  chatId: string;
+  channelId: string;
+  contactPhone: string;
+  contactName: string | null;
+  assignedTo: string | null;
+  sector: string | null;
+  reopenedFromProtocol?: number | null;
+}) {
+  const { data: open } = await supabaseAdmin
+    .from("service_tickets")
+    .select("id")
+    .eq("attendance_id", args.chatId)
+    .neq("status", "finalizado")
+    .limit(1);
+  if (open && open.length > 0) return;
+
+  const note = args.reopenedFromProtocol
+    ? `Reabertura sem avaliação CSAT do protocolo anterior #${args.reopenedFromProtocol}`
+    : null;
+
+  const { error } = await supabaseAdmin.from("service_tickets").insert({
+    attendance_id: args.chatId,
+    channel_id: args.channelId || null,
+    contact_phone: args.contactPhone || null,
+    contact_name: args.contactName || null,
+    status: "aberto",
+    assigned_to: args.assignedTo || null,
+    sector: args.sector || null,
+    notes: note,
+    reopened_at: new Date().toISOString(),
+  } as any);
+  if (error) console.error("[zapi-webhook] failed to create reopen ticket", error);
+}
+
 export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
   server: {
     handlers: {
@@ -433,6 +489,20 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
           let chatId = existing?.id as string | undefined;
           let justReopenedSilently = false;
           if (!chatId) {
+            // Groups never go through the bot, and inbound own-channel
+            // messages also bypass the bot — in both cases pre-assign the
+            // chat to the least-loaded operator so it does not sit
+            // unattended in the queue. Individual chats from real customers
+            // start in "bot" status so the welcome flow can run.
+            const preAssignForNew = isGroupMessage || !!p.fromMe;
+            let initialAssigned: string | null = null;
+            let initialSector: string | null = null;
+            let initialStatus: "bot" | "em_atendimento" | "aguardando" = "bot";
+            if (preAssignForNew) {
+              initialSector = "Atendimento";
+              initialAssigned = await pickLeastLoadedAgent(initialSector);
+              initialStatus = initialAssigned ? "em_atendimento" : "aguardando";
+            }
             const { data: created, error: insertError } = await supabaseAdmin
               .from("zapi_chats")
               .insert({
@@ -440,7 +510,9 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                 phone,
                 contact_name: incomingContactName,
                 contact_avatar: p.senderPhoto || null,
-                status: "bot",
+                status: initialStatus,
+                assigned_to: initialAssigned,
+                sector_name: initialSector,
                 last_message_at: new Date().toISOString(),
                 last_message_preview: text.slice(0, 120),
                 unread_count: p.fromMe ? 0 : 1,
@@ -530,8 +602,8 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               unread_count: number;
               status?: string;
               bot_state?: Record<string, never>;
-              assigned_to?: null;
-              sector_name?: null;
+              assigned_to?: string | null;
+              sector_name?: string | null;
             } = {
               contact_name: nameToStore,
               contact_avatar: p.senderPhoto || undefined,
@@ -541,13 +613,42 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                 ? (existing.unread_count || 0)
                 : ((existing.unread_count || 0) + 1),
             };
+            let reopenAssignedTo: string | null = null;
+            let reopenSector: string | null = null;
             if (shouldReopen) {
-              console.log(`[zapi-webhook] reopening finalized chat for ${phone} → silently to queue (no bot)`);
-              // Reabre silenciosamente para a fila — NÃO dispara o bot/menu novamente
-              // para evitar que o cliente receba boas-vindas após uma finalização recente.
-              baseUpdate.status = "aguardando";
+              console.log(`[zapi-webhook] reopening finalized chat for ${phone} → auto-assigning least-loaded operator`);
+              // Resolve last finalized protocol for the audit note
+              const { data: lastTicket } = await supabaseAdmin
+                .from("service_tickets")
+                .select("protocol_number, sector")
+                .eq("attendance_id", chatId!)
+                .eq("status", "finalizado")
+                .order("closed_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+              reopenSector = ((existing as any).sector_name as string | null)
+                || (lastTicket as any)?.sector
+                || "Atendimento";
+              reopenAssignedTo = await pickLeastLoadedAgent(reopenSector);
               baseUpdate.bot_state = {};
+              if (reopenAssignedTo) {
+                baseUpdate.status = "em_atendimento";
+                baseUpdate.assigned_to = reopenAssignedTo;
+                baseUpdate.sector_name = reopenSector;
+              } else {
+                baseUpdate.status = "aguardando";
+              }
               justReopenedSilently = true;
+              // Open a brand new ticket / protocol for this attendance window
+              await ensureOpenTicketForChat({
+                chatId: chatId!,
+                channelId,
+                contactPhone: phone,
+                contactName: nameToStore,
+                assignedTo: reopenAssignedTo,
+                sector: reopenSector,
+                reopenedFromProtocol: (lastTicket as any)?.protocol_number ?? null,
+              });
             }
             await supabaseAdmin
               .from("zapi_chats")
