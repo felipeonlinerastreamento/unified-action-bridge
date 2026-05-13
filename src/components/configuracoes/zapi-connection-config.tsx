@@ -282,6 +282,38 @@ export function ZapiConnectionConfig() {
                 Configurar webhooks (incluir envios pelo celular)
               </Button>
             </div>
+
+            <div className="rounded-lg border p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <PhoneOff className="h-4 w-4 text-muted-foreground" />
+                  <Label className="font-medium">Rejeição automática de chamadas</Label>
+                </div>
+                <Switch checked={rejectEnabled} onCheckedChange={setRejectEnabled} />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Quando ativado, toda ligação de WhatsApp recebida é recusada automaticamente
+                e o cliente recebe a mensagem abaixo.
+              </p>
+              <div className="space-y-1">
+                <Label className="text-xs">Mensagem automática enviada após recusar</Label>
+                <Textarea
+                  rows={4}
+                  value={rejectMessage}
+                  onChange={(e) => setRejectMessage(e.target.value)}
+                  disabled={!rejectEnabled}
+                  placeholder={DEFAULT_REJECT_MSG}
+                />
+              </div>
+              <Button
+                size="sm"
+                onClick={() => callRejectMutation.mutate()}
+                disabled={callRejectMutation.isPending}
+              >
+                {callRejectMutation.isPending && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                Salvar rejeição de chamadas
+              </Button>
+            </div>
           </>
         )}
       </CardContent>
