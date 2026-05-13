@@ -211,20 +211,32 @@ export const getChatDetail = createServerFn({ method: "POST" })
 export const getChatMessages = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
-    z.object({ channelId: z.string().uuid(), chatId: z.string().min(1).max(255) }).parse
+    z.object({
+      channelId: z.string().uuid(),
+      chatId: z.string().min(1).max(255),
+      // When provided, fetch only messages STRICTLY BEFORE this ISO timestamp.
+      // Used for "load older messages" pagination so no message is ever lost
+      // — the user can keep loading back to the very first message.
+      before: z.string().datetime({ offset: true }).optional(),
+      limit: z.number().int().min(1).max(500).optional(),
+    }).parse
   )
   .handler(async ({ data, context }) => {
-    // Fetch the LATEST 500 messages (descending), then reverse to chronological
-    // order. Using ascending+limit returned the OLDEST 500, hiding every new
-    // message in chats with >500 history (typical in long-running groups).
-    const { data: rowsDesc, error } = await context.supabase
+    const lim = data.limit ?? 500;
+    // Fetch the LATEST `lim` messages (descending) before `before` (if any),
+    // then reverse to chronological order. Using ascending+limit returned the
+    // OLDEST 500, hiding every new message in chats with >500 history.
+    let q = context.supabase
       .from("zapi_messages")
       .select("*")
       .eq("chat_id", data.chatId)
       .order("created_at", { ascending: false })
-      .limit(500);
-    if (error) return { data: [], messages: [] };
+      .limit(lim);
+    if (data.before) q = q.lt("created_at", data.before);
+    const { data: rowsDesc, error } = await q;
+    if (error) return { data: [], messages: [], hasMore: false };
     const rows = (rowsDesc || []).slice().reverse();
+    const hasMore = (rowsDesc?.length ?? 0) === lim;
 
     // Collect distinct author user_ids to resolve names in a single query
     const userIds = Array.from(
@@ -309,7 +321,7 @@ export const getChatMessages = createServerFn({ method: "POST" })
           : null,
       };
     });
-    return { data: messages, messages };
+    return { data: messages, messages, hasMore };
   });
 
 // Add the current operator to the chat as a co-agent (collaborative attendance).

@@ -624,30 +624,68 @@ function CentralPage() {
   });
 
   // Fetch ALL messages via dedicated messages endpoint
-  const { data: fullMessages } = useQuery({
+  const { data: fullMessagesResult } = useQuery({
     queryKey: ["chat-messages", selectedChannelId, selectedChatId],
     queryFn: async () => {
-      if (!selectedChannelId || !selectedChatId) return [];
+      if (!selectedChannelId || !selectedChatId) return { messages: [] as GMessage[], hasMore: false };
       try {
-        const result = await getChatMessages({
+        const result: any = await getChatMessages({
           data: { channelId: selectedChannelId, chatId: selectedChatId },
           ...await getAuthHeaders(),
         });
-        // API may return { data: [...] }, { messages: [...] }, or array directly
         const msgs = Array.isArray(result) ? result : (result?.data || result?.messages || []);
-        return Array.isArray(msgs) ? msgs as GMessage[] : [];
+        const arr = Array.isArray(msgs) ? msgs as GMessage[] : [];
+        const hasMore = !!(result && typeof result === "object" && (result as any).hasMore);
+        return { messages: arr, hasMore };
       } catch {
-        return [];
+        return { messages: [] as GMessage[], hasMore: false };
       }
     },
     enabled: !!selectedChannelId && !!selectedChatId && isAuthenticated,
     refetchInterval: 5000,
   });
+  const fullMessages = fullMessagesResult?.messages;
+  const initialHasMore = !!fullMessagesResult?.hasMore;
+
+  // Older messages loaded on demand via "Load older" button (pagination).
+  // Reset when the user switches chats.
+  const [olderMessages, setOlderMessages] = useState<GMessage[]>([]);
+  const [olderHasMore, setOlderHasMore] = useState<boolean | null>(null);
+  const [isLoadingOlder, setIsLoadingOlder] = useState(false);
+  useEffect(() => {
+    setOlderMessages([]);
+    setOlderHasMore(null);
+    setIsLoadingOlder(false);
+  }, [selectedChatId]);
 
   // Use dedicated messages endpoint; fall back to chatDetail.messages
-  const messages = (fullMessages && fullMessages.length > 0)
+  const liveMessages = (fullMessages && fullMessages.length > 0)
     ? fullMessages
     : (chatDetail?.messages || []);
+  const messages = olderMessages.length > 0 ? [...olderMessages, ...liveMessages] : liveMessages;
+  const hasOlder = olderHasMore !== null ? olderHasMore : initialHasMore;
+
+  const loadOlderMessages = useCallback(async () => {
+    if (!selectedChannelId || !selectedChatId || isLoadingOlder) return;
+    const oldest = messages[0] as any;
+    const before = oldest?.utcDhMessage;
+    if (!before) return;
+    setIsLoadingOlder(true);
+    try {
+      const result: any = await getChatMessages({
+        data: { channelId: selectedChannelId, chatId: selectedChatId, before, limit: 500 },
+        ...await getAuthHeaders(),
+      });
+      const msgs = Array.isArray(result) ? result : (result?.data || result?.messages || []);
+      const arr = Array.isArray(msgs) ? msgs as GMessage[] : [];
+      setOlderMessages((prev) => [...arr, ...prev]);
+      setOlderHasMore(!!(result && typeof result === "object" && (result as any).hasMore));
+    } catch {
+      setOlderHasMore(false);
+    } finally {
+      setIsLoadingOlder(false);
+    }
+  }, [selectedChannelId, selectedChatId, isLoadingOlder, messages]);
 
   // Detect plates in messages
   const detectedPlates = useMemo(() => detectPlates(messages), [messages]);
@@ -2838,6 +2876,23 @@ function CentralPage() {
                   {/* Messages */}
                   <ScrollArea className="flex-1 p-4">
                     <div className="space-y-2">
+                      {messages.length > 0 && hasOlder && (
+                        <div className="flex justify-center mb-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs"
+                            disabled={isLoadingOlder}
+                            onClick={loadOlderMessages}
+                          >
+                            {isLoadingOlder ? (
+                              <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Carregando...</>
+                            ) : (
+                              "Carregar mensagens anteriores"
+                            )}
+                          </Button>
+                        </div>
+                      )}
                       {chatDetail?.utcDhStartChat && (
                         <div className="text-center mb-4">
                           <Badge variant="secondary" className="text-xs">
