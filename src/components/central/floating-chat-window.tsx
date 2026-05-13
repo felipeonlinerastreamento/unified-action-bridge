@@ -382,6 +382,23 @@ export function FloatingChatWindow({ state, onOpenInPanel }: Props) {
         onClick={() => setUnread(chatId, 0)}
       >
         <div className="p-3 space-y-2">
+          {messages.length > 0 && hasOlder && (
+            <div className="flex justify-center">
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-6 text-[10px] px-2"
+                disabled={isLoadingOlder}
+                onClick={loadOlderMessages}
+              >
+                {isLoadingOlder ? (
+                  <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Carregando...</>
+                ) : (
+                  "Carregar anteriores"
+                )}
+              </Button>
+            </div>
+          )}
           {messages.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground text-xs">
               <MessageSquare className="h-6 w-6 mx-auto mb-2 opacity-40" />
