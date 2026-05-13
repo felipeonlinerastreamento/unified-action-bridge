@@ -70,6 +70,62 @@ const MESSAGE_EVENT_TYPES = new Set([
   "MessageSentCallback",
 ]);
 
+/**
+ * Picks the least-loaded online operator for a sector. Falls back to
+ * "Atendimento" when sector is empty/unknown. Returns null if nobody is
+ * available — caller keeps the chat unassigned (chat goes to the queue).
+ */
+async function pickLeastLoadedAgent(sector: string | null | undefined): Promise<string | null> {
+  const sec = (sector || "").trim() || "Atendimento";
+  try {
+    const { data } = await supabaseAdmin.rpc("pick_least_loaded_agent", { _sector: sec });
+    return (data as string | null) || null;
+  } catch (err) {
+    console.warn("[zapi-webhook] pick_least_loaded_agent failed", err);
+    return null;
+  }
+}
+
+/**
+ * Ensures an open service_ticket exists for the chat (attendance_id = chatId).
+ * Creates one when missing. Used on chat reopen so a NEW protocol is generated
+ * automatically, even when the previous CSAT was not answered.
+ */
+async function ensureOpenTicketForChat(args: {
+  chatId: string;
+  channelId: string;
+  contactPhone: string;
+  contactName: string | null;
+  assignedTo: string | null;
+  sector: string | null;
+  reopenedFromProtocol?: number | null;
+}) {
+  const { data: open } = await supabaseAdmin
+    .from("service_tickets")
+    .select("id")
+    .eq("attendance_id", args.chatId)
+    .neq("status", "finalizado")
+    .limit(1);
+  if (open && open.length > 0) return;
+
+  const note = args.reopenedFromProtocol
+    ? `Reabertura sem avaliação CSAT do protocolo anterior #${args.reopenedFromProtocol}`
+    : null;
+
+  const { error } = await supabaseAdmin.from("service_tickets").insert({
+    attendance_id: args.chatId,
+    channel_id: args.channelId || null,
+    contact_phone: args.contactPhone || null,
+    contact_name: args.contactName || null,
+    status: "aberto",
+    assigned_to: args.assignedTo || null,
+    sector: args.sector || null,
+    notes: note,
+    reopened_at: new Date().toISOString(),
+  } as any);
+  if (error) console.error("[zapi-webhook] failed to create reopen ticket", error);
+}
+
 export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
   server: {
     handlers: {
