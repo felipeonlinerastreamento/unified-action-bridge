@@ -2876,6 +2876,23 @@ function CentralPage() {
                   {/* Messages */}
                   <ScrollArea className="flex-1 p-4">
                     <div className="space-y-2">
+                      {messages.length > 0 && hasOlder && (
+                        <div className="flex justify-center mb-2">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 text-xs"
+                            disabled={isLoadingOlder}
+                            onClick={loadOlderMessages}
+                          >
+                            {isLoadingOlder ? (
+                              <><Loader2 className="h-3 w-3 mr-1 animate-spin" /> Carregando...</>
+                            ) : (
+                              "Carregar mensagens anteriores"
+                            )}
+                          </Button>
+                        </div>
+                      )}
                       {chatDetail?.utcDhStartChat && (
                         <div className="text-center mb-4">
                           <Badge variant="secondary" className="text-xs">
