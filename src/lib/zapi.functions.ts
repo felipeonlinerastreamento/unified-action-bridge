@@ -926,5 +926,20 @@ export const updateCallRejectionConfig = createServerFn({ method: "POST" })
       }
     }
 
+    // Persist locally so we can reapply on setupZapiWebhooks and remember
+    // operator preference across sessions.
+    try {
+      await context.supabase
+        .from("channels")
+        .update({
+          call_reject_enabled: data.enabled,
+          ...(data.message ? { call_reject_message: data.message } : {}),
+        } as any)
+        .eq("id", data.channelId);
+      results.persisted = { ok: true };
+    } catch (e: any) {
+      results.persisted = { ok: false, error: String(e?.message || e) };
+    }
+
     return { results };
   });
