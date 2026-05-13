@@ -1,4 +1,4 @@
-import { FileText, Download, User, Phone } from "lucide-react";
+import { FileText, Download, User, Phone, MapPin, PhoneMissed, PhoneIncoming } from "lucide-react";
 
 type Props = {
   mediaUrl?: string | null;
