@@ -54,6 +54,11 @@ export function ZapiConnectionConfig() {
         bot_mode: (current as any).bot_mode || "always",
         is_active: !!current.is_active,
       });
+      const savedEnabled = (current as any).call_reject_enabled;
+      setRejectEnabled(savedEnabled === undefined ? true : !!savedEnabled);
+      const savedMsg = (current as any).call_reject_message;
+      if (savedMsg && typeof savedMsg === "string") setRejectMessage(savedMsg);
+      else setRejectMessage(DEFAULT_REJECT_MSG);
     }
   }, [current?.id]);
 
