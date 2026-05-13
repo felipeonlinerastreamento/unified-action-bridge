@@ -625,7 +625,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
             .from("zapi_chats")
             .select("id, contact_name, status, unread_count, closed_at")
             .eq("channel_id", channelId)
-            .eq("phone", phone)
+            .eq("phone_normalized", phone)
             .maybeSingle();
 
           // LID guard: WhatsApp sometimes sends a 15-digit "linked id" in
@@ -703,7 +703,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                   .from("zapi_chats")
                   .select("id, contact_name, status, unread_count, closed_at")
                   .eq("channel_id", channelId)
-                  .eq("phone", phone)
+                  .eq("phone_normalized", phone)
                   .maybeSingle();
                 if (raced?.id) {
                   existing = raced;
