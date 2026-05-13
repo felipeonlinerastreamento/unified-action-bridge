@@ -290,14 +290,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
           try {
             const rawPhone = String(p.phone);
             const isGroup = isGroupPhoneIdentifier(rawPhone);
-            const digits = rawPhone.replace(/\D/g, "");
-            const phoneN = isGroup
-              ? digits
-              : (digits.length >= 15
-                  ? digits
-                  : (/^55\d{10,11}$/.test(digits)
-                      ? digits
-                      : (digits.length >= 10 && digits.length <= 11 ? `55${digits}` : digits)));
+            const phoneN = normalizeIncomingPhone(rawPhone, isGroup);
             if (!phoneN) return;
 
             // Z-API real payload: notification = CALL_VOICE | CALL_MISSED_VOICE | CALL_VIDEO | CALL_MISSED_VIDEO
@@ -327,7 +320,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               .from("zapi_chats")
               .select("id, unread_count, status, closed_at")
               .eq("channel_id", channelId)
-              .eq("phone", phoneN)
+              .eq("phone_normalized", phoneN)
               .maybeSingle();
 
             let chatRowId: string | null = (existingChat as any)?.id || null;
