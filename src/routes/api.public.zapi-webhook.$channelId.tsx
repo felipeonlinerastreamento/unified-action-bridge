@@ -228,15 +228,42 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
         const hasContact = !!firstContact;
         const hasLocation = !!(p.location && (p.location.latitude != null || p.location.longitude != null));
         const notification = String(p.notification || "").toUpperCase();
+        const hasContent = !!(p.text?.message || p.image || p.audio || p.video || p.document || hasContact || hasLocation);
+        const hasCallId = !!(p.callId || p.callid);
         const isCallEvent =
           notification.startsWith("CALL_") ||
+          /call/i.test(notification) ||
+          /call/i.test(eventType) ||
           eventType === "CallReceivedCallback" ||
           eventType === "CallReceivedNotificationCallback" ||
           (eventType === "NotificationCallback" &&
             typeof p.notification === "string" &&
-            /call/i.test(p.notification));
-        const hasContent = !!(p.text?.message || p.image || p.audio || p.video || p.document || hasContact || hasLocation);
+            /call/i.test(p.notification)) ||
+          // Z-API às vezes entrega chamada como evento sem `type` reconhecível,
+          // mas com `callId` e sem nenhum conteúdo de mensagem.
+          (hasCallId && !hasContent && !MESSAGE_EVENT_TYPES.has(eventType));
         const isMessageEvent = !isCallEvent && (MESSAGE_EVENT_TYPES.has(eventType) || (!eventType && hasContent));
+
+        // Log diagnóstico: qualquer evento que não seja status/presence/mensagem
+        // reconhecida nem chamada, registramos para descobrir o formato real.
+        if (!isCallEvent && !isMessageEvent && p.type !== "MessageStatusCallback" && p.type !== "PresenceChatCallback") {
+          console.warn("[zapi-webhook] unknown event", {
+            type: p.type,
+            notification: p.notification,
+            hasCallId,
+            phone: p.phone,
+            fromMe: p.fromMe,
+            keys: Object.keys(p || {}).slice(0, 25),
+          });
+        }
+        if (isCallEvent) {
+          console.log("[zapi-webhook] call event detected", {
+            type: p.type,
+            notification: p.notification,
+            callId: p.callId,
+            phone: p.phone,
+          });
+        }
 
         // Call events: persist as a system-like message (📞) so the operator sees missed/received calls in the chat
         if (isCallEvent && p.phone) {
