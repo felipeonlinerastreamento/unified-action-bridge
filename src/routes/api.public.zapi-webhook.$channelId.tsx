@@ -586,8 +586,8 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               unread_count: number;
               status?: string;
               bot_state?: Record<string, never>;
-              assigned_to?: null;
-              sector_name?: null;
+              assigned_to?: string | null;
+              sector_name?: string | null;
             } = {
               contact_name: nameToStore,
               contact_avatar: p.senderPhoto || undefined,
@@ -597,13 +597,42 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                 ? (existing.unread_count || 0)
                 : ((existing.unread_count || 0) + 1),
             };
+            let reopenAssignedTo: string | null = null;
+            let reopenSector: string | null = null;
             if (shouldReopen) {
-              console.log(`[zapi-webhook] reopening finalized chat for ${phone} → silently to queue (no bot)`);
-              // Reabre silenciosamente para a fila — NÃO dispara o bot/menu novamente
-              // para evitar que o cliente receba boas-vindas após uma finalização recente.
-              baseUpdate.status = "aguardando";
+              console.log(`[zapi-webhook] reopening finalized chat for ${phone} → auto-assigning least-loaded operator`);
+              // Resolve last finalized protocol for the audit note
+              const { data: lastTicket } = await supabaseAdmin
+                .from("service_tickets")
+                .select("protocol_number, sector")
+                .eq("attendance_id", chatId!)
+                .eq("status", "finalizado")
+                .order("closed_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+              reopenSector = ((existing as any).sector_name as string | null)
+                || (lastTicket as any)?.sector
+                || "Atendimento";
+              reopenAssignedTo = await pickLeastLoadedAgent(reopenSector);
               baseUpdate.bot_state = {};
+              if (reopenAssignedTo) {
+                baseUpdate.status = "em_atendimento";
+                baseUpdate.assigned_to = reopenAssignedTo;
+                baseUpdate.sector_name = reopenSector;
+              } else {
+                baseUpdate.status = "aguardando";
+              }
               justReopenedSilently = true;
+              // Open a brand new ticket / protocol for this attendance window
+              await ensureOpenTicketForChat({
+                chatId: chatId!,
+                channelId,
+                contactPhone: phone,
+                contactName: nameToStore,
+                assignedTo: reopenAssignedTo,
+                sector: reopenSector,
+                reopenedFromProtocol: (lastTicket as any)?.protocol_number ?? null,
+              });
             }
             await supabaseAdmin
               .from("zapi_chats")
