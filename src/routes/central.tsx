@@ -282,6 +282,7 @@ function CentralPage() {
     author: string;
   } | null>(null);
   const [nicknameMode, setNicknameMode] = useState(false);
+  const [showFullHistory, setShowFullHistory] = useState(false);
   const [quickRepliesOpen, setQuickRepliesOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [ticketPlate, setTicketPlate] = useState("");
