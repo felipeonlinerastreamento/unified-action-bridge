@@ -32,7 +32,7 @@ export const listAllOpenChats = createServerFn({ method: "POST" })
         .from("zapi_chats")
         .select("*")
         .eq("channel_id", data.channelId)
-        .neq("status", "finalizado")
+        .not("status", "in", "(finalizado,aguardando_retorno)")
         .order("last_message_at", { ascending: false, nullsFirst: false })
         .limit(200);
       if (error) throw error;

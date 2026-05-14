@@ -1599,6 +1599,11 @@ function CentralPage() {
   // Finalize chat
   const finalizeMutation = useMutation({
     mutationFn: async ({ notes, status, tipoPendencia, skipClosingMessage: skipMsg, escalateGestao }: { notes?: string; status?: string; tipoPendencia?: string; skipClosingMessage?: boolean; escalateGestao?: boolean } = {}) => {
+      // "A resolver" = mantém protocolo aberto. O chat sai da Central, mas o
+      // ticket NÃO é finalizado e o cliente continua no mesmo protocolo na
+      // próxima mensagem (sem disparo do bot/saudação).
+      const pendingResolve = status === "A resolver";
+
       // Resolve category label antecipadamente para inserir já com a categoria correta
       let resolvedCategoryLabel: string | null = null;
       if (tipoPendencia) {
@@ -1622,6 +1627,7 @@ function CentralPage() {
           // em andamento (que não chegaram a clicar em "Finalizar") apareçam na
           // lista de Atendimentos como "aberto". O ticket só é persistido ao
           // confirmar a finalização — nunca antes.
+          // Exceção: "A resolver" mantém o ticket aberto.
           const { data: sess } = await supabase.auth.getSession();
           const nowIso = new Date().toISOString();
           // Para grupos: usa a primeira mensagem do operador no atendimento
@@ -1640,13 +1646,13 @@ function CentralPage() {
               contact_phone: contactPhone || null,
               contact_name: chatDetail.contact?.name || chatDetail.description || null,
               plate: ticketPlate || null,
-              status: "finalizado" as const,
+              status: (pendingResolve ? "aberto" : "finalizado") as any,
               category: resolvedCategoryLabel,
               notes: notes || null,
               opened_by: sess.session?.user?.id || null,
               created_at: startIso,
-              closed_at: nowIso,
-              closed_by: sess.session?.user?.id || null,
+              closed_at: pendingResolve ? null : nowIso,
+              closed_by: pendingResolve ? null : (sess.session?.user?.id || null),
             } as any)
             .select("*")
             .single();
@@ -1717,16 +1723,27 @@ function CentralPage() {
         const wasJustCreated =
           ticketForProtocol && ticketForProtocol.id === activeTicket.id && activeTicket.status === "finalizado";
         if (!wasJustCreated) {
-          await supabase
-            .from("service_tickets")
-            .update({
-              status: "finalizado" as const,
-              closed_at: new Date().toISOString(),
-              closed_by: user?.id || null,
-              notes: notes || activeTicket.notes || null,
-              category: resolvedCategoryLabel || activeTicket.category || null,
-            } as any)
-            .eq("id", activeTicket.id);
+          if (pendingResolve) {
+            // Mantém ticket aberto — apenas atualiza notas/categoria.
+            await supabase
+              .from("service_tickets")
+              .update({
+                notes: notes || activeTicket.notes || null,
+                category: resolvedCategoryLabel || activeTicket.category || null,
+              } as any)
+              .eq("id", activeTicket.id);
+          } else {
+            await supabase
+              .from("service_tickets")
+              .update({
+                status: "finalizado" as const,
+                closed_at: new Date().toISOString(),
+                closed_by: user?.id || null,
+                notes: notes || activeTicket.notes || null,
+                category: resolvedCategoryLabel || activeTicket.category || null,
+              } as any)
+              .eq("id", activeTicket.id);
+          }
         }
       }
       // Check if this category triggers a service flow
@@ -1871,7 +1888,9 @@ function CentralPage() {
         console.warn("[Finalize] Failed to load CSAT settings", e);
       }
 
-      if (skipMsg) {
+      if (pendingResolve) {
+        console.log("[Finalize] 'A resolver' — protocolo mantido aberto, sem envio de mensagem de encerramento");
+      } else if (skipMsg) {
         console.log("[Finalize] Skipping closing message and CSAT (admin opt-out)");
       } else if (csatEnabled && contactPhone) {
         // Envia somente a mensagem de CSAT (substitui a de finalização)
@@ -1941,26 +1960,43 @@ function CentralPage() {
         console.error("[Finalize] pre-finalization step failed (continuing to close chat):", preErr?.message);
       }
 
-      // Always finalize the Z-API chat at the end, regardless of any prior errors.
-      // The user clicked "Finalizar" — the chat MUST leave the Central de Atendimento.
-      try {
-        await finalizeChat({
-          data: { channelId: selectedChannelId, chatId: selectedChatId },
-          ...await getAuthHeaders(),
-        });
-      } catch (err: any) {
-        console.error("[Finalize] finalizeChat failed, forcing local close:", err?.message);
-        // Hard fallback: close the chat row directly so it disappears from the list
+      // Encerra (ou marca como "aguardando_retorno") o chat na Central.
+      // O usuário clicou "Finalizar" — o chat MUST sair da lista.
+      if (pendingResolve) {
         try {
+          const { data: sess } = await supabase.auth.getSession();
           await supabase
             .from("zapi_chats")
-            .update({ status: "finalizado", assigned_to: null })
+            .update({
+              status: "aguardando_retorno",
+              pending_resolve_user_id: sess.session?.user?.id || null,
+              pending_resolve_ticket_id: ticketForProtocol?.id || null,
+              pending_resolve_at: new Date().toISOString(),
+            } as any)
             .eq("id", selectedChatId);
-        } catch (e: any) {
-          console.error("[Finalize] direct close also failed:", e?.message);
+        } catch (err: any) {
+          console.error("[Finalize] failed to mark chat as aguardando_retorno:", err?.message);
+        }
+      } else {
+        try {
+          await finalizeChat({
+            data: { channelId: selectedChannelId, chatId: selectedChatId },
+            ...await getAuthHeaders(),
+          });
+        } catch (err: any) {
+          console.error("[Finalize] finalizeChat failed, forcing local close:", err?.message);
+          // Hard fallback: close the chat row directly so it disappears from the list
+          try {
+            await supabase
+              .from("zapi_chats")
+              .update({ status: "finalizado", assigned_to: null })
+              .eq("id", selectedChatId);
+          } catch (e: any) {
+            console.error("[Finalize] direct close also failed:", e?.message);
+          }
         }
       }
-      return { success: true, ticketId: ticketForProtocol?.id || null, escalateGestao: !!escalateGestao };
+      return { success: true, ticketId: ticketForProtocol?.id || null, escalateGestao: !!escalateGestao, pendingResolve };
     },
     onSuccess: async (result) => {
       // Ensure a local ticket exists (covers groups / race conditions where
@@ -2026,8 +2062,9 @@ function CentralPage() {
         }
       }
 
-      // Apply auto-routing flow (TE / category rules) on the local ticket
-      if (ticketRef) {
+      // Apply auto-routing flow (TE / category rules) on the local ticket.
+      // Pulado quando "A resolver" — protocolo continua aberto, sem roteamento.
+      if (ticketRef && !result?.pendingResolve) {
         try {
           const fresh = await supabase
             .from("service_tickets")
@@ -2075,7 +2112,7 @@ function CentralPage() {
       }
 
       // Escalonamento para Gestão (admin)
-      if (result?.escalateGestao) {
+      if (result?.escalateGestao && !result?.pendingResolve) {
         try {
           const { data: cfg } = await supabase
             .from("escalation_gestao_settings" as any)
@@ -2124,7 +2161,12 @@ function CentralPage() {
         }
       }
 
-      toast.success("Atendimento finalizado");
+      if (result?.pendingResolve) {
+        const proto = ticketRef ? formatTicketProtocol(ticketRef as any, chatDetail?.protocol || selectedChatId) : null;
+        toast.success(proto ? `Marcado como "A resolver" — protocolo #${proto} continua aberto` : 'Marcado como "A resolver" — protocolo continua aberto');
+      } else {
+        toast.success("Atendimento finalizado");
+      }
       setSelectedChatId("");
       setShowFinalizeConfirm(false);
       setFinalizeNotes("");
@@ -4239,6 +4281,11 @@ function CentralPage() {
                   <SelectItem value="Resolvido">Resolvido</SelectItem>
                 </SelectContent>
               </Select>
+              {finalizeStatus === "A resolver" && (
+                <p className="text-[11px] text-muted-foreground">
+                  O chat sai da Central, mas o protocolo continua aberto. Quando o cliente responder, o atendimento volta para você no mesmo protocolo, sem disparar o bot.
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
