@@ -1,28 +1,25 @@
 ## Causa
 
-Em `src/components/atendimentos/atendimentos-content.tsx` o fetch de itens/pedidos de compra (e dos demais sub-itens) usa:
+No chat (`src/routes/central.tsx` ~linhas 2912–3060), quando o "modo apelido" está ligado a mensagem é enviada com o prefixo `*Ricardo:* texto` (linha 2200) — isso é necessário para o WhatsApp do cliente exibir o nome em negrito.
 
-```ts
-.in("ticket_id", ids)
-```
+Porém, no nosso painel a mesma mensagem renderiza:
 
-onde `ids` contém **todos os 955 chamados** retornados de `service_tickets`. Isso gera uma URL com ~35 KB (955 UUIDs), acima do limite prático do PostgREST/edge — a resposta volta vazia ou truncada de forma silenciosa. Resultado: para o setor Compras, só o ticket que tem `service_tickets.tracking_code` preenchido (`178bd2dd…`) consegue exibir alguma coisa, porque esse valor já vem direto do select principal. Os outros 5 chamados ficam sem `purchase_items` e sem `purchase_request`, então o `ComprasInfo` retorna `null`.
-
-Os dados existem no banco (verifiquei: 6 chamados em Compras, todos com 1 item e 5 com `ticket_purchase_requests` em status `solicitado`).
+1. O rótulo de operador acima da bolha (linha 3027–3034: `<strong>Ricardo</strong>`).
+2. O corpo da mensagem cru (linha 3044), que ainda contém `*Ricardo:*` literal — daí o nome aparecer duas vezes (uma como `Ricardo` em negrito e outra como `*Ricardo:*` com asteriscos).
 
 ## Correção
 
-Como `ticket_purchase_items` (11 linhas), `ticket_purchase_requests` (6), `ticket_liberacao_items` (61), `ticket_suprimento_items` (4) e `ticket_compra_equipamento_items` (3) são tabelas pequenas, trocar o `.in("ticket_id", ids)` por um SELECT completo da tabela e indexar por `ticket_id` no cliente. Isso elimina o limite de URL e mantém o mesmo agrupamento.
+Em `src/routes/central.tsx`, no map de `messages` (~linha 3043):
 
-Para `ticket_comments` (719 linhas, ainda dentro do limite hoje, mas crescendo), aplicar chunking de 200 IDs por chamada e mesclar resultados — assim não regride no futuro.
+- Detectar prefixo de apelido `^\*([^*\n]+):\*\s+` no `msg.text` quando `isMe`.
+- Renderizar `msg.text` sem esse prefixo (apenas para exibição local).
+- Manter o rótulo `<strong>{senderFirstName}</strong>` acima da bolha como única indicação do operador.
+- O texto enviado/armazenado segue inalterado, então no WhatsApp do contato o nome continua em negrito (`*Ricardo:*`).
 
-## Arquivos
-
-- `src/components/atendimentos/atendimentos-content.tsx`
-  - substituir os 5 fetches de itens/pedido por SELECT sem `.in(...)` 
-  - envolver o fetch de `ticket_comments` num helper que faz batches de 200 IDs
+Sem mudanças em envio, banco ou markdown global.
 
 ## Validação
 
-- Filtrar por setor Compras → todos os 6 chamados devem mostrar o balão com itens e o status do pedido (e o de tracking quando houver código).
-- Demais setores (Liberação, Suprimentos, Compra Equipamento) continuam exibindo seus respectivos balões normalmente.
+- Mensagem enviada com modo apelido: aparece só uma vez "Ricardo" no painel; no WhatsApp do contato continua negrito.
+- Mensagem sem prefixo: comportamento inalterado.
+- Notas privadas e mensagens recebidas: inalteradas.
