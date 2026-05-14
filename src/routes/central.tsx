@@ -2112,7 +2112,7 @@ function CentralPage() {
       }
 
       // Escalonamento para Gestão (admin)
-      if (result?.escalateGestao) {
+      if (result?.escalateGestao && !result?.pendingResolve) {
         try {
           const { data: cfg } = await supabase
             .from("escalation_gestao_settings" as any)
