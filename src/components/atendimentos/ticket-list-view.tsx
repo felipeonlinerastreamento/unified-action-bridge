@@ -4,6 +4,7 @@ import { Building2, Clock, CheckCircle, MessageSquare, User, Layers, Package, Ma
 import { LiberacaoBadge } from "./liberacao-badge";
 import { SuprimentoBadge } from "./suprimento-badge";
 import { CompraEquipamentoBadge } from "./compra-equipamento-badge";
+import { ComprasInfo } from "./compras-info";
 import { formatTicketProtocol } from "@/lib/protocol-format";
 
 interface TicketListViewProps {
