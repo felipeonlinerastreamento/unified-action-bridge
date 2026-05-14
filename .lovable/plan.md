@@ -1,35 +1,28 @@
-## Diagnóstico
+## Causa
 
-A maioria dos lugares já preserva quebra de linha (CSS `whitespace-pre-wrap`). O banco também guarda os `\n` corretamente — confirmei no `ticket_comments`. Porém alguns blocos ainda renderizam o texto sem essa classe, o que faz o navegador colapsar quebras e espaços em uma única linha.
+Em `src/components/atendimentos/atendimentos-content.tsx` o fetch de itens/pedidos de compra (e dos demais sub-itens) usa:
 
-## Mudanças (apenas CSS — sem mexer em lógica)
+```ts
+.in("ticket_id", ids)
+```
 
-Vou adicionar `whitespace-pre-wrap break-words` nestes pontos:
+onde `ids` contém **todos os 955 chamados** retornados de `service_tickets`. Isso gera uma URL com ~35 KB (955 UUIDs), acima do limite prático do PostgREST/edge — a resposta volta vazia ou truncada de forma silenciosa. Resultado: para o setor Compras, só o ticket que tem `service_tickets.tracking_code` preenchido (`178bd2dd…`) consegue exibir alguma coisa, porque esse valor já vem direto do select principal. Os outros 5 chamados ficam sem `purchase_items` e sem `purchase_request`, então o `ComprasInfo` retorna `null`.
 
-1. **AI Assistant (chat lateral)**
-   - `src/routes/central.tsx` linha ~3719 — `<p>{msg.content}</p>`
-   - `src/components/ai-floating-assistant.tsx` linha ~291 — `<p>{msg.content}</p>`
+Os dados existem no banco (verifiquei: 6 chamados em Compras, todos com 1 item e 5 com `ticket_purchase_requests` em status `solicitado`).
 
-2. **Lembretes do ticket** (`src/components/atendimentos/ticket-reminder-section.tsx`)
-   - Linha 361 — `r.reminder_note`
-   - Linha 445 — `h.reminder_note` (histórico)
-   - Linha 448 — `h.completion_comment` (histórico)
+## Correção
 
-3. **OKR**
-   - `src/components/okr/okr-list.tsx` linha 112 — `obj.description`
-   - `src/components/okr/checkin-dialog.tsx` linha 87 — `c.comment`
+Como `ticket_purchase_items` (11 linhas), `ticket_purchase_requests` (6), `ticket_liberacao_items` (61), `ticket_suprimento_items` (4) e `ticket_compra_equipamento_items` (3) são tabelas pequenas, trocar o `.in("ticket_id", ids)` por um SELECT completo da tabela e indexar por `ticket_id` no cliente. Isso elimina o limite de URL e mantém o mesmo agrupamento.
 
-4. **Descrição do ticket** — vou auditar `ticket-detail-panel.tsx` e adicionar `whitespace-pre-wrap` onde a descrição/observação aparece na visualização (sem alterar Textareas — eles já preservam ao digitar).
+Para `ticket_comments` (719 linhas, ainda dentro do limite hoje, mas crescendo), aplicar chunking de 200 IDs por chamada e mesclar resultados — assim não regride no futuro.
 
-5. **Sistema de chat (Central)**
-   - O corpo da mensagem (linha 3044) já tem `whitespace-pre-wrap`. Vou apenas conferir que o "reply preview" da mensagem original (`replyingTo.text`) e a citação inline também tenham, para o texto colado aparecer igual ao copiado.
+## Arquivos
 
-## Pontos intencionalmente NÃO alterados
-
-- Previews truncados com `line-clamp-1/2` (cards de tarefas, sino de notificações, lista de chats) — ali a quebra precisa ficar colapsada para caber em uma/duas linhas.
+- `src/components/atendimentos/atendimentos-content.tsx`
+  - substituir os 5 fetches de itens/pedido por SELECT sem `.in(...)` 
+  - envolver o fetch de `ticket_comments` num helper que faz batches de 200 IDs
 
 ## Validação
 
-Após o ajuste:
-- Colar um bloco de texto com várias linhas em qualquer dos campos acima e abrir/visualizar → o texto deve aparecer exatamente como foi colado, com as quebras de linha preservadas.
-- Mensagens existentes no banco (que já têm `\n`) passam a aparecer com a formatação correta automaticamente.
+- Filtrar por setor Compras → todos os 6 chamados devem mostrar o balão com itens e o status do pedido (e o de tracking quando houver código).
+- Demais setores (Liberação, Suprimentos, Compra Equipamento) continuam exibindo seus respectivos balões normalmente.

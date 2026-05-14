@@ -62,86 +62,100 @@ export function AtendimentosContent() {
       const liberacaoByTicket: Record<string, any[]> = {};
       const suprimentoByTicket: Record<string, any[]> = {};
       const compraEquipByTicket: Record<string, any[]> = {};
+      var purchaseItemsByTicket: Record<string, any[]> = {};
+      var purchaseRequestByTicket: Record<string, any> = {};
+      var agentsByTicket: Record<string, string[]> = {};
+      var recurringSet = new Set<string>();
       if (ids.length > 0) {
-        const { data: comments } = await supabase
-          .from("ticket_comments")
-          .select("ticket_id, created_at")
-          .in("ticket_id", ids)
-          .order("created_at", { ascending: false });
-        for (const c of comments || []) {
+        const idSet = new Set(ids);
+        // Helper: chunk .in() para evitar URLs gigantes (PostgREST)
+        const CHUNK = 200;
+        const chunkedIn = async <T,>(
+          table: string,
+          select: string,
+          extra?: (q: any) => any,
+        ): Promise<T[]> => {
+          const out: T[] = [];
+          for (let i = 0; i < ids.length; i += CHUNK) {
+            const slice = ids.slice(i, i + CHUNK);
+            let q = supabase.from(table as any).select(select).in("ticket_id", slice);
+            if (extra) q = extra(q);
+            const { data } = await q;
+            if (data) out.push(...(data as any[] as T[]));
+          }
+          return out;
+        };
+
+        const comments = await chunkedIn<any>(
+          "ticket_comments",
+          "ticket_id, created_at",
+          (q) => q.order("created_at", { ascending: false }),
+        );
+        for (const c of comments) {
           if (!lastByTicket[c.ticket_id]) lastByTicket[c.ticket_id] = c.created_at;
         }
 
-        // Buscar itens de liberação dos tickets em lote
+        // Tabelas pequenas: SELECT completo e filtra no cliente (evita URL grande)
         const { data: libItems } = await supabase
           .from("ticket_liberacao_items" as any)
-          .select("ticket_id, status, quantity, item_name, liberado_at")
-          .in("ticket_id", ids);
+          .select("ticket_id, status, quantity, item_name, liberado_at");
         for (const it of (libItems as any[]) || []) {
+          if (!idSet.has(it.ticket_id)) continue;
           if (!liberacaoByTicket[it.ticket_id]) liberacaoByTicket[it.ticket_id] = [];
           liberacaoByTicket[it.ticket_id].push(it);
         }
 
-        // Buscar itens de suprimento dos tickets em lote
         const { data: supItems } = await supabase
           .from("ticket_suprimento_items" as any)
-          .select("ticket_id, status, quantity, item_name, delivered_at")
-          .in("ticket_id", ids);
+          .select("ticket_id, status, quantity, item_name, delivered_at");
         for (const it of (supItems as any[]) || []) {
+          if (!idSet.has(it.ticket_id)) continue;
           if (!suprimentoByTicket[it.ticket_id]) suprimentoByTicket[it.ticket_id] = [];
           suprimentoByTicket[it.ticket_id].push(it);
         }
 
-        // Buscar itens de Compra Equipamento/Chip dos tickets em lote
         const { data: ceItems } = await supabase
           .from("ticket_compra_equipamento_items" as any)
-          .select("ticket_id, status, quantity, item_name, delivered_at")
-          .in("ticket_id", ids);
+          .select("ticket_id, status, quantity, item_name, delivered_at");
         for (const it of (ceItems as any[]) || []) {
+          if (!idSet.has(it.ticket_id)) continue;
           if (!compraEquipByTicket[it.ticket_id]) compraEquipByTicket[it.ticket_id] = [];
           compraEquipByTicket[it.ticket_id].push(it);
         }
 
-        // Buscar pedidos de compra (setor Compras) — itens + request com tracking
-        var purchaseItemsByTicket: Record<string, any[]> = {};
-        var purchaseRequestByTicket: Record<string, any> = {};
+        // Compras: itens + request (tabelas pequenas)
         const { data: pItems } = await supabase
           .from("ticket_purchase_items" as any)
-          .select("ticket_id, status, quantity, item_name, delivered_at")
-          .in("ticket_id", ids);
+          .select("ticket_id, status, quantity, item_name, delivered_at");
         for (const it of (pItems as any[]) || []) {
+          if (!idSet.has(it.ticket_id)) continue;
           if (!purchaseItemsByTicket[it.ticket_id]) purchaseItemsByTicket[it.ticket_id] = [];
           purchaseItemsByTicket[it.ticket_id].push(it);
         }
         const { data: pReqs } = await supabase
           .from("ticket_purchase_requests" as any)
-          .select("ticket_id, status, tracking_code, expected_delivery, freight")
-          .in("ticket_id", ids);
+          .select("ticket_id, status, tracking_code, expected_delivery, freight");
         for (const r of (pReqs as any[]) || []) {
+          if (!idSet.has(r.ticket_id)) continue;
           purchaseRequestByTicket[r.ticket_id] = r;
         }
 
-        // Buscar agentes adicionais (ticket_agents) para cada ticket
-        var agentsByTicket: Record<string, string[]> = {};
-        const { data: agents } = await supabase
-          .from("ticket_agents")
-          .select("ticket_id, user_id")
-          .in("ticket_id", ids);
-        for (const a of (agents as any[]) || []) {
+        const agents = await chunkedIn<any>("ticket_agents", "ticket_id, user_id");
+        for (const a of agents) {
           if (!agentsByTicket[a.ticket_id]) agentsByTicket[a.ticket_id] = [];
           agentsByTicket[a.ticket_id].push(a.user_id);
         }
 
-        // Buscar lembretes recorrentes ativos para marcar chamados "recorrentes"
-        var recurringSet = new Set<string>();
-        const { data: recRem } = await supabase
-          .from("ticket_reminders")
-          .select("ticket_id, recurrence_type, is_dismissed")
-          .in("ticket_id", ids)
-          .eq("is_dismissed", false)
-          .not("recurrence_type", "is", null)
-          .neq("recurrence_type", "none");
-        for (const r of (recRem as any[]) || []) {
+        const recRem = await chunkedIn<any>(
+          "ticket_reminders",
+          "ticket_id, recurrence_type, is_dismissed",
+          (q) =>
+            q
+              .eq("is_dismissed", false)
+              .not("recurrence_type", "is", null)
+              .neq("recurrence_type", "none"),
+        );
+        for (const r of recRem) {
           if (r.ticket_id) recurringSet.add(r.ticket_id);
         }
       }
