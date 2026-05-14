@@ -4714,6 +4714,16 @@ function CentralPage() {
 
       {/* Floating chat windows layer */}
       <FloatingChatsLayer onOpenInPanel={(id) => setSelectedChatId(id)} />
+
+      {/* Histórico completo de mensagens com o contato */}
+      <FullConversationHistoryDialog
+        open={showFullHistory}
+        onOpenChange={setShowFullHistory}
+        channelId={selectedChannelId}
+        contactPhone={contactPhone}
+        contactName={chatDetail?.contact?.name || chatDetail?.description || null}
+        contactAvatar={chatDetail?.contact?.linkImage || null}
+      />
     </AppLayout>
   );
 }
