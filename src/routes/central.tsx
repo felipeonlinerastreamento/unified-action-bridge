@@ -1599,6 +1599,11 @@ function CentralPage() {
   // Finalize chat
   const finalizeMutation = useMutation({
     mutationFn: async ({ notes, status, tipoPendencia, skipClosingMessage: skipMsg, escalateGestao }: { notes?: string; status?: string; tipoPendencia?: string; skipClosingMessage?: boolean; escalateGestao?: boolean } = {}) => {
+      // "A resolver" = mantém protocolo aberto. O chat sai da Central, mas o
+      // ticket NÃO é finalizado e o cliente continua no mesmo protocolo na
+      // próxima mensagem (sem disparo do bot/saudação).
+      const pendingResolve = status === "A resolver";
+
       // Resolve category label antecipadamente para inserir já com a categoria correta
       let resolvedCategoryLabel: string | null = null;
       if (tipoPendencia) {
@@ -1622,6 +1627,7 @@ function CentralPage() {
           // em andamento (que não chegaram a clicar em "Finalizar") apareçam na
           // lista de Atendimentos como "aberto". O ticket só é persistido ao
           // confirmar a finalização — nunca antes.
+          // Exceção: "A resolver" mantém o ticket aberto.
           const { data: sess } = await supabase.auth.getSession();
           const nowIso = new Date().toISOString();
           // Para grupos: usa a primeira mensagem do operador no atendimento
@@ -1640,13 +1646,13 @@ function CentralPage() {
               contact_phone: contactPhone || null,
               contact_name: chatDetail.contact?.name || chatDetail.description || null,
               plate: ticketPlate || null,
-              status: "finalizado" as const,
+              status: (pendingResolve ? "aberto" : "finalizado") as any,
               category: resolvedCategoryLabel,
               notes: notes || null,
               opened_by: sess.session?.user?.id || null,
               created_at: startIso,
-              closed_at: nowIso,
-              closed_by: sess.session?.user?.id || null,
+              closed_at: pendingResolve ? null : nowIso,
+              closed_by: pendingResolve ? null : (sess.session?.user?.id || null),
             } as any)
             .select("*")
             .single();
