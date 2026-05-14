@@ -1723,16 +1723,27 @@ function CentralPage() {
         const wasJustCreated =
           ticketForProtocol && ticketForProtocol.id === activeTicket.id && activeTicket.status === "finalizado";
         if (!wasJustCreated) {
-          await supabase
-            .from("service_tickets")
-            .update({
-              status: "finalizado" as const,
-              closed_at: new Date().toISOString(),
-              closed_by: user?.id || null,
-              notes: notes || activeTicket.notes || null,
-              category: resolvedCategoryLabel || activeTicket.category || null,
-            } as any)
-            .eq("id", activeTicket.id);
+          if (pendingResolve) {
+            // Mantém ticket aberto — apenas atualiza notas/categoria.
+            await supabase
+              .from("service_tickets")
+              .update({
+                notes: notes || activeTicket.notes || null,
+                category: resolvedCategoryLabel || activeTicket.category || null,
+              } as any)
+              .eq("id", activeTicket.id);
+          } else {
+            await supabase
+              .from("service_tickets")
+              .update({
+                status: "finalizado" as const,
+                closed_at: new Date().toISOString(),
+                closed_by: user?.id || null,
+                notes: notes || activeTicket.notes || null,
+                category: resolvedCategoryLabel || activeTicket.category || null,
+              } as any)
+              .eq("id", activeTicket.id);
+          }
         }
       }
       // Check if this category triggers a service flow
