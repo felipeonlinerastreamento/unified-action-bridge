@@ -442,10 +442,10 @@ export function TicketReminderSection({ ticketId, userId }: TicketReminderSectio
                     </span>
                   </div>
                   {h.reminder_note && (
-                    <p className="text-muted-foreground break-words">📌 {h.reminder_note}</p>
+                    <p className="text-muted-foreground break-words whitespace-pre-wrap">📌 {h.reminder_note}</p>
                   )}
                   {h.completion_comment && (
-                    <p className="break-words">💬 {h.completion_comment}</p>
+                    <p className="break-words whitespace-pre-wrap">💬 {h.completion_comment}</p>
                   )}
                   {h.next_scheduled_for && (
                     <p className="text-muted-foreground text-[11px]">
