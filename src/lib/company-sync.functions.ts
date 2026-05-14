@@ -237,6 +237,16 @@ export const createCrmContactWithCompany = createServerFn({ method: "POST" })
       throw new Error(error?.message || "Não foi possível criar o contato.");
     }
 
+    await writeAuditLog({
+      user_id: userId,
+      event_category: "crm",
+      event_type: "crm_contact_created",
+      target_type: "crm_contact",
+      target_id: created.id,
+      target_label: `${data.name}${data.companyName ? ` · ${data.companyName}` : ""}`,
+      metadata: { phone: cleanPhone, contact_type: contactType, company_id: companyId, ticket_id: data.ticketId },
+    });
+
     // Update ticket with contact info
     if (data.ticketId) {
       await supabase
