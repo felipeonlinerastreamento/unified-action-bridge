@@ -84,7 +84,7 @@ export function CheckinDialog({
                     <span className="font-mono">{Number(c.previous_value)} → {Number(c.new_value)}</span>
                     <span className="text-muted-foreground">{format(new Date(c.created_at), "dd/MM HH:mm", { locale: ptBR })}</span>
                   </div>
-                  {c.comment && <p className="text-muted-foreground mt-0.5">{c.comment}</p>}
+                  {c.comment && <p className="text-muted-foreground mt-0.5 whitespace-pre-wrap break-words">{c.comment}</p>}
                 </div>
               ))}
             </div>
