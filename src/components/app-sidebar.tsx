@@ -87,6 +87,8 @@ export function AppSidebar() {
   const { profile, signOut, hasRole } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const isAdmin = hasRole("admin");
+  const isGestor = hasRole("gestor");
+  const canAudit = isAdmin || isGestor;
 
   const isConfigActive = location.pathname.startsWith("/configuracoes");
   const isAtendimentosActive = location.pathname.startsWith("/atendimentos");
