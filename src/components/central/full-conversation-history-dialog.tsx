@@ -92,9 +92,7 @@ export function FullConversationHistoryDialog({
     queryKey: ["full-history-chats", channelId, contactPhone],
     enabled: open && !!channelId && !!contactPhone,
     queryFn: async (): Promise<ChatRow[]> => {
-      // Normalize via DB to ensure same logic as the table's generated column
-      const { data: norm } = await supabase.rpc("normalize_zapi_phone" as any, { raw: contactPhone! });
-      const normalized = (norm as unknown as string) || contactPhone!;
+      const normalized = normalizePhone(contactPhone!);
       const { data, error } = await supabase
         .from("zapi_chats")
         .select("id, status, created_at, closed_at, contact_name, contact_avatar")
