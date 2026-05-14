@@ -1960,26 +1960,43 @@ function CentralPage() {
         console.error("[Finalize] pre-finalization step failed (continuing to close chat):", preErr?.message);
       }
 
-      // Always finalize the Z-API chat at the end, regardless of any prior errors.
-      // The user clicked "Finalizar" — the chat MUST leave the Central de Atendimento.
-      try {
-        await finalizeChat({
-          data: { channelId: selectedChannelId, chatId: selectedChatId },
-          ...await getAuthHeaders(),
-        });
-      } catch (err: any) {
-        console.error("[Finalize] finalizeChat failed, forcing local close:", err?.message);
-        // Hard fallback: close the chat row directly so it disappears from the list
+      // Encerra (ou marca como "aguardando_retorno") o chat na Central.
+      // O usuário clicou "Finalizar" — o chat MUST sair da lista.
+      if (pendingResolve) {
         try {
+          const { data: sess } = await supabase.auth.getSession();
           await supabase
             .from("zapi_chats")
-            .update({ status: "finalizado", assigned_to: null })
+            .update({
+              status: "aguardando_retorno",
+              pending_resolve_user_id: sess.session?.user?.id || null,
+              pending_resolve_ticket_id: ticketForProtocol?.id || null,
+              pending_resolve_at: new Date().toISOString(),
+            } as any)
             .eq("id", selectedChatId);
-        } catch (e: any) {
-          console.error("[Finalize] direct close also failed:", e?.message);
+        } catch (err: any) {
+          console.error("[Finalize] failed to mark chat as aguardando_retorno:", err?.message);
+        }
+      } else {
+        try {
+          await finalizeChat({
+            data: { channelId: selectedChannelId, chatId: selectedChatId },
+            ...await getAuthHeaders(),
+          });
+        } catch (err: any) {
+          console.error("[Finalize] finalizeChat failed, forcing local close:", err?.message);
+          // Hard fallback: close the chat row directly so it disappears from the list
+          try {
+            await supabase
+              .from("zapi_chats")
+              .update({ status: "finalizado", assigned_to: null })
+              .eq("id", selectedChatId);
+          } catch (e: any) {
+            console.error("[Finalize] direct close also failed:", e?.message);
+          }
         }
       }
-      return { success: true, ticketId: ticketForProtocol?.id || null, escalateGestao: !!escalateGestao };
+      return { success: true, ticketId: ticketForProtocol?.id || null, escalateGestao: !!escalateGestao, pendingResolve };
     },
     onSuccess: async (result) => {
       // Ensure a local ticket exists (covers groups / race conditions where
