@@ -2161,7 +2161,12 @@ function CentralPage() {
         }
       }
 
-      toast.success("Atendimento finalizado");
+      if (result?.pendingResolve) {
+        const proto = ticketRef ? formatTicketProtocol(ticketRef as any, chatDetail?.protocol || selectedChatId) : null;
+        toast.success(proto ? `Marcado como "A resolver" — protocolo #${proto} continua aberto` : 'Marcado como "A resolver" — protocolo continua aberto');
+      } else {
+        toast.success("Atendimento finalizado");
+      }
       setSelectedChatId("");
       setShowFinalizeConfirm(false);
       setFinalizeNotes("");
