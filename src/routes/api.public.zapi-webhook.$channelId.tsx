@@ -215,6 +215,13 @@ export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
 
 async function processWebhookPayload({ channelId, p }: { channelId: string; p: any }) {
 
+        // DeliveryCallback (variação Z-API para grupos): apenas confirmação
+        // de entrega ao destinatário. Sem ids/status úteis aqui — silenciamos
+        // para parar o ruído de "unknown event" sem afetar nada.
+        if (p.type === "DeliveryCallback") {
+          return;
+        }
+
         // Status events: update message status
         if (p.type === "MessageStatusCallback" && p.status && p.ids) {
           const status = String(p.status).toLowerCase();
@@ -647,13 +654,29 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               || (lat != null && lng != null ? `https://www.google.com/maps?q=${lat},${lng}` : null);
           }
 
-          // Upsert chat
-          let { data: existing } = await supabaseAdmin
-            .from("zapi_chats")
-            .select("id, contact_name, status, unread_count, closed_at")
-            .eq("channel_id", channelId)
-            .eq("phone_normalized", phone)
-            .maybeSingle();
+          // Upsert chat. Para grupos o identificador estável é `phone`
+          // (a função SQL normalize_zapi_phone adiciona prefixo "lid:" para
+          // qualquer ID 15+ dígitos sem marcador @g.us / -timestamp, então
+          // o lookup por phone_normalized falharia para grupos modernos).
+          let existing: any = null;
+          if (isGroupMessage) {
+            const { data: byPhone } = await supabaseAdmin
+              .from("zapi_chats")
+              .select("id, contact_name, status, unread_count, closed_at")
+              .eq("channel_id", channelId)
+              .eq("phone", phone)
+              .maybeSingle();
+            existing = byPhone || null;
+          }
+          if (!existing) {
+            const { data: byNorm } = await supabaseAdmin
+              .from("zapi_chats")
+              .select("id, contact_name, status, unread_count, closed_at")
+              .eq("channel_id", channelId)
+              .eq("phone_normalized", phone)
+              .maybeSingle();
+            existing = byNorm || null;
+          }
 
           // LID guard: WhatsApp sometimes sends a 15-digit "linked id" in
           // `phone` instead of the real number (especially on SentCallback for
@@ -724,12 +747,24 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               // another concurrent webhook just created the chat. Re-fetch by
               // normalized phone and continue as if it already existed.
               if ((insertError as { code?: string }).code === "23505") {
-                const { data: raced } = await supabaseAdmin
+                // Tenta primeiro pelo índice (channel_id, phone) — que é o
+                // que estoura para grupos (phone_normalized fica como
+                // "lid:..." no DB mas o webhook calcula só dígitos).
+                let { data: raced } = await supabaseAdmin
                   .from("zapi_chats")
                   .select("id, contact_name, status, unread_count, closed_at")
                   .eq("channel_id", channelId)
-                  .eq("phone_normalized", phone)
+                  .eq("phone", phone)
                   .maybeSingle();
+                if (!raced?.id) {
+                  const { data: byNorm } = await supabaseAdmin
+                    .from("zapi_chats")
+                    .select("id, contact_name, status, unread_count, closed_at")
+                    .eq("channel_id", channelId)
+                    .eq("phone_normalized", phone)
+                    .maybeSingle();
+                  raced = byNorm || null;
+                }
                 if (raced?.id) {
                   existing = raced;
                   chatId = raced.id;
