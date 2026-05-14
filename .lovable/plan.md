@@ -1,24 +1,40 @@
 ## Objetivo
 
-Quando "Interagir com apelido" estiver ligado, enviar a mensagem prefixada com o nome do **responsável pelo atendimento** (operador atribuído ao chat) — e não com o nome do usuário logado.
+Adicionar um botão **"Histórico completo"** no header do chat ativo que abre um modal com **todas as mensagens já trocadas com aquele contato** (todos os chats, não só o atual) — estilo "ver histórico" do WhatsApp.
 
-## Causa atual
+## Onde
 
-Em `src/routes/central.tsx` (linhas 2195–2207), o `handleSend` monta o prefixo do apelido a partir de `profile?.name` (usuário logado). Quem está digitando pode ser um co-atendente ou outro operador, então o nome enviado nem sempre é o do responsável.
+- **Apenas no header do chat ativo** em `src/routes/central.tsx` (ao lado do nome/telefone do contato).
 
-## Correção
+## UI do modal
 
-No `handleSend` (`src/routes/central.tsx` ~linha 2195), trocar a fonte do nome usado no prefixo:
+Modal grande (`max-w-3xl`, altura ~85vh):
 
-- Usar `assignedOperator` (já existe — query em ~linha 731 que resolve o nome do `assigned_to` do chat) como nome principal.
-- Fallback para `profile?.name` somente quando o chat não tiver responsável atribuído (caso de chat ainda não assumido), preservando o comportamento anterior nesse caso.
-- Restante do fluxo (whisper, replyTo, envio) inalterado.
+- Cabeçalho: avatar + nome + telefone + contagem ("X mensagens em Y atendimentos").
+- Linha do tempo única, ordem cronológica ascendente.
+- Separadores por **dia** (Hoje / Ontem / data) e, dentro do dia, separadores discretos por **chat/protocolo** (ex.: "— Atendimento #1234 —").
+- Bolhas in/out com texto, mídia (imagem/áudio/documento), reply, status (✓✓), autor (quando for nossa).
+- Reusa `MessageMedia` e `MessageStatusTicks` existentes.
+- Paginação por blocos: carrega os 300 mais recentes; botão "Carregar mais antigas" no topo busca o próximo bloco usando cursor `created_at < ?`.
+- Auto-scroll para o final ao abrir.
 
-Resultado: o WhatsApp do contato recebe `*Nome do Responsável:* mensagem`, mesmo quando outro operador (co-atendente) digita.
+## Dados
+
+- Normalizar telefone do contato (usa `normalize_zapi_phone` do banco via RPC ou replica em JS).
+- `select id, status, created_at, closed_at, protocol_number from zapi_chats where channel_id = ? and contact_phone = <normalizado>`.
+- `select * from zapi_messages where chat_id in (...) order by created_at desc limit 300 [+ .lt('created_at', cursor)]`.
+- Reverte para asc na exibição.
+
+## Arquivos
+
+- Novo: `src/components/central/full-conversation-history-dialog.tsx` (Dialog + lista + paginação + render de bolha).
+- Edit: `src/routes/central.tsx` — importar e adicionar botão `<History />` no header do chat ativo, controlado por `useState`.
+
+Sem mudanças de banco, sem migrations.
 
 ## Validação
 
-- Chat com responsável "Ricardo": qualquer operador que enviar com modo apelido → contato recebe `*Ricardo:* ...`.
-- Chat sem responsável: mantém `*Nome do Operador Logado:* ...`.
-- Modo whisper / nota privada: inalterado (não usa prefixo).
-- Exibição local (já tratada anteriormente para não duplicar o nome): continua removendo o prefixo do balão.
+- Abrir em chat com vários atendimentos: vê todas as mensagens, separadas por dia e por protocolo.
+- Abrir em contato novo: vê só as do chat atual.
+- Mídias e replies aparecem corretamente.
+- Botão "Carregar mais antigas" some quando não há mais.

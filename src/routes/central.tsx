@@ -51,6 +51,7 @@ import { SubClientLinker } from "@/components/central/sub-client-linker";
 import { ContactPicker, type PickedContact } from "@/components/central/contact-picker";
 import { ReferralPicker } from "@/components/crm/referral-picker";
 import { ContactHistoryPanel } from "@/components/central/contact-history-panel";
+import { FullConversationHistoryDialog } from "@/components/central/full-conversation-history-dialog";
 import {
   createCrmContactWithCompany,
   createSubClientWithParentCompany,
@@ -282,6 +283,7 @@ function CentralPage() {
     author: string;
   } | null>(null);
   const [nicknameMode, setNicknameMode] = useState(false);
+  const [showFullHistory, setShowFullHistory] = useState(false);
   const [quickRepliesOpen, setQuickRepliesOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
   const [ticketPlate, setTicketPlate] = useState("");
@@ -2647,6 +2649,17 @@ function CentralPage() {
                         </div>
                       </div>
                        <div className="flex items-center gap-1 shrink-0">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          title="Ver histórico completo de mensagens com este contato"
+                          onClick={() => setShowFullHistory(true)}
+                          disabled={!contactPhone || !selectedChannelId}
+                          className="gap-1 h-8"
+                        >
+                          <History className="h-4 w-4" />
+                          <span className="hidden sm:inline">Histórico</span>
+                        </Button>
                         {isAdmin && (
                           <Button
                             variant="outline"
@@ -4701,6 +4714,16 @@ function CentralPage() {
 
       {/* Floating chat windows layer */}
       <FloatingChatsLayer onOpenInPanel={(id) => setSelectedChatId(id)} />
+
+      {/* Histórico completo de mensagens com o contato */}
+      <FullConversationHistoryDialog
+        open={showFullHistory}
+        onOpenChange={setShowFullHistory}
+        channelId={selectedChannelId}
+        contactPhone={contactPhone}
+        contactName={chatDetail?.contact?.name || chatDetail?.description || null}
+        contactAvatar={chatDetail?.contact?.linkImage || null}
+      />
     </AppLayout>
   );
 }
