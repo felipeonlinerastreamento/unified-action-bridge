@@ -44,7 +44,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
+      async (event, session) => {
         setState((prev) => ({
           ...prev,
           user: session?.user ?? null,
@@ -54,6 +54,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }));
         if (session?.user) {
           setTimeout(() => fetchUserData(session.user.id), 0);
+          if (event === "SIGNED_IN") {
+            setTimeout(() => {
+              import("@/lib/audit.functions").then(({ logAuditEvent }) => {
+                logAuditEvent({
+                  data: { event_category: "auth", event_type: "login", target_type: "user", target_id: session.user.id, target_label: session.user.email ?? null as any },
+                  headers: { authorization: `Bearer ${session.access_token}` },
+                } as any).catch(() => {});
+              });
+            }, 100);
+          }
         } else {
           setState((prev) => ({ ...prev, profile: null, roles: [] }));
         }
@@ -89,6 +99,16 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signOut = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        const { logAuditEvent } = await import("@/lib/audit.functions");
+        await (logAuditEvent as any)({
+          data: { event_category: "auth", event_type: "logout", target_type: "user", target_id: session.user.id, target_label: session.user.email ?? null },
+          headers: { authorization: `Bearer ${session.access_token}` },
+        }).catch(() => {});
+      }
+    } catch {}
     await supabase.auth.signOut();
   };
 

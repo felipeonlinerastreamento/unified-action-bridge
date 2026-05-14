@@ -32,6 +32,7 @@ import { Route as ConfiguracoesFluxoAtendimentoRouteImport } from './routes/conf
 import { Route as ConfiguracoesEstoqueRouteImport } from './routes/configuracoes.estoque'
 import { Route as ConfiguracoesEncaminhamentoRouteImport } from './routes/configuracoes.encaminhamento'
 import { Route as ConfiguracoesCentralAtendimentoRouteImport } from './routes/configuracoes.central-atendimento'
+import { Route as ConfiguracoesAuditoriaRouteImport } from './routes/configuracoes.auditoria'
 import { Route as ConfiguracoesAssistenteIaRouteImport } from './routes/configuracoes.assistente-ia'
 import { Route as AtendimentosTarefasRouteImport } from './routes/atendimentos_.tarefas'
 import { Route as ApiPublicEmailPollRouteImport } from './routes/api.public.email-poll'
@@ -160,6 +161,11 @@ const ConfiguracoesCentralAtendimentoRoute =
     path: '/central-atendimento',
     getParentRoute: () => ConfiguracoesRoute,
   } as any)
+const ConfiguracoesAuditoriaRoute = ConfiguracoesAuditoriaRouteImport.update({
+  id: '/auditoria',
+  path: '/auditoria',
+  getParentRoute: () => ConfiguracoesRoute,
+} as any)
 const ConfiguracoesAssistenteIaRoute =
   ConfiguracoesAssistenteIaRouteImport.update({
     id: '/assistente-ia',
@@ -208,6 +214,7 @@ export interface FileRoutesByFullPath {
   '/relatorios': typeof RelatoriosRoute
   '/atendimentos/tarefas': typeof AtendimentosTarefasRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
+  '/configuracoes/auditoria': typeof ConfiguracoesAuditoriaRoute
   '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
   '/configuracoes/encaminhamento': typeof ConfiguracoesEncaminhamentoRoute
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
@@ -238,6 +245,7 @@ export interface FileRoutesByTo {
   '/relatorios': typeof RelatoriosRoute
   '/atendimentos/tarefas': typeof AtendimentosTarefasRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
+  '/configuracoes/auditoria': typeof ConfiguracoesAuditoriaRoute
   '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
   '/configuracoes/encaminhamento': typeof ConfiguracoesEncaminhamentoRoute
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
@@ -270,6 +278,7 @@ export interface FileRoutesById {
   '/relatorios': typeof RelatoriosRoute
   '/atendimentos_/tarefas': typeof AtendimentosTarefasRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
+  '/configuracoes/auditoria': typeof ConfiguracoesAuditoriaRoute
   '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
   '/configuracoes/encaminhamento': typeof ConfiguracoesEncaminhamentoRoute
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
@@ -303,6 +312,7 @@ export interface FileRouteTypes {
     | '/relatorios'
     | '/atendimentos/tarefas'
     | '/configuracoes/assistente-ia'
+    | '/configuracoes/auditoria'
     | '/configuracoes/central-atendimento'
     | '/configuracoes/encaminhamento'
     | '/configuracoes/estoque'
@@ -333,6 +343,7 @@ export interface FileRouteTypes {
     | '/relatorios'
     | '/atendimentos/tarefas'
     | '/configuracoes/assistente-ia'
+    | '/configuracoes/auditoria'
     | '/configuracoes/central-atendimento'
     | '/configuracoes/encaminhamento'
     | '/configuracoes/estoque'
@@ -364,6 +375,7 @@ export interface FileRouteTypes {
     | '/relatorios'
     | '/atendimentos_/tarefas'
     | '/configuracoes/assistente-ia'
+    | '/configuracoes/auditoria'
     | '/configuracoes/central-atendimento'
     | '/configuracoes/encaminhamento'
     | '/configuracoes/estoque'
@@ -565,6 +577,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConfiguracoesCentralAtendimentoRouteImport
       parentRoute: typeof ConfiguracoesRoute
     }
+    '/configuracoes/auditoria': {
+      id: '/configuracoes/auditoria'
+      path: '/auditoria'
+      fullPath: '/configuracoes/auditoria'
+      preLoaderRoute: typeof ConfiguracoesAuditoriaRouteImport
+      parentRoute: typeof ConfiguracoesRoute
+    }
     '/configuracoes/assistente-ia': {
       id: '/configuracoes/assistente-ia'
       path: '/assistente-ia'
@@ -612,6 +631,7 @@ declare module '@tanstack/react-router' {
 
 interface ConfiguracoesRouteChildren {
   ConfiguracoesAssistenteIaRoute: typeof ConfiguracoesAssistenteIaRoute
+  ConfiguracoesAuditoriaRoute: typeof ConfiguracoesAuditoriaRoute
   ConfiguracoesCentralAtendimentoRoute: typeof ConfiguracoesCentralAtendimentoRoute
   ConfiguracoesEncaminhamentoRoute: typeof ConfiguracoesEncaminhamentoRoute
   ConfiguracoesEstoqueRoute: typeof ConfiguracoesEstoqueRoute
@@ -627,6 +647,7 @@ interface ConfiguracoesRouteChildren {
 
 const ConfiguracoesRouteChildren: ConfiguracoesRouteChildren = {
   ConfiguracoesAssistenteIaRoute: ConfiguracoesAssistenteIaRoute,
+  ConfiguracoesAuditoriaRoute: ConfiguracoesAuditoriaRoute,
   ConfiguracoesCentralAtendimentoRoute: ConfiguracoesCentralAtendimentoRoute,
   ConfiguracoesEncaminhamentoRoute: ConfiguracoesEncaminhamentoRoute,
   ConfiguracoesEstoqueRoute: ConfiguracoesEstoqueRoute,

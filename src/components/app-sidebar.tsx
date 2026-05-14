@@ -25,6 +25,7 @@ import {
   Bell,
   Target,
   Activity,
+  ShieldCheck,
 } from "lucide-react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
@@ -77,6 +78,7 @@ const configSubItems = [
   { title: "Status de Usuários", url: "/configuracoes/status-usuarios", icon: Activity },
   { title: "Notificações", url: "/configuracoes/notificacoes", icon: Bell },
   { title: "OKR (Ciclos)", url: "/configuracoes/okr", icon: Target },
+  { title: "Auditoria", url: "/configuracoes/auditoria", icon: ShieldCheck },
 ];
 
 export function AppSidebar() {
@@ -86,6 +88,8 @@ export function AppSidebar() {
   const { profile, signOut, hasRole } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const isAdmin = hasRole("admin");
+  const isGestor = hasRole("gestor");
+  const canAudit = isAdmin || isGestor;
 
   const isConfigActive = location.pathname.startsWith("/configuracoes");
   const isAtendimentosActive = location.pathname.startsWith("/atendimentos");
@@ -162,6 +166,22 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+
+              {/* Auditoria — visível para Admin e Gestor */}
+              {canAudit && !isAdmin && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={location.pathname === "/configuracoes/auditoria"}
+                    tooltip="Auditoria"
+                  >
+                    <Link to="/configuracoes/auditoria">
+                      <ShieldCheck className="h-4 w-4" />
+                      <span>Auditoria</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
 
               {/* Configurações com submenus (admin only) */}
               {isAdmin && (

@@ -457,8 +457,17 @@ export type Database = {
           details: Json | null
           entity_id: string | null
           entity_type: string
+          event_category: string | null
+          event_type: string | null
           id: string
+          ip_address: string | null
+          metadata: Json
+          target_id: string | null
+          target_label: string | null
+          target_type: string | null
+          user_agent: string | null
           user_id: string | null
+          user_name: string | null
         }
         Insert: {
           action: string
@@ -466,8 +475,17 @@ export type Database = {
           details?: Json | null
           entity_id?: string | null
           entity_type: string
+          event_category?: string | null
+          event_type?: string | null
           id?: string
+          ip_address?: string | null
+          metadata?: Json
+          target_id?: string | null
+          target_label?: string | null
+          target_type?: string | null
+          user_agent?: string | null
           user_id?: string | null
+          user_name?: string | null
         }
         Update: {
           action?: string
@@ -475,8 +493,17 @@ export type Database = {
           details?: Json | null
           entity_id?: string | null
           entity_type?: string
+          event_category?: string | null
+          event_type?: string | null
           id?: string
+          ip_address?: string | null
+          metadata?: Json
+          target_id?: string | null
+          target_label?: string | null
+          target_type?: string | null
+          user_agent?: string | null
           user_id?: string | null
+          user_name?: string | null
         }
         Relationships: []
       }

@@ -75,6 +75,19 @@ export function ChatAvailabilityToggle() {
     }
     setAvailable(next);
     toast.success(next ? "Você está online no chat" : "Você está offline no chat");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const { logAuditEvent } = await import("@/lib/audit.functions");
+      await (logAuditEvent as any)({
+        data: {
+          event_category: "presence",
+          event_type: next ? "set_online" : "set_offline",
+          target_type: "user",
+          target_id: user.id,
+        },
+        headers: { authorization: `Bearer ${session?.access_token}` },
+      }).catch(() => {});
+    } catch {}
   };
 
   return (
