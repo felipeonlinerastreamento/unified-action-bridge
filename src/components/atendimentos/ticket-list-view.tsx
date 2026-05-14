@@ -125,6 +125,7 @@ export function TicketListView({ tickets, onSelect, profiles = [] }: TicketListV
                     </div>
                   );
                 })()}
+                <ComprasInfo ticket={t} />
               </div>
               <span className="text-xs text-muted-foreground whitespace-nowrap">
                 #{formatTicketProtocol(t)}
