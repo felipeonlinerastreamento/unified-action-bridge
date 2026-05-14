@@ -25,6 +25,7 @@ import {
   Bell,
   Target,
   Activity,
+  ShieldCheck,
 } from "lucide-react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
@@ -77,6 +78,7 @@ const configSubItems = [
   { title: "Status de Usuários", url: "/configuracoes/status-usuarios", icon: Activity },
   { title: "Notificações", url: "/configuracoes/notificacoes", icon: Bell },
   { title: "OKR (Ciclos)", url: "/configuracoes/okr", icon: Target },
+  { title: "Auditoria", url: "/configuracoes/auditoria", icon: ShieldCheck },
 ];
 
 export function AppSidebar() {
