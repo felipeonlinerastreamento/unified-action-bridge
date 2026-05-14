@@ -358,7 +358,7 @@ export function TicketReminderSection({ ticketId, userId }: TicketReminderSectio
                       </Badge>
                     )}
                   </div>
-                  {r.reminder_note && <p className="text-xs text-muted-foreground mt-0.5 break-words">{r.reminder_note}</p>}
+                  {r.reminder_note && <p className="text-xs text-muted-foreground mt-0.5 break-words whitespace-pre-wrap">{r.reminder_note}</p>}
                 </div>
                 {!isCompleting && (
                   <Button
