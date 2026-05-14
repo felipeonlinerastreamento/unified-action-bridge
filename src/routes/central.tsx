@@ -2649,6 +2649,17 @@ function CentralPage() {
                         </div>
                       </div>
                        <div className="flex items-center gap-1 shrink-0">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          title="Ver histórico completo de mensagens com este contato"
+                          onClick={() => setShowFullHistory(true)}
+                          disabled={!contactPhone || !selectedChannelId}
+                          className="gap-1 h-8"
+                        >
+                          <History className="h-4 w-4" />
+                          <span className="hidden sm:inline">Histórico</span>
+                        </Button>
                         {isAdmin && (
                           <Button
                             variant="outline"
