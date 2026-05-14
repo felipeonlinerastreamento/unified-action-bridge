@@ -2194,10 +2194,10 @@ function CentralPage() {
 
   const handleSend = () => {
     if (!messageInput.trim() || !selectedChatId) return;
-    const operatorName = profile?.name?.trim();
+    const nicknameSource = (assignedOperator || profile?.name || "").trim();
     const text =
-      nicknameMode && !whisperMode && operatorName
-        ? `*${operatorName}:* ${messageInput.trim()}`
+      nicknameMode && !whisperMode && nicknameSource
+        ? `*${nicknameSource}:* ${messageInput.trim()}`
         : messageInput.trim();
     sendMutation.mutate({
       text,

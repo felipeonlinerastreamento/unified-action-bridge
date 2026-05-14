@@ -1,25 +1,24 @@
-## Causa
+## Objetivo
 
-No chat (`src/routes/central.tsx` ~linhas 2912–3060), quando o "modo apelido" está ligado a mensagem é enviada com o prefixo `*Ricardo:* texto` (linha 2200) — isso é necessário para o WhatsApp do cliente exibir o nome em negrito.
+Quando "Interagir com apelido" estiver ligado, enviar a mensagem prefixada com o nome do **responsável pelo atendimento** (operador atribuído ao chat) — e não com o nome do usuário logado.
 
-Porém, no nosso painel a mesma mensagem renderiza:
+## Causa atual
 
-1. O rótulo de operador acima da bolha (linha 3027–3034: `<strong>Ricardo</strong>`).
-2. O corpo da mensagem cru (linha 3044), que ainda contém `*Ricardo:*` literal — daí o nome aparecer duas vezes (uma como `Ricardo` em negrito e outra como `*Ricardo:*` com asteriscos).
+Em `src/routes/central.tsx` (linhas 2195–2207), o `handleSend` monta o prefixo do apelido a partir de `profile?.name` (usuário logado). Quem está digitando pode ser um co-atendente ou outro operador, então o nome enviado nem sempre é o do responsável.
 
 ## Correção
 
-Em `src/routes/central.tsx`, no map de `messages` (~linha 3043):
+No `handleSend` (`src/routes/central.tsx` ~linha 2195), trocar a fonte do nome usado no prefixo:
 
-- Detectar prefixo de apelido `^\*([^*\n]+):\*\s+` no `msg.text` quando `isMe`.
-- Renderizar `msg.text` sem esse prefixo (apenas para exibição local).
-- Manter o rótulo `<strong>{senderFirstName}</strong>` acima da bolha como única indicação do operador.
-- O texto enviado/armazenado segue inalterado, então no WhatsApp do contato o nome continua em negrito (`*Ricardo:*`).
+- Usar `assignedOperator` (já existe — query em ~linha 731 que resolve o nome do `assigned_to` do chat) como nome principal.
+- Fallback para `profile?.name` somente quando o chat não tiver responsável atribuído (caso de chat ainda não assumido), preservando o comportamento anterior nesse caso.
+- Restante do fluxo (whisper, replyTo, envio) inalterado.
 
-Sem mudanças em envio, banco ou markdown global.
+Resultado: o WhatsApp do contato recebe `*Nome do Responsável:* mensagem`, mesmo quando outro operador (co-atendente) digita.
 
 ## Validação
 
-- Mensagem enviada com modo apelido: aparece só uma vez "Ricardo" no painel; no WhatsApp do contato continua negrito.
-- Mensagem sem prefixo: comportamento inalterado.
-- Notas privadas e mensagens recebidas: inalteradas.
+- Chat com responsável "Ricardo": qualquer operador que enviar com modo apelido → contato recebe `*Ricardo:* ...`.
+- Chat sem responsável: mantém `*Nome do Operador Logado:* ...`.
+- Modo whisper / nota privada: inalterado (não usa prefixo).
+- Exibição local (já tratada anteriormente para não duplicar o nome): continua removendo o prefixo do balão.
