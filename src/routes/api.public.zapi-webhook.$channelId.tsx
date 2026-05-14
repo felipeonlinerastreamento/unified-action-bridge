@@ -654,13 +654,29 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               || (lat != null && lng != null ? `https://www.google.com/maps?q=${lat},${lng}` : null);
           }
 
-          // Upsert chat
-          let { data: existing } = await supabaseAdmin
-            .from("zapi_chats")
-            .select("id, contact_name, status, unread_count, closed_at")
-            .eq("channel_id", channelId)
-            .eq("phone_normalized", phone)
-            .maybeSingle();
+          // Upsert chat. Para grupos o identificador estável é `phone`
+          // (a função SQL normalize_zapi_phone adiciona prefixo "lid:" para
+          // qualquer ID 15+ dígitos sem marcador @g.us / -timestamp, então
+          // o lookup por phone_normalized falharia para grupos modernos).
+          let existing: any = null;
+          if (isGroupMessage) {
+            const { data: byPhone } = await supabaseAdmin
+              .from("zapi_chats")
+              .select("id, contact_name, status, unread_count, closed_at")
+              .eq("channel_id", channelId)
+              .eq("phone", phone)
+              .maybeSingle();
+            existing = byPhone || null;
+          }
+          if (!existing) {
+            const { data: byNorm } = await supabaseAdmin
+              .from("zapi_chats")
+              .select("id, contact_name, status, unread_count, closed_at")
+              .eq("channel_id", channelId)
+              .eq("phone_normalized", phone)
+              .maybeSingle();
+            existing = byNorm || null;
+          }
 
           // LID guard: WhatsApp sometimes sends a 15-digit "linked id" in
           // `phone` instead of the real number (especially on SentCallback for
