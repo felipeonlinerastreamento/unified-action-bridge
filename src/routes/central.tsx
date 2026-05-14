@@ -2062,8 +2062,9 @@ function CentralPage() {
         }
       }
 
-      // Apply auto-routing flow (TE / category rules) on the local ticket
-      if (ticketRef) {
+      // Apply auto-routing flow (TE / category rules) on the local ticket.
+      // Pulado quando "A resolver" — protocolo continua aberto, sem roteamento.
+      if (ticketRef && !result?.pendingResolve) {
         try {
           const fresh = await supabase
             .from("service_tickets")
