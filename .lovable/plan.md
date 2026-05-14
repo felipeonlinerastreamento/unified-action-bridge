@@ -1,79 +1,67 @@
-## Menu de Auditoria — `/configuracoes/auditoria`
+## Objetivo
 
-Nova página em Configurações que armazena e exibe um log completo de eventos do sistema, com filtros e exportação.
+Quando o operador finalizar uma conversa com status **"A resolver"**, o protocolo (ticket) **não deve ser encerrado**. O chat sai da Central de Atendimento, mas:
 
-### 1. Banco de dados
+- O `service_ticket` permanece **aberto** (não recebe `closed_at`, mantém `protocol_number` original).
+- Quando o cliente enviar nova mensagem, o chat reabre **no mesmo protocolo**, atribuído ao **mesmo operador** que marcou "A resolver", **sem disparar bot/saudação**.
+- Apenas a finalização como **"Resolvido"** encerra o ticket de fato e gera novo protocolo na próxima interação.
 
-Nova tabela `public.audit_logs`:
+---
 
-- `id` (uuid)
-- `created_at` (timestamptz)
-- `user_id` (uuid, opcional — quem executou)
-- `user_name` (text, snapshot do nome no momento)
-- `event_category` (text) — `auth`, `presence`, `contact_link`, `crm`, `ticket`, `task`, `okr`
-- `event_type` (text) — ex.: `login`, `logout`, `set_offline`, `set_online`, `contact_linked_company`, `subclient_created`, `crm_contact_created`, `crm_contact_updated`, `crm_contact_deleted`, `ticket_created`, `ticket_finalized`, `ticket_transferred`, `task_created`, `task_assigned`, `task_completed`, `okr_created`, `kr_created`, `kr_checkin`
-- `target_type` / `target_id` / `target_label` (text/uuid/text)
-- `metadata` (jsonb) — payload livre (telefone normalizado, empresa, valores antes/depois, motivo, etc.)
-- `ip_address` (text), `user_agent` (text)
+## Mudanças
 
-RLS:
-- SELECT: somente `admin` ou `gestor` (via `has_role`).
-- INSERT: feito apenas por server functions usando `supabaseAdmin` — sem policy de insert para usuários.
+### 1. Finalização "A resolver" — `src/routes/central.tsx` (`finalizeMutation`)
 
-Retenção: **indefinida** (sem job de limpeza).
+Detectar `status === "A resolver"` (renomear variável para `pendingResolve = status === "A resolver"`) e quando verdadeiro:
 
-Índices: `created_at desc`, `(event_category, created_at)`, `(user_id, created_at)`, `(target_type, target_id)`.
+- **NÃO** atualizar `service_tickets.status` para `finalizado`. Mantém ticket como `aberto` (ou cria novo já como `aberto` em vez de `finalizado` no fallback das linhas 1620-1655 e 1990-2026).
+- **NÃO** chamar `concluirPendencia` no GSystem (já é o caso, só dispara em `Resolvido`).
+- **NÃO** rodar `finalizeTicketWithFlow` (pular bloco 2029-2054 quando `pendingResolve`).
+- **NÃO** enviar mensagem de fechamento/CSAT (`sendText` linhas 1909-1939 e bloco CSAT acima — pular quando `pendingResolve`).
+- **SIM** fechar o `zapi_chat`: marcar com novo status `aguardando_retorno` (em vez de `finalizado`) e gravar `assigned_to` preservado + nova coluna `pending_resolve_user_id`. Isso tira da Central (queries de chats abertos filtram `status in ('aguardando','em_atendimento','bot')`) mas distingue de finalização real.
 
-### 2. Server functions (`src/lib/audit.functions.ts`)
+### 2. Schema — migração
 
-- `logAuditEvent` — chamada interna (passada via import direto a outras server fns) e também exposta para casos client-side controlados (login/offline). Recebe categoria, tipo, target, metadata; resolve `user_id`/`user_name` via `requireSupabaseAuth` quando disponível; grava com `supabaseAdmin`.
-- `listAuditLogs` — protegida (`requireSupabaseAuth` + checagem `admin`/`gestor`); aceita filtros `{ category[], event_type[], user_id[], date_from, date_to, search, limit, cursor }`; paginação por cursor `created_at`.
-- `exportAuditLogs` — gera CSV server-side com os mesmos filtros.
+Adicionar em `zapi_chats`:
+- `pending_resolve_user_id uuid` — operador que marcou "A resolver".
+- `pending_resolve_ticket_id uuid` — referência ao ticket que deve ser reutilizado no retorno.
+- `pending_resolve_at timestamptz`.
 
-### 3. Instrumentação (pontos de log)
+Sem mexer em `service_tickets` (continua `status='aberto'` com `protocol_number` já existente).
 
-| Evento | Onde | Como |
-|---|---|---|
-| Login | `useAuth` `onAuthStateChange` SIGNED_IN | `logAuditEvent('auth','login')` |
-| Logout | `useAuth.signOut` | `logAuditEvent('auth','logout')` |
-| Offline / Online | `chat-availability-toggle.tsx` ao alternar `is_chat_available` | `set_offline` / `set_online` |
-| Vincular telefone a empresa | `linkPhoneToCompany` | `contact_link / contact_linked_company` |
-| Criar sub-cliente | `createSubClientWithParentCompany` | `subclient_created` |
-| CRM contato criar/editar/excluir | server fns de CRM | `crm_contact_*` |
-| Ticket criar / finalizar / transferir | server fns de tickets locais | `ticket_*` |
-| Tarefas criar / atribuir / concluir | server fns de tasks | `task_*` |
-| OKR objetivo / KR / check-in | server fns de OKR | `okr_*`, `kr_*` |
+### 3. Reabertura no webhook — `src/routes/api.public.zapi-webhook.$channelId.tsx`
 
-A chamada do log fica no fim do handler bem-sucedido, em `try/catch` próprio para nunca quebrar a operação principal.
+No bloco `shouldReopen` (linha ~811-887):
 
-### 4. UI — `src/routes/configuracoes.auditoria.tsx`
+- Detectar caso "pending resolve": `existing.status === 'aguardando_retorno'` (ou `existing.pending_resolve_ticket_id != null`).
+- Quando for pending-resolve:
+  - **NÃO** chamar `ensureOpenTicketForChat` (não criar novo ticket — o anterior continua aberto).
+  - Atribuir `assigned_to = existing.pending_resolve_user_id` (se o operador estiver online via `pick_least_loaded_agent` check; caso offline, cair para least-loaded do setor).
+  - Definir `status = 'em_atendimento'`.
+  - Limpar campos `pending_resolve_*`.
+  - Marcar `justReopenedSilently = true` (já existe) → garante que o bot não rode (linha 975 já respeita).
+- Caso normal de `finalizado` permanece como hoje (cria novo ticket/protocolo).
 
-- Acesso bloqueado a quem não for `admin`/`gestor` (mostra "Sem permissão").
-- Cabeçalho com título e botão **Exportar CSV**.
-- Barra de filtros:
-  - Período (atalhos hoje / 7d / 30d / custom com date range)
-  - Categoria (multi-select: Login/Logoff, Presença, Vinculação, CRM, Atendimentos, Tarefas, OKR)
-  - Operador (select de profiles)
-  - Busca livre (por target_label / metadata)
-- Tabela com colunas: Data/Hora · Operador · Categoria (badge colorido) · Evento · Alvo · Detalhes (botão "Ver" abre dialog com JSON formatado).
-- Paginação infinita (TanStack Query `useInfiniteQuery`, 50 por página).
+### 4. UI
 
-### 5. Sidebar
+- Toast de finalização: "Atendimento marcado como A resolver — protocolo {N} continua aberto" quando `pendingResolve`.
+- Mensagem do diálogo de finalização: pequena nota explicando que "A resolver" mantém o protocolo aberto.
 
-Adicionar item em `app-sidebar.tsx`:
-`{ title: "Auditoria", url: "/configuracoes/auditoria", icon: ShieldCheck }` — visível somente quando `hasRole('admin') || hasRole('gestor')`.
+---
 
-### 6. Detalhes técnicos
+## Detalhes técnicos
 
-- Toda gravação passa por server function com `supabaseAdmin` para garantir que o registro não dependa de RLS do usuário e seja imutável.
-- IP e User-Agent capturados a partir de `request.headers` dentro das server fns (`x-forwarded-for`, `user-agent`).
-- `metadata` segue um shape pequeno e tipado por evento (documentado em comentário no arquivo `audit.functions.ts`).
-- Sem mudanças em tabelas existentes.
+**Por que `aguardando_retorno` em vez de `finalizado`:** todos os filtros existentes que listam chats ativos checam `status != 'finalizado'`. Usar um status novo evita que o chat apareça na Central, mas também evita que o webhook execute o caminho "reabrir = novo protocolo". O webhook ganha um branch dedicado para esse status.
 
-### Arquivos
+**Auditoria:** registrar evento `chat_pending_resolve` em `audit_logs` (categoria `attendance`) com `ticket_id` e `protocol_number`, reutilizando `logAuditEvent` já existente.
 
-**Criar:** `src/lib/audit.functions.ts`, `src/routes/configuracoes.auditoria.tsx`, `src/components/auditoria/audit-filters.tsx`, `src/components/auditoria/audit-table.tsx`, `src/components/auditoria/audit-detail-dialog.tsx`.
+**Sem mudanças** em: GSystem sync, fluxos de roteamento (TE / category rules), CSAT, escalonamento. Esses só rodam em "Resolvido".
 
-**Editar:** `src/components/app-sidebar.tsx`, `src/hooks/use-auth.tsx` (login/logout), `src/components/chat-availability-toggle.tsx` (presença), e as server fns existentes de CRM / vinculação / tickets / tasks / OKR para chamarem `logAuditEvent`.
+---
 
-**Migration:** criação da tabela `audit_logs`, índices e policies de SELECT.
+## Arquivos afetados
+
+- `src/routes/central.tsx` (mutationFn de `finalizeMutation`, copy do diálogo, toast)
+- `src/routes/api.public.zapi-webhook.$channelId.tsx` (branch de reabertura)
+- Migração SQL: novas colunas em `zapi_chats`
+- `src/lib/audit.functions.ts` / `.server.ts` (novo `event_type`)
