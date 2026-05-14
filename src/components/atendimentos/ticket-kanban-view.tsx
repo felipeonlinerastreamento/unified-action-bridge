@@ -179,6 +179,7 @@ export function TicketKanbanView({ tickets, onSelect, onRefetch }: TicketKanbanV
                         : "Sem interações"}
                     </span>
                     <LiberacaoBadge ticket={t} />
+                    <ComprasInfo ticket={t} />
                   </CardContent>
                 </Card>
               ))}
