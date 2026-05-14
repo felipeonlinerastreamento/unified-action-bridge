@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { finalizeTicketWithFlow } from "@/lib/ticket-finalize-flow";
 import { formatTicketProtocol } from "@/lib/protocol-format";
 import { LiberacaoBadge } from "./liberacao-badge";
+import { ComprasInfo } from "./compras-info";
 
 interface TicketKanbanViewProps {
   tickets: any[];
