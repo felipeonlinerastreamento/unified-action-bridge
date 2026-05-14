@@ -3716,7 +3716,7 @@ function CentralPage() {
                                   <ReactMarkdown>{msg.content}</ReactMarkdown>
                                 </div>
                               ) : (
-                                <p>{msg.content}</p>
+                                <p className="whitespace-pre-wrap break-words">{msg.content}</p>
                               )}
                             </div>
                           </div>
