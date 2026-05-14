@@ -747,12 +747,24 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               // another concurrent webhook just created the chat. Re-fetch by
               // normalized phone and continue as if it already existed.
               if ((insertError as { code?: string }).code === "23505") {
-                const { data: raced } = await supabaseAdmin
+                // Tenta primeiro pelo índice (channel_id, phone) — que é o
+                // que estoura para grupos (phone_normalized fica como
+                // "lid:..." no DB mas o webhook calcula só dígitos).
+                let { data: raced } = await supabaseAdmin
                   .from("zapi_chats")
                   .select("id, contact_name, status, unread_count, closed_at")
                   .eq("channel_id", channelId)
-                  .eq("phone_normalized", phone)
+                  .eq("phone", phone)
                   .maybeSingle();
+                if (!raced?.id) {
+                  const { data: byNorm } = await supabaseAdmin
+                    .from("zapi_chats")
+                    .select("id, contact_name, status, unread_count, closed_at")
+                    .eq("channel_id", channelId)
+                    .eq("phone_normalized", phone)
+                    .maybeSingle();
+                  raced = byNorm || null;
+                }
                 if (raced?.id) {
                   existing = raced;
                   chatId = raced.id;
