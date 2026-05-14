@@ -215,6 +215,13 @@ export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
 
 async function processWebhookPayload({ channelId, p }: { channelId: string; p: any }) {
 
+        // DeliveryCallback (variação Z-API para grupos): apenas confirmação
+        // de entrega ao destinatário. Sem ids/status úteis aqui — silenciamos
+        // para parar o ruído de "unknown event" sem afetar nada.
+        if (p.type === "DeliveryCallback") {
+          return;
+        }
+
         // Status events: update message status
         if (p.type === "MessageStatusCallback" && p.status && p.ids) {
           const status = String(p.status).toLowerCase();
