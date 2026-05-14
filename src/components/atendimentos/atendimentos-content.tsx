@@ -102,6 +102,25 @@ export function AtendimentosContent() {
           compraEquipByTicket[it.ticket_id].push(it);
         }
 
+        // Buscar pedidos de compra (setor Compras) — itens + request com tracking
+        var purchaseItemsByTicket: Record<string, any[]> = {};
+        var purchaseRequestByTicket: Record<string, any> = {};
+        const { data: pItems } = await supabase
+          .from("ticket_purchase_items" as any)
+          .select("ticket_id, status, quantity, item_name, delivered_at")
+          .in("ticket_id", ids);
+        for (const it of (pItems as any[]) || []) {
+          if (!purchaseItemsByTicket[it.ticket_id]) purchaseItemsByTicket[it.ticket_id] = [];
+          purchaseItemsByTicket[it.ticket_id].push(it);
+        }
+        const { data: pReqs } = await supabase
+          .from("ticket_purchase_requests" as any)
+          .select("ticket_id, status, tracking_code, expected_delivery, freight")
+          .in("ticket_id", ids);
+        for (const r of (pReqs as any[]) || []) {
+          purchaseRequestByTicket[r.ticket_id] = r;
+        }
+
         // Buscar agentes adicionais (ticket_agents) para cada ticket
         var agentsByTicket: Record<string, string[]> = {};
         const { data: agents } = await supabase
@@ -132,6 +151,8 @@ export function AtendimentosContent() {
         liberacao_items: liberacaoByTicket[t.id] || [],
         suprimento_items: suprimentoByTicket[t.id] || [],
         compra_equipamento_items: compraEquipByTicket[t.id] || [],
+        purchase_items: (typeof purchaseItemsByTicket !== "undefined" ? purchaseItemsByTicket[t.id] : undefined) || [],
+        purchase_request: (typeof purchaseRequestByTicket !== "undefined" ? purchaseRequestByTicket[t.id] : undefined) || null,
         agent_user_ids: (typeof agentsByTicket !== "undefined" ? agentsByTicket[t.id] : undefined) || [],
         is_recurring: typeof recurringSet !== "undefined" ? recurringSet.has(t.id) : false,
       }));

@@ -10,6 +10,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { finalizeTicketWithFlow } from "@/lib/ticket-finalize-flow";
 import { formatTicketProtocol } from "@/lib/protocol-format";
 import { LiberacaoBadge } from "./liberacao-badge";
+import { ComprasInfo } from "./compras-info";
 
 interface TicketKanbanViewProps {
   tickets: any[];
@@ -178,6 +179,7 @@ export function TicketKanbanView({ tickets, onSelect, onRefetch }: TicketKanbanV
                         : "Sem interações"}
                     </span>
                     <LiberacaoBadge ticket={t} />
+                    <ComprasInfo ticket={t} />
                   </CardContent>
                 </Card>
               ))}
