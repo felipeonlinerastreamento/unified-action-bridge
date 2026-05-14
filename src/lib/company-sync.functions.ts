@@ -1,7 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
-import { writeAuditLog } from "@/lib/audit.functions";
+import { writeAuditLog } from "@/lib/audit.server";
 
 const linkPhoneToCompanySchema = z.object({
   companyName: z.string().min(1).max(255),
