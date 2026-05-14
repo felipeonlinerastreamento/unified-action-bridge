@@ -67,6 +67,21 @@ function timeLabel(d: Date) {
   return d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
 
+// Mirrors the SQL function `normalize_zapi_phone` so we can match
+// against the generated column `phone_normalized` on zapi_chats.
+function normalizePhone(raw: string): string {
+  if (!raw) return raw;
+  if (/@g\.us/.test(raw) || /-\d{8,}/.test(raw)) return raw;
+  let digits = raw.replace(/\D/g, "");
+  if (!digits) return raw;
+  if (digits.length >= 15) return "lid:" + digits;
+  if (digits.length >= 10 && digits.length <= 11) digits = "55" + digits;
+  if (/^55[1-9][0-9][6-9][0-9]{7}$/.test(digits)) {
+    digits = digits.slice(0, 4) + "9" + digits.slice(4);
+  }
+  return digits;
+}
+
 export function FullConversationHistoryDialog({
   open,
   onOpenChange,
