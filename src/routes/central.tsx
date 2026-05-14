@@ -1888,7 +1888,9 @@ function CentralPage() {
         console.warn("[Finalize] Failed to load CSAT settings", e);
       }
 
-      if (skipMsg) {
+      if (pendingResolve) {
+        console.log("[Finalize] 'A resolver' — protocolo mantido aberto, sem envio de mensagem de encerramento");
+      } else if (skipMsg) {
         console.log("[Finalize] Skipping closing message and CSAT (admin opt-out)");
       } else if (csatEnabled && contactPhone) {
         // Envia somente a mensagem de CSAT (substitui a de finalização)
