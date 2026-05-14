@@ -151,6 +151,8 @@ export function AtendimentosContent() {
         liberacao_items: liberacaoByTicket[t.id] || [],
         suprimento_items: suprimentoByTicket[t.id] || [],
         compra_equipamento_items: compraEquipByTicket[t.id] || [],
+        purchase_items: (typeof purchaseItemsByTicket !== "undefined" ? purchaseItemsByTicket[t.id] : undefined) || [],
+        purchase_request: (typeof purchaseRequestByTicket !== "undefined" ? purchaseRequestByTicket[t.id] : undefined) || null,
         agent_user_ids: (typeof agentsByTicket !== "undefined" ? agentsByTicket[t.id] : undefined) || [],
         is_recurring: typeof recurringSet !== "undefined" ? recurringSet.has(t.id) : false,
       }));
