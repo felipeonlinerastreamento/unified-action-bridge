@@ -166,6 +166,22 @@ export function AppSidebar() {
                 </SidebarMenuItem>
               ))}
 
+              {/* Auditoria — visível para Admin e Gestor */}
+              {canAudit && !isAdmin && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={location.pathname === "/configuracoes/auditoria"}
+                    tooltip="Auditoria"
+                  >
+                    <Link to="/configuracoes/auditoria">
+                      <ShieldCheck className="h-4 w-4" />
+                      <span>Auditoria</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+
               {/* Configurações com submenus (admin only) */}
               {isAdmin && (
                 <Collapsible defaultOpen={isConfigActive} className="group/collapsible">
