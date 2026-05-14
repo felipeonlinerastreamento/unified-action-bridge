@@ -109,7 +109,7 @@ export function OkrList() {
                       <Badge variant="outline">{levelLabel(obj.level)}</Badge>
                       {obj.status !== "ativo" && <Badge variant="secondary">{obj.status}</Badge>}
                     </div>
-                    {obj.description && <p className="text-sm text-muted-foreground mt-1">{obj.description}</p>}
+                    {obj.description && <p className="text-sm text-muted-foreground mt-1 whitespace-pre-wrap break-words">{obj.description}</p>}
                     <div className="mt-2 flex items-center gap-3">
                       <Progress value={score * 100} className="h-2 flex-1" />
                       <span className="text-sm font-mono w-12 text-right">{Math.round(score * 100)}%</span>
