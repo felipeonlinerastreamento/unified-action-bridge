@@ -4281,6 +4281,11 @@ function CentralPage() {
                   <SelectItem value="Resolvido">Resolvido</SelectItem>
                 </SelectContent>
               </Select>
+              {finalizeStatus === "A resolver" && (
+                <p className="text-[11px] text-muted-foreground">
+                  O chat sai da Central, mas o protocolo continua aberto. Quando o cliente responder, o atendimento volta para você no mesmo protocolo, sem disparar o bot.
+                </p>
+              )}
             </div>
 
             <div className="space-y-2">
