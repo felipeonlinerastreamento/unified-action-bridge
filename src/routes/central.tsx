@@ -830,7 +830,7 @@ function CentralPage() {
   // Identification modal form state
   const [identTab, setIdentTab] = useState<"vincular" | "subcliente" | "vincular-sub" | "crm">("vincular");
   type IdentContractItem = { categoryId: string; quantity: number; activationValue: number; monthlyValue: number };
-  const [identForm, setIdentForm] = useState<{ name: string; phone: string; email: string; notes: string; companyId: string; contactType: "PF" | "PJ"; categoryId: string; cnpj: string; companyNameInput: string; items: IdentContractItem[]; referralId: string }>({ name: "", phone: "", email: "", notes: "", companyId: "", contactType: "PF", categoryId: "", cnpj: "", companyNameInput: "", items: [], referralId: "" });
+  const [identForm, setIdentForm] = useState<{ name: string; phone: string; email: string; notes: string; companyId: string; contactType: "PF" | "PJ" | "FORN"; categoryId: string; cnpj: string; companyNameInput: string; items: IdentContractItem[]; referralId: string; supplierCategory: string }>({ name: "", phone: "", email: "", notes: "", companyId: "", contactType: "PF", categoryId: "", cnpj: "", companyNameInput: "", items: [], referralId: "", supplierCategory: "" });
   const [companySearch, setCompanySearch] = useState("");
   const [subClientSearch, setSubClientSearch] = useState("");
   const [crmCategoryDraft, setCrmCategoryDraft] = useState("");
