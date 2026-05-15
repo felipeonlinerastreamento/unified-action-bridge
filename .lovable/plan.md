@@ -1,67 +1,37 @@
 ## Objetivo
 
-Quando o operador finalizar uma conversa com status **"A resolver"**, o protocolo (ticket) **não deve ser encerrado**. O chat sai da Central de Atendimento, mas:
-
-- O `service_ticket` permanece **aberto** (não recebe `closed_at`, mantém `protocol_number` original).
-- Quando o cliente enviar nova mensagem, o chat reabre **no mesmo protocolo**, atribuído ao **mesmo operador** que marcou "A resolver", **sem disparar bot/saudação**.
-- Apenas a finalização como **"Resolvido"** encerra o ticket de fato e gera novo protocolo na próxima interação.
-
----
+Adicionar a opção **"Fornecedor"** ao seletor "Tipo de pessoa" no fluxo de cadastro de cliente novo (aba **CRM** do diálogo de identificação na Central de Atendimento). Ao escolher Fornecedor, exibir campos para **categoria** (texto livre) e **observação**.
 
 ## Mudanças
 
-### 1. Finalização "A resolver" — `src/routes/central.tsx` (`finalizeMutation`)
+### 1. Banco de dados (migration)
+- `crm_contacts.contact_type`: aceitar novo valor `'FORN'` (hoje aceita `'PF'` e `'PJ'`). Ajustar CHECK constraint, se houver.
+- Adicionar coluna `crm_contacts.supplier_category text` (nullable) — guarda a categoria digitada para fornecedores.
 
-Detectar `status === "A resolver"` (renomear variável para `pendingResolve = status === "A resolver"`) e quando verdadeiro:
+### 2. Backend — `src/lib/company-sync.functions.ts`
+- `createCrmContactSchema`:
+  - `contactType: z.enum(["PF", "PJ", "FORN"]).optional()`
+  - novo `supplierCategory: z.string().max(255).optional()`
+- `createCrmContactWithCompany.handler`:
+  - Normalizar `contactType` permitindo `FORN`.
+  - Quando `FORN`: `category_id = null`, gravar `supplier_category` no insert; empresa permanece opcional (não exigida).
+  - Demais casos inalterados.
 
-- **NÃO** atualizar `service_tickets.status` para `finalizado`. Mantém ticket como `aberto` (ou cria novo já como `aberto` em vez de `finalizado` no fallback das linhas 1620-1655 e 1990-2026).
-- **NÃO** chamar `concluirPendencia` no GSystem (já é o caso, só dispara em `Resolvido`).
-- **NÃO** rodar `finalizeTicketWithFlow` (pular bloco 2029-2054 quando `pendingResolve`).
-- **NÃO** enviar mensagem de fechamento/CSAT (`sendText` linhas 1909-1939 e bloco CSAT acima — pular quando `pendingResolve`).
-- **SIM** fechar o `zapi_chat`: marcar com novo status `aguardando_retorno` (em vez de `finalizado`) e gravar `assigned_to` preservado + nova coluna `pending_resolve_user_id`. Isso tira da Central (queries de chats abertos filtram `status in ('aguardando','em_atendimento','bot')`) mas distingue de finalização real.
+### 3. Frontend — `src/routes/central.tsx`
+- `identForm` state: alterar tipo `contactType: "PF" | "PJ"` → `"PF" | "PJ" | "FORN"`; adicionar `supplierCategory: string` (default `""`); resetar nos pontos onde `identForm` é reinicializado.
+- Aba **"Cadastrar no CRM"** (linhas ~4019-4250):
+  - Trocar o grupo de 2 botões por 3 botões (PF · Pessoa Física | PJ · Pessoa Jurídica | Fornecedor). Layout em grid de 3 colunas para caber bem em 1336px.
+  - Quando `contactType === "FORN"`: renderizar bloco com:
+    - Input "Categoria *" (`identForm.supplierCategory`)
+    - Textarea "Observação" — reutiliza o campo `notes` que já existe abaixo (para evitar duplicar). Adicionar apenas um hint visual de que é obrigatória a categoria.
+  - Esconder os blocos exclusivos de PJ (categoria PJ, razão social, CNPJ, itens de contrato) quando tipo for FORN.
+- `createCrmContactMutation`: enviar `contactType` e `supplierCategory` quando aplicável; validação do botão exige `name` + (se FORN) `supplierCategory`.
 
-### 2. Schema — migração
+### 4. Tipos Supabase
+- Atualizados automaticamente após a migration; nada a editar manualmente.
 
-Adicionar em `zapi_chats`:
-- `pending_resolve_user_id uuid` — operador que marcou "A resolver".
-- `pending_resolve_ticket_id uuid` — referência ao ticket que deve ser reutilizado no retorno.
-- `pending_resolve_at timestamptz`.
+## Fora do escopo
+- Listagem/edição de fornecedores em outras telas (CRM list, contatos). Apenas o cadastro inicial pelo chat. Pode-se evoluir depois.
 
-Sem mexer em `service_tickets` (continua `status='aberto'` com `protocol_number` já existente).
-
-### 3. Reabertura no webhook — `src/routes/api.public.zapi-webhook.$channelId.tsx`
-
-No bloco `shouldReopen` (linha ~811-887):
-
-- Detectar caso "pending resolve": `existing.status === 'aguardando_retorno'` (ou `existing.pending_resolve_ticket_id != null`).
-- Quando for pending-resolve:
-  - **NÃO** chamar `ensureOpenTicketForChat` (não criar novo ticket — o anterior continua aberto).
-  - Atribuir `assigned_to = existing.pending_resolve_user_id` (se o operador estiver online via `pick_least_loaded_agent` check; caso offline, cair para least-loaded do setor).
-  - Definir `status = 'em_atendimento'`.
-  - Limpar campos `pending_resolve_*`.
-  - Marcar `justReopenedSilently = true` (já existe) → garante que o bot não rode (linha 975 já respeita).
-- Caso normal de `finalizado` permanece como hoje (cria novo ticket/protocolo).
-
-### 4. UI
-
-- Toast de finalização: "Atendimento marcado como A resolver — protocolo {N} continua aberto" quando `pendingResolve`.
-- Mensagem do diálogo de finalização: pequena nota explicando que "A resolver" mantém o protocolo aberto.
-
----
-
-## Detalhes técnicos
-
-**Por que `aguardando_retorno` em vez de `finalizado`:** todos os filtros existentes que listam chats ativos checam `status != 'finalizado'`. Usar um status novo evita que o chat apareça na Central, mas também evita que o webhook execute o caminho "reabrir = novo protocolo". O webhook ganha um branch dedicado para esse status.
-
-**Auditoria:** registrar evento `chat_pending_resolve` em `audit_logs` (categoria `attendance`) com `ticket_id` e `protocol_number`, reutilizando `logAuditEvent` já existente.
-
-**Sem mudanças** em: GSystem sync, fluxos de roteamento (TE / category rules), CSAT, escalonamento. Esses só rodam em "Resolvido".
-
----
-
-## Arquivos afetados
-
-- `src/routes/central.tsx` (mutationFn de `finalizeMutation`, copy do diálogo, toast)
-- `src/routes/api.public.zapi-webhook.$channelId.tsx` (branch de reabertura)
-- Migração SQL: novas colunas em `zapi_chats`
-- `src/lib/audit.functions.ts` / `.server.ts` (novo `event_type`)
+## Riscos
+- A constraint atual de `contact_type` (se existir como CHECK ou enum) pode rejeitar `FORN` antes da migration. A migration trata isso explicitamente.

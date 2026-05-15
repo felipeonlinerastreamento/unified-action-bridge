@@ -36,10 +36,11 @@ const createCrmContactSchema = z.object({
   notes: z.string().max(2000).optional(),
   ticketId: z.string().uuid().optional(),
   originalPhone: z.string().max(32).optional(),
-  contactType: z.enum(["PF", "PJ"]).optional(),
+  contactType: z.enum(["PF", "PJ", "FORN"]).optional(),
   categoryId: z.string().uuid().optional(),
   referralId: z.string().uuid().optional(),
   contractItems: z.array(contractItemSchema).optional(),
+  supplierCategory: z.string().max(255).optional(),
 });
 
 function cleanDigits(value?: string | null) {
@@ -212,8 +213,9 @@ export const createCrmContactWithCompany = createServerFn({ method: "POST" })
         ? `${data.notes || ""}${data.notes ? "\n" : ""}Telefone original: ${cleanOriginal}`
         : data.notes || "";
 
-    const contactType = data.contactType === "PJ" ? "PJ" : "PF";
+    const contactType = data.contactType === "PJ" ? "PJ" : data.contactType === "FORN" ? "FORN" : "PF";
     const categoryId = contactType === "PJ" ? (data.categoryId || null) : null;
+    const supplierCategory = contactType === "FORN" ? (data.supplierCategory?.trim() || null) : null;
 
     const items = (data.contractItems || []).filter((i) => i.categoryId);
     const { data: created, error } = await supabase
@@ -229,6 +231,7 @@ export const createCrmContactWithCompany = createServerFn({ method: "POST" })
         category_id: categoryId,
         referral_id: data.referralId || null,
         contract_items: items as any,
+        supplier_category: supplierCategory,
       })
       .select("id")
       .single();

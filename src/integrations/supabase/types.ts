@@ -1056,6 +1056,7 @@ export type Database = {
           referral_id: string | null
           referred_by_contact_id: string | null
           rfm_segment: string | null
+          supplier_category: string | null
           updated_at: string
         }
         Insert: {
@@ -1079,6 +1080,7 @@ export type Database = {
           referral_id?: string | null
           referred_by_contact_id?: string | null
           rfm_segment?: string | null
+          supplier_category?: string | null
           updated_at?: string
         }
         Update: {
@@ -1102,6 +1104,7 @@ export type Database = {
           referral_id?: string | null
           referred_by_contact_id?: string | null
           rfm_segment?: string | null
+          supplier_category?: string | null
           updated_at?: string
         }
         Relationships: [

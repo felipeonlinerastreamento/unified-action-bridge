@@ -830,7 +830,7 @@ function CentralPage() {
   // Identification modal form state
   const [identTab, setIdentTab] = useState<"vincular" | "subcliente" | "vincular-sub" | "crm">("vincular");
   type IdentContractItem = { categoryId: string; quantity: number; activationValue: number; monthlyValue: number };
-  const [identForm, setIdentForm] = useState<{ name: string; phone: string; email: string; notes: string; companyId: string; contactType: "PF" | "PJ"; categoryId: string; cnpj: string; companyNameInput: string; items: IdentContractItem[]; referralId: string }>({ name: "", phone: "", email: "", notes: "", companyId: "", contactType: "PF", categoryId: "", cnpj: "", companyNameInput: "", items: [], referralId: "" });
+  const [identForm, setIdentForm] = useState<{ name: string; phone: string; email: string; notes: string; companyId: string; contactType: "PF" | "PJ" | "FORN"; categoryId: string; cnpj: string; companyNameInput: string; items: IdentContractItem[]; referralId: string; supplierCategory: string }>({ name: "", phone: "", email: "", notes: "", companyId: "", contactType: "PF", categoryId: "", cnpj: "", companyNameInput: "", items: [], referralId: "", supplierCategory: "" });
   const [companySearch, setCompanySearch] = useState("");
   const [subClientSearch, setSubClientSearch] = useState("");
   const [crmCategoryDraft, setCrmCategoryDraft] = useState("");
@@ -891,6 +891,7 @@ function CentralPage() {
       companyNameInput: "",
       items: [],
       referralId: "",
+      supplierCategory: "",
     });
     setIdentTab("vincular");
     setChangingCompany(false);
@@ -993,6 +994,9 @@ function CentralPage() {
   const createCrmContactMutation = useMutation({
     mutationFn: async () => {
       if (!identForm.name) throw new Error("Preencha o nome");
+      if (identForm.contactType === "FORN" && !identForm.supplierCategory.trim()) {
+        throw new Error("Informe a categoria do fornecedor");
+      }
       const selectedCompany = identForm.companyId ? getSelectedCompany(identForm.companyId) : null;
 
       await createCrmContactWithCompany({
@@ -1008,6 +1012,7 @@ function CentralPage() {
           categoryId: identForm.contactType === "PJ" ? (identForm.categoryId || undefined) : undefined,
           referralId: identForm.referralId || undefined,
           contractItems: identForm.contactType === "PJ" ? identForm.items.filter(i => i.categoryId) : undefined,
+          supplierCategory: identForm.contactType === "FORN" ? identForm.supplierCategory.trim() : undefined,
         },
         ...await getAuthHeaders(),
       });
@@ -4024,13 +4029,12 @@ function CentralPage() {
               <div className="space-y-2">
                 <div>
                   <Label className="text-xs">Tipo de pessoa *</Label>
-                  <div className="flex gap-2 mt-1">
+                  <div className="grid grid-cols-3 gap-2 mt-1">
                     <Button
                       type="button"
                       size="sm"
                       variant={identForm.contactType === "PF" ? "default" : "outline"}
-                      className="flex-1"
-                      onClick={() => setIdentForm((f) => ({ ...f, contactType: "PF", categoryId: "" }))}
+                      onClick={() => setIdentForm((f) => ({ ...f, contactType: "PF", categoryId: "", supplierCategory: "" }))}
                     >
                       PF · Pessoa Física
                     </Button>
@@ -4038,13 +4042,35 @@ function CentralPage() {
                       type="button"
                       size="sm"
                       variant={identForm.contactType === "PJ" ? "default" : "outline"}
-                      className="flex-1"
-                      onClick={() => setIdentForm((f) => ({ ...f, contactType: "PJ" }))}
+                      onClick={() => setIdentForm((f) => ({ ...f, contactType: "PJ", supplierCategory: "" }))}
                     >
                       PJ · Pessoa Jurídica
                     </Button>
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant={identForm.contactType === "FORN" ? "default" : "outline"}
+                      onClick={() => setIdentForm((f) => ({ ...f, contactType: "FORN", categoryId: "" }))}
+                    >
+                      Fornecedor
+                    </Button>
                   </div>
                 </div>
+                {identForm.contactType === "FORN" && (
+                  <div className="space-y-2 rounded-md border border-border p-2 bg-muted/30">
+                    <div>
+                      <Label className="text-xs">Categoria do fornecedor *</Label>
+                      <Input
+                        value={identForm.supplierCategory}
+                        onChange={(e) => setIdentForm((f) => ({ ...f, supplierCategory: e.target.value }))}
+                        placeholder="Ex: Toner, Peças, Logística..."
+                      />
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      Use o campo "Observações" abaixo para detalhes adicionais.
+                    </p>
+                  </div>
+                )}
                 {identForm.contactType === "PJ" && (
                   <div className="space-y-2">
                     <Label className="text-xs">Categoria (PJ)</Label>
