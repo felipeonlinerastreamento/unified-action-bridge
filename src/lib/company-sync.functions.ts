@@ -213,8 +213,9 @@ export const createCrmContactWithCompany = createServerFn({ method: "POST" })
         ? `${data.notes || ""}${data.notes ? "\n" : ""}Telefone original: ${cleanOriginal}`
         : data.notes || "";
 
-    const contactType = data.contactType === "PJ" ? "PJ" : "PF";
+    const contactType = data.contactType === "PJ" ? "PJ" : data.contactType === "FORN" ? "FORN" : "PF";
     const categoryId = contactType === "PJ" ? (data.categoryId || null) : null;
+    const supplierCategory = contactType === "FORN" ? (data.supplierCategory?.trim() || null) : null;
 
     const items = (data.contractItems || []).filter((i) => i.categoryId);
     const { data: created, error } = await supabase
@@ -230,6 +231,7 @@ export const createCrmContactWithCompany = createServerFn({ method: "POST" })
         category_id: categoryId,
         referral_id: data.referralId || null,
         contract_items: items as any,
+        supplier_category: supplierCategory,
       })
       .select("id")
       .single();
