@@ -36,10 +36,11 @@ const createCrmContactSchema = z.object({
   notes: z.string().max(2000).optional(),
   ticketId: z.string().uuid().optional(),
   originalPhone: z.string().max(32).optional(),
-  contactType: z.enum(["PF", "PJ"]).optional(),
+  contactType: z.enum(["PF", "PJ", "FORN"]).optional(),
   categoryId: z.string().uuid().optional(),
   referralId: z.string().uuid().optional(),
   contractItems: z.array(contractItemSchema).optional(),
+  supplierCategory: z.string().max(255).optional(),
 });
 
 function cleanDigits(value?: string | null) {
