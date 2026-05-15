@@ -994,6 +994,9 @@ function CentralPage() {
   const createCrmContactMutation = useMutation({
     mutationFn: async () => {
       if (!identForm.name) throw new Error("Preencha o nome");
+      if (identForm.contactType === "FORN" && !identForm.supplierCategory.trim()) {
+        throw new Error("Informe a categoria do fornecedor");
+      }
       const selectedCompany = identForm.companyId ? getSelectedCompany(identForm.companyId) : null;
 
       await createCrmContactWithCompany({
@@ -1009,6 +1012,7 @@ function CentralPage() {
           categoryId: identForm.contactType === "PJ" ? (identForm.categoryId || undefined) : undefined,
           referralId: identForm.referralId || undefined,
           contractItems: identForm.contactType === "PJ" ? identForm.items.filter(i => i.categoryId) : undefined,
+          supplierCategory: identForm.contactType === "FORN" ? identForm.supplierCategory.trim() : undefined,
         },
         ...await getAuthHeaders(),
       });
