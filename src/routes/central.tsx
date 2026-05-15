@@ -891,6 +891,7 @@ function CentralPage() {
       companyNameInput: "",
       items: [],
       referralId: "",
+      supplierCategory: "",
     });
     setIdentTab("vincular");
     setChangingCompany(false);
