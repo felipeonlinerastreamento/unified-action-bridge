@@ -92,6 +92,30 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_manager_settings: {
+        Row: {
+          id: string
+          instructions: string
+          singleton: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          instructions?: string
+          singleton?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          instructions?: string
+          singleton?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       ai_usage_logs: {
         Row: {
           created_at: string
