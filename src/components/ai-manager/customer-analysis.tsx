@@ -20,6 +20,7 @@ import {
   generateAiManagerReport,
   getLatestAiManagerReport,
 } from "@/lib/ai-manager.functions";
+import { ManagerInstructionsCard } from "./manager-instructions-card";
 
 function riskBadge(risk: string) {
   if (risk === "alto") return <Badge variant="destructive">Alto</Badge>;
