@@ -20,6 +20,7 @@ import {
   generateAiManagerReport,
   getLatestAiManagerReport,
 } from "@/lib/ai-manager.functions";
+import { ManagerInstructionsCard } from "./manager-instructions-card";
 
 type Aggregate = {
   operators: Array<{
