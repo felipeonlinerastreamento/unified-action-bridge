@@ -1,37 +1,45 @@
 ## Objetivo
 
-Adicionar a opção **"Fornecedor"** ao seletor "Tipo de pessoa" no fluxo de cadastro de cliente novo (aba **CRM** do diálogo de identificação na Central de Atendimento). Ao escolher Fornecedor, exibir campos para **categoria** (texto livre) e **observação**.
+Hoje, ao abrir um chat com contato não identificado, o popup "Cliente não identificado" abre automaticamente logo no início do atendimento. A proposta é **não abrir mais o popup no início** — ele só aparecerá quando o operador clicar em **Finalizar atendimento**, bloqueando a finalização até que o cadastro seja feito (ou o telefone vinculado a uma empresa/sub-cliente/CRM existente).
 
-## Mudanças
+## Mudanças (somente `src/routes/central.tsx`)
 
-### 1. Banco de dados (migration)
-- `crm_contacts.contact_type`: aceitar novo valor `'FORN'` (hoje aceita `'PF'` e `'PJ'`). Ajustar CHECK constraint, se houver.
-- Adicionar coluna `crm_contacts.supplier_category text` (nullable) — guarda a categoria digitada para fornecedores.
+### 1. Remover abertura automática no início
+- Remover o `useEffect` (linhas ~1102-1107) que faz `setIdentModalOpen(true)` assim que `isUnidentified` fica verdadeiro.
+- Manter o cálculo de `isUnidentified` — continua sendo usado para decidir se a finalização exige cadastro.
+- Manter o estado `identModalDismissed` (não atrapalha) e o botão manual já existente no header (ícone de identificação) para quem quiser cadastrar antes.
 
-### 2. Backend — `src/lib/company-sync.functions.ts`
-- `createCrmContactSchema`:
-  - `contactType: z.enum(["PF", "PJ", "FORN"]).optional()`
-  - novo `supplierCategory: z.string().max(255).optional()`
-- `createCrmContactWithCompany.handler`:
-  - Normalizar `contactType` permitindo `FORN`.
-  - Quando `FORN`: `category_id = null`, gravar `supplier_category` no insert; empresa permanece opcional (não exigida).
-  - Demais casos inalterados.
+### 2. Disparar o popup ao tentar finalizar
+No `onClick` do botão **Finalizar** (linhas ~2741-2761), trocar o comportamento atual:
 
-### 3. Frontend — `src/routes/central.tsx`
-- `identForm` state: alterar tipo `contactType: "PF" | "PJ"` → `"PF" | "PJ" | "FORN"`; adicionar `supplierCategory: string` (default `""`); resetar nos pontos onde `identForm` é reinicializado.
-- Aba **"Cadastrar no CRM"** (linhas ~4019-4250):
-  - Trocar o grupo de 2 botões por 3 botões (PF · Pessoa Física | PJ · Pessoa Jurídica | Fornecedor). Layout em grid de 3 colunas para caber bem em 1336px.
-  - Quando `contactType === "FORN"`: renderizar bloco com:
-    - Input "Categoria *" (`identForm.supplierCategory`)
-    - Textarea "Observação" — reutiliza o campo `notes` que já existe abaixo (para evitar duplicar). Adicionar apenas um hint visual de que é obrigatória a categoria.
-  - Esconder os blocos exclusivos de PJ (categoria PJ, razão social, CNPJ, itens de contrato) quando tipo for FORN.
-- `createCrmContactMutation`: enviar `contactType` e `supplierCategory` quando aplicável; validação do botão exige `name` + (se FORN) `supplierCategory`.
+Hoje:
+```ts
+if (isUnidentified) {
+  toast.error("É obrigatório identificar o contato antes de finalizar...");
+  return;
+}
+```
 
-### 4. Tipos Supabase
-- Atualizados automaticamente após a migration; nada a editar manualmente.
+Passa a ser:
+```ts
+if (isUnidentified) {
+  setIdentModalOpen(true);
+  toast.info("Cadastre o contato para concluir a finalização.");
+  return;
+}
+```
+
+Assim o popup abre exatamente no momento da finalização. Após o cadastro (sucesso da `createCrmContactMutation` / `createSubClientMutation` / `linkPhoneMutation`), o operador clica novamente em **Finalizar** e o fluxo segue normal (as queries de lookup já invalidam e `isUnidentified` passa a `false`).
+
+### 3. Ajustes menores de copy/UX
+- Tooltip do botão Finalizar passa de "Identifique o contato antes de finalizar" para "Finalizar atendimento" (sempre), já que agora o próprio clique conduz ao cadastro.
+- Sem mudanças no conteúdo do diálogo de identificação em si (abas PF/PJ/Fornecedor, Sub-cliente, Vincular empresa) — apenas o gatilho muda.
 
 ## Fora do escopo
-- Listagem/edição de fornecedores em outras telas (CRM list, contatos). Apenas o cadastro inicial pelo chat. Pode-se evoluir depois.
+- Lógica de webhook, criação de protocolo no início do chat, regras do "A resolver" — nada disso é tocado.
+- Backend (`company-sync.functions.ts`) e migrations — não há mudança.
+- Grupos continuam isentos (já tratados por `isGroup`).
 
 ## Riscos
-- A constraint atual de `contact_type` (se existir como CHECK ou enum) pode rejeitar `FORN` antes da migration. A migration trata isso explicitamente.
+- Operador pode clicar Finalizar, ver o popup, fechar sem cadastrar e tentar de novo — o fluxo se repete (comportamento desejado: bloqueia até identificar).
+- Se o lookup ainda estiver carregando (`lookupsReady=false`), `isUnidentified` é `false` e a finalização passa direto. Comportamento idêntico ao atual; sem regressão.

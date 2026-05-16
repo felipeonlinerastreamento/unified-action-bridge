@@ -1099,12 +1099,8 @@ function CentralPage() {
   const lookupsReady = companyLookupFetched && subClientLookupFetched && crmContactLookupFetched && currentTicketFetched;
   const isUnidentified = lookupsReady && !isGroup && !!chatDetail && !!contactPhone && !companyLookup && !subClientLookup && !crmContactLookup && !currentTicket?.company_id;
 
-  // Auto-open identification modal when contact is unidentified
-  useEffect(() => {
-    if (isUnidentified && selectedChatId && !identModalDismissed[selectedChatId]) {
-      setIdentModalOpen(true);
-    }
-  }, [isUnidentified, selectedChatId, identModalDismissed]);
+  // Identification modal is no longer auto-opened on chat start.
+  // It is now triggered when the operator clicks "Finalizar" on an unidentified contact.
 
   const retryPendenciaCreation = useCallback(async () => {
     const ticket = currentTicket;
@@ -2737,10 +2733,11 @@ function CentralPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          title={isUnidentified ? "Identifique o contato antes de finalizar" : "Finalizar atendimento"}
+                          title="Finalizar atendimento"
                           onClick={() => {
                             if (isUnidentified) {
-                              toast.error("É obrigatório identificar o contato antes de finalizar o atendimento.");
+                              setIdentModalOpen(true);
+                              toast.info("Cadastre o contato para concluir a finalização.");
                               return;
                             }
                             if (!finalizeTipoPendencia) {
