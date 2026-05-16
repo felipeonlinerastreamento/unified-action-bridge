@@ -20,6 +20,7 @@ import {
   generateAiManagerReport,
   getLatestAiManagerReport,
 } from "@/lib/ai-manager.functions";
+import { ManagerInstructionsCard } from "./manager-instructions-card";
 
 function riskBadge(risk: string) {
   if (risk === "alto") return <Badge variant="destructive">Alto</Badge>;
@@ -82,6 +83,7 @@ export function CustomerAnalysisView() {
 
   return (
     <div className="space-y-4">
+      <ManagerInstructionsCard />
       {/* Header com controles */}
       <Card>
         <CardContent className="p-4 flex flex-wrap items-center gap-3">

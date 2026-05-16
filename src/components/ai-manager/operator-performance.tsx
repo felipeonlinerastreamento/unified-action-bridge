@@ -20,6 +20,7 @@ import {
   generateAiManagerReport,
   getLatestAiManagerReport,
 } from "@/lib/ai-manager.functions";
+import { ManagerInstructionsCard } from "./manager-instructions-card";
 
 type Aggregate = {
   operators: Array<{
@@ -84,6 +85,7 @@ export function OperatorPerformanceView() {
 
   return (
     <div className="space-y-4">
+      <ManagerInstructionsCard />
       {/* Header */}
       <Card>
         <CardContent className="p-4 flex flex-wrap items-center gap-3">
