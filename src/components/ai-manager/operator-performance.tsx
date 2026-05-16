@@ -85,6 +85,7 @@ export function OperatorPerformanceView() {
 
   return (
     <div className="space-y-4">
+      <ManagerInstructionsCard />
       {/* Header */}
       <Card>
         <CardContent className="p-4 flex flex-wrap items-center gap-3">
