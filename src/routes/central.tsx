@@ -1099,12 +1099,8 @@ function CentralPage() {
   const lookupsReady = companyLookupFetched && subClientLookupFetched && crmContactLookupFetched && currentTicketFetched;
   const isUnidentified = lookupsReady && !isGroup && !!chatDetail && !!contactPhone && !companyLookup && !subClientLookup && !crmContactLookup && !currentTicket?.company_id;
 
-  // Auto-open identification modal when contact is unidentified
-  useEffect(() => {
-    if (isUnidentified && selectedChatId && !identModalDismissed[selectedChatId]) {
-      setIdentModalOpen(true);
-    }
-  }, [isUnidentified, selectedChatId, identModalDismissed]);
+  // Identification modal is no longer auto-opened on chat start.
+  // It is now triggered when the operator clicks "Finalizar" on an unidentified contact.
 
   const retryPendenciaCreation = useCallback(async () => {
     const ticket = currentTicket;
