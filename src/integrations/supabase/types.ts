@@ -65,6 +65,33 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_manager_reports: {
+        Row: {
+          generated_at: string
+          generated_by: string | null
+          id: string
+          payload: Json
+          period_days: number
+          scope: string
+        }
+        Insert: {
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          payload: Json
+          period_days: number
+          scope: string
+        }
+        Update: {
+          generated_at?: string
+          generated_by?: string | null
+          id?: string
+          payload?: Json
+          period_days?: number
+          scope?: string
+        }
+        Relationships: []
+      }
       ai_usage_logs: {
         Row: {
           created_at: string
