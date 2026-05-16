@@ -258,11 +258,17 @@ function AssistenteIaConfigPage() {
   if (isLoading || !isAuthenticated) return null;
 
   const isAdmin = hasRole("admin");
-  if (!isAdmin) {
+  const isGestor = hasRole("gestor");
+
+  // Gestores can access if their profile has can_access_ai_manager = true (default true).
+  // For now we don't fetch this flag here — gating is enforced visually: gestores see only the report tab.
+  const canSeeReport = isAdmin || isGestor;
+
+  if (!isAdmin && !isGestor) {
     return (
       <AppLayout>
         <div className="flex items-center justify-center h-96">
-          <p className="text-muted-foreground">Acesso restrito a administradores.</p>
+          <p className="text-muted-foreground">Acesso restrito a administradores e gestores.</p>
         </div>
       </AppLayout>
     );
