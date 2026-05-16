@@ -2733,10 +2733,11 @@ function CentralPage() {
                         <Button
                           variant="outline"
                           size="sm"
-                          title={isUnidentified ? "Identifique o contato antes de finalizar" : "Finalizar atendimento"}
+                          title="Finalizar atendimento"
                           onClick={() => {
                             if (isUnidentified) {
-                              toast.error("É obrigatório identificar o contato antes de finalizar o atendimento.");
+                              setIdentModalOpen(true);
+                              toast.info("Cadastre o contato para concluir a finalização.");
                               return;
                             }
                             if (!finalizeTipoPendencia) {
