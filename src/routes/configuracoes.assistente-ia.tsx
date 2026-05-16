@@ -286,13 +286,35 @@ function AssistenteIaConfigPage() {
           </p>
         </div>
 
-        <Tabs defaultValue="config">
+        <Tabs defaultValue={isAdmin ? "config" : "manager"}>
           <TabsList>
-            <TabsTrigger value="config">Configuração</TabsTrigger>
-            <TabsTrigger value="docs">Base de Conhecimento</TabsTrigger>
-            <TabsTrigger value="chat">Chat com IA</TabsTrigger>
-            <TabsTrigger value="credits"><Zap className="h-3.5 w-3.5 mr-1" /> Créditos</TabsTrigger>
+            {isAdmin && <TabsTrigger value="config">Configuração</TabsTrigger>}
+            {isAdmin && <TabsTrigger value="docs">Base de Conhecimento</TabsTrigger>}
+            {isAdmin && <TabsTrigger value="chat">Chat com IA</TabsTrigger>}
+            {canSeeReport && (
+              <TabsTrigger value="manager">
+                <BarChart3 className="h-3.5 w-3.5 mr-1" /> Relatório IA
+              </TabsTrigger>
+            )}
+            {isAdmin && <TabsTrigger value="credits"><Zap className="h-3.5 w-3.5 mr-1" /> Créditos</TabsTrigger>}
           </TabsList>
+
+          {canSeeReport && (
+            <TabsContent value="manager" className="mt-4">
+              <Tabs defaultValue="customers">
+                <TabsList>
+                  <TabsTrigger value="customers">Análise de Clientes</TabsTrigger>
+                  <TabsTrigger value="operators">Performance de Operadores e Setores</TabsTrigger>
+                </TabsList>
+                <TabsContent value="customers" className="mt-4">
+                  <CustomerAnalysisView />
+                </TabsContent>
+                <TabsContent value="operators" className="mt-4">
+                  <OperatorPerformanceView />
+                </TabsContent>
+              </Tabs>
+            </TabsContent>
+          )}
 
           <TabsContent value="credits" className="mt-4">
             <AiCreditsPanel />
