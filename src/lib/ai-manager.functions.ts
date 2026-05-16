@@ -358,6 +358,40 @@ async function callLovableAi(systemPrompt: string, userPrompt: string): Promise<
 // Server Functions expostas
 // ============================================================
 
+async function loadManagerInstructions(): Promise<string> {
+  const supabase = getServiceSupabase();
+  const { data } = await supabase
+    .from("ai_manager_settings")
+    .select("instructions")
+    .eq("singleton", true)
+    .maybeSingle();
+  return (data?.instructions || "").trim();
+}
+
+export const getAiManagerInstructions = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertCanAccess(context.userId);
+    const instructions = await loadManagerInstructions();
+    return { instructions };
+  });
+
+export const updateAiManagerInstructions = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ instructions: z.string().max(4000) }).parse(input)
+  )
+  .handler(async ({ data, context }) => {
+    await assertCanAccess(context.userId);
+    const supabase = getServiceSupabase();
+    const { error } = await supabase
+      .from("ai_manager_settings")
+      .update({ instructions: data.instructions, updated_by: context.userId })
+      .eq("singleton", true);
+    if (error) throw new Error(error.message);
+    return { success: true };
+  });
+
 export const getLatestAiManagerReport = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => z.object({ scope: ScopeSchema }).parse(input))
