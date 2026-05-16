@@ -416,6 +416,10 @@ export const generateAiManagerReport = createServerFn({ method: "POST" })
   .handler(async ({ data, context }) => {
     await assertCanAccess(context.userId);
     const supabase = getServiceSupabase();
+    const managerInstructions = await loadManagerInstructions();
+    const instructionsBlock = managerInstructions
+      ? `\n\n## Instruções do gestor (prioridade alta — siga rigorosamente)\n${managerInstructions}\n`
+      : "";
 
     let payload: Record<string, unknown>;
 
@@ -423,7 +427,7 @@ export const generateAiManagerReport = createServerFn({ method: "POST" })
       const agg = await collectCustomersAggregate(data.period_days);
       const ai = (await callLovableAi(
         "Você é um gerente de atendimento sênior. Analise dados agregados de chamados e retorne JSON com insights claros em português brasileiro. Seja específico e acionável.",
-        `Dados dos últimos ${data.period_days} dias:\n\n${JSON.stringify(agg, null, 2)}\n\nRetorne JSON com este formato exato:\n{\n  "alerts": [{"severity":"info|warning|critical","title":"...","detail":"..."}],\n  "opportunities": [{"customer":"...","description":"...","potentialValue":"...","confidence":0-100}],\n  "insightsMarkdown": "## Insights...\\n- bullet\\n- bullet",\n  "executiveSummaryMarkdown": "## Resumo executivo...\\n- bullet",\n  "commercialMapMarkdown": "## Mapa de oportunidades...\\n- bullet",\n  "customerRisks": [{"name":"...","insatisfactionScore":0-100,"churnRisk":"baixo|medio|alto","reason":"..."}]\n}`
+        `${instructionsBlock}\n## Dados dos últimos ${data.period_days} dias\n\n${JSON.stringify(agg, null, 2)}\n\nRetorne JSON com este formato exato:\n{\n  "alerts": [{"severity":"info|warning|critical","title":"...","detail":"..."}],\n  "opportunities": [{"customer":"...","description":"...","potentialValue":"...","confidence":0-100}],\n  "insightsMarkdown": "## Insights...\\n- bullet\\n- bullet",\n  "executiveSummaryMarkdown": "## Resumo executivo...\\n- bullet",\n  "commercialMapMarkdown": "## Mapa de oportunidades...\\n- bullet",\n  "customerRisks": [{"name":"...","insatisfactionScore":0-100,"churnRisk":"baixo|medio|alto","reason":"..."}]\n}`
       )) as Record<string, unknown> | null;
 
       payload = {
@@ -442,7 +446,7 @@ export const generateAiManagerReport = createServerFn({ method: "POST" })
       const agg = await collectOperatorsAggregate(data.period_days);
       const ai = (await callLovableAi(
         "Você é um gerente de atendimento sênior. Analise performance de operadores e setores e retorne JSON com sugestões acionáveis em português brasileiro.",
-        `Dados dos últimos ${data.period_days} dias:\n\n${JSON.stringify(agg, null, 2)}\n\nRetorne JSON com este formato exato:\n{\n  "improvementsMarkdown": "## Sugestões de Melhoria...\\n### Operador X\\n- ponto\\n\\n## Setores\\n### Setor Y\\n- ponto",\n  "trainingRecommendations": [{"target":"Nome","scope":"operador|setor","topic":"...","reason":"..."}],\n  "communicationScores": [{"operatorId":"uuid","score":0-100,"note":"..."}],\n  "forecast": [{"label":"Sem +1","predicted":123}]\n}`
+        `${instructionsBlock}\n## Dados dos últimos ${data.period_days} dias\n\n${JSON.stringify(agg, null, 2)}\n\nRetorne JSON com este formato exato:\n{\n  "improvementsMarkdown": "## Sugestões de Melhoria...\\n### Operador X\\n- ponto\\n\\n## Setores\\n### Setor Y\\n- ponto",\n  "trainingRecommendations": [{"target":"Nome","scope":"operador|setor","topic":"...","reason":"..."}],\n  "communicationScores": [{"operatorId":"uuid","score":0-100,"note":"..."}],\n  "forecast": [{"label":"Sem +1","predicted":123}]\n}`
       )) as Record<string, unknown> | null;
 
       payload = {
