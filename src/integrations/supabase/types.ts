@@ -3026,6 +3026,7 @@ export type Database = {
           attendance_target_minutes: number | null
           avatar_url: string | null
           birth_date: string | null
+          can_access_ai_manager: boolean
           created_at: string
           group_id: string | null
           id: string
@@ -3039,6 +3040,7 @@ export type Database = {
           attendance_target_minutes?: number | null
           avatar_url?: string | null
           birth_date?: string | null
+          can_access_ai_manager?: boolean
           created_at?: string
           group_id?: string | null
           id?: string
@@ -3052,6 +3054,7 @@ export type Database = {
           attendance_target_minutes?: number | null
           avatar_url?: string | null
           birth_date?: string | null
+          can_access_ai_manager?: boolean
           created_at?: string
           group_id?: string | null
           id?: string

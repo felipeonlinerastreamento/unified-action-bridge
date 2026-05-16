@@ -32,6 +32,7 @@ import {
   Moon, FolderTree, RefreshCw, UserPlus, Pencil, Trash2, KeyRound, Building2,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Switch } from "@/components/ui/switch";
 import { SectorGroupsManagement } from "@/components/configuracoes/sector-groups-management";
 
 export const Route = createFileRoute("/configuracoes/usuarios")({
@@ -70,6 +71,7 @@ function UsuariosConfigPage() {
   const [editName, setEditName] = useState("");
   const [editRole, setEditRole] = useState<"admin" | "gestor" | "atendente">("atendente");
   const [editTargetMinutes, setEditTargetMinutes] = useState<string>("");
+  const [editCanAccessAiManager, setEditCanAccessAiManager] = useState<boolean>(true);
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
@@ -91,7 +93,7 @@ function UsuariosConfigPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("user_id, name, avatar_url, group_id, attendance_target_minutes")
+        .select("user_id, name, avatar_url, group_id, attendance_target_minutes, can_access_ai_manager")
         .order("name");
       if (error) throw error;
       return data || [];
@@ -247,7 +249,10 @@ function UsuariosConfigPage() {
       const parsed = editTargetMinutes.trim() === "" ? null : Math.max(0, Number(editTargetMinutes));
       const { error: profErr } = await supabase
         .from("profiles")
-        .update({ attendance_target_minutes: Number.isFinite(parsed as number) ? parsed : null } as any)
+        .update({
+          attendance_target_minutes: Number.isFinite(parsed as number) ? parsed : null,
+          can_access_ai_manager: editCanAccessAiManager,
+        } as any)
         .eq("user_id", editUserId);
       if (profErr) throw profErr;
     },
@@ -379,7 +384,7 @@ function UsuariosConfigPage() {
     setSectorDialogOpen(true);
   };
 
-  const handleOpenEdit = (profile: { user_id: string; name: string; attendance_target_minutes?: number | null }) => {
+  const handleOpenEdit = (profile: { user_id: string; name: string; attendance_target_minutes?: number | null; can_access_ai_manager?: boolean | null }) => {
     setEditUserId(profile.user_id);
     setEditName(profile.name || "");
     const roles = getRolesForUser(profile.user_id);
@@ -387,6 +392,7 @@ function UsuariosConfigPage() {
     setEditTargetMinutes(
       profile.attendance_target_minutes != null ? String(profile.attendance_target_minutes) : ""
     );
+    setEditCanAccessAiManager(profile.can_access_ai_manager ?? true);
     setEditDialogOpen(true);
   };
 
@@ -758,6 +764,18 @@ function UsuariosConfigPage() {
               <p className="text-xs text-muted-foreground">
                 Tempo médio alvo para finalizar um atendimento. Aparece como meta na Central de Atendimento.
               </p>
+            </div>
+            <div className="flex items-center justify-between gap-4 rounded-lg border p-3">
+              <div className="space-y-0.5">
+                <Label className="text-sm font-medium">Acesso ao Relatório do Gerente IA</Label>
+                <p className="text-xs text-muted-foreground">
+                  Libera a aba "Relatório IA" em Configurações &gt; Assistente IA para este gestor.
+                </p>
+              </div>
+              <Switch
+                checked={editCanAccessAiManager}
+                onCheckedChange={setEditCanAccessAiManager}
+              />
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancelar</Button>

@@ -25,8 +25,11 @@ import {
   Send,
   MessageSquare,
   Zap,
+  BarChart3,
 } from "lucide-react";
 import { AiCreditsPanel } from "@/components/configuracoes/ai-credits-panel";
+import { CustomerAnalysisView } from "@/components/ai-manager/customer-analysis";
+import { OperatorPerformanceView } from "@/components/ai-manager/operator-performance";
 
 export const Route = createFileRoute("/configuracoes/assistente-ia")({
   component: AssistenteIaConfigPage,
@@ -38,7 +41,14 @@ interface AiMessage {
 }
 
 function AssistenteIaConfigPage() {
-  const { isAuthenticated, isLoading, hasRole } = useAuth();
+  const { isAuthenticated, isLoading, hasRole, user } = useAuth();
+  const [canAccessAiManager, setCanAccessAiManager] = useState<boolean>(true);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    supabase.from("profiles").select("can_access_ai_manager").eq("user_id", user.id).maybeSingle()
+      .then(({ data }) => setCanAccessAiManager((data as any)?.can_access_ai_manager ?? true));
+  }, [user?.id]);
   const [systemPrompt, setSystemPrompt] = useState("");
   const [isEnabled, setIsEnabled] = useState(true);
   const [configId, setConfigId] = useState<string | null>(null);
@@ -255,11 +265,16 @@ function AssistenteIaConfigPage() {
   if (isLoading || !isAuthenticated) return null;
 
   const isAdmin = hasRole("admin");
-  if (!isAdmin) {
+  const isGestor = hasRole("gestor");
+
+  // Gestores need the per-user flag (default true). Admins always see.
+  const canSeeReport = isAdmin || (isGestor && canAccessAiManager);
+
+  if (!isAdmin && !isGestor) {
     return (
       <AppLayout>
         <div className="flex items-center justify-center h-96">
-          <p className="text-muted-foreground">Acesso restrito a administradores.</p>
+          <p className="text-muted-foreground">Acesso restrito a administradores e gestores.</p>
         </div>
       </AppLayout>
     );
@@ -277,13 +292,35 @@ function AssistenteIaConfigPage() {
           </p>
         </div>
 
-        <Tabs defaultValue="config">
+        <Tabs defaultValue={isAdmin ? "config" : "manager"}>
           <TabsList>
-            <TabsTrigger value="config">Configuração</TabsTrigger>
-            <TabsTrigger value="docs">Base de Conhecimento</TabsTrigger>
-            <TabsTrigger value="chat">Chat com IA</TabsTrigger>
-            <TabsTrigger value="credits"><Zap className="h-3.5 w-3.5 mr-1" /> Créditos</TabsTrigger>
+            {isAdmin && <TabsTrigger value="config">Configuração</TabsTrigger>}
+            {isAdmin && <TabsTrigger value="docs">Base de Conhecimento</TabsTrigger>}
+            {isAdmin && <TabsTrigger value="chat">Chat com IA</TabsTrigger>}
+            {canSeeReport && (
+              <TabsTrigger value="manager">
+                <BarChart3 className="h-3.5 w-3.5 mr-1" /> Relatório IA
+              </TabsTrigger>
+            )}
+            {isAdmin && <TabsTrigger value="credits"><Zap className="h-3.5 w-3.5 mr-1" /> Créditos</TabsTrigger>}
           </TabsList>
+
+          {canSeeReport && (
+            <TabsContent value="manager" className="mt-4">
+              <Tabs defaultValue="customers">
+                <TabsList>
+                  <TabsTrigger value="customers">Análise de Clientes</TabsTrigger>
+                  <TabsTrigger value="operators">Performance de Operadores e Setores</TabsTrigger>
+                </TabsList>
+                <TabsContent value="customers" className="mt-4">
+                  <CustomerAnalysisView />
+                </TabsContent>
+                <TabsContent value="operators" className="mt-4">
+                  <OperatorPerformanceView />
+                </TabsContent>
+              </Tabs>
+            </TabsContent>
+          )}
 
           <TabsContent value="credits" className="mt-4">
             <AiCreditsPanel />
