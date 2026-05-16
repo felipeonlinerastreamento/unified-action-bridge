@@ -25,8 +25,11 @@ import {
   Send,
   MessageSquare,
   Zap,
+  BarChart3,
 } from "lucide-react";
 import { AiCreditsPanel } from "@/components/configuracoes/ai-credits-panel";
+import { CustomerAnalysisView } from "@/components/ai-manager/customer-analysis";
+import { OperatorPerformanceView } from "@/components/ai-manager/operator-performance";
 
 export const Route = createFileRoute("/configuracoes/assistente-ia")({
   component: AssistenteIaConfigPage,
