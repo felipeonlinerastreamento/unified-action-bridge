@@ -384,7 +384,7 @@ function UsuariosConfigPage() {
     setSectorDialogOpen(true);
   };
 
-  const handleOpenEdit = (profile: { user_id: string; name: string; attendance_target_minutes?: number | null }) => {
+  const handleOpenEdit = (profile: { user_id: string; name: string; attendance_target_minutes?: number | null; can_access_ai_manager?: boolean | null }) => {
     setEditUserId(profile.user_id);
     setEditName(profile.name || "");
     const roles = getRolesForUser(profile.user_id);
@@ -392,6 +392,7 @@ function UsuariosConfigPage() {
     setEditTargetMinutes(
       profile.attendance_target_minutes != null ? String(profile.attendance_target_minutes) : ""
     );
+    setEditCanAccessAiManager(profile.can_access_ai_manager ?? true);
     setEditDialogOpen(true);
   };
 
@@ -763,6 +764,18 @@ function UsuariosConfigPage() {
               <p className="text-xs text-muted-foreground">
                 Tempo médio alvo para finalizar um atendimento. Aparece como meta na Central de Atendimento.
               </p>
+            </div>
+            <div className="flex items-center justify-between gap-4 rounded-lg border p-3">
+              <div className="space-y-0.5">
+                <Label className="text-sm font-medium">Acesso ao Relatório do Gerente IA</Label>
+                <p className="text-xs text-muted-foreground">
+                  Libera a aba "Relatório IA" em Configurações &gt; Assistente IA para este gestor.
+                </p>
+              </div>
+              <Switch
+                checked={editCanAccessAiManager}
+                onCheckedChange={setEditCanAccessAiManager}
+              />
             </div>
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancelar</Button>
