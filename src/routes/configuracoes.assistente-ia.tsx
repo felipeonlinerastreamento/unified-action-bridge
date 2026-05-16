@@ -41,7 +41,14 @@ interface AiMessage {
 }
 
 function AssistenteIaConfigPage() {
-  const { isAuthenticated, isLoading, hasRole } = useAuth();
+  const { isAuthenticated, isLoading, hasRole, user } = useAuth();
+  const [canAccessAiManager, setCanAccessAiManager] = useState<boolean>(true);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    supabase.from("profiles").select("can_access_ai_manager").eq("user_id", user.id).maybeSingle()
+      .then(({ data }) => setCanAccessAiManager((data as any)?.can_access_ai_manager ?? true));
+  }, [user?.id]);
   const [systemPrompt, setSystemPrompt] = useState("");
   const [isEnabled, setIsEnabled] = useState(true);
   const [configId, setConfigId] = useState<string | null>(null);
@@ -260,9 +267,8 @@ function AssistenteIaConfigPage() {
   const isAdmin = hasRole("admin");
   const isGestor = hasRole("gestor");
 
-  // Gestores can access if their profile has can_access_ai_manager = true (default true).
-  // For now we don't fetch this flag here — gating is enforced visually: gestores see only the report tab.
-  const canSeeReport = isAdmin || isGestor;
+  // Gestores need the per-user flag (default true). Admins always see.
+  const canSeeReport = isAdmin || (isGestor && canAccessAiManager);
 
   if (!isAdmin && !isGestor) {
     return (
