@@ -26,6 +26,7 @@ import {
   Target,
   Activity,
   ShieldCheck,
+  Megaphone,
 } from "lucide-react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
