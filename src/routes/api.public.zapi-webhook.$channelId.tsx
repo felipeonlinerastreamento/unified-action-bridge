@@ -11,6 +11,7 @@ import {
   logOutOfHoursMessage,
 } from "@/lib/business-hours.server";
 import { evaluateMessageTriggers } from "@/lib/message-triggers.server";
+import { processNoCommAutomation } from "@/lib/no-comm-automation.functions";
 
 // Z-API webhook payload (loose schema — Z-API sends many event shapes)
 const PayloadSchema = z.object({
@@ -1003,6 +1004,29 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                 });
               } catch (trigErr) {
                 console.warn("[zapi-webhook] message-triggers error:", trigErr);
+              }
+            }
+
+            // Automação "Sem comunicação" — inbound + outbound
+            if (text) {
+              try {
+                const { data: chatRow2 } = await supabaseAdmin
+                  .from("zapi_chats")
+                  .select("assigned_to")
+                  .eq("id", chatId)
+                  .maybeSingle();
+                await processNoCommAutomation(supabaseAdmin, {
+                  chatId,
+                  channelId,
+                  messageId: p.messageId || null,
+                  direction: p.fromMe ? "outbound" : "inbound",
+                  text,
+                  contactPhone: phone,
+                  contactName: incomingContactName,
+                  assignedTo: (chatRow2 as any)?.assigned_to ?? null,
+                });
+              } catch (ncErr) {
+                console.warn("[zapi-webhook] no-comm automation error:", ncErr);
               }
             }
 

@@ -2563,6 +2563,90 @@ export type Database = {
         }
         Relationships: []
       }
+      no_comm_automation_log: {
+        Row: {
+          chat_id: string | null
+          direction: string
+          id: string
+          matched_keyword: string | null
+          message_excerpt: string | null
+          message_id: string | null
+          protocol_number: number | null
+          ticket_id: string | null
+          triggered_at: string
+          triggered_by: string | null
+        }
+        Insert: {
+          chat_id?: string | null
+          direction: string
+          id?: string
+          matched_keyword?: string | null
+          message_excerpt?: string | null
+          message_id?: string | null
+          protocol_number?: number | null
+          ticket_id?: string | null
+          triggered_at?: string
+          triggered_by?: string | null
+        }
+        Update: {
+          chat_id?: string | null
+          direction?: string
+          id?: string
+          matched_keyword?: string | null
+          message_excerpt?: string | null
+          message_id?: string | null
+          protocol_number?: number | null
+          ticket_id?: string | null
+          triggered_at?: string
+          triggered_by?: string | null
+        }
+        Relationships: []
+      }
+      no_comm_automation_settings: {
+        Row: {
+          auto_close: boolean
+          category: string
+          direction: string
+          final_status: string
+          footer_template: string
+          id: string
+          is_enabled: boolean
+          keywords: string[]
+          match_mode: string
+          singleton: boolean
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          auto_close?: boolean
+          category?: string
+          direction?: string
+          final_status?: string
+          footer_template?: string
+          id?: string
+          is_enabled?: boolean
+          keywords?: string[]
+          match_mode?: string
+          singleton?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          auto_close?: boolean
+          category?: string
+          direction?: string
+          final_status?: string
+          footer_template?: string
+          id?: string
+          is_enabled?: boolean
+          keywords?: string[]
+          match_mode?: string
+          singleton?: boolean
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       notification_campaigns: {
         Row: {
           created_at: string

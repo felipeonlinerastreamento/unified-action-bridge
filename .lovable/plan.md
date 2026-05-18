@@ -1,63 +1,82 @@
 ## Objetivo
 
-Adicionar um campo **"Instruções do Gerente IA"** dedicado, separado do Prompt do Sistema, que será injetado no prompt sempre que o relatório de Análise de Clientes ou Performance de Operadores for gerado.
+Automatizar o fluxo do comunicado "Placas sem comunicação": detectar a mensagem (enviada por nós OU recebida do cliente), gerar protocolo, anexar rodapé com o número, e finalizar o chamado com categoria **Sem comunicação** e status **resolvido**. Tudo controlado por uma tela em **Configurações** com ativar/desativar e gestão das frases-chave.
 
-## Onde fica
+## 1. Banco de dados (migration)
 
-Na aba **Configurações → Assistente IA → Relatório IA**, no topo das duas views (Clientes e Operadores), um card colapsável **"Instruções do Gerente IA"** com:
-- Textarea grande (até 4000 caracteres) com placeholder de exemplos
-- Botão "Salvar instruções"
-- Subtexto: *"Estas instruções são usadas apenas pelo Gerente IA ao gerar relatórios. Não afetam o atendimento ao cliente."*
-- Exemplos clicáveis ("Inserir exemplo"): rigor de TMA, foco em churn, valor mínimo de oportunidade, tom das sugestões.
+Nova tabela `no_communication_automation_settings` (singleton):
+- `id`, `singleton bool default true unique`
+- `is_enabled bool default false`
+- `direction text` — `'inbound' | 'outbound' | 'both'` (default `'both'`)
+- `footer_template text` — default `'Atendimento de protocolo: {numero do protocolo}'`
+- `keywords text[]` — frases-chave (default `['placas sem comunicação','atraso de comunicação']`)
+- `match_mode text` — `'any' | 'all'` (default `'any'`, case-insensitive, acento-insensível)
+- `auto_close bool default true` — fecha o chamado após enviar rodapé
+- `category text default 'Sem comunicação'`, `final_status text default 'resolvido'`
+- `updated_by`, `updated_at`
 
-## Mudanças
+Tabela de auditoria `no_communication_automation_log`:
+- `id`, `chat_id`, `ticket_id`, `protocol_number`, `direction`, `matched_keyword`, `triggered_at`, `triggered_by` (system/user), `message_excerpt`
 
-**Banco** — nova tabela `ai_manager_settings` (singleton por org):
-- `id` (uuid)
-- `instructions` (text, default '')
-- `updated_by` (uuid → profiles)
-- `updated_at`
-- RLS: SELECT para admin + gestor com `can_access_ai_manager=true`; UPDATE/INSERT só admin.
+RLS:
+- Settings: SELECT admin + gestor com `can_access_ai_manager` (mesmo padrão); UPDATE/INSERT só admin.
+- Log: SELECT admin + gestor; INSERT via server (service role).
 
-**Server functions** (`src/lib/ai-manager.functions.ts`):
-- `getAiManagerInstructions()` — retorna a linha atual
-- `updateAiManagerInstructions({ instructions })` — admin only
-- `generateAiManagerReport` (existente) — passa a ler `ai_manager_settings.instructions` e injeta no prompt como bloco `## Instruções do gestor` antes dos dados agregados.
+Garantir categoria "Sem comunicação" no enum/lista de categorias de ticket (criar se não existir).
 
-**Frontend**:
-- Novo componente `src/components/ai-manager/manager-instructions-card.tsx` — card colapsável com textarea + save.
-- Render no topo de `customer-analysis.tsx` e `operator-performance.tsx`.
+## 2. Geração de protocolo
 
-## Como a IA usa
+Função SQL `generate_no_comm_protocol()` que retorna número sequencial formatado (ex.: `SC-2026-000123`) usando sequence dedicada `no_comm_protocol_seq`.
 
-No prompt enviado ao Gemini, a seção fica:
+## 3. Server functions (`src/lib/no-comm-automation.functions.ts`)
 
-```text
-Você é um Gerente de Atendimento sênior.
+- `getNoCommSettings()` (GET) — admin/gestor.
+- `updateNoCommSettings(input)` (POST, admin) — Zod valida `is_enabled`, `direction`, `footer_template` (max 500, deve conter `{numero do protocolo}`), `keywords` (1–20 itens, cada 3–120 chars), `match_mode`, `auto_close`.
+- `processChatMessageForNoComm({ chatId, messageBody, direction })` (POST, server-only chamada interna) — núcleo:
+  1. Carrega settings; se `is_enabled=false` ou direção não casa → retorna `{matched:false}`.
+  2. Normaliza texto (lower + remove acentos) e testa keywords conforme `match_mode`.
+  3. Se casar: gera protocolo, monta rodapé substituindo `{numero do protocolo}`, envia mensagem de rodapé pelo mesmo canal Z-API usado hoje.
+  4. Se houver ticket aberto vinculado ao chat → fecha (categoria + status final + nota com protocolo). Se não houver → cria ticket já finalizado.
+  5. Insere registro em `no_communication_automation_log`.
+  6. Retorna `{matched:true, protocol, ticketId}`.
 
-## Instruções do gestor (prioridade alta)
-{instructions_do_banco}
+## 4. Pontos de detecção (gancho)
 
-## Dados agregados dos últimos {N} dias
-{json}
+- **Outbound**: no caminho onde o operador envia mensagem pelo chat (componente de envio do Central de Atendimento → server fn `sendChatMessage`/equivalente), após sucesso do envio chamar `processChatMessageForNoComm` com `direction='outbound'`.
+- **Inbound**: no webhook/poll que ingere mensagens recebidas do Z-API, após persistir a mensagem, chamar com `direction='inbound'`.
 
-Gere insights em markdown PT-BR ...
-```
+Idempotência: log indexado por `(chat_id, message_id)` para não duplicar.
 
-Se vazio, a seção é omitida e o comportamento atual é mantido.
+## 5. UI — Configurações
 
-## Arquivos
+Nova entrada no menu lateral de **Configurações** → "Automação Sem Comunicação" (`src/routes/_authenticated/configuracoes/automacao-sem-comunicacao.tsx` ou aba dentro do Configurações existente — seguir padrão atual).
+
+Card único `NoCommAutomationCard`:
+- **Switch grande "Ativar automação"** (controla `is_enabled`).
+- Select **Direção**: Enviada por nós / Recebida do cliente / Ambos.
+- Textarea **Rodapé** com chip explicando `{numero do protocolo}`.
+- Lista editável de **Frases-chave** (add/remove tags) + toggle "Casar qualquer / Casar todas".
+- Switch **Finalizar chamado automaticamente** + select de **Categoria** e **Status final** (defaults preenchidos).
+- Botão **Salvar** (admin only — desabilita inputs para gestor read-only).
+- Painel "Últimos disparos" (10 mais recentes do log) com chat, protocolo, data, direção.
+
+## 6. Arquivos
 
 **Criar:**
-- migration `ai_manager_settings` + RLS
-- `src/components/ai-manager/manager-instructions-card.tsx`
+- `supabase/migrations/..._no_comm_automation.sql`
+- `src/lib/no-comm-automation.functions.ts`
+- `src/components/settings/no-comm-automation-card.tsx`
+- `src/routes/_authenticated/configuracoes/automacao-sem-comunicacao.tsx` (ou aba)
 
 **Editar:**
-- `src/lib/ai-manager.functions.ts` (3 fns + injeção no prompt)
-- `src/components/ai-manager/customer-analysis.tsx` (renderiza card)
-- `src/components/ai-manager/operator-performance.tsx` (renderiza card)
+- Server fn de envio de mensagem do chat (hook outbound).
+- Ingestão de mensagens Z-API (hook inbound).
+- Menu de Configurações (adicionar item).
 
-## Perguntas
+## Detalhes técnicos
 
-1. As instruções devem ser **únicas e globais** (uma só para toda a operação) ou **separadas** por escopo (uma para Clientes, outra para Operadores)? Sugiro única para começar.
-2. Edição restrita a **admin**, ou também **gestor** com permissão `can_access_ai_manager`?
+- Normalização: `text.normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase()` antes do match.
+- Protocolo gerado via `nextval('no_comm_protocol_seq')` dentro de função `SECURITY DEFINER`.
+- Rodapé enviado como mensagem separada (não concatena no texto original) para preservar histórico.
+- Quando `auto_close=false`: só envia rodapé e registra log, não mexe no ticket.
+- Validação no save: bloquear ativar se `keywords` vazio.
