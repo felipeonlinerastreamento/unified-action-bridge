@@ -32,6 +32,7 @@ import { Route as ConfiguracoesFluxoAtendimentoRouteImport } from './routes/conf
 import { Route as ConfiguracoesEstoqueRouteImport } from './routes/configuracoes.estoque'
 import { Route as ConfiguracoesEncaminhamentoRouteImport } from './routes/configuracoes.encaminhamento'
 import { Route as ConfiguracoesCentralAtendimentoRouteImport } from './routes/configuracoes.central-atendimento'
+import { Route as ConfiguracoesAutomacaoSemComunicacaoRouteImport } from './routes/configuracoes.automacao-sem-comunicacao'
 import { Route as ConfiguracoesAuditoriaRouteImport } from './routes/configuracoes.auditoria'
 import { Route as ConfiguracoesAssistenteIaRouteImport } from './routes/configuracoes.assistente-ia'
 import { Route as AtendimentosTarefasRouteImport } from './routes/atendimentos_.tarefas'
@@ -161,6 +162,12 @@ const ConfiguracoesCentralAtendimentoRoute =
     path: '/central-atendimento',
     getParentRoute: () => ConfiguracoesRoute,
   } as any)
+const ConfiguracoesAutomacaoSemComunicacaoRoute =
+  ConfiguracoesAutomacaoSemComunicacaoRouteImport.update({
+    id: '/automacao-sem-comunicacao',
+    path: '/automacao-sem-comunicacao',
+    getParentRoute: () => ConfiguracoesRoute,
+  } as any)
 const ConfiguracoesAuditoriaRoute = ConfiguracoesAuditoriaRouteImport.update({
   id: '/auditoria',
   path: '/auditoria',
@@ -215,6 +222,7 @@ export interface FileRoutesByFullPath {
   '/atendimentos/tarefas': typeof AtendimentosTarefasRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
   '/configuracoes/auditoria': typeof ConfiguracoesAuditoriaRoute
+  '/configuracoes/automacao-sem-comunicacao': typeof ConfiguracoesAutomacaoSemComunicacaoRoute
   '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
   '/configuracoes/encaminhamento': typeof ConfiguracoesEncaminhamentoRoute
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
@@ -246,6 +254,7 @@ export interface FileRoutesByTo {
   '/atendimentos/tarefas': typeof AtendimentosTarefasRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
   '/configuracoes/auditoria': typeof ConfiguracoesAuditoriaRoute
+  '/configuracoes/automacao-sem-comunicacao': typeof ConfiguracoesAutomacaoSemComunicacaoRoute
   '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
   '/configuracoes/encaminhamento': typeof ConfiguracoesEncaminhamentoRoute
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
@@ -279,6 +288,7 @@ export interface FileRoutesById {
   '/atendimentos_/tarefas': typeof AtendimentosTarefasRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
   '/configuracoes/auditoria': typeof ConfiguracoesAuditoriaRoute
+  '/configuracoes/automacao-sem-comunicacao': typeof ConfiguracoesAutomacaoSemComunicacaoRoute
   '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
   '/configuracoes/encaminhamento': typeof ConfiguracoesEncaminhamentoRoute
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
@@ -313,6 +323,7 @@ export interface FileRouteTypes {
     | '/atendimentos/tarefas'
     | '/configuracoes/assistente-ia'
     | '/configuracoes/auditoria'
+    | '/configuracoes/automacao-sem-comunicacao'
     | '/configuracoes/central-atendimento'
     | '/configuracoes/encaminhamento'
     | '/configuracoes/estoque'
@@ -344,6 +355,7 @@ export interface FileRouteTypes {
     | '/atendimentos/tarefas'
     | '/configuracoes/assistente-ia'
     | '/configuracoes/auditoria'
+    | '/configuracoes/automacao-sem-comunicacao'
     | '/configuracoes/central-atendimento'
     | '/configuracoes/encaminhamento'
     | '/configuracoes/estoque'
@@ -376,6 +388,7 @@ export interface FileRouteTypes {
     | '/atendimentos_/tarefas'
     | '/configuracoes/assistente-ia'
     | '/configuracoes/auditoria'
+    | '/configuracoes/automacao-sem-comunicacao'
     | '/configuracoes/central-atendimento'
     | '/configuracoes/encaminhamento'
     | '/configuracoes/estoque'
@@ -577,6 +590,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConfiguracoesCentralAtendimentoRouteImport
       parentRoute: typeof ConfiguracoesRoute
     }
+    '/configuracoes/automacao-sem-comunicacao': {
+      id: '/configuracoes/automacao-sem-comunicacao'
+      path: '/automacao-sem-comunicacao'
+      fullPath: '/configuracoes/automacao-sem-comunicacao'
+      preLoaderRoute: typeof ConfiguracoesAutomacaoSemComunicacaoRouteImport
+      parentRoute: typeof ConfiguracoesRoute
+    }
     '/configuracoes/auditoria': {
       id: '/configuracoes/auditoria'
       path: '/auditoria'
@@ -632,6 +652,7 @@ declare module '@tanstack/react-router' {
 interface ConfiguracoesRouteChildren {
   ConfiguracoesAssistenteIaRoute: typeof ConfiguracoesAssistenteIaRoute
   ConfiguracoesAuditoriaRoute: typeof ConfiguracoesAuditoriaRoute
+  ConfiguracoesAutomacaoSemComunicacaoRoute: typeof ConfiguracoesAutomacaoSemComunicacaoRoute
   ConfiguracoesCentralAtendimentoRoute: typeof ConfiguracoesCentralAtendimentoRoute
   ConfiguracoesEncaminhamentoRoute: typeof ConfiguracoesEncaminhamentoRoute
   ConfiguracoesEstoqueRoute: typeof ConfiguracoesEstoqueRoute
@@ -648,6 +669,8 @@ interface ConfiguracoesRouteChildren {
 const ConfiguracoesRouteChildren: ConfiguracoesRouteChildren = {
   ConfiguracoesAssistenteIaRoute: ConfiguracoesAssistenteIaRoute,
   ConfiguracoesAuditoriaRoute: ConfiguracoesAuditoriaRoute,
+  ConfiguracoesAutomacaoSemComunicacaoRoute:
+    ConfiguracoesAutomacaoSemComunicacaoRoute,
   ConfiguracoesCentralAtendimentoRoute: ConfiguracoesCentralAtendimentoRoute,
   ConfiguracoesEncaminhamentoRoute: ConfiguracoesEncaminhamentoRoute,
   ConfiguracoesEstoqueRoute: ConfiguracoesEstoqueRoute,
