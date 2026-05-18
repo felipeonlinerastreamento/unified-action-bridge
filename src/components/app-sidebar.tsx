@@ -74,6 +74,7 @@ const configSubItems = [
   { title: "Assistente IA", url: "/configuracoes/assistente-ia", icon: Bot },
   { title: "Z-API & Bot", url: "/configuracoes/zapi", icon: MessageCircle },
   { title: "Encaminhamento", url: "/configuracoes/encaminhamento", icon: ArrowRightLeft },
+  { title: "Automação Sem Comunicação", url: "/configuracoes/automacao-sem-comunicacao", icon: Megaphone },
   { title: "Popup Diário", url: "/configuracoes/popup-diario", icon: Sun },
   { title: "Usuários", url: "/configuracoes/usuarios", icon: UserCog },
   { title: "Status de Usuários", url: "/configuracoes/status-usuarios", icon: Activity },
