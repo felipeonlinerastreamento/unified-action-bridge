@@ -1006,6 +1006,29 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               }
             }
 
+            // Automação "Sem comunicação" — inbound + outbound
+            if (text) {
+              try {
+                const { data: chatRow2 } = await supabaseAdmin
+                  .from("zapi_chats")
+                  .select("assigned_to")
+                  .eq("id", chatId)
+                  .maybeSingle();
+                await processNoCommAutomation(supabaseAdmin, {
+                  chatId,
+                  channelId,
+                  messageId: p.messageId || null,
+                  direction: p.fromMe ? "outbound" : "inbound",
+                  text,
+                  contactPhone: phone,
+                  contactName: incomingContactName,
+                  assignedTo: (chatRow2 as any)?.assigned_to ?? null,
+                });
+              } catch (ncErr) {
+                console.warn("[zapi-webhook] no-comm automation error:", ncErr);
+              }
+            }
+
             // Run bot only on incoming customer messages — skip for groups
             // and skip when we just reopened a finalized chat silently (avoids
             // re-sending welcome menu right after a finalization).
