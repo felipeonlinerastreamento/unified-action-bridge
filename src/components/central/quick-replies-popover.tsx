@@ -37,15 +37,21 @@ export function QuickRepliesPopover({ onPick, size = "icon", open: openProp, onO
     <>
       <Popover open={open} onOpenChange={setOpen}>
         <PopoverTrigger asChild>
-          {hideTrigger ? (
-            <button type="button" aria-hidden className="sr-only" tabIndex={-1} />
-          ) : (
-            <Button size={size === "icon" ? "icon" : "sm"} variant="outline" className="shrink-0" title="Respostas rápidas">
-              <Zap className="h-4 w-4" />
-            </Button>
-          )}
+          <Button
+            size={size === "icon" ? "icon" : "sm"}
+            variant="outline"
+            className={hideTrigger ? "sr-only" : "shrink-0"}
+            title="Respostas rápidas"
+            tabIndex={hideTrigger ? -1 : 0}
+          >
+            <Zap className="h-4 w-4" />
+          </Button>
         </PopoverTrigger>
-        <PopoverContent className="p-0 w-80" align="end">
+        <PopoverContent
+          className="p-0 w-80"
+          align="end"
+          onOpenAutoFocus={(e) => e.preventDefault()}
+        >
           <Command>
             <CommandInput placeholder="Buscar atalho ou rótulo..." />
             <CommandList>
@@ -74,7 +80,8 @@ export function QuickRepliesPopover({ onPick, size = "icon", open: openProp, onO
               variant="ghost"
               size="sm"
               className="w-full justify-start gap-2"
-              onClick={() => {
+              onMouseDown={(e) => {
+                e.preventDefault();
                 setOpen(false);
                 setManagerOpen(true);
               }}

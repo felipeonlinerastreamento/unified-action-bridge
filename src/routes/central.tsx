@@ -287,7 +287,7 @@ function CentralPage() {
   } | null>(null);
   const [nicknameMode, setNicknameMode] = useState(false);
   const [showFullHistory, setShowFullHistory] = useState(false);
-  const [quickRepliesOpen, setQuickRepliesOpen] = useState(false);
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [ticketPlate, setTicketPlate] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
@@ -3178,10 +3178,6 @@ function CentralPage() {
                             <EyeOff className="h-4 w-4 mr-2" />
                             Enviar sussurro
                           </DropdownMenuCheckboxItem>
-                          <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setTimeout(() => setQuickRepliesOpen(true), 0); }}>
-                            <Zap className="h-4 w-4 mr-2" />
-                            Respostas rápidas
-                          </DropdownMenuItem>
                           <DropdownMenuCheckboxItem
                             checked={nicknameMode}
                             onCheckedChange={(v) => {
@@ -3196,9 +3192,6 @@ function CentralPage() {
                         </DropdownMenuContent>
                       </DropdownMenu>
                       <QuickRepliesPopover
-                        hideTrigger
-                        open={quickRepliesOpen}
-                        onOpenChange={setQuickRepliesOpen}
                         onPick={(text) => {
                           const resolved = applyQuickReplyVars(text, {
                             operatorName: profile?.name,
