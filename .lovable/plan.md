@@ -1,35 +1,44 @@
-## Problemas
+## Regra de reabertura
 
-1. **Popover abre e fecha imediatamente** ao clicar em "Respostas rápidas" no menu de opções de envio do chat (`src/routes/central.tsx` ~linha 3178). Ao acionar `setQuickRepliesOpen(true)` dentro do `onSelect` do `DropdownMenuItem`, o fechamento do dropdown dispara um evento de `pointerdown`/foco fora que o `Popover` interpreta como "clique fora" e fecha em seguida.
+Quando um chat **finalizado** recebe nova mensagem do cliente:
 
-2. Não existe um caminho rápido para o operador (atendente) criar/editar/excluir respostas rápidas a partir do próprio chat — hoje só admin/gestor acessam o card em `Configurações › Z-API`. A RLS de `zapi_quick_replies` já permite que qualquer usuário autenticado faça INSERT, edite as próprias/globais e exclua as próprias, então é apenas uma questão de UI.
+| Tempo desde `closed_at` | Ação |
+|---|---|
+| **≤ 1 hora** | **Reabre o mesmo chamado** (UPDATE no `service_ticket` anterior: `status = 'reaberto'`, `reopened_at = now()`, `closed_at = null`, `closed_by = null`). Mantém o **mesmo `protocol_number`**. Chat volta a `em_atendimento`/`aguardando`. **Não roda o bot** (segue sem menu, como hoje). |
+| **> 1 hora** | **Cria um novo `service_ticket`** (novo `protocol_number` via sequence). Chat reabre **rodando o fluxo do bot** normalmente (menu de setor), igual ao primeiro contato. |
 
-## Mudanças
+A regra atual de `pending_resolve` ("A resolver" → mesmo protocolo, sem ticket novo) continua intacta.
 
-### 1. Corrigir o popover (`src/routes/central.tsx`)
+## Mudança
 
-- No `onSelect` do item "Respostas rápidas", trocar o `setQuickRepliesOpen(true)` síncrono por `setTimeout(() => setQuickRepliesOpen(true), 0)` (ou `requestAnimationFrame`) para abrir o popover **depois** do dropdown terminar de fechar, evitando o conflito de outside-click.
+Arquivo único: `src/routes/api.public.zapi-webhook.$channelId.tsx` (ramo de reabertura, ~linhas 855-882).
 
-### 2. Botão "Gerenciar" dentro do popover (`src/components/central/quick-replies-popover.tsx`)
+1. Calcular `withinOneHour = sinceCloseMs <= 60 * 60 * 1000` (a variável `sinceCloseMs` já existe na linha 789).
+2. Buscar o último ticket finalizado do chat (já feito na linha 860). Selecionar `id, protocol_number, sector, sector_name` (na verdade só `sector` está na tabela — manter como hoje + `id`).
+3. **Branch A — `withinOneHour && lastTicket`:**
+   - `UPDATE service_tickets SET status='reaberto', reopened_at=now(), closed_at=null, closed_by=null WHERE id = lastTicket.id`.
+   - Setor do chat herda `lastTicket.sector` ou o `sector_name` atual.
+   - `baseUpdate.bot_state = {}`, atribui operador via `pickLeastLoadedAgent`, status `em_atendimento`/`aguardando`.
+   - `justReopenedSilently = true` (mantém comportamento atual — **não executa o bot**, sem menu reenviado).
+   - Log: `[zapi-webhook] reopening finalized chat within 1h → same ticket #PROTO reopened, no new protocol`.
+4. **Branch B — `!withinOneHour` (ou sem ticket anterior):**
+   - **Cria novo `service_ticket`** com:
+     - `attendance_id = chatId`, `channel_id`, `contact_phone = phone`, `contact_name`, `status = 'aberto'`, `sector = lastTicket?.sector || sector_name || 'Atendimento'`, `notes = 'Reabertura após 1h do protocolo anterior #<lastProto>'` quando houver anterior.
+     - `protocol_number` deixado em branco → o `DEFAULT nextval(...)` gera.
+   - `baseUpdate.bot_state = {}`, status `aguardando` (ou `em_atendimento` se houver agente disponível — manter regra atual).
+   - **NÃO** setar `justReopenedSilently = true` → o bloco do bot (linha 994) executa normalmente, mandando o menu inicial → novo fluxo de atendimento.
+   - Log: `[zapi-webhook] reopening finalized chat after 1h → new ticket #NEWPROTO + bot flow restart`.
 
-- Adicionar um rodapé fixo no `PopoverContent` com um botão **"Gerenciar respostas rápidas"** (ícone `Settings` ou `Pencil`), visível para todos os usuários autenticados.
-- Ao clicar, abrir um `Dialog` (novo componente `QuickRepliesManagerDialog`) que reaproveita a lógica de CRUD já existente em `src/components/configuracoes/zapi-quick-replies-config.tsx`.
+## Comportamento resultante
 
-### 3. Novo componente `QuickRepliesManagerDialog`
-
-Local: `src/components/central/quick-replies-manager-dialog.tsx`.
-
-- Refatorar `zapi-quick-replies-config.tsx` extraindo o miolo (form + lista + mutations) em um componente reutilizável `QuickRepliesManager` (mesma pasta `configuracoes/` ou em `components/quick-replies/`), mantendo as mesmas queries (`["zapi-quick-replies"]`) para que **toda alteração feita pelo operador apareça instantaneamente** no card de configurações (e vice-versa) graças ao cache compartilhado do React Query.
-- `ZapiQuickRepliesConfig` passa a ser um wrapper fino: `Card` + `QuickRepliesManager`.
-- `QuickRepliesManagerDialog` é um `Dialog` que renderiza o mesmo `QuickRepliesManager` em formato modal, acionado pelo botão "Gerenciar" do popover.
-
-### 4. Sem mudanças de backend
-
-- RLS atual já cobre o caso de uso (qualquer usuário autenticado pode criar; só dono/global/admin/gestor pode editar; só dono/admin/gestor pode excluir). Nenhuma migration necessária.
-- Mensagens de erro do `updateMutation`/`deleteMutation` já tratam "sem permissão" para o caso de um atendente tentar editar/excluir um item de outro usuário que não seja global.
+- Cliente envia nova msg até 1h após fechamento → mesmo protocolo, mesmo histórico, ticket sai de `finalizado` para `reaberto`, atendente assume direto.
+- Cliente envia nova msg após >1h → novo protocolo (nova entrada em `service_tickets`), bot reapresenta menu de setor, cliente escolhe e o fluxo segue como atendimento novo.
+- CSAT pendente do anterior continua intacto em ambos os casos (não é descartado pela reabertura).
+- `pending_resolve` ("A resolver") segue exatamente como hoje.
 
 ## Fora de escopo
 
-- Não alterar permissões de RLS.
-- Não alterar variáveis dinâmicas, formatação `*negrito*`, nem o atalho `/`.
-- Não tocar no popover do `floating-chat-window` (já funciona porque é acionado por botão visível, não por dropdown). Ele ganhará o botão "Gerenciar" automaticamente por compartilhar o `QuickRepliesPopover`.
+- Não tocar em CSAT, business hours, grupos, sectors UI.
+- Não migrar tickets históricos (#01324, #01331, #01316, #01308 permanecem como estão).
+- Sem mudança de schema/migrations — `service_ticket_status` já tem `'reaberto'` e `protocol_number` já tem default via sequence.
+- Não alterar a UI de Central/Atendimentos (ticket reaberto já aparece corretamente pelo status existente).
