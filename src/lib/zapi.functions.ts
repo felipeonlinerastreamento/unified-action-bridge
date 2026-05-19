@@ -703,15 +703,39 @@ export const createChat = createServerFn({ method: "POST" })
     const phone = data.contactPhone.replace(/\D/g, "");
     if (!phone) throw new Error("Telefone inválido");
 
-    // Upsert chat
-    const { data: existing } = await context.supabase
-      .from("zapi_chats")
-      .select("id")
-      .eq("channel_id", data.channelId)
-      .eq("phone", phone)
-      .maybeSingle();
+    // Compute normalized phone (matches public.normalize_zapi_phone)
+    const normalizePhoneFallback = (raw: string): string => {
+      let d = raw.replace(/\D/g, "");
+      if (!d) return raw;
+      if (d.length >= 15) return `lid:${d}`;
+      if (d.length >= 10 && d.length <= 11) d = `55${d}`;
+      // Add missing leading 9 for BR mobile (legacy 10-digit numbers)
+      if (/^55[1-9][0-9][6-9][0-9]{7}$/.test(d)) {
+        d = d.slice(0, 4) + "9" + d.slice(4);
+      }
+      return d;
+    };
+    let phoneNormalized: string | null = null;
+    try {
+      const { data: normData } = await (context.supabase as any).rpc("normalize_zapi_phone", { raw: phone });
+      if (typeof normData === "string" && normData) phoneNormalized = normData;
+    } catch {
+      /* fallback below */
+    }
+    if (!phoneNormalized) phoneNormalized = normalizePhoneFallback(phone);
 
-    let chatId = existing?.id;
+    // Lookup existing chat by normalized phone (matches unique index)
+    const findExisting = async () => {
+      const { data: row } = await context.supabase
+        .from("zapi_chats")
+        .select("id")
+        .eq("channel_id", data.channelId)
+        .eq("phone_normalized", phoneNormalized!)
+        .maybeSingle();
+      return row?.id as string | undefined;
+    };
+
+    let chatId = await findExisting();
     if (!chatId) {
       const { data: created, error } = await context.supabase
         .from("zapi_chats")
@@ -724,10 +748,18 @@ export const createChat = createServerFn({ method: "POST" })
         })
         .select("id")
         .single();
-      if (error || !created) throw new Error(error?.message || "Erro ao criar conversa");
-      chatId = created.id;
-    } else {
-      // Garante que a conversa existente apareça na Central para quem iniciou
+      if (error) {
+        // Race with webhook or pre-existing row with differently-formatted phone
+        if ((error as any).code === "23505") {
+          chatId = await findExisting();
+        }
+        if (!chatId) throw new Error(error.message || "Erro ao criar conversa");
+      } else if (created) {
+        chatId = created.id;
+      }
+    }
+
+    if (chatId) {
       await context.supabase
         .from("zapi_chats")
         .update({
@@ -737,6 +769,8 @@ export const createChat = createServerFn({ method: "POST" })
         })
         .eq("id", chatId);
     }
+
+    if (!chatId) throw new Error("Erro ao criar conversa");
 
     if (data.message) {
       const channel = await loadZapiChannel(context.supabase, data.channelId);
