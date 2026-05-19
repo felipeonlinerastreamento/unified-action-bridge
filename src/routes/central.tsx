@@ -4431,7 +4431,7 @@ function CentralPage() {
                   notes: notesToSend || undefined,
                   status: finalizeStatus,
                   tipoPendencia: finalizeTipoPendencia,
-                  skipClosingMessage: isAdmin && skipClosingMessage,
+                  skipClosingMessage: canSkipClosing && skipClosingMessage,
                   escalateGestao: isAdmin && escalateToGestao,
                 });
               }}
