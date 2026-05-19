@@ -110,7 +110,13 @@ export function SectorGroupsManagement() {
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!name.trim()) throw new Error("Nome é obrigatório");
-      const payload = { name: name.trim(), description: description.trim(), is_active: isActive };
+      const payload = {
+        name: name.trim(),
+        description: description.trim(),
+        is_active: isActive,
+        allowed_menus: restrictMenus ? allowedMenus : null,
+        can_finalize_without_message: canFinalizeWithoutMessage,
+      };
       if (editing) {
         const { error } = await supabase.from("sector_groups").update(payload).eq("id", editing.id);
         if (error) throw error;
