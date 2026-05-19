@@ -2072,8 +2072,10 @@ function CentralPage() {
       }
 
       // Apply auto-routing flow (TE / category rules) on the local ticket.
-      // Pulado quando "A resolver" — protocolo continua aberto, sem roteamento.
-      if (ticketRef && !result?.pendingResolve) {
+      // Pulado quando "A resolver" — exceto para Teste de Equipamento, que sempre
+      // precisa ser roteado para o setor configurado (ticket fica aberto lá).
+      const isTEFinalize = isTesteEquipamentoCategory(ticketRef?.category, teSettings);
+      if (ticketRef && (!result?.pendingResolve || isTEFinalize)) {
         try {
           const fresh = await supabase
             .from("service_tickets")
