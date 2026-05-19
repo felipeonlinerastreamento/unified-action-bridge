@@ -888,11 +888,13 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                 justReopenedSilently = true;
                 // NÃO criar novo ticket — o anterior continua aberto.
               } else {
-                console.log(`[zapi-webhook] reopening finalized chat for ${phone} → auto-assigning least-loaded operator`);
-                // Resolve last finalized protocol for the audit note
+                console.log(`[zapi-webhook] reopening finalized chat without CSAT → no new ticket/protocol will be created (${phone})`);
+                // Buscamos o último ticket finalizado apenas para herdar o setor
+                // da reabertura (fallback). NÃO criamos novo chamado/protocolo:
+                // reabertura por CSAT não respondido apenas reabre o chat.
                 const { data: lastTicket } = await supabaseAdmin
                   .from("service_tickets")
-                  .select("protocol_number, sector")
+                  .select("sector")
                   .eq("attendance_id", chatId!)
                   .eq("status", "finalizado")
                   .order("closed_at", { ascending: false })
@@ -911,16 +913,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                   baseUpdate.status = "aguardando";
                 }
                 justReopenedSilently = true;
-                // Open a brand new ticket / protocol for this attendance window
-                await ensureOpenTicketForChat({
-                  chatId: chatId!,
-                  channelId,
-                  contactPhone: phone,
-                  contactName: nameToStore,
-                  assignedTo: reopenAssignedTo,
-                  sector: reopenSector,
-                  reopenedFromProtocol: (lastTicket as any)?.protocol_number ?? null,
-                });
+                // Intencional: nenhum service_ticket é criado aqui.
               }
             }
             await supabaseAdmin
