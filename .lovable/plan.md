@@ -1,48 +1,69 @@
-# Garantir que Teste de Equipamento sempre vire "aberto" no Administrativo
+## Problema
 
-## Causa raiz
+Hoje, ao finalizar um chat de categoria **Teste de Equipamento** na Central:
 
-Em `src/lib/ticket-finalize-flow.ts` (branch TE, ~linhas 130–185) há um atalho `alreadyRoutedTE`:
+- Status **"Resolvido"** → roda `finalizeTicketWithFlow`, e o branch TE já reabre o ticket em Administrativo. OK.
+- Status **"A resolver"** → o código **pula** `finalizeTicketWithFlow` (linha 2071: `if (ticketRef && !result?.pendingResolve)`), então o ticket TE **não é roteado** para o setor configurado e o chat não é fechado pelo fluxo. **Esse é o bug.**
+
+Além disso, quando o status é "Resolvido" e existe `pendencia_key`, o código chama `concluirPendencia` no GSystem (linha 1708) — o que conflita com a regra "ticket deve continuar aberto". Para TE, a pendência precisa permanecer aberta também.
+
+## Regra alvo (confirmada com o usuário)
+
+Para a categoria **Teste de Equipamento**, ao finalizar o chat — **com qualquer status** (Resolvido ou A resolver):
+
+1. Ticket local fica **`status = aberto`** no setor configurado em `teste_equipamento_settings.target_sector_name` (hoje "Administrativo"), `assigned_to = null`, `closed_at = null`.
+2. Chat na Central é fechado normalmente (`zapi_chats.status = 'finalizado'`).
+3. Pendência no GSystem **não** é concluída (segue aberta junto com o ticket).
+4. Demais categorias seguem o comportamento atual sem mudança.
+
+## Alterações
+
+### 1. `src/routes/central.tsx` — rodar o fluxo TE também em "A resolver"
+
+Por volta da linha 2071, trocar a guarda:
 
 ```ts
-const alreadyRoutedTE =
-  normalizeFlowText(liveSectorTE) === normalizeFlowText(targetSector) || hasPreviousTERoute;
-if (alreadyRoutedTE) {
-  // grava status = "finalizado" e closed_at = now()  ❌
+if (ticketRef && !result?.pendingResolve) { ... }
+```
+
+por algo como:
+
+```ts
+const isTEFinalize = isTesteEquipamentoCategory(ticketRef?.category, teSettings);
+if (ticketRef && (!result?.pendingResolve || isTEFinalize)) {
+  // ...finalizeTicketWithFlow como hoje
 }
 ```
 
-Quando o ticket **já chega** com `sector = "Administrativo"` (alguns são criados assim por automação de categoria antes do operador clicar "Finalizar"), esse atalho dispara e o protocolo é **finalizado** em vez de permanecer **aberto** no Administrativo.
+Importar `isTesteEquipamentoCategory` de `@/hooks/use-teste-equipamento-settings` (já usado no arquivo se necessário, senão adicionar import).
 
-Confirmado em produção: tickets recentes da categoria Teste de Equipamento (#1330, #1336, e outros) terminam com `status=finalizado` no `Administrativo` **sem nenhum `ticket_assignments`/encaminhamento** — exatamente o caminho do atalho. O ticket #1349 chegou a entrar no fluxo (encaminhamento gravado), mas depois o operador clicou Finalizar de novo, caiu no mesmo atalho e foi finalizado 48s depois.
+Como `finalizeTicketWithFlow` no branch TE já força `status: targetStatus` (default `aberto`), `closed_at: null` e roda `closeLinkedZapiChat`, isso cobre tanto "Resolvido" quanto "A resolver".
 
-## Regra correta (do usuário)
+### 2. `src/routes/central.tsx` — não concluir pendência GSystem quando TE
 
-> Todo chamado da categoria "Teste de Equipamento" finalizado no chat **mantém o mesmo protocolo**, transferido para o setor **Administrativo** com status **aberto**.
+No bloco da linha 1707-1722 (`if (pendenciaKey && status === "Resolvido")`), acrescentar guarda:
 
-Ou seja: finalizar o chat ≠ finalizar o ticket. O ticket TE deve sempre terminar `status=aberto`, `sector=Administrativo`, `closed_at=null`, sem operador atribuído — independentemente do estado anterior.
+```ts
+const isTEActive = isTesteEquipamentoCategory(
+  resolvedCategoryLabel || activeTicket.category,
+  teSettings
+);
+if (pendenciaKey && status === "Resolvido" && !isTEActive) {
+  // concluirPendencia como hoje
+}
+```
 
-## Mudança
+Assim a pendência GSystem segue aberta para TE, em consistência com o ticket local.
 
-Arquivo único: `src/lib/ticket-finalize-flow.ts`, somente o ramo TE.
+### 3. Nada muda em `src/lib/ticket-finalize-flow.ts`
 
-1. **Remover o atalho `alreadyRoutedTE` que finaliza o ticket.** O ticket TE nunca é finalizado por este fluxo.
-2. **Tornar o update idempotente** — sempre escreve:
-   - `status: targetStatus` (padrão `aberto`)
-   - `sector: targetSector` (padrão `Administrativo`)
-   - `assigned_to: null`
-   - `closed_at: null`, `closed_by: null`
-   - `updated_at: now()`
-3. **Evitar ruído em re-clicks de Finalizar:** se já houver `ticket_assignments` para o `targetSector` ou comentário `encaminhamento` mencionando o setor, **não** insere nova linha em `ticket_assignments` nem novo comentário "Atendimento finalizado e encaminhado…". Idem para o sync GSystem: só roda se `pendencia_key` ainda não estiver setado (já existe lookup de `pendencia_key` no fluxo).
-4. **`closeLinkedZapiChat(ticket.attendance_id)` continua sendo chamado** ao final (o chat fecha; o ticket fica aberto).
+O branch TE já está correto (idempotente, força aberto no setor alvo, fecha chat). Não precisa tocar.
 
-Resultado:
-- 1º clique em Finalizar: roteia para Administrativo (status aberto), grava 1 `ticket_assignments`, 1 comentário de encaminhamento, sync GSystem (se habilitado), fecha o chat.
-- 2º clique (se acontecer): apenas re-aplica os mesmos campos no ticket e fecha o chat de novo — sem duplicar comentários e sem mudar o ticket para `finalizado`.
+### 4. Nada muda nas demais categorias
+
+A guarda `pendingResolve` segue valendo para categorias normais — "A resolver" continua mantendo o ticket aberto sem disparar encaminhamento automático para elas.
 
 ## Fora de escopo
 
-- Não mexer no ramo `category_routing_rules` (`useRoutingRules`) — só o ramo TE.
-- Não alterar `teste_equipamento_settings` no banco.
-- Não mexer no `central.tsx` (a chamada `finalizeTicketWithFlow` já passa os args certos).
-- Não alterar o webhook (`api.public.zapi-webhook.*`).
+- Configuração do setor alvo (`teste_equipamento_settings.target_sector_name`) — segue sendo o configurado em Configurações → Fluxo Teste de Equipamento. Se o usuário quiser que seja literalmente um setor chamado "Atendimento", basta ajustar nessa tela; não é mudança de código.
+- Webhook de nova mensagem, regras de outras categorias, kanban e detail panel.
