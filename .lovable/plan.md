@@ -1,40 +1,64 @@
-# Corrigir popover de Respostas Rápidas fechando ao mover o mouse
+# Corrigir "duplicate key" ao iniciar conversa
 
-## Problema
+## Causa raiz
 
-Em `src/routes/central.tsx` o item "Respostas rápidas" vive dentro de um `DropdownMenu`. Ao clicar, o handler faz:
+Tabela `zapi_chats` tem coluna gerada:
 
-```ts
-onSelect={(e) => { e.preventDefault(); setTimeout(() => setQuickRepliesOpen(true), 0); }}
+```
+phone_normalized = normalize_zapi_phone(phone)  -- GENERATED ALWAYS
 ```
 
-E o `QuickRepliesPopover` é renderizado com `hideTrigger` (um botão `sr-only` posicionado fora da tela como âncora).
+E índice único parcial:
 
-Dois efeitos combinam para fechar o popover assim que o mouse entra nele:
+```
+uniq_zapi_chats_channel_phone_norm
+ON zapi_chats (channel_id, phone_normalized)
+WHERE phone_normalized IS NOT NULL AND phone_normalized NOT LIKE 'lid:%'
+```
 
-1. **Âncora `sr-only` fora da tela**: o `PopoverContent` se posiciona em relação a um botão de 1px no canto, não próximo do botão "Mais opções" visível. O conteúdo aparece em local inesperado.
-2. **Fechamento ao primeiro pointer-down/move "fora"**: o `DropdownMenu` que acabou de fechar ainda libera eventos de ponteiro que o Radix Popover interpreta como interação externa (porque o `setTimeout(…, 0)` abre o popover antes do dropdown terminar o ciclo de close). Ao mover o mouse para os itens ou para "Gerenciar", o evento já fecha o popover.
+Em `src/lib/zapi.functions.ts` (`createChat`, linhas 706–728) a verificação de chat existente é feita por `phone` cru:
 
-## Correção (apenas frontend, escopo mínimo)
+```ts
+.eq("channel_id", data.channelId)
+.eq("phone", phone)            // ❌ string crua
+.maybeSingle();
+```
 
-Editar **somente** `src/components/central/quick-replies-popover.tsx` e o ponto de uso em `src/routes/central.tsx`:
+Quando o webhook já criou o chat antes (com `phone` em formato diferente — ex.: `5511987654321` vindo do Z-API) e o operador digita `11987654321` na UI, o `select` por `phone` cru não encontra a linha, o handler tenta `INSERT`, e o banco rejeita pelo índice único em `phone_normalized` → `duplicate key value violates unique constraint "uniq_zapi_chats_channel_phone_norm"`.
 
-1. **Substituir o âncora `sr-only` por um trigger real, porém invisível**, mantendo as dimensões e posição do botão "Mais opções", para que o popover apareça grudado ao botão. Implementação: quando `hideTrigger=true`, renderizar um `<button>` com `className="pointer-events-none opacity-0 absolute inset-0"` dentro de um wrapper relativo — ou expor um `anchorRef` opcional. Caminho mais simples: deixar de usar `hideTrigger` e mostrar o próprio botão `Zap` do popover ao lado do "Mais opções", removendo o item duplicado do `DropdownMenu`.
+## Correção (escopo mínimo, só `src/lib/zapi.functions.ts`)
 
-   Decisão proposta: **remover o item "Respostas rápidas" do `DropdownMenu`** e mostrar o `QuickRepliesPopover` (com seu botão `Zap` padrão) diretamente na toolbar do input, ao lado dos outros botões (anexar, microfone, etc.). Isso elimina o conflito Dropdown↔Popover e a âncora fantasma. O usuário continua acessando "Gerenciar" pelo próprio popover.
+Substituir o fluxo "select-then-insert/update" do `createChat` por um caminho idempotente que respeita o índice em `phone_normalized`:
 
-2. **Garantir que o `PopoverContent` não feche em interações internas**: adicionar `onOpenAutoFocus={(e) => e.preventDefault()}` (evita roubo de foco causar reabertura/close) e manter `modal={false}` (default) — não é preciso mais nada, pois sem o dropdown intermediário o ciclo de eventos fica limpo.
+1. **Calcular o normalizado uma vez** chamando a função SQL existente via RPC (não precisa migration — `normalize_zapi_phone(text)` já existe). Fallback: replicar a lógica em TS se a chamada falhar.
+2. **Procurar chat existente por `phone_normalized`** (não mais por `phone`), filtrando pelo `channel_id`. Isso resolve 95% dos casos sem tocar em escrita.
+3. **Se existir** → fazer o `update` atual (status `em_atendimento`, `assigned_to`, `last_message_at`).
+4. **Se não existir** → tentar `insert`; se ainda assim cair em violação 23505 nesse índice específico, fazer um **re-select por `phone_normalized`** e seguir como existente (resolve corrida entre webhook e UI).
+5. Manter o restante do handler igual (envio da mensagem opcional, retorno `attendanceId`).
 
-3. **Botão "Gerenciar respostas rápidas"**: trocar o `onClick` por `onSelect` envolvendo em um `CommandItem` dentro do mesmo `CommandList` (ou manter `Button` mas usar `onMouseDown` em vez de `onClick`, para disparar antes de qualquer "outside pointer down" potencialmente disparado). Manter o comportamento: fecha popover + abre `QuickRepliesManagerDialog`.
+Pseudocódigo:
+
+```text
+norm = rpc('normalize_zapi_phone', { raw: phone }) ?? normalizeFallback(phone)
+
+existing = select id from zapi_chats
+  where channel_id = X and phone_normalized = norm
+  limit 1
+
+if existing: update ... where id = existing.id
+else:
+  try insert {...}
+  catch err if err.code === '23505' and constraint contém 'phone_norm':
+    existing = re-select by (channel_id, phone_normalized)
+    update existing
+```
 
 ## Arquivos alterados
 
-- `src/components/central/quick-replies-popover.tsx`
-  - Remover `hideTrigger` ou torná-lo um trigger invisível âncora; adicionar `onOpenAutoFocus` no `PopoverContent`; trocar `onClick` do "Gerenciar" para `onMouseDown`.
-- `src/routes/central.tsx`
-  - Remover o `DropdownMenuItem` "Respostas rápidas" e o estado `quickRepliesOpen` controlado externamente.
-  - Renderizar `<QuickRepliesPopover size="icon" onPick={…} />` direto na toolbar do input (mesmo `onPick` atual com `applyQuickReplyVars`).
+- `src/lib/zapi.functions.ts` — apenas o handler `createChat` (linhas 692–753). Sem mudanças de schema, sem mudanças em UI, sem mexer em webhook ou bot.
 
 ## Fora de escopo
 
-- Sem mudanças na tabela `zapi_quick_replies`, sem mudanças no `QuickRepliesManagerDialog`, sem mudanças na tela de Configurações → Respostas Rápidas.
+- Não alterar `normalize_zapi_phone`, índice, ou tabela.
+- Não mudar o fluxo do webhook (`api.public.zapi-webhook.$channelId.tsx`) — ele já usa o normalizado corretamente.
+- Não tocar em `central.tsx` nem na UI do modal "Iniciar Conversa".
