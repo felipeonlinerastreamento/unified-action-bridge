@@ -1,76 +1,40 @@
-## Objetivo
+# Corrigir popover de Respostas Rápidas fechando ao mover o mouse
 
-No card **Grupos de Setores** (`Configurações › Usuários`), adicionar configuração de permissões por grupo:
+## Problema
 
-1. **Menus do sistema** liberados para o grupo (multi-select com chips dos menus disponíveis).
-2. **Permitir finalizar chat sem enviar mensagem** ao cliente (switch).
+Em `src/routes/central.tsx` o item "Respostas rápidas" vive dentro de um `DropdownMenu`. Ao clicar, o handler faz:
 
-Essas permissões valem para **atendentes** atribuídos a setores que pertencem ao grupo. **Admin** e **Gestor** continuam tendo acesso total (ignoram a configuração).
-
-## Modelo de permissão
-
-- Um usuário herda as permissões do **conjunto (união)** de grupos dos setores em que está atribuído (via `user_sector_assignments` → `sectors.group_id` → `sector_groups`).
-- Se o usuário **não** pertence a nenhum grupo (ou todos seus grupos estão com `allowed_menus = NULL`), ele cai num **default** que libera todos os menus do operador (comportamento de hoje).
-- Quando `allowed_menus` está **definido** num grupo (mesmo que vazio), aquele grupo restringe — a união entre grupos é aplicada.
-- `can_finalize_without_message`: `OR` entre todos os grupos do usuário.
-
-## Migrations
-
-`sector_groups`:
-- `allowed_menus text[]` (nullable; `NULL` = "sem restrição configurada"; array = lista explícita de slugs).
-- `can_finalize_without_message boolean NOT NULL DEFAULT false`.
-
-RLS: manter as policies atuais (admin/gestor gerenciam, todos leem).
-
-## Catálogo de menus (constante no front)
-
-Slugs alinhados com `src/components/app-sidebar.tsx`:
-
-```text
-dashboard, central, crm, contatos, empresas, estoque, relatorios, okr,
-atendimentos,
-config.integracoes, config.central-atendimento, config.fluxo-atendimento,
-config.estoque, config.assistente-ia, config.zapi, config.encaminhamento,
-config.automacao-sem-comunicacao, config.popup-diario, config.usuarios,
-config.status-usuarios, config.notificacoes, config.okr, config.auditoria
+```ts
+onSelect={(e) => { e.preventDefault(); setTimeout(() => setQuickRepliesOpen(true), 0); }}
 ```
 
-Arquivo novo `src/lib/menu-catalog.ts` exporta `MENU_CATALOG` (slug → label + grupo "Principal"/"Configurações") e `DEFAULT_OPERATOR_MENUS` (subset historicamente liberado a operadores: `central`, `crm`, `contatos`, `atendimentos`).
+E o `QuickRepliesPopover` é renderizado com `hideTrigger` (um botão `sr-only` posicionado fora da tela como âncora).
 
-## Mudanças no front
+Dois efeitos combinam para fechar o popover assim que o mouse entra nele:
 
-### 1. `src/components/configuracoes/sector-groups-management.tsx` (dialog de criar/editar grupo)
+1. **Âncora `sr-only` fora da tela**: o `PopoverContent` se posiciona em relação a um botão de 1px no canto, não próximo do botão "Mais opções" visível. O conteúdo aparece em local inesperado.
+2. **Fechamento ao primeiro pointer-down/move "fora"**: o `DropdownMenu` que acabou de fechar ainda libera eventos de ponteiro que o Radix Popover interpreta como interação externa (porque o `setTimeout(…, 0)` abre o popover antes do dropdown terminar o ciclo de close). Ao mover o mouse para os itens ou para "Gerenciar", o evento já fecha o popover.
 
-Adicionar 2 seções:
-- **Menus liberados**: checklist agrupado em "Principal" e "Configurações" usando `MENU_CATALOG`. Toggle "Sem restrição (usar padrão)" → grava `allowed_menus = null`; ao desligar, salva o array selecionado.
-- **Finalização**: switch "Permitir finalizar chat sem enviar mensagem ao cliente" → grava `can_finalize_without_message`.
+## Correção (apenas frontend, escopo mínimo)
 
-Persistir junto com nome/descrição/ativo. Atualizar a interface `SectorGroup` e o `payload` de `saveMutation`.
+Editar **somente** `src/components/central/quick-replies-popover.tsx` e o ponto de uso em `src/routes/central.tsx`:
 
-### 2. Novo hook `src/hooks/use-user-permissions.tsx`
+1. **Substituir o âncora `sr-only` por um trigger real, porém invisível**, mantendo as dimensões e posição do botão "Mais opções", para que o popover apareça grudado ao botão. Implementação: quando `hideTrigger=true`, renderizar um `<button>` com `className="pointer-events-none opacity-0 absolute inset-0"` dentro de um wrapper relativo — ou expor um `anchorRef` opcional. Caminho mais simples: deixar de usar `hideTrigger` e mostrar o próprio botão `Zap` do popover ao lado do "Mais opções", removendo o item duplicado do `DropdownMenu`.
 
-Resolve, a partir do `user.id`:
-- `allowedMenus: Set<string> | null` (`null` = sem restrição). Query: `user_sector_assignments → sectors(group_id) → sector_groups(allowed_menus, can_finalize_without_message)` agregando.
-- `canFinalizeWithoutMessage: boolean` (OR entre grupos).
-- Admin/Gestor → `allowedMenus = null`, `canFinalizeWithoutMessage = true`.
+   Decisão proposta: **remover o item "Respostas rápidas" do `DropdownMenu`** e mostrar o `QuickRepliesPopover` (com seu botão `Zap` padrão) diretamente na toolbar do input, ao lado dos outros botões (anexar, microfone, etc.). Isso elimina o conflito Dropdown↔Popover e a âncora fantasma. O usuário continua acessando "Gerenciar" pelo próprio popover.
 
-Expõe `canSeeMenu(slug)` helper. Cache via React Query, chave `["user-permissions", userId]`.
+2. **Garantir que o `PopoverContent` não feche em interações internas**: adicionar `onOpenAutoFocus={(e) => e.preventDefault()}` (evita roubo de foco causar reabertura/close) e manter `modal={false}` (default) — não é preciso mais nada, pois sem o dropdown intermediário o ciclo de eventos fica limpo.
 
-### 3. `src/components/app-sidebar.tsx`
+3. **Botão "Gerenciar respostas rápidas"**: trocar o `onClick` por `onSelect` envolvendo em um `CommandItem` dentro do mesmo `CommandList` (ou manter `Button` mas usar `onMouseDown` em vez de `onClick`, para disparar antes de qualquer "outside pointer down" potencialmente disparado). Manter o comportamento: fecha popover + abre `QuickRepliesManagerDialog`.
 
-- Importar `useUserPermissions` e `MENU_CATALOG`.
-- Em cada `SidebarMenuItem`/`SidebarMenuSubItem` aplicar `canSeeMenu(slug)` para esconder os itens que o operador não pode ver.
-- Remover o `adminOnlyUrls` hardcoded para `dashboard/estoque/relatorios/okr` e passar essa decisão para o novo modelo (`DEFAULT_OPERATOR_MENUS` exclui esses, então o comportamento padrão fica igual ao atual).
-- Submenu "Configurações" inteiro: se nenhum sub-item for visível, esconder o grupo.
+## Arquivos alterados
 
-### 4. `src/routes/central.tsx` (diálogo de finalizar)
+- `src/components/central/quick-replies-popover.tsx`
+  - Remover `hideTrigger` ou torná-lo um trigger invisível âncora; adicionar `onOpenAutoFocus` no `PopoverContent`; trocar `onClick` do "Gerenciar" para `onMouseDown`.
+- `src/routes/central.tsx`
+  - Remover o `DropdownMenuItem` "Respostas rápidas" e o estado `quickRepliesOpen` controlado externamente.
+  - Renderizar `<QuickRepliesPopover size="icon" onPick={…} />` direto na toolbar do input (mesmo `onPick` atual com `applyQuickReplyVars`).
 
-- Substituir o gate `{isAdmin && (...)}` (linha 4385) e o `isAdmin && skipClosingMessage` (linha 4431) por `canFinalizeWithoutMessage` vindo do `useUserPermissions`.
-- Atualizar o texto descritivo: "Encerra silenciosamente — requer permissão do grupo."
+## Fora de escopo
 
-## Out of scope
-
-- Não alterar RBAC de rotas (`beforeLoad` de admin/gestor permanece). A nova permissão é só de UI/menu — backend continua protegido por RLS e papéis.
-- Não migrar dados existentes: grupos antigos ficam com `allowed_menus = NULL` (sem restrição) e `can_finalize_without_message = false`.
-- Não implementar regras por usuário individual (apenas por grupo). Se necessário no futuro, mesmo modelo pode ser estendido com `user_permissions` override.
-- CSAT, fluxo de encerramento, mensagem template, escalonamento gestão — não tocados.
+- Sem mudanças na tabela `zapi_quick_replies`, sem mudanças no `QuickRepliesManagerDialog`, sem mudanças na tela de Configurações → Respostas Rápidas.
