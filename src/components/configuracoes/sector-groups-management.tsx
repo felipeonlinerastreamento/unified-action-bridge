@@ -19,14 +19,18 @@ import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, FolderTree, Loader2, ChevronDown, ChevronRight, Building2 } from "lucide-react";
+import { Plus, Pencil, Trash2, FolderTree, Loader2, ChevronDown, ChevronRight, Building2, ShieldCheck } from "lucide-react";
+import { MENU_CATALOG } from "@/lib/menu-catalog";
 
 interface SectorGroup {
   id: string;
   name: string;
   description: string | null;
   is_active: boolean;
+  allowed_menus: string[] | null;
+  can_finalize_without_message: boolean;
 }
 
 interface Sector {
