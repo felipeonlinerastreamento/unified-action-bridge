@@ -853,13 +853,11 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                 justReopenedSilently = true;
                 // NÃO criar novo ticket — o anterior continua aberto.
               } else {
-                console.log(`[zapi-webhook] reopening finalized chat without CSAT → no new ticket/protocol will be created (${phone})`);
-                // Buscamos o último ticket finalizado apenas para herdar o setor
-                // da reabertura (fallback). NÃO criamos novo chamado/protocolo:
-                // reabertura por CSAT não respondido apenas reabre o chat.
+                const ONE_HOUR_MS = 60 * 60 * 1000;
+                const withinOneHour = sinceCloseMs <= ONE_HOUR_MS;
                 const { data: lastTicket } = await supabaseAdmin
                   .from("service_tickets")
-                  .select("sector")
+                  .select("id, protocol_number, sector")
                   .eq("attendance_id", chatId!)
                   .eq("status", "finalizado")
                   .order("closed_at", { ascending: false })
@@ -877,8 +875,45 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                 } else {
                   baseUpdate.status = "aguardando";
                 }
-                justReopenedSilently = true;
-                // Intencional: nenhum service_ticket é criado aqui.
+
+                if (withinOneHour && lastTicket) {
+                  // ≤ 1h: reabre o MESMO chamado, mantém protocolo.
+                  console.log(`[zapi-webhook] reopening finalized chat within 1h → same ticket #${(lastTicket as any).protocol_number} reopened, no new protocol (${phone})`);
+                  await supabaseAdmin
+                    .from("service_tickets")
+                    .update({
+                      status: "reaberto",
+                      reopened_at: new Date().toISOString(),
+                      closed_at: null,
+                      closed_by: null,
+                    })
+                    .eq("id", (lastTicket as any).id);
+                  justReopenedSilently = true;
+                } else {
+                  // > 1h (ou sem ticket anterior): cria novo chamado e deixa o bot rodar.
+                  const lastProto = (lastTicket as any)?.protocol_number;
+                  const { data: newTicket, error: newTicketErr } = await supabaseAdmin
+                    .from("service_tickets")
+                    .insert({
+                      attendance_id: chatId!,
+                      channel_id: channelId,
+                      contact_phone: phone,
+                      contact_name: existing.contact_name || p.senderName || null,
+                      status: "aberto",
+                      sector: reopenSector,
+                      notes: lastProto != null
+                        ? `Reabertura após 1h do protocolo anterior #${lastProto}`
+                        : null,
+                    })
+                    .select("protocol_number")
+                    .maybeSingle();
+                  if (newTicketErr) {
+                    console.error("[zapi-webhook] failed to create reopen ticket:", newTicketErr);
+                  } else {
+                    console.log(`[zapi-webhook] reopening finalized chat after 1h → new ticket #${(newTicket as any)?.protocol_number} + bot flow restart (${phone})`);
+                  }
+                  // NÃO setamos justReopenedSilently — o bot roda normalmente e reapresenta o menu.
+                }
               }
             }
             await supabaseAdmin
