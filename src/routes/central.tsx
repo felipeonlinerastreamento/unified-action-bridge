@@ -287,7 +287,7 @@ function CentralPage() {
   } | null>(null);
   const [nicknameMode, setNicknameMode] = useState(false);
   const [showFullHistory, setShowFullHistory] = useState(false);
-  const [quickRepliesOpen, setQuickRepliesOpen] = useState(false);
+  
   const [searchTerm, setSearchTerm] = useState("");
   const [ticketPlate, setTicketPlate] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
