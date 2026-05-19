@@ -2,52 +2,12 @@ import { useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { toast } from "sonner";
-
-/**
- * Reproduz dois bipes diferentes:
- *  - "message": som curto agudo para nova mensagem do cliente em chat assumido pelo operador
- *  - "forward": som duplo grave para encaminhamentos (chat ou ticket atribuído ao operador)
- */
-function getVolume(): number {
-  try {
-    const v = Number(localStorage.getItem("operator_notification_volume"));
-    if (Number.isFinite(v) && v >= 0 && v <= 1) return v;
-  } catch {}
-  return 0.6; // default mais alto
-}
+import { playForKind } from "@/lib/notification-sounds";
 
 function playTone(kind: "message" | "forward") {
-  try {
-    const Ctx = (window as any).AudioContext || (window as any).webkitAudioContext;
-    if (!Ctx) return;
-    const ctx = new Ctx();
-    const vol = getVolume();
-    if (vol <= 0) { ctx.close().catch(() => {}); return; }
-
-    const beep = (freq: number, start: number, duration: number, gainBase = 1) => {
-      const osc = ctx.createOscillator();
-      const gain = ctx.createGain();
-      osc.frequency.value = freq;
-      // Multiplica pelo volume do usuário (0..1). Base ~0.5 para som mais audível.
-      gain.gain.value = Math.min(1, gainBase * 0.5 * vol);
-      osc.connect(gain);
-      gain.connect(ctx.destination);
-      osc.start(ctx.currentTime + start);
-      osc.stop(ctx.currentTime + start + duration);
-    };
-
-    if (kind === "message") {
-      beep(880, 0, 0.18);
-    } else {
-      beep(520, 0, 0.18);
-      beep(380, 0.22, 0.25);
-    }
-
-    setTimeout(() => ctx.close().catch(() => {}), 800);
-  } catch {
-    // ignora
-  }
+  playForKind(kind);
 }
+
 
 /**
  * Hook global montado no AppLayout. Inscreve em realtime para:
