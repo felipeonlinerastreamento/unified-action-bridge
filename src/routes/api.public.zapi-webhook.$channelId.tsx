@@ -102,45 +102,10 @@ async function pickLeastLoadedAgent(sector: string | null | undefined): Promise<
   }
 }
 
-/**
- * Ensures an open service_ticket exists for the chat (attendance_id = chatId).
- * Creates one when missing. Used on chat reopen so a NEW protocol is generated
- * automatically, even when the previous CSAT was not answered.
- */
-async function ensureOpenTicketForChat(args: {
-  chatId: string;
-  channelId: string;
-  contactPhone: string;
-  contactName: string | null;
-  assignedTo: string | null;
-  sector: string | null;
-  reopenedFromProtocol?: number | null;
-}) {
-  const { data: open } = await supabaseAdmin
-    .from("service_tickets")
-    .select("id")
-    .eq("attendance_id", args.chatId)
-    .neq("status", "finalizado")
-    .limit(1);
-  if (open && open.length > 0) return;
+// (Removido) ensureOpenTicketForChat: antes criava um novo service_ticket na
+// reabertura de chat finalizado sem CSAT. A regra atual é não abrir novo
+// chamado nesse caso — apenas reabrir o chat.
 
-  const note = args.reopenedFromProtocol
-    ? `Reabertura sem avaliação CSAT do protocolo anterior #${args.reopenedFromProtocol}`
-    : null;
-
-  const { error } = await supabaseAdmin.from("service_tickets").insert({
-    attendance_id: args.chatId,
-    channel_id: args.channelId || null,
-    contact_phone: args.contactPhone || null,
-    contact_name: args.contactName || null,
-    status: "aberto",
-    assigned_to: args.assignedTo || null,
-    sector: args.sector || null,
-    notes: note,
-    reopened_at: new Date().toISOString(),
-  } as any);
-  if (error) console.error("[zapi-webhook] failed to create reopen ticket", error);
-}
 
 export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
   server: {
