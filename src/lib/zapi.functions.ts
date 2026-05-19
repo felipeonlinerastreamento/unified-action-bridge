@@ -770,6 +770,7 @@ export const createChat = createServerFn({ method: "POST" })
         .eq("id", chatId);
     }
 
+    if (!chatId) throw new Error("Erro ao criar conversa");
 
     if (data.message) {
       const channel = await loadZapiChannel(context.supabase, data.channelId);
