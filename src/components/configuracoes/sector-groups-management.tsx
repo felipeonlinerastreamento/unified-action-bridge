@@ -49,6 +49,9 @@ export function SectorGroupsManagement() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [isActive, setIsActive] = useState(true);
+  const [restrictMenus, setRestrictMenus] = useState(false);
+  const [allowedMenus, setAllowedMenus] = useState<string[]>([]);
+  const [canFinalizeWithoutMessage, setCanFinalizeWithoutMessage] = useState(false);
 
   // Sector dialog state
   const [sectorDialogOpen, setSectorDialogOpen] = useState(false);
