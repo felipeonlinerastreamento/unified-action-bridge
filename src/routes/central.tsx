@@ -3175,7 +3175,7 @@ function CentralPage() {
                             <EyeOff className="h-4 w-4 mr-2" />
                             Enviar sussurro
                           </DropdownMenuCheckboxItem>
-                          <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setQuickRepliesOpen(true); }}>
+                          <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setTimeout(() => setQuickRepliesOpen(true), 0); }}>
                             <Zap className="h-4 w-4 mr-2" />
                             Respostas rápidas
                           </DropdownMenuItem>

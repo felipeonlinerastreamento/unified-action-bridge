@@ -1,27 +1,35 @@
-## Objetivo
-Quando o cliente reinteragir após um chamado finalizado **sem CSAT respondido**, o sistema deve apenas **reabrir o chat** (assumir o operador, voltar para `em_atendimento`/`aguardando`) — **sem criar um novo `service_ticket` nem gerar novo protocolo**.
+## Problemas
 
-## Mudança
+1. **Popover abre e fecha imediatamente** ao clicar em "Respostas rápidas" no menu de opções de envio do chat (`src/routes/central.tsx` ~linha 3178). Ao acionar `setQuickRepliesOpen(true)` dentro do `onSelect` do `DropdownMenuItem`, o fechamento do dropdown dispara um evento de `pointerdown`/foco fora que o `Popover` interpreta como "clique fora" e fecha em seguida.
 
-Arquivo: `src/routes/api.public.zapi-webhook.$channelId.tsx`
+2. Não existe um caminho rápido para o operador (atendente) criar/editar/excluir respostas rápidas a partir do próprio chat — hoje só admin/gestor acessam o card em `Configurações › Z-API`. A RLS de `zapi_quick_replies` já permite que qualquer usuário autenticado faça INSERT, edite as próprias/globais e exclua as próprias, então é apenas uma questão de UI.
 
-No ramo de reabertura de chat finalizado (linha ~890), remover a criação do novo ticket. O lookup do `lastTicket` deixa de ser necessário (era usado só para a nota do novo chamado), mas mantemos a leitura do `sector` do último ticket para definir o setor da reabertura.
+## Mudanças
 
-Mudanças pontuais:
-1. **Remover** a chamada `await ensureOpenTicketForChat({ ... reopenedFromProtocol: ... })` (linhas ~914-923).
-2. **Manter** a query `lastTicket` apenas para obter `sector` (fallback do setor da reabertura). Pode reduzir o select para `select("sector")`.
-3. **Remover** (ou marcar como dead-code e deletar) a função `ensureOpenTicketForChat` e seu parâmetro `reopenedFromProtocol`, pois esse era o único call-site. Confirmado via grep — nenhum outro uso.
-4. Adicionar um `console.log` claro: `"[zapi-webhook] reopening finalized chat without CSAT → no new ticket/protocol will be created"`.
+### 1. Corrigir o popover (`src/routes/central.tsx`)
 
-## Comportamento resultante
+- No `onSelect` do item "Respostas rápidas", trocar o `setQuickRepliesOpen(true)` síncrono por `setTimeout(() => setQuickRepliesOpen(true), 0)` (ou `requestAnimationFrame`) para abrir o popover **depois** do dropdown terminar de fechar, evitando o conflito de outside-click.
 
-- Chat finalizado recebe nova mensagem do cliente → status volta a `em_atendimento` (ou `aguardando` se não houver operador online), atribuído ao operador menos carregado do setor anterior.
-- **Nenhum service_ticket novo é criado**, nenhum protocolo novo é gerado.
-- O CSAT anterior pendente continua intacto.
-- O ramo de `pending_resolve` ("A resolver") continua exatamente como hoje (já não criava ticket novo).
+### 2. Botão "Gerenciar" dentro do popover (`src/components/central/quick-replies-popover.tsx`)
+
+- Adicionar um rodapé fixo no `PopoverContent` com um botão **"Gerenciar respostas rápidas"** (ícone `Settings` ou `Pencil`), visível para todos os usuários autenticados.
+- Ao clicar, abrir um `Dialog` (novo componente `QuickRepliesManagerDialog`) que reaproveita a lógica de CRUD já existente em `src/components/configuracoes/zapi-quick-replies-config.tsx`.
+
+### 3. Novo componente `QuickRepliesManagerDialog`
+
+Local: `src/components/central/quick-replies-manager-dialog.tsx`.
+
+- Refatorar `zapi-quick-replies-config.tsx` extraindo o miolo (form + lista + mutations) em um componente reutilizável `QuickRepliesManager` (mesma pasta `configuracoes/` ou em `components/quick-replies/`), mantendo as mesmas queries (`["zapi-quick-replies"]`) para que **toda alteração feita pelo operador apareça instantaneamente** no card de configurações (e vice-versa) graças ao cache compartilhado do React Query.
+- `ZapiQuickRepliesConfig` passa a ser um wrapper fino: `Card` + `QuickRepliesManager`.
+- `QuickRepliesManagerDialog` é um `Dialog` que renderiza o mesmo `QuickRepliesManager` em formato modal, acionado pelo botão "Gerenciar" do popover.
+
+### 4. Sem mudanças de backend
+
+- RLS atual já cobre o caso de uso (qualquer usuário autenticado pode criar; só dono/global/admin/gestor pode editar; só dono/admin/gestor pode excluir). Nenhuma migration necessária.
+- Mensagens de erro do `updateMutation`/`deleteMutation` já tratam "sem permissão" para o caso de um atendente tentar editar/excluir um item de outro usuário que não seja global.
 
 ## Fora de escopo
 
-- Não alterar UI / configurações.
-- Não tocar em CSAT, sectors, atribuição ou demais regras de reabertura.
-- Não migrar dados históricos (chamados como #01245 permanecem como estão).
+- Não alterar permissões de RLS.
+- Não alterar variáveis dinâmicas, formatação `*negrito*`, nem o atalho `/`.
+- Não tocar no popover do `floating-chat-window` (já funciona porque é acionado por botão visível, não por dropdown). Ele ganhará o botão "Gerenciar" automaticamente por compartilhar o `QuickRepliesPopover`.
