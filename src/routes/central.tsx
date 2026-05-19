@@ -4385,7 +4385,7 @@ function CentralPage() {
               );
             })()}
 
-            {isAdmin && (
+            {canSkipClosing && (
               <div className="flex items-start gap-2 rounded-md border border-dashed p-3 bg-muted/30">
                 <Checkbox
                   id="skip-closing-message"
@@ -4397,7 +4397,7 @@ function CentralPage() {
                     Finalizar sem enviar mensagem ao cliente
                   </Label>
                   <p className="text-[11px] text-muted-foreground">
-                    Encerra silenciosamente — apenas administradores.
+                    Encerra silenciosamente — permissão concedida pelo grupo de setores.
                   </p>
                 </div>
               </div>
