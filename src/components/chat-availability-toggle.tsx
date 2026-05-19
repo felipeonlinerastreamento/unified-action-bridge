@@ -99,7 +99,7 @@ export function ChatAvailabilityToggle() {
           </span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-64" align="end">
+      <PopoverContent className="w-80" align="end">
         <div className="space-y-3">
           <div className="space-y-1">
             <div className="text-sm font-medium flex items-center gap-2">
@@ -129,14 +129,65 @@ export function ChatAvailabilityToggle() {
               max={100}
               step={5}
               onValueChange={handleVolumeChange}
-              onValueCommit={(vals) => playPreviewBeep(((vals?.[0] ?? 0) / 100))}
+              onValueCommit={(vals) => playPreset(getPresetId("message"), ((vals?.[0] ?? 0) / 100))}
             />
-            <p className="text-[11px] text-muted-foreground">
-              Som de novas mensagens e encaminhamentos. Ajuste é por dispositivo.
-            </p>
           </div>
+          <SoundSelector kind="message" label="Som: nova mensagem" volume={volume} />
+          <SoundSelector kind="forward" label="Som: chamado atribuído" volume={volume} />
+          <p className="text-[11px] text-muted-foreground pt-1 border-t">
+            Ajustes são salvos por dispositivo.
+          </p>
         </div>
       </PopoverContent>
     </Popover>
   );
 }
+
+function SoundSelector({
+  kind,
+  label,
+  volume,
+}: {
+  kind: "message" | "forward";
+  label: string;
+  volume: number;
+}) {
+  const [presetId, setPresetIdState] = useState<string>(() => getPresetId(kind));
+
+  const onChange = (id: string) => {
+    setPresetIdState(id);
+    setPresetId(kind, id);
+    playPreset(id, volume);
+  };
+
+  return (
+    <div className="space-y-1.5">
+      <label className="text-xs font-medium text-muted-foreground">{label}</label>
+      <div className="flex gap-2">
+        <Select value={presetId} onValueChange={onChange}>
+          <SelectTrigger className="h-8 text-xs flex-1">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {SOUND_PRESETS.map((p) => (
+              <SelectItem key={p.id} value={p.id} className="text-xs">
+                {p.label}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          className="h-8 w-8 shrink-0"
+          onClick={() => playPreset(presetId, volume)}
+          title="Ouvir"
+        >
+          <Play className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
