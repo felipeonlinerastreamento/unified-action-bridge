@@ -30,6 +30,8 @@ import {
 } from "lucide-react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
+import { useUserPermissions } from "@/hooks/use-user-permissions";
+import { URL_TO_MENU_SLUG } from "@/lib/menu-catalog";
 import { useTheme } from "@/hooks/use-theme";
 import {
   Sidebar,
