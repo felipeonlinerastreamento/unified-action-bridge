@@ -18,6 +18,7 @@ interface Props {
 
 export function QuickRepliesPopover({ onPick, size = "icon", open: openProp, onOpenChange, hideTrigger }: Props) {
   const [openInternal, setOpenInternal] = useState(false);
+  const [managerOpen, setManagerOpen] = useState(false);
   const open = openProp ?? openInternal;
   const setOpen = (v: boolean) => {
     setOpenInternal(v);
