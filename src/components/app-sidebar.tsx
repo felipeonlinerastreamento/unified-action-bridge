@@ -91,6 +91,7 @@ export function AppSidebar() {
   const location = useLocation();
   const { profile, signOut, hasRole } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { canSeeMenu } = useUserPermissions();
   const isAdmin = hasRole("admin");
   const isGestor = hasRole("gestor");
   const canAudit = isAdmin || isGestor;
@@ -98,12 +99,16 @@ export function AppSidebar() {
   const isConfigActive = location.pathname.startsWith("/configuracoes");
   const isAtendimentosActive = location.pathname.startsWith("/atendimentos");
 
-  const adminOnlyUrls = new Set<string>([
-    "/dashboard",
-    "/estoque",
-    "/relatorios",
-    "/okr",
-  ]);
+  const canSeeUrl = (url: string) => {
+    const slug = URL_TO_MENU_SLUG[url];
+    if (!slug) return true;
+    return canSeeMenu(slug);
+  };
+
+  const visibleConfigItems = configSubItems.filter((sub) => canSeeUrl(sub.url));
+  const showConfigMenu = isAdmin || visibleConfigItems.length > 0;
+
+
 
   return (
     <Sidebar collapsible="icon">
