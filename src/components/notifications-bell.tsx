@@ -74,15 +74,16 @@ export function NotificationsBell() {
   return (
     <Popover>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" className="relative h-11 w-11">
-          <Bell className="h-6 w-6" />
+        <Button variant="ghost" size="icon" className="relative h-12 w-12">
+          <Bell className={`h-7 w-7 ${unread > 0 ? "animate-pulse text-primary" : ""}`} />
           {unread > 0 && (
-            <Badge className="absolute -top-0.5 -right-0.5 h-5 min-w-[20px] px-1 bg-red-600 text-white text-[11px] font-bold">
+            <Badge className="absolute -top-0.5 -right-0.5 h-5 min-w-[20px] px-1 bg-red-600 text-white text-[11px] font-bold animate-pulse">
               {unread > 9 ? "9+" : unread}
             </Badge>
           )}
         </Button>
       </PopoverTrigger>
+
       <PopoverContent className="w-80 p-0" align="end">
         <div className="flex items-center justify-between p-3 border-b">
           <span className="text-sm font-semibold">Notificações</span>
