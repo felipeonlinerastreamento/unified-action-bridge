@@ -3178,10 +3178,6 @@ function CentralPage() {
                             <EyeOff className="h-4 w-4 mr-2" />
                             Enviar sussurro
                           </DropdownMenuCheckboxItem>
-                          <DropdownMenuItem onSelect={(e) => { e.preventDefault(); setTimeout(() => setQuickRepliesOpen(true), 0); }}>
-                            <Zap className="h-4 w-4 mr-2" />
-                            Respostas rápidas
-                          </DropdownMenuItem>
                           <DropdownMenuCheckboxItem
                             checked={nicknameMode}
                             onCheckedChange={(v) => {
@@ -3196,9 +3192,6 @@ function CentralPage() {
                         </DropdownMenuContent>
                       </DropdownMenu>
                       <QuickRepliesPopover
-                        hideTrigger
-                        open={quickRepliesOpen}
-                        onOpenChange={setQuickRepliesOpen}
                         onPick={(text) => {
                           const resolved = applyQuickReplyVars(text, {
                             operatorName: profile?.name,
