@@ -3,8 +3,10 @@ import { supabase } from "@/integrations/supabase/client";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Zap } from "lucide-react";
+import { Separator } from "@/components/ui/separator";
+import { Zap, Settings2 } from "lucide-react";
 import { useState } from "react";
+import { QuickRepliesManagerDialog } from "./quick-replies-manager-dialog";
 
 interface Props {
   onPick: (text: string) => void;
