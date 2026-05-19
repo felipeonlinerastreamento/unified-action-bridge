@@ -3357,6 +3357,8 @@ export type Database = {
       }
       sector_groups: {
         Row: {
+          allowed_menus: string[] | null
+          can_finalize_without_message: boolean
           created_at: string
           description: string | null
           id: string
@@ -3365,6 +3367,8 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          allowed_menus?: string[] | null
+          can_finalize_without_message?: boolean
           created_at?: string
           description?: string | null
           id?: string
@@ -3373,6 +3377,8 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          allowed_menus?: string[] | null
+          can_finalize_without_message?: boolean
           created_at?: string
           description?: string | null
           id?: string

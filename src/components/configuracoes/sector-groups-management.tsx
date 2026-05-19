@@ -19,14 +19,18 @@ import {
   Collapsible, CollapsibleContent, CollapsibleTrigger,
 } from "@/components/ui/collapsible";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
-import { Plus, Pencil, Trash2, FolderTree, Loader2, ChevronDown, ChevronRight, Building2 } from "lucide-react";
+import { Plus, Pencil, Trash2, FolderTree, Loader2, ChevronDown, ChevronRight, Building2, ShieldCheck } from "lucide-react";
+import { MENU_CATALOG } from "@/lib/menu-catalog";
 
 interface SectorGroup {
   id: string;
   name: string;
   description: string | null;
   is_active: boolean;
+  allowed_menus: string[] | null;
+  can_finalize_without_message: boolean;
 }
 
 interface Sector {
@@ -45,6 +49,9 @@ export function SectorGroupsManagement() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [isActive, setIsActive] = useState(true);
+  const [restrictMenus, setRestrictMenus] = useState(false);
+  const [allowedMenus, setAllowedMenus] = useState<string[]>([]);
+  const [canFinalizeWithoutMessage, setCanFinalizeWithoutMessage] = useState(false);
 
   // Sector dialog state
   const [sectorDialogOpen, setSectorDialogOpen] = useState(false);
@@ -85,17 +92,31 @@ export function SectorGroupsManagement() {
   };
 
   // Group CRUD
-  const resetForm = () => { setName(""); setDescription(""); setIsActive(true); setEditing(null); };
+  const resetForm = () => {
+    setName(""); setDescription(""); setIsActive(true);
+    setRestrictMenus(false); setAllowedMenus([]); setCanFinalizeWithoutMessage(false);
+    setEditing(null);
+  };
   const openCreate = () => { resetForm(); setDialogOpen(true); };
   const openEdit = (g: SectorGroup) => {
-    setEditing(g); setName(g.name); setDescription(g.description || ""); setIsActive(g.is_active);
+    setEditing(g);
+    setName(g.name); setDescription(g.description || ""); setIsActive(g.is_active);
+    setRestrictMenus(Array.isArray(g.allowed_menus));
+    setAllowedMenus(Array.isArray(g.allowed_menus) ? g.allowed_menus : []);
+    setCanFinalizeWithoutMessage(!!g.can_finalize_without_message);
     setDialogOpen(true);
   };
 
   const saveMutation = useMutation({
     mutationFn: async () => {
       if (!name.trim()) throw new Error("Nome é obrigatório");
-      const payload = { name: name.trim(), description: description.trim(), is_active: isActive };
+      const payload = {
+        name: name.trim(),
+        description: description.trim(),
+        is_active: isActive,
+        allowed_menus: restrictMenus ? allowedMenus : null,
+        can_finalize_without_message: canFinalizeWithoutMessage,
+      };
       if (editing) {
         const { error } = await supabase.from("sector_groups").update(payload).eq("id", editing.id);
         if (error) throw error;
@@ -107,6 +128,7 @@ export function SectorGroupsManagement() {
     onSuccess: () => {
       toast.success(editing ? "Grupo atualizado" : "Grupo criado");
       queryClient.invalidateQueries({ queryKey: ["sector-groups"] });
+      queryClient.invalidateQueries({ queryKey: ["user-permissions"] });
       setDialogOpen(false); resetForm();
     },
     onError: (err: any) => toast.error(err?.message || "Erro ao salvar"),
@@ -334,12 +356,12 @@ export function SectorGroupsManagement() {
 
       {/* Group Dialog */}
       <Dialog open={dialogOpen} onOpenChange={(open) => { if (!open) { setDialogOpen(false); resetForm(); } else setDialogOpen(true); }}>
-        <DialogContent>
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? "Editar Grupo" : "Novo Grupo de Setores"}</DialogTitle>
-            <DialogDescription>Preencha as informações do grupo.</DialogDescription>
+            <DialogDescription>Preencha as informações e as permissões do grupo.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-4 py-2">
+          <div className="space-y-5 py-2">
             <div className="space-y-2">
               <Label>Nome do Grupo</Label>
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Ex: Administrativo" />
@@ -351,6 +373,102 @@ export function SectorGroupsManagement() {
             <div className="flex items-center gap-3">
               <Switch checked={isActive} onCheckedChange={setIsActive} />
               <Label>Grupo ativo</Label>
+            </div>
+
+            {/* Permissões */}
+            <div className="rounded-lg border border-border p-4 space-y-4">
+              <div className="flex items-center gap-2">
+                <ShieldCheck className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-semibold">Permissões do grupo</h3>
+              </div>
+              <p className="text-xs text-muted-foreground">
+                Aplica-se a operadores atribuídos a setores deste grupo. Administradores e gestores ignoram restrições.
+              </p>
+
+              {/* Finalização */}
+              <div className="flex items-start gap-3 rounded-md bg-muted/30 p-3">
+                <Switch
+                  id="can-finalize-without-message"
+                  checked={canFinalizeWithoutMessage}
+                  onCheckedChange={setCanFinalizeWithoutMessage}
+                />
+                <div className="space-y-0.5">
+                  <Label htmlFor="can-finalize-without-message" className="text-sm cursor-pointer">
+                    Permitir finalizar chat sem enviar mensagem ao cliente
+                  </Label>
+                  <p className="text-[11px] text-muted-foreground">
+                    Habilita a opção de encerramento silencioso na tela do chat.
+                  </p>
+                </div>
+              </div>
+
+              {/* Restrição de menus */}
+              <div className="space-y-3">
+                <div className="flex items-start gap-3 rounded-md bg-muted/30 p-3">
+                  <Switch
+                    id="restrict-menus"
+                    checked={restrictMenus}
+                    onCheckedChange={(c) => {
+                      setRestrictMenus(c);
+                      if (!c) setAllowedMenus([]);
+                    }}
+                  />
+                  <div className="space-y-0.5">
+                    <Label htmlFor="restrict-menus" className="text-sm cursor-pointer">
+                      Restringir menus do sistema
+                    </Label>
+                    <p className="text-[11px] text-muted-foreground">
+                      Quando desligado, o grupo usa o conjunto padrão de menus para operadores.
+                    </p>
+                  </div>
+                </div>
+
+                {restrictMenus && (
+                  <div className="space-y-4">
+                    {(["main", "config"] as const).map((cat) => {
+                      const items = MENU_CATALOG.filter((m) => m.category === cat);
+                      const catLabel = cat === "main" ? "Menu Principal" : "Configurações";
+                      const catSlugs = items.map((i) => i.slug);
+                      const allChecked = catSlugs.every((s) => allowedMenus.includes(s));
+                      const toggleAll = () => {
+                        if (allChecked) {
+                          setAllowedMenus((prev) => prev.filter((s) => !catSlugs.includes(s)));
+                        } else {
+                          setAllowedMenus((prev) => Array.from(new Set([...prev, ...catSlugs])));
+                        }
+                      };
+                      return (
+                        <div key={cat} className="rounded-md border border-border">
+                          <div className="flex items-center justify-between bg-muted/20 px-3 py-2">
+                            <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{catLabel}</span>
+                            <Button type="button" variant="ghost" size="sm" className="h-6 text-xs" onClick={toggleAll}>
+                              {allChecked ? "Desmarcar todos" : "Marcar todos"}
+                            </Button>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 p-3">
+                            {items.map((m) => {
+                              const checked = allowedMenus.includes(m.slug);
+                              return (
+                                <label key={m.slug} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/40 rounded px-2 py-1">
+                                  <Checkbox
+                                    checked={checked}
+                                    onCheckedChange={(c) => {
+                                      setAllowedMenus((prev) =>
+                                        c === true ? Array.from(new Set([...prev, m.slug])) : prev.filter((s) => s !== m.slug)
+                                      );
+                                    }}
+                                  />
+                                  <span className="truncate">{m.label}</span>
+                                </label>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
           <DialogFooter>

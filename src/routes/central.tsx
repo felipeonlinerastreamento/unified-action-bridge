@@ -3,6 +3,7 @@ import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import ReactMarkdown from "react-markdown";
 import { useAuth } from "@/hooks/use-auth";
+import { useUserPermissions } from "@/hooks/use-user-permissions";
 import { AppLayout } from "@/components/app-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -273,6 +274,8 @@ function detectPlates(messages: GMessage[]): string[] {
 function CentralPage() {
   const { isAuthenticated, isLoading: authLoading, session, user, hasRole, profile } = useAuth();
   const isAdmin = hasRole("admin");
+  const { canFinalizeWithoutMessage: canSkipClosing } = useUserPermissions();
+
   const [selectedChannelId, setSelectedChannelId] = useState<string>("");
   const [selectedChatId, setSelectedChatId] = useState<string>("");
   const [messageInput, setMessageInput] = useState("");
@@ -4382,7 +4385,7 @@ function CentralPage() {
               );
             })()}
 
-            {isAdmin && (
+            {canSkipClosing && (
               <div className="flex items-start gap-2 rounded-md border border-dashed p-3 bg-muted/30">
                 <Checkbox
                   id="skip-closing-message"
@@ -4394,7 +4397,7 @@ function CentralPage() {
                     Finalizar sem enviar mensagem ao cliente
                   </Label>
                   <p className="text-[11px] text-muted-foreground">
-                    Encerra silenciosamente — apenas administradores.
+                    Encerra silenciosamente — permissão concedida pelo grupo de setores.
                   </p>
                 </div>
               </div>
@@ -4428,7 +4431,7 @@ function CentralPage() {
                   notes: notesToSend || undefined,
                   status: finalizeStatus,
                   tipoPendencia: finalizeTipoPendencia,
-                  skipClosingMessage: isAdmin && skipClosingMessage,
+                  skipClosingMessage: canSkipClosing && skipClosingMessage,
                   escalateGestao: isAdmin && escalateToGestao,
                 });
               }}

@@ -30,6 +30,8 @@ import {
 } from "lucide-react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
+import { useUserPermissions } from "@/hooks/use-user-permissions";
+import { URL_TO_MENU_SLUG } from "@/lib/menu-catalog";
 import { useTheme } from "@/hooks/use-theme";
 import {
   Sidebar,
@@ -89,6 +91,7 @@ export function AppSidebar() {
   const location = useLocation();
   const { profile, signOut, hasRole } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const { canSeeMenu } = useUserPermissions();
   const isAdmin = hasRole("admin");
   const isGestor = hasRole("gestor");
   const canAudit = isAdmin || isGestor;
@@ -96,12 +99,16 @@ export function AppSidebar() {
   const isConfigActive = location.pathname.startsWith("/configuracoes");
   const isAtendimentosActive = location.pathname.startsWith("/atendimentos");
 
-  const adminOnlyUrls = new Set<string>([
-    "/dashboard",
-    "/estoque",
-    "/relatorios",
-    "/okr",
-  ]);
+  const canSeeUrl = (url: string) => {
+    const slug = URL_TO_MENU_SLUG[url];
+    if (!slug) return true;
+    return canSeeMenu(slug);
+  };
+
+  const visibleConfigItems = configSubItems.filter((sub) => canSeeUrl(sub.url));
+  const showConfigMenu = isAdmin || visibleConfigItems.length > 0;
+
+
 
   return (
     <Sidebar collapsible="icon">
@@ -122,7 +129,7 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {/* Dashboard primeiro */}
-              {isAdmin && (
+              {canSeeUrl("/dashboard") && (
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     asChild
@@ -138,22 +145,24 @@ export function AppSidebar() {
               )}
 
               {/* Atendimentos (link direto) */}
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={isAtendimentosActive}
-                  tooltip="Atendimentos"
-                >
-                  <Link to="/atendimentos">
-                    <MessageSquare className="h-4 w-4" />
-                    <span>Atendimentos</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {canSeeUrl("/atendimentos") && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isAtendimentosActive}
+                    tooltip="Atendimentos"
+                  >
+                    <Link to="/atendimentos">
+                      <MessageSquare className="h-4 w-4" />
+                      <span>Atendimentos</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
 
               {/* Demais itens (pulando Dashboard) */}
               {mainItems.slice(1)
-                .filter((item) => isAdmin || !adminOnlyUrls.has(item.url))
+                .filter((item) => canSeeUrl(item.url))
                 .map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
@@ -169,7 +178,7 @@ export function AppSidebar() {
                 </SidebarMenuItem>
               ))}
 
-              {/* Auditoria — visível para Admin e Gestor */}
+              {/* Auditoria — visível para Admin e Gestor (atalho fora de Configurações) */}
               {canAudit && !isAdmin && (
                 <SidebarMenuItem>
                   <SidebarMenuButton
@@ -185,8 +194,8 @@ export function AppSidebar() {
                 </SidebarMenuItem>
               )}
 
-              {/* Configurações com submenus (admin only) */}
-              {isAdmin && (
+              {/* Configurações com submenus */}
+              {showConfigMenu && (
                 <Collapsible defaultOpen={isConfigActive} className="group/collapsible">
                   <SidebarMenuItem>
                     <CollapsibleTrigger asChild>
@@ -201,7 +210,7 @@ export function AppSidebar() {
                     </CollapsibleTrigger>
                     <CollapsibleContent>
                       <SidebarMenuSub>
-                        {configSubItems.map((sub) => (
+                        {(isAdmin ? configSubItems : visibleConfigItems).map((sub) => (
                           <SidebarMenuSubItem key={sub.title}>
                             <SidebarMenuSubButton
                               asChild
