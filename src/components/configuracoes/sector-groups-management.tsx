@@ -128,6 +128,7 @@ export function SectorGroupsManagement() {
     onSuccess: () => {
       toast.success(editing ? "Grupo atualizado" : "Grupo criado");
       queryClient.invalidateQueries({ queryKey: ["sector-groups"] });
+      queryClient.invalidateQueries({ queryKey: ["user-permissions"] });
       setDialogOpen(false); resetForm();
     },
     onError: (err: any) => toast.error(err?.message || "Erro ao salvar"),
