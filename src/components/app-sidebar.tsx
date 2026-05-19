@@ -129,7 +129,7 @@ export function AppSidebar() {
           <SidebarGroupContent>
             <SidebarMenu>
               {/* Dashboard primeiro */}
-              {isAdmin && (
+              {canSeeUrl("/dashboard") && (
                 <SidebarMenuItem>
                   <SidebarMenuButton
                     asChild
@@ -145,22 +145,24 @@ export function AppSidebar() {
               )}
 
               {/* Atendimentos (link direto) */}
-              <SidebarMenuItem>
-                <SidebarMenuButton
-                  asChild
-                  isActive={isAtendimentosActive}
-                  tooltip="Atendimentos"
-                >
-                  <Link to="/atendimentos">
-                    <MessageSquare className="h-4 w-4" />
-                    <span>Atendimentos</span>
-                  </Link>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
+              {canSeeUrl("/atendimentos") && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={isAtendimentosActive}
+                    tooltip="Atendimentos"
+                  >
+                    <Link to="/atendimentos">
+                      <MessageSquare className="h-4 w-4" />
+                      <span>Atendimentos</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
 
               {/* Demais itens (pulando Dashboard) */}
               {mainItems.slice(1)
-                .filter((item) => isAdmin || !adminOnlyUrls.has(item.url))
+                .filter((item) => canSeeUrl(item.url))
                 .map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
@@ -176,7 +178,7 @@ export function AppSidebar() {
                 </SidebarMenuItem>
               ))}
 
-              {/* Auditoria — visível para Admin e Gestor */}
+              {/* Auditoria — visível para Admin e Gestor (atalho fora de Configurações) */}
               {canAudit && !isAdmin && (
                 <SidebarMenuItem>
                   <SidebarMenuButton
@@ -192,8 +194,8 @@ export function AppSidebar() {
                 </SidebarMenuItem>
               )}
 
-              {/* Configurações com submenus (admin only) */}
-              {isAdmin && (
+              {/* Configurações com submenus */}
+              {showConfigMenu && (
                 <Collapsible defaultOpen={isConfigActive} className="group/collapsible">
                   <SidebarMenuItem>
                     <CollapsibleTrigger asChild>
@@ -208,7 +210,7 @@ export function AppSidebar() {
                     </CollapsibleTrigger>
                     <CollapsibleContent>
                       <SidebarMenuSub>
-                        {configSubItems.map((sub) => (
+                        {(isAdmin ? configSubItems : visibleConfigItems).map((sub) => (
                           <SidebarMenuSubItem key={sub.title}>
                             <SidebarMenuSubButton
                               asChild
