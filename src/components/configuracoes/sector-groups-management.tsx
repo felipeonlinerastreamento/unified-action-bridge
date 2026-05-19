@@ -92,10 +92,18 @@ export function SectorGroupsManagement() {
   };
 
   // Group CRUD
-  const resetForm = () => { setName(""); setDescription(""); setIsActive(true); setEditing(null); };
+  const resetForm = () => {
+    setName(""); setDescription(""); setIsActive(true);
+    setRestrictMenus(false); setAllowedMenus([]); setCanFinalizeWithoutMessage(false);
+    setEditing(null);
+  };
   const openCreate = () => { resetForm(); setDialogOpen(true); };
   const openEdit = (g: SectorGroup) => {
-    setEditing(g); setName(g.name); setDescription(g.description || ""); setIsActive(g.is_active);
+    setEditing(g);
+    setName(g.name); setDescription(g.description || ""); setIsActive(g.is_active);
+    setRestrictMenus(Array.isArray(g.allowed_menus));
+    setAllowedMenus(Array.isArray(g.allowed_menus) ? g.allowed_menus : []);
+    setCanFinalizeWithoutMessage(!!g.can_finalize_without_message);
     setDialogOpen(true);
   };
 
