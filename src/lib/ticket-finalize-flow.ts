@@ -127,14 +127,20 @@ export async function finalizeTicketWithFlow(
       | "aberto"
       | "em_andamento";
 
-    // Re-fetch live state and routing history to detect "already routed" —
-    // when the ticket is already in the TE target sector, a second click on
-    // "Finalizar" must actually finalize instead of re-routing forever.
+    // Idempotente: TE NUNCA finaliza o ticket via este fluxo. Sempre garante
+    // que o ticket fica aberto no setor alvo (Administrativo). Re-cliques em
+    // Finalizar apenas reaplicam o mesmo estado sem duplicar artefatos.
     let liveSectorTE: string | null = ticket.sector ?? null;
-    let hasPreviousTERoute = false;
+    let hasAssignmentToTarget = false;
+    let hasEncaminhamentoComment = false;
+    let existingPendenciaKey: string | null = null;
     try {
       const [{ data: fresh }, { data: assignments }, { data: routeComments }] = await Promise.all([
-        supabase.from("service_tickets").select("sector").eq("id", ticket.id).maybeSingle(),
+        supabase
+          .from("service_tickets")
+          .select("sector, pendencia_key")
+          .eq("id", ticket.id)
+          .maybeSingle(),
         supabase
           .from("ticket_assignments")
           .select("sector_name")
@@ -150,38 +156,19 @@ export async function finalizeTicketWithFlow(
           .limit(10),
       ]);
       if (fresh?.sector !== undefined) liveSectorTE = fresh.sector;
+      existingPendenciaKey = (fresh as any)?.pendencia_key || null;
       const targetNorm = normalizeFlowText(targetSector);
-      hasPreviousTERoute = Boolean(
-        assignments?.some((a: any) => normalizeFlowText(a.sector_name) === targetNorm) ||
-          routeComments?.some((c: any) => {
-            const content = normalizeFlowText(c.content);
-            return content.includes("encaminhado automaticamente") && content.includes(targetNorm);
-          })
+      hasAssignmentToTarget = Boolean(
+        assignments?.some((a: any) => normalizeFlowText(a.sector_name) === targetNorm)
+      );
+      hasEncaminhamentoComment = Boolean(
+        routeComments?.some((c: any) => {
+          const content = normalizeFlowText(c.content);
+          return content.includes("encaminhado automaticamente") && content.includes(targetNorm);
+        })
       );
     } catch {
-      // ignore
-    }
-    const alreadyRoutedTE =
-      normalizeFlowText(liveSectorTE) === normalizeFlowText(targetSector) || hasPreviousTERoute;
-
-    if (alreadyRoutedTE) {
-      // Standard finalize — skip routing, skip duplicate gsystem sync
-      // (a pendência was already created on the first finalize).
-      const { error } = await supabase
-        .from("service_tickets")
-        .update({
-          status: "finalizado" as const,
-          closed_at: new Date().toISOString(),
-          closed_by: userId,
-          updated_at: new Date().toISOString(),
-        } as any)
-        .eq("id", ticket.id);
-      if (error) return { routed: false, error: error.message };
-      if (registerStatusComment) {
-        await insertSystemComment(ticket.id, userId, "Status alterado para finalizado", "status_change");
-      }
-      await closeLinkedZapiChat(ticket.attendance_id);
-      return { routed: false };
+      // ignore — segue com defaults
     }
 
     const { error } = await supabase
@@ -191,27 +178,36 @@ export async function finalizeTicketWithFlow(
         sector: targetSector,
         assigned_to: null,
         closed_at: null,
+        closed_by: null,
         updated_at: new Date().toISOString(),
-      })
+      } as any)
       .eq("id", ticket.id);
     if (error) return { routed: false, error: error.message };
 
-    await supabase.from("ticket_assignments").insert({
-      ticket_id: ticket.id,
-      assigned_by: userId,
-      sector_name: targetSector,
-    });
-    await insertSystemComment(
-      ticket.id,
-      userId,
-      `Atendimento finalizado e encaminhado automaticamente para o setor "${targetSector}" com status "${targetStatus}" (fluxo Teste de Equipamento).`,
-      "encaminhamento"
-    );
+    // Só registra assignment se ainda não existe um para o setor alvo
+    if (!hasAssignmentToTarget) {
+      await supabase.from("ticket_assignments").insert({
+        ticket_id: ticket.id,
+        assigned_by: userId,
+        sector_name: targetSector,
+      });
+    }
+
+    // Só registra comentário de encaminhamento se ainda não houver
+    if (!hasEncaminhamentoComment) {
+      await insertSystemComment(
+        ticket.id,
+        userId,
+        `Atendimento finalizado e encaminhado automaticamente para o setor "${targetSector}" com status "${targetStatus}" (fluxo Teste de Equipamento).`,
+        "encaminhamento"
+      );
+    }
 
     let syncedToGsystem = false;
-    let pendenciaKey: string | null = null;
+    let pendenciaKey: string | null = existingPendenciaKey;
     let syncError: string | null = null;
-    if (teSettings?.auto_sync_gsystem ?? true) {
+    // Sync GSystem apenas na primeira vez (sem pendência ainda)
+    if ((teSettings?.auto_sync_gsystem ?? true) && !existingPendenciaKey) {
       try {
         const res = await syncTicketToGsystem({ data: { ticketId: ticket.id } });
         if ((res as any)?.ok) {
@@ -246,6 +242,7 @@ export async function finalizeTicketWithFlow(
       syncError,
     };
   }
+
 
   // 2. Try category_routing_rules
   if (useRoutingRules && ticket.category) {
