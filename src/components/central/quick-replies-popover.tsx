@@ -34,40 +34,58 @@ export function QuickRepliesPopover({ onPick, size = "icon", open: openProp, onO
   });
 
   return (
-    <Popover open={open} onOpenChange={setOpen}>
-      <PopoverTrigger asChild>
-        {hideTrigger ? (
-          <button type="button" aria-hidden className="sr-only" tabIndex={-1} />
-        ) : (
-          <Button size={size === "icon" ? "icon" : "sm"} variant="outline" className="shrink-0" title="Respostas rápidas">
-            <Zap className="h-4 w-4" />
-          </Button>
-        )}
-      </PopoverTrigger>
-      <PopoverContent className="p-0 w-80" align="end">
-        <Command>
-          <CommandInput placeholder="Buscar atalho ou rótulo..." />
-          <CommandList>
-            <CommandEmpty>Nenhuma resposta rápida.</CommandEmpty>
-            <CommandGroup>
-              {replies.map((r) => (
-                <CommandItem
-                  key={r.id}
-                  onSelect={() => {
-                    onPick(r.content);
-                    setOpen(false);
-                  }}
-                >
-                  <div className="flex flex-col gap-0.5">
-                    <span className="text-xs font-mono text-muted-foreground">{r.shortcut} · {r.label}</span>
-                    <span className="text-sm line-clamp-2">{r.content}</span>
-                  </div>
-                </CommandItem>
-              ))}
-            </CommandGroup>
-          </CommandList>
-        </Command>
-      </PopoverContent>
-    </Popover>
+    <>
+      <Popover open={open} onOpenChange={setOpen}>
+        <PopoverTrigger asChild>
+          {hideTrigger ? (
+            <button type="button" aria-hidden className="sr-only" tabIndex={-1} />
+          ) : (
+            <Button size={size === "icon" ? "icon" : "sm"} variant="outline" className="shrink-0" title="Respostas rápidas">
+              <Zap className="h-4 w-4" />
+            </Button>
+          )}
+        </PopoverTrigger>
+        <PopoverContent className="p-0 w-80" align="end">
+          <Command>
+            <CommandInput placeholder="Buscar atalho ou rótulo..." />
+            <CommandList>
+              <CommandEmpty>Nenhuma resposta rápida.</CommandEmpty>
+              <CommandGroup>
+                {replies.map((r) => (
+                  <CommandItem
+                    key={r.id}
+                    onSelect={() => {
+                      onPick(r.content);
+                      setOpen(false);
+                    }}
+                  >
+                    <div className="flex flex-col gap-0.5">
+                      <span className="text-xs font-mono text-muted-foreground">{r.shortcut} · {r.label}</span>
+                      <span className="text-sm line-clamp-2">{r.content}</span>
+                    </div>
+                  </CommandItem>
+                ))}
+              </CommandGroup>
+            </CommandList>
+          </Command>
+          <Separator />
+          <div className="p-2">
+            <Button
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start gap-2"
+              onClick={() => {
+                setOpen(false);
+                setManagerOpen(true);
+              }}
+            >
+              <Settings2 className="h-4 w-4" />
+              Gerenciar respostas rápidas
+            </Button>
+          </div>
+        </PopoverContent>
+      </Popover>
+      <QuickRepliesManagerDialog open={managerOpen} onOpenChange={setManagerOpen} />
+    </>
   );
 }
