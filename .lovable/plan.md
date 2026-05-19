@@ -1,64 +1,29 @@
-# Corrigir "duplicate key" ao iniciar conversa
+# Sempre abrir novo protocolo após finalização
 
-## Causa raiz
+## Comportamento atual (problema)
 
-Tabela `zapi_chats` tem coluna gerada:
+Em `src/routes/api.public.zapi-webhook.$channelId.tsx`, quando o chat está `finalizado` e o cliente envia nova mensagem, há uma janela de **1 hora**: se a nova mensagem chega ≤ 1h após `closed_at`, o sistema **reabre o mesmo chamado** (status `reaberto`, mantém o protocolo, marca `justReopenedSilently = true` e **não roda o bot**). Foi isso que causou os casos #01352, #01363 e #01351 — em vez de abrir um protocolo novo, o anterior foi reaberto sem fluxo de atendimento.
 
-```
-phone_normalized = normalize_zapi_phone(phone)  -- GENERATED ALWAYS
-```
+## Mudança
 
-E índice único parcial:
+Remover a janela de 1h. Toda mensagem de cliente em chat finalizado deve:
 
-```
-uniq_zapi_chats_channel_phone_norm
-ON zapi_chats (channel_id, phone_normalized)
-WHERE phone_normalized IS NOT NULL AND phone_normalized NOT LIKE 'lid:%'
-```
+1. Criar um **novo `service_ticket`** (protocolo novo).
+2. **Não setar** `justReopenedSilently` → o bot roda normalmente, reapresenta o menu/saudação, e o chat segue o fluxo padrão de fila/atribuição.
+3. Manter `baseUpdate.bot_state = {}` e a atribuição já calculada (`reopenAssignedTo` / `aguardando`).
 
-Em `src/lib/zapi.functions.ts` (`createChat`, linhas 706–728) a verificação de chat existente é feita por `phone` cru:
+O ramo **pending_resolve** (`aguardando_retorno`, "A resolver") **NÃO é alterado** — ali a regra de manter o mesmo protocolo é intencional (operador marcou para retorno).
 
-```ts
-.eq("channel_id", data.channelId)
-.eq("phone", phone)            // ❌ string crua
-.maybeSingle();
-```
+## Edits
 
-Quando o webhook já criou o chat antes (com `phone` em formato diferente — ex.: `5511987654321` vindo do Z-API) e o operador digita `11987654321` na UI, o `select` por `phone` cru não encontra a linha, o handler tenta `INSERT`, e o banco rejeita pelo índice único em `phone_normalized` → `duplicate key value violates unique constraint "uniq_zapi_chats_channel_phone_norm"`.
+Arquivo único: `src/routes/api.public.zapi-webhook.$channelId.tsx`, bloco do `else` em ~linhas 855–917.
 
-## Correção (escopo mínimo, só `src/lib/zapi.functions.ts`)
-
-Substituir o fluxo "select-then-insert/update" do `createChat` por um caminho idempotente que respeita o índice em `phone_normalized`:
-
-1. **Calcular o normalizado uma vez** chamando a função SQL existente via RPC (não precisa migration — `normalize_zapi_phone(text)` já existe). Fallback: replicar a lógica em TS se a chamada falhar.
-2. **Procurar chat existente por `phone_normalized`** (não mais por `phone`), filtrando pelo `channel_id`. Isso resolve 95% dos casos sem tocar em escrita.
-3. **Se existir** → fazer o `update` atual (status `em_atendimento`, `assigned_to`, `last_message_at`).
-4. **Se não existir** → tentar `insert`; se ainda assim cair em violação 23505 nesse índice específico, fazer um **re-select por `phone_normalized`** e seguir como existente (resolve corrida entre webhook e UI).
-5. Manter o restante do handler igual (envio da mensagem opcional, retorno `attendanceId`).
-
-Pseudocódigo:
-
-```text
-norm = rpc('normalize_zapi_phone', { raw: phone }) ?? normalizeFallback(phone)
-
-existing = select id from zapi_chats
-  where channel_id = X and phone_normalized = norm
-  limit 1
-
-if existing: update ... where id = existing.id
-else:
-  try insert {...}
-  catch err if err.code === '23505' and constraint contém 'phone_norm':
-    existing = re-select by (channel_id, phone_normalized)
-    update existing
-```
-
-## Arquivos alterados
-
-- `src/lib/zapi.functions.ts` — apenas o handler `createChat` (linhas 692–753). Sem mudanças de schema, sem mudanças em UI, sem mexer em webhook ou bot.
+- Apagar o `if (withinOneHour && lastTicket) { ... reaberto ... justReopenedSilently = true } else { ... new ticket ... }`.
+- Manter apenas o caminho "novo ticket": insert em `service_tickets` com `status: 'aberto'`, `notes` referenciando o protocolo anterior quando existir.
+- Remover variáveis não mais usadas no escopo (`ONE_HOUR_MS`, `withinOneHour`).
 
 ## Fora de escopo
 
-- Não alterar `normalize_zapi_phone`, índice, ou tabela.
-- Não mudar o fluxo do webhook (`api.public.zapi-webhook.$channelId.tsx`) — ele já usa o normalizado corretamente.
-- Não tocar em `central.tsx` nem na UI do modal "Iniciar Conversa".
+- Sem mudanças de schema.
+- Sem mudanças no fluxo `aguardando_retorno`.
+- Sem alterações no bot, na Central, ou em CSAT.
