@@ -1705,7 +1705,12 @@ function CentralPage() {
         }
 
         // Conclude pendência in GSystem if status is "Resolvido"
-        if (pendenciaKey && status === "Resolvido") {
+        // Para Teste de Equipamento, NÃO concluir — pendência segue aberta junto com o ticket.
+        const isTEActiveResolve = isTesteEquipamentoCategory(
+          resolvedCategoryLabel || activeTicket.category,
+          teSettings
+        );
+        if (pendenciaKey && status === "Resolvido" && !isTEActiveResolve) {
           try {
             const authHeaders = await getAuthHeaders();
             await concluirPendencia({
