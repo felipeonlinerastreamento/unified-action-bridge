@@ -709,11 +709,76 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
           <TabsContent value="detalhes" className="space-y-3 mt-3">
             <DetailRow label="Protocolo" value={`#${formatTicketProtocol(ticket)}`} />
             <DetailRow label="Status" value={ticket.status} />
-            <DetailRow label="Prioridade" value={getPriorityLabel(ticket.priority || "media")} />
-            <DetailRow label="Contato" value={ticket.contact_name} />
-            <DetailRow label="Telefone" value={ticket.contact_phone} />
-            <DetailRow label="Empresa" value={ticket.companies?.name} />
-            <DetailRow label="Placa" value={ticket.plate} />
+            <EditableRow
+              label="Prioridade"
+              field="priority"
+              displayValue={getPriorityLabel(ticket.priority || "media")}
+              editable={ticket.status !== "finalizado"}
+              editingField={editingField}
+              fieldDraft={fieldDraft}
+              setFieldDraft={setFieldDraft}
+              onStart={startEditField}
+              onCancel={cancelEditField}
+              onSave={saveField}
+              saving={savingField}
+              companies={companiesList}
+            />
+            <EditableRow
+              label="Contato"
+              field="contact_name"
+              displayValue={ticket.contact_name}
+              editable={ticket.status !== "finalizado"}
+              editingField={editingField}
+              fieldDraft={fieldDraft}
+              setFieldDraft={setFieldDraft}
+              onStart={startEditField}
+              onCancel={cancelEditField}
+              onSave={saveField}
+              saving={savingField}
+              companies={companiesList}
+            />
+            <EditableRow
+              label="Telefone"
+              field="contact_phone"
+              displayValue={ticket.contact_phone}
+              editable={ticket.status !== "finalizado"}
+              editingField={editingField}
+              fieldDraft={fieldDraft}
+              setFieldDraft={setFieldDraft}
+              onStart={startEditField}
+              onCancel={cancelEditField}
+              onSave={saveField}
+              saving={savingField}
+              companies={companiesList}
+            />
+            <EditableRow
+              label="Empresa"
+              field="company_id"
+              displayValue={ticket.companies?.name}
+              editable={ticket.status !== "finalizado"}
+              editingField={editingField}
+              fieldDraft={fieldDraft}
+              setFieldDraft={setFieldDraft}
+              onStart={startEditField}
+              onCancel={cancelEditField}
+              onSave={saveField}
+              saving={savingField}
+              companies={companiesList}
+            />
+            <EditableRow
+              label="Placa"
+              field="plate"
+              displayValue={ticket.plate}
+              editable={ticket.status !== "finalizado"}
+              editingField={editingField}
+              fieldDraft={fieldDraft}
+              setFieldDraft={setFieldDraft}
+              onStart={startEditField}
+              onCancel={cancelEditField}
+              onSave={saveField}
+              saving={savingField}
+              companies={companiesList}
+            />
             <DetailRow label="Setor" value={ticket.sector} />
             <DetailRow label="Responsável" value={(() => {
               const agentIds: string[] = Array.isArray((ticket as any).agent_user_ids) ? (ticket as any).agent_user_ids : [];
