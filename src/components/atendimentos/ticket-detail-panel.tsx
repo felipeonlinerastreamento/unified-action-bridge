@@ -517,6 +517,80 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
     toast.success("Prioridade atualizada");
   };
 
+  const fieldLabels: Record<string, string> = {
+    priority: "Prioridade",
+    contact_name: "Contato",
+    contact_phone: "Telefone",
+    company_id: "Empresa",
+    plate: "Placa",
+  };
+
+  const startEditField = (field: NonNullable<typeof editingField>) => {
+    if (!ticket) return;
+    if (field === "company_id") setFieldDraft(ticket.company_id || "");
+    else if (field === "priority") setFieldDraft(ticket.priority || "media");
+    else setFieldDraft(((ticket as any)[field] as string) || "");
+    setEditingField(field);
+  };
+
+  const cancelEditField = () => {
+    setEditingField(null);
+    setFieldDraft("");
+  };
+
+  const saveField = async () => {
+    if (!ticket?.id || !editingField) return;
+    const field = editingField;
+    let newValue: any = fieldDraft.trim();
+    if (field === "plate") newValue = newValue ? newValue.toUpperCase() : null;
+    if (field === "contact_phone") newValue = newValue ? newValue.replace(/\D/g, "") : null;
+    if (field === "company_id") newValue = newValue || null;
+    if (!newValue && (field === "contact_name" || field === "priority")) {
+      toast.error(`${fieldLabels[field]} não pode ficar vazio`);
+      return;
+    }
+    if (field !== "company_id" && field !== "priority" && !newValue) newValue = null;
+
+    const currentValue = field === "company_id" ? (ticket.company_id || null) : ((ticket as any)[field] ?? null);
+    if ((currentValue || "") === (newValue || "")) {
+      cancelEditField();
+      return;
+    }
+
+    setSavingField(true);
+    try {
+      const payload: any = { updated_at: new Date().toISOString() };
+      payload[field] = newValue;
+      const { error } = await supabase.from("service_tickets").update(payload).eq("id", ticket.id);
+      if (error) {
+        toast.error("Erro ao atualizar: " + error.message);
+        return;
+      }
+      let displayOld = currentValue || "—";
+      let displayNew = newValue || "—";
+      if (field === "company_id") {
+        displayOld = ticket.companies?.name || "—";
+        displayNew = companiesList.find((c) => c.id === newValue)?.name || "—";
+      }
+      if (field === "priority") {
+        displayOld = getPriorityLabel(currentValue || "media");
+        displayNew = getPriorityLabel(newValue);
+      }
+      await insertSystemComment(
+        ticket.id,
+        `${fieldLabels[field]} alterado de "${displayOld}" para "${displayNew}"`,
+        "status_change"
+      );
+      toast.success(`${fieldLabels[field]} atualizado`);
+      cancelEditField();
+      refetchComments();
+      onRefetch();
+      queryClient.invalidateQueries({ queryKey: ["service-tickets"] });
+    } finally {
+      setSavingField(false);
+    }
+  };
+
   const forwardToSector = async () => {
     if (!forwardSector.trim() || !ticket?.id) return;
 
