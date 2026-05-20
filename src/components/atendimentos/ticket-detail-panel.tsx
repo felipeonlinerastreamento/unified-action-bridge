@@ -125,7 +125,23 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [confirmFinalizeOpen, setConfirmFinalizeOpen] = useState(false);
   const [finalizeObservation, setFinalizeObservation] = useState("");
+  const [editingField, setEditingField] = useState<null | "priority" | "contact_name" | "contact_phone" | "company_id" | "plate">(null);
+  const [fieldDraft, setFieldDraft] = useState<string>("");
+  const [savingField, setSavingField] = useState(false);
   const { data: teSettings } = useTesteEquipamentoSettings();
+
+  const { data: companiesList = [] } = useQuery({
+    queryKey: ["companies-edit-list"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("companies")
+        .select("id, name")
+        .order("name");
+      return (data || []) as { id: string; name: string }[];
+    },
+    enabled: open && editingField === "company_id",
+    staleTime: 60_000,
+  });
 
   const getAuthHeaders = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -501,6 +517,80 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
     toast.success("Prioridade atualizada");
   };
 
+  const fieldLabels: Record<string, string> = {
+    priority: "Prioridade",
+    contact_name: "Contato",
+    contact_phone: "Telefone",
+    company_id: "Empresa",
+    plate: "Placa",
+  };
+
+  const startEditField = (field: NonNullable<typeof editingField>) => {
+    if (!ticket) return;
+    if (field === "company_id") setFieldDraft(ticket.company_id || "");
+    else if (field === "priority") setFieldDraft(ticket.priority || "media");
+    else setFieldDraft(((ticket as any)[field] as string) || "");
+    setEditingField(field);
+  };
+
+  const cancelEditField = () => {
+    setEditingField(null);
+    setFieldDraft("");
+  };
+
+  const saveField = async () => {
+    if (!ticket?.id || !editingField) return;
+    const field = editingField;
+    let newValue: any = fieldDraft.trim();
+    if (field === "plate") newValue = newValue ? newValue.toUpperCase() : null;
+    if (field === "contact_phone") newValue = newValue ? newValue.replace(/\D/g, "") : null;
+    if (field === "company_id") newValue = newValue || null;
+    if (!newValue && (field === "contact_name" || field === "priority")) {
+      toast.error(`${fieldLabels[field]} não pode ficar vazio`);
+      return;
+    }
+    if (field !== "company_id" && field !== "priority" && !newValue) newValue = null;
+
+    const currentValue = field === "company_id" ? (ticket.company_id || null) : ((ticket as any)[field] ?? null);
+    if ((currentValue || "") === (newValue || "")) {
+      cancelEditField();
+      return;
+    }
+
+    setSavingField(true);
+    try {
+      const payload: any = { updated_at: new Date().toISOString() };
+      payload[field] = newValue;
+      const { error } = await supabase.from("service_tickets").update(payload).eq("id", ticket.id);
+      if (error) {
+        toast.error("Erro ao atualizar: " + error.message);
+        return;
+      }
+      let displayOld = currentValue || "—";
+      let displayNew = newValue || "—";
+      if (field === "company_id") {
+        displayOld = ticket.companies?.name || "—";
+        displayNew = companiesList.find((c) => c.id === newValue)?.name || "—";
+      }
+      if (field === "priority") {
+        displayOld = getPriorityLabel(currentValue || "media");
+        displayNew = getPriorityLabel(newValue);
+      }
+      await insertSystemComment(
+        ticket.id,
+        `${fieldLabels[field]} alterado de "${displayOld}" para "${displayNew}"`,
+        "status_change"
+      );
+      toast.success(`${fieldLabels[field]} atualizado`);
+      cancelEditField();
+      refetchComments();
+      onRefetch();
+      queryClient.invalidateQueries({ queryKey: ["service-tickets"] });
+    } finally {
+      setSavingField(false);
+    }
+  };
+
   const forwardToSector = async () => {
     if (!forwardSector.trim() || !ticket?.id) return;
 
@@ -619,11 +709,76 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
           <TabsContent value="detalhes" className="space-y-3 mt-3">
             <DetailRow label="Protocolo" value={`#${formatTicketProtocol(ticket)}`} />
             <DetailRow label="Status" value={ticket.status} />
-            <DetailRow label="Prioridade" value={getPriorityLabel(ticket.priority || "media")} />
-            <DetailRow label="Contato" value={ticket.contact_name} />
-            <DetailRow label="Telefone" value={ticket.contact_phone} />
-            <DetailRow label="Empresa" value={ticket.companies?.name} />
-            <DetailRow label="Placa" value={ticket.plate} />
+            <EditableRow
+              label="Prioridade"
+              field="priority"
+              displayValue={getPriorityLabel(ticket.priority || "media")}
+              editable={ticket.status !== "finalizado"}
+              editingField={editingField}
+              fieldDraft={fieldDraft}
+              setFieldDraft={setFieldDraft}
+              onStart={startEditField}
+              onCancel={cancelEditField}
+              onSave={saveField}
+              saving={savingField}
+              companies={companiesList}
+            />
+            <EditableRow
+              label="Contato"
+              field="contact_name"
+              displayValue={ticket.contact_name}
+              editable={ticket.status !== "finalizado"}
+              editingField={editingField}
+              fieldDraft={fieldDraft}
+              setFieldDraft={setFieldDraft}
+              onStart={startEditField}
+              onCancel={cancelEditField}
+              onSave={saveField}
+              saving={savingField}
+              companies={companiesList}
+            />
+            <EditableRow
+              label="Telefone"
+              field="contact_phone"
+              displayValue={ticket.contact_phone}
+              editable={ticket.status !== "finalizado"}
+              editingField={editingField}
+              fieldDraft={fieldDraft}
+              setFieldDraft={setFieldDraft}
+              onStart={startEditField}
+              onCancel={cancelEditField}
+              onSave={saveField}
+              saving={savingField}
+              companies={companiesList}
+            />
+            <EditableRow
+              label="Empresa"
+              field="company_id"
+              displayValue={ticket.companies?.name}
+              editable={ticket.status !== "finalizado"}
+              editingField={editingField}
+              fieldDraft={fieldDraft}
+              setFieldDraft={setFieldDraft}
+              onStart={startEditField}
+              onCancel={cancelEditField}
+              onSave={saveField}
+              saving={savingField}
+              companies={companiesList}
+            />
+            <EditableRow
+              label="Placa"
+              field="plate"
+              displayValue={ticket.plate}
+              editable={ticket.status !== "finalizado"}
+              editingField={editingField}
+              fieldDraft={fieldDraft}
+              setFieldDraft={setFieldDraft}
+              onStart={startEditField}
+              onCancel={cancelEditField}
+              onSave={saveField}
+              saving={savingField}
+              companies={companiesList}
+            />
             <DetailRow label="Setor" value={ticket.sector} />
             <DetailRow label="Responsável" value={(() => {
               const agentIds: string[] = Array.isArray((ticket as any).agent_user_ids) ? (ticket as any).agent_user_ids : [];
@@ -966,6 +1121,81 @@ function DetailRow({ label, value }: { label: string; value: any }) {
     <div className="flex gap-2 text-sm">
       <span className="font-medium text-muted-foreground min-w-[120px]">{label}:</span>
       <span className="break-all">{value || "—"}</span>
+    </div>
+  );
+}
+
+type EditableField = "priority" | "contact_name" | "contact_phone" | "company_id" | "plate";
+
+function EditableRow(props: {
+  label: string;
+  field: EditableField;
+  displayValue: any;
+  editable: boolean;
+  editingField: EditableField | null;
+  fieldDraft: string;
+  setFieldDraft: (v: string) => void;
+  onStart: (field: EditableField) => void;
+  onCancel: () => void;
+  onSave: () => void;
+  saving: boolean;
+  companies: { id: string; name: string }[];
+}) {
+  const { label, field, displayValue, editable, editingField, fieldDraft, setFieldDraft, onStart, onCancel, onSave, saving, companies } = props;
+  const isEditing = editingField === field;
+  return (
+    <div className="flex gap-2 text-sm items-start">
+      <span className="font-medium text-muted-foreground min-w-[120px] pt-1.5">{label}:</span>
+      <div className="flex-1 min-w-0">
+        {isEditing ? (
+          <div className="flex gap-1 items-center">
+            {field === "priority" ? (
+              <Select value={fieldDraft} onValueChange={setFieldDraft} disabled={saving}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="baixa">Baixa</SelectItem>
+                  <SelectItem value="media">Média</SelectItem>
+                  <SelectItem value="alta">Alta</SelectItem>
+                  <SelectItem value="urgente">Urgente</SelectItem>
+                </SelectContent>
+              </Select>
+            ) : field === "company_id" ? (
+              <Select value={fieldDraft} onValueChange={setFieldDraft} disabled={saving}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecionar empresa..." /></SelectTrigger>
+                <SelectContent>
+                  {companies.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input
+                value={fieldDraft}
+                onChange={(e) => setFieldDraft(e.target.value)}
+                className="h-8 text-xs"
+                disabled={saving}
+                onKeyDown={(e) => { if (e.key === "Enter") onSave(); if (e.key === "Escape") onCancel(); }}
+                autoFocus
+              />
+            )}
+            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onSave} disabled={saving}>
+              <Check className="h-3.5 w-3.5" />
+            </Button>
+            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onCancel} disabled={saving}>
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1 group">
+            <span className="break-all">{displayValue || "—"}</span>
+            {editable && (
+              <Button size="icon" variant="ghost" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => onStart(field)}>
+                <Pencil className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
