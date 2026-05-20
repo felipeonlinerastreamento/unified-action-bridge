@@ -1124,3 +1124,78 @@ function DetailRow({ label, value }: { label: string; value: any }) {
     </div>
   );
 }
+
+type EditableField = "priority" | "contact_name" | "contact_phone" | "company_id" | "plate";
+
+function EditableRow(props: {
+  label: string;
+  field: EditableField;
+  displayValue: any;
+  editable: boolean;
+  editingField: EditableField | null;
+  fieldDraft: string;
+  setFieldDraft: (v: string) => void;
+  onStart: (field: EditableField) => void;
+  onCancel: () => void;
+  onSave: () => void;
+  saving: boolean;
+  companies: { id: string; name: string }[];
+}) {
+  const { label, field, displayValue, editable, editingField, fieldDraft, setFieldDraft, onStart, onCancel, onSave, saving, companies } = props;
+  const isEditing = editingField === field;
+  return (
+    <div className="flex gap-2 text-sm items-start">
+      <span className="font-medium text-muted-foreground min-w-[120px] pt-1.5">{label}:</span>
+      <div className="flex-1 min-w-0">
+        {isEditing ? (
+          <div className="flex gap-1 items-center">
+            {field === "priority" ? (
+              <Select value={fieldDraft} onValueChange={setFieldDraft} disabled={saving}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="baixa">Baixa</SelectItem>
+                  <SelectItem value="media">Média</SelectItem>
+                  <SelectItem value="alta">Alta</SelectItem>
+                  <SelectItem value="urgente">Urgente</SelectItem>
+                </SelectContent>
+              </Select>
+            ) : field === "company_id" ? (
+              <Select value={fieldDraft} onValueChange={setFieldDraft} disabled={saving}>
+                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecionar empresa..." /></SelectTrigger>
+                <SelectContent>
+                  {companies.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            ) : (
+              <Input
+                value={fieldDraft}
+                onChange={(e) => setFieldDraft(e.target.value)}
+                className="h-8 text-xs"
+                disabled={saving}
+                onKeyDown={(e) => { if (e.key === "Enter") onSave(); if (e.key === "Escape") onCancel(); }}
+                autoFocus
+              />
+            )}
+            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onSave} disabled={saving}>
+              <Check className="h-3.5 w-3.5" />
+            </Button>
+            <Button size="icon" variant="ghost" className="h-7 w-7" onClick={onCancel} disabled={saving}>
+              <X className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-1 group">
+            <span className="break-all">{displayValue || "—"}</span>
+            {editable && (
+              <Button size="icon" variant="ghost" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={() => onStart(field)}>
+                <Pencil className="h-3 w-3" />
+              </Button>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
