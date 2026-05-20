@@ -125,7 +125,23 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [confirmFinalizeOpen, setConfirmFinalizeOpen] = useState(false);
   const [finalizeObservation, setFinalizeObservation] = useState("");
+  const [editingField, setEditingField] = useState<null | "priority" | "contact_name" | "contact_phone" | "company_id" | "plate">(null);
+  const [fieldDraft, setFieldDraft] = useState<string>("");
+  const [savingField, setSavingField] = useState(false);
   const { data: teSettings } = useTesteEquipamentoSettings();
+
+  const { data: companiesList = [] } = useQuery({
+    queryKey: ["companies-edit-list"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("companies")
+        .select("id, name")
+        .order("name");
+      return (data || []) as { id: string; name: string }[];
+    },
+    enabled: open && editingField === "company_id",
+    staleTime: 60_000,
+  });
 
   const getAuthHeaders = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
