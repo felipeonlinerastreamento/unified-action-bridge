@@ -5050,6 +5050,17 @@ export type Database = {
         Args: { _task_id: string; _user_id: string }
         Returns: boolean
       }
+      list_channels_safe: {
+        Args: never
+        Returns: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string
+          platform: string
+          updated_at: string
+        }[]
+      }
       normalize_zapi_phone: { Args: { raw: string }; Returns: string }
       pick_least_loaded_agent: { Args: { _sector: string }; Returns: string }
     }

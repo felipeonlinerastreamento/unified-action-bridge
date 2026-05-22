@@ -378,11 +378,8 @@ function CentralPage() {
   const { data: channels = [] } = useQuery({
     queryKey: ["channels"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("channels")
-        .select("id, name, platform, is_active")
-        .eq("is_active", true);
-      return data || [];
+      const { data } = await (supabase as any).rpc("list_channels_safe");
+      return ((data || []) as any[]).filter((c) => c.is_active);
     },
     enabled: isAuthenticated,
   });
