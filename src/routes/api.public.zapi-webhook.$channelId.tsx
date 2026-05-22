@@ -375,7 +375,29 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               const msg = (chRow as any)?.call_reject_message;
               if ((enabled === undefined || enabled === true) && typeof msg === "string" && msg.trim()) {
                 const creds = await loadZapiChannel(supabaseAdmin, channelId);
-                if (creds) await zapiSendText(creds, (existingChat as any)?.phone || phoneN, msg);
+                if (creds) {
+                  const sendRes: any = await zapiSendText(creds, (existingChat as any)?.phone || phoneN, msg);
+                  // Persistir a mensagem automática no chat para que apareça na UI
+                  if (chatRowId) {
+                    await persistZapiMessage({
+                      chatId: chatRowId,
+                      messageId: sendRes?.messageId || sendRes?.id || null,
+                      fromMe: true,
+                      text: msg,
+                      mediaUrl: null,
+                      mediaType: null,
+                      participantName: null,
+                      participantPhone: null,
+                    });
+                    await supabaseAdmin
+                      .from("zapi_chats")
+                      .update({
+                        last_message_at: new Date().toISOString(),
+                        last_message_preview: msg,
+                      } as any)
+                      .eq("id", chatRowId);
+                  }
+                }
               }
             } catch (sendErr) {
               console.warn("[zapi-webhook] auto-reject send failed:", sendErr);
