@@ -1,45 +1,62 @@
 ## Problema
 
-Quando o chat `5531994730315` recebeu uma nova mensagem, ele foi reaberto direto na fila do "Administrativo" e atribuído a um operador, sem passar pelo bot.
+Atendentes recebem erro "canal inexistente" ao tentar enviar mensagens no chat.
 
-Causa: em `src/routes/api.public.zapi-webhook.$channelId.tsx` (linhas 821-883), a lógica de reabertura **preserva o `sector_name` antigo** do chat (ou do último ticket) e pré-atribui um agente, pulando o bot:
+## Causa raiz
 
-```ts
-reopenSector = existing.sector_name || lastTicket?.sector || "Atendimento";
-reopenAssignedTo = await pickLeastLoadedAgent(reopenSector);
-baseUpdate.status = reopenAssignedTo ? "em_atendimento" : "aguardando";
+A correção de segurança anterior (`channels_token_exposed`) restringiu o SELECT da tabela `channels` para apenas `admin`/`gestor`:
+
+```sql
+"Admin/Gestor view channels" — SELECT, qual: has_role('admin') OR has_role('gestor')
 ```
 
-Como o chat tinha `sector_name = "Administrativo"` (provavelmente de uma transferência manual antiga), toda reabertura caía lá, mesmo com o menu do bot oferecendo só Atendente / Comercial / Financeiro.
+Mas as server functions de envio em `src/lib/zapi.functions.ts` carregam o canal usando `context.supabase` (cliente autenticado, sujeito a RLS):
 
-## Regra acordada
+```ts
+const channel = await loadZapiChannel(context.supabase, chat.channel_id);
+```
 
-- **Toda nova mensagem** (chat novo ou reabertura de finalizado / aguardando_retorno) deve passar pelo **bot primeiro**.
-- Quando o cliente escolhe "Atendente" (ou cai no fallback do fluxo), o roteamento vai para o **menos carregado online do setor "Atendimento"**.
-- Se ninguém estiver online em "Atendimento", o chat fica em `aguardando` (não tenta outro setor).
+Como o atendente não passa na policy de SELECT, o `.single()` retorna vazio e `loadZapiChannel` lança `"Canal não encontrado"`, exibido na UI como "canal inexistente". Admin/gestor não veem o erro porque conseguem ler `channels`.
+
+## Solução
+
+Carregar o canal sempre via `supabaseAdmin` dentro das server functions. O acesso continua seguro porque:
+
+- A função roda no servidor, atrás de `requireSupabaseAuth` (usuário já autenticado).
+- As credenciais (`token`, `zapi_client_token`) nunca atravessam para o cliente — só são usadas em `fetch` para a Z-API.
+- O RLS na tabela `channels` continua bloqueando leitura de tokens por qualquer cliente (atendente, gestor, admin) via JS — a regra de proteção segue intacta.
+- Para verificar que o usuário pertence ao tenant correto, mantemos o gate atual: as queries de `zapi_chats` / `zapi_messages` continuam pelo `context.supabase` (RLS aplicado), e só depois disso o canal é carregado via admin.
 
 ## Mudanças
 
-### 1. `src/routes/api.public.zapi-webhook.$channelId.tsx` — bloco de reabertura
+### `src/lib/zapi.functions.ts`
 
-Remover o pré-roteamento por setor antigo. Tanto no ramo `isPendingResolve` quanto no ramo "finalizado normal":
+Substituir os 7 call sites:
 
-- Limpar `sector_name` e `assigned_to` (passam a `null`).
-- Setar `status = "bot"` e `bot_state = {}` para o fluxo de boas-vindas rodar de novo desde o início.
-- Manter o resto (preview, unread_count, contact_name, limpeza dos campos `pending_resolve_*` quando aplicável).
-- Remover as chamadas a `pickLeastLoadedAgent(reopenSector)` desse bloco — o roteamento vai acontecer dentro do bot quando o cliente escolher uma opção (nó `route_to_least_loaded` com `target_sector: "Atendimento"`, que já existe no fluxo).
-- Remover `justReopenedSilently = true` no ramo pending_resolve, para o bot voltar a aparecer.
+```ts
+const channel = await loadZapiChannel(context.supabase, ...)
+```
 
-### 2. Garantir que o fluxo do bot tenha "Atendimento" como destino
+por:
 
-Verificar em `zapi_bot_flows.nodes` que a opção "Falar com um Atendente" usa `type: "route_to_least_loaded"` com `target_sector: "Atendimento"`. Se já estiver assim (esperado, dada a função `pick_least_loaded_agent`), nada a fazer; caso contrário, ajustar via migração no JSON do fluxo ativo do canal.
+```ts
+const channel = await loadZapiChannel(supabaseAdmin, ...)
+```
 
-### 3. Correção pontual do chat afetado
+E adicionar o import de `supabaseAdmin` no topo do arquivo (já existe `loadZapiChannel`, mas provavelmente não existe `supabaseAdmin` — verificar e adicionar `import { supabaseAdmin } from "@/integrations/supabase/client.server";`).
 
-Resetar a linha do chat `f663ac2a-f949-4807-8f76-3660dcd45384` (`5531994730315`) para que a próxima mensagem dele caia na regra nova: limpar `sector_name` e `assigned_to`, setar `status = 'aguardando'` (já tem assigned hoje; pode finalizar fluxo atual ou só limpar — confirmar com o usuário se deve mexer no chat ao vivo ou só corrigir daqui pra frente).
+Locais afetados (linhas atuais): 16, 496, 599, 776, 890, 928, 995 — cobrem `getStatus`, `sendText`, `sendMedia`, envio avulso, `deleteMessage`, configuração de webhooks e leitura de webhooks.
+
+### Sem mudança no banco
+
+A policy de SELECT em `channels` permanece restrita a admin/gestor. Nada de RLS, nada de migração.
+
+### Atualizar `mem://security/security-memory`
+
+Documentar o padrão: "tokens de canal nunca devem ser lidos pelo cliente autenticado; server functions carregam credenciais via `supabaseAdmin` após o gate `requireSupabaseAuth`."
 
 ## Fora do escopo
 
-- Não mexer em chats em andamento de outros setores (Comercial / Financeiro) que estejam ativos — a regra só se aplica quando uma mensagem nova entra num chat novo ou já finalizado.
-- Não alterar o comportamento de transferência manual (operador transferindo para outro setor pelo painel).
-- Sem mudanças em RLS / segurança.
+- Não alterar policies RLS.
+- Não mexer em `src/lib/zapi.server.ts`, `zapi-bot.server.ts` ou `no-comm-automation.server.ts` — esses já usam `supabaseAdmin`.
+- Não alterar o fluxo de envio ou a UI.
