@@ -255,6 +255,9 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
             notification: p.notification,
             callId: p.callId,
             phone: p.phone,
+            senderName: p.senderName,
+            allKeys: Object.keys(p || {}),
+            payloadSample: JSON.stringify(p).slice(0, 1200),
           });
         }
 
@@ -292,13 +295,14 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
             let existingChat: any = null;
             const isLidIdentifier = !isGroup && phoneN.length >= 15;
             const candidateName = String(p.senderName || "").trim();
-            // 1) Lookup by stored LID mapping (populated by previous messages)
+            // 1) Lookup by stored LID mapping or any captured alias
+            //    (LIDs for call events sometimes differ from message LIDs).
             if (isLidIdentifier) {
               const { data: byLid } = await supabaseAdmin
                 .from("zapi_chats")
                 .select("id, phone, unread_count, status, closed_at")
                 .eq("channel_id", channelId)
-                .eq("lid", phoneN)
+                .or(`lid.eq.${phoneN},lid_aliases.cs.{${phoneN}}`)
                 .not("phone_normalized", "like", "lid:%")
                 .order("last_message_at", { ascending: false })
                 .limit(1);
