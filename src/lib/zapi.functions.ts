@@ -5,6 +5,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { loadZapiChannel, zapiFetch, zapiGetStatus, zapiSendText, zapiSendMedia, zapiDeleteMessage, zapiSetCallRejectAuto, zapiSetCallRejectMessage } from "./zapi.server";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 // ------------ Status / chats list ------------
 
