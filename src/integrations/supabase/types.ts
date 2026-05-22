@@ -4796,6 +4796,7 @@ export type Database = {
           id: string
           last_message_at: string | null
           last_message_preview: string | null
+          lid: string | null
           pending_resolve_at: string | null
           pending_resolve_ticket_id: string | null
           pending_resolve_user_id: string | null
@@ -4819,6 +4820,7 @@ export type Database = {
           id?: string
           last_message_at?: string | null
           last_message_preview?: string | null
+          lid?: string | null
           pending_resolve_at?: string | null
           pending_resolve_ticket_id?: string | null
           pending_resolve_user_id?: string | null
@@ -4842,6 +4844,7 @@ export type Database = {
           id?: string
           last_message_at?: string | null
           last_message_preview?: string | null
+          lid?: string | null
           pending_resolve_at?: string | null
           pending_resolve_ticket_id?: string | null
           pending_resolve_user_id?: string | null
