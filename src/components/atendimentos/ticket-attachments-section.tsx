@@ -87,8 +87,17 @@ export function TicketAttachmentsSection({ ticketId, userId }: Props) {
     }
   };
 
-  const getPublicUrl = (path: string) =>
-    supabase.storage.from(BUCKET).getPublicUrl(path).data.publicUrl;
+  const openAttachment = async (path: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from(BUCKET)
+        .createSignedUrl(path, 60 * 5);
+      if (error || !data?.signedUrl) throw error || new Error("URL não gerada");
+      window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+    } catch (e: any) {
+      toast.error(e.message || "Falha ao abrir anexo");
+    }
+  };
 
   return (
     <div className="space-y-2 border-t pt-3">
