@@ -844,6 +844,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               pending_resolve_user_id?: string | null;
               pending_resolve_ticket_id?: string | null;
               pending_resolve_at?: string | null;
+              lid?: string;
             } = {
               contact_name: nameToStore,
               contact_avatar: p.senderPhoto || undefined,
@@ -853,6 +854,15 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                 ? (existing.unread_count || 0)
                 : ((existing.unread_count || 0) + 1),
             };
+            // Capture LID mapping when payload includes both real phone and LID,
+            // so future LID-only events (e.g. call notifications) can resolve.
+            if (!isGroupMessage && phone.length < 15) {
+              const lidRaw = p.senderLid || p.participantLid || p.chatLid || p.lid || null;
+              if (lidRaw) {
+                const lidDigits = String(lidRaw).replace(/\D/g, "");
+                if (lidDigits.length >= 15) baseUpdate.lid = lidDigits;
+              }
+            }
             if (shouldReopen) {
               // Regra: toda nova mensagem em chat reaberto (finalizado ou
               // pending_resolve) volta a passar pelo bot desde o início.
