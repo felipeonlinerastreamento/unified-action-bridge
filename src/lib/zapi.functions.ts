@@ -5,6 +5,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { z } from "zod";
 import { loadZapiChannel, zapiFetch, zapiGetStatus, zapiSendText, zapiSendMedia, zapiDeleteMessage, zapiSetCallRejectAuto, zapiSetCallRejectMessage } from "./zapi.server";
+import { supabaseAdmin } from "@/integrations/supabase/client.server";
 
 // ------------ Status / chats list ------------
 
@@ -13,7 +14,7 @@ export const getChannelStatus = createServerFn({ method: "POST" })
   .inputValidator(z.object({ channelId: z.string().uuid() }).parse)
   .handler(async ({ data, context }) => {
     try {
-      const channel = await loadZapiChannel(context.supabase, data.channelId);
+      const channel = await loadZapiChannel(supabaseAdmin, data.channelId);
       const r = await zapiGetStatus(channel);
       // Normalize to gsystem-shaped { status: "CONNECTED" | "DISCONNECTED" }
       const connected = r?.connected === true || r?.session === true;
@@ -493,7 +494,7 @@ export const sendText = createServerFn({ method: "POST" })
       .single();
     if (chatErr || !chat) throw new Error("Conversa não encontrada");
 
-    const channel = await loadZapiChannel(context.supabase, chat.channel_id);
+    const channel = await loadZapiChannel(supabaseAdmin, chat.channel_id);
 
     // Prefixa a mensagem com o nome do operador no padrão WhatsApp: _*Nome*_
     // (negrito + itálico) numa linha acima do conteúdo da mensagem.
@@ -596,7 +597,7 @@ export const sendMedia = createServerFn({ method: "POST" })
       .single();
     if (chatErr || !chat) throw new Error("Conversa não encontrada");
 
-    const channel = await loadZapiChannel(context.supabase, chat.channel_id);
+    const channel = await loadZapiChannel(supabaseAdmin, chat.channel_id);
 
     const result = await zapiSendMedia(channel, chat.phone, data.kind, data.dataUrl, {
       fileName: data.fileName,
@@ -773,7 +774,7 @@ export const createChat = createServerFn({ method: "POST" })
     if (!chatId) throw new Error("Erro ao criar conversa");
 
     if (data.message) {
-      const channel = await loadZapiChannel(context.supabase, data.channelId);
+      const channel = await loadZapiChannel(supabaseAdmin, data.channelId);
       await zapiSendText(channel, phone, data.message);
       await context.supabase.from("zapi_messages").insert({
         chat_id: chatId,
@@ -887,7 +888,7 @@ export const deleteMessage = createServerFn({ method: "POST" })
       throw new Error("Você só pode excluir mensagens enviadas por você");
     }
 
-    const channel = await loadZapiChannel(context.supabase, chat.channel_id);
+    const channel = await loadZapiChannel(supabaseAdmin, chat.channel_id);
 
     await zapiDeleteMessage(channel, {
       messageId: msg.zapi_message_id,
@@ -925,7 +926,7 @@ export const setupZapiWebhooks = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ channelId: z.string().uuid() }).parse)
   .handler(async ({ data, context }) => {
-    const channel = await loadZapiChannel(context.supabase, data.channelId);
+    const channel = await loadZapiChannel(supabaseAdmin, data.channelId);
 
     // Buscar webhook_secret e montar URL pública estável
     const { data: row } = await context.supabase
@@ -992,7 +993,7 @@ export const updateCallRejectionConfig = createServerFn({ method: "POST" })
     }).parse,
   )
   .handler(async ({ data, context }) => {
-    const channel = await loadZapiChannel(context.supabase, data.channelId);
+    const channel = await loadZapiChannel(supabaseAdmin, data.channelId);
     const results: Record<string, { ok: boolean; error?: string }> = {};
 
     try {
