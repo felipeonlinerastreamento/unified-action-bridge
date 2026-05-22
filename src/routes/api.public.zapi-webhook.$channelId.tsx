@@ -874,30 +874,15 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                   baseUpdate.status = "aguardando";
                 }
 
-                // Sempre cria novo chamado e deixa o bot rodar (fluxo normal de atendimento).
+                // Regra: protocolo é criado SOMENTE na finalização do chat.
+                // Não criar service_ticket aqui — o chat apenas reabre na fila e o bot
+                // reapresenta o menu. O ticket será gerado quando o operador finalizar.
                 const lastProto = (lastTicket as any)?.protocol_number;
-                const { data: newTicket, error: newTicketErr } = await supabaseAdmin
-                  .from("service_tickets")
-                  .insert({
-                    attendance_id: chatId!,
-                    channel_id: channelId,
-                    contact_phone: phone,
-                    contact_name: existing.contact_name || p.senderName || null,
-                    status: "aberto",
-                    sector: reopenSector,
-                    notes: lastProto != null
-                      ? `Nova mensagem após finalização do protocolo anterior #${lastProto}`
-                      : null,
-                  })
-                  .select("protocol_number")
-                  .maybeSingle();
-                if (newTicketErr) {
-                  console.error("[zapi-webhook] failed to create new ticket on reopen:", newTicketErr);
-                } else {
-                  console.log(`[zapi-webhook] finalized chat received new message → new ticket #${(newTicket as any)?.protocol_number} + bot flow (${phone})`);
-                }
+                console.log(`[zapi-webhook] finalized chat received new message → reopened to fila (last proto: #${lastProto ?? "n/a"}) — ticket será criado na finalização (${phone})`);
                 // NÃO setamos justReopenedSilently — o bot roda normalmente e reapresenta o menu.
               }
+
+
 
             }
             await supabaseAdmin
