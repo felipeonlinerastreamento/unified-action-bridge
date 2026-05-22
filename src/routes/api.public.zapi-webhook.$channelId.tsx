@@ -1134,13 +1134,19 @@ async function rehostMediaToStorage(
   mediaType: string,
   channelId: string,
   phone: string,
+  opts?: { hintMime?: string | null; hintName?: string | null },
 ): Promise<string> {
   if (!url || url.startsWith("data:")) return url;
   if (url.includes("/storage/v1/object/public/chat-media/")) return url;
 
   const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
   if (!res.ok) throw new Error(`download ${res.status}`);
-  const contentType = res.headers.get("content-type") || MEDIA_MIME[mediaType] || "application/octet-stream";
+  const httpCt = res.headers.get("content-type") || "";
+  // Prefer explicit hints from Z-API payload (mimeType / fileName) over
+  // upstream Content-Type — Backblaze frequently serves "application/octet-stream".
+  const hintMime = (opts?.hintMime || "").toLowerCase();
+  const hintExt = (opts?.hintName?.split(".").pop() || "").toLowerCase();
+  const contentType = hintMime || httpCt || MEDIA_MIME[mediaType] || "application/octet-stream";
   const arrBuf = await res.arrayBuffer();
 
   let ext = MEDIA_EXT[mediaType] || "bin";
@@ -1154,6 +1160,19 @@ async function rehostMediaToStorage(
     else if (sub === "jpeg" || sub === "jpg") ext = "jpg";
     else if (sub === "png") ext = "png";
     else if (sub === "pdf") ext = "pdf";
+    else if (sub === "msword") ext = "doc";
+    else if (sub.includes("wordprocessingml")) ext = "docx";
+    else if (sub.includes("spreadsheetml")) ext = "xlsx";
+    else if (sub === "vnd.ms-excel") ext = "xls";
+    else if (sub.includes("presentationml")) ext = "pptx";
+    else if (sub === "vnd.ms-powerpoint") ext = "ppt";
+    else if (sub === "zip") ext = "zip";
+    else if (sub === "plain") ext = "txt";
+    else if (sub === "csv") ext = "csv";
+  }
+  // If we still don't have a useful ext for a document, fall back to filename hint.
+  if (mediaType === "document" && (ext === "bin" || ext === "octet-stream") && hintExt && /^[a-z0-9]{1,8}$/i.test(hintExt)) {
+    ext = hintExt;
   }
 
   const key = `${channelId}/${phone}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
@@ -1165,4 +1184,5 @@ async function rehostMediaToStorage(
   const { data: pub } = supabaseAdmin.storage.from("chat-media").getPublicUrl(key);
   return pub.publicUrl;
 }
+
 
