@@ -321,13 +321,13 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               existingChat = byRealName?.find((chat: any) => chat.status !== "finalizado") || null;
             }
             if (isLidIdentifier && !existingChat) {
-              console.log("[zapi-webhook] dropping LID-only call event (no active real-phone chat to merge into)", {
+              console.log("[zapi-webhook] LID-only call event without real-phone chat; replying directly to @lid", {
                 phone: phoneN,
                 senderName: p.senderName,
                 type: eventType,
               });
-              return;
             }
+            const replyPhone = isLidIdentifier && !existingChat ? `${phoneN}@lid` : phoneN;
             if (!existingChat) {
               let query = supabaseAdmin
                 .from("zapi_chats")
@@ -346,8 +346,8 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                 .from("zapi_chats")
                 .insert({
                   channel_id: channelId,
-                  phone: phoneN,
-                  contact_name: p.senderName || phoneN,
+                  phone: replyPhone,
+                  contact_name: p.senderName || replyPhone,
                   status: "aguardando",
                   unread_count: 1,
                   last_message_at: new Date().toISOString(),
@@ -393,7 +393,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               if ((enabled === undefined || enabled === true) && typeof msg === "string" && msg.trim()) {
                 const creds = await loadZapiChannel(supabaseAdmin, channelId);
                 if (creds) {
-                  const sendRes: any = await zapiSendText(creds, (existingChat as any)?.phone || phoneN, msg);
+                  const sendRes: any = await zapiSendText(creds, (existingChat as any)?.phone || replyPhone, msg);
                   // Persistir a mensagem automática no chat para que apareça na UI
                   if (chatRowId) {
                     await persistZapiMessage({
