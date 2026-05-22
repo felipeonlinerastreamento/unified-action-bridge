@@ -148,16 +148,14 @@ export function TicketAttachmentsSection({ ticketId, userId }: Props) {
                     {formatSize(att.file_size)} · {new Date(att.created_at).toLocaleString("pt-BR")}
                   </p>
                 </div>
-                <a
-                  href={getPublicUrl(att.file_path)}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  download={att.file_name}
+                <button
+                  type="button"
+                  onClick={() => openAttachment(att.file_path)}
                   className="inline-flex items-center justify-center h-7 w-7 rounded-md hover:bg-accent"
                   title="Baixar"
                 >
                   <Download className="h-3.5 w-3.5" />
-                </a>
+                </button>
                 {isOwn && (
                   <Button
                     size="icon"
