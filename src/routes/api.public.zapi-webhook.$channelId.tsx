@@ -640,7 +640,9 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
           let mediaUrl: string | null = rawMediaUrl;
           if (rawMediaUrl && mediaType && mediaType !== "contact" && mediaType !== "location") {
             try {
-              mediaUrl = await rehostMediaToStorage(rawMediaUrl, mediaType, channelId, phone);
+              const hintMime = p.document?.mimeType || p.image?.mimeType || p.audio?.mimeType || p.video?.mimeType || null;
+              const hintName = p.document?.fileName || null;
+              mediaUrl = await rehostMediaToStorage(rawMediaUrl, mediaType, channelId, phone, { hintMime, hintName });
             } catch (err) {
               console.warn("[zapi-webhook] media rehost failed, keeping original url:", err);
             }
