@@ -339,6 +339,16 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               const { data: byPhone } = await query;
               existingChat = byPhone?.[0] || null;
             }
+            if (isLidIdentifier && !existingChat) {
+              const { data: byLidPhone } = await supabaseAdmin
+                .from("zapi_chats")
+                .select("id, phone, unread_count, status, closed_at")
+                .eq("channel_id", channelId)
+                .eq("phone", replyPhone)
+                .order("last_message_at", { ascending: false })
+                .limit(1);
+              existingChat = byLidPhone?.[0] || null;
+            }
 
             let chatRowId: string | null = (existingChat as any)?.id || null;
             if (!chatRowId) {
@@ -393,6 +403,21 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               if ((enabled === undefined || enabled === true) && typeof msg === "string" && msg.trim()) {
                 const creds = await loadZapiChannel(supabaseAdmin, channelId);
                 if (creds) {
+                  let alreadyReplied = false;
+                  if (chatRowId) {
+                    const { data: recentAutoReply } = await supabaseAdmin
+                      .from("zapi_messages")
+                      .select("id")
+                      .eq("chat_id", chatRowId)
+                      .eq("from_me", true)
+                      .eq("text", msg)
+                      .gte("created_at", new Date(Date.now() - 3 * 60_000).toISOString())
+                      .limit(1)
+                      .maybeSingle();
+                    alreadyReplied = !!recentAutoReply;
+                  }
+                  if (alreadyReplied) return;
+
                   const sendRes: any = await zapiSendText(creds, (existingChat as any)?.phone || replyPhone, msg);
                   // Persistir a mensagem automática no chat para que apareça na UI
                   if (chatRowId) {
