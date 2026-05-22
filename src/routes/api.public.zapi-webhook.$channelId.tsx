@@ -292,7 +292,20 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
             let existingChat: any = null;
             const isLidIdentifier = !isGroup && phoneN.length >= 15;
             const candidateName = String(p.senderName || "").trim();
-            if (isLidIdentifier && candidateName) {
+            // 1) Lookup by stored LID mapping (populated by previous messages)
+            if (isLidIdentifier) {
+              const { data: byLid } = await supabaseAdmin
+                .from("zapi_chats")
+                .select("id, phone, unread_count, status, closed_at")
+                .eq("channel_id", channelId)
+                .eq("lid", phoneN)
+                .not("phone_normalized", "like", "lid:%")
+                .order("last_message_at", { ascending: false })
+                .limit(1);
+              existingChat = byLid?.[0] || null;
+            }
+            // 2) Fallback: by sender name (only when present)
+            if (isLidIdentifier && !existingChat && candidateName) {
               const { data: byRealName } = await supabaseAdmin
                 .from("zapi_chats")
                 .select("id, phone, unread_count, status, closed_at")
