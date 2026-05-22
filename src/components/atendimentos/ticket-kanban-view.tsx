@@ -71,7 +71,7 @@ export function TicketKanbanView({ tickets, onSelect, onRefetch }: TicketKanbanV
         return;
       }
       if (res.routed && res.routedTo) {
-        toast.success(`Encaminhado para ${res.routedTo.sector}`);
+        toast.success("Atendimento finalizado");
         if (res.syncError) toast.error("Falha GSystem: " + res.syncError);
         else if (res.syncedToGsystem) toast.success("Sincronizado com GSystem");
       } else {
