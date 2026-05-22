@@ -818,73 +818,26 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                 ? (existing.unread_count || 0)
                 : ((existing.unread_count || 0) + 1),
             };
-            let reopenAssignedTo: string | null = null;
-            let reopenSector: string | null = null;
             if (shouldReopen) {
+              // Regra: toda nova mensagem em chat reaberto (finalizado ou
+              // pending_resolve) volta a passar pelo bot desde o início.
+              // O roteamento por setor acontece DENTRO do fluxo do bot
+              // (nó route_to_least_loaded com target_sector "Atendimento"),
+              // nunca aqui — assim o setor antigo nunca "gruda" no chat.
+              console.log(`[zapi-webhook] reopening chat for ${phone} → reset to bot (was: ${(existing as any).sector_name || "n/a"}, pending=${isPendingResolve})`);
+              baseUpdate.bot_state = {};
+              baseUpdate.status = "bot";
+              baseUpdate.assigned_to = null;
+              baseUpdate.sector_name = null;
               if (isPendingResolve) {
-                // "A resolver" → mantém o MESMO protocolo. Atribui ao operador
-                // que marcou pending; se offline, cai para least-loaded do setor.
-                console.log(`[zapi-webhook] reopening pending-resolve chat for ${phone} → same protocol`);
-                reopenSector = ((existing as any).sector_name as string | null) || "Atendimento";
-                const pendingUserId = (existing as any).pending_resolve_user_id as string | null;
-                if (pendingUserId) {
-                  const { data: prof } = await supabaseAdmin
-                    .from("profiles")
-                    .select("user_id, is_chat_available, last_seen_at")
-                    .eq("user_id", pendingUserId)
-                    .maybeSingle();
-                  const onlineCutoff = Date.now() - 2 * 60 * 1000;
-                  const isOnline = prof
-                    && (prof as any).is_chat_available !== false
-                    && (prof as any).last_seen_at
-                    && new Date((prof as any).last_seen_at).getTime() > onlineCutoff;
-                  if (isOnline) reopenAssignedTo = pendingUserId;
-                }
-                if (!reopenAssignedTo) {
-                  reopenAssignedTo = await pickLeastLoadedAgent(reopenSector);
-                }
-                baseUpdate.bot_state = {};
-                baseUpdate.status = reopenAssignedTo ? "em_atendimento" : "aguardando";
-                baseUpdate.assigned_to = reopenAssignedTo;
-                baseUpdate.sector_name = reopenSector;
                 baseUpdate.pending_resolve_user_id = null;
                 baseUpdate.pending_resolve_ticket_id = null;
                 baseUpdate.pending_resolve_at = null;
-                justReopenedSilently = true;
-                // NÃO criar novo ticket — o anterior continua aberto.
-              } else {
-                const { data: lastTicket } = await supabaseAdmin
-                  .from("service_tickets")
-                  .select("id, protocol_number, sector")
-                  .eq("attendance_id", chatId!)
-                  .eq("status", "finalizado")
-                  .order("closed_at", { ascending: false })
-                  .limit(1)
-                  .maybeSingle();
-                reopenSector = ((existing as any).sector_name as string | null)
-                  || (lastTicket as any)?.sector
-                  || "Atendimento";
-                reopenAssignedTo = await pickLeastLoadedAgent(reopenSector);
-                baseUpdate.bot_state = {};
-                if (reopenAssignedTo) {
-                  baseUpdate.status = "em_atendimento";
-                  baseUpdate.assigned_to = reopenAssignedTo;
-                  baseUpdate.sector_name = reopenSector;
-                } else {
-                  baseUpdate.status = "aguardando";
-                }
-
-                // Regra: protocolo é criado SOMENTE na finalização do chat.
-                // Não criar service_ticket aqui — o chat apenas reabre na fila e o bot
-                // reapresenta o menu. O ticket será gerado quando o operador finalizar.
-                const lastProto = (lastTicket as any)?.protocol_number;
-                console.log(`[zapi-webhook] finalized chat received new message → reopened to fila (last proto: #${lastProto ?? "n/a"}) — ticket será criado na finalização (${phone})`);
-                // NÃO setamos justReopenedSilently — o bot roda normalmente e reapresenta o menu.
               }
-
-
-
+              // NÃO setamos justReopenedSilently — o bot deve rodar normalmente
+              // e reapresentar o menu de boas-vindas.
             }
+
             await supabaseAdmin
               .from("zapi_chats")
               .update(baseUpdate)
