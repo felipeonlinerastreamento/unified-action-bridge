@@ -851,6 +851,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               pending_resolve_ticket_id?: string | null;
               pending_resolve_at?: string | null;
               lid?: string;
+              lid_aliases?: string[];
             } = {
               contact_name: nameToStore,
               contact_avatar: p.senderPhoto || undefined,
@@ -862,11 +863,26 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
             };
             // Capture LID mapping when payload includes both real phone and LID,
             // so future LID-only events (e.g. call notifications) can resolve.
+            // Z-API sometimes uses different LIDs for messages vs calls, so we
+            // scan the entire payload for ANY 15+ digit token and store them
+            // all as aliases.
             if (!isGroupMessage && phone.length < 15) {
-              const lidRaw = p.senderLid || p.participantLid || p.chatLid || p.lid || null;
-              if (lidRaw) {
-                const lidDigits = String(lidRaw).replace(/\D/g, "");
-                if (lidDigits.length >= 15) baseUpdate.lid = lidDigits;
+              const aliases = new Set<string>();
+              const payloadStr = JSON.stringify(p || {});
+              const matches = payloadStr.match(/\b\d{15,}\b/g) || [];
+              for (const m of matches) {
+                if (m !== phone) aliases.add(m);
+              }
+              const primaryLidRaw = p.senderLid || p.participantLid || p.chatLid || p.lid || null;
+              if (primaryLidRaw) {
+                const lidDigits = String(primaryLidRaw).replace(/\D/g, "");
+                if (lidDigits.length >= 15) {
+                  baseUpdate.lid = lidDigits;
+                  aliases.add(lidDigits);
+                }
+              }
+              if (aliases.size > 0) {
+                baseUpdate.lid_aliases = Array.from(aliases);
               }
             }
             if (shouldReopen) {
