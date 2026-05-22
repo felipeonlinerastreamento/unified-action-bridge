@@ -445,7 +445,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
       queryClient.invalidateQueries({ queryKey: ["ticket-reminders", ticket.id] });
       queryClient.invalidateQueries({ queryKey: ["ticket-reminder-history", ticket.id] });
       if (res.routed && res.routedTo) {
-        toast.success(`Encaminhado para ${res.routedTo.sector}`);
+        toast.success("Atendimento finalizado");
         if (res.syncError) toast.error("Falha GSystem: " + res.syncError);
         else if (res.syncedToGsystem) toast.success("Sincronizado com GSystem");
       } else {
