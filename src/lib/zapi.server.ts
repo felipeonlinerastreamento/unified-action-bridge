@@ -67,6 +67,10 @@ export async function zapiFetch(
 function zapiRecipientPhone(phone: string): string {
   const raw = String(phone || "").trim();
   if (!raw) return raw;
+  if (/@lid$/i.test(raw) || /^lid:/i.test(raw)) {
+    const lidDigits = raw.replace(/\D/g, "");
+    return lidDigits ? `${lidDigits}@lid` : raw;
+  }
   if (/-group$/i.test(raw)) return raw;
   if (/@g\.us$/i.test(raw)) return raw.replace(/@g\.us$/i, "-group");
 
