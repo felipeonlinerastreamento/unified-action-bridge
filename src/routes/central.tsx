@@ -1638,6 +1638,23 @@ function CentralPage() {
             const groupStart = await resolveGroupTicketStart(selectedChatId, selectedChatId);
             if (groupStart) startIso = groupStart;
           }
+          // Quando a categoria é Teste de Equipamento, já criamos o ticket
+          // direto no setor/status configurados — evita corrida com o post-flow
+          // (que vinha falhando em persistir o roteamento).
+          const isTECreate =
+            !pendingResolve &&
+            !!teSettings?.is_enabled &&
+            isTesteEquipamentoCategory(resolvedCategoryLabel, teSettings) &&
+            !!teSettings?.target_sector_name;
+          const insertStatus = pendingResolve
+            ? "aberto"
+            : isTECreate
+              ? (teSettings!.target_status || "aberto")
+              : "finalizado";
+          const insertSector = isTECreate ? teSettings!.target_sector_name : null;
+          const insertClosedAt = pendingResolve || isTECreate ? null : nowIso;
+          const insertClosedBy =
+            pendingResolve || isTECreate ? null : (sess.session?.user?.id || null);
           const { data: created, error: createErr } = await supabase
             .from("service_tickets")
             .insert({
@@ -1647,18 +1664,38 @@ function CentralPage() {
               contact_phone: contactPhone || null,
               contact_name: chatDetail.contact?.name || chatDetail.description || null,
               plate: ticketPlate || null,
-              status: (pendingResolve ? "aberto" : "finalizado") as any,
+              status: insertStatus as any,
+              sector: insertSector,
               category: resolvedCategoryLabel,
               notes: notes || null,
               opened_by: sess.session?.user?.id || null,
               created_at: startIso,
-              closed_at: pendingResolve ? null : nowIso,
-              closed_by: pendingResolve ? null : (sess.session?.user?.id || null),
+              closed_at: insertClosedAt,
+              closed_by: insertClosedBy,
             } as any)
             .select("*")
             .single();
           if (createErr) console.error("[Finalize] Failed to create protocol ticket:", createErr.message);
-          else ticketForProtocol = created as any;
+          else {
+            ticketForProtocol = created as any;
+            if (isTECreate) {
+              try {
+                await supabase.from("ticket_assignments").insert({
+                  ticket_id: (created as any).id,
+                  assigned_by: sess.session?.user?.id || null,
+                  sector_name: teSettings!.target_sector_name,
+                });
+                await supabase.from("ticket_comments").insert({
+                  ticket_id: (created as any).id,
+                  user_id: sess.session?.user?.id || null,
+                  content: `Atendimento finalizado e encaminhado automaticamente para o setor "${teSettings!.target_sector_name}" (fluxo Teste de Equipamento).`,
+                  comment_type: "encaminhamento",
+                });
+              } catch (e: any) {
+                console.warn("[Finalize] TE post-create side effects failed:", e?.message);
+              }
+            }
+          }
         }
       }
       // Wrap all pre-finalization steps so that failures (pendência, ticket update,
