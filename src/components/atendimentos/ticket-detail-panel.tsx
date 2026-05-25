@@ -999,7 +999,8 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
                 )}
                 {canFinalize && (
                   <Button size="sm" variant="default" onClick={() => setConfirmFinalizeOpen(true)} className="gap-1">
-                    <CheckCircle className="h-3.5 w-3.5" /> Finalizar
+                    <CheckCircle className="h-3.5 w-3.5" />
+                    {ticket.is_recurring ? "Concluir ocorrência" : "Finalizar"}
                   </Button>
                 )}
                 {canReopen && (
