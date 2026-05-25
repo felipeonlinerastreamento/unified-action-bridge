@@ -123,6 +123,9 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   const [editingCategory, setEditingCategory] = useState(false);
   const [categoryDraft, setCategoryDraft] = useState("");
   const [savingCategory, setSavingCategory] = useState(false);
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [notesDraft, setNotesDraft] = useState("");
+  const [savingNotes, setSavingNotes] = useState(false);
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [confirmFinalizeOpen, setConfirmFinalizeOpen] = useState(false);
   const [finalizeObservation, setFinalizeObservation] = useState("");
@@ -322,6 +325,48 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
       setSavingCategory(false);
     }
   };
+
+  const startEditNotes = () => {
+    setNotesDraft(ticket?.notes || "");
+    setEditingNotes(true);
+  };
+  const cancelEditNotes = () => {
+    setEditingNotes(false);
+    setNotesDraft("");
+  };
+  const saveNotes = async () => {
+    if (!ticket?.id) return;
+    const newNotes = notesDraft.trim() || null;
+    if ((newNotes || "") === (ticket.notes || "")) {
+      setEditingNotes(false);
+      return;
+    }
+    setSavingNotes(true);
+    try {
+      const { error } = await supabase
+        .from("service_tickets")
+        .update({ notes: newNotes, updated_at: new Date().toISOString() })
+        .eq("id", ticket.id);
+      if (error) {
+        toast.error("Erro ao atualizar observações: " + error.message);
+        return;
+      }
+      await supabase.from("ticket_comments").insert({
+        ticket_id: ticket.id,
+        user_id: userId,
+        content: `Observações atualizadas`,
+        comment_type: "status_change",
+      });
+      toast.success("Observações atualizadas");
+      setEditingNotes(false);
+      onRefetch();
+      refetchComments();
+      queryClient.invalidateQueries({ queryKey: ["service-tickets"] });
+    } finally {
+      setSavingNotes(false);
+    }
+  };
+
 
   const startEdit = (c: any) => {
     setEditingId(c.id);
@@ -874,7 +919,37 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
                 )}
               </div>
             </div>
-            <DetailRow label="Observações" value={ticket.notes} />
+            <div className="grid grid-cols-[140px_1fr] gap-2 items-start text-sm">
+              <span className="text-muted-foreground">Observações</span>
+              <div className="min-w-0">
+                {editingNotes ? (
+                  <div className="space-y-2">
+                    <Textarea
+                      value={notesDraft}
+                      onChange={(e) => setNotesDraft(e.target.value)}
+                      rows={4}
+                      placeholder="Adicione observações..."
+                      disabled={savingNotes}
+                    />
+                    <div className="flex items-center gap-1">
+                      <Button size="sm" onClick={saveNotes} disabled={savingNotes}>
+                        <Check className="h-3.5 w-3.5 mr-1" /> Salvar
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={cancelEditNotes} disabled={savingNotes}>
+                        <X className="h-3.5 w-3.5 mr-1" /> Cancelar
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-start gap-1 group">
+                    <span className="whitespace-pre-wrap break-words flex-1">{ticket.notes || "—"}</span>
+                    <Button size="icon" variant="ghost" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={startEditNotes}>
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </div>
             <DetailRow label="Criado em" value={ticket.created_at ? new Date(ticket.created_at).toLocaleString("pt-BR") : null} />
             <DetailRow label="Criado por" value={ticket.opened_by ? (profiles.find((p) => p.user_id === ticket.opened_by)?.name || "—") : "—"} />
             <DetailRow label="Finalizado em" value={ticket.closed_at ? new Date(ticket.closed_at).toLocaleString("pt-BR") : null} />
