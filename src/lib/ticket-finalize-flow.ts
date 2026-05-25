@@ -12,9 +12,9 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 import {
-  isTesteEquipamentoCategory,
   type TesteEquipamentoSettings,
 } from "@/hooks/use-teste-equipamento-settings";
+
 import { syncTicketToGsystem } from "@/lib/ticket-finalize.functions";
 
 export interface FinalizeFlowInput {
