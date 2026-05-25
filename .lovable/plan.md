@@ -1,35 +1,45 @@
-## Roteamento por setor do operador no finalize
+## Objetivo
+Corrigir o fluxo de finalização para que chamados marcados como **Teste de Equipamento** cheguem ao roteamento correto daqui pra frente, em vez de serem persistidos com outra categoria e escaparem da regra.
 
-**Objetivo**: quando o ticket for finalizado e a regra de categoria existir mas **não definir setor destino** (ou não houver regra), encaminhar o ticket para o setor do operador que está finalizando, em vez de cair no finalize padrão. Adicionalmente, manter o chat Z-API vinculado atribuído ao próprio operador (status `em_atendimento`).
+## O que encontrei
+- O ticket **#01644** está salvo em `service_tickets` com:
+  - categoria: **Assuntos Comerciais**
+  - setor: **Comercial**
+  - status: **aberto**
+- A configuração de **Teste de Equipamento** está ativa e aponta para:
+  - setor destino: **Administrativo**
+  - status destino: **aberto**
+  - sync GSystem: **desligado**
+- A função `finalizeTicketWithFlow` já tem o bloco de Teste de Equipamento, então ela só dispara se a categoria do ticket for reconhecida como TE.
+- Na Central, a categoria usada no finalize vem de `resolvedCategoryLabel`, e o #01644 foi persistido como **Assuntos Comerciais** antes do roteamento rodar.
 
-### Arquivo a editar
-- `src/lib/ticket-finalize-flow.ts`
+## Plano
+1. **Auditar o caminho da categoria no finalize da Central**
+   - Revisar o fluxo entre seleção de `tipoPendencia`, abertura do modal de Teste de Equipamento, confirmação e persistência do ticket.
+   - Identificar em que ponto a categoria selecionada está sendo trocada, mantida stale, ou reaproveitada de um estado anterior.
 
-### Mudanças
+2. **Corrigir a persistência da categoria final**
+   - Garantir que, ao finalizar com categoria de Teste de Equipamento, o ticket seja salvo com a categoria correta antes de chamar `finalizeTicketWithFlow`.
+   - Evitar sobrescrever a categoria com um valor anterior como “Assuntos Comerciais”.
+   - Preservar o comportamento atual dos outros fluxos (Assuntos Comerciais, Liberação, Não categorizar etc.).
 
-1. **Novo helper** `resolveOperatorSector(userId, currentSector)`:
-   - Busca em `user_sector_assignments` JOIN `sectors` (apenas `is_active = true`) os setores do operador.
-   - Se `currentSector` estiver entre eles → retorna `currentSector`.
-   - Senão → retorna o primeiro (ordem alfabética).
-   - Se o operador não tem setor algum → retorna `null` (cai no finalize padrão).
+3. **Validar o roteamento após a correção**
+   - Confirmar que um finalize com categoria Teste de Equipamento:
+     - salva a categoria correta no ticket
+     - reabre/encaminha para **Administrativo**
+     - mantém o status do ticket em **aberto**
+     - não liga sync GSystem
+   - Verificar que categorias não-TE continuam seguindo as regras atuais.
 
-2. **Bloco "Standard finalize" (linha 345)** vira condicional:
-   - Antes de fazer o `update status=finalizado`, chamar `resolveOperatorSector(userId, ticket.sector)`.
-   - Se retornar um setor diferente do atual:
-     - `UPDATE service_tickets SET status='aberto', sector=<setor_op>, assigned_to=userId, closed_at=null, updated_at=now()`.
-     - `INSERT ticket_assignments (ticket_id, assigned_by=userId, sector_name=<setor_op>)`.
-     - `insertSystemComment(..., "Atendimento finalizado e encaminhado para o setor \"X\" (setor do operador).", "encaminhamento")`.
-     - Para o chat Z-API vinculado: em vez de `closeLinkedZapiChat`, fazer `UPDATE zapi_chats SET status='em_atendimento', assigned_to=userId, sector_name=<setor_op>, closed_at=null, pending_resolve_at=null, pending_resolve_ticket_id=null, pending_resolve_user_id=null WHERE id=attendance_id` (novo helper `assignChatToOperator`).
-     - Retornar `{ routed: true, routedTo: { sector, status: 'aberto' } }`.
-   - Se o setor do operador já é o setor atual do ticket, ou operador não tem setor → segue o fluxo padrão atual (finaliza + `closeLinkedZapiChat`).
+## Detalhes técnicos
+- Arquivos mais prováveis:
+  - `src/routes/central.tsx`
+  - `src/lib/ticket-finalize-flow.ts`
+- Foco da correção:
+  - origem de `resolvedCategoryLabel`
+  - transição `showTeDialog -> showFinalizeConfirm -> finalizeMutation`
+  - update/insert de `service_tickets.category`
+- Sem backfill dos chamados antigos, conforme combinado.
 
-3. **Bloco "category_routing_rules" (linha 226)**:
-   - Comportamento atual permanece quando `rule.target_sector_name` está definido.
-   - Quando há `rule` mas **sem** `target_sector_name`, não retornar — deixar fluir para o passo 3 (que agora aplicará o setor do operador).
-   - Hoje a query já trata isso (a condição `rule && rule.target_sector_name` evita o roteamento), então nenhuma mudança extra é necessária além de garantir que `pendenciaAlreadyExists`/sync continuem rodando só dentro do `if`.
-
-### Fora de escopo
-- Alterar regras de categoria existentes ou criar UI.
-- Mexer no fluxo `bypassRouting` (admin), Teste de Equipamento, ou pendências GSystem.
-- Backfill de tickets já finalizados (ex.: #01644).
-- Alterar o setor do chat quando o ticket roteia via regra de categoria (já funciona).
+## Resultado esperado
+Ao finalizar um atendimento como **Teste de Equipamento**, o sistema deve persistir essa categoria corretamente e então aplicar o encaminhamento automático para o setor configurado.
