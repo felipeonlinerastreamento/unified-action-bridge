@@ -7,7 +7,17 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bell, BellOff, Plus, Repeat, History, ChevronDown, ChevronUp, Clock } from "lucide-react";
+import { Bell, BellOff, Plus, Repeat, History, ChevronDown, ChevronUp, Clock, Pencil, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface TicketReminderSectionProps {
   ticketId: string;
@@ -53,6 +63,13 @@ export function TicketReminderSection({ ticketId, userId }: TicketReminderSectio
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [completionComment, setCompletionComment] = useState("");
   const [showHistory, setShowHistory] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDate, setEditDate] = useState("");
+  const [editTime, setEditTime] = useState("");
+  const [editNote, setEditNote] = useState("");
+  const [editRecurrence, setEditRecurrence] = useState<string>("none");
+  const [editRecurrenceEnd, setEditRecurrenceEnd] = useState("");
+  const [deletingReminder, setDeletingReminder] = useState<any | null>(null);
 
   const { data: reminders = [], refetch } = useQuery({
     queryKey: ["ticket-reminders", ticketId],
@@ -218,6 +235,118 @@ export function TicketReminderSection({ ticketId, userId }: TicketReminderSectio
     );
   };
 
+  const startEdit = (r: any) => {
+    const d = new Date(r.reminder_date);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const dateStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const timeStr = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    setEditingId(r.id);
+    setEditDate(dateStr);
+    setEditTime(timeStr);
+    setEditNote(r.reminder_note || "");
+    setEditRecurrence(r.recurrence_type || "none");
+    setEditRecurrenceEnd(
+      r.recurrence_end_date
+        ? new Date(r.recurrence_end_date).toISOString().slice(0, 16)
+        : ""
+    );
+  };
+
+  const saveEdit = async (r: any) => {
+    if (!editDate) {
+      toast.error("Selecione uma data");
+      return;
+    }
+    const [y, mo, d] = editDate.split("-").map((v) => parseInt(v, 10));
+    const [h, mi] = (editTime || "09:00").split(":").map((v) => parseInt(v, 10));
+    const finalDate = new Date(y, (mo || 1) - 1, d || 1, h || 0, mi || 0, 0, 0);
+    const isRecurring = editRecurrence && editRecurrence !== "none";
+
+    const updatePayload: any = {
+      reminder_date: finalDate.toISOString(),
+      reminder_note: editNote || null,
+      recurrence_type: isRecurring ? editRecurrence : null,
+      recurrence_end_date:
+        isRecurring && editRecurrenceEnd ? new Date(editRecurrenceEnd).toISOString() : null,
+    };
+
+    const { error } = await supabase
+      .from("ticket_reminders")
+      .update(updatePayload)
+      .eq("id", r.id);
+    if (error) {
+      toast.error("Erro ao alterar lembrete: " + error.message);
+      return;
+    }
+
+    await supabase
+      .from("service_tickets")
+      .update({ reminder_date: finalDate.toISOString(), reminder_note: editNote || null })
+      .eq("id", ticketId);
+
+    await supabase.from("ticket_comments").insert({
+      ticket_id: ticketId,
+      user_id: userId,
+      content: `Lembrete alterado para ${finalDate.toLocaleDateString("pt-BR")} ${finalDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}${isRecurring ? ` (recorrência: ${RECURRENCE_LABEL[editRecurrence]})` : " (recorrência removida)"}`,
+      comment_type: "sistema",
+    });
+
+    setEditingId(null);
+    refetch();
+    queryClient.invalidateQueries({ queryKey: ["service-tickets"] });
+    queryClient.invalidateQueries({ queryKey: ["ticket-comments", ticketId] });
+    toast.success("Lembrete atualizado");
+  };
+
+  const convertToSingle = async (r: any) => {
+    const { error } = await supabase
+      .from("ticket_reminders")
+      .update({ recurrence_type: null, recurrence_end_date: null })
+      .eq("id", r.id);
+    if (error) {
+      toast.error("Erro ao remover recorrência: " + error.message);
+      return;
+    }
+    await supabase.from("ticket_comments").insert({
+      ticket_id: ticketId,
+      user_id: userId,
+      content: `Recorrência removida do lembrete de ${new Date(r.reminder_date).toLocaleDateString("pt-BR")} (mantido como lembrete único)`,
+      comment_type: "sistema",
+    });
+    setDeletingReminder(null);
+    refetch();
+    queryClient.invalidateQueries({ queryKey: ["service-tickets"] });
+    queryClient.invalidateQueries({ queryKey: ["ticket-comments", ticketId] });
+    toast.success("Recorrência removida");
+  };
+
+  const deleteReminder = async (r: any) => {
+    const { error } = await supabase.from("ticket_reminders").delete().eq("id", r.id);
+    if (error) {
+      toast.error("Erro ao excluir lembrete: " + error.message);
+      return;
+    }
+    // Limpa o reminder_date espelhado se for o lembrete atual
+    await supabase
+      .from("service_tickets")
+      .update({ reminder_date: null, reminder_note: null })
+      .eq("id", ticketId)
+      .eq("reminder_date", r.reminder_date);
+
+    await supabase.from("ticket_comments").insert({
+      ticket_id: ticketId,
+      user_id: userId,
+      content: `Lembrete de ${new Date(r.reminder_date).toLocaleDateString("pt-BR")} excluído`,
+      comment_type: "sistema",
+    });
+    setDeletingReminder(null);
+    refetch();
+    queryClient.invalidateQueries({ queryKey: ["service-tickets"] });
+    queryClient.invalidateQueries({ queryKey: ["ticket-comments", ticketId] });
+    toast.success("Lembrete excluído");
+  };
+
+
   const activeReminders = reminders.filter((r: any) => !r.is_dismissed);
   const now = new Date();
 
@@ -335,6 +464,7 @@ export function TicketReminderSection({ ticketId, userId }: TicketReminderSectio
           const isOverdue = rDate <= now;
           const isRecurring = r.recurrence_type && r.recurrence_type !== "none";
           const isCompleting = completingId === r.id;
+          const isEditing = editingId === r.id;
           return (
             <div
               key={r.id}
@@ -360,18 +490,78 @@ export function TicketReminderSection({ ticketId, userId }: TicketReminderSectio
                   </div>
                   {r.reminder_note && <p className="text-xs text-muted-foreground mt-0.5 break-words whitespace-pre-wrap">{r.reminder_note}</p>}
                 </div>
-                {!isCompleting && (
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-6 w-6 shrink-0"
-                    onClick={() => startComplete(r)}
-                    title="Finalizar lembrete"
-                  >
-                    <BellOff className="h-3 w-3" />
-                  </Button>
+                {!isCompleting && !isEditing && (
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6"
+                      onClick={() => startEdit(r)}
+                      title="Editar lembrete/recorrência"
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6 text-destructive hover:text-destructive"
+                      onClick={() => setDeletingReminder(r)}
+                      title="Excluir lembrete/recorrência"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6"
+                      onClick={() => startComplete(r)}
+                      title="Finalizar lembrete"
+                    >
+                      <BellOff className="h-3 w-3" />
+                    </Button>
+                  </div>
                 )}
               </div>
+
+              {isEditing && (
+                <div className="space-y-2 pl-5">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-medium text-muted-foreground">Data</label>
+                      <Input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} className="h-8 text-xs" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-medium text-muted-foreground">Hora</label>
+                      <Input type="time" value={editTime} onChange={(e) => setEditTime(e.target.value)} className="h-8 text-xs" />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-medium text-muted-foreground">Nota</label>
+                    <Textarea value={editNote} onChange={(e) => setEditNote(e.target.value)} className="min-h-[40px] text-xs" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-medium text-muted-foreground">Recorrência</label>
+                    <Select value={editRecurrence} onValueChange={setEditRecurrence}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {RECURRENCE_OPTIONS.map((o) => (
+                          <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {editRecurrence !== "none" && (
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-medium text-muted-foreground">Encerrar recorrência em (opcional)</label>
+                      <Input type="datetime-local" value={editRecurrenceEnd} onChange={(e) => setEditRecurrenceEnd(e.target.value)} className="h-8 text-xs" />
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={() => saveEdit(r)} className="h-7 text-xs">Salvar</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setEditingId(null)} className="h-7 text-xs">Cancelar</Button>
+                  </div>
+                </div>
+              )}
 
               {isCompleting && (
                 <div className="space-y-2 pl-5">
@@ -458,6 +648,33 @@ export function TicketReminderSection({ ticketId, userId }: TicketReminderSectio
           )}
         </div>
       )}
+
+      <AlertDialog open={!!deletingReminder} onOpenChange={(open) => !open && setDeletingReminder(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir lembrete?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deletingReminder?.recurrence_type && deletingReminder.recurrence_type !== "none"
+                ? "Este lembrete é recorrente. Escolha o que fazer:"
+                : "Tem certeza que deseja excluir este lembrete?"}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            {deletingReminder?.recurrence_type && deletingReminder.recurrence_type !== "none" && (
+              <Button variant="outline" onClick={() => convertToSingle(deletingReminder)}>
+                Manter como único
+              </Button>
+            )}
+            <AlertDialogAction
+              onClick={() => deletingReminder && deleteReminder(deletingReminder)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Remover lembrete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
