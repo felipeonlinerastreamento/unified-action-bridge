@@ -771,6 +771,11 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
             if (preAssignForNew) {
               initialSector = "Atendimento";
               initialAssigned = await pickLeastLoadedAgent(initialSector);
+              if (!initialAssigned) {
+                // Garante que grupos / fromMe sempre sejam atribuídos mesmo
+                // quando nenhum operador está marcado como online.
+                initialAssigned = await pickLeastLoadedAgentAny(initialSector);
+              }
               initialStatus = initialAssigned ? "em_atendimento" : "aguardando";
             }
             const { data: created, error: insertError } = await supabaseAdmin
