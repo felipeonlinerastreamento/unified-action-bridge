@@ -72,7 +72,18 @@ const MESSAGE_EVENT_TYPES = new Set([
 ]);
 
 function normalizeIncomingPhone(rawPhone: string, isGroup: boolean): string {
-  if (isGroup) return rawPhone.replace(/\D/g, "");
+  if (isGroup) {
+    // Para grupos preservamos o hífen entre <criador>-<timestamp>; sem ele
+    // não conseguimos remontar o ID para enviar ao Z-API. Removemos apenas
+    // o sufixo @g.us e qualquer prefixo lid:.
+    const cleaned = rawPhone
+      .replace(/@g\.us$/i, "")
+      .replace(/^lid:/i, "")
+      .trim();
+    // Mantém apenas dígitos e hífen.
+    return cleaned.replace(/[^\d-]/g, "");
+  }
+
 
   let digits = rawPhone.replace(/\D/g, "");
   if (!digits) return "";

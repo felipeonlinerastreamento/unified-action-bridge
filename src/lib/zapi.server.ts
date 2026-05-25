@@ -74,8 +74,20 @@ function zapiRecipientPhone(phone: string): string {
   if (/-group$/i.test(raw)) return raw;
   if (/@g\.us$/i.test(raw)) return raw.replace(/@g\.us$/i, "-group");
 
+  // Grupo no formato <criador>-<timestamp> (com hífen): apenas anexa -group.
+  if (/^\d+-\d+$/.test(raw)) return `${raw}-group`;
+
   let digits = raw.replace(/\D/g, "");
-  if (digits.length > 15) return `${digits}-group`;
+  if (digits.length > 15) {
+    // Grupo legado salvo sem hífen. Tenta remontar usando o padrão BR de
+    // criador (55 + DDD + 9 + 8 dígitos = 13 dígitos), seguido do timestamp.
+    if (/^55[1-9][0-9]9[0-9]{19,}$/.test(digits) || /^55[1-9][0-9]9[0-9]{10,}$/.test(digits)) {
+      if (digits.length > 13) {
+        return `${digits.slice(0, 13)}-${digits.slice(13)}-group`;
+      }
+    }
+    return `${digits}-group`;
+  }
 
   // BR mobile: ensure the leading "9" after DDD (canonical 13 digits)
   // 12 digits "55DD[6-9]XXXXXXX" → "55DD9[6-9]XXXXXXX"
@@ -84,6 +96,7 @@ function zapiRecipientPhone(phone: string): string {
   }
   return digits;
 }
+
 
 export async function zapiSendText(
   channel: ZapiChannelCreds,
