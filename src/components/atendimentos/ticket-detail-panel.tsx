@@ -725,10 +725,26 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
               {expanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
             </Button>
           </SheetTitle>
-          <div className="flex items-center gap-2 pt-1">
+          <div className="flex items-center gap-2 pt-1 flex-wrap">
             <Button size="sm" variant="outline" onClick={() => setTaskDialogOpen(true)}>
               <Repeat className="h-3.5 w-3.5 mr-1.5" /> Nova tarefa / recorrência
             </Button>
+            {ticket.reminder_date && (
+              <Badge
+                variant="outline"
+                className="text-xs gap-1 border-amber-500 text-amber-700 dark:text-amber-400"
+              >
+                <Bell className="h-3 w-3" />
+                Próxima notificação:{" "}
+                {new Date(ticket.reminder_date).toLocaleString("pt-BR", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </Badge>
+            )}
           </div>
         </SheetHeader>
         <TaskFormDialog open={taskDialogOpen} onClose={() => setTaskDialogOpen(false)} defaultTicketId={ticket.id} />
