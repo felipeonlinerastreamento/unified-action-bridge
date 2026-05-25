@@ -5156,6 +5156,10 @@ export type Database = {
       }
       normalize_zapi_phone: { Args: { raw: string }; Returns: string }
       pick_least_loaded_agent: { Args: { _sector: string }; Returns: string }
+      pick_least_loaded_agent_any: {
+        Args: { _sector: string }
+        Returns: string
+      }
     }
     Enums: {
       app_role: "admin" | "gestor" | "atendente"
