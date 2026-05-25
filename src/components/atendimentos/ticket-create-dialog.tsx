@@ -74,6 +74,8 @@ import {
   validatePurchaseItems,
   type PurchaseLineItem,
 } from "./purchase-fields";
+import { useAuth } from "@/hooks/use-auth";
+
 
 interface TicketCreateDialogProps {
   open: boolean;
