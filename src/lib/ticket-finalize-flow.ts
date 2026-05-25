@@ -194,22 +194,33 @@ export async function finalizeTicketWithFlow(
   ) {
     // Re-lê o setor atual para evitar reencaminhar ticket que já está no destino
     let liveSector: string | null = ticket.sector ?? null;
+    let liveStatus: string | null = ticket.status ?? null;
+    let liveClosedAt: string | null = null;
+    const targetStatus = (settings.target_status || "aberto") as "aberto" | "em_andamento";
     try {
       const { data: fresh } = await supabase
         .from("service_tickets")
-        .select("sector")
+        .select("sector, status, closed_at")
         .eq("id", ticket.id)
         .maybeSingle();
       if (fresh?.sector !== undefined) liveSector = fresh.sector;
+      if (fresh?.status !== undefined) liveStatus = fresh.status;
+      if (fresh?.closed_at !== undefined) liveClosedAt = fresh.closed_at;
     } catch { /* ignore */ }
 
     const ticketSectorNorm = String(liveSector || "").trim().toLowerCase();
     const targetSectorNorm = String(settings.target_sector_name).trim().toLowerCase();
-    const alreadyRouted = Boolean(targetSectorNorm && ticketSectorNorm === targetSectorNorm);
+    const liveStatusNorm = String(liveStatus || "").trim().toLowerCase();
+    const targetStatusNorm = String(targetStatus).trim().toLowerCase();
+    const alreadyRouted = Boolean(
+      targetSectorNorm &&
+      ticketSectorNorm === targetSectorNorm &&
+      liveStatusNorm === targetStatusNorm &&
+      !liveClosedAt
+    );
 
     if (!alreadyRouted) {
       const targetSector = settings.target_sector_name;
-      const targetStatus = (settings.target_status || "aberto") as "aberto" | "em_andamento";
 
       const { error } = await supabase
         .from("service_tickets")
