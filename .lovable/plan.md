@@ -1,60 +1,48 @@
-## Chat interno com operadores (a partir das Notificações)
+# Corrigir cálculo de "Minha média"
 
-### Resumo
-Adicionar um novo tipo de "Notificação → Chat com operador(es)" na tela `Configurações › Notificações`, que cria conversas persistentes em tempo real entre quem envia (Admin/Gestor) e os destinatários (pessoa/setor/grupo/todos). Opcionalmente, o destinatário fica com modal fullscreen bloqueante até enviar a primeira resposta.
+## Problema
 
-### Banco de dados (nova migration)
+No card `Minha média` (componente `src/components/central/my-attendance-kpis.tsx`), o filtro de período usa `closed_at >= início do período`, mas a duração é calculada como `closed_at - created_at`. Resultado: um chat criado dias atrás e finalizado hoje entra na média do "Dia" com a duração total da vida do chat (ex.: 47h num filtro de "hoje").
 
-Tabelas novas:
-- `operator_chats` — uma conversa por destinatário (thread 1-a-1 entre o remetente e cada operador).
-  - campos: `id`, `campaign_id` (opcional, agrupa o broadcast), `created_by`, `created_by_name`, `recipient_user_id`, `subject` (título), `lock_until_reply` (bool), `is_locked` (bool — true até o destinatário responder), `last_message_at`, `closed_at`, `created_at`, `updated_at`.
-- `operator_chat_messages` — mensagens da thread.
-  - campos: `id`, `chat_id`, `sender_user_id`, `sender_name`, `body` (text), `created_at`, `read_at`.
+## Regra correta (confirmada)
 
-RLS:
-- `operator_chats`: SELECT/UPDATE permitido para `created_by = auth.uid()` OR `recipient_user_id = auth.uid()` OR `has_role(auth.uid(),'admin')`. INSERT só Admin/Gestor.
-- `operator_chat_messages`: SELECT/INSERT só para participantes (créator ou recipient do chat pai), via função `is_operator_chat_participant(_user_id, _chat_id)` (SECURITY DEFINER, evita recursão de RLS).
+- **Quais chats entram:** finalizados dentro do período selecionado (`closed_at` no período), independente de quando foram criados.
+- **Base de duração:** do **primeiro envio meu** (`from_me = true`, `is_whisper = false`, `sent_by_user_id = eu`) até `closed_at`.
+- Se eu finalizei o chat mas nunca mandei mensagem (raro: finalização sem resposta), o chat **não entra** na média (não houve atendimento meu mensurável).
 
-Trigger:
-- Em `INSERT` numa `operator_chat_messages`: se `sender_user_id = chat.recipient_user_id` e `chat.is_locked = true` → marca `is_locked = false` (libera modal). Sempre atualiza `last_message_at`.
+## Implementação
 
-Realtime: `ALTER PUBLICATION supabase_realtime ADD TABLE operator_chats, operator_chat_messages;`
+Arquivo único: `src/components/central/my-attendance-kpis.tsx` (query `my-avg-attendance-time`).
 
-### UI
+1. Buscar os chats finalizados por mim no período:
+   ```ts
+   supabase.from("zapi_chats")
+     .select("id, closed_at, updated_at")
+     .eq("closed_by_user_id", user.id)
+     .eq("status", "finalizado")
+     .gte("closed_at", since.toISOString());
+   ```
+2. Se houver chats, buscar a **primeira mensagem minha** em cada um:
+   ```ts
+   supabase.from("zapi_messages")
+     .select("chat_id, created_at")
+     .in("chat_id", chatIds)
+     .eq("sent_by_user_id", user.id)
+     .eq("from_me", true)
+     .or("is_whisper.is.null,is_whisper.eq.false")
+     .order("created_at", { ascending: true });
+   ```
+   Reduzir para um `Map<chat_id, firstMineAt>` pegando só o primeiro por chat.
+3. Para cada chat finalizado: se existe `firstMineAt`, somar `closed_at - firstMineAt` (clamp em 0). Ignorar chats sem mensagem minha.
+4. Média = `totalMs / countComMinhaMensagem / 60000`.
 
-1. **`configuracoes.notificacoes.tsx` — Nova Notificação**
-   - Adicionar Tabs no topo do card: `Notificação` (atual) | `Chat com operador(es)`.
-   - Aba Chat reaproveita seletor Destinatário (Pessoa/Setor/Grupo/Todos), Título e Mensagem inicial.
-   - Toggle "Bloquear tela do destinatário até ele responder" (default ON).
-   - Botão "Iniciar chat": cria 1 linha em `operator_chats` por destinatário (com `is_locked = lock_until_reply`) e insere a mensagem inicial em `operator_chat_messages`.
+## Verificação
 
-2. **`notifications-bell.tsx` (sino)**
-   - Adicionar nova aba/seção "Conversas" com lista de `operator_chats` onde o usuário é participante (recipient OU creator) e `closed_at IS NULL`, ordenadas por `last_message_at`. Badge no sino soma não-lidas de notificações + mensagens não-lidas em chats.
-   - Click numa conversa abre `OperatorChatDialog`.
+- Selecionar "Dia": chat criado ontem e fechado hoje → contado apenas do meu primeiro envio (hoje) até o fechamento. Sem mais valores > 24h num filtro de dia.
+- Selecionar "Semana"/"Mês": mesma lógica, janela maior em `closed_at`.
+- Tooltip/legendinha: manter rótulo "Minha média" (sem mudar UI).
 
-3. **`OperatorChatDialog` (novo componente)**
-   - Dialog estilo chat: header com nome do outro participante, lista de mensagens (subscrição realtime em `operator_chat_messages` por `chat_id`), input no rodapé, botões "Fechar conversa" (apenas creator) e "Minimizar".
+## Fora de escopo
 
-4. **`OperatorChatLockOverlay` (novo, montado no `__root.tsx` ao lado de `NotificationPopup`)**
-   - Query: `operator_chats` onde `recipient_user_id = me AND is_locked = true AND closed_at IS NULL`, com realtime.
-   - Quando existir 1+ → renderiza `<Dialog open>` fullscreen, NÃO dispensável (bloqueia outside/escape), mostrando histórico do chat + input. Ao enviar a 1ª resposta, o trigger libera `is_locked` e o overlay desmonta automaticamente.
-
-### Permissões
-- Tela de criar chat: continua restrita pelo acesso atual a `Configurações › Notificações` (Admin/Gestor).
-- Sino e overlay: qualquer usuário autenticado pode ver/responder chats em que é participante.
-
-### Verificação
-1. Admin cria chat para um operador X com lock ON → operador X vê modal fullscreen bloqueante imediatamente (realtime).
-2. Operador X responde → modal fecha sozinho; conversa permanece acessível pelo sino.
-3. Admin recebe a resposta em realtime na conversa.
-4. Broadcast para Setor cria 1 thread por integrante; cada um vê e responde individualmente.
-5. RLS impede que terceiros leiam threads alheias.
-
-### Arquivos previstos
-- Migration SQL (tabelas, RLS, função, trigger, realtime).
-- `src/components/operator-chat/operator-chat-dialog.tsx` (novo)
-- `src/components/operator-chat/operator-chat-lock-overlay.tsx` (novo)
-- `src/components/operator-chat/operator-chat-list.tsx` (novo — usado no sino)
-- `src/components/notifications-bell.tsx` (editado — abas Notificações/Conversas + badge combinada)
-- `src/routes/configuracoes.notificacoes.tsx` (editado — tabs + form de chat)
-- `src/routes/__root.tsx` (editado — montar `OperatorChatLockOverlay`)
+- Não mudar o card "Meu setor" nem "Minha meta".
+- Não alterar tabelas, RLS ou outros relatórios (operator-performance segue como está).

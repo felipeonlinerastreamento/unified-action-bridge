@@ -107,7 +107,10 @@ export function MyAttendanceKpis() {
     staleTime: 300000,
   });
 
-  // Média de tempo dos meus atendimentos finalizados no período
+  // Média do tempo dos meus atendimentos finalizados no período.
+  // Janela: chats finalizados (closed_at) dentro do período.
+  // Duração: do meu PRIMEIRO envio (from_me=true, não-whisper, sent_by_user_id=eu)
+  // até closed_at. Chats sem mensagem minha são ignorados.
   const { data: avgMinutes = null } = useQuery({
     queryKey: ["my-avg-attendance-time", user?.id, period],
     queryFn: async () => {
@@ -117,21 +120,44 @@ export function MyAttendanceKpis() {
       else if (period === "week") since.setDate(since.getDate() - 7);
       else since.setMonth(since.getMonth() - 1);
 
-      const { data } = await supabase
+      const { data: chats } = await supabase
         .from("zapi_chats" as any)
-        .select("created_at, closed_at, updated_at")
+        .select("id, closed_at, updated_at")
         .eq("closed_by_user_id", user.id)
         .eq("status", "finalizado")
         .gte("closed_at", since.toISOString());
 
-      const rows = (data as any[]) || [];
-      if (rows.length === 0) return null;
-      const totalMs = rows.reduce((acc, r) => {
-        const start = new Date(r.created_at).getTime();
-        const end = new Date(r.closed_at ?? r.updated_at).getTime();
-        return acc + Math.max(0, end - start);
-      }, 0);
-      return totalMs / rows.length / 60000;
+      const chatRows = (chats as any[]) || [];
+      if (chatRows.length === 0) return null;
+
+      const chatIds = chatRows.map((c) => c.id);
+      const { data: msgs } = await supabase
+        .from("zapi_messages" as any)
+        .select("chat_id, created_at")
+        .in("chat_id", chatIds)
+        .eq("sent_by_user_id", user.id)
+        .eq("from_me", true)
+        .or("is_whisper.is.null,is_whisper.eq.false")
+        .order("created_at", { ascending: true });
+
+      const firstMineByChat = new Map<string, number>();
+      for (const m of ((msgs as any[]) || [])) {
+        if (!firstMineByChat.has(m.chat_id)) {
+          firstMineByChat.set(m.chat_id, new Date(m.created_at).getTime());
+        }
+      }
+
+      let totalMs = 0;
+      let count = 0;
+      for (const c of chatRows) {
+        const firstMine = firstMineByChat.get(c.id);
+        if (firstMine == null) continue;
+        const end = new Date(c.closed_at ?? c.updated_at).getTime();
+        totalMs += Math.max(0, end - firstMine);
+        count += 1;
+      }
+      if (count === 0) return null;
+      return totalMs / count / 60000;
     },
     enabled: !!user?.id,
     refetchInterval: 30000,
