@@ -12,9 +12,10 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Send, Megaphone, Users, User, Building2, Globe, CheckCheck } from "lucide-react";
+import { Send, Megaphone, Users, User, Building2, Globe, CheckCheck, MessageCircle, Lock } from "lucide-react";
 
 export const Route = createFileRoute("/configuracoes/notificacoes")({
   component: NotificacoesConfigPage,
