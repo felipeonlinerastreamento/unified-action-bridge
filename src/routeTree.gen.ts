@@ -17,6 +17,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as CrmRouteImport } from './routes/crm'
 import { Route as ContatosRouteImport } from './routes/contatos'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
+import { Route as ChatOperadoresRouteImport } from './routes/chat-operadores'
 import { Route as CentralRouteImport } from './routes/central'
 import { Route as AtendimentosRouteImport } from './routes/atendimentos'
 import { Route as IndexRouteImport } from './routes/index'
@@ -79,6 +80,11 @@ const ContatosRoute = ContatosRouteImport.update({
 const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
   id: '/configuracoes',
   path: '/configuracoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChatOperadoresRoute = ChatOperadoresRouteImport.update({
+  id: '/chat-operadores',
+  path: '/chat-operadores',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CentralRoute = CentralRouteImport.update({
@@ -211,6 +217,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/atendimentos': typeof AtendimentosRoute
   '/central': typeof CentralRoute
+  '/chat-operadores': typeof ChatOperadoresRoute
   '/configuracoes': typeof ConfiguracoesRouteWithChildren
   '/contatos': typeof ContatosRoute
   '/crm': typeof CrmRoute
@@ -244,6 +251,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/atendimentos': typeof AtendimentosRoute
   '/central': typeof CentralRoute
+  '/chat-operadores': typeof ChatOperadoresRoute
   '/contatos': typeof ContatosRoute
   '/crm': typeof CrmRoute
   '/dashboard': typeof DashboardRoute
@@ -277,6 +285,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/atendimentos': typeof AtendimentosRoute
   '/central': typeof CentralRoute
+  '/chat-operadores': typeof ChatOperadoresRoute
   '/configuracoes': typeof ConfiguracoesRouteWithChildren
   '/contatos': typeof ContatosRoute
   '/crm': typeof CrmRoute
@@ -312,6 +321,7 @@ export interface FileRouteTypes {
     | '/'
     | '/atendimentos'
     | '/central'
+    | '/chat-operadores'
     | '/configuracoes'
     | '/contatos'
     | '/crm'
@@ -345,6 +355,7 @@ export interface FileRouteTypes {
     | '/'
     | '/atendimentos'
     | '/central'
+    | '/chat-operadores'
     | '/contatos'
     | '/crm'
     | '/dashboard'
@@ -377,6 +388,7 @@ export interface FileRouteTypes {
     | '/'
     | '/atendimentos'
     | '/central'
+    | '/chat-operadores'
     | '/configuracoes'
     | '/contatos'
     | '/crm'
@@ -411,6 +423,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AtendimentosRoute: typeof AtendimentosRoute
   CentralRoute: typeof CentralRoute
+  ChatOperadoresRoute: typeof ChatOperadoresRoute
   ConfiguracoesRoute: typeof ConfiguracoesRouteWithChildren
   ContatosRoute: typeof ContatosRoute
   CrmRoute: typeof CrmRoute
@@ -483,6 +496,13 @@ declare module '@tanstack/react-router' {
       path: '/configuracoes'
       fullPath: '/configuracoes'
       preLoaderRoute: typeof ConfiguracoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chat-operadores': {
+      id: '/chat-operadores'
+      path: '/chat-operadores'
+      fullPath: '/chat-operadores'
+      preLoaderRoute: typeof ChatOperadoresRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/central': {
@@ -692,6 +712,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AtendimentosRoute: AtendimentosRoute,
   CentralRoute: CentralRoute,
+  ChatOperadoresRoute: ChatOperadoresRoute,
   ConfiguracoesRoute: ConfiguracoesRouteWithChildren,
   ContatosRoute: ContatosRoute,
   CrmRoute: CrmRoute,
