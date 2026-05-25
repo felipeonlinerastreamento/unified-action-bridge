@@ -1112,10 +1112,10 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
       <AlertDialog open={confirmFinalizeOpen} onOpenChange={(o) => { setConfirmFinalizeOpen(o); if (!o) setFinalizeObservation(""); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Finalizar atendimento?</AlertDialogTitle>
+            <AlertDialogTitle>{ticket.is_recurring ? "Concluir ocorrência?" : "Finalizar atendimento?"}</AlertDialogTitle>
             <AlertDialogDescription>
               {ticket.is_recurring
-                ? "Este é um atendimento recorrente. Informe uma observação — ela ficará no histórico e será usada como nota do próximo lembrete."
+                ? "O ticket permanecerá aberto e a próxima notificação será criada automaticamente conforme a recorrência. Informe uma observação — ficará no histórico."
                 : "Esta ação encerrará o ticket. Você poderá reabri-lo depois, se necessário."}
             </AlertDialogDescription>
           </AlertDialogHeader>
