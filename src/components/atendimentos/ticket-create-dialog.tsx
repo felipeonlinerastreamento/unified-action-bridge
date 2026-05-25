@@ -74,6 +74,8 @@ import {
   validatePurchaseItems,
   type PurchaseLineItem,
 } from "./purchase-fields";
+import { useAuth } from "@/hooks/use-auth";
+
 
 interface TicketCreateDialogProps {
   open: boolean;
@@ -94,6 +96,7 @@ interface GsystemCliente {
 }
 
 export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDialogProps) {
+  const { user: currentUser } = useAuth();
   const [companyOpen, setCompanyOpen] = useState(false);
   const [companySearch, setCompanySearch] = useState("");
   const [selectedCliente, setSelectedCliente] = useState<GsystemCliente | null>(null);
@@ -341,7 +344,16 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
       const finalNotes = isTesteEquip
         ? buildTesteEquipamentoNotes(teData, notes)
         : (notes || null);
-      const { data: { user: creatorUser } } = await supabase.auth.getUser();
+      let creatorId: string | null = currentUser?.id ?? null;
+      if (!creatorId) {
+        const { data: { user: fallbackUser } } = await supabase.auth.getUser();
+        creatorId = fallbackUser?.id ?? null;
+      }
+      if (!creatorId) {
+        toast.error("Sessão expirada. Faça login novamente para abrir o chamado.");
+        setLoading(false);
+        return;
+      }
 
       const { data: created, error } = await supabase.from("service_tickets").insert({
         attendance_id: attendanceId,
@@ -355,8 +367,8 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
         sector: sectorName,
         status: "aberto",
         tracking_code: trackCodeClean,
-        opened_by: creatorUser?.id ?? null,
-        assigned_to: creatorUser?.id ?? null,
+        opened_by: creatorId,
+        assigned_to: creatorId,
         ...(isLiberacao && liberacaoDate
           ? { liberacao_date: new Date(liberacaoDate).toISOString() }
           : {}),
