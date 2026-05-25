@@ -404,7 +404,46 @@ export async function finalizeTicketWithFlow(
     }
   }
 
-  // 3. Standard finalize
+  // 3. Operator-sector routing: if the closing operator belongs to a sector,
+  //    encaminha pro setor dele em vez de finalizar (a menos que já esteja lá).
+  const operatorSector = await resolveOperatorSector(userId, ticket.sector);
+  if (operatorSector && userId) {
+    const ticketSectorNorm = String(ticket.sector || "").trim().toLowerCase();
+    const opSectorNorm = operatorSector.trim().toLowerCase();
+    if (ticketSectorNorm !== opSectorNorm) {
+      const { error } = await supabase
+        .from("service_tickets")
+        .update({
+          status: "aberto" as const,
+          sector: operatorSector,
+          assigned_to: userId,
+          closed_at: null,
+          updated_at: new Date().toISOString(),
+        } as any)
+        .eq("id", ticket.id);
+      if (error) return { routed: false, error: error.message };
+
+      await supabase.from("ticket_assignments").insert({
+        ticket_id: ticket.id,
+        assigned_by: userId,
+        sector_name: operatorSector,
+      });
+      await insertSystemComment(
+        ticket.id,
+        userId,
+        `Atendimento finalizado e encaminhado para o setor "${operatorSector}" (setor do operador).`,
+        "encaminhamento",
+      );
+
+      await assignChatToOperator(ticket.attendance_id, userId, operatorSector);
+      return {
+        routed: true,
+        routedTo: { sector: operatorSector, status: "aberto" },
+      };
+    }
+  }
+
+  // 4. Standard finalize
   const { error } = await supabase
     .from("service_tickets")
     .update({
