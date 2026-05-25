@@ -1,38 +1,37 @@
-## Diagnóstico
+## Objetivo
 
-Encontrei dois problemas relacionados, com a mesma raiz: o diálogo de criação de ticket (`src/components/atendimentos/ticket-create-dialog.tsx`) não está gravando nem **quem criou** o ticket, nem **quem é o responsável** por ele.
+Quando o cliente enviar mensagem em um chat marcado com a tag **"Osvaldo Btec"** e esse chat estiver sem operador atribuído, o sistema deve automaticamente atribuir o chat ao operador do setor **Atendimento** que estiver com a menor fila (mesma regra já usada em outros pontos via `pick_least_loaded_agent`).
 
-### Bug 1 — "Criado por:" vazio
-No insert em `service_tickets` (linhas 345-360 de `ticket-create-dialog.tsx`) não é passado o campo `opened_by`. Como o painel de detalhe lê `ticket.opened_by` para mostrar o nome, ele sempre cai no `"—"`.
+## Como funcionará
 
-### Bug 2 — Vários atendimentos sem nome do responsável no balão
-O badge "Operador responsável" em `ticket-list-view.tsx` (linha 67) só aparece quando `t.assigned_to` está preenchido. O insert de criação também **não preenche** `assigned_to`, então todo ticket criado manualmente nasce sem responsável e sem badge. Só os tickets gerados por chats (que têm operador atribuído automaticamente) mostram o nome.
+1. No webhook do WhatsApp (`src/routes/api.public.zapi-webhook.$channelId.tsx`), após registrar a mensagem inbound (`fromMe = false`) e atualizar o `zapi_chats`, executar uma checagem extra:
+   - Se o chat tiver a tag `"Osvaldo Btec"` no campo `tags` **e**
+   - `assigned_to` estiver `null` **e**
+   - `status` não for `finalizado` nem `bot`
+   - então chamar `supabase.rpc('pick_least_loaded_agent', { _sector: 'Atendimento' })`.
+2. Se o RPC retornar um operador, atualizar o chat:
+   - `assigned_to = <user_id>`
+   - `sector_name = 'Atendimento'`
+   - `status = 'em_atendimento'`
+3. Se o RPC retornar `null` (ninguém disponível/online), fazer fallback para `pick_least_loaded_agent_any` (mesma estratégia já usada no código). Se ainda assim nada vier, deixar como está (chat permanece em "aguardando" para um operador puxar manualmente).
+4. Registrar um evento em `attendance_event_logs` (`event_type: 'auto_assigned_by_tag'`) para auditoria.
 
-## Plano
+## Onde se aplica e onde NÃO se aplica
 
-### 1. Gravar criador e responsável ao criar ticket
-Em `src/components/atendimentos/ticket-create-dialog.tsx`, dentro do `insert` em `service_tickets`:
+- **Aplica** apenas no fluxo de mensagem inbound do cliente (mesmo bloco onde já tratamos `shouldReopen`/`baseUpdate` no webhook).
+- **Não** reatribui se o chat já tiver `assigned_to`.
+- **Não** afeta chats sem a tag "Osvaldo Btec".
+- **Não** mexe em tickets (`service_tickets`) — a regra é só do chat na Central de Atendimento.
 
-- Obter `authUser` (`supabase.auth.getUser()`) **antes** do insert (hoje só é obtido bem depois, na linha 450).
-- Adicionar dois campos ao payload:
-  - `opened_by: authUser?.id ?? null` — quem criou (resolve Bug 1).
-  - `assigned_to: authUser?.id ?? null` — assume como responsável quem está criando (resolve Bug 2 para novos tickets).
+## Como marcar o chat com a tag
 
-### 2. Fallback de exibição no badge para tickets antigos
-Para os tickets já existentes que ficaram sem `assigned_to`, ajustar `src/components/atendimentos/ticket-list-view.tsx` para que o badge "Operador responsável" também apareça usando, em ordem de prioridade:
-
-1. `t.assigned_to` (atual)
-2. `t.opened_by` (quem abriu) — rótulo: "Aberto por"
-3. `t.agent_user_ids[0]` (primeiro agente vinculado em `ticket_agents`)
-
-Quando vier do fallback, o `title` do badge muda para deixar claro ("Aberto por" / "Agente vinculado") em vez de "Operador responsável".
-
-### 3. Sem alterações de banco / RLS
-Os campos `opened_by` e `assigned_to` já existem em `service_tickets` e são usados em outros pontos do código. Nenhuma migration é necessária.
+A regra usa o campo `tags` (jsonb array) já existente em `zapi_chats`. O contato "Osvaldo Btec" hoje aparece com `tags = []`. Para a regra disparar, é preciso adicionar a tag `"Osvaldo Btec"` ao chat — isso pode ser feito pelo componente `chat-tags.tsx` (UI já existe). Se preferir que eu deixe a tag aplicada de antemão para o chat existente, posso incluir um update pontual após a alteração.
 
 ## Arquivos alterados
-- `src/components/atendimentos/ticket-create-dialog.tsx` — adicionar `opened_by` e `assigned_to` no insert.
-- `src/components/atendimentos/ticket-list-view.tsx` — fallback de exibição no badge.
+
+- `src/routes/api.public.zapi-webhook.$channelId.tsx` — adicionar a checagem da tag + chamada ao `pick_least_loaded_agent` logo após o `update` do `baseUpdate` para mensagens inbound.
 
 ## Fora do escopo
-- Backfill em massa dos tickets antigos para preencher `assigned_to`/`opened_by` retroativamente. Se você quiser, faço numa segunda rodada com uma migration de update direcionada (ex.: copiar `opened_by` para `assigned_to` onde estiver nulo).
+
+- Configurar a regra por UI (lista de tags → setor). Se quiser uma versão genérica para várias tags/categorias no futuro, dá pra evoluir criando uma tabela tipo `tag_auto_assign_rules`.
+- Reatribuição contínua a cada resposta (você já optou por "só quando estiver sem operador").
