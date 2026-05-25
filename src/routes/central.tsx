@@ -1613,6 +1613,7 @@ function CentralPage() {
       }
 
       let ticketForProtocol = currentTicket;
+      let createdProtocolTicket = false;
       if (!ticketForProtocol && selectedChatId && chatDetail) {
         const { data: existing } = await supabase
           .from("service_tickets")
@@ -1678,6 +1679,7 @@ function CentralPage() {
           if (createErr) console.error("[Finalize] Failed to create protocol ticket:", createErr.message);
           else {
             ticketForProtocol = created as any;
+            createdProtocolTicket = true;
             if (isTECreate) {
               try {
                 await supabase.from("ticket_assignments").insert({
@@ -1764,7 +1766,7 @@ function CentralPage() {
         // Aqui só atualizamos quando havia um ticket pré-existente (currentTicket
         // ou existing), garantindo que ele transite corretamente para finalizado.
         const wasJustCreated =
-          ticketForProtocol && ticketForProtocol.id === activeTicket.id && activeTicket.status === "finalizado";
+          createdProtocolTicket && ticketForProtocol && ticketForProtocol.id === activeTicket.id;
         if (!wasJustCreated) {
           if (pendingResolve) {
             // Mantém ticket aberto — apenas atualiza notas/categoria.
