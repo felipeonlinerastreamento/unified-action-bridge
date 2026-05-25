@@ -1,57 +1,38 @@
-# Tela de chat com operadores
+## Diagnóstico
 
-Hoje o chat com operadores existe apenas como:
-- Botão "Iniciar chat com operadores" em `Configurações > Notificações > Chat com operadores`
-- Lista compacta dentro do sino de notificações (`OperatorChatList` no `notifications-bell`)
-- Dialog modal (`OperatorChatDialog`) para conversar
+Encontrei dois problemas relacionados, com a mesma raiz: o diálogo de criação de ticket (`src/components/atendimentos/ticket-create-dialog.tsx`) não está gravando nem **quem criou** o ticket, nem **quem é o responsável** por ele.
 
-Falta uma tela cheia para conversar de forma confortável, ver histórico e alternar entre conversas.
+### Bug 1 — "Criado por:" vazio
+No insert em `service_tickets` (linhas 345-360 de `ticket-create-dialog.tsx`) não é passado o campo `opened_by`. Como o painel de detalhe lê `ticket.opened_by` para mostrar o nome, ele sempre cai no `"—"`.
 
-## O que será criado
+### Bug 2 — Vários atendimentos sem nome do responsável no balão
+O badge "Operador responsável" em `ticket-list-view.tsx` (linha 67) só aparece quando `t.assigned_to` está preenchido. O insert de criação também **não preenche** `assigned_to`, então todo ticket criado manualmente nasce sem responsável e sem badge. Só os tickets gerados por chats (que têm operador atribuído automaticamente) mostram o nome.
 
-Nova rota **`/chat-operadores`** com layout estilo WhatsApp:
+## Plano
 
-```text
-+-------------------------------------------------------+
-| AppLayout (sidebar do sistema)                        |
-| +--------------------+------------------------------+ |
-| | Conversas          | Cabeçalho da conversa        | |
-| | [busca]            | (nome do operador, status)   | |
-| | + Nova conversa    +------------------------------+ |
-| |                    |                              | |
-| | • Conversa 1  (3)  |     Mensagens                | |
-| | • Conversa 2       |     (bolhas)                 | |
-| | • Conversa 3       |                              | |
-| |                    +------------------------------+ |
-| | [Encerradas ▾]     | [campo de mensagem] [enviar] | |
-| +--------------------+------------------------------+ |
-+-------------------------------------------------------+
-```
+### 1. Gravar criador e responsável ao criar ticket
+Em `src/components/atendimentos/ticket-create-dialog.tsx`, dentro do `insert` em `service_tickets`:
 
-### Painel esquerdo (lista)
-- Reaproveita a query do `OperatorChatList` (conversas abertas) e adiciona seção "Encerradas" colapsável (filtra por `closed_at != null`).
-- Campo de busca por assunto ou nome do operador.
-- Botão "Nova conversa" no topo abre o mesmo seletor de operadores usado no `StartOperatorChatCard` (extraído para componente reutilizável).
-- Badge de não lidas por conversa; conversa ativa destacada.
+- Obter `authUser` (`supabase.auth.getUser()`) **antes** do insert (hoje só é obtido bem depois, na linha 450).
+- Adicionar dois campos ao payload:
+  - `opened_by: authUser?.id ?? null` — quem criou (resolve Bug 1).
+  - `assigned_to: authUser?.id ?? null` — assume como responsável quem está criando (resolve Bug 2 para novos tickets).
 
-### Painel direito (conversa)
-- Reaproveita o conteúdo do `OperatorChatDialog` (mensagens, envio, marcação de lida, lock overlay), extraindo o corpo para `OperatorChatPanel` para ser usado tanto no dialog quanto na nova tela.
-- Quando nenhuma conversa selecionada: estado vazio com instrução.
-- Atualização em tempo real via Realtime já existente.
+### 2. Fallback de exibição no badge para tickets antigos
+Para os tickets já existentes que ficaram sem `assigned_to`, ajustar `src/components/atendimentos/ticket-list-view.tsx` para que o badge "Operador responsável" também apareça usando, em ordem de prioridade:
 
-### Acesso
-- Item no menu lateral "Chat com operadores" (ícone `MessageCircle`), visível para todos os papéis (admin, gestor, atendente).
-- Sino de notificações continua funcionando; clicar numa conversa lá pode redirecionar para `/chat-operadores?chat=<id>` (mantendo o dialog também como fallback rápido).
+1. `t.assigned_to` (atual)
+2. `t.opened_by` (quem abriu) — rótulo: "Aberto por"
+3. `t.agent_user_ids[0]` (primeiro agente vinculado em `ticket_agents`)
 
-## Detalhes técnicos
+Quando vier do fallback, o `title` do badge muda para deixar claro ("Aberto por" / "Agente vinculado") em vez de "Operador responsável".
 
-- Arquivos novos:
-  - `src/routes/chat-operadores.tsx` — rota com `AppLayout` e layout em 2 colunas
-  - `src/components/operator-chat/operator-chat-panel.tsx` — corpo de conversa extraído do dialog
-  - `src/components/operator-chat/new-operator-chat-button.tsx` — botão + popover de seleção de destinatários (extraído de `StartOperatorChatCard`)
-- Arquivos alterados:
-  - `src/components/operator-chat/operator-chat-dialog.tsx` — passa a usar `OperatorChatPanel`
-  - `src/components/operator-chat/operator-chat-list.tsx` — aceita prop opcional `onSelectChat` para navegação (sem quebrar uso no sino)
-  - `src/components/app-sidebar.tsx` (ou equivalente) — adiciona item "Chat com operadores"
-- Sem mudanças de schema; usa tabelas existentes `operator_chats` e `operator_chat_messages` e suas RLS.
-- Sincronização do parâmetro `?chat=<id>` na URL via `useNavigate` para deep-link.
+### 3. Sem alterações de banco / RLS
+Os campos `opened_by` e `assigned_to` já existem em `service_tickets` e são usados em outros pontos do código. Nenhuma migration é necessária.
+
+## Arquivos alterados
+- `src/components/atendimentos/ticket-create-dialog.tsx` — adicionar `opened_by` e `assigned_to` no insert.
+- `src/components/atendimentos/ticket-list-view.tsx` — fallback de exibição no badge.
+
+## Fora do escopo
+- Backfill em massa dos tickets antigos para preencher `assigned_to`/`opened_by` retroativamente. Se você quiser, faço numa segunda rodada com uma migration de update direcionada (ex.: copiar `opened_by` para `assigned_to` onde estiver nulo).
