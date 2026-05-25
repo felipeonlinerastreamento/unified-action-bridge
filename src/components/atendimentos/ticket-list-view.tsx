@@ -64,6 +64,16 @@ export function TicketListView({ tickets, onSelect, profiles = [] }: TicketListV
                   {t.category && <Badge className="text-xs bg-violet-600 text-white">{t.category}</Badge>}
                   {getStatusBadge(t.status)}
                   {getPriorityBadge(t.priority || "media")}
+                  {t.assigned_to && (
+                    <Badge
+                      variant="outline"
+                      className="text-xs gap-1 border-sky-500 text-sky-700 dark:text-sky-400"
+                      title="Operador responsável"
+                    >
+                      <UserCheck className="h-3 w-3" />
+                      {profiles.find((p) => p.user_id === t.assigned_to)?.name || "Atribuído"}
+                    </Badge>
+                  )}
                   {t.reminder_date && (
                     <Badge
                       variant="outline"
