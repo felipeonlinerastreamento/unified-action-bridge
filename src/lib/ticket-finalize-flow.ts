@@ -110,9 +110,114 @@ export async function finalizeTicketWithFlow(
     return { routed: false };
   }
 
-  // 1. Teste de Equipamento: regra anterior de reencaminhar para Administrativo
-  // foi removida — clicar em Finalizar agora encerra o ticket de verdade
-  // (segue para o "Standard finalize" abaixo). Demais regras seguem inalteradas.
+  // 1. Teste de Equipamento: roteia para o setor configurado quando finalizado
+  let settings: TesteEquipamentoSettings | null = teSettings ?? null;
+  if (teSettings === undefined) {
+    try {
+      const { data } = await (supabase as any)
+        .from("teste_equipamento_settings")
+        .select("*")
+        .limit(1)
+        .maybeSingle();
+      settings = (data as TesteEquipamentoSettings | null) ?? null;
+    } catch (e) {
+      console.warn("[finalize-flow] load te settings failed:", e);
+    }
+  }
+
+  if (
+    settings?.is_enabled &&
+    isTesteEquipamentoCategory(ticket.category, settings) &&
+    settings.target_sector_name
+  ) {
+    // Re-lê o setor atual para evitar reencaminhar ticket que já está no destino
+    let liveSector: string | null = ticket.sector ?? null;
+    try {
+      const { data: fresh } = await supabase
+        .from("service_tickets")
+        .select("sector")
+        .eq("id", ticket.id)
+        .maybeSingle();
+      if (fresh?.sector !== undefined) liveSector = fresh.sector;
+    } catch { /* ignore */ }
+
+    const ticketSectorNorm = String(liveSector || "").trim().toLowerCase();
+    const targetSectorNorm = String(settings.target_sector_name).trim().toLowerCase();
+    const alreadyRouted = Boolean(targetSectorNorm && ticketSectorNorm === targetSectorNorm);
+
+    if (!alreadyRouted) {
+      const targetSector = settings.target_sector_name;
+      const targetStatus = (settings.target_status || "aberto") as "aberto" | "em_andamento";
+
+      const { error } = await supabase
+        .from("service_tickets")
+        .update({
+          status: targetStatus,
+          sector: targetSector,
+          assigned_to: null,
+          closed_at: null,
+          updated_at: new Date().toISOString(),
+        } as any)
+        .eq("id", ticket.id);
+      if (error) return { routed: false, error: error.message };
+
+      await supabase.from("ticket_assignments").insert({
+        ticket_id: ticket.id,
+        assigned_by: userId,
+        sector_name: targetSector,
+      });
+      await insertSystemComment(
+        ticket.id,
+        userId,
+        `Atendimento finalizado e encaminhado automaticamente para o setor "${targetSector}" (fluxo Teste de Equipamento).`,
+        "encaminhamento"
+      );
+
+      let syncedToGsystem = false;
+      let pendenciaKey: string | null = null;
+      let syncError: string | null = null;
+      if (settings.auto_sync_gsystem) {
+        const { data: existingLink } = await supabase
+          .from("entity_links")
+          .select("external_id")
+          .eq("entity_type", "pendencia")
+          .eq("local_id", String(ticket.id))
+          .maybeSingle();
+        const pendenciaAlreadyExists = Boolean(existingLink?.external_id);
+        if (!pendenciaAlreadyExists) {
+          try {
+            const res = await syncTicketToGsystem({ data: { ticketId: ticket.id } });
+            if ((res as any)?.ok) {
+              syncedToGsystem = true;
+              pendenciaKey = (res as any).pendenciaKey || null;
+              await insertSystemComment(
+                ticket.id,
+                userId,
+                `Sincronizado com GSystem (pendência ${pendenciaKey || "criada"})`,
+                "sistema"
+              );
+            } else {
+              syncError = (res as any)?.error || "erro desconhecido";
+            }
+          } catch (e: any) {
+            syncError = e?.message || String(e);
+          }
+        } else {
+          syncedToGsystem = true;
+        }
+      }
+
+      await closeLinkedZapiChat(ticket.attendance_id);
+      return {
+        routed: true,
+        routedTo: { sector: targetSector, status: targetStatus },
+        syncedToGsystem,
+        pendenciaKey,
+        syncError,
+      };
+    }
+  }
+
 
 
 
