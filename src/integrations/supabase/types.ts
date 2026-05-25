@@ -2979,6 +2979,89 @@ export type Database = {
           },
         ]
       }
+      operator_chat_messages: {
+        Row: {
+          body: string
+          chat_id: string
+          created_at: string
+          id: string
+          read_at: string | null
+          sender_name: string | null
+          sender_user_id: string
+        }
+        Insert: {
+          body: string
+          chat_id: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          sender_name?: string | null
+          sender_user_id: string
+        }
+        Update: {
+          body?: string
+          chat_id?: string
+          created_at?: string
+          id?: string
+          read_at?: string | null
+          sender_name?: string | null
+          sender_user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operator_chat_messages_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: false
+            referencedRelation: "operator_chats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      operator_chats: {
+        Row: {
+          campaign_id: string | null
+          closed_at: string | null
+          created_at: string
+          created_by: string
+          created_by_name: string | null
+          id: string
+          is_locked: boolean
+          last_message_at: string
+          lock_until_reply: boolean
+          recipient_user_id: string
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          campaign_id?: string | null
+          closed_at?: string | null
+          created_at?: string
+          created_by: string
+          created_by_name?: string | null
+          id?: string
+          is_locked?: boolean
+          last_message_at?: string
+          lock_until_reply?: boolean
+          recipient_user_id: string
+          subject: string
+          updated_at?: string
+        }
+        Update: {
+          campaign_id?: string | null
+          closed_at?: string | null
+          created_at?: string
+          created_by?: string
+          created_by_name?: string | null
+          id?: string
+          is_locked?: boolean
+          last_message_at?: string
+          lock_until_reply?: boolean
+          recipient_user_id?: string
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       out_of_hours_message_log: {
         Row: {
           chat_id: string | null
@@ -5042,6 +5125,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_operator_chat_participant: {
+        Args: { _chat_id: string; _user_id: string }
         Returns: boolean
       }
       is_task_assigned: {
