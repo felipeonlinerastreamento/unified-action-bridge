@@ -49,35 +49,42 @@ function clientInfo() {
 
 // writeAuditLog is re-exported from audit.server below
 
-/** Authenticated event log — resolves user from middleware. */
+/** Authenticated event log — resolves user from middleware.
+ *  Fire-and-forget: never throws to the caller; failures are swallowed and
+ *  logged server-side so the UI doesn't blank-screen on audit-write issues. */
 export const logAuditEvent = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(logEventSchema.parse)
   .handler(async ({ data, context }) => {
-    const { userId, supabase } = context as any;
-    let userName: string | null = null;
     try {
-      const { data: prof } = await supabase
-        .from("profiles")
-        .select("name")
-        .eq("user_id", userId)
-        .maybeSingle();
-      userName = prof?.name ?? null;
-    } catch {}
-    const { ip, ua } = clientInfo();
-    await writeAuditLog({
-      user_id: userId,
-      user_name: userName,
-      event_category: data.event_category,
-      event_type: data.event_type,
-      target_type: data.target_type,
-      target_id: data.target_id,
-      target_label: data.target_label,
-      metadata: data.metadata as any,
-      ip_address: ip,
-      user_agent: ua,
-    });
-    return { success: true };
+      const { userId, supabase } = context as any;
+      let userName: string | null = null;
+      try {
+        const { data: prof } = await supabase
+          .from("profiles")
+          .select("name")
+          .eq("user_id", userId)
+          .maybeSingle();
+        userName = prof?.name ?? null;
+      } catch {}
+      const { ip, ua } = clientInfo();
+      await writeAuditLog({
+        user_id: userId,
+        user_name: userName,
+        event_category: data.event_category,
+        event_type: data.event_type,
+        target_type: data.target_type,
+        target_id: data.target_id,
+        target_label: data.target_label,
+        metadata: data.metadata as any,
+        ip_address: ip,
+        user_agent: ua,
+      });
+      return { success: true };
+    } catch (err) {
+      console.error("[logAuditEvent] failed:", err);
+      return { success: false };
+    }
   });
 
 const listSchema = z.object({
