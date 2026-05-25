@@ -1142,7 +1142,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
                 updateStatus("finalizado", obs);
               }}
             >
-              Sim, finalizar
+              {ticket.is_recurring ? "Concluir e reagendar" : "Sim, finalizar"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
