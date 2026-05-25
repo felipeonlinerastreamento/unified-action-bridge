@@ -12,6 +12,7 @@
  */
 import { supabase } from "@/integrations/supabase/client";
 import {
+  isTesteEquipamentoCategory,
   type TesteEquipamentoSettings,
 } from "@/hooks/use-teste-equipamento-settings";
 

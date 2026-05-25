@@ -1,37 +1,61 @@
-## Objetivo
+## Problema
 
-Quando o cliente enviar mensagem em um chat marcado com a tag **"Osvaldo Btec"** e esse chat estiver sem operador atribuído, o sistema deve automaticamente atribuir o chat ao operador do setor **Atendimento** que estiver com a menor fila (mesma regra já usada em outros pontos via `pick_least_loaded_agent`).
+Tickets da categoria **Teste de Equipamento** (ex.: #01606, #01616, #01628) estão sendo finalizados em vez de irem para o setor Administrativo como "aberto".
 
-## Como funcionará
+Causa: em `src/lib/ticket-finalize-flow.ts`, a etapa 1 do fluxo (Teste de Equipamento) foi removida e ficou apenas um comentário ("regra foi removida"). Como não existe `category_routing_rules` cadastrada para essa categoria, o ticket cai direto no "Standard finalize". As configurações em `teste_equipamento_settings` continuam ativas (`is_enabled=true`, target `Administrativo` / `aberto`, `auto_sync_gsystem=false`), só não são lidas.
 
-1. No webhook do WhatsApp (`src/routes/api.public.zapi-webhook.$channelId.tsx`), após registrar a mensagem inbound (`fromMe = false`) e atualizar o `zapi_chats`, executar uma checagem extra:
-   - Se o chat tiver a tag `"Osvaldo Btec"` no campo `tags` **e**
-   - `assigned_to` estiver `null` **e**
-   - `status` não for `finalizado` nem `bot`
-   - então chamar `supabase.rpc('pick_least_loaded_agent', { _sector: 'Atendimento' })`.
-2. Se o RPC retornar um operador, atualizar o chat:
-   - `assigned_to = <user_id>`
-   - `sector_name = 'Atendimento'`
-   - `status = 'em_atendimento'`
-3. Se o RPC retornar `null` (ninguém disponível/online), fazer fallback para `pick_least_loaded_agent_any` (mesma estratégia já usada no código). Se ainda assim nada vier, deixar como está (chat permanece em "aguardando" para um operador puxar manualmente).
-4. Registrar um evento em `attendance_event_logs` (`event_type: 'auto_assigned_by_tag'`) para auditoria.
+## Correção
 
-## Onde se aplica e onde NÃO se aplica
+Reintroduzir o bloco de roteamento Teste de Equipamento em `finalizeTicketWithFlow`, antes da checagem de `category_routing_rules`.
 
-- **Aplica** apenas no fluxo de mensagem inbound do cliente (mesmo bloco onde já tratamos `shouldReopen`/`baseUpdate` no webhook).
-- **Não** reatribui se o chat já tiver `assigned_to`.
-- **Não** afeta chats sem a tag "Osvaldo Btec".
-- **Não** mexe em tickets (`service_tickets`) — a regra é só do chat na Central de Atendimento.
+### Comportamento
 
-## Como marcar o chat com a tag
+Quando todos os seguintes forem verdade:
+- `bypassRouting` é falso (admin não está pulando o fluxo)
+- existe registro em `teste_equipamento_settings` com `is_enabled = true`
+- `isTesteEquipamentoCategory(ticket.category, settings)` retorna true (já existe no hook)
+- o setor atual do ticket (relido do banco) ainda não é o `target_sector_name` da config (evita reencaminhar quando o atendente do Administrativo clicar em Finalizar de novo)
 
-A regra usa o campo `tags` (jsonb array) já existente em `zapi_chats`. O contato "Osvaldo Btec" hoje aparece com `tags = []`. Para a regra disparar, é preciso adicionar a tag `"Osvaldo Btec"` ao chat — isso pode ser feito pelo componente `chat-tags.tsx` (UI já existe). Se preferir que eu deixe a tag aplicada de antemão para o chat existente, posso incluir um update pontual após a alteração.
+Então:
+1. `UPDATE service_tickets` → `status = settings.target_status` (ex.: `aberto`), `sector = settings.target_sector_name`, `assigned_to = null`, `closed_at = null`, `updated_at = now()`.
+2. `INSERT` em `ticket_assignments` (`ticket_id`, `assigned_by = userId`, `sector_name = target`).
+3. Comentário do sistema (`comment_type = 'encaminhamento'`): "Atendimento finalizado e encaminhado automaticamente para o setor \"Administrativo\" (fluxo Teste de Equipamento)."
+4. Se `settings.auto_sync_gsystem = true` **e** ainda não existe `entity_links` com `entity_type='pendencia'` para o ticket, chama `syncTicketToGsystem({ data: { ticketId } })` e registra comentário. (Hoje a config está desligada, então esse passo fica inerte.)
+5. Chama `closeLinkedZapiChat(ticket.attendance_id)` (mesma função usada hoje).
+6. Retorna `{ routed: true, routedTo: { sector, status }, syncedToGsystem, pendenciaKey, syncError }`.
 
-## Arquivos alterados
+Quando o ticket já está no setor destino (atendente do Administrativo clicou Finalizar), o bloco é ignorado e o fluxo segue: cai em `category_routing_rules` (não há regra) e depois no Standard finalize, encerrando o ticket de verdade.
 
-- `src/routes/api.public.zapi-webhook.$channelId.tsx` — adicionar a checagem da tag + chamada ao `pick_least_loaded_agent` logo após o `update` do `baseUpdate` para mensagens inbound.
+### Carregamento das settings
 
-## Fora do escopo
+Hoje `teSettings` é opcional no input. Para garantir que o roteamento funcione mesmo quando o caller (kanban drag-drop, central, painel) não passa as settings, fazer fetch tardio dentro de `finalizeTicketWithFlow` quando `teSettings` for `undefined`:
 
-- Configurar a regra por UI (lista de tags → setor). Se quiser uma versão genérica para várias tags/categorias no futuro, dá pra evoluir criando uma tabela tipo `tag_auto_assign_rules`.
-- Reatribuição contínua a cada resposta (você já optou por "só quando estiver sem operador").
+```ts
+let settings = teSettings ?? null;
+if (settings === undefined) {
+  const { data } = await supabase
+    .from("teste_equipamento_settings")
+    .select("*")
+    .limit(1)
+    .maybeSingle();
+  settings = data as TesteEquipamentoSettings | null;
+}
+```
+
+(Usa `as any` se o tipo gerado ainda não inclui a tabela, mesmo padrão já usado no hook.)
+
+### Não fazer
+
+- Backfill: a pedido do usuário, não reabrir os tickets #01606/#01616/#01628 já finalizados — apenas corrigir o fluxo daqui pra frente.
+- Não alterar `auto_sync_gsystem` (mantém desligado).
+- Não tocar em UI, settings ou em `ticket-finalize.functions.ts`.
+
+## Arquivo alterado
+
+- `src/lib/ticket-finalize-flow.ts` — adicionar bloco "1. Teste de Equipamento" entre o bypass admin e a checagem de `category_routing_rules`.
+
+## Verificação
+
+1. Build/typecheck verde.
+2. Finalizar um ticket da categoria "Teste de Equipamento" pelo painel → deve virar `status=aberto`, `sector=Administrativo`, `assigned_to=null`, com comentário de encaminhamento.
+3. Em seguida, no setor Administrativo, clicar Finalizar de novo → cai no Standard finalize (`status=finalizado`, `closed_at` preenchido).
