@@ -1,61 +1,35 @@
-## Problema
+## Roteamento por setor do operador no finalize
 
-Tickets da categoria **Teste de Equipamento** (ex.: #01606, #01616, #01628) estão sendo finalizados em vez de irem para o setor Administrativo como "aberto".
+**Objetivo**: quando o ticket for finalizado e a regra de categoria existir mas **não definir setor destino** (ou não houver regra), encaminhar o ticket para o setor do operador que está finalizando, em vez de cair no finalize padrão. Adicionalmente, manter o chat Z-API vinculado atribuído ao próprio operador (status `em_atendimento`).
 
-Causa: em `src/lib/ticket-finalize-flow.ts`, a etapa 1 do fluxo (Teste de Equipamento) foi removida e ficou apenas um comentário ("regra foi removida"). Como não existe `category_routing_rules` cadastrada para essa categoria, o ticket cai direto no "Standard finalize". As configurações em `teste_equipamento_settings` continuam ativas (`is_enabled=true`, target `Administrativo` / `aberto`, `auto_sync_gsystem=false`), só não são lidas.
+### Arquivo a editar
+- `src/lib/ticket-finalize-flow.ts`
 
-## Correção
+### Mudanças
 
-Reintroduzir o bloco de roteamento Teste de Equipamento em `finalizeTicketWithFlow`, antes da checagem de `category_routing_rules`.
+1. **Novo helper** `resolveOperatorSector(userId, currentSector)`:
+   - Busca em `user_sector_assignments` JOIN `sectors` (apenas `is_active = true`) os setores do operador.
+   - Se `currentSector` estiver entre eles → retorna `currentSector`.
+   - Senão → retorna o primeiro (ordem alfabética).
+   - Se o operador não tem setor algum → retorna `null` (cai no finalize padrão).
 
-### Comportamento
+2. **Bloco "Standard finalize" (linha 345)** vira condicional:
+   - Antes de fazer o `update status=finalizado`, chamar `resolveOperatorSector(userId, ticket.sector)`.
+   - Se retornar um setor diferente do atual:
+     - `UPDATE service_tickets SET status='aberto', sector=<setor_op>, assigned_to=userId, closed_at=null, updated_at=now()`.
+     - `INSERT ticket_assignments (ticket_id, assigned_by=userId, sector_name=<setor_op>)`.
+     - `insertSystemComment(..., "Atendimento finalizado e encaminhado para o setor \"X\" (setor do operador).", "encaminhamento")`.
+     - Para o chat Z-API vinculado: em vez de `closeLinkedZapiChat`, fazer `UPDATE zapi_chats SET status='em_atendimento', assigned_to=userId, sector_name=<setor_op>, closed_at=null, pending_resolve_at=null, pending_resolve_ticket_id=null, pending_resolve_user_id=null WHERE id=attendance_id` (novo helper `assignChatToOperator`).
+     - Retornar `{ routed: true, routedTo: { sector, status: 'aberto' } }`.
+   - Se o setor do operador já é o setor atual do ticket, ou operador não tem setor → segue o fluxo padrão atual (finaliza + `closeLinkedZapiChat`).
 
-Quando todos os seguintes forem verdade:
-- `bypassRouting` é falso (admin não está pulando o fluxo)
-- existe registro em `teste_equipamento_settings` com `is_enabled = true`
-- `isTesteEquipamentoCategory(ticket.category, settings)` retorna true (já existe no hook)
-- o setor atual do ticket (relido do banco) ainda não é o `target_sector_name` da config (evita reencaminhar quando o atendente do Administrativo clicar em Finalizar de novo)
+3. **Bloco "category_routing_rules" (linha 226)**:
+   - Comportamento atual permanece quando `rule.target_sector_name` está definido.
+   - Quando há `rule` mas **sem** `target_sector_name`, não retornar — deixar fluir para o passo 3 (que agora aplicará o setor do operador).
+   - Hoje a query já trata isso (a condição `rule && rule.target_sector_name` evita o roteamento), então nenhuma mudança extra é necessária além de garantir que `pendenciaAlreadyExists`/sync continuem rodando só dentro do `if`.
 
-Então:
-1. `UPDATE service_tickets` → `status = settings.target_status` (ex.: `aberto`), `sector = settings.target_sector_name`, `assigned_to = null`, `closed_at = null`, `updated_at = now()`.
-2. `INSERT` em `ticket_assignments` (`ticket_id`, `assigned_by = userId`, `sector_name = target`).
-3. Comentário do sistema (`comment_type = 'encaminhamento'`): "Atendimento finalizado e encaminhado automaticamente para o setor \"Administrativo\" (fluxo Teste de Equipamento)."
-4. Se `settings.auto_sync_gsystem = true` **e** ainda não existe `entity_links` com `entity_type='pendencia'` para o ticket, chama `syncTicketToGsystem({ data: { ticketId } })` e registra comentário. (Hoje a config está desligada, então esse passo fica inerte.)
-5. Chama `closeLinkedZapiChat(ticket.attendance_id)` (mesma função usada hoje).
-6. Retorna `{ routed: true, routedTo: { sector, status }, syncedToGsystem, pendenciaKey, syncError }`.
-
-Quando o ticket já está no setor destino (atendente do Administrativo clicou Finalizar), o bloco é ignorado e o fluxo segue: cai em `category_routing_rules` (não há regra) e depois no Standard finalize, encerrando o ticket de verdade.
-
-### Carregamento das settings
-
-Hoje `teSettings` é opcional no input. Para garantir que o roteamento funcione mesmo quando o caller (kanban drag-drop, central, painel) não passa as settings, fazer fetch tardio dentro de `finalizeTicketWithFlow` quando `teSettings` for `undefined`:
-
-```ts
-let settings = teSettings ?? null;
-if (settings === undefined) {
-  const { data } = await supabase
-    .from("teste_equipamento_settings")
-    .select("*")
-    .limit(1)
-    .maybeSingle();
-  settings = data as TesteEquipamentoSettings | null;
-}
-```
-
-(Usa `as any` se o tipo gerado ainda não inclui a tabela, mesmo padrão já usado no hook.)
-
-### Não fazer
-
-- Backfill: a pedido do usuário, não reabrir os tickets #01606/#01616/#01628 já finalizados — apenas corrigir o fluxo daqui pra frente.
-- Não alterar `auto_sync_gsystem` (mantém desligado).
-- Não tocar em UI, settings ou em `ticket-finalize.functions.ts`.
-
-## Arquivo alterado
-
-- `src/lib/ticket-finalize-flow.ts` — adicionar bloco "1. Teste de Equipamento" entre o bypass admin e a checagem de `category_routing_rules`.
-
-## Verificação
-
-1. Build/typecheck verde.
-2. Finalizar um ticket da categoria "Teste de Equipamento" pelo painel → deve virar `status=aberto`, `sector=Administrativo`, `assigned_to=null`, com comentário de encaminhamento.
-3. Em seguida, no setor Administrativo, clicar Finalizar de novo → cai no Standard finalize (`status=finalizado`, `closed_at` preenchido).
+### Fora de escopo
+- Alterar regras de categoria existentes ou criar UI.
+- Mexer no fluxo `bypassRouting` (admin), Teste de Equipamento, ou pendências GSystem.
+- Backfill de tickets já finalizados (ex.: #01644).
+- Alterar o setor do chat quando o ticket roteia via regra de categoria (já funciona).
