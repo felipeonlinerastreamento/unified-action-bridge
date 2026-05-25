@@ -341,6 +341,7 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
       const finalNotes = isTesteEquip
         ? buildTesteEquipamentoNotes(teData, notes)
         : (notes || null);
+      const { data: { user: creatorUser } } = await supabase.auth.getUser();
 
       const { data: created, error } = await supabase.from("service_tickets").insert({
         attendance_id: attendanceId,
@@ -354,6 +355,8 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
         sector: sectorName,
         status: "aberto",
         tracking_code: trackCodeClean,
+        opened_by: creatorUser?.id ?? null,
+        assigned_to: creatorUser?.id ?? null,
         ...(isLiberacao && liberacaoDate
           ? { liberacao_date: new Date(liberacaoDate).toISOString() }
           : {}),
