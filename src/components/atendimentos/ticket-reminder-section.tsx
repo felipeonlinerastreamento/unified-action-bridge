@@ -235,6 +235,118 @@ export function TicketReminderSection({ ticketId, userId }: TicketReminderSectio
     );
   };
 
+  const startEdit = (r: any) => {
+    const d = new Date(r.reminder_date);
+    const pad = (n: number) => String(n).padStart(2, "0");
+    const dateStr = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+    const timeStr = `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    setEditingId(r.id);
+    setEditDate(dateStr);
+    setEditTime(timeStr);
+    setEditNote(r.reminder_note || "");
+    setEditRecurrence(r.recurrence_type || "none");
+    setEditRecurrenceEnd(
+      r.recurrence_end_date
+        ? new Date(r.recurrence_end_date).toISOString().slice(0, 16)
+        : ""
+    );
+  };
+
+  const saveEdit = async (r: any) => {
+    if (!editDate) {
+      toast.error("Selecione uma data");
+      return;
+    }
+    const [y, mo, d] = editDate.split("-").map((v) => parseInt(v, 10));
+    const [h, mi] = (editTime || "09:00").split(":").map((v) => parseInt(v, 10));
+    const finalDate = new Date(y, (mo || 1) - 1, d || 1, h || 0, mi || 0, 0, 0);
+    const isRecurring = editRecurrence && editRecurrence !== "none";
+
+    const updatePayload: any = {
+      reminder_date: finalDate.toISOString(),
+      reminder_note: editNote || null,
+      recurrence_type: isRecurring ? editRecurrence : null,
+      recurrence_end_date:
+        isRecurring && editRecurrenceEnd ? new Date(editRecurrenceEnd).toISOString() : null,
+    };
+
+    const { error } = await supabase
+      .from("ticket_reminders")
+      .update(updatePayload)
+      .eq("id", r.id);
+    if (error) {
+      toast.error("Erro ao alterar lembrete: " + error.message);
+      return;
+    }
+
+    await supabase
+      .from("service_tickets")
+      .update({ reminder_date: finalDate.toISOString(), reminder_note: editNote || null })
+      .eq("id", ticketId);
+
+    await supabase.from("ticket_comments").insert({
+      ticket_id: ticketId,
+      user_id: userId,
+      content: `Lembrete alterado para ${finalDate.toLocaleDateString("pt-BR")} ${finalDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}${isRecurring ? ` (recorrência: ${RECURRENCE_LABEL[editRecurrence]})` : " (recorrência removida)"}`,
+      comment_type: "sistema",
+    });
+
+    setEditingId(null);
+    refetch();
+    queryClient.invalidateQueries({ queryKey: ["service-tickets"] });
+    queryClient.invalidateQueries({ queryKey: ["ticket-comments", ticketId] });
+    toast.success("Lembrete atualizado");
+  };
+
+  const convertToSingle = async (r: any) => {
+    const { error } = await supabase
+      .from("ticket_reminders")
+      .update({ recurrence_type: null, recurrence_end_date: null })
+      .eq("id", r.id);
+    if (error) {
+      toast.error("Erro ao remover recorrência: " + error.message);
+      return;
+    }
+    await supabase.from("ticket_comments").insert({
+      ticket_id: ticketId,
+      user_id: userId,
+      content: `Recorrência removida do lembrete de ${new Date(r.reminder_date).toLocaleDateString("pt-BR")} (mantido como lembrete único)`,
+      comment_type: "sistema",
+    });
+    setDeletingReminder(null);
+    refetch();
+    queryClient.invalidateQueries({ queryKey: ["service-tickets"] });
+    queryClient.invalidateQueries({ queryKey: ["ticket-comments", ticketId] });
+    toast.success("Recorrência removida");
+  };
+
+  const deleteReminder = async (r: any) => {
+    const { error } = await supabase.from("ticket_reminders").delete().eq("id", r.id);
+    if (error) {
+      toast.error("Erro ao excluir lembrete: " + error.message);
+      return;
+    }
+    // Limpa o reminder_date espelhado se for o lembrete atual
+    await supabase
+      .from("service_tickets")
+      .update({ reminder_date: null, reminder_note: null })
+      .eq("id", ticketId)
+      .eq("reminder_date", r.reminder_date);
+
+    await supabase.from("ticket_comments").insert({
+      ticket_id: ticketId,
+      user_id: userId,
+      content: `Lembrete de ${new Date(r.reminder_date).toLocaleDateString("pt-BR")} excluído`,
+      comment_type: "sistema",
+    });
+    setDeletingReminder(null);
+    refetch();
+    queryClient.invalidateQueries({ queryKey: ["service-tickets"] });
+    queryClient.invalidateQueries({ queryKey: ["ticket-comments", ticketId] });
+    toast.success("Lembrete excluído");
+  };
+
+
   const activeReminders = reminders.filter((r: any) => !r.is_dismissed);
   const now = new Date();
 
