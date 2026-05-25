@@ -1,32 +1,57 @@
-Duas mudanças relacionadas à recorrência de lembretes nos tickets.
+# Tela de chat com operadores
 
-## 1. Corrigir cálculo do reagendamento
+Hoje o chat com operadores existe apenas como:
+- Botão "Iniciar chat com operadores" em `Configurações > Notificações > Chat com operadores`
+- Lista compacta dentro do sino de notificações (`OperatorChatList` no `notifications-bell`)
+- Dialog modal (`OperatorChatDialog`) para conversar
 
-**Problema**: Hoje (25/05) você finalizou o lembrete recorrente semanal do ticket #01587, que estava agendado para 08/06. O trigger `handle_reminder_completion` calcula o próximo somando o intervalo a partir de `reminder_date` (08/06 + 7 = 15/06), ignorando a data real da conclusão. Por isso pulou 01/06.
+Falta uma tela cheia para conversar de forma confortável, ver histórico e alternar entre conversas.
 
-**Correção** (migration em `handle_reminder_completion`):
-- Calcular `v_next_date` a partir de `now()` (data da conclusão), não de `NEW.reminder_date`.
-- Para `weekly`/`biweekly`: somar o intervalo e depois ajustar para o mesmo dia da semana do `reminder_date` original (preserva "toda segunda").
-- Preservar a hora original (`EXTRACT(hour/minute FROM NEW.reminder_date)`).
-- Para `monthly`/`yearly`: somar a partir de `now()` mantendo o dia/hora original quando possível.
-- `daily` continua `now() + 1 day` na mesma hora.
+## O que será criado
 
-Resultado para #01587: finalizado hoje (segunda 25/05) → próximo = próxima segunda = **01/06** na mesma hora (11:30).
+Nova rota **`/chat-operadores`** com layout estilo WhatsApp:
 
-## 2. Editar e excluir recorrência no ticket
+```text
++-------------------------------------------------------+
+| AppLayout (sidebar do sistema)                        |
+| +--------------------+------------------------------+ |
+| | Conversas          | Cabeçalho da conversa        | |
+| | [busca]            | (nome do operador, status)   | |
+| | + Nova conversa    +------------------------------+ |
+| |                    |                              | |
+| | • Conversa 1  (3)  |     Mensagens                | |
+| | • Conversa 2       |     (bolhas)                 | |
+| | • Conversa 3       |                              | |
+| |                    +------------------------------+ |
+| | [Encerradas ▾]     | [campo de mensagem] [enviar] | |
+| +--------------------+------------------------------+ |
++-------------------------------------------------------+
+```
 
-Em `src/components/atendimentos/ticket-reminder-section.tsx`, no card de cada lembrete ativo recorrente, adicionar dois botões além do "Finalizar":
+### Painel esquerdo (lista)
+- Reaproveita a query do `OperatorChatList` (conversas abertas) e adiciona seção "Encerradas" colapsável (filtra por `closed_at != null`).
+- Campo de busca por assunto ou nome do operador.
+- Botão "Nova conversa" no topo abre o mesmo seletor de operadores usado no `StartOperatorChatCard` (extraído para componente reutilizável).
+- Badge de não lidas por conversa; conversa ativa destacada.
 
-- **Editar** (ícone `Pencil`): abre um mini-form inline preenchido com `reminder_date`, `reminder_note`, `recurrence_type`, `recurrence_end_date` e a hora. Ao salvar, faz `UPDATE` em `ticket_reminders` e espelha `reminder_date`/`reminder_note` em `service_tickets`. Adiciona comentário de sistema "Recorrência alterada...".
-- **Excluir recorrência** (ícone `Trash2`, com `AlertDialog`): duas opções no diálogo:
-  - "Manter como lembrete único" → `UPDATE` zera `recurrence_type` e `recurrence_end_date` (lembrete continua, mas não reagenda).
-  - "Remover lembrete" → `DELETE` da row e limpa `reminder_date`/`reminder_note` em `service_tickets`.
-  - Comentário de sistema correspondente em `ticket_comments`.
+### Painel direito (conversa)
+- Reaproveita o conteúdo do `OperatorChatDialog` (mensagens, envio, marcação de lida, lock overlay), extraindo o corpo para `OperatorChatPanel` para ser usado tanto no dialog quanto na nova tela.
+- Quando nenhuma conversa selecionada: estado vazio com instrução.
+- Atualização em tempo real via Realtime já existente.
 
-Sem alterações no schema (todos os campos já existem). Sem mudanças no fluxo de finalização do ticket (lógica de "Concluir ocorrência" do detail panel permanece igual e passará a se beneficiar do cálculo corrigido).
+### Acesso
+- Item no menu lateral "Chat com operadores" (ícone `MessageCircle`), visível para todos os papéis (admin, gestor, atendente).
+- Sino de notificações continua funcionando; clicar numa conversa lá pode redirecionar para `/chat-operadores?chat=<id>` (mantendo o dialog também como fallback rápido).
 
-## Verificação
-- Finalizar lembrete recorrente semanal fora da data: novo `ticket_reminders` cai na próxima ocorrência do mesmo dia da semana após hoje.
-- Editar recorrência: atualiza a row ativa e o badge "Próxima notificação" no ticket.
-- Excluir > "Manter como único": badge continua, sem reagendar ao finalizar.
-- Excluir > "Remover": some o lembrete e o badge no ticket.
+## Detalhes técnicos
+
+- Arquivos novos:
+  - `src/routes/chat-operadores.tsx` — rota com `AppLayout` e layout em 2 colunas
+  - `src/components/operator-chat/operator-chat-panel.tsx` — corpo de conversa extraído do dialog
+  - `src/components/operator-chat/new-operator-chat-button.tsx` — botão + popover de seleção de destinatários (extraído de `StartOperatorChatCard`)
+- Arquivos alterados:
+  - `src/components/operator-chat/operator-chat-dialog.tsx` — passa a usar `OperatorChatPanel`
+  - `src/components/operator-chat/operator-chat-list.tsx` — aceita prop opcional `onSelectChat` para navegação (sem quebrar uso no sino)
+  - `src/components/app-sidebar.tsx` (ou equivalente) — adiciona item "Chat com operadores"
+- Sem mudanças de schema; usa tabelas existentes `operator_chats` e `operator_chat_messages` e suas RLS.
+- Sincronização do parâmetro `?chat=<id>` na URL via `useNavigate` para deep-link.
