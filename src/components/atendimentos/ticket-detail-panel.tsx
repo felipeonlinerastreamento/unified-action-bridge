@@ -403,11 +403,10 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
     if (!ticket?.id) return;
 
     if (newStatus === "finalizado") {
-      // Se o ticket é recorrente, finalizar lembretes recorrentes ativos com a observação,
-      // arquivando no histórico e propagando para o próximo lembrete (via trigger handle_reminder_completion).
+      // Ticket recorrente: NÃO finaliza. Reagenda para a próxima ocorrência (mesmo ticket).
       if (ticket.is_recurring) {
         if (!observation || !observation.trim()) {
-          toast.error("Observação obrigatória para finalizar atendimentos recorrentes");
+          toast.error("Observação obrigatória para concluir a ocorrência recorrente");
           return;
         }
         const { data: activeRec } = await supabase
@@ -417,23 +416,57 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
           .eq("is_dismissed", false)
           .not("recurrence_type", "is", null)
           .neq("recurrence_type", "none");
-        for (const r of activeRec || []) {
+
+        if (!activeRec || activeRec.length === 0) {
+          toast.error("Nenhum lembrete recorrente ativo para reagendar");
+          return;
+        }
+
+        for (const r of activeRec) {
           await supabase
             .from("ticket_reminders")
             .update({
               is_dismissed: true,
               completion_comment: observation,
-              reminder_note: observation,
               completed_at: new Date().toISOString(),
               completed_by: userId,
             } as any)
             .eq("id", r.id);
         }
+
+        // O trigger handle_reminder_completion cria o próximo ticket_reminders
+        // e espelha service_tickets.reminder_date para a nova data.
+        await supabase
+          .from("service_tickets")
+          .update({ updated_at: new Date().toISOString() })
+          .eq("id", ticket.id);
+
+        // Reler a próxima data já gravada pelo trigger
+        const { data: next } = await supabase
+          .from("service_tickets")
+          .select("reminder_date")
+          .eq("id", ticket.id)
+          .maybeSingle();
+        const nextDate = next?.reminder_date
+          ? new Date(next.reminder_date as string)
+          : null;
+        const nextLabel = nextDate
+          ? `${nextDate.toLocaleDateString("pt-BR")} ${nextDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`
+          : "data a definir";
+
         await insertSystemComment(
           ticket.id,
-          `Observação de finalização (recorrente): ${observation}`,
+          `Ocorrência concluída e reagendada para ${nextLabel}. Observação: ${observation}`,
           "sistema"
         );
+
+        refetchComments();
+        onRefetch();
+        queryClient.invalidateQueries({ queryKey: ["ticket-reminders", ticket.id] });
+        queryClient.invalidateQueries({ queryKey: ["ticket-reminder-history", ticket.id] });
+        queryClient.invalidateQueries({ queryKey: ["service-tickets"] });
+        toast.success(`Ocorrência concluída — próxima notificação em ${nextLabel}`);
+        return;
       }
 
       const res = await finalizeTicketWithFlow({ ticket, userId, teSettings, bypassRouting: false });
