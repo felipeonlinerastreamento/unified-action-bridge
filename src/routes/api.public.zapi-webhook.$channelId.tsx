@@ -102,6 +102,21 @@ async function pickLeastLoadedAgent(sector: string | null | undefined): Promise<
   }
 }
 
+/**
+ * Fallback: ignores online status. Used for group chats and own-channel
+ * messages where we never want the chat to sit unassigned in the queue.
+ */
+async function pickLeastLoadedAgentAny(sector: string | null | undefined): Promise<string | null> {
+  const sec = (sector || "").trim() || "Atendimento";
+  try {
+    const { data } = await supabaseAdmin.rpc("pick_least_loaded_agent_any", { _sector: sec });
+    return (data as string | null) || null;
+  } catch (err) {
+    console.warn("[zapi-webhook] pick_least_loaded_agent_any failed", err);
+    return null;
+  }
+}
+
 // (Removido) ensureOpenTicketForChat: antes criava um novo service_ticket na
 // reabertura de chat finalizado sem CSAT. A regra atual é não abrir novo
 // chamado nesse caso — apenas reabrir o chat.
@@ -756,6 +771,11 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
             if (preAssignForNew) {
               initialSector = "Atendimento";
               initialAssigned = await pickLeastLoadedAgent(initialSector);
+              if (!initialAssigned) {
+                // Garante que grupos / fromMe sempre sejam atribuídos mesmo
+                // quando nenhum operador está marcado como online.
+                initialAssigned = await pickLeastLoadedAgentAny(initialSector);
+              }
               initialStatus = initialAssigned ? "em_atendimento" : "aguardando";
             }
             const { data: created, error: insertError } = await supabaseAdmin
