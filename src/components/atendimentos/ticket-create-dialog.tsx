@@ -344,7 +344,16 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
       const finalNotes = isTesteEquip
         ? buildTesteEquipamentoNotes(teData, notes)
         : (notes || null);
-      const { data: { user: creatorUser } } = await supabase.auth.getUser();
+      let creatorId: string | null = currentUser?.id ?? null;
+      if (!creatorId) {
+        const { data: { user: fallbackUser } } = await supabase.auth.getUser();
+        creatorId = fallbackUser?.id ?? null;
+      }
+      if (!creatorId) {
+        toast.error("Sessão expirada. Faça login novamente para abrir o chamado.");
+        setLoading(false);
+        return;
+      }
 
       const { data: created, error } = await supabase.from("service_tickets").insert({
         attendance_id: attendanceId,
@@ -358,8 +367,8 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
         sector: sectorName,
         status: "aberto",
         tracking_code: trackCodeClean,
-        opened_by: creatorUser?.id ?? null,
-        assigned_to: creatorUser?.id ?? null,
+        opened_by: creatorId,
+        assigned_to: creatorId,
         ...(isLiberacao && liberacaoDate
           ? { liberacao_date: new Date(liberacaoDate).toISOString() }
           : {}),
