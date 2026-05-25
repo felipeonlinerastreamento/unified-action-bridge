@@ -123,6 +123,9 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   const [editingCategory, setEditingCategory] = useState(false);
   const [categoryDraft, setCategoryDraft] = useState("");
   const [savingCategory, setSavingCategory] = useState(false);
+  const [editingNotes, setEditingNotes] = useState(false);
+  const [notesDraft, setNotesDraft] = useState("");
+  const [savingNotes, setSavingNotes] = useState(false);
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [confirmFinalizeOpen, setConfirmFinalizeOpen] = useState(false);
   const [finalizeObservation, setFinalizeObservation] = useState("");
