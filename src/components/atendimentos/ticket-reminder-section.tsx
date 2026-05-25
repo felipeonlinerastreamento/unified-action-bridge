@@ -7,7 +7,17 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Bell, BellOff, Plus, Repeat, History, ChevronDown, ChevronUp, Clock } from "lucide-react";
+import { Bell, BellOff, Plus, Repeat, History, ChevronDown, ChevronUp, Clock, Pencil, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface TicketReminderSectionProps {
   ticketId: string;
