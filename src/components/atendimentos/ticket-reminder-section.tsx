@@ -648,6 +648,33 @@ export function TicketReminderSection({ ticketId, userId }: TicketReminderSectio
           )}
         </div>
       )}
+
+      <AlertDialog open={!!deletingReminder} onOpenChange={(open) => !open && setDeletingReminder(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir lembrete?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deletingReminder?.recurrence_type && deletingReminder.recurrence_type !== "none"
+                ? "Este lembrete é recorrente. Escolha o que fazer:"
+                : "Tem certeza que deseja excluir este lembrete?"}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex-col sm:flex-row gap-2">
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            {deletingReminder?.recurrence_type && deletingReminder.recurrence_type !== "none" && (
+              <Button variant="outline" onClick={() => convertToSingle(deletingReminder)}>
+                Manter como único
+              </Button>
+            )}
+            <AlertDialogAction
+              onClick={() => deletingReminder && deleteReminder(deletingReminder)}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Remover lembrete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
