@@ -954,7 +954,53 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               .from("zapi_chats")
               .update(baseUpdate)
               .eq("id", chatId!);
+
+            // Regra: chats com a tag "Osvaldo Btec" que recebem mensagem do
+            // cliente sem operador atribuído são automaticamente atribuídos
+            // ao operador menos carregado do setor Atendimento.
+            if (!p.fromMe && chatId) {
+              try {
+                const tagsArr = Array.isArray((existing as any).tags)
+                  ? ((existing as any).tags as unknown[])
+                  : [];
+                const hasOsvaldoTag = tagsArr.some(
+                  (t) => String(t).trim().toLowerCase() === "osvaldo btec",
+                );
+                const currentStatus = baseUpdate.status ?? (existing as any).status;
+                const currentAssigned =
+                  baseUpdate.assigned_to !== undefined
+                    ? baseUpdate.assigned_to
+                    : (existing as any).assigned_to;
+                const eligibleStatus =
+                  currentStatus !== "finalizado" && currentStatus !== "bot";
+                if (hasOsvaldoTag && !currentAssigned && eligibleStatus) {
+                  let picked = await pickLeastLoadedAgent("Atendimento");
+                  if (!picked) picked = await pickLeastLoadedAgentAny("Atendimento");
+                  if (picked) {
+                    await supabaseAdmin
+                      .from("zapi_chats")
+                      .update({
+                        assigned_to: picked,
+                        sector_name: "Atendimento",
+                        status: "em_atendimento",
+                      } as any)
+                      .eq("id", chatId);
+                    try {
+                      await supabaseAdmin.from("attendance_event_logs").insert({
+                        event_type: "auto_assigned_by_tag",
+                        chat_id: chatId,
+                        message: `Chat com tag "Osvaldo Btec" atribuído automaticamente ao operador menos carregado do setor Atendimento.`,
+                        metadata: { tag: "Osvaldo Btec", sector: "Atendimento", assigned_to: picked } as any,
+                      } as any);
+                    } catch { /* ignore audit failure */ }
+                  }
+                }
+              } catch (err) {
+                console.warn("[zapi-webhook] auto-assign by tag failed", err);
+              }
+            }
           }
+
 
           if (chatId) {
             // For groups, persist the actual participant (sender) so the UI can
