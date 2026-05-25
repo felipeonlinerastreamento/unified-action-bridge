@@ -464,6 +464,7 @@ export function TicketReminderSection({ ticketId, userId }: TicketReminderSectio
           const isOverdue = rDate <= now;
           const isRecurring = r.recurrence_type && r.recurrence_type !== "none";
           const isCompleting = completingId === r.id;
+          const isEditing = editingId === r.id;
           return (
             <div
               key={r.id}
@@ -489,18 +490,78 @@ export function TicketReminderSection({ ticketId, userId }: TicketReminderSectio
                   </div>
                   {r.reminder_note && <p className="text-xs text-muted-foreground mt-0.5 break-words whitespace-pre-wrap">{r.reminder_note}</p>}
                 </div>
-                {!isCompleting && (
-                  <Button
-                    size="icon"
-                    variant="ghost"
-                    className="h-6 w-6 shrink-0"
-                    onClick={() => startComplete(r)}
-                    title="Finalizar lembrete"
-                  >
-                    <BellOff className="h-3 w-3" />
-                  </Button>
+                {!isCompleting && !isEditing && (
+                  <div className="flex items-center gap-0.5 shrink-0">
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6"
+                      onClick={() => startEdit(r)}
+                      title="Editar lembrete/recorrência"
+                    >
+                      <Pencil className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6 text-destructive hover:text-destructive"
+                      onClick={() => setDeletingReminder(r)}
+                      title="Excluir lembrete/recorrência"
+                    >
+                      <Trash2 className="h-3 w-3" />
+                    </Button>
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      className="h-6 w-6"
+                      onClick={() => startComplete(r)}
+                      title="Finalizar lembrete"
+                    >
+                      <BellOff className="h-3 w-3" />
+                    </Button>
+                  </div>
                 )}
               </div>
+
+              {isEditing && (
+                <div className="space-y-2 pl-5">
+                  <div className="grid grid-cols-2 gap-2">
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-medium text-muted-foreground">Data</label>
+                      <Input type="date" value={editDate} onChange={(e) => setEditDate(e.target.value)} className="h-8 text-xs" />
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-medium text-muted-foreground">Hora</label>
+                      <Input type="time" value={editTime} onChange={(e) => setEditTime(e.target.value)} className="h-8 text-xs" />
+                    </div>
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-medium text-muted-foreground">Nota</label>
+                    <Textarea value={editNote} onChange={(e) => setEditNote(e.target.value)} className="min-h-[40px] text-xs" />
+                  </div>
+                  <div className="space-y-1">
+                    <label className="text-[10px] font-medium text-muted-foreground">Recorrência</label>
+                    <Select value={editRecurrence} onValueChange={setEditRecurrence}>
+                      <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {RECURRENCE_OPTIONS.map((o) => (
+                          <SelectItem key={o.value} value={o.value} className="text-xs">{o.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  {editRecurrence !== "none" && (
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-medium text-muted-foreground">Encerrar recorrência em (opcional)</label>
+                      <Input type="datetime-local" value={editRecurrenceEnd} onChange={(e) => setEditRecurrenceEnd(e.target.value)} className="h-8 text-xs" />
+                    </div>
+                  )}
+                  <div className="flex gap-2">
+                    <Button size="sm" onClick={() => saveEdit(r)} className="h-7 text-xs">Salvar</Button>
+                    <Button size="sm" variant="ghost" onClick={() => setEditingId(null)} className="h-7 text-xs">Cancelar</Button>
+                  </div>
+                </div>
+              )}
 
               {isCompleting && (
                 <div className="space-y-2 pl-5">
