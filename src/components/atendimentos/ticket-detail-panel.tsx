@@ -48,6 +48,7 @@ import {
   ShieldAlert,
   Maximize2,
   Minimize2,
+  Bell,
 } from "lucide-react";
 import { TaskFormDialog } from "@/components/tarefas/task-form-dialog";
 import { TicketReminderSection } from "./ticket-reminder-section";
@@ -402,11 +403,10 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
     if (!ticket?.id) return;
 
     if (newStatus === "finalizado") {
-      // Se o ticket é recorrente, finalizar lembretes recorrentes ativos com a observação,
-      // arquivando no histórico e propagando para o próximo lembrete (via trigger handle_reminder_completion).
+      // Ticket recorrente: NÃO finaliza. Reagenda para a próxima ocorrência (mesmo ticket).
       if (ticket.is_recurring) {
         if (!observation || !observation.trim()) {
-          toast.error("Observação obrigatória para finalizar atendimentos recorrentes");
+          toast.error("Observação obrigatória para concluir a ocorrência recorrente");
           return;
         }
         const { data: activeRec } = await supabase
@@ -416,23 +416,57 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
           .eq("is_dismissed", false)
           .not("recurrence_type", "is", null)
           .neq("recurrence_type", "none");
-        for (const r of activeRec || []) {
+
+        if (!activeRec || activeRec.length === 0) {
+          toast.error("Nenhum lembrete recorrente ativo para reagendar");
+          return;
+        }
+
+        for (const r of activeRec) {
           await supabase
             .from("ticket_reminders")
             .update({
               is_dismissed: true,
               completion_comment: observation,
-              reminder_note: observation,
               completed_at: new Date().toISOString(),
               completed_by: userId,
             } as any)
             .eq("id", r.id);
         }
+
+        // O trigger handle_reminder_completion cria o próximo ticket_reminders
+        // e espelha service_tickets.reminder_date para a nova data.
+        await supabase
+          .from("service_tickets")
+          .update({ updated_at: new Date().toISOString() })
+          .eq("id", ticket.id);
+
+        // Reler a próxima data já gravada pelo trigger
+        const { data: next } = await supabase
+          .from("service_tickets")
+          .select("reminder_date")
+          .eq("id", ticket.id)
+          .maybeSingle();
+        const nextDate = next?.reminder_date
+          ? new Date(next.reminder_date as string)
+          : null;
+        const nextLabel = nextDate
+          ? `${nextDate.toLocaleDateString("pt-BR")} ${nextDate.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" })}`
+          : "data a definir";
+
         await insertSystemComment(
           ticket.id,
-          `Observação de finalização (recorrente): ${observation}`,
+          `Ocorrência concluída e reagendada para ${nextLabel}. Observação: ${observation}`,
           "sistema"
         );
+
+        refetchComments();
+        onRefetch();
+        queryClient.invalidateQueries({ queryKey: ["ticket-reminders", ticket.id] });
+        queryClient.invalidateQueries({ queryKey: ["ticket-reminder-history", ticket.id] });
+        queryClient.invalidateQueries({ queryKey: ["service-tickets"] });
+        toast.success(`Ocorrência concluída — próxima notificação em ${nextLabel}`);
+        return;
       }
 
       const res = await finalizeTicketWithFlow({ ticket, userId, teSettings, bypassRouting: false });
@@ -691,10 +725,26 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
               {expanded ? <Minimize2 className="h-4 w-4" /> : <Maximize2 className="h-4 w-4" />}
             </Button>
           </SheetTitle>
-          <div className="flex items-center gap-2 pt-1">
+          <div className="flex items-center gap-2 pt-1 flex-wrap">
             <Button size="sm" variant="outline" onClick={() => setTaskDialogOpen(true)}>
               <Repeat className="h-3.5 w-3.5 mr-1.5" /> Nova tarefa / recorrência
             </Button>
+            {ticket.reminder_date && (
+              <Badge
+                variant="outline"
+                className="text-xs gap-1 border-amber-500 text-amber-700 dark:text-amber-400"
+              >
+                <Bell className="h-3 w-3" />
+                Próxima notificação:{" "}
+                {new Date(ticket.reminder_date).toLocaleString("pt-BR", {
+                  day: "2-digit",
+                  month: "2-digit",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </Badge>
+            )}
           </div>
         </SheetHeader>
         <TaskFormDialog open={taskDialogOpen} onClose={() => setTaskDialogOpen(false)} defaultTicketId={ticket.id} />
@@ -965,7 +1015,8 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
                 )}
                 {canFinalize && (
                   <Button size="sm" variant="default" onClick={() => setConfirmFinalizeOpen(true)} className="gap-1">
-                    <CheckCircle className="h-3.5 w-3.5" /> Finalizar
+                    <CheckCircle className="h-3.5 w-3.5" />
+                    {ticket.is_recurring ? "Concluir ocorrência" : "Finalizar"}
                   </Button>
                 )}
                 {canReopen && (
@@ -1077,10 +1128,10 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
       <AlertDialog open={confirmFinalizeOpen} onOpenChange={(o) => { setConfirmFinalizeOpen(o); if (!o) setFinalizeObservation(""); }}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Finalizar atendimento?</AlertDialogTitle>
+            <AlertDialogTitle>{ticket.is_recurring ? "Concluir ocorrência?" : "Finalizar atendimento?"}</AlertDialogTitle>
             <AlertDialogDescription>
               {ticket.is_recurring
-                ? "Este é um atendimento recorrente. Informe uma observação — ela ficará no histórico e será usada como nota do próximo lembrete."
+                ? "O ticket permanecerá aberto e a próxima notificação será criada automaticamente conforme a recorrência. Informe uma observação — ficará no histórico."
                 : "Esta ação encerrará o ticket. Você poderá reabri-lo depois, se necessário."}
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -1107,7 +1158,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
                 updateStatus("finalizado", obs);
               }}
             >
-              Sim, finalizar
+              {ticket.is_recurring ? "Concluir e reagendar" : "Sim, finalizar"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
