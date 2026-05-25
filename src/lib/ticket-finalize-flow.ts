@@ -64,14 +64,6 @@ async function insertSystemComment(
 
 const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 
-function normalizeFlowText(value: string | null | undefined) {
-  return String(value || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .replace(/\s+/g, " ")
-    .trim()
-    .toLowerCase();
-}
 
 /**
  * When a ticket is bound to a Z-API chat (attendance_id is a UUID matching a
