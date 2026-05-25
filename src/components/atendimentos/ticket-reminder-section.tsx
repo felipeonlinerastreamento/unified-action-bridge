@@ -63,6 +63,13 @@ export function TicketReminderSection({ ticketId, userId }: TicketReminderSectio
   const [completingId, setCompletingId] = useState<string | null>(null);
   const [completionComment, setCompletionComment] = useState("");
   const [showHistory, setShowHistory] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDate, setEditDate] = useState("");
+  const [editTime, setEditTime] = useState("");
+  const [editNote, setEditNote] = useState("");
+  const [editRecurrence, setEditRecurrence] = useState<string>("none");
+  const [editRecurrenceEnd, setEditRecurrenceEnd] = useState("");
+  const [deletingReminder, setDeletingReminder] = useState<any | null>(null);
 
   const { data: reminders = [], refetch } = useQuery({
     queryKey: ["ticket-reminders", ticketId],
