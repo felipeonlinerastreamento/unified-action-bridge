@@ -1,6 +1,6 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Building2, Clock, CheckCircle, MessageSquare, User, Layers, Package, MapPin, Bell } from "lucide-react";
+import { Building2, Clock, CheckCircle, MessageSquare, User, Layers, Package, MapPin, Bell, UserCheck } from "lucide-react";
 import { LiberacaoBadge } from "./liberacao-badge";
 import { SuprimentoBadge } from "./suprimento-badge";
 import { CompraEquipamentoBadge } from "./compra-equipamento-badge";
