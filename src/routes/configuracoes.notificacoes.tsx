@@ -38,7 +38,18 @@ function NotificacoesConfigPage() {
             Envie comunicados para usuários, setores, grupos ou todos. Marca leitura por usuário.
           </p>
         </div>
-        <SendNotificationCard />
+        <Tabs defaultValue="notification">
+          <TabsList>
+            <TabsTrigger value="notification" className="gap-1"><Send className="h-3.5 w-3.5" /> Nova notificação</TabsTrigger>
+            <TabsTrigger value="chat" className="gap-1"><MessageCircle className="h-3.5 w-3.5" /> Chat com operadores</TabsTrigger>
+          </TabsList>
+          <TabsContent value="notification" className="mt-4">
+            <SendNotificationCard />
+          </TabsContent>
+          <TabsContent value="chat" className="mt-4">
+            <StartOperatorChatCard />
+          </TabsContent>
+        </Tabs>
         <CampaignsHistoryCard />
       </div>
     </AppLayout>
