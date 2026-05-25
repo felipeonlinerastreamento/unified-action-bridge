@@ -96,6 +96,7 @@ interface GsystemCliente {
 }
 
 export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDialogProps) {
+  const { user: authUser } = useAuth();
   const [companyOpen, setCompanyOpen] = useState(false);
   const [companySearch, setCompanySearch] = useState("");
   const [selectedCliente, setSelectedCliente] = useState<GsystemCliente | null>(null);
