@@ -20,6 +20,7 @@ export const MENU_CATALOG: MenuEntry[] = [
   { slug: "relatorios", label: "Relatórios", category: "main" },
   { slug: "okr", label: "OKR", category: "main" },
   { slug: "atendimentos", label: "Atendimentos", category: "main" },
+  { slug: "chat-operadores", label: "Chat com Operadores", category: "main" },
 
   // Configurações
   { slug: "config.integracoes", label: "Integrações", category: "config" },
@@ -48,6 +49,7 @@ export const DEFAULT_OPERATOR_MENUS: string[] = [
   "contatos",
   "empresas",
   "atendimentos",
+  "chat-operadores",
 ];
 
 // Mapeia URL do menu (em app-sidebar) → slug do catálogo.
@@ -61,6 +63,7 @@ export const URL_TO_MENU_SLUG: Record<string, string> = {
   "/relatorios": "relatorios",
   "/okr": "okr",
   "/atendimentos": "atendimentos",
+  "/chat-operadores": "chat-operadores",
   "/configuracoes": "config.integracoes",
   "/configuracoes/central-atendimento": "config.central-atendimento",
   "/configuracoes/fluxo-atendimento": "config.fluxo-atendimento",

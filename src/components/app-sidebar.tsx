@@ -61,6 +61,7 @@ const mainItems = [
   { title: "Estoque", url: "/estoque", icon: Boxes },
   { title: "Relatórios", url: "/relatorios", icon: BarChart3 },
   { title: "OKR", url: "/okr", icon: Target },
+  { title: "Chat com Operadores", url: "/chat-operadores", icon: MessageCircle },
 ];
 
 const atendimentosSubItems: { title: string; url: string; icon: typeof List }[] = [
