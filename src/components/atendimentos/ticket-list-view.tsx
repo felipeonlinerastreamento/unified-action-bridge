@@ -64,6 +64,22 @@ export function TicketListView({ tickets, onSelect, profiles = [] }: TicketListV
                   {t.category && <Badge className="text-xs bg-violet-600 text-white">{t.category}</Badge>}
                   {getStatusBadge(t.status)}
                   {getPriorityBadge(t.priority || "media")}
+                  {t.reminder_date && (
+                    <Badge
+                      variant="outline"
+                      className="text-xs gap-1 border-amber-500 text-amber-700 dark:text-amber-400"
+                    >
+                      <Bell className="h-3 w-3" />
+                      Próxima notificação:{" "}
+                      {new Date(t.reminder_date).toLocaleString("pt-BR", {
+                        day: "2-digit",
+                        month: "2-digit",
+                        year: "numeric",
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </Badge>
+                  )}
                   <LiberacaoBadge ticket={t} />
                   <SuprimentoBadge ticket={t} />
                   <CompraEquipamentoBadge ticket={t} />
