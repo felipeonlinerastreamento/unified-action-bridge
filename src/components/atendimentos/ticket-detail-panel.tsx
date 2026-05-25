@@ -326,6 +326,48 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
     }
   };
 
+  const startEditNotes = () => {
+    setNotesDraft(ticket?.notes || "");
+    setEditingNotes(true);
+  };
+  const cancelEditNotes = () => {
+    setEditingNotes(false);
+    setNotesDraft("");
+  };
+  const saveNotes = async () => {
+    if (!ticket?.id) return;
+    const newNotes = notesDraft.trim() || null;
+    if ((newNotes || "") === (ticket.notes || "")) {
+      setEditingNotes(false);
+      return;
+    }
+    setSavingNotes(true);
+    try {
+      const { error } = await supabase
+        .from("service_tickets")
+        .update({ notes: newNotes, updated_at: new Date().toISOString() })
+        .eq("id", ticket.id);
+      if (error) {
+        toast.error("Erro ao atualizar observações: " + error.message);
+        return;
+      }
+      await supabase.from("ticket_comments").insert({
+        ticket_id: ticket.id,
+        user_id: userId,
+        content: `Observações atualizadas`,
+        comment_type: "status_change",
+      });
+      toast.success("Observações atualizadas");
+      setEditingNotes(false);
+      onRefetch();
+      refetchComments();
+      queryClient.invalidateQueries({ queryKey: ["service-tickets"] });
+    } finally {
+      setSavingNotes(false);
+    }
+  };
+
+
   const startEdit = (c: any) => {
     setEditingId(c.id);
     setEditingContent(c.content);
