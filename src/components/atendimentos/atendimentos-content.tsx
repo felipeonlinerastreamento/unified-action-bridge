@@ -16,7 +16,7 @@ import { TicketReminderNotifications } from "./ticket-reminder-notifications";
 import { TicketFiltersBar, applyTicketFilters, defaultFilters, type TicketFilters } from "./ticket-filters";
 import { LaboratorioPanel } from "./laboratorio-panel";
 
-export function AtendimentosContent() {
+export function AtendimentosContent({ autoOpenTicketId }: { autoOpenTicketId?: string } = {}) {
   const { user, hasRole } = useAuth();
   const [viewMode, setViewMode] = useState<"lista" | "kanban" | "calendario">("lista");
   const [selected, setSelected] = useState<any>(null);
@@ -24,6 +24,7 @@ export function AtendimentosContent() {
   const [filters, setFilters] = useState<TicketFilters>(defaultFilters);
   const [filtersOpen, setFiltersOpen] = useState(false);
   const sectorDefaultApplied = useRef(false);
+  const autoOpenedRef = useRef(false);
 
   // Define o setor padrão do usuário logado (atendentes/gestores).
   // Admins veem "todos". O usuário pode trocar livremente depois.
@@ -194,6 +195,16 @@ export function AtendimentosContent() {
     () => applyTicketFilters(tickets, filters),
     [tickets, filters]
   );
+
+  // Auto-open ticket detail when arriving with ?ticket=<id>
+  useEffect(() => {
+    if (autoOpenedRef.current || !autoOpenTicketId || tickets.length === 0) return;
+    const t = (tickets as any[]).find((x) => x.id === autoOpenTicketId);
+    if (t) {
+      setSelected(t);
+      autoOpenedRef.current = true;
+    }
+  }, [autoOpenTicketId, tickets]);
 
   return (
     <div className="space-y-6">

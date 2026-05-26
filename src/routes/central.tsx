@@ -1,4 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import ReactMarkdown from "react-markdown";
@@ -275,6 +275,7 @@ function CentralPage() {
   const { isAuthenticated, isLoading: authLoading, session, user, hasRole, profile } = useAuth();
   const isAdmin = hasRole("admin");
   const { canFinalizeWithoutMessage: canSkipClosing } = useUserPermissions();
+  const navigate = useNavigate();
 
   const [selectedChannelId, setSelectedChannelId] = useState<string>("");
   const [selectedChatId, setSelectedChatId] = useState<string>("");
@@ -2737,6 +2738,11 @@ function CentralPage() {
                         <div className="min-w-0">
                           <p className="text-sm font-medium text-foreground truncate">
                             {chatDetail?.description || chatDetail?.contact?.name || "Contato"}
+                            {currentTicket?.protocol_number != null && (
+                              <span className="ml-2 text-xs font-mono text-muted-foreground">
+                                #{formatTicketProtocol(currentTicket)}
+                              </span>
+                            )}
                           </p>
                           {assignedOperator && (
                             <p className="text-[11px] text-muted-foreground truncate flex items-center gap-1">
@@ -3272,6 +3278,22 @@ function CentralPage() {
                             <UserX className="h-4 w-4 mr-2" />
                             Interagir sem apelido
                           </DropdownMenuCheckboxItem>
+                          {currentTicket?.id && currentTicket?.protocol_number != null && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  navigate({
+                                    to: "/atendimentos",
+                                    search: { ticket: currentTicket.id } as any,
+                                  })
+                                }
+                              >
+                                <FileText className="h-4 w-4 mr-2" />
+                                Ir no Protocolo #{formatTicketProtocol(currentTicket)}
+                              </DropdownMenuItem>
+                            </>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                       <QuickRepliesPopover
