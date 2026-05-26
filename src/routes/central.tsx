@@ -275,6 +275,7 @@ function CentralPage() {
   const { isAuthenticated, isLoading: authLoading, session, user, hasRole, profile } = useAuth();
   const isAdmin = hasRole("admin");
   const { canFinalizeWithoutMessage: canSkipClosing } = useUserPermissions();
+  const navigate = useNavigate();
 
   const [selectedChannelId, setSelectedChannelId] = useState<string>("");
   const [selectedChatId, setSelectedChatId] = useState<string>("");
