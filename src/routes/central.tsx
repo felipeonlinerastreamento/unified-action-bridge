@@ -3278,6 +3278,22 @@ function CentralPage() {
                             <UserX className="h-4 w-4 mr-2" />
                             Interagir sem apelido
                           </DropdownMenuCheckboxItem>
+                          {currentTicket?.id && currentTicket?.protocol_number != null && (
+                            <>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem
+                                onClick={() =>
+                                  navigate({
+                                    to: "/atendimentos",
+                                    search: { ticket: currentTicket.id } as any,
+                                  })
+                                }
+                              >
+                                <FileText className="h-4 w-4 mr-2" />
+                                Ir no Protocolo #{formatTicketProtocol(currentTicket)}
+                              </DropdownMenuItem>
+                            </>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                       <QuickRepliesPopover
