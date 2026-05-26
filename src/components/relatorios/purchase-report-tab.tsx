@@ -204,6 +204,8 @@ export function PurchaseReportTab({ dateFrom, dateTo }: Props) {
       "Nº compras": e.occurrences,
       "Qtd. total": e.qty,
       "Última compra": formatDate(e.lastDate),
+      "Fornecedor (última)": e.lastSupplier,
+      "Fornecedores no período": Array.from(e.suppliers).join(" | "),
       "Último preço": e.lastPrice.toFixed(2),
       "Mín.": e.min.toFixed(2),
       "Máx.": e.max.toFixed(2),
