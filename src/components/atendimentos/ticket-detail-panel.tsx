@@ -65,7 +65,7 @@ import {
   isTesteEquipamentoCategory,
 } from "@/hooks/use-teste-equipamento-settings";
 import { syncTicketToGsystem } from "@/lib/ticket-finalize.functions";
-import { finalizeTicketWithFlow } from "@/lib/ticket-finalize-flow";
+import { finalizeTicketWithFlow, finalizeTicketStandalone } from "@/lib/ticket-finalize-flow";
 import { escalateToGestao as escalateToGestaoHelper } from "@/lib/escalate-gestao";
 import { Cloud, RefreshCcw } from "lucide-react";
 
