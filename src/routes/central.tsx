@@ -100,7 +100,7 @@ import {
   Paperclip,
   Zap,
   EyeOff,
-  AtSign,
+  UserX,
   Tag,
   Trash2,
   UserCircle2,
