@@ -102,6 +102,8 @@ export function PurchaseReportTab({ dateFrom, dateTo }: Props) {
       prices: number[];
       lastDate: string;
       lastPrice: number;
+      lastSupplier: string;
+      suppliers: Set<string>;
     }>();
     // sort by date asc to find first/last
     const sorted = [...filtered].sort(
@@ -117,6 +119,8 @@ export function PurchaseReportTab({ dateFrom, dateTo }: Props) {
         prices: [],
         lastDate: r.created_at,
         lastPrice: r.unit_price,
+        lastSupplier: r.supplier_name || "Sem fornecedor",
+        suppliers: new Set<string>(),
       };
       e.occurrences += 1;
       e.qty += Number(r.quantity);
@@ -124,6 +128,8 @@ export function PurchaseReportTab({ dateFrom, dateTo }: Props) {
       e.prices.push(Number(r.unit_price));
       e.lastDate = r.created_at;
       e.lastPrice = Number(r.unit_price);
+      e.lastSupplier = r.supplier_name || "Sem fornecedor";
+      e.suppliers.add(r.supplier_name || "Sem fornecedor");
       map.set(key, e);
     }
     return Array.from(map.values()).map((e) => {
@@ -198,6 +204,8 @@ export function PurchaseReportTab({ dateFrom, dateTo }: Props) {
       "Nº compras": e.occurrences,
       "Qtd. total": e.qty,
       "Última compra": formatDate(e.lastDate),
+      "Fornecedor (última)": e.lastSupplier,
+      "Fornecedores no período": Array.from(e.suppliers).join(" | "),
       "Último preço": e.lastPrice.toFixed(2),
       "Mín.": e.min.toFixed(2),
       "Máx.": e.max.toFixed(2),
@@ -300,6 +308,7 @@ export function PurchaseReportTab({ dateFrom, dateTo }: Props) {
                       <TableHead className="text-right">Nº compras</TableHead>
                       <TableHead className="text-right">Qtd. total</TableHead>
                       <TableHead>Última compra</TableHead>
+                      <TableHead>Fornecedor</TableHead>
                       <TableHead className="text-right">Mín.</TableHead>
                       <TableHead className="text-right">Méd.</TableHead>
                       <TableHead className="text-right">Máx.</TableHead>
@@ -322,6 +331,12 @@ export function PurchaseReportTab({ dateFrom, dateTo }: Props) {
                           <TableCell className="text-right">{e.occurrences}</TableCell>
                           <TableCell className="text-right tabular-nums">{e.qty}</TableCell>
                           <TableCell className="text-xs text-muted-foreground">{formatDate(e.lastDate)}</TableCell>
+                          <TableCell className="text-xs">
+                            {e.lastSupplier}
+                            {e.suppliers.size > 1 && (
+                              <span className="text-muted-foreground ml-1">+{e.suppliers.size - 1}</span>
+                            )}
+                          </TableCell>
                           <TableCell className="text-right tabular-nums">{formatBRL(e.min)}</TableCell>
                           <TableCell className="text-right tabular-nums">{formatBRL(e.avg)}</TableCell>
                           <TableCell className="text-right tabular-nums">{formatBRL(e.max)}</TableCell>
