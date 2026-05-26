@@ -7,7 +7,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useTesteEquipamentoSettings } from "@/hooks/use-teste-equipamento-settings";
 import { useAuth } from "@/hooks/use-auth";
-import { finalizeTicketWithFlow } from "@/lib/ticket-finalize-flow";
+import { finalizeTicketStandalone } from "@/lib/ticket-finalize-flow";
 import { formatTicketProtocol } from "@/lib/protocol-format";
 import { LiberacaoBadge } from "./liberacao-badge";
 import { ComprasInfo } from "./compras-info";
