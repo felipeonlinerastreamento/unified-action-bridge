@@ -5,7 +5,7 @@ import { Building2, Clock, User, Layers, MessageSquare } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useTesteEquipamentoSettings } from "@/hooks/use-teste-equipamento-settings";
+
 import { useAuth } from "@/hooks/use-auth";
 import { finalizeTicketStandalone } from "@/lib/ticket-finalize-flow";
 import { formatTicketProtocol } from "@/lib/protocol-format";
