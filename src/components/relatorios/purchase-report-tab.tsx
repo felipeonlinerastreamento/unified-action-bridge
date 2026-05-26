@@ -320,6 +320,8 @@ export function PurchaseReportTab({ dateFrom, dateTo }: Props) {
                         <TableRow key={e.name} className={cls}>
                           <TableCell className="font-medium">{e.name}</TableCell>
                           <TableCell className="text-right">{e.occurrences}</TableCell>
+                          <TableCell className="text-right tabular-nums">{e.qty}</TableCell>
+                          <TableCell className="text-xs text-muted-foreground">{formatDate(e.lastDate)}</TableCell>
                           <TableCell className="text-right tabular-nums">{formatBRL(e.min)}</TableCell>
                           <TableCell className="text-right tabular-nums">{formatBRL(e.avg)}</TableCell>
                           <TableCell className="text-right tabular-nums">{formatBRL(e.max)}</TableCell>
