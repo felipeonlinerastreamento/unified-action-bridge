@@ -113,6 +113,82 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
     onClose();
     navigate({ to: "/central", search: { chat: (chat as any).id, channel: (chat as any).channel_id } });
   }, [ticket?.contact_phone, navigate, onClose]);
+
+  const startChatFromTicket = useCallback(async () => {
+    if (!ticket?.contact_phone) {
+      toast.error("Ticket sem telefone vinculado.");
+      return;
+    }
+    const { data: { user } } = await supabase.auth.getUser();
+    const uid = user?.id || null;
+    const phoneDigits = String(ticket.contact_phone).replace(/\D/g, "");
+
+    // 1) tenta achar chat existente
+    const { data: existing } = await supabase
+      .from("zapi_chats")
+      .select("id, channel_id, status, assigned_to")
+      .ilike("phone", `%${phoneDigits.slice(-10)}%`)
+      .order("last_message_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    let chatId: string | null = null;
+    let channelId: string | null = null;
+
+    if (existing) {
+      chatId = (existing as any).id;
+      channelId = (existing as any).channel_id;
+      const upd: any = {
+        pending_resolve_ticket_id: ticket.id,
+        pending_resolve_at: new Date().toISOString(),
+      };
+      if ((existing as any).status === "aguardando" || !(existing as any).assigned_to) {
+        upd.status = "em_atendimento";
+        if (uid) {
+          upd.assigned_to = uid;
+          upd.pending_resolve_user_id = uid;
+        }
+      }
+      const { error } = await supabase.from("zapi_chats").update(upd).eq("id", chatId!);
+      if (error) {
+        toast.error("Falha ao vincular conversa: " + error.message);
+        return;
+      }
+    } else {
+      // 2) seleciona canal ativo
+      const { data: channels } = await (supabase as any).rpc("list_channels_safe");
+      const active = (channels || []).find((c: any) => c.is_active) || (channels || [])[0];
+      if (!active) {
+        toast.error("Nenhum canal disponível para iniciar conversa.");
+        return;
+      }
+      channelId = active.id;
+      const { data: created, error } = await supabase
+        .from("zapi_chats")
+        .insert({
+          channel_id: channelId,
+          phone: phoneDigits,
+          contact_name: ticket.contact_name || null,
+          status: "em_atendimento",
+          assigned_to: uid,
+          pending_resolve_ticket_id: ticket.id,
+          pending_resolve_user_id: uid,
+          pending_resolve_at: new Date().toISOString(),
+        } as any)
+        .select("id")
+        .single();
+      if (error || !created) {
+        toast.error("Falha ao criar conversa: " + (error?.message || ""));
+        return;
+      }
+      chatId = (created as any).id;
+    }
+
+    toast.success(`Atendimento iniciado vinculado ao protocolo ${formatTicketProtocol(ticket as any, ticket.id)}`);
+    onClose();
+    navigate({ to: "/central", search: { chat: chatId!, channel: channelId! } });
+  }, [ticket, navigate, onClose]);
+
   const [comment, setComment] = useState("");
   const [expanded, setExpanded] = useState(false);
   const [forwardSector, setForwardSector] = useState("");
@@ -1057,6 +1133,11 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
                 {ticket.contact_phone && (
                   <Button size="sm" variant="outline" onClick={goToChat} className="gap-1">
                     <MessageSquare className="h-3.5 w-3.5" /> Voltar à conversa
+                  </Button>
+                )}
+                {ticket.contact_phone && ticket.status !== "finalizado" && (
+                  <Button size="sm" variant="default" onClick={startChatFromTicket} className="gap-1">
+                    <Send className="h-3.5 w-3.5" /> Iniciar conversa
                   </Button>
                 )}
                 {isAdmin && ticket.status !== "finalizado" && !ticket.escalated_to_gestao && (
