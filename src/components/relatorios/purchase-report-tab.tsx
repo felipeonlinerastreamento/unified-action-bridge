@@ -102,6 +102,8 @@ export function PurchaseReportTab({ dateFrom, dateTo }: Props) {
       prices: number[];
       lastDate: string;
       lastPrice: number;
+      lastSupplier: string;
+      suppliers: Set<string>;
     }>();
     // sort by date asc to find first/last
     const sorted = [...filtered].sort(
@@ -117,6 +119,8 @@ export function PurchaseReportTab({ dateFrom, dateTo }: Props) {
         prices: [],
         lastDate: r.created_at,
         lastPrice: r.unit_price,
+        lastSupplier: r.supplier_name || "Sem fornecedor",
+        suppliers: new Set<string>(),
       };
       e.occurrences += 1;
       e.qty += Number(r.quantity);
@@ -124,6 +128,8 @@ export function PurchaseReportTab({ dateFrom, dateTo }: Props) {
       e.prices.push(Number(r.unit_price));
       e.lastDate = r.created_at;
       e.lastPrice = Number(r.unit_price);
+      e.lastSupplier = r.supplier_name || "Sem fornecedor";
+      e.suppliers.add(r.supplier_name || "Sem fornecedor");
       map.set(key, e);
     }
     return Array.from(map.values()).map((e) => {
