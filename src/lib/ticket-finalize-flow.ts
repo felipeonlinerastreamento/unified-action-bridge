@@ -295,6 +295,15 @@ export async function finalizeTicketWithFlow(
         pendenciaAlreadyExists = Boolean(existingLink?.external_id);
       }
 
+      if (rule && rule.target_sector_name && alreadyRouted) {
+        // Já está no setor da regra — não cair na finalização padrão.
+        await closeLinkedZapiChat(ticket.attendance_id);
+        return {
+          routed: true,
+          routedTo: { sector: rule.target_sector_name, status: "aberto" },
+        };
+      }
+
       if (rule && rule.target_sector_name && !alreadyRouted) {
         const targetSector = rule.target_sector_name;
         const targetStatus = "aberto" as const;
