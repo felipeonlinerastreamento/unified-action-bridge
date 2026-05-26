@@ -1,36 +1,27 @@
-## Causa raiz
+## Diagnóstico do #01709
 
-Em `src/lib/ticket-finalize-flow.ts`, o bloco do fluxo Teste de Equipamento (linhas 129–231) faz:
+Conferi no banco: o chamado **#01709** ("Solicitação compra") tem **1 linha de item de compra** — `Cartão de memoria 128GB`, com **quantidade 20** e preço unitário R$ 254,14. Ou seja, o relatório está correto numericamente, mas a coluna **"Compras"** mostra `1` (= número de pedidos do item no período) e a coluna de **quantidade total (20)** simplesmente **não está sendo renderizada na tabela** — ela só existe hoje no CSV exportado.
 
-1. Lê o estado vivo do ticket no banco.
-2. Calcula `alreadyRouted` (mesmo setor + mesmo status `aberto` + sem `closed_at`).
-3. Se **não** está roteado, atualiza para `aberto`/setor destino e **dá `return`**.
-4. Se **já está roteado**, **não dá `return`** — a execução cai no bloco 2 (regras de categoria) e, se não encontra regra que mude o setor, despenca até o **bloco 4 "Standard finalize"** (linhas 363–378), que sobrescreve para `status = finalizado` e seta `closed_at = now()`.
+Então a confusão é visual: o usuário vê "1" e imagina que o sistema perdeu 19 itens, quando na verdade são 20 unidades em 1 compra.
 
-Fluxo real do problema:
-- Operador finaliza chat com categoria "Teste de Equipamento".
-- `mutationFn` em `central.tsx` (linhas 1662–1705 ou 1782–1811) já cria/atualiza o ticket como `aberto` no setor **Administrativo** (correto).
-- `onSuccess` chama `finalizeTicketWithFlow`. Como o ticket já está `aberto`/Administrativo, `alreadyRouted = true`, o bloco TE é pulado, **não retorna**, e o bloco 4 finaliza o ticket.
+## O que vou ajustar (somente UI do relatório de compras)
 
-Confirmado pelo banco — últimos tickets TE estão com `sector = Administrativo` e `status = finalizado`.
+Arquivo: `src/components/relatorios/purchase-report-tab.tsx`
 
-## Correção
+Tabela **"Variação de preço por item"**:
 
-Arquivo: `src/lib/ticket-finalize-flow.ts`
+1. Renomear a coluna `Compras` para `Nº compras` (deixa claro que é nº de pedidos, não unidades).
+2. Adicionar coluna `Qtd. total` exibindo `e.qty` (soma das unidades). Para o #01709 isso passará a mostrar **20**.
+3. Adicionar coluna `Última compra` exibindo `e.lastDate` formatado em `dd/MM/yyyy` (pt-BR).
 
-Quando a categoria casa com Teste de Equipamento e o fluxo TE está habilitado, **sempre retornar** depois de avaliar — seja após rotear, seja após detectar que já estava roteado. Ou seja: dentro do `if (settings?.is_enabled && isTesteEquipamentoCategory(...) && settings.target_sector_name)`, adicionar um `return { routed: true, routedTo: { sector: settings.target_sector_name, status: targetStatus } }` no caminho `alreadyRouted`, em vez de cair para os blocos 2 e 4.
+Exportação CSV:
 
-Aplicar a mesma proteção no bloco 2 (regras de categoria): se o ticket já está no setor destino da regra (`alreadyRouted`), retornar `{ routed: true, routedTo: ... }` em vez de cair na finalização padrão.
+4. Já inclui "Qtd. total" e renomear "Compras no período" → "Nº compras".
+5. Adicionar campo `Última compra` com a data formatada.
 
-Resumo do efeito:
-- Ticket TE recém-roteado → permanece `aberto` em Administrativo (atendente verá em "A resolver").
-- Tickets sem categoria configurada → continuam indo para `finalizado` normalmente (bloco 4).
+Não mexo em nenhuma regra de negócio, agregação, filtro, KPIs, nem nas outras tabelas (Frequência, Concentração de fornecedores). Mudança é puramente de apresentação na tabela principal e no CSV.
 
-## Backfill
+## Fora do escopo
 
-Atualizar os tickets TE recém-fechados incorretamente que ainda têm `sector = 'Administrativo'` e `status = 'finalizado'` (últimas ~24h) para `status = 'aberto'`, `closed_at = NULL`, `closed_by = NULL`, para que o setor Administrativo consiga resolvê-los. Os tickets antigos sem `sector` ficam como estão (já não tem destino).
-
-## Arquivos
-
-- editar `src/lib/ticket-finalize-flow.ts`
-- migration de backfill para os tickets TE listados (3 tickets recentes com `sector = Administrativo`)
+- Não vou alterar `v_purchase_item_history`, hooks ou a tela de Solicitação de Compra.
+- Não vou tocar no fluxo de finalização de chamados que ajustamos antes.
