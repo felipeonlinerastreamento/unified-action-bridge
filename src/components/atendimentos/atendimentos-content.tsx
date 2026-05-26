@@ -196,6 +196,12 @@ export function AtendimentosContent({ autoOpenTicketId }: { autoOpenTicketId?: s
     [tickets, filters]
   );
 
+  useEffect(() => {
+    if (!selected?.id) return;
+    const fresh = (tickets as any[]).find((t) => t.id === selected.id);
+    if (fresh && fresh !== selected) setSelected(fresh);
+  }, [tickets, selected]);
+
   // Auto-open ticket detail when arriving with ?ticket=<id>
   useEffect(() => {
     if (autoOpenedRef.current || !autoOpenTicketId || tickets.length === 0) return;
