@@ -3263,15 +3263,14 @@ function CentralPage() {
                             Enviar sussurro
                           </DropdownMenuCheckboxItem>
                           <DropdownMenuCheckboxItem
-                            checked={nicknameMode}
+                            checked={!nicknameMode}
                             onCheckedChange={(v) => {
-                              setNicknameMode(!!v);
+                              setNicknameMode(!v);
                               if (v) setWhisperMode(false);
                             }}
-                            disabled={!profile?.name}
                           >
-                            <AtSign className="h-4 w-4 mr-2" />
-                            Interagir com apelido
+                            <UserX className="h-4 w-4 mr-2" />
+                            Interagir sem apelido
                           </DropdownMenuCheckboxItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
