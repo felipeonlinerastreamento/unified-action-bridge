@@ -5,7 +5,7 @@ import { AtendimentosContent } from "@/components/atendimentos/atendimentos-cont
 
 export const Route = createFileRoute("/atendimentos")({
   component: AtendimentosPage,
-  validateSearch: (s: Record<string, unknown>) => ({
+  validateSearch: (s: Record<string, unknown>): { ticket?: string } => ({
     ticket: typeof s.ticket === "string" ? s.ticket : undefined,
   }),
 });
