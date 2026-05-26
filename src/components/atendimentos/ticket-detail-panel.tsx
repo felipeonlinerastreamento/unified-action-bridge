@@ -590,22 +590,16 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
         return;
       }
 
-      const res = await finalizeTicketWithFlow({ ticket, userId, teSettings, bypassRouting: false });
-      if (res.error) {
-        toast.error("Erro ao finalizar: " + res.error);
+      const res = await finalizeTicketStandalone({ ticket, userId });
+      if (!res.ok) {
+        toast.error("Erro ao finalizar: " + (res.error || "desconhecido"));
         return;
       }
       refetchComments();
       onRefetch();
       queryClient.invalidateQueries({ queryKey: ["ticket-reminders", ticket.id] });
       queryClient.invalidateQueries({ queryKey: ["ticket-reminder-history", ticket.id] });
-      if (res.routed && res.routedTo) {
-        toast.success("Atendimento finalizado");
-        if (res.syncError) toast.error("Falha GSystem: " + res.syncError);
-        else if (res.syncedToGsystem) toast.success("Sincronizado com GSystem");
-      } else {
-        toast.success("Ticket finalizado");
-      }
+      toast.success("Ticket finalizado");
       return;
     }
 
