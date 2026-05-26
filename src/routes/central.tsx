@@ -1779,7 +1779,37 @@ function CentralPage() {
         const wasJustCreated =
           createdProtocolTicket && ticketForProtocol && ticketForProtocol.id === activeTicket.id;
         if (!wasJustCreated) {
-          if (pendingResolve) {
+          if (isTEFlow) {
+            // Teste de Equipamento: roteia o ticket pré-existente para o setor
+            // configurado com status aberto (A resolver), sem finalizar.
+            await supabase
+              .from("service_tickets")
+              .update({
+                status: (teFresh.target_status || "aberto") as any,
+                sector: teFresh.target_sector_name,
+                assigned_to: null,
+                closed_at: null,
+                closed_by: null,
+                notes: notes || activeTicket.notes || null,
+                category: resolvedCategoryLabel || activeTicket.category || null,
+              } as any)
+              .eq("id", activeTicket.id);
+            try {
+              await supabase.from("ticket_assignments").insert({
+                ticket_id: activeTicket.id,
+                assigned_by: user?.id || null,
+                sector_name: teFresh.target_sector_name,
+              });
+              await supabase.from("ticket_comments").insert({
+                ticket_id: activeTicket.id,
+                user_id: user?.id || null,
+                content: `Atendimento encaminhado automaticamente para o setor "${teFresh.target_sector_name}" — A resolver (fluxo Teste de Equipamento).`,
+                comment_type: "encaminhamento",
+              });
+            } catch (e: any) {
+              console.warn("[Finalize] TE route side effects failed:", e?.message);
+            }
+          } else if (pendingResolve) {
             // Mantém ticket aberto — apenas atualiza notas/categoria.
             await supabase
               .from("service_tickets")
