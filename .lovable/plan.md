@@ -1,56 +1,36 @@
-## Problema
-
-Atendimentos finalizados (ex.: Daiana Cofermon) continuam aparecendo na tela da Central. Verifiquei no banco:
-
-- `zapi_chats` de Daiana: `status = em_atendimento`, `assigned_to = operadora`, `sector_name = Administrativo` — ou seja, o chat foi **reaberto** logo após a finalização.
-- Não existe regra em `category_routing_rules` para "Assuntos Financeiros" e não é fluxo de Teste de Equipamento.
-
 ## Causa raiz
 
-No fluxo de pós-finalização (`src/lib/ticket-finalize-flow.ts`, seção "3. Operator-sector routing", linhas 418–455) existe uma regra que diz:
+Em `src/lib/ticket-finalize-flow.ts`, o bloco do fluxo Teste de Equipamento (linhas 129–231) faz:
 
-> Se o operador que finalizou pertence a algum setor diferente do setor atual do ticket, o ticket é **reaberto** naquele setor e o chat é **reatribuído** ao operador via `assignChatToOperator` (que volta o `zapi_chats` para `em_atendimento`).
+1. Lê o estado vivo do ticket no banco.
+2. Calcula `alreadyRouted` (mesmo setor + mesmo status `aberto` + sem `closed_at`).
+3. Se **não** está roteado, atualiza para `aberto`/setor destino e **dá `return`**.
+4. Se **já está roteado**, **não dá `return`** — a execução cai no bloco 2 (regras de categoria) e, se não encontra regra que mude o setor, despenca até o **bloco 4 "Standard finalize"** (linhas 363–378), que sobrescreve para `status = finalizado` e seta `closed_at = now()`.
 
-Para a Daiana:
-1. Operadora finalizou com categoria "Assuntos Financeiros".
-2. `mutationFn` criou o ticket como `finalizado` (sector = null) e marcou o `zapi_chats` como `finalizado`.
-3. `onSuccess` chamou `finalizeTicketWithFlow`. Como não há regra de categoria, caiu na seção 3 (operator-sector): operadora pertence a "Administrativo" → setor atual ("") ≠ "Administrativo" → reabriu o ticket como `aberto/Administrativo` e **reatribuiu o chat à operadora como `em_atendimento`**.
+Fluxo real do problema:
+- Operador finaliza chat com categoria "Teste de Equipamento".
+- `mutationFn` em `central.tsx` (linhas 1662–1705 ou 1782–1811) já cria/atualiza o ticket como `aberto` no setor **Administrativo** (correto).
+- `onSuccess` chama `finalizeTicketWithFlow`. Como o ticket já está `aberto`/Administrativo, `alreadyRouted = true`, o bloco TE é pulado, **não retorna**, e o bloco 4 finaliza o ticket.
 
-Por isso o chat nunca sai da tela: toda finalização de um operador com setor configurado dispara essa reatribuição.
+Confirmado pelo banco — últimos tickets TE estão com `sector = Administrativo` e `status = finalizado`.
 
-## Mudança proposta
+## Correção
 
-Remover o auto-roteamento "pro setor do operador" do `finalizeTicketWithFlow`. Quando não há fluxo de Teste de Equipamento nem regra de categoria configurada, a finalização deve ser **finalização padrão** (status `finalizado`, `closed_at = now`, `closeLinkedZapiChat`) e o chat deve sair da Central.
+Arquivo: `src/lib/ticket-finalize-flow.ts`
 
-### Arquivo: `src/lib/ticket-finalize-flow.ts`
+Quando a categoria casa com Teste de Equipamento e o fluxo TE está habilitado, **sempre retornar** depois de avaliar — seja após rotear, seja após detectar que já estava roteado. Ou seja: dentro do `if (settings?.is_enabled && isTesteEquipamentoCategory(...) && settings.target_sector_name)`, adicionar um `return { routed: true, routedTo: { sector: settings.target_sector_name, status: targetStatus } }` no caminho `alreadyRouted`, em vez de cair para os blocos 2 e 4.
 
-1. **Remover a seção "3. Operator-sector routing"** (todo o bloco que chama `resolveOperatorSector` + `assignChatToOperator`). Cair direto para a finalização padrão (seção 4).
-2. **Remover as funções auxiliares** que ficam órfãs: `resolveOperatorSector` e `assignChatToOperator`.
-3. Manter intactos: TE flow (seção 1), category routing rules (seção 2), bypassRouting (admin) e finalize padrão (seção 4).
+Aplicar a mesma proteção no bloco 2 (regras de categoria): se o ticket já está no setor destino da regra (`alreadyRouted`), retornar `{ routed: true, routedTo: ... }` em vez de cair na finalização padrão.
 
-Resultado:
-- Teste de Equipamento → continua roteando para o setor configurado (mantém chat aberto lá).
-- Regra de categoria ativa → continua roteando para o setor da regra (mantém chat aberto lá).
-- Sem regra de categoria → ticket vira `finalizado` e `zapi_chats` vira `finalizado`. **O chat sai da Central.**
+Resumo do efeito:
+- Ticket TE recém-roteado → permanece `aberto` em Administrativo (atendente verá em "A resolver").
+- Tickets sem categoria configurada → continuam indo para `finalizado` normalmente (bloco 4).
 
-### Backfill manual para o chat da Daiana
+## Backfill
 
-Migration que zera o estado do `zapi_chats` da Daiana para que ela saia da tela agora:
+Atualizar os tickets TE recém-fechados incorretamente que ainda têm `sector = 'Administrativo'` e `status = 'finalizado'` (últimas ~24h) para `status = 'aberto'`, `closed_at = NULL`, `closed_by = NULL`, para que o setor Administrativo consiga resolvê-los. Os tickets antigos sem `sector` ficam como estão (já não tem destino).
 
-```sql
-UPDATE public.zapi_chats
-SET status = 'finalizado',
-    assigned_to = NULL,
-    closed_at = now()
-WHERE id = '49756321-7941-4bb0-8d94-c2125e1cb7cc'
-  AND status <> 'finalizado';
-```
+## Arquivos
 
-(O ticket atual `e7da39d6...` em "Administrativo / Assuntos Financeiros / aberto" continua existindo no menu Atendimentos, como esperado — só o chat sai da Central.)
-
-## Validação
-
-1. Finalizar um chat com uma categoria sem regra de roteamento → o chat **some** da lista da Central imediatamente.
-2. Finalizar um chat com categoria "Teste de Equipamento" → continua indo para o setor configurado (Administrativo, A resolver) e o chat sai da Central (fluxo TE existente).
-3. Finalizar um chat com categoria que tem `category_routing_rules` ativa → roteamento da regra continua funcionando.
-4. Confirmar via `zapi_chats` que o registro fica com `status = finalizado` e some de `listAllOpenChats`.
+- editar `src/lib/ticket-finalize-flow.ts`
+- migration de backfill para os tickets TE listados (3 tickets recentes com `sector = Administrativo`)

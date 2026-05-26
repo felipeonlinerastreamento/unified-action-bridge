@@ -158,77 +158,85 @@ export async function finalizeTicketWithFlow(
       !liveClosedAt
     );
 
-    if (!alreadyRouted) {
-      const targetSector = settings.target_sector_name;
-
-      const { error } = await supabase
-        .from("service_tickets")
-        .update({
-          status: targetStatus,
-          sector: targetSector,
-          assigned_to: null,
-          closed_at: null,
-          updated_at: new Date().toISOString(),
-        } as any)
-        .eq("id", ticket.id);
-      if (error) return { routed: false, error: error.message };
-
-      await supabase.from("ticket_assignments").insert({
-        ticket_id: ticket.id,
-        assigned_by: userId,
-        sector_name: targetSector,
-      });
-      await insertSystemComment(
-        ticket.id,
-        userId,
-        `Atendimento finalizado e encaminhado automaticamente para o setor "${targetSector}" (fluxo Teste de Equipamento).`,
-        "encaminhamento"
-      );
-
-      let syncedToGsystem = false;
-      let pendenciaKey: string | null = null;
-      let syncError: string | null = null;
-      if (settings.auto_sync_gsystem) {
-        const { data: existingLink } = await supabase
-          .from("entity_links")
-          .select("external_id")
-          .eq("entity_type", "pendencia")
-          .eq("local_id", String(ticket.id))
-          .maybeSingle();
-        const pendenciaAlreadyExists = Boolean(existingLink?.external_id);
-        if (!pendenciaAlreadyExists) {
-          try {
-            const res = await syncTicketToGsystem({ data: { ticketId: ticket.id } });
-            if ((res as any)?.ok) {
-              syncedToGsystem = true;
-              pendenciaKey = (res as any).pendenciaKey || null;
-              await insertSystemComment(
-                ticket.id,
-                userId,
-                `Sincronizado com GSystem (pendência ${pendenciaKey || "criada"})`,
-                "sistema"
-              );
-            } else {
-              syncError = (res as any)?.error || "erro desconhecido";
-            }
-          } catch (e: any) {
-            syncError = e?.message || String(e);
-          }
-        } else {
-          syncedToGsystem = true;
-        }
-      }
-
+    if (alreadyRouted) {
+      // Já está no destino correto — não cair na finalização padrão.
       await closeLinkedZapiChat(ticket.attendance_id);
       return {
         routed: true,
-        routedTo: { sector: targetSector, status: targetStatus },
-        syncedToGsystem,
-        pendenciaKey,
-        syncError,
+        routedTo: { sector: settings.target_sector_name, status: targetStatus },
       };
     }
+
+    const targetSector = settings.target_sector_name;
+
+    const { error } = await supabase
+      .from("service_tickets")
+      .update({
+        status: targetStatus,
+        sector: targetSector,
+        assigned_to: null,
+        closed_at: null,
+        updated_at: new Date().toISOString(),
+      } as any)
+      .eq("id", ticket.id);
+    if (error) return { routed: false, error: error.message };
+
+    await supabase.from("ticket_assignments").insert({
+      ticket_id: ticket.id,
+      assigned_by: userId,
+      sector_name: targetSector,
+    });
+    await insertSystemComment(
+      ticket.id,
+      userId,
+      `Atendimento finalizado e encaminhado automaticamente para o setor "${targetSector}" (fluxo Teste de Equipamento).`,
+      "encaminhamento"
+    );
+
+    let syncedToGsystem = false;
+    let pendenciaKey: string | null = null;
+    let syncError: string | null = null;
+    if (settings.auto_sync_gsystem) {
+      const { data: existingLink } = await supabase
+        .from("entity_links")
+        .select("external_id")
+        .eq("entity_type", "pendencia")
+        .eq("local_id", String(ticket.id))
+        .maybeSingle();
+      const pendenciaAlreadyExists = Boolean(existingLink?.external_id);
+      if (!pendenciaAlreadyExists) {
+        try {
+          const res = await syncTicketToGsystem({ data: { ticketId: ticket.id } });
+          if ((res as any)?.ok) {
+            syncedToGsystem = true;
+            pendenciaKey = (res as any).pendenciaKey || null;
+            await insertSystemComment(
+              ticket.id,
+              userId,
+              `Sincronizado com GSystem (pendência ${pendenciaKey || "criada"})`,
+              "sistema"
+            );
+          } else {
+            syncError = (res as any)?.error || "erro desconhecido";
+          }
+        } catch (e: any) {
+          syncError = e?.message || String(e);
+        }
+      } else {
+        syncedToGsystem = true;
+      }
+    }
+
+    await closeLinkedZapiChat(ticket.attendance_id);
+    return {
+      routed: true,
+      routedTo: { sector: targetSector, status: targetStatus },
+      syncedToGsystem,
+      pendenciaKey,
+      syncError,
+    };
   }
+
 
 
 
@@ -285,6 +293,15 @@ export async function finalizeTicketWithFlow(
           .eq("local_id", String(ticket.id))
           .maybeSingle();
         pendenciaAlreadyExists = Boolean(existingLink?.external_id);
+      }
+
+      if (rule && rule.target_sector_name && alreadyRouted) {
+        // Já está no setor da regra — não cair na finalização padrão.
+        await closeLinkedZapiChat(ticket.attendance_id);
+        return {
+          routed: true,
+          routedTo: { sector: rule.target_sector_name, status: "aberto" },
+        };
       }
 
       if (rule && rule.target_sector_name && !alreadyRouted) {
