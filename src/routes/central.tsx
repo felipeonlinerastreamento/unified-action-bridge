@@ -3320,7 +3320,7 @@ function CentralPage() {
                         onPick={(emoji: string) => setMessageInput((prev) => `${prev}${emoji}`)}
                       />
                       <Textarea
-                        placeholder={whisperMode ? "Sussurro interno (não vai para o cliente). Shift+Enter para nova linha." : "Digite uma mensagem... (Shift+Enter para nova linha, Ctrl+V para colar arquivos)"}
+                        placeholder={whisperMode ? "Sussurro interno (não vai para o cliente). Shift+Enter para nova linha." : (!nicknameMode ? "Mensagem será enviada SEM seu nome. Shift+Enter para nova linha." : "Digite uma mensagem... (Shift+Enter para nova linha, Ctrl+V para colar arquivos)")}
                         value={messageInput}
                         onChange={(e) => setMessageInput(e.target.value)}
                         onKeyDown={handleKeyDown}
