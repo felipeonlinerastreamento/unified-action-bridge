@@ -40,7 +40,7 @@ export function TicketKanbanView({ tickets, onSelect, onRefetch }: TicketKanbanV
       return data || [];
     },
   });
-  const { data: teSettings } = useTesteEquipamentoSettings();
+  
   const { hasRole } = useAuth();
   const isAdmin = hasRole("admin");
 
