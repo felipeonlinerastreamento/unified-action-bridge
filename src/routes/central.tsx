@@ -2738,6 +2738,11 @@ function CentralPage() {
                         <div className="min-w-0">
                           <p className="text-sm font-medium text-foreground truncate">
                             {chatDetail?.description || chatDetail?.contact?.name || "Contato"}
+                            {currentTicket?.protocol_number != null && (
+                              <span className="ml-2 text-xs font-mono text-muted-foreground">
+                                #{formatTicketProtocol(currentTicket)}
+                              </span>
+                            )}
                           </p>
                           {assignedOperator && (
                             <p className="text-[11px] text-muted-foreground truncate flex items-center gap-1">
