@@ -101,16 +101,23 @@ export async function finalizeTicketStandalone(input: {
   const { ticket, userId, registerStatusComment = true } = input;
   if (!ticket?.id) return { ok: false, error: "Ticket inválido" };
 
-  const { error } = await supabase
+  const closedAt = new Date().toISOString();
+  const { data: finalizedTicket, error } = await supabase
     .from("service_tickets")
     .update({
       status: "finalizado" as const,
-      closed_at: new Date().toISOString(),
+      closed_at: closedAt,
       closed_by: userId,
-      updated_at: new Date().toISOString(),
+      updated_at: closedAt,
     } as any)
-    .eq("id", ticket.id);
+    .eq("id", ticket.id)
+    .select("id, status, closed_at")
+    .maybeSingle();
   if (error) return { ok: false, error: error.message };
+  if (!finalizedTicket) return { ok: false, error: "Nenhum ticket foi atualizado" };
+  if ((finalizedTicket as any).status !== "finalizado" || !(finalizedTicket as any).closed_at) {
+    return { ok: false, error: "O banco não confirmou a finalização do ticket" };
+  }
 
   if (registerStatusComment) {
     await insertSystemComment(ticket.id, userId, "Status alterado para finalizado", "status_change");
