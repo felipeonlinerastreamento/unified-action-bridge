@@ -1135,6 +1135,11 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
                     <MessageSquare className="h-3.5 w-3.5" /> Voltar à conversa
                   </Button>
                 )}
+                {ticket.contact_phone && ticket.status !== "finalizado" && (
+                  <Button size="sm" variant="default" onClick={startChatFromTicket} className="gap-1">
+                    <Send className="h-3.5 w-3.5" /> Iniciar conversa
+                  </Button>
+                )}
                 {isAdmin && ticket.status !== "finalizado" && !ticket.escalated_to_gestao && (
                   <Button
                     size="sm"
