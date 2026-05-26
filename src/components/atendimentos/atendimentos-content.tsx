@@ -196,6 +196,16 @@ export function AtendimentosContent({ autoOpenTicketId }: { autoOpenTicketId?: s
     [tickets, filters]
   );
 
+  // Auto-open ticket detail when arriving with ?ticket=<id>
+  useEffect(() => {
+    if (autoOpenedRef.current || !autoOpenTicketId || tickets.length === 0) return;
+    const t = (tickets as any[]).find((x) => x.id === autoOpenTicketId);
+    if (t) {
+      setSelected(t);
+      autoOpenedRef.current = true;
+    }
+  }, [autoOpenTicketId, tickets]);
+
   return (
     <div className="space-y-6">
       <TicketReminderNotifications />
