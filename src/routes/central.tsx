@@ -100,7 +100,7 @@ import {
   Paperclip,
   Zap,
   EyeOff,
-  AtSign,
+  UserX,
   Tag,
   Trash2,
   UserCircle2,
@@ -285,7 +285,7 @@ function CentralPage() {
     text: string;
     author: string;
   } | null>(null);
-  const [nicknameMode, setNicknameMode] = useState(false);
+  const [nicknameMode, setNicknameMode] = useState(true);
   const [showFullHistory, setShowFullHistory] = useState(false);
   
   const [searchTerm, setSearchTerm] = useState("");
@@ -3263,15 +3263,14 @@ function CentralPage() {
                             Enviar sussurro
                           </DropdownMenuCheckboxItem>
                           <DropdownMenuCheckboxItem
-                            checked={nicknameMode}
+                            checked={!nicknameMode}
                             onCheckedChange={(v) => {
-                              setNicknameMode(!!v);
+                              setNicknameMode(!v);
                               if (v) setWhisperMode(false);
                             }}
-                            disabled={!profile?.name}
                           >
-                            <AtSign className="h-4 w-4 mr-2" />
-                            Interagir com apelido
+                            <UserX className="h-4 w-4 mr-2" />
+                            Interagir sem apelido
                           </DropdownMenuCheckboxItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
@@ -3321,7 +3320,7 @@ function CentralPage() {
                         onPick={(emoji: string) => setMessageInput((prev) => `${prev}${emoji}`)}
                       />
                       <Textarea
-                        placeholder={whisperMode ? "Sussurro interno (não vai para o cliente). Shift+Enter para nova linha." : "Digite uma mensagem... (Shift+Enter para nova linha, Ctrl+V para colar arquivos)"}
+                        placeholder={whisperMode ? "Sussurro interno (não vai para o cliente). Shift+Enter para nova linha." : (!nicknameMode ? "Mensagem será enviada SEM seu nome. Shift+Enter para nova linha." : "Digite uma mensagem... (Shift+Enter para nova linha, Ctrl+V para colar arquivos)")}
                         value={messageInput}
                         onChange={(e) => setMessageInput(e.target.value)}
                         onKeyDown={handleKeyDown}
