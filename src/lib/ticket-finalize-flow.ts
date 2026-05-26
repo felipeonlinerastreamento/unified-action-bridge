@@ -85,6 +85,41 @@ async function closeLinkedZapiChat(attendanceId: string | null | undefined) {
   }
 }
 
+/**
+ * Regra B — Finalização do TICKET (Atendimentos).
+ *
+ * Sempre finaliza o ticket de verdade: status=finalizado, closed_at=now(),
+ * closed_by=user. Ignora roteamento TE / regra de categoria — quando o
+ * operador clica "Finalizar" no painel/kanban do ticket, é finalização real.
+ * Encerra também o zapi_chats vinculado (se houver) para o chat sair da Central.
+ */
+export async function finalizeTicketStandalone(input: {
+  ticket: { id: string; attendance_id?: string | null };
+  userId: string | null;
+  registerStatusComment?: boolean;
+}): Promise<{ ok: boolean; error?: string | null }> {
+  const { ticket, userId, registerStatusComment = true } = input;
+  if (!ticket?.id) return { ok: false, error: "Ticket inválido" };
+
+  const { error } = await supabase
+    .from("service_tickets")
+    .update({
+      status: "finalizado" as const,
+      closed_at: new Date().toISOString(),
+      closed_by: userId,
+      updated_at: new Date().toISOString(),
+    } as any)
+    .eq("id", ticket.id);
+  if (error) return { ok: false, error: error.message };
+
+  if (registerStatusComment) {
+    await insertSystemComment(ticket.id, userId, "Status alterado para finalizado", "status_change");
+  }
+  await closeLinkedZapiChat(ticket.attendance_id);
+  return { ok: true };
+}
+
+
 
 export async function finalizeTicketWithFlow(
   input: FinalizeFlowInput
