@@ -85,67 +85,6 @@ async function closeLinkedZapiChat(attendanceId: string | null | undefined) {
   }
 }
 
-/**
- * Reassigns the linked Z-API chat to the operator (so it stays in their queue
- * as "em_atendimento") instead of closing it. Used when ticket finalize routes
- * to the operator's own sector.
- */
-async function assignChatToOperator(
-  attendanceId: string | null | undefined,
-  userId: string,
-  sectorName: string,
-) {
-  if (!attendanceId || !UUID_RE.test(attendanceId)) return;
-  try {
-    const { error } = await supabase
-      .from("zapi_chats")
-      .update({
-        status: "em_atendimento",
-        assigned_to: userId,
-        sector_name: sectorName,
-        closed_at: null,
-        pending_resolve_at: null,
-        pending_resolve_ticket_id: null,
-        pending_resolve_user_id: null,
-      } as any)
-      .eq("id", attendanceId);
-    if (error) console.warn("[finalize-flow] assign chat to operator error:", error.message);
-  } catch (e: any) {
-    console.warn("[finalize-flow] assign chat to operator exception:", e?.message);
-  }
-}
-
-/**
- * Returns the sector to use for the closing operator:
- *  - currentSector if the operator belongs to it (keeps continuity)
- *  - otherwise the first active sector (alphabetical)
- *  - null when the operator has no active sector assignment
- */
-async function resolveOperatorSector(
-  userId: string | null,
-  currentSector: string | null | undefined,
-): Promise<string | null> {
-  if (!userId) return null;
-  try {
-    const { data } = await supabase
-      .from("user_sector_assignments")
-      .select("sectors!inner(name, is_active)")
-      .eq("user_id", userId);
-    const names = ((data as any[]) || [])
-      .map((r) => r?.sectors)
-      .filter((s) => s && s.is_active && typeof s.name === "string")
-      .map((s) => s.name as string);
-    if (names.length === 0) return null;
-    const norm = (v: string) => v.trim().toLowerCase();
-    const cur = currentSector ? norm(currentSector) : "";
-    const match = names.find((n) => norm(n) === cur);
-    if (match) return match;
-    return names.slice().sort((a, b) => a.localeCompare(b))[0];
-  } catch (e) {
-    console.warn("[finalize-flow] resolve operator sector failed:", e);
-    return null;
-  }
-}
 
 export async function finalizeTicketWithFlow(
   input: FinalizeFlowInput
@@ -415,44 +354,11 @@ export async function finalizeTicketWithFlow(
     }
   }
 
-  // 3. Operator-sector routing: if the closing operator belongs to a sector,
-  //    encaminha pro setor dele em vez de finalizar (a menos que já esteja lá).
-  const operatorSector = await resolveOperatorSector(userId, ticket.sector);
-  if (operatorSector && userId) {
-    const ticketSectorNorm = String(ticket.sector || "").trim().toLowerCase();
-    const opSectorNorm = operatorSector.trim().toLowerCase();
-    if (ticketSectorNorm !== opSectorNorm) {
-      const { error } = await supabase
-        .from("service_tickets")
-        .update({
-          status: "aberto" as const,
-          sector: operatorSector,
-          assigned_to: userId,
-          closed_at: null,
-          updated_at: new Date().toISOString(),
-        } as any)
-        .eq("id", ticket.id);
-      if (error) return { routed: false, error: error.message };
+  // 3. (removido) Auto-roteamento "pro setor do operador" — fazia o chat voltar
+  // para a Central como em_atendimento após finalizar. Agora cai direto na
+  // finalização padrão abaixo quando não há TE nem regra de categoria.
 
-      await supabase.from("ticket_assignments").insert({
-        ticket_id: ticket.id,
-        assigned_by: userId,
-        sector_name: operatorSector,
-      });
-      await insertSystemComment(
-        ticket.id,
-        userId,
-        `Atendimento finalizado e encaminhado para o setor "${operatorSector}" (setor do operador).`,
-        "encaminhamento",
-      );
 
-      await assignChatToOperator(ticket.attendance_id, userId, operatorSector);
-      return {
-        routed: true,
-        routedTo: { sector: operatorSector, status: "aberto" },
-      };
-    }
-  }
 
   // 4. Standard finalize
   const { error } = await supabase
