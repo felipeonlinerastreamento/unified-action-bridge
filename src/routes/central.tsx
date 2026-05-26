@@ -1612,6 +1612,26 @@ function CentralPage() {
         resolvedCategoryLabel = found?.Descricao || tipoPendencia;
       }
 
+      // Carrega configuração TE FRESCA do DB (não confia no hook que pode não ter hidratado).
+      // Regra: se a categoria escolhida é Teste de Equipamento, SEMPRE roteamos
+      // para o setor configurado com status "aberto" — independente do operador
+      // ter escolhido "A resolver" ou "Finalizado/Resolvido".
+      let teFresh: any = teSettings || null;
+      try {
+        const { data: teDb } = await (supabase as any)
+          .from("teste_equipamento_settings")
+          .select("*")
+          .limit(1)
+          .maybeSingle();
+        if (teDb) teFresh = teDb;
+      } catch (e) {
+        console.warn("[Finalize] failed to load TE settings fresh:", e);
+      }
+      const isTEFlow =
+        !!teFresh?.is_enabled &&
+        !!teFresh?.target_sector_name &&
+        isTesteEquipamentoCategory(resolvedCategoryLabel, teFresh);
+
       let ticketForProtocol = currentTicket;
       let createdProtocolTicket = false;
       if (!ticketForProtocol && selectedChatId && chatDetail) {
@@ -1629,7 +1649,7 @@ function CentralPage() {
           // em andamento (que não chegaram a clicar em "Finalizar") apareçam na
           // lista de Atendimentos como "aberto". O ticket só é persistido ao
           // confirmar a finalização — nunca antes.
-          // Exceção: "A resolver" mantém o ticket aberto.
+          // Exceções: "A resolver" e Teste de Equipamento mantêm o ticket aberto.
           const { data: sess } = await supabase.auth.getSession();
           const nowIso = new Date().toISOString();
           // Para grupos: usa a primeira mensagem do operador no atendimento
@@ -1639,23 +1659,13 @@ function CentralPage() {
             const groupStart = await resolveGroupTicketStart(selectedChatId, selectedChatId);
             if (groupStart) startIso = groupStart;
           }
-          // Quando a categoria é Teste de Equipamento, já criamos o ticket
-          // direto no setor/status configurados — evita corrida com o post-flow
-          // (que vinha falhando em persistir o roteamento).
-          const isTECreate =
-            !pendingResolve &&
-            !!teSettings?.is_enabled &&
-            isTesteEquipamentoCategory(resolvedCategoryLabel, teSettings) &&
-            !!teSettings?.target_sector_name;
-          const insertStatus = pendingResolve
-            ? "aberto"
-            : isTECreate
-              ? (teSettings!.target_status || "aberto")
-              : "finalizado";
-          const insertSector = isTECreate ? teSettings!.target_sector_name : null;
-          const insertClosedAt = pendingResolve || isTECreate ? null : nowIso;
-          const insertClosedBy =
-            pendingResolve || isTECreate ? null : (sess.session?.user?.id || null);
+          const keepOpen = pendingResolve || isTEFlow;
+          const insertStatus = keepOpen
+            ? (isTEFlow ? (teFresh.target_status || "aberto") : "aberto")
+            : "finalizado";
+          const insertSector = isTEFlow ? teFresh.target_sector_name : null;
+          const insertClosedAt = keepOpen ? null : nowIso;
+          const insertClosedBy = keepOpen ? null : (sess.session?.user?.id || null);
           const { data: created, error: createErr } = await supabase
             .from("service_tickets")
             .insert({
@@ -1670,6 +1680,7 @@ function CentralPage() {
               category: resolvedCategoryLabel,
               notes: notes || null,
               opened_by: sess.session?.user?.id || null,
+              assigned_to: isTEFlow ? null : undefined,
               created_at: startIso,
               closed_at: insertClosedAt,
               closed_by: insertClosedBy,
@@ -1680,17 +1691,17 @@ function CentralPage() {
           else {
             ticketForProtocol = created as any;
             createdProtocolTicket = true;
-            if (isTECreate) {
+            if (isTEFlow) {
               try {
                 await supabase.from("ticket_assignments").insert({
                   ticket_id: (created as any).id,
                   assigned_by: sess.session?.user?.id || null,
-                  sector_name: teSettings!.target_sector_name,
+                  sector_name: teFresh.target_sector_name,
                 });
                 await supabase.from("ticket_comments").insert({
                   ticket_id: (created as any).id,
                   user_id: sess.session?.user?.id || null,
-                  content: `Atendimento finalizado e encaminhado automaticamente para o setor "${teSettings!.target_sector_name}" (fluxo Teste de Equipamento).`,
+                  content: `Atendimento encaminhado automaticamente para o setor "${teFresh.target_sector_name}" — A resolver (fluxo Teste de Equipamento).`,
                   comment_type: "encaminhamento",
                 });
               } catch (e: any) {
