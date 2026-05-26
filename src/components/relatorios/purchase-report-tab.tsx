@@ -184,11 +184,20 @@ export function PurchaseReportTab({ dateFrom, dateTo }: Props) {
     [byItem]
   );
 
+  const formatDate = (iso: string) => {
+    try {
+      return new Date(iso).toLocaleDateString("pt-BR");
+    } catch {
+      return "—";
+    }
+  };
+
   const handleExportCSV = () => {
     const data = byItem.map((e) => ({
       Item: e.name,
-      "Compras no período": e.occurrences,
+      "Nº compras": e.occurrences,
       "Qtd. total": e.qty,
+      "Última compra": formatDate(e.lastDate),
       "Último preço": e.lastPrice.toFixed(2),
       "Mín.": e.min.toFixed(2),
       "Máx.": e.max.toFixed(2),
