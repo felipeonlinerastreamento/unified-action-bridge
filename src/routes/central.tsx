@@ -2149,35 +2149,11 @@ function CentralPage() {
         }
       }
 
-      // Apply auto-routing flow (TE / category rules) on the local ticket.
-      // Pulado quando "A resolver" — exceto para Teste de Equipamento, que sempre
-      // precisa ser roteado para o setor configurado (ticket fica aberto lá).
-      const isTEFinalize = isTesteEquipamentoCategory(ticketRef?.category, teSettings);
-      if (ticketRef && (!result?.pendingResolve || isTEFinalize)) {
-        try {
-          const fresh = await supabase
-            .from("service_tickets")
-            .select("*")
-            .eq("id", ticketRef.id)
-            .single();
-          const ticket = fresh.data || ticketRef;
-          const res = await finalizeTicketWithFlow({
-            ticket,
-            userId: session?.user?.id || null,
-            teSettings,
-            registerStatusComment: false,
-            // Sempre aplicar encaminhamento configurado, inclusive para admins
-            bypassRouting: false,
-          });
-          if (res.routed && res.routedTo) {
-            toast.success("Atendimento finalizado");
-            if (res.syncError) toast.error("Falha GSystem: " + res.syncError);
-            else if (res.syncedToGsystem) toast.success("Sincronizado com GSystem");
-          }
-        } catch (e: any) {
-          console.warn("[Finalize] post-flow error:", e?.message);
-        }
-      }
+      // Regra A — Finalização do CHAT: o roteamento (TE / regra de categoria)
+      // já foi aplicado inline na mutationFn. NÃO reaplicar aqui — isso
+      // causava no-ops (ex.: ticket #01716) e quebrava a finalização do TICKET
+      // quando ajustávamos a finalização do CHAT. As duas regras são
+      // independentes (ver src/lib/ticket-finalize-flow.ts).
       // Save Liberação items if applicable
       if (ticketRef && liberacaoItems.length > 0) {
         try {
