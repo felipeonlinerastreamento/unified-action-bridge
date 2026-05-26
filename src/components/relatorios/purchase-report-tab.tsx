@@ -308,6 +308,7 @@ export function PurchaseReportTab({ dateFrom, dateTo }: Props) {
                       <TableHead className="text-right">Nº compras</TableHead>
                       <TableHead className="text-right">Qtd. total</TableHead>
                       <TableHead>Última compra</TableHead>
+                      <TableHead>Fornecedor</TableHead>
                       <TableHead className="text-right">Mín.</TableHead>
                       <TableHead className="text-right">Méd.</TableHead>
                       <TableHead className="text-right">Máx.</TableHead>
