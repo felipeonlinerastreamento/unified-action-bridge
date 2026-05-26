@@ -285,7 +285,7 @@ function CentralPage() {
     text: string;
     author: string;
   } | null>(null);
-  const [nicknameMode, setNicknameMode] = useState(false);
+  const [nicknameMode, setNicknameMode] = useState(true);
   const [showFullHistory, setShowFullHistory] = useState(false);
   
   const [searchTerm, setSearchTerm] = useState("");
