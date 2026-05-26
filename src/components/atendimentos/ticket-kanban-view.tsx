@@ -5,9 +5,9 @@ import { Building2, Clock, User, Layers, MessageSquare } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { useTesteEquipamentoSettings } from "@/hooks/use-teste-equipamento-settings";
+
 import { useAuth } from "@/hooks/use-auth";
-import { finalizeTicketWithFlow } from "@/lib/ticket-finalize-flow";
+import { finalizeTicketStandalone } from "@/lib/ticket-finalize-flow";
 import { formatTicketProtocol } from "@/lib/protocol-format";
 import { LiberacaoBadge } from "./liberacao-badge";
 import { ComprasInfo } from "./compras-info";
@@ -40,7 +40,7 @@ export function TicketKanbanView({ tickets, onSelect, onRefetch }: TicketKanbanV
       return data || [];
     },
   });
-  const { data: teSettings } = useTesteEquipamentoSettings();
+  
   const { hasRole } = useAuth();
   const isAdmin = hasRole("admin");
 
@@ -60,23 +60,15 @@ export function TicketKanbanView({ tickets, onSelect, onRefetch }: TicketKanbanV
       const ticket = tickets.find((t) => t.id === ticketId);
       if (!ticket) return;
       const { data: { user } } = await supabase.auth.getUser();
-      const res = await finalizeTicketWithFlow({
+      const res = await finalizeTicketStandalone({
         ticket,
         userId: user?.id || null,
-        teSettings,
-        bypassRouting: false,
       });
-      if (res.error) {
-        toast.error("Erro ao finalizar: " + res.error);
+      if (!res.ok) {
+        toast.error("Erro ao finalizar: " + (res.error || "desconhecido"));
         return;
       }
-      if (res.routed && res.routedTo) {
-        toast.success("Atendimento finalizado");
-        if (res.syncError) toast.error("Falha GSystem: " + res.syncError);
-        else if (res.syncedToGsystem) toast.success("Sincronizado com GSystem");
-      } else {
-        toast.success("Ticket finalizado");
-      }
+      toast.success("Ticket finalizado");
       onRefetch();
       return;
     }
