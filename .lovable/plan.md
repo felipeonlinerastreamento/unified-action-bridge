@@ -1,30 +1,38 @@
 ## Objetivo
 
-No painel de detalhes de um chamado (menu **Atendimentos**), adicionar a opção **"Iniciar atendimento"** ao lado do botão atual "Ir para conversa". Ao clicar, abre uma conversa na Central com o telefone do contato do chamado, e essa conversa fica **vinculada ao mesmo chamado/protocolo** já aberto — para que mensagens trocadas e a eventual finalização do chat se refiram ao mesmo protocolo.
+Inverter o padrão atual da Central: mensagens passam a sair **sempre com o apelido do operador** prefixado (`*Nome:* mensagem`), e o operador ganha uma opção explícita **"Interagir sem apelido"** no menu "+" de opções de envio para suprimir o nome em mensagens específicas.
 
-## Comportamento
+## Mudanças
 
-Arquivo: `src/components/atendimentos/ticket-detail-panel.tsx`
+Arquivo único: `src/routes/central.tsx`
 
-1. Mostrar o botão **Iniciar atendimento** somente quando `ticket.contact_phone` existir e `ticket.status` for diferente de `finalizado`.
-2. Fluxo do botão (`startChatFromTicket`):
-   a. Normalizar o telefone (mesmo padrão usado em `goToChat`).
-   b. Procurar `zapi_chats` por `phone_normalized` (LIKE) para reaproveitar a conversa existente.
-   c. Se **não existir** chat:
-      - Pegar o canal ativo (via `list_channels_safe`). Se houver mais de um, usar o primeiro ativo; se nenhum canal ativo for encontrado, mostrar `toast.error("Nenhum canal disponível para iniciar conversa")`.
-      - Inserir um novo `zapi_chats` com: `channel_id`, `phone`, `contact_name = ticket.contact_name`, `status = 'em_atendimento'`, `assigned_to = auth.uid()`, `pending_resolve_ticket_id = ticket.id`.
-   d. Se **existir** chat:
-      - Atualizar `pending_resolve_ticket_id = ticket.id` e `pending_resolve_at = now()` para fixar o vínculo com o protocolo aberto.
-      - Se o chat estiver `aguardando` ou sem dono, atribuir ao usuário atual e marcar `status = 'em_atendimento'`.
-   e. Navegar para `/central` com `{ chat: <id>, channel: <channel_id> }` e fechar o painel.
-3. Adicionar `toast.success("Atendimento iniciado vinculado ao protocolo #XXXX")` usando `formatTicketProtocol(ticket)`.
+1. **Inverter o estado `nicknameMode`**
+   - Trocar `useState(false)` por `useState(true)` (linha 288), de modo que, por padrão, o nome do operador seja prefixado em toda mensagem enviada.
+   - Renomear semanticamente o booleano não é necessário — manter `nicknameMode = true` significa "enviar com apelido".
 
-## Como o vínculo com o protocolo é respeitado
+2. **Atualizar a lógica de envio (`handleSend`, ~linha 2327)**
+   - Manter a regra atual: se `nicknameMode && !whisperMode && nicknameSource` → prefixa `*Nome:* mensagem`.
+   - Quando `nicknameSource` estiver vazio (operador sem nome no perfil), o envio continua sem prefixo automaticamente — sem mudança necessária.
 
-`zapi_chats.pending_resolve_ticket_id` já é o campo usado pela Central (`src/routes/central.tsx` e o webhook em `api.public.zapi-webhook.$channelId.tsx`) para reaproveitar um ticket existente como "protocolo do chat". Ao defini-lo manualmente nesse fluxo, o chat herda o mesmo `protocol_number` do chamado aberto e a finalização posterior atualiza esse mesmo ticket em vez de criar um novo.
+3. **Substituir o item do menu (linhas ~3265–3275)**
+   - Remover o `DropdownMenuCheckboxItem` atual "Interagir com apelido".
+   - Adicionar no lugar `DropdownMenuCheckboxItem` **"Interagir sem apelido"**:
+     - `checked={!nicknameMode}`
+     - `onCheckedChange={(v) => { setNicknameMode(!v); if (!v) { /* nada */ } }}` — quando marcado, desliga o apelido.
+     - Manter mutua-exclusão com `whisperMode` (sussurro continua tendo prioridade visual).
+     - Ícone: trocar `AtSign` por algo como `UserX` (de `lucide-react`) para reforçar "sem nome".
+     - `disabled={!profile?.name}` deixa de fazer sentido (sem nome, já não há nome para enviar) — remover o `disabled`.
 
-## Fora do escopo
+4. **Indicador visual opcional no campo de mensagem**
+   - Quando `!nicknameMode && !whisperMode`, adicionar um badge discreto ou alterar o placeholder do `Textarea` para algo como `"Mensagem será enviada SEM seu nome — Shift+Enter para nova linha"`, para o operador saber que está no modo anônimo. (Aplica-se ao placeholder na linha ~3324.)
 
-- Não vou alterar a Central nem o webhook.
-- Não vou criar nova migração — `pending_resolve_ticket_id` e demais campos já existem.
-- Não toco em RLS (políticas de INSERT/UPDATE em `zapi_chats` já permitem usuário autenticado).
+## Fora de escopo
+
+- Nenhuma mudança em server functions, banco de dados, RLS ou templates de mensagem.
+- Sussurro (`whisperMode`) e respostas rápidas mantêm o comportamento atual.
+- Histórico já existente continua exibindo o prefixo `*Nome:*` que foi salvo no momento do envio (a tela de histórico já remove esse prefixo para exibição quando aplicável — `full-conversation-history-dialog.tsx:193`).
+
+## Resultado
+
+- Padrão novo: toda mensagem sai com `*Nome do Operador:* ...`.
+- O operador pode marcar **"Interagir sem apelido"** no menu "+" para enviar mensagens sem se identificar; a opção é por sessão/chat selecionado (mesmo escopo do estado atual).
