@@ -5,15 +5,19 @@ import { AtendimentosContent } from "@/components/atendimentos/atendimentos-cont
 
 export const Route = createFileRoute("/atendimentos")({
   component: AtendimentosPage,
+  validateSearch: (s: Record<string, unknown>) => ({
+    ticket: typeof s.ticket === "string" ? s.ticket : undefined,
+  }),
 });
 
 function AtendimentosPage() {
   const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { ticket } = Route.useSearch();
   if (authLoading || !isAuthenticated) return null;
 
   return (
     <AppLayout>
-      <AtendimentosContent />
+      <AtendimentosContent autoOpenTicketId={ticket} />
     </AppLayout>
   );
 }
