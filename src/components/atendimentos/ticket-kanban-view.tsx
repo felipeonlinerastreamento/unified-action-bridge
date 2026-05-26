@@ -60,23 +60,15 @@ export function TicketKanbanView({ tickets, onSelect, onRefetch }: TicketKanbanV
       const ticket = tickets.find((t) => t.id === ticketId);
       if (!ticket) return;
       const { data: { user } } = await supabase.auth.getUser();
-      const res = await finalizeTicketWithFlow({
+      const res = await finalizeTicketStandalone({
         ticket,
         userId: user?.id || null,
-        teSettings,
-        bypassRouting: false,
       });
-      if (res.error) {
-        toast.error("Erro ao finalizar: " + res.error);
+      if (!res.ok) {
+        toast.error("Erro ao finalizar: " + (res.error || "desconhecido"));
         return;
       }
-      if (res.routed && res.routedTo) {
-        toast.success("Atendimento finalizado");
-        if (res.syncError) toast.error("Falha GSystem: " + res.syncError);
-        else if (res.syncedToGsystem) toast.success("Sincronizado com GSystem");
-      } else {
-        toast.success("Ticket finalizado");
-      }
+      toast.success("Ticket finalizado");
       onRefetch();
       return;
     }
