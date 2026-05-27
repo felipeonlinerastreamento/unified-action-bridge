@@ -1049,6 +1049,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
             <TicketCompraEquipamentoSection ticket={ticket} userId={userId} onRefetch={onRefetch} />
             <TicketPerdidosSection ticket={ticket} userId={userId} onRefetch={onRefetch} />
             <TicketAttachmentsSection ticketId={ticket.id} userId={userId} />
+            <TicketActivitiesSection ticketId={ticket.id} profiles={profiles} />
           </TabsContent>
 
           <TabsContent value="comentarios" className="mt-3 space-y-3">
