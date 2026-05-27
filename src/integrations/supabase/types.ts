@@ -4083,6 +4083,96 @@ export type Database = {
         }
         Relationships: []
       }
+      ticket_activities: {
+        Row: {
+          added_by: string | null
+          catalog_id: string | null
+          completed_at: string | null
+          completed_by: string | null
+          completion_note: string | null
+          created_at: string
+          description_snapshot: string | null
+          id: string
+          is_completed: boolean
+          name_snapshot: string
+          ticket_id: string
+          updated_at: string
+        }
+        Insert: {
+          added_by?: string | null
+          catalog_id?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          completion_note?: string | null
+          created_at?: string
+          description_snapshot?: string | null
+          id?: string
+          is_completed?: boolean
+          name_snapshot: string
+          ticket_id: string
+          updated_at?: string
+        }
+        Update: {
+          added_by?: string | null
+          catalog_id?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          completion_note?: string | null
+          created_at?: string
+          description_snapshot?: string | null
+          id?: string
+          is_completed?: boolean
+          name_snapshot?: string
+          ticket_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_activities_catalog_id_fkey"
+            columns: ["catalog_id"]
+            isOneToOne: false
+            referencedRelation: "ticket_activity_catalog"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_activities_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "service_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      ticket_activity_catalog: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ticket_agents: {
         Row: {
           assigned_by: string | null
