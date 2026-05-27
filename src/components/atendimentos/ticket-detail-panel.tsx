@@ -49,7 +49,7 @@ import {
   Maximize2,
   Minimize2,
   Bell,
-} from "lucide-react";
+  CheckSquare,
 import { TaskFormDialog } from "@/components/tarefas/task-form-dialog";
 import { TicketReminderSection } from "./ticket-reminder-section";
 import { TicketAgentsSection } from "./ticket-agents-section";
@@ -60,6 +60,7 @@ import { TicketCompraEquipamentoSection } from "./ticket-compra-equipamento-sect
 import { TicketPurchaseSection } from "./ticket-purchase-section";
 import { TicketPerdidosSection } from "./ticket-perdidos-section";
 import { TicketAttachmentsSection } from "./ticket-attachments-section";
+import { TicketActivitiesSection, getPendingActivities } from "./ticket-activities-section";
 import {
   useTesteEquipamentoSettings,
   isTesteEquipamentoCategory,
@@ -86,6 +87,7 @@ function getCommentIcon(type: string) {
   if (type === "encaminhamento") return <ArrowRight className="h-3.5 w-3.5 text-blue-500" />;
   if (type === "status_change") return <RotateCcw className="h-3.5 w-3.5 text-amber-500" />;
   if (type === "sistema") return <Clock className="h-3.5 w-3.5 text-muted-foreground" />;
+  if (type === "atividade") return <CheckSquare className="h-3.5 w-3.5 text-emerald-500" />;
   return <MessageSquare className="h-3.5 w-3.5 text-primary" />;
 }
 
