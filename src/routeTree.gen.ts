@@ -40,6 +40,7 @@ import { Route as AtendimentosTarefasRouteImport } from './routes/atendimentos_.
 import { Route as ApiPublicEmailPollRouteImport } from './routes/api.public.email-poll'
 import { Route as ApiPublicCrmDailyRouteImport } from './routes/api.public.crm-daily'
 import { Route as ApiPublicChatIdleScannerRouteImport } from './routes/api.public.chat-idle-scanner'
+import { Route as ApiPublicAutoRouteAguardandoRouteImport } from './routes/api.public.auto-route-aguardando'
 import { Route as ApiPublicZapiWebhookChannelIdRouteImport } from './routes/api.public.zapi-webhook.$channelId'
 
 const RelatoriosRoute = RelatoriosRouteImport.update({
@@ -206,6 +207,12 @@ const ApiPublicChatIdleScannerRoute =
     path: '/api/public/chat-idle-scanner',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicAutoRouteAguardandoRoute =
+  ApiPublicAutoRouteAguardandoRouteImport.update({
+    id: '/api/public/auto-route-aguardando',
+    path: '/api/public/auto-route-aguardando',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicZapiWebhookChannelIdRoute =
   ApiPublicZapiWebhookChannelIdRouteImport.update({
     id: '/api/public/zapi-webhook/$channelId',
@@ -242,6 +249,7 @@ export interface FileRoutesByFullPath {
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
   '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
   '/configuracoes/': typeof ConfiguracoesIndexRoute
+  '/api/public/auto-route-aguardando': typeof ApiPublicAutoRouteAguardandoRoute
   '/api/public/chat-idle-scanner': typeof ApiPublicChatIdleScannerRoute
   '/api/public/crm-daily': typeof ApiPublicCrmDailyRoute
   '/api/public/email-poll': typeof ApiPublicEmailPollRoute
@@ -275,6 +283,7 @@ export interface FileRoutesByTo {
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
   '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
   '/configuracoes': typeof ConfiguracoesIndexRoute
+  '/api/public/auto-route-aguardando': typeof ApiPublicAutoRouteAguardandoRoute
   '/api/public/chat-idle-scanner': typeof ApiPublicChatIdleScannerRoute
   '/api/public/crm-daily': typeof ApiPublicCrmDailyRoute
   '/api/public/email-poll': typeof ApiPublicEmailPollRoute
@@ -310,6 +319,7 @@ export interface FileRoutesById {
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
   '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
   '/configuracoes/': typeof ConfiguracoesIndexRoute
+  '/api/public/auto-route-aguardando': typeof ApiPublicAutoRouteAguardandoRoute
   '/api/public/chat-idle-scanner': typeof ApiPublicChatIdleScannerRoute
   '/api/public/crm-daily': typeof ApiPublicCrmDailyRoute
   '/api/public/email-poll': typeof ApiPublicEmailPollRoute
@@ -346,6 +356,7 @@ export interface FileRouteTypes {
     | '/configuracoes/zapi'
     | '/hooks/refresh-tracking'
     | '/configuracoes/'
+    | '/api/public/auto-route-aguardando'
     | '/api/public/chat-idle-scanner'
     | '/api/public/crm-daily'
     | '/api/public/email-poll'
@@ -379,6 +390,7 @@ export interface FileRouteTypes {
     | '/configuracoes/zapi'
     | '/hooks/refresh-tracking'
     | '/configuracoes'
+    | '/api/public/auto-route-aguardando'
     | '/api/public/chat-idle-scanner'
     | '/api/public/crm-daily'
     | '/api/public/email-poll'
@@ -413,6 +425,7 @@ export interface FileRouteTypes {
     | '/configuracoes/zapi'
     | '/hooks/refresh-tracking'
     | '/configuracoes/'
+    | '/api/public/auto-route-aguardando'
     | '/api/public/chat-idle-scanner'
     | '/api/public/crm-daily'
     | '/api/public/email-poll'
@@ -434,6 +447,7 @@ export interface RootRouteChildren {
   RelatoriosRoute: typeof RelatoriosRoute
   AtendimentosTarefasRoute: typeof AtendimentosTarefasRoute
   HooksRefreshTrackingRoute: typeof HooksRefreshTrackingRoute
+  ApiPublicAutoRouteAguardandoRoute: typeof ApiPublicAutoRouteAguardandoRoute
   ApiPublicChatIdleScannerRoute: typeof ApiPublicChatIdleScannerRoute
   ApiPublicCrmDailyRoute: typeof ApiPublicCrmDailyRoute
   ApiPublicEmailPollRoute: typeof ApiPublicEmailPollRoute
@@ -659,6 +673,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicChatIdleScannerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/auto-route-aguardando': {
+      id: '/api/public/auto-route-aguardando'
+      path: '/api/public/auto-route-aguardando'
+      fullPath: '/api/public/auto-route-aguardando'
+      preLoaderRoute: typeof ApiPublicAutoRouteAguardandoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/zapi-webhook/$channelId': {
       id: '/api/public/zapi-webhook/$channelId'
       path: '/api/public/zapi-webhook/$channelId'
@@ -723,6 +744,7 @@ const rootRouteChildren: RootRouteChildren = {
   RelatoriosRoute: RelatoriosRoute,
   AtendimentosTarefasRoute: AtendimentosTarefasRoute,
   HooksRefreshTrackingRoute: HooksRefreshTrackingRoute,
+  ApiPublicAutoRouteAguardandoRoute: ApiPublicAutoRouteAguardandoRoute,
   ApiPublicChatIdleScannerRoute: ApiPublicChatIdleScannerRoute,
   ApiPublicCrmDailyRoute: ApiPublicCrmDailyRoute,
   ApiPublicEmailPollRoute: ApiPublicEmailPollRoute,
