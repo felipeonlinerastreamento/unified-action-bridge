@@ -3666,6 +3666,8 @@ export type Database = {
           reopened_at: string | null
           sector: string | null
           status: Database["public"]["Enums"]["service_ticket_status"]
+          subcategory_id: string | null
+          subcategory_name: string | null
           tracking_code: string | null
           updated_at: string
         }
@@ -3695,6 +3697,8 @@ export type Database = {
           reopened_at?: string | null
           sector?: string | null
           status?: Database["public"]["Enums"]["service_ticket_status"]
+          subcategory_id?: string | null
+          subcategory_name?: string | null
           tracking_code?: string | null
           updated_at?: string
         }
@@ -3724,6 +3728,8 @@ export type Database = {
           reopened_at?: string | null
           sector?: string | null
           status?: Database["public"]["Enums"]["service_ticket_status"]
+          subcategory_id?: string | null
+          subcategory_name?: string | null
           tracking_code?: string | null
           updated_at?: string
         }
@@ -3740,6 +3746,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_tickets_subcategory_id_fkey"
+            columns: ["subcategory_id"]
+            isOneToOne: false
+            referencedRelation: "ticket_subcategories"
             referencedColumns: ["id"]
           },
         ]
@@ -4686,6 +4699,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      ticket_subcategories: {
+        Row: {
+          category_key: string
+          category_label: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          category_key: string
+          category_label?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          category_key?: string
+          category_label?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       ticket_suprimento_items: {
         Row: {
