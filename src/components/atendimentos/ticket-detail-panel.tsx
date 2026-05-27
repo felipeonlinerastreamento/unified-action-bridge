@@ -369,14 +369,19 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
     }
     setSavingCategory(true);
     try {
-      // 1) Atualiza a tabela local mantendo categoria + pendencia_key sincronizados
+      const subId = subcategoryDraft || null;
+      const subName = subId
+        ? (subcategoriesAll as any[]).find((s) => s.id === subId)?.name || null
+        : null;
       const { error } = await supabase
         .from("service_tickets")
         .update({
           category: newLabel,
           pendencia_key: newKey,
+          subcategory_id: subId,
+          subcategory_name: subName,
           updated_at: new Date().toISOString(),
-        })
+        } as any)
         .eq("id", ticket.id);
       if (error) {
         toast.error("Erro ao alterar categoria: " + error.message);
