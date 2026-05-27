@@ -3167,11 +3167,17 @@ function CentralPage() {
                                 </div>
                               )}
                               {msg.text && (() => {
-                                // Remove o prefixo "*Nome:* " usado para negrito no WhatsApp
-                                // (evita duplicar o nome do operador acima e dentro da bolha)
-                                const displayText = isMe
-                                  ? msg.text.replace(/^\*[^*\n]+:\*\s+/, "")
-                                  : msg.text;
+                                // Remove o prefixo "*Nome:* " (negrito WhatsApp) ou "Nome: "
+                                // para não duplicar o nome do operador que já aparece no
+                                // cabeçalho da bolha.
+                                let displayText = msg.text;
+                                if (isMe) {
+                                  displayText = displayText.replace(/^\*[^*\n]+:\*\s+/, "");
+                                } else if (msg.senderName) {
+                                  const escaped = msg.senderName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+                                  const re = new RegExp(`^\\*?${escaped}\\*?:\\s+`, "i");
+                                  displayText = displayText.replace(re, "");
+                                }
                                 return <p className="whitespace-pre-wrap break-words">{displayText}</p>;
                               })()}
                               <div className={`flex items-center justify-end gap-1 mt-1 ${isMe ? "text-primary-foreground/60" : "text-muted-foreground"}`}>
