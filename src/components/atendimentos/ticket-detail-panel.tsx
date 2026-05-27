@@ -597,6 +597,8 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
       }
       refetchComments();
       onRefetch();
+      await queryClient.invalidateQueries({ queryKey: ["service-tickets"] });
+      await queryClient.refetchQueries({ queryKey: ["service-tickets"] });
       queryClient.invalidateQueries({ queryKey: ["ticket-reminders", ticket.id] });
       queryClient.invalidateQueries({ queryKey: ["ticket-reminder-history", ticket.id] });
       toast.success("Ticket finalizado");

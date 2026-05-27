@@ -69,7 +69,7 @@ export function TicketKanbanView({ tickets, onSelect, onRefetch }: TicketKanbanV
         return;
       }
       toast.success("Ticket finalizado");
-      onRefetch();
+      await onRefetch();
       return;
     }
 
