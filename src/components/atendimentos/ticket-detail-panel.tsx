@@ -243,6 +243,24 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
     staleTime: 60_000,
   });
 
+  // Sub-items cadastrados para a categoria atualmente selecionada no editor
+  const { data: subcategoriesAll = [] } = useQuery({
+    queryKey: ["ticket-subcategories-active"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ticket_subcategories")
+        .select("id, name, category_key, is_active")
+        .eq("is_active", true);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: open,
+    staleTime: 60_000,
+  });
+  const subcategoryOptions = (subcategoriesAll as any[]).filter(
+    (s) => s.category_key === categoryDraft
+  );
+
   // Load active sectors for forward dropdown
   const { data: sectors = [] } = useQuery({
     queryKey: ["active-sectors"],
