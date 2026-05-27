@@ -201,6 +201,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   const [syncing, setSyncing] = useState(false);
   const [editingCategory, setEditingCategory] = useState(false);
   const [categoryDraft, setCategoryDraft] = useState("");
+  const [subcategoryDraft, setSubcategoryDraft] = useState<string>("");
   const [savingCategory, setSavingCategory] = useState(false);
   const [editingNotes, setEditingNotes] = useState(false);
   const [notesDraft, setNotesDraft] = useState("");
@@ -241,6 +242,24 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
     enabled: open && editingCategory,
     staleTime: 60_000,
   });
+
+  // Sub-items cadastrados para a categoria atualmente selecionada no editor
+  const { data: subcategoriesAll = [] } = useQuery({
+    queryKey: ["ticket-subcategories-active"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ticket_subcategories")
+        .select("id, name, category_key, is_active")
+        .eq("is_active", true);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: open,
+    staleTime: 60_000,
+  });
+  const subcategoryOptions = (subcategoriesAll as any[]).filter(
+    (s) => s.category_key === categoryDraft
+  );
 
   // Load active sectors for forward dropdown
   const { data: sectors = [] } = useQuery({
@@ -305,13 +324,11 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   };
 
   const startEditCategory = () => {
-    // categoryDraft passa a guardar a Key do GSystem (não o rótulo).
     setCategoryDraft(ticket?.pendencia_key || "");
+    setSubcategoryDraft((ticket as any)?.subcategory_id || "");
     setEditingCategory(true);
   };
 
-  // Quando os tipos carregarem e o ticket não tiver pendencia_key (ticket antigo),
-  // tentamos resolver pela Descricao para que o Select já apareça selecionado.
   useEffect(() => {
     if (
       editingCategory &&
@@ -332,6 +349,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   const cancelEditCategory = () => {
     setEditingCategory(false);
     setCategoryDraft("");
+    setSubcategoryDraft("");
   };
 
   const saveCategory = async () => {
@@ -351,14 +369,19 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
     }
     setSavingCategory(true);
     try {
-      // 1) Atualiza a tabela local mantendo categoria + pendencia_key sincronizados
+      const subId = subcategoryDraft || null;
+      const subName = subId
+        ? (subcategoriesAll as any[]).find((s) => s.id === subId)?.name || null
+        : null;
       const { error } = await supabase
         .from("service_tickets")
         .update({
           category: newLabel,
           pendencia_key: newKey,
+          subcategory_id: subId,
+          subcategory_name: subName,
           updated_at: new Date().toISOString(),
-        })
+        } as any)
         .eq("id", ticket.id);
       if (error) {
         toast.error("Erro ao alterar categoria: " + error.message);
@@ -971,31 +994,53 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
               <span className="font-medium text-muted-foreground min-w-[120px] pt-1.5">Categoria:</span>
               <div className="flex-1 min-w-0">
                 {editingCategory ? (
-                  <div className="flex gap-1 items-center">
-                    <Select value={categoryDraft} onValueChange={setCategoryDraft} disabled={tiposLoading || savingCategory}>
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder={tiposLoading ? "Carregando..." : "Selecione..."} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {tiposPendencia.length === 0 && !tiposLoading ? (
-                          <div className="px-2 py-1.5 text-xs text-muted-foreground">Nenhuma categoria encontrada.</div>
-                        ) : (
-                          tiposPendencia.map((t: any) => (
-                            <SelectItem key={t.Key} value={String(t.Key)}>{t.Descricao}</SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={saveCategory} disabled={savingCategory}>
-                      <Check className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={cancelEditCategory} disabled={savingCategory}>
-                      <X className="h-3.5 w-3.5" />
-                    </Button>
+                  <div className="space-y-2">
+                    <div className="flex gap-1 items-center">
+                      <Select value={categoryDraft} onValueChange={(v) => { setCategoryDraft(v); setSubcategoryDraft(""); }} disabled={tiposLoading || savingCategory}>
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder={tiposLoading ? "Carregando..." : "Selecione..."} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {tiposPendencia.length === 0 && !tiposLoading ? (
+                            <div className="px-2 py-1.5 text-xs text-muted-foreground">Nenhuma categoria encontrada.</div>
+                          ) : (
+                            tiposPendencia.map((t: any) => (
+                              <SelectItem key={t.Key} value={String(t.Key)}>{t.Descricao}</SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={saveCategory} disabled={savingCategory}>
+                        <Check className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={cancelEditCategory} disabled={savingCategory}>
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                    {categoryDraft && subcategoryOptions.length > 0 && (
+                      <div className="flex gap-1 items-center">
+                        <Select value={subcategoryDraft || "__none__"} onValueChange={(v) => setSubcategoryDraft(v === "__none__" ? "" : v)} disabled={savingCategory}>
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue placeholder="Sub-item..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__">— Sem sub-item —</SelectItem>
+                            {subcategoryOptions.map((s: any) => (
+                              <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="flex items-center gap-1 group">
-                    <span className="break-all">{ticket.category || "—"}</span>
+                    <span className="break-all">
+                      {ticket.category || "—"}
+                      {(ticket as any).subcategory_name && (
+                        <Badge variant="outline" className="ml-2 text-[10px]">{(ticket as any).subcategory_name}</Badge>
+                      )}
+                    </span>
                     <Button size="icon" variant="ghost" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={startEditCategory}>
                       <Pencil className="h-3 w-3" />
                     </Button>
