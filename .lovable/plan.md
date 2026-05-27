@@ -1,36 +1,72 @@
-## Objetivo
-Corrigir apenas o botão **Finalizar** do menu **Atendimentos**, garantindo que ele altere o ticket para `finalizado` de verdade, sem mexer nas regras anteriores da Central, TE ou roteamento por categoria.
+# Atividades do Chamado
 
-## Escopo da correção
-1. **Manter intactas as regras da Central**
-   - Não alterar finalização de chat.
-   - Não alterar roteamento TE.
-   - Não alterar regra de categoria.
-   - Não alterar sincronização GSystem.
+## Visão geral
+Criar um catálogo de "Atividades" gerenciável em **Configurações > Encaminhamento** e disponibilizá-las no detalhe do atendimento. Cada atividade adicionada a um chamado tem checkbox de conclusão + observação. O chamado só pode ser finalizado quando todas as atividades vinculadas estiverem concluídas. Cada ação no checkbox gera registro nos comentários do chamado.
 
-2. **Isolar a regra do menu Atendimentos**
-   - No painel de detalhe e no Kanban, continuar usando a função direta `finalizeTicketStandalone`.
-   - Ajustar essa função para ser mais robusta no contexto de Atendimentos: atualizar o ticket, confirmar o status gravado e só então exibir sucesso.
+## Banco de dados (migration)
 
-3. **Evitar mensagem falsa de sucesso**
-   - Se o banco não retornar o ticket como `finalizado`, a tela deve mostrar erro em vez de “Ticket finalizado”.
-   - Recarregar os dados do ticket após finalizar para refletir o status atualizado no painel e na lista.
+1. **`ticket_activity_catalog`** — catálogo gerido pelo admin
+   - `name` (text, obrigatório), `description` (text), `is_active` (bool default true), `created_by`
+   - RLS: select para `authenticated`; insert/update/delete apenas para `admin`
 
-4. **Preservar fechamento do chat vinculado**
-   - Quando a finalização vier do menu Atendimentos, manter o comportamento atual: se houver chat vinculado, ele também é encerrado.
+2. **`ticket_activities`** — atividades vinculadas a um chamado
+   - `ticket_id` (fk service_tickets, on delete cascade)
+   - `catalog_id` (fk ticket_activity_catalog)
+   - `name_snapshot`, `description_snapshot` (preservam nome/descrição no momento do add)
+   - `is_completed` (bool default false), `completion_note` (text), `completed_at`, `completed_by`
+   - `added_by`, `created_at`, `updated_at`
+   - RLS:
+     - select: qualquer autenticado que vê o ticket
+     - insert: atendente/gestor/admin
+     - update (marcar/desmarcar + nota): atendente/gestor/admin
+     - delete: apenas `admin` (regra do usuário: "somente admin pode retirar")
+   - Permite múltiplas atividades por chamado (sem unique).
 
-## Arquivos que pretendo alterar
-- `src/lib/ticket-finalize-flow.ts`
-  - Fortalecer `finalizeTicketStandalone` para validar a atualização e não depender de nenhum fluxo de roteamento.
+## Configurações > Encaminhamento (UI de catálogo)
 
-- `src/components/atendimentos/ticket-detail-panel.tsx`
-  - Garantir que o botão **Finalizar** use exclusivamente a finalização direta.
-  - Invalidar/refazer a busca de `service-tickets` após sucesso.
+Em `src/routes/configuracoes.encaminhamento.tsx` adicionar nova aba/seção **"Atividades do chamado"** com:
+- Lista das atividades existentes (nome + descrição + status ativo)
+- Botão "Nova atividade" → dialog com campos **Nome** e **Descrição**
+- Editar (admin) e Excluir/Desativar (admin)
+- Componente novo: `src/components/configuracoes/ticket-activities-config.tsx`
 
-- `src/components/atendimentos/ticket-kanban-view.tsx`
-  - Aplicar a mesma regra direta ao arrastar para a coluna **Finalizado**.
+## Detalhe do atendimento
 
-## Validação
-- Conferir que o chamado `#01716` já está `finalizado` no banco.
-- Após a alteração, o fluxo do menu Atendimentos só mostrará sucesso se a atualização for confirmada.
-- Nenhum código da Central/roteamento será alterado.
+Em `src/components/atendimentos/ticket-detail-panel.tsx`, criar uma nova seção **"Atividades"** (acima de Comentários ou em nova aba), implementada num componente próprio: `src/components/atendimentos/ticket-activities-section.tsx`.
+
+Comportamento:
+- Combobox para selecionar uma atividade do catálogo ativo + botão "Adicionar"
+- Lista das atividades já vinculadas mostrando: nome, descrição, checkbox de conclusão, campo de observação, autor e data de conclusão
+- Marcar/desmarcar checkbox:
+  - Abre prompt de observação (textarea obrigatória opcional — manteremos opcional, com placeholder "Observação")
+  - Atualiza `ticket_activities` (is_completed, completion_note, completed_at, completed_by)
+  - Insere registro em `ticket_comments` com `comment_type: 'atividade'` no formato:
+    - `✅ Atividade "<nome>" concluída — <observação>`
+    - `↩️ Atividade "<nome>" reaberta — <observação>`
+- Botão remover (lixeira) visível **apenas para admin**
+
+## Bloqueio na finalização
+
+Ajustar o fluxo de finalização (em `src/lib/ticket-finalize-flow.ts` e/ou nos handlers de finalização do `ticket-detail-panel.tsx` e `ticket-kanban-view.tsx`):
+- Antes de finalizar, consultar `ticket_activities` do chamado
+- Se existir alguma com `is_completed = false`, bloquear com toast: *"Conclua todas as atividades do chamado antes de finalizar."* e listar as pendentes
+- Caso contrário, segue o fluxo atual de finalização
+
+Importante: a regra anterior (TE, kanban arrastar para finalizado, botão "Sim, finalizar") permanece — apenas adicionamos a checagem das atividades como pré-requisito.
+
+## Comentários
+
+Adicionar `'atividade'` como valor reconhecido em `comment_type` na renderização da aba Comentários (ícone próprio, ex.: `CheckSquare`) em `getCommentIcon` dentro de `ticket-detail-panel.tsx`.
+
+## Detalhes técnicos
+
+- Sem alteração nas regras existentes de TE, encaminhamento, kanban, reminders.
+- `ticket_activity_catalog` e `ticket_activities` recebem GRANT para `authenticated` + `service_role`.
+- Trigger `update_updated_at_column` aplicado em ambas as tabelas.
+- Realtime opcional na `ticket_activities` para refletir em painéis abertos (via `supabase.channel`).
+- Permissões via `has_role(auth.uid(), 'admin')` para delete/edit no catálogo e delete em `ticket_activities`.
+
+## Fora de escopo
+- Relatórios sobre atividades, métricas, dashboards.
+- Notificações push/email.
+- Edição da observação após o checkbox confirmado (poderá ser feita reabrindo + reconcluindo).

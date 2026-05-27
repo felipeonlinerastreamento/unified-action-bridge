@@ -49,6 +49,7 @@ import {
   Maximize2,
   Minimize2,
   Bell,
+  CheckSquare,
 } from "lucide-react";
 import { TaskFormDialog } from "@/components/tarefas/task-form-dialog";
 import { TicketReminderSection } from "./ticket-reminder-section";
@@ -60,6 +61,7 @@ import { TicketCompraEquipamentoSection } from "./ticket-compra-equipamento-sect
 import { TicketPurchaseSection } from "./ticket-purchase-section";
 import { TicketPerdidosSection } from "./ticket-perdidos-section";
 import { TicketAttachmentsSection } from "./ticket-attachments-section";
+import { TicketActivitiesSection, getPendingActivities } from "./ticket-activities-section";
 import {
   useTesteEquipamentoSettings,
   isTesteEquipamentoCategory,
@@ -86,6 +88,7 @@ function getCommentIcon(type: string) {
   if (type === "encaminhamento") return <ArrowRight className="h-3.5 w-3.5 text-blue-500" />;
   if (type === "status_change") return <RotateCcw className="h-3.5 w-3.5 text-amber-500" />;
   if (type === "sistema") return <Clock className="h-3.5 w-3.5 text-muted-foreground" />;
+  if (type === "atividade") return <CheckSquare className="h-3.5 w-3.5 text-emerald-500" />;
   return <MessageSquare className="h-3.5 w-3.5 text-primary" />;
 }
 
@@ -590,6 +593,15 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
         return;
       }
 
+      const pending = await getPendingActivities(ticket.id);
+      if (pending.length > 0) {
+        toast.error(
+          `Conclua todas as atividades antes de finalizar: ${pending.join(", ")}`,
+          { duration: 6000 }
+        );
+        return;
+      }
+
       const res = await finalizeTicketStandalone({ ticket, userId });
       if (!res.ok) {
         toast.error("Erro ao finalizar: " + (res.error || "desconhecido"));
@@ -1037,6 +1049,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
             <TicketCompraEquipamentoSection ticket={ticket} userId={userId} onRefetch={onRefetch} />
             <TicketPerdidosSection ticket={ticket} userId={userId} onRefetch={onRefetch} />
             <TicketAttachmentsSection ticketId={ticket.id} userId={userId} />
+            <TicketActivitiesSection ticketId={ticket.id} profiles={profiles} />
           </TabsContent>
 
           <TabsContent value="comentarios" className="mt-3 space-y-3">
