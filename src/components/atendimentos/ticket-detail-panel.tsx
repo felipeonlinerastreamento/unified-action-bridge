@@ -50,6 +50,7 @@ import {
   Minimize2,
   Bell,
   CheckSquare,
+} from "lucide-react";
 import { TaskFormDialog } from "@/components/tarefas/task-form-dialog";
 import { TicketReminderSection } from "./ticket-reminder-section";
 import { TicketAgentsSection } from "./ticket-agents-section";
