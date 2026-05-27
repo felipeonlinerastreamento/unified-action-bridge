@@ -8,6 +8,7 @@ import { toast } from "sonner";
 
 import { useAuth } from "@/hooks/use-auth";
 import { finalizeTicketStandalone } from "@/lib/ticket-finalize-flow";
+import { getPendingActivities } from "./ticket-activities-section";
 import { formatTicketProtocol } from "@/lib/protocol-format";
 import { LiberacaoBadge } from "./liberacao-badge";
 import { ComprasInfo } from "./compras-info";
@@ -59,6 +60,14 @@ export function TicketKanbanView({ tickets, onSelect, onRefetch }: TicketKanbanV
     if (newStatus === "finalizado") {
       const ticket = tickets.find((t) => t.id === ticketId);
       if (!ticket) return;
+      const pending = await getPendingActivities(ticketId);
+      if (pending.length > 0) {
+        toast.error(
+          `Conclua todas as atividades antes de finalizar: ${pending.join(", ")}`,
+          { duration: 6000 }
+        );
+        return;
+      }
       const { data: { user } } = await supabase.auth.getUser();
       const res = await finalizeTicketStandalone({
         ticket,
