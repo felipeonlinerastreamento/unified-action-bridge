@@ -593,6 +593,15 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
         return;
       }
 
+      const pending = await getPendingActivities(ticket.id);
+      if (pending.length > 0) {
+        toast.error(
+          `Conclua todas as atividades antes de finalizar: ${pending.join(", ")}`,
+          { duration: 6000 }
+        );
+        return;
+      }
+
       const res = await finalizeTicketStandalone({ ticket, userId });
       if (!res.ok) {
         toast.error("Erro ao finalizar: " + (res.error || "desconhecido"));
