@@ -324,13 +324,11 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   };
 
   const startEditCategory = () => {
-    // categoryDraft passa a guardar a Key do GSystem (não o rótulo).
     setCategoryDraft(ticket?.pendencia_key || "");
+    setSubcategoryDraft((ticket as any)?.subcategory_id || "");
     setEditingCategory(true);
   };
 
-  // Quando os tipos carregarem e o ticket não tiver pendencia_key (ticket antigo),
-  // tentamos resolver pela Descricao para que o Select já apareça selecionado.
   useEffect(() => {
     if (
       editingCategory &&
@@ -351,6 +349,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   const cancelEditCategory = () => {
     setEditingCategory(false);
     setCategoryDraft("");
+    setSubcategoryDraft("");
   };
 
   const saveCategory = async () => {
