@@ -282,6 +282,8 @@ function EncaminhamentoPage() {
 
         <TicketActivitiesConfig />
 
+        <TicketSubcategoriesConfig />
+
         <Card>
           <CardHeader>
             <CardTitle>Regras de Encaminhamento</CardTitle>
