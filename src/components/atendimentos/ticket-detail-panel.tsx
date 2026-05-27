@@ -994,31 +994,53 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
               <span className="font-medium text-muted-foreground min-w-[120px] pt-1.5">Categoria:</span>
               <div className="flex-1 min-w-0">
                 {editingCategory ? (
-                  <div className="flex gap-1 items-center">
-                    <Select value={categoryDraft} onValueChange={setCategoryDraft} disabled={tiposLoading || savingCategory}>
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder={tiposLoading ? "Carregando..." : "Selecione..."} />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {tiposPendencia.length === 0 && !tiposLoading ? (
-                          <div className="px-2 py-1.5 text-xs text-muted-foreground">Nenhuma categoria encontrada.</div>
-                        ) : (
-                          tiposPendencia.map((t: any) => (
-                            <SelectItem key={t.Key} value={String(t.Key)}>{t.Descricao}</SelectItem>
-                          ))
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={saveCategory} disabled={savingCategory}>
-                      <Check className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button size="icon" variant="ghost" className="h-7 w-7" onClick={cancelEditCategory} disabled={savingCategory}>
-                      <X className="h-3.5 w-3.5" />
-                    </Button>
+                  <div className="space-y-2">
+                    <div className="flex gap-1 items-center">
+                      <Select value={categoryDraft} onValueChange={(v) => { setCategoryDraft(v); setSubcategoryDraft(""); }} disabled={tiposLoading || savingCategory}>
+                        <SelectTrigger className="h-8 text-xs">
+                          <SelectValue placeholder={tiposLoading ? "Carregando..." : "Selecione..."} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {tiposPendencia.length === 0 && !tiposLoading ? (
+                            <div className="px-2 py-1.5 text-xs text-muted-foreground">Nenhuma categoria encontrada.</div>
+                          ) : (
+                            tiposPendencia.map((t: any) => (
+                              <SelectItem key={t.Key} value={String(t.Key)}>{t.Descricao}</SelectItem>
+                            ))
+                          )}
+                        </SelectContent>
+                      </Select>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={saveCategory} disabled={savingCategory}>
+                        <Check className="h-3.5 w-3.5" />
+                      </Button>
+                      <Button size="icon" variant="ghost" className="h-7 w-7" onClick={cancelEditCategory} disabled={savingCategory}>
+                        <X className="h-3.5 w-3.5" />
+                      </Button>
+                    </div>
+                    {categoryDraft && subcategoryOptions.length > 0 && (
+                      <div className="flex gap-1 items-center">
+                        <Select value={subcategoryDraft || "__none__"} onValueChange={(v) => setSubcategoryDraft(v === "__none__" ? "" : v)} disabled={savingCategory}>
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue placeholder="Sub-item..." />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="__none__">— Sem sub-item —</SelectItem>
+                            {subcategoryOptions.map((s: any) => (
+                              <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="flex items-center gap-1 group">
-                    <span className="break-all">{ticket.category || "—"}</span>
+                    <span className="break-all">
+                      {ticket.category || "—"}
+                      {(ticket as any).subcategory_name && (
+                        <Badge variant="outline" className="ml-2 text-[10px]">{(ticket as any).subcategory_name}</Badge>
+                      )}
+                    </span>
                     <Button size="icon" variant="ghost" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={startEditCategory}>
                       <Pencil className="h-3 w-3" />
                     </Button>
