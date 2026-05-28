@@ -130,6 +130,79 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
   const isPurchase = isPurchaseCategory(category);
   const [purchaseItems, setPurchaseItems] = useState<PurchaseLineItem[]>([]);
 
+  // Local company id resolved from selected GSystem client (by CNPJ or name)
+  const [resolvedCompanyId, setResolvedCompanyId] = useState<string | null>(null);
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (!selectedCliente) {
+        setResolvedCompanyId(null);
+        return;
+      }
+      const name = (selectedCliente.Nome || selectedCliente.nome || selectedCliente.RazaoSocial || "").trim();
+      const cnpj =
+        (selectedCliente.CpfCnpj || selectedCliente.cpf_cnpj || "").replace(/\D/g, "") || null;
+      let id: string | null = null;
+      if (cnpj) {
+        const { data } = await supabase
+          .from("companies")
+          .select("id")
+          .eq("cnpj", cnpj)
+          .limit(1);
+        if (data && data.length > 0) id = data[0].id;
+      }
+      if (!id && name) {
+        const { data } = await supabase
+          .from("companies")
+          .select("id")
+          .eq("name", name)
+          .limit(1);
+        if (data && data.length > 0) id = data[0].id;
+      }
+      if (!cancelled) setResolvedCompanyId(id);
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [selectedCliente]);
+
+  // Service templates of resolved company (only relevant for Liberação)
+  const { data: serviceTemplates = [] } = useQuery({
+    queryKey: ["company-service-templates", resolvedCompanyId],
+    queryFn: async () => {
+      if (!resolvedCompanyId) return [] as any[];
+      const { data } = await supabase
+        .from("company_service_templates" as any)
+        .select("id, name, description, position")
+        .eq("company_id", resolvedCompanyId)
+        .order("position");
+      return (data as any[]) || [];
+    },
+    enabled: open && isLiberacao && !!resolvedCompanyId,
+  });
+
+  // Auto-fill description with the single template when there is exactly one
+  // and the description is still empty (never overwrite user-typed text).
+  const [autoFilledTplKey, setAutoFilledTplKey] = useState<string | null>(null);
+  useEffect(() => {
+    if (!isLiberacao || serviceTemplates.length !== 1) return;
+    const tpl = serviceTemplates[0];
+    const key = `${resolvedCompanyId}:${tpl.id}`;
+    if (autoFilledTplKey === key) return;
+    if (notes.trim().length === 0 && tpl.description) {
+      setNotes(tpl.description);
+      setAutoFilledTplKey(key);
+    }
+  }, [isLiberacao, serviceTemplates, resolvedCompanyId, notes, autoFilledTplKey]);
+
+  const insertTemplateDescription = (description: string) => {
+    if (!description) return;
+    setNotes((prev) => {
+      if (!prev.trim()) return description;
+      return `${prev.trimEnd()}\n\n${description}`;
+    });
+  };
+
   const getAuthHeaders = useCallback(async () => {
     const { data: { session } } = await supabase.auth.getSession();
     return { headers: { authorization: `Bearer ${session?.access_token}` } };
