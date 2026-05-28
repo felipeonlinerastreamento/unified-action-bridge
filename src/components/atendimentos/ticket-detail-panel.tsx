@@ -1113,6 +1113,47 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
                 )}
               </div>
             </div>
+
+            {serviceTemplates.length > 0 && (
+              <div className="rounded-md border border-amber-200 bg-amber-50/60 dark:bg-amber-950/20 dark:border-amber-900 p-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <ShieldAlert className="h-4 w-4 text-amber-700 dark:text-amber-400" />
+                  <h4 className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                    Padrão de Serviços do cliente
+                  </h4>
+                </div>
+                <div className="space-y-2">
+                  {(serviceTemplates as any[]).map((tpl) => (
+                    <div
+                      key={tpl.id}
+                      className="rounded border border-amber-200/70 dark:border-amber-900/60 bg-background/60 p-2"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-amber-900 dark:text-amber-200">
+                          {tpl.name || "Padrão"}
+                        </p>
+                        {tpl.description && ticket.status !== "finalizado" && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 text-xs"
+                            onClick={() => appendTemplateToNotes(tpl.description)}
+                          >
+                            Inserir nas observações
+                          </Button>
+                        )}
+                      </div>
+                      {tpl.description && (
+                        <p className="mt-1 text-sm whitespace-pre-wrap break-words text-foreground/90">
+                          {tpl.description}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <DetailRow label="Criado em" value={ticket.created_at ? new Date(ticket.created_at).toLocaleString("pt-BR") : null} />
             <DetailRow label="Criado por" value={ticket.opened_by ? (profiles.find((p) => p.user_id === ticket.opened_by)?.name || "—") : "—"} />
             <DetailRow label="Finalizado em" value={ticket.closed_at ? new Date(ticket.closed_at).toLocaleString("pt-BR") : null} />
