@@ -257,6 +257,40 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
     enabled: open,
     staleTime: 60_000,
   });
+
+  // Padrão de Serviços cadastrado na empresa do chamado
+  const { data: serviceTemplates = [] } = useQuery({
+    queryKey: ["ticket-company-service-templates", ticket?.company_id],
+    queryFn: async () => {
+      if (!ticket?.company_id) return [] as any[];
+      const { data } = await supabase
+        .from("company_service_templates" as any)
+        .select("id, name, description, position")
+        .eq("company_id", ticket.company_id)
+        .order("position");
+      return (data as any[]) || [];
+    },
+    enabled: open && !!ticket?.company_id,
+    staleTime: 60_000,
+  });
+
+  const appendTemplateToNotes = async (description: string) => {
+    if (!description || !ticket?.id) return;
+    const current = (ticket.notes || "").trim();
+    const next = current ? `${current}\n\n${description}` : description;
+    const { error } = await supabase
+      .from("service_tickets")
+      .update({ notes: next, updated_at: new Date().toISOString() })
+      .eq("id", ticket.id);
+    if (error) {
+      toast.error("Falha ao inserir nas observações");
+      return;
+    }
+    toast.success("Padrão inserido nas observações");
+    onRefetch();
+    queryClient.invalidateQueries({ queryKey: ["service-tickets"] });
+  };
+
   const subcategoryOptions = (subcategoriesAll as any[]).filter(
     (s) => s.category_key === categoryDraft
   );
