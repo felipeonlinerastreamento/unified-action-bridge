@@ -1,35 +1,46 @@
-## Plano: Correções de segurança da Lovable Cloud
+**Do I know what the issue is?** Sim.
 
-Assim que o backend de migrações voltar a aceitar conexões, aplico uma única migração cobrindo todos os achados do scan.
+O erro `NetworkError when attempting to fetch resource` / `Failed to fetch` está acontecendo antes da aplicação conseguir receber uma resposta da autenticação/backend. A evidência atual é:
 
-### 1. Bucket `chat-media` → privado
-`UPDATE storage.buckets SET public=false`. Acesso passa a exigir URL assinada. Se houver `<img src>` apontando direto pra CDN no app, troco por `createSignedUrl`.
+- O navegador falha em chamadas para `/auth/v1/token` e `/rest/v1/...`.
+- A checagem geral do backend aparece ativa, mas a checagem de saúde detalhada e uma consulta simples ao banco falham por timeout.
+- Isso aponta para indisponibilidade/conexão instável no backend do Lovable Cloud, não para erro de formulário, senha, RLS ou tela de login.
 
-### 2. Tabelas de compras — remover `USING(true)` em escrita
-Tabelas: `ticket_purchase_items`, `ticket_purchase_requests`, `ticket_compra_equipamento_items`.
-- DROP da policy `*_all` / `*_manage` (ALL com `true`)
-- SELECT: autenticados (mantém visibilidade)
-- INSERT / UPDATE / DELETE: somente `admin` ou `gestor` via `public.has_role()`
+**Plano**
 
-### 3. `zapi_quick_replies`
-Substituir a UPDATE policy atual por uma que permite:
-- editar a própria resposta (own, não global)
-- editar respostas globais apenas se `admin`/`gestor`
+1. **Isolar ambiente**
+   - Testar login na URL publicada e no preview separadamente.
+   - Se falhar nos dois, tratar como problema de backend/conectividade.
+   - Se falhar só no preview, usar a URL publicada enquanto o preview normaliza.
 
-### 4. Realtime — escopo por usuário
-Hoje `realtime.messages` aceita `USING(true)`, então qualquer autenticado pode assinar qualquer canal. Vou trocar por:
-- SELECT: `realtime.topic() = 'user:' || auth.uid()` OU prefixo `public:*`
-- INSERT: somente `'user:' || auth.uid()`
+2. **Validar backend antes de mexer em código**
+   - Repetir checagem de saúde do banco e uma consulta mínima até confirmar que o backend responde sem timeout.
+   - Evitar reaplicar migrations ou alterar políticas enquanto o banco estiver instável.
 
-⚠️ **Impacto no frontend:** toda subscrição realtime precisa usar nomes de canal nessa convenção. Hoje o app usa `postgres_changes` em canais como `messages`, `notifications`, etc. — esses continuam funcionando porque `postgres_changes` é filtrado por RLS da tabela, não pelas policies de `realtime.messages` (que governam broadcast/presence). Então o impacto fica restrito a eventuais usos de `channel.send()` / broadcast, que vou auditar antes.
+3. **Quando o backend voltar a responder**
+   - Rodar novamente o scan/checagens para confirmar se as correções de segurança foram aplicadas.
+   - Validar login, carregamento de perfil/roles e abertura do chat.
 
-### 5. Função SECURITY DEFINER pública (linter)
-Achado genérico: alguma função com `EXECUTE` para `anon`. Vou listar funções `SECURITY DEFINER` no schema `public` e revogar `EXECUTE FROM anon, public` onde não for intencional (mantendo `has_role` etc. acessíveis ao `authenticated` quando usadas em RLS).
+4. **Se o timeout persistir**
+   - Orientar abertura do painel **Backend** do Lovable Cloud para verificar status/instância.
+   - Se houver carga alta ou timeouts recorrentes, considerar aumentar a instância do backend em **Backend → Advanced settings → Upgrade instance**.
 
-### Ordem de execução
-1. Backend volta → rodar a migração consolidada
-2. Auditar uso de broadcast realtime e ajustar nomes de canal se necessário
-3. Trocar URLs públicas de `chat-media` por signed URLs onde aplicável
-4. Rodar scan novamente para confirmar
+5. **Só se o backend estiver saudável e o erro continuar**
+   - Aí sim investigar código: `src/hooks/use-auth.tsx`, `src/components/auth-form.tsx`, `src/routes/__root.tsx` e pontos que chamam `supabase.auth.getSession()`.
+   - Ajustar tratamento de sessão expirada/rede para limpar estado quebrado e mostrar mensagem mais clara, sem mascarar falha real de backend.
 
-Confirma que posso seguir com a convenção `user:<uuid>` / `public:*` para canais de broadcast?
+**Ação recomendada agora**
+
+Aguardar alguns minutos e testar novamente na URL publicada:
+
+https://unified-action-bridge.lovable.app
+
+Se continuar com o mesmo erro, o próximo passo seguro é tratar como instabilidade do Lovable Cloud/backend, não como alteração de código.
+
+<presentation-actions>
+  <presentation-open-history>View History</presentation-open-history>
+</presentation-actions>
+
+<presentation-actions>
+<presentation-link url="https://docs.lovable.dev/tips-tricks/troubleshooting">Troubleshooting docs</presentation-link>
+</presentation-actions>
