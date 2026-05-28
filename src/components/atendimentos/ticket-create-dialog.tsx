@@ -806,6 +806,31 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
           {isPurchase && (
             <PurchaseFields items={purchaseItems} onChange={setPurchaseItems} />
           )}
+          {isLiberacao && serviceTemplates.length > 1 && (
+            <div className="space-y-1 rounded-md border border-primary/30 bg-primary/5 p-2">
+              <label className="text-xs font-medium">
+                Padrão de serviço da empresa
+              </label>
+              <p className="text-[11px] text-muted-foreground">
+                Clique em "Inserir" para acrescentar a descrição ao campo abaixo.
+              </p>
+              <div className="flex flex-wrap gap-1.5 pt-1">
+                {serviceTemplates.map((tpl: any) => (
+                  <Button
+                    key={tpl.id}
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => insertTemplateDescription(tpl.description || "")}
+                    title={tpl.description}
+                  >
+                    + {tpl.name}
+                  </Button>
+                ))}
+              </div>
+            </div>
+          )}
           <div className="space-y-1">
             <label className="text-xs font-medium">Observações</label>
             <Textarea
@@ -814,6 +839,7 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
               placeholder="Detalhes do atendimento..."
             />
           </div>
+
           <Button onClick={handleCreate} disabled={loading} className="w-full">
             {loading ? "Criando..." : "Criar Ticket"}
           </Button>
