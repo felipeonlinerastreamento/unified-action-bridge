@@ -133,12 +133,15 @@ function EmpresasPage() {
     setFormEmails("");
     setFormInstructions("");
     setFormNotes("");
+    setFormMaintenanceScript("");
+    setFormInstallationScript("");
+    setFormServiceTemplates([]);
     setFormPhones([""]);
     setFormContacts([{ name: "", role: "", phone: "" }]);
     setEditingCompany(null);
   };
 
-  const openEdit = (company: Company) => {
+  const openEdit = async (company: Company) => {
     const phones = companyPhones
       .filter((p) => p.company_id === company.id)
       .map((p) => p.phone_number);
@@ -149,6 +152,8 @@ function EmpresasPage() {
     setFormEmails((company.emails || []).join(", "));
     setFormInstructions(company.instructions || "");
     setFormNotes(company.notes || "");
+    setFormMaintenanceScript(company.maintenance_script || "");
+    setFormInstallationScript(company.installation_script || "");
     setFormPhones(phones.length > 0 ? phones : [""]);
     setFormContacts(
       company.contacts && company.contacts.length > 0
@@ -156,6 +161,21 @@ function EmpresasPage() {
         : [{ name: "", role: "", phone: "" }]
     );
     setIsDialogOpen(true);
+
+    // Load service templates for this company
+    const { data: tpls } = await supabase
+      .from("company_service_templates" as any)
+      .select("*")
+      .eq("company_id", company.id)
+      .order("position");
+    setFormServiceTemplates(
+      ((tpls as any[]) || []).map((t) => ({
+        id: t.id,
+        name: t.name || "",
+        description: t.description || "",
+        position: t.position ?? 0,
+      }))
+    );
   };
 
   const openNew = () => {
@@ -178,6 +198,8 @@ function EmpresasPage() {
         contacts,
         instructions: formInstructions.trim(),
         notes: formNotes.trim(),
+        maintenance_script: formMaintenanceScript,
+        installation_script: formInstallationScript,
       };
 
       let companyId: string;
@@ -217,6 +239,43 @@ function EmpresasPage() {
           }))
         );
         if (error) throw error;
+      }
+
+      // Sync service templates: delete marked, update existing, insert new
+      const toDelete = formServiceTemplates.filter((t) => t._deleted && !t._isNew);
+      const toUpdate = formServiceTemplates.filter(
+        (t) => !t._deleted && !t._isNew && t.name.trim()
+      );
+      const toInsert = formServiceTemplates.filter(
+        (t) => !t._deleted && t._isNew && t.name.trim()
+      );
+
+      if (toDelete.length > 0) {
+        await supabase
+          .from("company_service_templates" as any)
+          .delete()
+          .in("id", toDelete.map((t) => t.id));
+      }
+      for (const [idx, t] of toUpdate.entries()) {
+        await supabase
+          .from("company_service_templates" as any)
+          .update({
+            name: t.name.trim(),
+            description: t.description,
+            position: idx,
+          })
+          .eq("id", t.id);
+      }
+      if (toInsert.length > 0) {
+        const baseIdx = toUpdate.length;
+        await supabase.from("company_service_templates" as any).insert(
+          toInsert.map((t, i) => ({
+            company_id: companyId,
+            name: t.name.trim(),
+            description: t.description,
+            position: baseIdx + i,
+          }))
+        );
       }
     },
     onSuccess: () => {
