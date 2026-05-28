@@ -59,6 +59,8 @@ interface Company {
   contacts: any[];
   instructions: string;
   notes: string;
+  maintenance_script: string;
+  installation_script: string;
   created_at: string;
 }
 
@@ -66,6 +68,15 @@ interface CompanyPhone {
   id: string;
   company_id: string;
   phone_number: string;
+}
+
+interface ServiceTemplate {
+  id: string; // local id (uuid from db or temp-)
+  name: string;
+  description: string;
+  position: number;
+  _isNew?: boolean;
+  _deleted?: boolean;
 }
 
 function EmpresasPage() {
