@@ -1,46 +1,59 @@
-**Do I know what the issue is?** Sim.
 
-O erro `NetworkError when attempting to fetch resource` / `Failed to fetch` está acontecendo antes da aplicação conseguir receber uma resposta da autenticação/backend. A evidência atual é:
+## Objetivo
 
-- O navegador falha em chamadas para `/auth/v1/token` e `/rest/v1/...`.
-- A checagem geral do backend aparece ativa, mas a checagem de saúde detalhada e uma consulta simples ao banco falham por timeout.
-- Isso aponta para indisponibilidade/conexão instável no backend do Lovable Cloud, não para erro de formulário, senha, RLS ou tela de login.
+1. No cadastro de empresa, organizar o formulário em abas e adicionar três novas: **Script Manutenção**, **Script Instalação** e **Padrão Serviços**.
+2. Em **Padrão Serviços**, permitir inserir/editar/excluir itens (cada item com nome e descrição).
+3. Em tickets da categoria **Liberação de Equipamento**, quando o ticket for vinculado a uma empresa, trazer automaticamente na descrição do serviço o item do "Padrão Serviços" da empresa; se houver mais de uma opção, deixar o operador escolher qual inserir (com possibilidade de combinar várias).
 
-**Plano**
+## Mudanças
 
-1. **Isolar ambiente**
-   - Testar login na URL publicada e no preview separadamente.
-   - Se falhar nos dois, tratar como problema de backend/conectividade.
-   - Se falhar só no preview, usar a URL publicada enquanto o preview normaliza.
+### 1. Banco de dados (migration)
 
-2. **Validar backend antes de mexer em código**
-   - Repetir checagem de saúde do banco e uma consulta mínima até confirmar que o backend responde sem timeout.
-   - Evitar reaplicar migrations ou alterar políticas enquanto o banco estiver instável.
+- Adicionar colunas em `public.companies`:
+  - `maintenance_script text` (default `''`)
+  - `installation_script text` (default `''`)
+- Nova tabela `public.company_service_templates`:
+  - `id uuid pk`, `company_id uuid fk companies(id) on delete cascade`
+  - `name text not null` (nome do item, ex. "Instalação Padrão")
+  - `description text not null default ''` (texto que será injetado na descrição do ticket)
+  - `position int default 0`, `created_at`, `updated_at`
+  - GRANTs para `authenticated` e `service_role`; RLS habilitado.
+  - Policies: leitura/escrita para `authenticated` (mesmo padrão usado em `companies`/`company_phones` hoje).
+  - Trigger `update_updated_at_column`.
 
-3. **Quando o backend voltar a responder**
-   - Rodar novamente o scan/checagens para confirmar se as correções de segurança foram aplicadas.
-   - Validar login, carregamento de perfil/roles e abertura do chat.
+### 2. Cadastro de empresa (`src/routes/empresas.tsx`)
 
-4. **Se o timeout persistir**
-   - Orientar abertura do painel **Backend** do Lovable Cloud para verificar status/instância.
-   - Se houver carga alta ou timeouts recorrentes, considerar aumentar a instância do backend em **Backend → Advanced settings → Upgrade instance**.
+Reorganizar o `Dialog` de criar/editar empresa em `Tabs` (manter todos os campos atuais):
 
-5. **Só se o backend estiver saudável e o erro continuar**
-   - Aí sim investigar código: `src/hooks/use-auth.tsx`, `src/components/auth-form.tsx`, `src/routes/__root.tsx` e pontos que chamam `supabase.auth.getSession()`.
-   - Ajustar tratamento de sessão expirada/rede para limpar estado quebrado e mostrar mensagem mais clara, sem mascarar falha real de backend.
+```text
+[ Dados ] [ Contatos ] [ Instruções ] [ Script Manutenção ] [ Script Instalação ] [ Padrão Serviços ] [ Observações ]
+```
 
-**Ação recomendada agora**
+- **Dados**: nome, CNPJ, telefone principal, telefones extras, e-mails.
+- **Contatos**: lista atual de contatos.
+- **Instruções**: campo `instructions` atual.
+- **Script Manutenção**: `Textarea` ligado a `maintenance_script`.
+- **Script Instalação**: `Textarea` ligado a `installation_script`.
+- **Padrão Serviços**: CRUD inline (lista + botões adicionar/editar/excluir) dos itens em `company_service_templates`. Cada item: `name` (Input) + `description` (Textarea). Salvar junto com a empresa (após upsert dos demais campos, sincronizar a lista: insert dos novos, update dos editados, delete dos removidos).
+- **Observações**: campo `notes` atual.
 
-Aguardar alguns minutos e testar novamente na URL publicada:
+### 3. Ticket de Liberação de Equipamento (`src/components/atendimentos/ticket-create-dialog.tsx`)
 
-https://unified-action-bridge.lovable.app
+- Quando `isLiberacao && company_id` estiverem definidos, buscar `company_service_templates` da empresa (TanStack Query).
+- Comportamento:
+  - **0 templates**: nada muda.
+  - **1 template**: ao selecionar a categoria "Liberação de Equipamento" e a empresa, **pré-preencher** o campo `description` do ticket com `template.description` (apenas se a descrição estiver vazia; nunca sobrescrever texto digitado pelo operador).
+  - **2+ templates**: mostrar um seletor "Padrão de serviço" acima da descrição com botões "Inserir" por item — clicar acrescenta a descrição do template ao campo de descrição (append com quebra de linha), permitindo combinar vários.
+- UI nova fica próxima ao bloco `LiberacaoEquipamentoFields`, condicional a `isLiberacao` + empresa selecionada.
 
-Se continuar com o mesmo erro, o próximo passo seguro é tratar como instabilidade do Lovable Cloud/backend, não como alteração de código.
+## Detalhes técnicos
 
-<presentation-actions>
-  <presentation-open-history>View History</presentation-open-history>
-</presentation-actions>
+- Reaproveitar o cliente Supabase do browser (`@/integrations/supabase/client`) já usado nesses arquivos — não há mudança no padrão de auth/serverFn.
+- Após a migration, `src/integrations/supabase/types.ts` é regenerado automaticamente; usar os tipos novos sem `as any` quando possível.
+- Validações: `name` obrigatório nos itens de Padrão Serviços; demais campos opcionais.
+- Sem alteração de RLS além das policies da nova tabela.
 
-<presentation-actions>
-<presentation-link url="https://docs.lovable.dev/tips-tricks/troubleshooting">Troubleshooting docs</presentation-link>
-</presentation-actions>
+## Fora de escopo
+
+- Edição dos scripts a partir de outras telas (somente cadastro da empresa).
+- Uso automático dos scripts em outras categorias de ticket (só "Liberação de Equipamento" recebe pré-preenchimento agora).

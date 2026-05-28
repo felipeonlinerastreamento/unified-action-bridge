@@ -930,7 +930,9 @@ export type Database = {
           created_at: string
           emails: string[] | null
           id: string
+          installation_script: string
           instructions: string | null
+          maintenance_script: string
           name: string
           notes: string | null
           phone: string | null
@@ -946,7 +948,9 @@ export type Database = {
           created_at?: string
           emails?: string[] | null
           id?: string
+          installation_script?: string
           instructions?: string | null
+          maintenance_script?: string
           name: string
           notes?: string | null
           phone?: string | null
@@ -962,7 +966,9 @@ export type Database = {
           created_at?: string
           emails?: string[] | null
           id?: string
+          installation_script?: string
           instructions?: string | null
+          maintenance_script?: string
           name?: string
           notes?: string | null
           phone?: string | null
@@ -1027,6 +1033,44 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "company_phones_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      company_service_templates: {
+        Row: {
+          company_id: string
+          created_at: string
+          description: string
+          id: string
+          name: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          created_at?: string
+          description?: string
+          id?: string
+          name: string
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          created_at?: string
+          description?: string
+          id?: string
+          name?: string
+          position?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_service_templates_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
