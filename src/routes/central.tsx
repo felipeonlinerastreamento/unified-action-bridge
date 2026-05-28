@@ -4730,6 +4730,81 @@ function CentralPage() {
         </DialogContent>
       </Dialog>
 
+      {/* Link existing ticket modal */}
+      <Dialog open={showLinkTicketModal} onOpenChange={(open) => { setShowLinkTicketModal(open); if (!open) setLinkTicketProtocol(""); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <LinkIcon className="h-5 w-5" />
+              Vincular chamado a esta conversa
+            </DialogTitle>
+            <DialogDescription>
+              Digite o número do protocolo. Chamados abertos ou finalizados podem ser vinculados — nenhum novo protocolo é criado.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">Número do chamado</Label>
+              <Input
+                autoFocus
+                placeholder="Ex.: 12345"
+                value={linkTicketProtocol}
+                onChange={(e) => setLinkTicketProtocol(e.target.value.replace(/\D/g, ""))}
+                inputMode="numeric"
+              />
+            </div>
+            {linkTicketProtocol && (
+              <div className="rounded-md border bg-muted/30 p-3 text-xs space-y-1">
+                {linkTicketLookup.isFetching ? (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" /> Buscando chamado...
+                  </div>
+                ) : linkTicketLookup.data ? (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold">#{(linkTicketLookup.data as any).protocol_number}</span>
+                      <Badge variant={(linkTicketLookup.data as any).status === "finalizado" ? "secondary" : "default"}>
+                        {(linkTicketLookup.data as any).status}
+                      </Badge>
+                    </div>
+                    {(linkTicketLookup.data as any).companies?.name && (
+                      <div><span className="text-muted-foreground">Empresa:</span> {(linkTicketLookup.data as any).companies.name}</div>
+                    )}
+                    {(linkTicketLookup.data as any).contact_name && (
+                      <div><span className="text-muted-foreground">Contato:</span> {(linkTicketLookup.data as any).contact_name}</div>
+                    )}
+                    {(linkTicketLookup.data as any).plate && (
+                      <div><span className="text-muted-foreground">Placa:</span> {(linkTicketLookup.data as any).plate}</div>
+                    )}
+                    {(linkTicketLookup.data as any).category && (
+                      <div><span className="text-muted-foreground">Categoria:</span> {(linkTicketLookup.data as any).category}</div>
+                    )}
+                    <div className="text-muted-foreground">
+                      Aberto em {new Date((linkTicketLookup.data as any).created_at).toLocaleString("pt-BR")}
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-muted-foreground">Nenhum chamado encontrado com este protocolo.</div>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="flex justify-end gap-2 mt-2">
+            <Button variant="outline" onClick={() => setShowLinkTicketModal(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => linkTicketMutation.mutate()}
+              disabled={linkTicketMutation.isPending || !linkTicketLookup.data}
+            >
+              {linkTicketMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <LinkIcon className="h-4 w-4 mr-2" />}
+              Vincular
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+
       {/* New Chat Modal */}
       <Dialog open={showNewChatModal} onOpenChange={setShowNewChatModal}>
         <DialogContent className="max-w-lg">
