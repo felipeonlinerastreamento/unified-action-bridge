@@ -1251,16 +1251,22 @@ function CentralPage() {
       if (!contactPhone) return [];
       const clean = normalizePhone(contactPhone);
       if (!clean) return [];
+      // Match on the last 8 digits (subscriber number) to be tolerant of
+      // historic data saved with/without the country code 55 and with/without
+      // the mobile "9" prefix (e.g. 5531994730315 vs 553194730315).
+      const tail = clean.slice(-8);
+      if (tail.length < 8) return [];
       const { data } = await supabase
         .from("service_tickets")
         .select("*, companies(name)")
-        .ilike("contact_phone", `%${clean.slice(-10)}%`)
+        .ilike("contact_phone", `%${tail}%`)
         .order("created_at", { ascending: false })
         .limit(40);
       return (data || []).filter((t: any) => t.attendance_id !== selectedChatId);
     },
     enabled: !!contactPhone && isAuthenticated,
   });
+
 
   // Create CRM opportunity (Pipeline) from current contact
   const createOpportunityMutation = useMutation({
