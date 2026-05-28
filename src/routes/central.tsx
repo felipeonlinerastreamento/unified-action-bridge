@@ -3036,6 +3036,16 @@ function CentralPage() {
                           variant="ghost"
                           size="sm"
                           className="h-7 gap-1 text-xs"
+                          title="Vincular esse chamado"
+                          onClick={() => setShowLinkTicketModal(true)}
+                        >
+                          <LinkIcon className="h-3.5 w-3.5" />
+                          Vincular chamado
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 gap-1 text-xs"
                           title="Transferir"
                           onClick={() => setShowTransferModal(true)}
                         >
