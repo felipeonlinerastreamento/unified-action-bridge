@@ -315,6 +315,8 @@ function CentralPage() {
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [transferSectorId, setTransferSectorId] = useState<string>("");
   const [transferUserId, setTransferUserId] = useState<string>("");
+  const [showLinkTicketModal, setShowLinkTicketModal] = useState(false);
+  const [linkTicketProtocol, setLinkTicketProtocol] = useState<string>("");
   const [changingCompany, setChangingCompany] = useState(false);
   const isMobile = useIsMobile();
   const [showLeftPanel, setShowLeftPanel] = useState(true);
@@ -2274,6 +2276,50 @@ function CentralPage() {
     onError: (err: any) => toast.error(err?.message || "Erro ao transferir"),
   });
 
+  // Link existing service ticket (chamado) to this chat — no new protocol
+  const linkTicketLookup = useQuery({
+    queryKey: ["link-ticket-lookup", linkTicketProtocol],
+    queryFn: async () => {
+      const num = parseInt(linkTicketProtocol.replace(/\D/g, ""), 10);
+      if (!num || isNaN(num)) return null;
+      const { data } = await supabase
+        .from("service_tickets")
+        .select("*, companies(name)")
+        .eq("protocol_number", num)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      return data && data.length > 0 ? data[0] : null;
+    },
+    enabled: !!linkTicketProtocol && linkTicketProtocol.replace(/\D/g, "").length > 0 && showLinkTicketModal,
+  });
+
+  const linkTicketMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedChatId) throw new Error("Nenhum chat selecionado");
+      const ticket = linkTicketLookup.data;
+      if (!ticket) throw new Error("Chamado não encontrado");
+      const { error } = await supabase
+        .from("service_tickets")
+        .update({
+          attendance_id: selectedChatId,
+          channel_id: selectedChannelId || (ticket as any).channel_id || null,
+        })
+        .eq("id", (ticket as any).id);
+      if (error) throw error;
+      return ticket;
+    },
+    onSuccess: (ticket: any) => {
+      toast.success(`Chamado #${ticket.protocol_number} vinculado a este chat`);
+      setShowLinkTicketModal(false);
+      setLinkTicketProtocol("");
+      refetchTicket();
+      queryClient.invalidateQueries({ queryKey: ["service-ticket", selectedChatId] });
+      queryClient.invalidateQueries({ queryKey: ["contact-history"] });
+      queryClient.invalidateQueries({ queryKey: ["plate-history"] });
+    },
+    onError: (err: any) => toast.error(err?.message || "Erro ao vincular chamado"),
+  });
+
   // Create new chat
   const createChatMutation = useMutation({
     mutationFn: async () => {
@@ -2986,6 +3032,16 @@ function CentralPage() {
                             </Command>
                           </PopoverContent>
                         </Popover>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 gap-1 text-xs"
+                          title="Vincular esse chamado"
+                          onClick={() => setShowLinkTicketModal(true)}
+                        >
+                          <LinkIcon className="h-3.5 w-3.5" />
+                          Vincular chamado
+                        </Button>
                         <Button
                           variant="ghost"
                           size="sm"
@@ -4673,6 +4729,81 @@ function CentralPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Link existing ticket modal */}
+      <Dialog open={showLinkTicketModal} onOpenChange={(open) => { setShowLinkTicketModal(open); if (!open) setLinkTicketProtocol(""); }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <LinkIcon className="h-5 w-5" />
+              Vincular chamado a esta conversa
+            </DialogTitle>
+            <DialogDescription>
+              Digite o número do protocolo. Chamados abertos ou finalizados podem ser vinculados — nenhum novo protocolo é criado.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="space-y-2">
+              <Label className="text-xs font-medium">Número do chamado</Label>
+              <Input
+                autoFocus
+                placeholder="Ex.: 12345"
+                value={linkTicketProtocol}
+                onChange={(e) => setLinkTicketProtocol(e.target.value.replace(/\D/g, ""))}
+                inputMode="numeric"
+              />
+            </div>
+            {linkTicketProtocol && (
+              <div className="rounded-md border bg-muted/30 p-3 text-xs space-y-1">
+                {linkTicketLookup.isFetching ? (
+                  <div className="flex items-center gap-2 text-muted-foreground">
+                    <Loader2 className="h-3 w-3 animate-spin" /> Buscando chamado...
+                  </div>
+                ) : linkTicketLookup.data ? (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <span className="font-semibold">#{(linkTicketLookup.data as any).protocol_number}</span>
+                      <Badge variant={(linkTicketLookup.data as any).status === "finalizado" ? "secondary" : "default"}>
+                        {(linkTicketLookup.data as any).status}
+                      </Badge>
+                    </div>
+                    {(linkTicketLookup.data as any).companies?.name && (
+                      <div><span className="text-muted-foreground">Empresa:</span> {(linkTicketLookup.data as any).companies.name}</div>
+                    )}
+                    {(linkTicketLookup.data as any).contact_name && (
+                      <div><span className="text-muted-foreground">Contato:</span> {(linkTicketLookup.data as any).contact_name}</div>
+                    )}
+                    {(linkTicketLookup.data as any).plate && (
+                      <div><span className="text-muted-foreground">Placa:</span> {(linkTicketLookup.data as any).plate}</div>
+                    )}
+                    {(linkTicketLookup.data as any).category && (
+                      <div><span className="text-muted-foreground">Categoria:</span> {(linkTicketLookup.data as any).category}</div>
+                    )}
+                    <div className="text-muted-foreground">
+                      Aberto em {new Date((linkTicketLookup.data as any).created_at).toLocaleString("pt-BR")}
+                    </div>
+                  </>
+                ) : (
+                  <div className="text-muted-foreground">Nenhum chamado encontrado com este protocolo.</div>
+                )}
+              </div>
+            )}
+          </div>
+          <div className="flex justify-end gap-2 mt-2">
+            <Button variant="outline" onClick={() => setShowLinkTicketModal(false)}>
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => linkTicketMutation.mutate()}
+              disabled={linkTicketMutation.isPending || !linkTicketLookup.data}
+            >
+              {linkTicketMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <LinkIcon className="h-4 w-4 mr-2" />}
+              Vincular
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
 
       {/* New Chat Modal */}
       <Dialog open={showNewChatModal} onOpenChange={setShowNewChatModal}>
