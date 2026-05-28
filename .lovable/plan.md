@@ -1,29 +1,35 @@
-## Objetivo
-Quando uma conversa entra na Central, fica como "aguardando" até o cliente digitar o setor. Se em 10 minutos o setor não for escolhido, o sistema deve atribuir automaticamente a conversa a um operador do setor **Atendimento** com a menor fila de chamados ativos.
+## Plano: Correções de segurança da Lovable Cloud
 
-## Como vai funcionar
-- Um job em segundo plano roda a cada minuto e procura chats com:
-  - `status = 'aguardando'`
-  - sem `assigned_to` definido
-  - sem `sector_name` definido (cliente ainda não escolheu setor)
-  - `created_at` (ou `last_message_at`) mais antigo que 10 minutos
-- Para cada chat encontrado:
-  1. Define `sector_name = 'Atendimento'`
-  2. Escolhe o operador do setor Atendimento com menor número de chats `em_atendimento` (usa a função `pick_least_loaded_agent_any` que já existe e ignora disponibilidade, conforme escolhido).
-  3. Atribui o chat (`assigned_to`, `status = 'em_atendimento'`).
-  4. Registra um evento em `attendance_event_logs` (`event_type: 'auto_route_aguardando'`) para auditoria.
-- Se nenhum operador existir no setor Atendimento, o chat permanece aguardando e o scanner tenta novamente no próximo ciclo.
+Assim que o backend de migrações voltar a aceitar conexões, aplico uma única migração cobrindo todos os achados do scan.
 
-## Mudanças técnicas
-1. **Novo server route**: `src/routes/api.public.auto-route-aguardando.tsx`
-   - `POST` protegido por `isAuthorizedCronRequest` (mesmo padrão de `api.public.chat-idle-scanner.tsx`).
-   - Lê chats elegíveis, chama `pick_least_loaded_agent_any('Atendimento')` via `supabaseAdmin.rpc`, atualiza o chat e registra log.
+### 1. Bucket `chat-media` → privado
+`UPDATE storage.buckets SET public=false`. Acesso passa a exigir URL assinada. Se houver `<img src>` apontando direto pra CDN no app, troco por `createSignedUrl`.
 
-2. **Cron job (pg_cron)** via `supabase--insert`:
-   - Schedule: a cada 1 minuto.
-   - Chama o endpoint acima com header `apikey` (anon key) — sem novos secrets.
+### 2. Tabelas de compras — remover `USING(true)` em escrita
+Tabelas: `ticket_purchase_items`, `ticket_purchase_requests`, `ticket_compra_equipamento_items`.
+- DROP da policy `*_all` / `*_manage` (ALL com `true`)
+- SELECT: autenticados (mantém visibilidade)
+- INSERT / UPDATE / DELETE: somente `admin` ou `gestor` via `public.has_role()`
 
-## Fora de escopo
-- UI de configuração (timeout e setor ficam fixos: 10 min, "Atendimento").
-- Notificação push ao operador atribuído (usa o fluxo padrão já existente de novo chat atribuído).
-- Alteração das regras já existentes de roteamento por palavra-chave (`message_triggers`) ou de ociosidade (`chat-idle-scanner`).
+### 3. `zapi_quick_replies`
+Substituir a UPDATE policy atual por uma que permite:
+- editar a própria resposta (own, não global)
+- editar respostas globais apenas se `admin`/`gestor`
+
+### 4. Realtime — escopo por usuário
+Hoje `realtime.messages` aceita `USING(true)`, então qualquer autenticado pode assinar qualquer canal. Vou trocar por:
+- SELECT: `realtime.topic() = 'user:' || auth.uid()` OU prefixo `public:*`
+- INSERT: somente `'user:' || auth.uid()`
+
+⚠️ **Impacto no frontend:** toda subscrição realtime precisa usar nomes de canal nessa convenção. Hoje o app usa `postgres_changes` em canais como `messages`, `notifications`, etc. — esses continuam funcionando porque `postgres_changes` é filtrado por RLS da tabela, não pelas policies de `realtime.messages` (que governam broadcast/presence). Então o impacto fica restrito a eventuais usos de `channel.send()` / broadcast, que vou auditar antes.
+
+### 5. Função SECURITY DEFINER pública (linter)
+Achado genérico: alguma função com `EXECUTE` para `anon`. Vou listar funções `SECURITY DEFINER` no schema `public` e revogar `EXECUTE FROM anon, public` onde não for intencional (mantendo `has_role` etc. acessíveis ao `authenticated` quando usadas em RLS).
+
+### Ordem de execução
+1. Backend volta → rodar a migração consolidada
+2. Auditar uso de broadcast realtime e ajustar nomes de canal se necessário
+3. Trocar URLs públicas de `chat-media` por signed URLs onde aplicável
+4. Rodar scan novamente para confirmar
+
+Confirma que posso seguir com a convenção `user:<uuid>` / `public:*` para canais de broadcast?
