@@ -315,6 +315,8 @@ function CentralPage() {
   const [showTransferModal, setShowTransferModal] = useState(false);
   const [transferSectorId, setTransferSectorId] = useState<string>("");
   const [transferUserId, setTransferUserId] = useState<string>("");
+  const [showLinkTicketModal, setShowLinkTicketModal] = useState(false);
+  const [linkTicketProtocol, setLinkTicketProtocol] = useState<string>("");
   const [changingCompany, setChangingCompany] = useState(false);
   const isMobile = useIsMobile();
   const [showLeftPanel, setShowLeftPanel] = useState(true);
