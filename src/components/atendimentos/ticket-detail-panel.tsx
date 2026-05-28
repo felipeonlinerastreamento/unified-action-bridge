@@ -257,6 +257,40 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
     enabled: open,
     staleTime: 60_000,
   });
+
+  // Padrão de Serviços cadastrado na empresa do chamado
+  const { data: serviceTemplates = [] } = useQuery({
+    queryKey: ["ticket-company-service-templates", ticket?.company_id],
+    queryFn: async () => {
+      if (!ticket?.company_id) return [] as any[];
+      const { data } = await supabase
+        .from("company_service_templates" as any)
+        .select("id, name, description, position")
+        .eq("company_id", ticket.company_id)
+        .order("position");
+      return (data as any[]) || [];
+    },
+    enabled: open && !!ticket?.company_id,
+    staleTime: 60_000,
+  });
+
+  const appendTemplateToNotes = async (description: string) => {
+    if (!description || !ticket?.id) return;
+    const current = (ticket.notes || "").trim();
+    const next = current ? `${current}\n\n${description}` : description;
+    const { error } = await supabase
+      .from("service_tickets")
+      .update({ notes: next, updated_at: new Date().toISOString() })
+      .eq("id", ticket.id);
+    if (error) {
+      toast.error("Falha ao inserir nas observações");
+      return;
+    }
+    toast.success("Padrão inserido nas observações");
+    onRefetch();
+    queryClient.invalidateQueries({ queryKey: ["service-tickets"] });
+  };
+
   const subcategoryOptions = (subcategoriesAll as any[]).filter(
     (s) => s.category_key === categoryDraft
   );
@@ -1079,6 +1113,47 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
                 )}
               </div>
             </div>
+
+            {serviceTemplates.length > 0 && (
+              <div className="rounded-md border border-amber-200 bg-amber-50/60 dark:bg-amber-950/20 dark:border-amber-900 p-3 space-y-2">
+                <div className="flex items-center gap-2">
+                  <ShieldAlert className="h-4 w-4 text-amber-700 dark:text-amber-400" />
+                  <h4 className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                    Padrão de Serviços do cliente
+                  </h4>
+                </div>
+                <div className="space-y-2">
+                  {(serviceTemplates as any[]).map((tpl) => (
+                    <div
+                      key={tpl.id}
+                      className="rounded border border-amber-200/70 dark:border-amber-900/60 bg-background/60 p-2"
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <p className="text-xs font-semibold uppercase tracking-wide text-amber-900 dark:text-amber-200">
+                          {tpl.name || "Padrão"}
+                        </p>
+                        {tpl.description && ticket.status !== "finalizado" && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 text-xs"
+                            onClick={() => appendTemplateToNotes(tpl.description)}
+                          >
+                            Inserir nas observações
+                          </Button>
+                        )}
+                      </div>
+                      {tpl.description && (
+                        <p className="mt-1 text-sm whitespace-pre-wrap break-words text-foreground/90">
+                          {tpl.description}
+                        </p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <DetailRow label="Criado em" value={ticket.created_at ? new Date(ticket.created_at).toLocaleString("pt-BR") : null} />
             <DetailRow label="Criado por" value={ticket.opened_by ? (profiles.find((p) => p.user_id === ticket.opened_by)?.name || "—") : "—"} />
             <DetailRow label="Finalizado em" value={ticket.closed_at ? new Date(ticket.closed_at).toLocaleString("pt-BR") : null} />

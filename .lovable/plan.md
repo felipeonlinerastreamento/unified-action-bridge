@@ -1,59 +1,36 @@
+## Problema
 
-## Objetivo
+No ticket #01838 (cliente *Etica Servicos de Engenharia Ltda*), o cadastro da empresa tem um **Padrão de Serviços** preenchido:
 
-1. No cadastro de empresa, organizar o formulário em abas e adicionar três novas: **Script Manutenção**, **Script Instalação** e **Padrão Serviços**.
-2. Em **Padrão Serviços**, permitir inserir/editar/excluir itens (cada item com nome e descrição).
-3. Em tickets da categoria **Liberação de Equipamento**, quando o ticket for vinculado a uma empresa, trazer automaticamente na descrição do serviço o item do "Padrão Serviços" da empresa; se houver mais de uma opção, deixar o operador escolher qual inserir (com possibilidade de combinar várias).
+> Padrão — Plataforma: SSX · Equipamento: JR12 + Identificador de motorista (Dupla Frequência) · Sensor de fadiga Jimi
 
-## Mudanças
+Esse conteúdo só aparece hoje no **diálogo de criação** de ticket (e apenas para a categoria *Liberação de equipamento*). Ao abrir um chamado já existente no painel de detalhes, o operador não vê o padrão da empresa — por isso parece "sumido".
 
-### 1. Banco de dados (migration)
+## O que será feito
 
-- Adicionar colunas em `public.companies`:
-  - `maintenance_script text` (default `''`)
-  - `installation_script text` (default `''`)
-- Nova tabela `public.company_service_templates`:
-  - `id uuid pk`, `company_id uuid fk companies(id) on delete cascade`
-  - `name text not null` (nome do item, ex. "Instalação Padrão")
-  - `description text not null default ''` (texto que será injetado na descrição do ticket)
-  - `position int default 0`, `created_at`, `updated_at`
-  - GRANTs para `authenticated` e `service_role`; RLS habilitado.
-  - Policies: leitura/escrita para `authenticated` (mesmo padrão usado em `companies`/`company_phones` hoje).
-  - Trigger `update_updated_at_column`.
+Adicionar uma nova seção **"Padrão de Serviços"** no painel de detalhes do chamado (`ticket-detail-panel.tsx`), exibida sempre que a empresa vinculada ao chamado possuir registros em `company_service_templates`.
 
-### 2. Cadastro de empresa (`src/routes/empresas.tsx`)
+### Comportamento
 
-Reorganizar o `Dialog` de criar/editar empresa em `Tabs` (manter todos os campos atuais):
+- Carrega os itens (`name`, `description`) da empresa do chamado, ordenados por `position`.
+- Renderiza cada item em um card compacto com:
+  - **Nome** do item (ex.: "Padrão")
+  - **Descrição** completa em `whitespace-pre-wrap` (mantém quebras de linha)
+  - Botão **"Inserir na descrição"** que anexa o texto ao campo *Descrição do serviço* do chamado (mesmo padrão usado no diálogo de criação).
+- Se a empresa não tem padrões cadastrados, a seção fica oculta (não polui o painel).
+- Funciona para **qualquer categoria** de chamado, não só Liberação — assim o operador sempre vê o "manual" do cliente ao atender.
+- Atualização reativa: se a empresa do ticket for trocada via o campo *Empresa*, a seção recarrega.
 
-```text
-[ Dados ] [ Contatos ] [ Instruções ] [ Script Manutenção ] [ Script Instalação ] [ Padrão Serviços ] [ Observações ]
-```
+### Posicionamento na UI
 
-- **Dados**: nome, CNPJ, telefone principal, telefones extras, e-mails.
-- **Contatos**: lista atual de contatos.
-- **Instruções**: campo `instructions` atual.
-- **Script Manutenção**: `Textarea` ligado a `maintenance_script`.
-- **Script Instalação**: `Textarea` ligado a `installation_script`.
-- **Padrão Serviços**: CRUD inline (lista + botões adicionar/editar/excluir) dos itens em `company_service_templates`. Cada item: `name` (Input) + `description` (Textarea). Salvar junto com a empresa (após upsert dos demais campos, sincronizar a lista: insert dos novos, update dos editados, delete dos removidos).
-- **Observações**: campo `notes` atual.
+Logo abaixo dos dados da empresa/contato e acima da seção de Descrição/Atividades, para que o operador veja o padrão antes de descrever o serviço.
 
-### 3. Ticket de Liberação de Equipamento (`src/components/atendimentos/ticket-create-dialog.tsx`)
+## Arquivos afetados
 
-- Quando `isLiberacao && company_id` estiverem definidos, buscar `company_service_templates` da empresa (TanStack Query).
-- Comportamento:
-  - **0 templates**: nada muda.
-  - **1 template**: ao selecionar a categoria "Liberação de Equipamento" e a empresa, **pré-preencher** o campo `description` do ticket com `template.description` (apenas se a descrição estiver vazia; nunca sobrescrever texto digitado pelo operador).
-  - **2+ templates**: mostrar um seletor "Padrão de serviço" acima da descrição com botões "Inserir" por item — clicar acrescenta a descrição do template ao campo de descrição (append com quebra de linha), permitindo combinar vários.
-- UI nova fica próxima ao bloco `LiberacaoEquipamentoFields`, condicional a `isLiberacao` + empresa selecionada.
+- `src/components/atendimentos/ticket-detail-panel.tsx` — nova seção + query `["ticket-company-service-templates", company_id]` usando `supabase.from("company_service_templates")`.
 
-## Detalhes técnicos
+## Fora do escopo
 
-- Reaproveitar o cliente Supabase do browser (`@/integrations/supabase/client`) já usado nesses arquivos — não há mudança no padrão de auth/serverFn.
-- Após a migration, `src/integrations/supabase/types.ts` é regenerado automaticamente; usar os tipos novos sem `as any` quando possível.
-- Validações: `name` obrigatório nos itens de Padrão Serviços; demais campos opcionais.
-- Sem alteração de RLS além das policies da nova tabela.
-
-## Fora de escopo
-
-- Edição dos scripts a partir de outras telas (somente cadastro da empresa).
-- Uso automático dos scripts em outras categorias de ticket (só "Liberação de Equipamento" recebe pré-preenchimento agora).
+- Não altera o cadastro da empresa nem o diálogo de criação de tickets.
+- Não cria migrations (a tabela `company_service_templates` já existe).
+- Não altera o conteúdo de `instructions` (campo amarelo) — esse continua vazio neste cliente; se quiser exibir também as Instruções de Atendimento no painel, é um próximo passo opcional.
