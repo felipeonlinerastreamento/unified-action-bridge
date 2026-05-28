@@ -2276,6 +2276,50 @@ function CentralPage() {
     onError: (err: any) => toast.error(err?.message || "Erro ao transferir"),
   });
 
+  // Link existing service ticket (chamado) to this chat — no new protocol
+  const linkTicketLookup = useQuery({
+    queryKey: ["link-ticket-lookup", linkTicketProtocol],
+    queryFn: async () => {
+      const num = parseInt(linkTicketProtocol.replace(/\D/g, ""), 10);
+      if (!num || isNaN(num)) return null;
+      const { data } = await supabase
+        .from("service_tickets")
+        .select("*, companies(name)")
+        .eq("protocol_number", num)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      return data && data.length > 0 ? data[0] : null;
+    },
+    enabled: !!linkTicketProtocol && linkTicketProtocol.replace(/\D/g, "").length > 0 && showLinkTicketModal,
+  });
+
+  const linkTicketMutation = useMutation({
+    mutationFn: async () => {
+      if (!selectedChatId) throw new Error("Nenhum chat selecionado");
+      const ticket = linkTicketLookup.data;
+      if (!ticket) throw new Error("Chamado não encontrado");
+      const { error } = await supabase
+        .from("service_tickets")
+        .update({
+          attendance_id: selectedChatId,
+          channel_id: selectedChannelId || (ticket as any).channel_id || null,
+        })
+        .eq("id", (ticket as any).id);
+      if (error) throw error;
+      return ticket;
+    },
+    onSuccess: (ticket: any) => {
+      toast.success(`Chamado #${ticket.protocol_number} vinculado a este chat`);
+      setShowLinkTicketModal(false);
+      setLinkTicketProtocol("");
+      refetchTicket();
+      queryClient.invalidateQueries({ queryKey: ["service-ticket", selectedChatId] });
+      queryClient.invalidateQueries({ queryKey: ["contact-history"] });
+      queryClient.invalidateQueries({ queryKey: ["plate-history"] });
+    },
+    onError: (err: any) => toast.error(err?.message || "Erro ao vincular chamado"),
+  });
+
   // Create new chat
   const createChatMutation = useMutation({
     mutationFn: async () => {
