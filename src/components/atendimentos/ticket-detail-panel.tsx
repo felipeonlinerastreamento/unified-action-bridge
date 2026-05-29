@@ -1189,7 +1189,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
                       </div>
                     )}
                     {subcategoryDraft && equipmentModels.length > 0 && (
-                      <div className="flex gap-1 items-center">
+                      <div className="flex flex-col gap-1">
                         <Select value={equipmentModelDraft || ""} onValueChange={(v) => setEquipmentModelDraft(v)} disabled={savingCategory}>
                           <SelectTrigger className="h-8 text-xs">
                             <SelectValue placeholder="Modelo do equipamento *" />
@@ -1200,11 +1200,16 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
                             ))}
                           </SelectContent>
                         </Select>
+                        {equipmentModelsFallback && (
+                          <p className="text-[10px] text-muted-foreground italic">
+                            Mostrando todos os modelos de Liberação de Equipamento
+                          </p>
+                        )}
                       </div>
                     )}
                     {subcategoryDraft && equipmentModels.length === 0 && (
                       <p className="text-[10px] text-muted-foreground italic">
-                        Sem modelos vinculados — Configurações › Sub-Menu de Categorias
+                        Nenhum modelo cadastrado em Liberação de Equipamento
                       </p>
                     )}
                   </div>
