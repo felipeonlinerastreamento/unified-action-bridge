@@ -149,7 +149,7 @@ import {
   validateLiberacaoItems,
   type LiberacaoLineItem,
 } from "@/components/atendimentos/liberacao-equipamento-fields";
-import { isLiberacaoCategory, useSubcategoryEquipmentModels } from "@/hooks/use-liberacao-equipamento";
+import { isLiberacaoCategory, useSubcategoryEquipmentModelsWithFallback } from "@/hooks/use-liberacao-equipamento";
 
 import { escalateToGestao as escalateToGestaoHelper } from "@/lib/escalate-gestao";
 import { useAttendanceEventSettings, useSlaBandChangeNotifier } from "@/hooks/use-attendance-events";
