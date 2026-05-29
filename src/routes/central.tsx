@@ -3076,6 +3076,32 @@ function CentralPage() {
                             </Command>
                           </PopoverContent>
                         </Popover>
+                        {finalizeTipoPendencia && finalizeSubcategoryOptions.length > 0 && (
+                          <Select value={finalizeSubcategoryId || "__none__"} onValueChange={(v) => setFinalizeSubcategoryId(v === "__none__" ? "" : v)}>
+                            <SelectTrigger className="w-[160px] h-7 text-xs">
+                              <SelectValue placeholder="Sub-item..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__none__">— Sem sub-item —</SelectItem>
+                              {finalizeSubcategoryOptions.map((s: any) => (
+                                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                        {finalizeSubcategoryId && (finalizeEquipmentModels as any[]).length > 0 && (
+                          <Select value={finalizeEquipmentModelId} onValueChange={setFinalizeEquipmentModelId}>
+                            <SelectTrigger className="w-[180px] h-7 text-xs">
+                              <SelectValue placeholder="Modelo *" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {(finalizeEquipmentModels as any[]).map((m: any) => (
+                                <SelectItem key={m.equipment_item_id} value={m.equipment_item_id}>{m.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+
                         <Button
                           variant="ghost"
                           size="sm"
