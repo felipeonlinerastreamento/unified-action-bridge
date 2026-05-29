@@ -1,48 +1,51 @@
-## Objetivo
+## Problema (chamado #01838)
 
-Permitir registrar e exportar **Tratativas de Ocorrências** (Telemetria e Fadiga) em PDF, exatamente no modelo do PDF anexo — com a logo da Online Rastreamento no topo e campos de assinatura no rodapé.
+A linha "Responsável" no painel é a **união** de `service_tickets.assigned_to` + `ticket_agents.user_id` (linhas 1019–1026 de `ticket-detail-panel.tsx`). No #01838:
 
-## Onde fica
+- `assigned_to` = **Fernanda** (definida antes)
+- Usuário vinculou e depois removeu Kauã via *Atendentes Vinculados*
+- Encaminhou para o setor "Laboratorio" 3x — o RPC `pick_least_loaded_agent` retornou `null` (ninguém online/disponível no setor), então **o `assigned_to` nunca foi alterado** → Fernanda continua aparecendo.
 
-- Novo item no menu lateral: **Tratativas** (rota `/tratativas`).
-- Aba/seletor no topo da página para alternar entre **Telemetria** e **Fadiga** (o template do PDF é o mesmo; muda apenas o título "Tipo de Ocorrência" e o conjunto de "Tipos" disponíveis no select).
-- Listagem das tratativas já registradas + botão **Nova tratativa**.
-- Em cada linha: ações **Editar** e **Exportar PDF**.
+Hoje, "Encaminhar para Setor" e "Encaminhar para Usuário" são fluxos separados, e o encaminhamento de setor preserva o responsável antigo quando não encontra ninguém disponível.
 
-## Formulário (espelha o modelo PDF)
+## O que vai mudar
 
-- **Cabeçalho**: Nº da Ocorrência, Data de Exportação (auto na hora do PDF).
-- **Detalhes**: Situação (Sem risco / Risco baixo / Risco médio / Risco alto), Cliente, Identificador, IMEI, Tipo (lista por categoria — ex.: Distração, Sonolência, Fumando, Celular… para Fadiga; Excesso de velocidade, Freada brusca, Curva agressiva… para Telemetria).
-- **Tratativa**: Responsável (auto = e‑mail do usuário logado), Data da Tratativa, Primeiro Alarme, Último Alarme.
-- **Alarmes** (lista dinâmica, +adicionar): Data/Hora, Latitude, Longitude, Velocidade.
-- **Motorista**: Nome, Situação, Observações.
+### 1. Encaminhar para Setor (sem operador escolhido) — fallback de roteamento
 
-## PDF
+`forwardToSector` em `src/components/atendimentos/ticket-detail-panel.tsx`:
 
-- Gerado client‑side com **jsPDF + jspdf‑autotable** (sem dependência de servidor).
-- Logo `Logo_Online_Rastreamento.png` salva em `src/assets/` e embutida no topo.
-- Layout idêntico ao modelo: blocos "Detalhes da Ocorrência", "Alarmes", "Motorista" como tabelas com cabeçalho cinza claro.
-- Rodapé com duas linhas de assinatura lado a lado: **Responsável da Tratativa** e **Motorista Apontado** (`Assinatura ____________________`).
-- Nome do arquivo: `tratativa-{numero}-{YYYYMMDD}.pdf`.
+1. Tenta `pick_least_loaded_agent(_sector)` (agentes online + disponíveis para chat).
+2. Se retornar `null`, tenta `pick_least_loaded_agent_any(_sector)` (qualquer agente do setor, ignorando presença/disponibilidade) — função já existe no banco.
+3. Mesmo se ambas retornarem `null`, **sempre** seta `assigned_to` no update (incluindo `null` quando não houver candidato), para **desvincular** o responsável antigo. Hoje só inclui `assigned_to` no payload quando há agente.
+4. Comentário de sistema reflete o novo estado:
+   - encaminhado + atribuído a X (menor carga online)
+   - encaminhado + atribuído a X (menor carga, agente offline)
+   - encaminhado + nenhum atendente no setor → responsável removido
 
-## Persistência
+### 2. Encaminhar para Setor (com operador escolhido) — atribuição manual
 
-- Nova tabela `tratativas` no Lovable Cloud:
-  - categoria (`telemetria` | `fadiga`), numero_ocorrencia, situacao, cliente, identificador, imei, tipo, responsavel_email, data_tratativa, primeiro_alarme, ultimo_alarme, motorista_nome, motorista_situacao, motorista_observacoes, alarmes (jsonb: array `[{data_hora, lat, lng, velocidade}]`), created_by, timestamps.
-- RLS: usuários autenticados leem/criam/editam; admin/gestor podem excluir.
+Adicionar um segundo `Select` opcional ("Operador específico — opcional") logo abaixo do select de setor. O Select de operador filtra para mostrar apenas usuários atribuídos ao setor selecionado (via `user_sector_assignments` + `sectors`), com opção "— Roteamento automático —" no topo.
+
+Quando o operador é escolhido:
+
+- Pula os RPCs, usa o `user_id` selecionado direto como `assigned_to`.
+- Atualiza `sector` e `assigned_to` no mesmo update.
+- Registra histórico em `ticket_assignments` e comentário "Encaminhado para setor X → atribuído a Y".
+
+### 3. Sem alterações em "Atendentes Vinculados"
+
+O componente `TicketAgentsSection` continua existindo para casos onde se quer adicionar **co-atendentes** sem trocar o responsável principal. Para reduzir a confusão atual, renomear o label da linha 1019 de "Responsável" para **"Responsável / Atendentes"** e separar visualmente: primeiro o responsável (assigned_to) em destaque, depois os co-atendentes em badges menores. Isso evita o caso onde o usuário pensa que vincular um atendente troca o responsável.
 
 ## Arquivos afetados
 
-- `supabase/migrations/...` — tabela `tratativas` + RLS + GRANTs.
-- `src/assets/logo-online-rastreamento.png` — logo embutida.
-- `src/routes/tratativas.tsx` — nova rota.
-- `src/components/tratativas/tratativas-list.tsx` — listagem + filtros por categoria.
-- `src/components/tratativas/tratativa-form-dialog.tsx` — form de criar/editar.
-- `src/lib/tratativa-pdf.ts` — geração do PDF (jsPDF) com logo + tabelas + assinaturas.
-- `src/components/app-sidebar.tsx` — novo item de menu.
-- `package.json` — adicionar `jspdf` e `jspdf-autotable`.
+- `src/components/atendimentos/ticket-detail-panel.tsx`
+  - `forwardToSector`: fallback para `pick_least_loaded_agent_any`, sempre setar `assigned_to` (mesmo `null`).
+  - UI "Encaminhar para Setor": novo `Select` opcional de operador filtrado por setor.
+  - Linha 1019 "Responsável": separar visualmente responsável principal × atendentes vinculados.
+- Nenhuma migração de banco — `pick_least_loaded_agent_any` já existe.
 
 ## Fora de escopo
 
-- Importação automática de ocorrências da plataforma externa (Telemetria/Fadiga) — registro é manual nesta fase.
-- Assinatura digital — o PDF traz apenas linhas para assinatura manuscrita após impressão.
+- Notificar o operador atribuído automaticamente (já existe via realtime do `assigned_to`).
+- Mudar o comportamento do botão "Atendentes Vinculados" (continua adicionando co-atendentes, não troca responsável).
+- Editar `assigned_to` diretamente clicando no nome do responsável (pode ser feito em seguida se quiser).
