@@ -261,7 +261,7 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
     () => (subcategoriesAll as any[]).filter((s) => s.category_key === selectedTipoKey),
     [subcategoriesAll, selectedTipoKey],
   );
-  const { data: equipmentModels = [] } = useSubcategoryEquipmentModels(subcategoryId || null);
+  const { models: equipmentModels, isFallback: equipmentModelsFallback } = useSubcategoryEquipmentModelsWithFallback(subcategoryId || null);
 
   // Reset sub-item/modelo quando troca de categoria
   useEffect(() => {
