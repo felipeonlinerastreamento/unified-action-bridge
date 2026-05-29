@@ -1514,6 +1514,7 @@ function CentralPage() {
           chatId: selectedChatId,
           message: text,
           replyToMessageId: replyToMessageId || undefined,
+          includeOperatorName: includeOperatorName !== false,
         },
         ...await getAuthHeaders(),
       });
