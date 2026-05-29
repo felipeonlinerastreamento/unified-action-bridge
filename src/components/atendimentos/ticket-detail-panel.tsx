@@ -62,6 +62,7 @@ import { TicketPurchaseSection } from "./ticket-purchase-section";
 import { TicketPerdidosSection } from "./ticket-perdidos-section";
 import { TicketAttachmentsSection } from "./ticket-attachments-section";
 import { TicketActivitiesSection, getPendingActivities } from "./ticket-activities-section";
+import { useSubcategoryEquipmentModels } from "@/hooks/use-liberacao-equipamento";
 import {
   useTesteEquipamentoSettings,
   isTesteEquipamentoCategory,
