@@ -309,6 +309,31 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
     },
   });
 
+  // Users assigned to the currently selected forward sector
+  const { data: forwardSectorUsers = [] } = useQuery({
+    queryKey: ["sector-users", forwardSector],
+    enabled: !!forwardSector,
+    queryFn: async () => {
+      const sector = (sectors as any[]).find(
+        (s: any) => String(s.name).toLowerCase() === forwardSector.toLowerCase(),
+      );
+      if (!sector) return [] as Array<{ user_id: string; name: string | null }>;
+      const { data } = await supabase
+        .from("user_sector_assignments")
+        .select("user_id")
+        .eq("sector_id", sector.id);
+      const ids = (data ?? []).map((r: any) => r.user_id);
+      if (!ids.length) return [];
+      return ids
+        .map((uid: string) => {
+          const p = profiles.find((pp) => pp.user_id === uid);
+          return { user_id: uid, name: p?.name ?? null };
+        })
+        .sort((a, b) => (a.name ?? "").localeCompare(b.name ?? ""));
+    },
+  });
+
+
   // Get current user
   const { data: currentUser } = useQuery({
     queryKey: ["current-user"],
