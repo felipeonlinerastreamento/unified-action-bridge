@@ -3172,7 +3172,7 @@ function CentralPage() {
                               </DropdownMenu>
                             )}
                             <div
-                              className={`max-w-[75%] rounded-lg px-3 py-2 text-sm ${
+                              className={`max-w-[75%] min-w-0 rounded-lg px-3 py-2 text-sm [overflow-wrap:anywhere] ${
                                 isErased
                                   ? "bg-muted/50 text-muted-foreground italic border border-dashed"
                                   : isPrivate
