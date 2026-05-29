@@ -1,4 +1,6 @@
 import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CalendarIcon, X, Search, Filter } from "lucide-react";
@@ -114,11 +116,26 @@ export function TicketFiltersBar({ filters, onChange, tickets, profiles, open, o
     return Array.from(cats).sort();
   }, [tickets]);
 
+  const { data: activeSectors = [] } = useQuery({
+    queryKey: ["sectors-active-names"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("sectors")
+        .select("name")
+        .eq("is_active", true)
+        .order("name");
+      if (error) throw error;
+      return (data || []).map((r: any) => r.name as string);
+    },
+    staleTime: 5 * 60_000,
+  });
+
   const sectors = useMemo(() => {
-    const s = new Set<string>();
+    const s = new Set<string>(activeSectors);
     tickets.forEach((t: any) => { if (t.sector) s.add(t.sector); });
-    return Array.from(s).sort();
-  }, [tickets]);
+    return Array.from(s).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [tickets, activeSectors]);
+
 
   const activeCount = useMemo(() => {
     let c = 0;
