@@ -840,27 +840,56 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   const forwardToSector = async () => {
     if (!forwardSector.trim() || !ticket?.id) return;
 
-    // Pick least loaded agent in the sector
     let assignedAgentId: string | null = null;
     let assignedAgentName = "";
-    try {
-      const { data: agentId } = await supabase.rpc("pick_least_loaded_agent", {
-        _sector: forwardSector,
-      });
-      if (agentId) {
-        assignedAgentId = agentId as string;
+    let routingMode: "manual" | "online" | "any" | "none" = "none";
+
+    // 1) If operator explicitly chosen, use it.
+    if (forwardSectorUser && forwardSectorUser !== "__auto__") {
+      assignedAgentId = forwardSectorUser;
+      const profile = profiles.find((p) => p.user_id === assignedAgentId);
+      assignedAgentName = profile?.name || "atendente";
+      routingMode = "manual";
+    } else {
+      // 2) Auto-routing: try online+available first.
+      try {
+        const { data: agentId } = await supabase.rpc("pick_least_loaded_agent", {
+          _sector: forwardSector,
+        });
+        if (agentId) {
+          assignedAgentId = agentId as string;
+          routingMode = "online";
+        }
+      } catch (e) {
+        console.error("Error picking least loaded agent (online):", e);
+      }
+      // 3) Fallback: any agent of the sector, ignoring presence.
+      if (!assignedAgentId) {
+        try {
+          const { data: agentId } = await supabase.rpc("pick_least_loaded_agent_any", {
+            _sector: forwardSector,
+          });
+          if (agentId) {
+            assignedAgentId = agentId as string;
+            routingMode = "any";
+          }
+        } catch (e) {
+          console.error("Error picking least loaded agent (any):", e);
+        }
+      }
+      if (assignedAgentId) {
         const profile = profiles.find((p) => p.user_id === assignedAgentId);
         assignedAgentName = profile?.name || "atendente";
       }
-    } catch (e) {
-      console.error("Error picking least loaded agent:", e);
     }
 
+    // Always set assigned_to (including null) so the previous responsible is
+    // released when the sector has no available agents.
     const updatePayload: any = {
       sector: forwardSector,
+      assigned_to: assignedAgentId,
       updated_at: new Date().toISOString(),
     };
-    if (assignedAgentId) updatePayload.assigned_to = assignedAgentId;
 
     const { error } = await supabase
       .from("service_tickets")
@@ -871,9 +900,20 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
       return;
     }
 
-    const commentMsg = assignedAgentId
-      ? `Encaminhado para setor: ${forwardSector} → atribuído a ${assignedAgentName} (menor carga)`
-      : `Encaminhado para setor: ${forwardSector} (sem atendente disponível para atribuição automática)`;
+    let commentMsg: string;
+    switch (routingMode) {
+      case "manual":
+        commentMsg = `Encaminhado para setor: ${forwardSector} → atribuído a ${assignedAgentName}`;
+        break;
+      case "online":
+        commentMsg = `Encaminhado para setor: ${forwardSector} → atribuído a ${assignedAgentName} (menor carga, online)`;
+        break;
+      case "any":
+        commentMsg = `Encaminhado para setor: ${forwardSector} → atribuído a ${assignedAgentName} (menor carga, agente offline)`;
+        break;
+      default:
+        commentMsg = `Encaminhado para setor: ${forwardSector} (sem atendentes cadastrados — responsável removido)`;
+    }
     await insertSystemComment(ticket.id, commentMsg, "encaminhamento");
 
     await supabase.from("ticket_assignments").insert({
@@ -883,14 +923,16 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
       sector_name: forwardSector,
     });
     setForwardSector("");
+    setForwardSectorUser("__auto__");
     refetchComments();
     onRefetch();
     toast.success(
       assignedAgentId
         ? `Encaminhado para ${forwardSector} → ${assignedAgentName}`
-        : `Encaminhado para ${forwardSector}`
+        : `Encaminhado para ${forwardSector} (sem atendente)`,
     );
   };
+
 
   const forwardToUser = async () => {
     if (!forwardUser || !ticket?.id) return;
