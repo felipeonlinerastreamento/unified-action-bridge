@@ -1461,7 +1461,8 @@ function CentralPage() {
       text,
       whisper,
       replyToMessageId,
-    }: { text: string; whisper: boolean; replyToMessageId?: string | null }) => {
+      includeOperatorName,
+    }: { text: string; whisper: boolean; replyToMessageId?: string | null; includeOperatorName?: boolean }) => {
       if (whisper) {
         // Whisper: persist locally only, never sent to client via Z-API
         const { data: chatRow } = await supabase
@@ -1513,6 +1514,7 @@ function CentralPage() {
           chatId: selectedChatId,
           message: text,
           replyToMessageId: replyToMessageId || undefined,
+          includeOperatorName: includeOperatorName !== false,
         },
         ...await getAuthHeaders(),
       });
@@ -2415,15 +2417,11 @@ function CentralPage() {
 
   const handleSend = () => {
     if (!messageInput.trim() || !selectedChatId) return;
-    const nicknameSource = (assignedOperator || profile?.name || "").trim();
-    const text =
-      nicknameMode && !whisperMode && nicknameSource
-        ? `*${nicknameSource}:* ${messageInput.trim()}`
-        : messageInput.trim();
     sendMutation.mutate({
-      text,
+      text: messageInput.trim(),
       whisper: whisperMode,
       replyToMessageId: replyingTo?.id || null,
+      includeOperatorName: nicknameMode && !whisperMode,
     });
   };
 
