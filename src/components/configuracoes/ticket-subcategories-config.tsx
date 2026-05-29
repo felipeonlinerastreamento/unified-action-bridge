@@ -123,6 +123,7 @@ export function TicketSubcategoriesConfig() {
     setName("");
     setDescription("");
     setIsActive(true);
+    setSelectedModelIds([]);
   };
 
   const openCreate = () => {
@@ -136,6 +137,7 @@ export function TicketSubcategoriesConfig() {
     setName(s.name);
     setDescription(s.description || "");
     setIsActive(s.is_active);
+    setSelectedModelIds([]); // hydrated via useEffect when links arrive
     setDialogOpen(true);
   };
 
@@ -151,20 +153,31 @@ export function TicketSubcategoriesConfig() {
         description: description.trim() || null,
         is_active: isActive,
       };
+      let subId: string;
       if (editing) {
         const { error } = await supabase
           .from("ticket_subcategories")
           .update(payload)
           .eq("id", editing.id);
         if (error) throw error;
+        subId = editing.id;
       } else {
-        const { error } = await supabase.from("ticket_subcategories").insert(payload);
+        const { data, error } = await supabase
+          .from("ticket_subcategories")
+          .insert(payload)
+          .select("id")
+          .single();
         if (error) throw error;
+        subId = (data as any).id;
       }
+      await syncSubcategoryEquipmentModels(subId, selectedModelIds);
     },
     onSuccess: () => {
       toast.success(editing ? "Sub-item atualizado" : "Sub-item criado");
       queryClient.invalidateQueries({ queryKey: ["ticket-subcategories"] });
+      queryClient.invalidateQueries({ queryKey: ["subcategory-equipment-model-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["subcategory-equipment-model-links"] });
+      queryClient.invalidateQueries({ queryKey: ["subcategory-equipment-models"] });
       setDialogOpen(false);
       resetForm();
     },
