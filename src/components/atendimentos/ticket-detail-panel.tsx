@@ -195,6 +195,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   const [comment, setComment] = useState("");
   const [expanded, setExpanded] = useState(false);
   const [forwardSector, setForwardSector] = useState("");
+  const [forwardSectorUser, setForwardSectorUser] = useState<string>("__auto__");
   const [forwardUser, setForwardUser] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState("");
