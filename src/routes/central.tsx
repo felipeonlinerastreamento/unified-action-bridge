@@ -2898,6 +2898,12 @@ function CentralPage() {
                               setHeaderExpanded(true);
                               return;
                             }
+                            if (finalizeSubcategoryId && (finalizeEquipmentModels as any[]).length > 0 && !finalizeEquipmentModelId) {
+                              toast.error("Selecione o modelo do equipamento.");
+                              setHeaderExpanded(true);
+                              return;
+                            }
+
                             const tipoLabel = tiposPendencia.find((t) => t.Key === finalizeTipoPendencia)?.Descricao || "";
                             if (isTesteEquipamentoCategory(tipoLabel, teSettings)) {
                               setShowTeDialog(true);
