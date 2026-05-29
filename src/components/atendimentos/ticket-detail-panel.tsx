@@ -440,9 +440,16 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
 
     if (
       (newKey || "") === (ticket.pendencia_key || "") &&
-      (newLabel || "") === (ticket.category || "")
+      (newLabel || "") === (ticket.category || "") &&
+      (subcategoryDraft || "") === ((ticket as any).subcategory_id || "") &&
+      (equipmentModelDraft || "") === ((ticket as any).equipment_model_id || "")
     ) {
       setEditingCategory(false);
+      return;
+    }
+    // Validação: se o sub-item possui modelos vinculados, o modelo é obrigatório
+    if (subcategoryDraft && equipmentModels.length > 0 && !equipmentModelDraft) {
+      toast.error("Selecione o modelo do equipamento.");
       return;
     }
     setSavingCategory(true);
@@ -451,6 +458,10 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
       const subName = subId
         ? (subcategoriesAll as any[]).find((s) => s.id === subId)?.name || null
         : null;
+      const modelId = equipmentModelDraft || null;
+      const modelName = modelId
+        ? (equipmentModels as any[]).find((m) => m.equipment_item_id === modelId)?.name || null
+        : null;
       const { error } = await supabase
         .from("service_tickets")
         .update({
@@ -458,6 +469,8 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
           pendencia_key: newKey,
           subcategory_id: subId,
           subcategory_name: subName,
+          equipment_model_id: modelId,
+          equipment_model_name: modelName,
           updated_at: new Date().toISOString(),
         } as any)
         .eq("id", ticket.id);
@@ -465,6 +478,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
         toast.error("Erro ao alterar categoria: " + error.message);
         return;
       }
+
 
       // 2) Se já existe pendência criada no GSystem para esse ticket, atualiza lá também
       let gsyncMsg = "";
