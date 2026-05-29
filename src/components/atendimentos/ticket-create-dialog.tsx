@@ -404,6 +404,12 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
         return;
       }
     }
+    // Validate equipment model: obrigatório se sub-item possui modelos vinculados
+    if (subcategoryId && (equipmentModels as any[]).length > 0 && !equipmentModelId) {
+      toast.error("Selecione o modelo do equipamento.");
+      return;
+    }
+
     // Validate Liberação de Equipamento
     if (isLiberacao) {
       const err = validateLiberacaoItems(liberacaoItems);
