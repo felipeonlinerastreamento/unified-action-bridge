@@ -278,12 +278,23 @@ export function TicketSubcategoriesConfig() {
                   <TableCell className="font-medium">
                     <div className="flex items-center gap-2">
                       <span>{s.name}</span>
-                      {(modelCounts as Record<string, number>)[s.id] > 0 && (
+                      {(modelCounts as Record<string, number>)[s.id] > 0 ? (
                         <Badge variant="secondary" className="text-[10px] gap-1">
                           <Package className="h-3 w-3" />
                           {(modelCounts as Record<string, number>)[s.id]} modelo{(modelCounts as Record<string, number>)[s.id] === 1 ? "" : "s"}
                         </Badge>
-                      )}
+                      ) : isAdmin ? (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-6 text-[10px] gap-1 px-2"
+                          onClick={() => openEdit(s)}
+                          title="Vincular modelos de equipamento"
+                        >
+                          <Package className="h-3 w-3" />
+                          Vincular modelos
+                        </Button>
+                      ) : null}
                     </div>
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">

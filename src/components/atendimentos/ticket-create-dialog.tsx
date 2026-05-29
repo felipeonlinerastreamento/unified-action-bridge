@@ -851,6 +851,11 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
               </Select>
             </div>
           )}
+          {subcategoryId && (equipmentModels as any[]).length === 0 && (
+            <p className="text-[11px] text-muted-foreground">
+              Nenhum modelo vinculado a este sub-item — configure em <strong>Configurações › Sub-Menu de Categorias</strong>.
+            </p>
+          )}
 
           {showTracking && (
             <div className="space-y-1">

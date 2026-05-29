@@ -1,59 +1,43 @@
-## Causa raiz
+## Diagnóstico
 
-O nome do operador está sendo prefixado **duas vezes** ao enviar uma mensagem de texto:
+A funcionalidade já existe no código em três pontos (`TicketCreateDialog`, header de Finalização da Central, edição em `TicketDetailPanel`), mas o banco mostra **0 vínculos** entre sub-itens e modelos de equipamento:
 
-1. **No cliente** (`src/routes/central.tsx`, linha 2421), quando `nicknameMode` está ativo, o texto vira:
-   ```
-   *Patrícia:* teste
-   ```
+```
+Pane Rastreador > Buzzer Disparado → 0 modelos
+Pane Rastreador > Erro GPS        → 0 modelos
+```
 
-2. **No servidor** (`src/lib/zapi.functions.ts`, linhas 510-512), a server function `sendText` também prefixa:
-   ```
-   _*Patrícia*_\n<texto>
-   ```
-   A verificação `text.startsWith("_*Nome*_")` falha porque o cliente usou o formato `*Nome:*` (negrito comum), e não `_*Nome*_` (negrito+itálico). Resultado final enviado ao WhatsApp:
-   ```
-   _*Patrícia*_
-   *Patrícia:* teste
-   ```
-   Que aparece no WhatsApp como:
-   ```
-   Patrícia
-   Patrícia: teste
-   ```
+Catálogo de modelos (ex.: "Telemetria JR12") está populado e ativo. Ou seja: o operador não vê o seletor porque nenhum modelo foi efetivamente vinculado ao sub-item no admin — o `Select` só renderiza quando `equipmentModels.length > 0`.
 
-Isso só afeta usuários cujo "apelido" enviado pelo cliente coincide com o primeiro nome do perfil (cenário comum). Quando o toggle "sem nome" está ligado no cliente, o servidor ainda prefixa — ou seja, o toggle também está parcialmente quebrado.
+Além disso a descoberta da funcionalidade é fraca: ao abrir o diálogo "Novo sub-item" o bloco "Modelos de equipamento vinculados" é discreto e não há feedback claro de "X modelos vinculados" na lista, então o usuário não percebe que precisa marcar e salvar.
 
-## Solução
+## O que entregar
 
-Tornar o **servidor a única fonte de verdade** para o prefixo do nome do operador, e deixar o toggle do cliente realmente desabilitar o prefixo.
+1. **Admin de Sub-Menu de Categorias** (`ticket-subcategories-config.tsx`)
+   - Destacar visualmente o bloco de modelos no diálogo de criação/edição (já existe, mas reforçar com banner curto: "Marque aqui os modelos que aparecerão para o operador ao escolher este sub-item").
+   - Garantir que `syncSubcategoryEquipmentModels` está sendo chamado em criação e edição (já está, validar manualmente após a alteração).
+   - Mostrar atalho rápido "Vincular modelos" direto na linha da tabela do sub-item quando `modelCounts[id] === 0`, abrindo o mesmo diálogo já em modo edição rolado até o bloco de modelos.
 
-### Mudanças
+2. **Diálogo de criação de chamado** (`ticket-create-dialog.tsx`, linhas 839-853)
+   - Manter o `Select` obrigatório quando há modelos vinculados (já está).
+   - Quando o sub-item escolhido **não tem nenhum modelo vinculado**, exibir um hint discreto ("Nenhum modelo vinculado a este sub-item — configure em Configurações › Sub-Menu de Categorias") para que o operador entenda o porquê do campo não aparecer.
 
-**1. `src/lib/zapi.functions.ts` — `sendText`**
-- Adicionar parâmetro opcional `includeOperatorName?: boolean` no input validator (default `true`).
-- Reforçar a detecção de prefixo já existente para cobrir formatos legados antes de prefixar:
-  - `_*Nome*_` (atual)
-  - `*Nome:*` (formato enviado pelo cliente hoje)
-  - `Nome:` no início da primeira linha
-- Se `includeOperatorName === false`, não prefixar.
-- Aplicar a mesma lógica ao envio com mídia/caption se existir caminho equivalente que prefixe nome (verificar `sendMedia`/`sendImage` correlatos no mesmo arquivo e ajustar de forma consistente).
+3. **Central — popover de Finalização** (`central.tsx`, linhas 3105-3127)
+   - Aplicar o mesmo hint quando `finalizeSubcategoryId` está selecionado mas `finalizeEquipmentModels` está vazio.
+   - Manter validação atual (linha 2927) que bloqueia finalizar sem modelo quando houver modelos vinculados.
 
-**2. `src/routes/central.tsx` — `handleSend` (linhas 2416-2428)**
-- Remover o prefixo manual `*${nicknameSource}:* ...`. Enviar somente o texto puro.
-- Passar `includeOperatorName: nicknameMode && !whisperMode` para `sendMutation`.
-- Atualizar a chamada de `sendMutation.mutate` e a definição de `sendMutation` para repassar a flag à server function.
+4. **Painel de detalhe do chamado** (`ticket-detail-panel.tsx`, linhas 1191-1205)
+   - Mesmo hint de ausência de vínculos.
+   - Garantir que ao trocar o sub-item o `equipmentModelDraft` resete corretamente (já está implementado).
 
-**3. Render da bolha (`src/routes/central.tsx`, linhas 3323-3336)**
-- A regex de strip do prefixo `^\*[^*\n]+:\*\s+` pode ser mantida por compatibilidade com mensagens antigas, mas adicionar também o strip de `^_\*[^*\n]+\*_\n` para a nova primeira linha (caso a UI local também precise esconder — verificar se já é feito; se a UI mostra o nome separadamente via `senderFirstName`, remover a duplicata visual).
+## Notas técnicas
 
-## Detalhes técnicos
+- Não há mudança de schema. Tabela `ticket_subcategory_equipment_models` e hook `useSubcategoryEquipmentModels` já cobrem a leitura.
+- O Select já é renderizado condicionalmente — basta adicionar o hint para o caso vazio e melhorar a descoberta no admin.
+- Após o deploy, o usuário precisa abrir Configurações › Sub-Menu de Categorias → "Buzzer Disparado" → marcar "Telemetria JR12" → Salvar. A partir daí o seletor "Modelo do equipamento *" aparecerá automaticamente em criação/finalização.
 
-- Não alterar o schema do banco nem mensagens já persistidas.
-- O servidor continua sendo o único ponto que decide o formato final enviado ao Z-API, garantindo consistência entre todos os operadores e clientes (web, mobile etc.).
-- Backward compatibility: a detecção ampliada no servidor evita re-prefixar mensagens que ainda venham com o formato antigo durante a transição/cache.
+## Fora do escopo
 
-## Fora de escopo
-
-- Caminhos de envio diferentes de texto puro (áudio, anexos sem caption) — não causam essa duplicação.
-- Mensagens automáticas de bot / templates — fluxo separado.
+- Não alterar RLS nem schema.
+- Não tocar na lógica de bot/zapi.
+- Não migrar nada para edge functions.
