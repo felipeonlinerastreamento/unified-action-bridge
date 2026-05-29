@@ -107,6 +107,9 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
   const [notes, setNotes] = useState("");
   const [priority, setPriority] = useState("media");
   const [category, setCategory] = useState("");
+  const [subcategoryId, setSubcategoryId] = useState<string>("");
+  const [equipmentModelId, setEquipmentModelId] = useState<string>("");
+
   const [sectorId, setSectorId] = useState("");
   const [trackingCode, setTrackingCode] = useState("");
   const [loading, setLoading] = useState(false);
