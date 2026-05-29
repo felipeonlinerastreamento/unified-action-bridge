@@ -1084,14 +1084,36 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
               companies={companiesList}
             />
             <DetailRow label="Setor" value={ticket.sector} />
-            <DetailRow label="Responsável" value={(() => {
-              const agentIds: string[] = Array.isArray((ticket as any).agent_user_ids) ? (ticket as any).agent_user_ids : [];
-              const allIds = Array.from(new Set([ticket.assigned_to, ...agentIds].filter(Boolean)));
-              const names = allIds
-                .map((id) => profiles.find((p) => p.user_id === id)?.name)
-                .filter(Boolean);
-              return names.length ? names.join(", ") : "Sem operador";
-            })()} />
+            <div className="flex gap-2 text-sm items-start">
+              <span className="font-medium text-muted-foreground min-w-[120px] pt-0.5">Responsável:</span>
+              <div className="flex-1 min-w-0 space-y-1">
+                <div className="font-medium">
+                  {(() => {
+                    const p = profiles.find((pp) => pp.user_id === ticket.assigned_to);
+                    return p?.name || (ticket.assigned_to ? ticket.assigned_to.substring(0, 8) : "Sem operador");
+                  })()}
+                </div>
+                {(() => {
+                  const agentIds: string[] = Array.isArray((ticket as any).agent_user_ids) ? (ticket as any).agent_user_ids : [];
+                  const extras = agentIds.filter((id) => id && id !== ticket.assigned_to);
+                  if (!extras.length) return null;
+                  return (
+                    <div className="flex flex-wrap gap-1">
+                      <span className="text-[10px] text-muted-foreground mr-1">Atendentes vinculados:</span>
+                      {extras.map((id) => {
+                        const p = profiles.find((pp) => pp.user_id === id);
+                        return (
+                          <Badge key={id} variant="outline" className="text-[10px]">
+                            {p?.name || id.substring(0, 8)}
+                          </Badge>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+            </div>
+
             <div className="flex gap-2 text-sm items-start">
               <span className="font-medium text-muted-foreground min-w-[120px] pt-1.5">Categoria:</span>
               <div className="flex-1 min-w-0">
