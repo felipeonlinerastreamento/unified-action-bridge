@@ -1736,6 +1736,8 @@ function CentralPage() {
               status: insertStatus as any,
               sector: insertSector,
               category: resolvedCategoryLabel,
+              ...subFields,
+
               notes: notes || null,
               opened_by: sess.session?.user?.id || null,
               assigned_to: isTEFlow ? null : undefined,
