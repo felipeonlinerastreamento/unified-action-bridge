@@ -2415,15 +2415,11 @@ function CentralPage() {
 
   const handleSend = () => {
     if (!messageInput.trim() || !selectedChatId) return;
-    const nicknameSource = (assignedOperator || profile?.name || "").trim();
-    const text =
-      nicknameMode && !whisperMode && nicknameSource
-        ? `*${nicknameSource}:* ${messageInput.trim()}`
-        : messageInput.trim();
     sendMutation.mutate({
-      text,
+      text: messageInput.trim(),
       whisper: whisperMode,
       replyToMessageId: replyingTo?.id || null,
+      includeOperatorName: nicknameMode && !whisperMode,
     });
   };
 
