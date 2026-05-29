@@ -1,36 +1,48 @@
-## Problema
+## Objetivo
 
-No ticket #01838 (cliente *Etica Servicos de Engenharia Ltda*), o cadastro da empresa tem um **Padrão de Serviços** preenchido:
+Permitir registrar e exportar **Tratativas de Ocorrências** (Telemetria e Fadiga) em PDF, exatamente no modelo do PDF anexo — com a logo da Online Rastreamento no topo e campos de assinatura no rodapé.
 
-> Padrão — Plataforma: SSX · Equipamento: JR12 + Identificador de motorista (Dupla Frequência) · Sensor de fadiga Jimi
+## Onde fica
 
-Esse conteúdo só aparece hoje no **diálogo de criação** de ticket (e apenas para a categoria *Liberação de equipamento*). Ao abrir um chamado já existente no painel de detalhes, o operador não vê o padrão da empresa — por isso parece "sumido".
+- Novo item no menu lateral: **Tratativas** (rota `/tratativas`).
+- Aba/seletor no topo da página para alternar entre **Telemetria** e **Fadiga** (o template do PDF é o mesmo; muda apenas o título "Tipo de Ocorrência" e o conjunto de "Tipos" disponíveis no select).
+- Listagem das tratativas já registradas + botão **Nova tratativa**.
+- Em cada linha: ações **Editar** e **Exportar PDF**.
 
-## O que será feito
+## Formulário (espelha o modelo PDF)
 
-Adicionar uma nova seção **"Padrão de Serviços"** no painel de detalhes do chamado (`ticket-detail-panel.tsx`), exibida sempre que a empresa vinculada ao chamado possuir registros em `company_service_templates`.
+- **Cabeçalho**: Nº da Ocorrência, Data de Exportação (auto na hora do PDF).
+- **Detalhes**: Situação (Sem risco / Risco baixo / Risco médio / Risco alto), Cliente, Identificador, IMEI, Tipo (lista por categoria — ex.: Distração, Sonolência, Fumando, Celular… para Fadiga; Excesso de velocidade, Freada brusca, Curva agressiva… para Telemetria).
+- **Tratativa**: Responsável (auto = e‑mail do usuário logado), Data da Tratativa, Primeiro Alarme, Último Alarme.
+- **Alarmes** (lista dinâmica, +adicionar): Data/Hora, Latitude, Longitude, Velocidade.
+- **Motorista**: Nome, Situação, Observações.
 
-### Comportamento
+## PDF
 
-- Carrega os itens (`name`, `description`) da empresa do chamado, ordenados por `position`.
-- Renderiza cada item em um card compacto com:
-  - **Nome** do item (ex.: "Padrão")
-  - **Descrição** completa em `whitespace-pre-wrap` (mantém quebras de linha)
-  - Botão **"Inserir na descrição"** que anexa o texto ao campo *Descrição do serviço* do chamado (mesmo padrão usado no diálogo de criação).
-- Se a empresa não tem padrões cadastrados, a seção fica oculta (não polui o painel).
-- Funciona para **qualquer categoria** de chamado, não só Liberação — assim o operador sempre vê o "manual" do cliente ao atender.
-- Atualização reativa: se a empresa do ticket for trocada via o campo *Empresa*, a seção recarrega.
+- Gerado client‑side com **jsPDF + jspdf‑autotable** (sem dependência de servidor).
+- Logo `Logo_Online_Rastreamento.png` salva em `src/assets/` e embutida no topo.
+- Layout idêntico ao modelo: blocos "Detalhes da Ocorrência", "Alarmes", "Motorista" como tabelas com cabeçalho cinza claro.
+- Rodapé com duas linhas de assinatura lado a lado: **Responsável da Tratativa** e **Motorista Apontado** (`Assinatura ____________________`).
+- Nome do arquivo: `tratativa-{numero}-{YYYYMMDD}.pdf`.
 
-### Posicionamento na UI
+## Persistência
 
-Logo abaixo dos dados da empresa/contato e acima da seção de Descrição/Atividades, para que o operador veja o padrão antes de descrever o serviço.
+- Nova tabela `tratativas` no Lovable Cloud:
+  - categoria (`telemetria` | `fadiga`), numero_ocorrencia, situacao, cliente, identificador, imei, tipo, responsavel_email, data_tratativa, primeiro_alarme, ultimo_alarme, motorista_nome, motorista_situacao, motorista_observacoes, alarmes (jsonb: array `[{data_hora, lat, lng, velocidade}]`), created_by, timestamps.
+- RLS: usuários autenticados leem/criam/editam; admin/gestor podem excluir.
 
 ## Arquivos afetados
 
-- `src/components/atendimentos/ticket-detail-panel.tsx` — nova seção + query `["ticket-company-service-templates", company_id]` usando `supabase.from("company_service_templates")`.
+- `supabase/migrations/...` — tabela `tratativas` + RLS + GRANTs.
+- `src/assets/logo-online-rastreamento.png` — logo embutida.
+- `src/routes/tratativas.tsx` — nova rota.
+- `src/components/tratativas/tratativas-list.tsx` — listagem + filtros por categoria.
+- `src/components/tratativas/tratativa-form-dialog.tsx` — form de criar/editar.
+- `src/lib/tratativa-pdf.ts` — geração do PDF (jsPDF) com logo + tabelas + assinaturas.
+- `src/components/app-sidebar.tsx` — novo item de menu.
+- `package.json` — adicionar `jspdf` e `jspdf-autotable`.
 
-## Fora do escopo
+## Fora de escopo
 
-- Não altera o cadastro da empresa nem o diálogo de criação de tickets.
-- Não cria migrations (a tabela `company_service_templates` já existe).
-- Não altera o conteúdo de `instructions` (campo amarelo) — esse continua vazio neste cliente; se quiser exibir também as Instruções de Atendimento no painel, é um próximo passo opcional.
+- Importação automática de ocorrências da plataforma externa (Telemetria/Fadiga) — registro é manual nesta fase.
+- Assinatura digital — o PDF traz apenas linhas para assinatura manuscrita após impressão.

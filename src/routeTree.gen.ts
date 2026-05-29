@@ -9,6 +9,7 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as TratativasRouteImport } from './routes/tratativas'
 import { Route as RelatoriosRouteImport } from './routes/relatorios'
 import { Route as OkrRouteImport } from './routes/okr'
 import { Route as EstoqueRouteImport } from './routes/estoque'
@@ -43,6 +44,11 @@ import { Route as ApiPublicChatIdleScannerRouteImport } from './routes/api.publi
 import { Route as ApiPublicAutoRouteAguardandoRouteImport } from './routes/api.public.auto-route-aguardando'
 import { Route as ApiPublicZapiWebhookChannelIdRouteImport } from './routes/api.public.zapi-webhook.$channelId'
 
+const TratativasRoute = TratativasRouteImport.update({
+  id: '/tratativas',
+  path: '/tratativas',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const RelatoriosRoute = RelatoriosRouteImport.update({
   id: '/relatorios',
   path: '/relatorios',
@@ -233,6 +239,7 @@ export interface FileRoutesByFullPath {
   '/estoque': typeof EstoqueRoute
   '/okr': typeof OkrRoute
   '/relatorios': typeof RelatoriosRoute
+  '/tratativas': typeof TratativasRoute
   '/atendimentos/tarefas': typeof AtendimentosTarefasRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
   '/configuracoes/auditoria': typeof ConfiguracoesAuditoriaRoute
@@ -267,6 +274,7 @@ export interface FileRoutesByTo {
   '/estoque': typeof EstoqueRoute
   '/okr': typeof OkrRoute
   '/relatorios': typeof RelatoriosRoute
+  '/tratativas': typeof TratativasRoute
   '/atendimentos/tarefas': typeof AtendimentosTarefasRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
   '/configuracoes/auditoria': typeof ConfiguracoesAuditoriaRoute
@@ -303,6 +311,7 @@ export interface FileRoutesById {
   '/estoque': typeof EstoqueRoute
   '/okr': typeof OkrRoute
   '/relatorios': typeof RelatoriosRoute
+  '/tratativas': typeof TratativasRoute
   '/atendimentos_/tarefas': typeof AtendimentosTarefasRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
   '/configuracoes/auditoria': typeof ConfiguracoesAuditoriaRoute
@@ -340,6 +349,7 @@ export interface FileRouteTypes {
     | '/estoque'
     | '/okr'
     | '/relatorios'
+    | '/tratativas'
     | '/atendimentos/tarefas'
     | '/configuracoes/assistente-ia'
     | '/configuracoes/auditoria'
@@ -374,6 +384,7 @@ export interface FileRouteTypes {
     | '/estoque'
     | '/okr'
     | '/relatorios'
+    | '/tratativas'
     | '/atendimentos/tarefas'
     | '/configuracoes/assistente-ia'
     | '/configuracoes/auditoria'
@@ -409,6 +420,7 @@ export interface FileRouteTypes {
     | '/estoque'
     | '/okr'
     | '/relatorios'
+    | '/tratativas'
     | '/atendimentos_/tarefas'
     | '/configuracoes/assistente-ia'
     | '/configuracoes/auditoria'
@@ -445,6 +457,7 @@ export interface RootRouteChildren {
   EstoqueRoute: typeof EstoqueRoute
   OkrRoute: typeof OkrRoute
   RelatoriosRoute: typeof RelatoriosRoute
+  TratativasRoute: typeof TratativasRoute
   AtendimentosTarefasRoute: typeof AtendimentosTarefasRoute
   HooksRefreshTrackingRoute: typeof HooksRefreshTrackingRoute
   ApiPublicAutoRouteAguardandoRoute: typeof ApiPublicAutoRouteAguardandoRoute
@@ -456,6 +469,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/tratativas': {
+      id: '/tratativas'
+      path: '/tratativas'
+      fullPath: '/tratativas'
+      preLoaderRoute: typeof TratativasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/relatorios': {
       id: '/relatorios'
       path: '/relatorios'
@@ -742,6 +762,7 @@ const rootRouteChildren: RootRouteChildren = {
   EstoqueRoute: EstoqueRoute,
   OkrRoute: OkrRoute,
   RelatoriosRoute: RelatoriosRoute,
+  TratativasRoute: TratativasRoute,
   AtendimentosTarefasRoute: AtendimentosTarefasRoute,
   HooksRefreshTrackingRoute: HooksRefreshTrackingRoute,
   ApiPublicAutoRouteAguardandoRoute: ApiPublicAutoRouteAguardandoRoute,

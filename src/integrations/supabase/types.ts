@@ -4923,6 +4923,72 @@ export type Database = {
         }
         Relationships: []
       }
+      tratativas: {
+        Row: {
+          alarmes: Json
+          categoria: string
+          cliente: string | null
+          created_at: string
+          created_by: string | null
+          data_tratativa: string | null
+          id: string
+          identificador: string | null
+          imei: string | null
+          motorista_nome: string | null
+          motorista_observacoes: string | null
+          motorista_situacao: string | null
+          numero_ocorrencia: string
+          primeiro_alarme: string | null
+          responsavel_email: string | null
+          situacao: string | null
+          tipo: string | null
+          ultimo_alarme: string | null
+          updated_at: string
+        }
+        Insert: {
+          alarmes?: Json
+          categoria: string
+          cliente?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_tratativa?: string | null
+          id?: string
+          identificador?: string | null
+          imei?: string | null
+          motorista_nome?: string | null
+          motorista_observacoes?: string | null
+          motorista_situacao?: string | null
+          numero_ocorrencia: string
+          primeiro_alarme?: string | null
+          responsavel_email?: string | null
+          situacao?: string | null
+          tipo?: string | null
+          ultimo_alarme?: string | null
+          updated_at?: string
+        }
+        Update: {
+          alarmes?: Json
+          categoria?: string
+          cliente?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_tratativa?: string | null
+          id?: string
+          identificador?: string | null
+          imei?: string | null
+          motorista_nome?: string | null
+          motorista_observacoes?: string | null
+          motorista_situacao?: string | null
+          numero_ocorrencia?: string
+          primeiro_alarme?: string | null
+          responsavel_email?: string | null
+          situacao?: string | null
+          tipo?: string | null
+          ultimo_alarme?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       user_gsystem_links: {
         Row: {
           channel_id: string | null
