@@ -71,6 +71,10 @@ const MESSAGE_EVENT_TYPES = new Set([
   "MessageSentCallback",
 ]);
 
+function rawHasLidMarker(rawPhone: string): boolean {
+  return /@lid$/i.test(rawPhone) || /^lid:/i.test(rawPhone);
+}
+
 function normalizeIncomingPhone(rawPhone: string, isGroup: boolean): string {
   if (isGroup) {
     // Para grupos preservamos o hífen entre <criador>-<timestamp>; sem ele
@@ -87,7 +91,8 @@ function normalizeIncomingPhone(rawPhone: string, isGroup: boolean): string {
 
   let digits = rawPhone.replace(/\D/g, "");
   if (!digits) return "";
-  if (digits.length >= 15) return digits;
+  // BR phones are at most 13 digits (55 + DDD + 9 + 8). 14+ é LID.
+  if (digits.length >= 14) return digits;
   if (digits.length >= 10 && digits.length <= 11) digits = `55${digits}`;
 
   // BR mobile: canonical 55 + DDD + 9 + 8 digits.
@@ -96,6 +101,7 @@ function normalizeIncomingPhone(rawPhone: string, isGroup: boolean): string {
   }
   return digits;
 }
+
 
 /**
  * Picks the least-loaded online operator for a sector. Falls back to
