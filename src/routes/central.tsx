@@ -3115,20 +3115,27 @@ function CentralPage() {
                           </Select>
                         )}
                         {finalizeSubcategoryId && (finalizeEquipmentModels as any[]).length > 0 && (
-                          <Select value={finalizeEquipmentModelId} onValueChange={setFinalizeEquipmentModelId}>
-                            <SelectTrigger className="w-[180px] h-7 text-xs">
-                              <SelectValue placeholder="Modelo *" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {(finalizeEquipmentModels as any[]).map((m: any) => (
-                                <SelectItem key={m.equipment_item_id} value={m.equipment_item_id}>{m.name}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
+                          <div className="flex flex-col gap-0.5">
+                            <Select value={finalizeEquipmentModelId} onValueChange={setFinalizeEquipmentModelId}>
+                              <SelectTrigger className="w-[180px] h-7 text-xs">
+                                <SelectValue placeholder="Modelo *" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {(finalizeEquipmentModels as any[]).map((m: any) => (
+                                  <SelectItem key={m.equipment_item_id} value={m.equipment_item_id}>{m.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            {finalizeEquipmentModelsFallback && (
+                              <span className="text-[9px] text-muted-foreground italic">
+                                Catálogo completo de Liberação de Equipamento
+                              </span>
+                            )}
+                          </div>
                         )}
                         {finalizeSubcategoryId && (finalizeEquipmentModels as any[]).length === 0 && (
                           <span className="text-[10px] text-muted-foreground italic">
-                            Sem modelos vinculados — Configurações › Sub-Menu de Categorias
+                            Nenhum modelo cadastrado em Liberação de Equipamento
                           </span>
                         )}
 
