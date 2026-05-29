@@ -49,7 +49,7 @@ import {
   validateLiberacaoItems,
   type LiberacaoLineItem,
 } from "./liberacao-equipamento-fields";
-import { isLiberacaoCategory, useSubcategoryEquipmentModels } from "@/hooks/use-liberacao-equipamento";
+import { isLiberacaoCategory, useSubcategoryEquipmentModelsWithFallback } from "@/hooks/use-liberacao-equipamento";
 import { isSuprimentoCategory } from "@/hooks/use-suprimento";
 import {
   SuprimentoFields,
@@ -261,7 +261,7 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
     () => (subcategoriesAll as any[]).filter((s) => s.category_key === selectedTipoKey),
     [subcategoriesAll, selectedTipoKey],
   );
-  const { data: equipmentModels = [] } = useSubcategoryEquipmentModels(subcategoryId || null);
+  const { models: equipmentModels, isFallback: equipmentModelsFallback } = useSubcategoryEquipmentModelsWithFallback(subcategoryId || null);
 
   // Reset sub-item/modelo quando troca de categoria
   useEffect(() => {
@@ -849,11 +849,16 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
                   ))}
                 </SelectContent>
               </Select>
+              {equipmentModelsFallback && (
+                <p className="text-[11px] text-muted-foreground">
+                  Mostrando todos os modelos cadastrados em <strong>Liberação de Equipamento</strong>.
+                </p>
+              )}
             </div>
           )}
           {subcategoryId && (equipmentModels as any[]).length === 0 && (
             <p className="text-[11px] text-muted-foreground">
-              Nenhum modelo vinculado a este sub-item — configure em <strong>Configurações › Sub-Menu de Categorias</strong>.
+              Nenhum modelo cadastrado em <strong>Liberação de Equipamento</strong>.
             </p>
           )}
 
