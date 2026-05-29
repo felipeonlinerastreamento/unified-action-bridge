@@ -298,7 +298,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
     (s) => s.category_key === categoryDraft
   );
 
-  const { data: equipmentModels = [] } = useSubcategoryEquipmentModels(subcategoryDraft || null);
+  const { models: equipmentModels, isFallback: equipmentModelsFallback } = useSubcategoryEquipmentModelsWithFallback(subcategoryDraft || null);
 
   // Load active sectors for forward dropdown
   const { data: sectors = [] } = useQuery({
