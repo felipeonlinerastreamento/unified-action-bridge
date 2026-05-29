@@ -237,6 +237,42 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
     staleTime: 60_000,
   });
 
+  // Sub-itens (locais) — filtrados pelo Key da categoria GSystem selecionada
+  const selectedTipoKey = useMemo(() => {
+    if (!category) return "";
+    const t = (tiposPendencia as any[]).find((x) => x.Descricao === category);
+    return t?.Key ? String(t.Key) : "";
+  }, [category, tiposPendencia]);
+
+  const { data: subcategoriesAll = [] } = useQuery({
+    queryKey: ["ticket-subcategories-active-create"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ticket_subcategories")
+        .select("id, name, category_key, is_active")
+        .eq("is_active", true);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: open,
+    staleTime: 60_000,
+  });
+  const subcategoryOptions = useMemo(
+    () => (subcategoriesAll as any[]).filter((s) => s.category_key === selectedTipoKey),
+    [subcategoriesAll, selectedTipoKey],
+  );
+  const { data: equipmentModels = [] } = useSubcategoryEquipmentModels(subcategoryId || null);
+
+  // Reset sub-item/modelo quando troca de categoria
+  useEffect(() => {
+    setSubcategoryId("");
+    setEquipmentModelId("");
+  }, [selectedTipoKey]);
+  useEffect(() => {
+    setEquipmentModelId("");
+  }, [subcategoryId]);
+
+
   // Local active sectors (from Grupo de Setores config)
   const { data: localSectors = [] } = useQuery({
     queryKey: ["local-sectors-active"],
