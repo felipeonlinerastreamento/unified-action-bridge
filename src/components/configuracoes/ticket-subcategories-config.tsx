@@ -365,15 +365,6 @@ export function TicketSubcategoriesConfig() {
                 rows={3}
               />
             </div>
-            <div className="flex items-center gap-3">
-              <Switch checked={isActive} onCheckedChange={setIsActive} />
-              <Label>Ativo</Label>
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }}>
-              Cancelar
-            </Button>
             <div className="space-y-1.5 rounded-md border border-border bg-muted/30 p-3">
               <div className="flex items-center justify-between gap-2">
                 <Label className="flex items-center gap-1.5">
