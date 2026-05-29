@@ -1653,6 +1653,23 @@ function CentralPage() {
         resolvedCategoryLabel = found?.Descricao || tipoPendencia;
       }
 
+      // Snapshot de sub-item e modelo de equipamento (capturados do header da Central)
+      const resolvedSubId = finalizeSubcategoryId || null;
+      const resolvedSubName = resolvedSubId
+        ? (finalizeSubcategoryOptions.find((s: any) => s.id === resolvedSubId)?.name || null)
+        : null;
+      const resolvedModelId = finalizeEquipmentModelId || null;
+      const resolvedModelName = resolvedModelId
+        ? ((finalizeEquipmentModels as any[]).find((m: any) => m.equipment_item_id === resolvedModelId)?.name || null)
+        : null;
+      const subFields = {
+        subcategory_id: resolvedSubId,
+        subcategory_name: resolvedSubName,
+        equipment_model_id: resolvedModelId,
+        equipment_model_name: resolvedModelName,
+      };
+
+
       // Carrega configuração TE FRESCA do DB (não confia no hook que pode não ter hidratado).
       // Regra: se a categoria escolhida é Teste de Equipamento, SEMPRE roteamos
       // para o setor configurado com status "aberto" — independente do operador
