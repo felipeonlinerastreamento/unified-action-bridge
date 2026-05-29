@@ -390,6 +390,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   const startEditCategory = () => {
     setCategoryDraft(ticket?.pendencia_key || "");
     setSubcategoryDraft((ticket as any)?.subcategory_id || "");
+    setEquipmentModelDraft((ticket as any)?.equipment_model_id || "");
     setEditingCategory(true);
   };
 
@@ -410,11 +411,24 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
     }
   }, [editingCategory, tiposPendencia, ticket?.category, categoryDraft]);
 
+  // Reset modelo quando troca de sub-item
+  useEffect(() => {
+    if (!editingCategory) return;
+    const current = (ticket as any)?.equipment_model_id || "";
+    if (subcategoryDraft && subcategoryDraft === ((ticket as any)?.subcategory_id || "")) {
+      setEquipmentModelDraft(current);
+    } else {
+      setEquipmentModelDraft("");
+    }
+  }, [subcategoryDraft, editingCategory, ticket]);
+
   const cancelEditCategory = () => {
     setEditingCategory(false);
     setCategoryDraft("");
     setSubcategoryDraft("");
+    setEquipmentModelDraft("");
   };
+
 
   const saveCategory = async () => {
     if (!ticket?.id) return;
