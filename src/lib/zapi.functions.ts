@@ -409,6 +409,7 @@ export const sendText = createServerFn({ method: "POST" })
       text: z.string().min(1).max(5000).optional(),
       whisper: z.boolean().optional(),
       replyToMessageId: z.string().uuid().optional(),
+      includeOperatorName: z.boolean().optional(),
     }).parse
   )
   .handler(async ({ data, context }) => {
