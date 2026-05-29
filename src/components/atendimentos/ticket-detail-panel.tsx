@@ -390,6 +390,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   const startEditCategory = () => {
     setCategoryDraft(ticket?.pendencia_key || "");
     setSubcategoryDraft((ticket as any)?.subcategory_id || "");
+    setEquipmentModelDraft((ticket as any)?.equipment_model_id || "");
     setEditingCategory(true);
   };
 
@@ -410,11 +411,24 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
     }
   }, [editingCategory, tiposPendencia, ticket?.category, categoryDraft]);
 
+  // Reset modelo quando troca de sub-item
+  useEffect(() => {
+    if (!editingCategory) return;
+    const current = (ticket as any)?.equipment_model_id || "";
+    if (subcategoryDraft && subcategoryDraft === ((ticket as any)?.subcategory_id || "")) {
+      setEquipmentModelDraft(current);
+    } else {
+      setEquipmentModelDraft("");
+    }
+  }, [subcategoryDraft, editingCategory, ticket]);
+
   const cancelEditCategory = () => {
     setEditingCategory(false);
     setCategoryDraft("");
     setSubcategoryDraft("");
+    setEquipmentModelDraft("");
   };
+
 
   const saveCategory = async () => {
     if (!ticket?.id) return;
@@ -426,9 +440,16 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
 
     if (
       (newKey || "") === (ticket.pendencia_key || "") &&
-      (newLabel || "") === (ticket.category || "")
+      (newLabel || "") === (ticket.category || "") &&
+      (subcategoryDraft || "") === ((ticket as any).subcategory_id || "") &&
+      (equipmentModelDraft || "") === ((ticket as any).equipment_model_id || "")
     ) {
       setEditingCategory(false);
+      return;
+    }
+    // Validação: se o sub-item possui modelos vinculados, o modelo é obrigatório
+    if (subcategoryDraft && equipmentModels.length > 0 && !equipmentModelDraft) {
+      toast.error("Selecione o modelo do equipamento.");
       return;
     }
     setSavingCategory(true);
@@ -437,6 +458,10 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
       const subName = subId
         ? (subcategoriesAll as any[]).find((s) => s.id === subId)?.name || null
         : null;
+      const modelId = equipmentModelDraft || null;
+      const modelName = modelId
+        ? (equipmentModels as any[]).find((m) => m.equipment_item_id === modelId)?.name || null
+        : null;
       const { error } = await supabase
         .from("service_tickets")
         .update({
@@ -444,6 +469,8 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
           pendencia_key: newKey,
           subcategory_id: subId,
           subcategory_name: subName,
+          equipment_model_id: modelId,
+          equipment_model_name: modelName,
           updated_at: new Date().toISOString(),
         } as any)
         .eq("id", ticket.id);
@@ -451,6 +478,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
         toast.error("Erro ao alterar categoria: " + error.message);
         return;
       }
+
 
       // 2) Se já existe pendência criada no GSystem para esse ticket, atualiza lá também
       let gsyncMsg = "";
@@ -1160,6 +1188,20 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
                         </Select>
                       </div>
                     )}
+                    {subcategoryDraft && equipmentModels.length > 0 && (
+                      <div className="flex gap-1 items-center">
+                        <Select value={equipmentModelDraft || ""} onValueChange={(v) => setEquipmentModelDraft(v)} disabled={savingCategory}>
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue placeholder="Modelo do equipamento *" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {equipmentModels.map((m: any) => (
+                              <SelectItem key={m.equipment_item_id} value={m.equipment_item_id}>{m.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="flex items-center gap-1 group">
@@ -1168,12 +1210,16 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
                       {(ticket as any).subcategory_name && (
                         <Badge variant="outline" className="ml-2 text-[10px]">{(ticket as any).subcategory_name}</Badge>
                       )}
+                      {(ticket as any).equipment_model_name && (
+                        <Badge variant="secondary" className="ml-1 text-[10px]">🔧 {(ticket as any).equipment_model_name}</Badge>
+                      )}
                     </span>
                     <Button size="icon" variant="ghost" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={startEditCategory}>
                       <Pencil className="h-3 w-3" />
                     </Button>
                   </div>
                 )}
+
               </div>
             </div>
             <div className="grid grid-cols-[140px_1fr] gap-2 items-start text-sm">

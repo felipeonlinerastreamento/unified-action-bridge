@@ -149,7 +149,7 @@ import {
   validateLiberacaoItems,
   type LiberacaoLineItem,
 } from "@/components/atendimentos/liberacao-equipamento-fields";
-import { isLiberacaoCategory } from "@/hooks/use-liberacao-equipamento";
+import { isLiberacaoCategory, useSubcategoryEquipmentModels } from "@/hooks/use-liberacao-equipamento";
 
 import { escalateToGestao as escalateToGestaoHelper } from "@/lib/escalate-gestao";
 import { useAttendanceEventSettings, useSlaBandChangeNotifier } from "@/hooks/use-attendance-events";
@@ -307,6 +307,9 @@ function CentralPage() {
   const [escalateToGestao, setEscalateToGestao] = useState(false);
   const [finalizeStatus, setFinalizeStatus] = useState<string>("A resolver");
   const [finalizeTipoPendencia, setFinalizeTipoPendencia] = useState<string>("");
+  const [finalizeSubcategoryId, setFinalizeSubcategoryId] = useState<string>("");
+  const [finalizeEquipmentModelId, setFinalizeEquipmentModelId] = useState<string>("");
+
   const [showTeDialog, setShowTeDialog] = useState(false);
   const [teData, setTeData] = useState<TesteEquipamentoData>(EMPTY_TESTE_EQUIPAMENTO);
   const [showLiberacaoDialog, setShowLiberacaoDialog] = useState(false);
@@ -566,6 +569,35 @@ function CentralPage() {
     enabled: isAuthenticated,
     staleTime: 300000,
   });
+
+  // Sub-itens (locais) — filtrados pela categoria GSystem selecionada na finalização
+  const { data: finalizeSubcategoriesAll = [] } = useQuery({
+    queryKey: ["ticket-subcategories-active-central"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ticket_subcategories")
+        .select("id, name, category_key, is_active")
+        .eq("is_active", true);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: isAuthenticated,
+    staleTime: 60_000,
+  });
+  const finalizeSubcategoryOptions = (finalizeSubcategoriesAll as any[]).filter(
+    (s) => s.category_key === finalizeTipoPendencia,
+  );
+  const { data: finalizeEquipmentModels = [] } = useSubcategoryEquipmentModels(
+    finalizeSubcategoryId || null,
+  );
+  useEffect(() => {
+    setFinalizeSubcategoryId("");
+    setFinalizeEquipmentModelId("");
+  }, [finalizeTipoPendencia]);
+  useEffect(() => {
+    setFinalizeEquipmentModelId("");
+  }, [finalizeSubcategoryId]);
+
 
   const { data: teSettings } = useTesteEquipamentoSettings();
 
@@ -1621,6 +1653,23 @@ function CentralPage() {
         resolvedCategoryLabel = found?.Descricao || tipoPendencia;
       }
 
+      // Snapshot de sub-item e modelo de equipamento (capturados do header da Central)
+      const resolvedSubId = finalizeSubcategoryId || null;
+      const resolvedSubName = resolvedSubId
+        ? (finalizeSubcategoryOptions.find((s: any) => s.id === resolvedSubId)?.name || null)
+        : null;
+      const resolvedModelId = finalizeEquipmentModelId || null;
+      const resolvedModelName = resolvedModelId
+        ? ((finalizeEquipmentModels as any[]).find((m: any) => m.equipment_item_id === resolvedModelId)?.name || null)
+        : null;
+      const subFields = {
+        subcategory_id: resolvedSubId,
+        subcategory_name: resolvedSubName,
+        equipment_model_id: resolvedModelId,
+        equipment_model_name: resolvedModelName,
+      };
+
+
       // Carrega configuração TE FRESCA do DB (não confia no hook que pode não ter hidratado).
       // Regra: se a categoria escolhida é Teste de Equipamento, SEMPRE roteamos
       // para o setor configurado com status "aberto" — independente do operador
@@ -1687,6 +1736,8 @@ function CentralPage() {
               status: insertStatus as any,
               sector: insertSector,
               category: resolvedCategoryLabel,
+              ...subFields,
+
               notes: notes || null,
               opened_by: sess.session?.user?.id || null,
               assigned_to: isTEFlow ? null : undefined,
@@ -1801,6 +1852,8 @@ function CentralPage() {
                 closed_by: null,
                 notes: notes || activeTicket.notes || null,
                 category: resolvedCategoryLabel || activeTicket.category || null,
+                ...subFields,
+
               } as any)
               .eq("id", activeTicket.id);
             try {
@@ -1825,6 +1878,8 @@ function CentralPage() {
               .update({
                 notes: notes || activeTicket.notes || null,
                 category: resolvedCategoryLabel || activeTicket.category || null,
+                ...subFields,
+
               } as any)
               .eq("id", activeTicket.id);
           } else {
@@ -1836,6 +1891,8 @@ function CentralPage() {
                 closed_by: user?.id || null,
                 notes: notes || activeTicket.notes || null,
                 category: resolvedCategoryLabel || activeTicket.category || null,
+                ...subFields,
+
               } as any)
               .eq("id", activeTicket.id);
           }
@@ -2245,6 +2302,9 @@ function CentralPage() {
       setFinalizeNotes("");
       setFinalizeStatus("A resolver");
       setFinalizeTipoPendencia("");
+      setFinalizeSubcategoryId("");
+      setFinalizeEquipmentModelId("");
+
       setTeData(EMPTY_TESTE_EQUIPAMENTO);
       setLiberacaoItems([]);
       setLiberacaoDate("");
@@ -2866,6 +2926,12 @@ function CentralPage() {
                               setHeaderExpanded(true);
                               return;
                             }
+                            if (finalizeSubcategoryId && (finalizeEquipmentModels as any[]).length > 0 && !finalizeEquipmentModelId) {
+                              toast.error("Selecione o modelo do equipamento.");
+                              setHeaderExpanded(true);
+                              return;
+                            }
+
                             const tipoLabel = tiposPendencia.find((t) => t.Key === finalizeTipoPendencia)?.Descricao || "";
                             if (isTesteEquipamentoCategory(tipoLabel, teSettings)) {
                               setShowTeDialog(true);
@@ -3038,6 +3104,32 @@ function CentralPage() {
                             </Command>
                           </PopoverContent>
                         </Popover>
+                        {finalizeTipoPendencia && finalizeSubcategoryOptions.length > 0 && (
+                          <Select value={finalizeSubcategoryId || "__none__"} onValueChange={(v) => setFinalizeSubcategoryId(v === "__none__" ? "" : v)}>
+                            <SelectTrigger className="w-[160px] h-7 text-xs">
+                              <SelectValue placeholder="Sub-item..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__none__">— Sem sub-item —</SelectItem>
+                              {finalizeSubcategoryOptions.map((s: any) => (
+                                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+                        {finalizeSubcategoryId && (finalizeEquipmentModels as any[]).length > 0 && (
+                          <Select value={finalizeEquipmentModelId} onValueChange={setFinalizeEquipmentModelId}>
+                            <SelectTrigger className="w-[180px] h-7 text-xs">
+                              <SelectValue placeholder="Modelo *" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {(finalizeEquipmentModels as any[]).map((m: any) => (
+                                <SelectItem key={m.equipment_item_id} value={m.equipment_item_id}>{m.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        )}
+
                         <Button
                           variant="ghost"
                           size="sm"

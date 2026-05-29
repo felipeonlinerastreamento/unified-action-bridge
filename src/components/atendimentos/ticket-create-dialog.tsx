@@ -49,7 +49,7 @@ import {
   validateLiberacaoItems,
   type LiberacaoLineItem,
 } from "./liberacao-equipamento-fields";
-import { isLiberacaoCategory } from "@/hooks/use-liberacao-equipamento";
+import { isLiberacaoCategory, useSubcategoryEquipmentModels } from "@/hooks/use-liberacao-equipamento";
 import { isSuprimentoCategory } from "@/hooks/use-suprimento";
 import {
   SuprimentoFields,
@@ -107,6 +107,9 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
   const [notes, setNotes] = useState("");
   const [priority, setPriority] = useState("media");
   const [category, setCategory] = useState("");
+  const [subcategoryId, setSubcategoryId] = useState<string>("");
+  const [equipmentModelId, setEquipmentModelId] = useState<string>("");
+
   const [sectorId, setSectorId] = useState("");
   const [trackingCode, setTrackingCode] = useState("");
   const [loading, setLoading] = useState(false);
@@ -233,6 +236,42 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
     enabled: open,
     staleTime: 60_000,
   });
+
+  // Sub-itens (locais) — filtrados pelo Key da categoria GSystem selecionada
+  const selectedTipoKey = useMemo(() => {
+    if (!category) return "";
+    const t = (tiposPendencia as any[]).find((x) => x.Descricao === category);
+    return t?.Key ? String(t.Key) : "";
+  }, [category, tiposPendencia]);
+
+  const { data: subcategoriesAll = [] } = useQuery({
+    queryKey: ["ticket-subcategories-active-create"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ticket_subcategories")
+        .select("id, name, category_key, is_active")
+        .eq("is_active", true);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: open,
+    staleTime: 60_000,
+  });
+  const subcategoryOptions = useMemo(
+    () => (subcategoriesAll as any[]).filter((s) => s.category_key === selectedTipoKey),
+    [subcategoriesAll, selectedTipoKey],
+  );
+  const { data: equipmentModels = [] } = useSubcategoryEquipmentModels(subcategoryId || null);
+
+  // Reset sub-item/modelo quando troca de categoria
+  useEffect(() => {
+    setSubcategoryId("");
+    setEquipmentModelId("");
+  }, [selectedTipoKey]);
+  useEffect(() => {
+    setEquipmentModelId("");
+  }, [subcategoryId]);
+
 
   // Local active sectors (from Grupo de Setores config)
   const { data: localSectors = [] } = useQuery({
@@ -365,6 +404,12 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
         return;
       }
     }
+    // Validate equipment model: obrigatório se sub-item possui modelos vinculados
+    if (subcategoryId && (equipmentModels as any[]).length > 0 && !equipmentModelId) {
+      toast.error("Selecione o modelo do equipamento.");
+      return;
+    }
+
     // Validate Liberação de Equipamento
     if (isLiberacao) {
       const err = validateLiberacaoItems(liberacaoItems);
@@ -437,6 +482,15 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
         notes: finalNotes,
         priority: priority as any,
         category: category || null,
+        pendencia_key: selectedTipoKey || null,
+        subcategory_id: subcategoryId || null,
+        subcategory_name: subcategoryId
+          ? (subcategoryOptions.find((s: any) => s.id === subcategoryId)?.name || null)
+          : null,
+        equipment_model_id: equipmentModelId || null,
+        equipment_model_name: equipmentModelId
+          ? ((equipmentModels as any[]).find((m: any) => m.equipment_item_id === equipmentModelId)?.name || null)
+          : null,
         sector: sectorName,
         status: "aberto",
         tracking_code: trackCodeClean,
@@ -445,6 +499,7 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
         ...(isLiberacao && liberacaoDate
           ? { liberacao_date: new Date(liberacaoDate).toISOString() }
           : {}),
+
       } as any).select("id").single();
 
       if (error) {
@@ -765,6 +820,38 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
               </SelectContent>
             </Select>
           </div>
+          {category && subcategoryOptions.length > 0 && (
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Sub-item</label>
+              <Select value={subcategoryId || "__none__"} onValueChange={(v) => setSubcategoryId(v === "__none__" ? "" : v)}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— Sem sub-item —</SelectItem>
+                  {subcategoryOptions.map((s: any) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          {subcategoryId && (equipmentModels as any[]).length > 0 && (
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Modelo do equipamento *</label>
+              <Select value={equipmentModelId} onValueChange={setEquipmentModelId}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Selecione o modelo..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {(equipmentModels as any[]).map((m: any) => (
+                    <SelectItem key={m.equipment_item_id} value={m.equipment_item_id}>{m.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           {showTracking && (
             <div className="space-y-1">
               <label className="text-xs font-medium flex items-center gap-1">
