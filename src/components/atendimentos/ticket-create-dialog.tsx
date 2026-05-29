@@ -482,6 +482,15 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
         notes: finalNotes,
         priority: priority as any,
         category: category || null,
+        pendencia_key: selectedTipoKey || null,
+        subcategory_id: subcategoryId || null,
+        subcategory_name: subcategoryId
+          ? (subcategoryOptions.find((s: any) => s.id === subcategoryId)?.name || null)
+          : null,
+        equipment_model_id: equipmentModelId || null,
+        equipment_model_name: equipmentModelId
+          ? ((equipmentModels as any[]).find((m: any) => m.equipment_item_id === equipmentModelId)?.name || null)
+          : null,
         sector: sectorName,
         status: "aberto",
         tracking_code: trackCodeClean,
@@ -490,6 +499,7 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
         ...(isLiberacao && liberacaoDate
           ? { liberacao_date: new Date(liberacaoDate).toISOString() }
           : {}),
+
       } as any).select("id").single();
 
       if (error) {
