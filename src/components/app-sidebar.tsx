@@ -27,6 +27,7 @@ import {
   Activity,
   ShieldCheck,
   Megaphone,
+  FileText,
 } from "lucide-react";
 import { Link, useLocation } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
@@ -61,6 +62,7 @@ const mainItems = [
   { title: "Estoque", url: "/estoque", icon: Boxes },
   { title: "Relatórios", url: "/relatorios", icon: BarChart3 },
   { title: "OKR", url: "/okr", icon: Target },
+  { title: "Tratativas", url: "/tratativas", icon: FileText },
   { title: "Chat com Operadores", url: "/chat-operadores", icon: MessageCircle },
 ];
 
