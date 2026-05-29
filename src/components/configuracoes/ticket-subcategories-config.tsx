@@ -22,7 +22,15 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Plus, Pencil, Trash2, ListTree, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, ListTree, Loader2, Package } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  useLiberacaoCatalog,
+  useSubcategoryEquipmentModelLinks,
+  useAllSubcategoryModelCounts,
+  syncSubcategoryEquipmentModels,
+} from "@/hooks/use-liberacao-equipamento";
 
 type Subcategory = {
   id: string;
