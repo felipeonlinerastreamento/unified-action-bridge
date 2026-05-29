@@ -49,7 +49,7 @@ import {
   validateLiberacaoItems,
   type LiberacaoLineItem,
 } from "./liberacao-equipamento-fields";
-import { isLiberacaoCategory, useSubcategoryEquipmentModels } from "@/hooks/use-liberacao-equipamento";
+import { isLiberacaoCategory, useSubcategoryEquipmentModelsWithFallback } from "@/hooks/use-liberacao-equipamento";
 import { isSuprimentoCategory } from "@/hooks/use-suprimento";
 import {
   SuprimentoFields,
