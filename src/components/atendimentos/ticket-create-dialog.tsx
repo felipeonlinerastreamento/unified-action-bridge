@@ -849,11 +849,16 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
                   ))}
                 </SelectContent>
               </Select>
+              {equipmentModelsFallback && (
+                <p className="text-[11px] text-muted-foreground">
+                  Mostrando todos os modelos cadastrados em <strong>Liberação de Equipamento</strong>.
+                </p>
+              )}
             </div>
           )}
           {subcategoryId && (equipmentModels as any[]).length === 0 && (
             <p className="text-[11px] text-muted-foreground">
-              Nenhum modelo vinculado a este sub-item — configure em <strong>Configurações › Sub-Menu de Categorias</strong>.
+              Nenhum modelo cadastrado em <strong>Liberação de Equipamento</strong>.
             </p>
           )}
 
