@@ -1,28 +1,36 @@
-# Fallback de modelos de equipamento
+## Problema
 
-Quando um sub-item não tiver modelos vinculados, em vez de só mostrar o aviso, exibir o seletor com **todos os modelos ativos** do menu "Liberação de Equipamento" como fallback.
+O card **"Meu setor"** em `src/components/central/my-attendance-kpis.tsx` hoje conta TODOS os chats em `em_atendimento` dos setores do usuário, somando atendimentos de outros operadores. Resultado: Renato (setor Comercial) vê o badge marcar **3**, mas na sua fila aparece só **1** (os outros 2 estão com outros atendentes do mesmo setor).
 
-## Mudanças
+## Mudança
 
-1. **`src/hooks/use-liberacao-equipamento.tsx`**
-   - Criar novo hook `useSubcategoryEquipmentModelsWithFallback(subcategoryId)`:
-     - Carrega vínculos via `useSubcategoryEquipmentModels`.
-     - Se a lista estiver vazia, retorna o catálogo ativo via `useLiberacaoCatalog` mapeado para o mesmo formato `{ equipment_item_id, name }`.
-     - Expõe também flag `isFallback: boolean` para a UI saber que está mostrando o catálogo completo.
+Filtrar a query `sector-open-chats` para considerar apenas chats atribuídos ao próprio usuário.
 
-2. **`src/components/atendimentos/ticket-create-dialog.tsx`**
-   - Substituir o uso de `useSubcategoryEquipmentModels` pelo novo hook.
-   - Remover o bloco "Nenhum modelo vinculado…"; sempre mostrar o `Select`.
-   - Quando `isFallback`, exibir um pequeno hint cinza abaixo: *"Mostrando todos os modelos cadastrados em Liberação de Equipamento."*
+### Arquivo: `src/components/central/my-attendance-kpis.tsx`
 
-3. **`src/routes/central.tsx`** (popover Finalizar)
-   - Mesma troca de hook + remover o aviso de "Sem modelos vinculados" e mostrar o select sempre.
-   - Hint discreto quando fallback.
+Na query `sectorOpenCount` (linhas ~79-92), adicionar `.eq("assigned_to", user.id)`:
 
-4. **`src/components/atendimentos/ticket-detail-panel.tsx`**
-   - Mesma troca; select sempre renderizado; hint quando fallback.
+```ts
+const { data: sectorOpenCount = 0 } = useQuery({
+  queryKey: ["sector-open-chats", user?.id, mySectors],
+  queryFn: async () => {
+    if (!user?.id || mySectors.length === 0) return 0;
+    const { count } = await supabase
+      .from("zapi_chats" as any)
+      .select("id", { count: "exact", head: true })
+      .in("sector_name", mySectors)
+      .eq("status", "em_atendimento")
+      .eq("assigned_to", user.id); // ← novo
+    return count || 0;
+  },
+  enabled: !!user?.id && mySectors.length > 0,
+  refetchInterval: 30000,
+});
+```
 
-## Fora de escopo
-- Sem mudanças de schema/RLS.
-- Sem mudanças na tela de Configurações › Sub-Menu de Categorias (o admin continua podendo vincular modelos específicos para restringir as opções).
-- Comportamento de seleção/salvamento do `equipment_model_id` permanece igual.
+Também incluir `user?.id` no `queryKey` para evitar cache cruzado entre usuários.
+
+## Fora do escopo
+
+- Não mexer no label "Meu setor" nem em layout/estilos.
+- Não alterar lógica de fila/filtro, realtime, ou outras queries do KPI.

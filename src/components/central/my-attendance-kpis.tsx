@@ -75,19 +75,20 @@ export function MyAttendanceKpis() {
     staleTime: 60000,
   });
 
-  // Atendimentos em aberto do(s) setor(es)
+  // Atendimentos em aberto do(s) setor(es) atribuídos ao usuário
   const { data: sectorOpenCount = 0 } = useQuery({
-    queryKey: ["sector-open-chats", mySectors],
+    queryKey: ["sector-open-chats", user?.id, mySectors],
     queryFn: async () => {
-      if (mySectors.length === 0) return 0;
+      if (!user?.id || mySectors.length === 0) return 0;
       const { count } = await supabase
         .from("zapi_chats" as any)
         .select("id", { count: "exact", head: true })
         .in("sector_name", mySectors)
-        .eq("status", "em_atendimento");
+        .eq("status", "em_atendimento")
+        .eq("assigned_to", user.id);
       return count || 0;
     },
-    enabled: mySectors.length > 0,
+    enabled: !!user?.id && mySectors.length > 0,
     refetchInterval: 30000,
   });
 
