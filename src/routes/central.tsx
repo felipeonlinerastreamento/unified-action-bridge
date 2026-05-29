@@ -587,9 +587,8 @@ function CentralPage() {
   const finalizeSubcategoryOptions = (finalizeSubcategoriesAll as any[]).filter(
     (s) => s.category_key === finalizeTipoPendencia,
   );
-  const { data: finalizeEquipmentModels = [] } = useSubcategoryEquipmentModels(
-    finalizeSubcategoryId || null,
-  );
+  const { models: finalizeEquipmentModels, isFallback: finalizeEquipmentModelsFallback } =
+    useSubcategoryEquipmentModelsWithFallback(finalizeSubcategoryId || null);
   useEffect(() => {
     setFinalizeSubcategoryId("");
     setFinalizeEquipmentModelId("");
