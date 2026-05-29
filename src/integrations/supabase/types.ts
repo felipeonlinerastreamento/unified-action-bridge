@@ -3695,6 +3695,8 @@ export type Database = {
           contact_name: string | null
           contact_phone: string | null
           created_at: string
+          equipment_model_id: string | null
+          equipment_model_name: string | null
           escalated_from_ticket_id: string | null
           escalated_to_gestao: boolean
           id: string
@@ -3726,6 +3728,8 @@ export type Database = {
           contact_name?: string | null
           contact_phone?: string | null
           created_at?: string
+          equipment_model_id?: string | null
+          equipment_model_name?: string | null
           escalated_from_ticket_id?: string | null
           escalated_to_gestao?: boolean
           id?: string
@@ -3757,6 +3761,8 @@ export type Database = {
           contact_name?: string | null
           contact_phone?: string | null
           created_at?: string
+          equipment_model_id?: string | null
+          equipment_model_name?: string | null
           escalated_from_ticket_id?: string | null
           escalated_to_gestao?: boolean
           id?: string
@@ -3790,6 +3796,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_tickets_equipment_model_id_fkey"
+            columns: ["equipment_model_id"]
+            isOneToOne: false
+            referencedRelation: "liberacao_equipamento_items"
             referencedColumns: ["id"]
           },
           {
@@ -4779,6 +4792,42 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      ticket_subcategory_equipment_models: {
+        Row: {
+          created_at: string
+          equipment_item_id: string
+          position: number
+          subcategory_id: string
+        }
+        Insert: {
+          created_at?: string
+          equipment_item_id: string
+          position?: number
+          subcategory_id: string
+        }
+        Update: {
+          created_at?: string
+          equipment_item_id?: string
+          position?: number
+          subcategory_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "ticket_subcategory_equipment_models_equipment_item_id_fkey"
+            columns: ["equipment_item_id"]
+            isOneToOne: false
+            referencedRelation: "liberacao_equipamento_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "ticket_subcategory_equipment_models_subcategory_id_fkey"
+            columns: ["subcategory_id"]
+            isOneToOne: false
+            referencedRelation: "ticket_subcategories"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ticket_suprimento_items: {
         Row: {
