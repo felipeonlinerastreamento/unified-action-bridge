@@ -1188,6 +1188,20 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
                         </Select>
                       </div>
                     )}
+                    {subcategoryDraft && equipmentModels.length > 0 && (
+                      <div className="flex gap-1 items-center">
+                        <Select value={equipmentModelDraft || ""} onValueChange={(v) => setEquipmentModelDraft(v)} disabled={savingCategory}>
+                          <SelectTrigger className="h-8 text-xs">
+                            <SelectValue placeholder="Modelo do equipamento *" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {equipmentModels.map((m: any) => (
+                              <SelectItem key={m.equipment_item_id} value={m.equipment_item_id}>{m.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="flex items-center gap-1 group">
@@ -1196,12 +1210,16 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
                       {(ticket as any).subcategory_name && (
                         <Badge variant="outline" className="ml-2 text-[10px]">{(ticket as any).subcategory_name}</Badge>
                       )}
+                      {(ticket as any).equipment_model_name && (
+                        <Badge variant="secondary" className="ml-1 text-[10px]">🔧 {(ticket as any).equipment_model_name}</Badge>
+                      )}
                     </span>
                     <Button size="icon" variant="ghost" className="h-6 w-6 opacity-0 group-hover:opacity-100" onClick={startEditCategory}>
                       <Pencil className="h-3 w-3" />
                     </Button>
                   </div>
                 )}
+
               </div>
             </div>
             <div className="grid grid-cols-[140px_1fr] gap-2 items-start text-sm">
