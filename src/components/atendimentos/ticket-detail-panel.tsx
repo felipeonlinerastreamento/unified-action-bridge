@@ -1435,7 +1435,13 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
             <div className="space-y-2">
               <label className="text-xs font-medium text-muted-foreground">Encaminhar para Setor</label>
               <div className="flex gap-2">
-                <Select value={forwardSector} onValueChange={setForwardSector}>
+                <Select
+                  value={forwardSector}
+                  onValueChange={(v) => {
+                    setForwardSector(v);
+                    setForwardSectorUser("__auto__");
+                  }}
+                >
                   <SelectTrigger className="h-9 flex-1">
                     <SelectValue placeholder="Selecionar setor" />
                   </SelectTrigger>
@@ -1449,10 +1455,26 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
                   <ArrowRight className="h-4 w-4" />
                 </Button>
               </div>
+              {forwardSector && (
+                <Select value={forwardSectorUser} onValueChange={setForwardSectorUser}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Operador específico (opcional)" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__auto__">— Roteamento automático —</SelectItem>
+                    {forwardSectorUsers.map((u) => (
+                      <SelectItem key={u.user_id} value={u.user_id}>
+                        {u.name || u.user_id.substring(0, 8)}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
               <p className="text-[10px] text-muted-foreground">
-                O ticket será atribuído automaticamente ao atendente do setor com menor número de chamados ativos.
+                Sem operador selecionado: o sistema atribui ao atendente do setor com menor carga (online; senão, qualquer um do setor). Se ninguém estiver cadastrado, o responsável anterior é removido.
               </p>
             </div>
+
 
             {/* Linked agents */}
             <TicketAgentsSection ticketId={ticket.id} userId={userId} profiles={profiles} />
