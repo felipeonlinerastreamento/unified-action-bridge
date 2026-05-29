@@ -3127,6 +3127,11 @@ function CentralPage() {
                             </SelectContent>
                           </Select>
                         )}
+                        {finalizeSubcategoryId && (finalizeEquipmentModels as any[]).length === 0 && (
+                          <span className="text-[10px] text-muted-foreground italic">
+                            Sem modelos vinculados — Configurações › Sub-Menu de Categorias
+                          </span>
+                        )}
 
                         <Button
                           variant="ghost"
