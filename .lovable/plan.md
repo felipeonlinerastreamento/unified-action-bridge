@@ -1,36 +1,59 @@
-# Correção: balões cortados na tela do chat
-
 ## Causa raiz
 
-O contêiner de mensagens usa `<ScrollArea>` (Radix). Por padrão, o Radix envolve o conteúdo do `Viewport` em um `<div style="display: table; min-width: 100%">`. Em layout `table`, o `min-width: 100%` é respeitado, mas a largura cresce conforme o conteúdo intrínseco — então:
+O nome do operador está sendo prefixado **duas vezes** ao enviar uma mensagem de texto:
 
-- A bolha (`max-w-[75%]`) calcula seu limite contra a largura expandida pela tabela, não contra a largura visível.
-- URLs longas (ex.: link do Waze) e linhas curtas geram uma largura interna maior que a do painel.
-- Resultado: a bolha vaza para baixo do painel lateral direito (Empresa/Cliente) e o texto fica cortado.
+1. **No cliente** (`src/routes/central.tsx`, linha 2421), quando `nicknameMode` está ativo, o texto vira:
+   ```
+   *Patrícia:* teste
+   ```
 
-O ajuste anterior (`min-w-0` + `[overflow-wrap:anywhere]` no balão) só ajuda *depois* que a quebra é forçada — mas o `table` continua expandindo, então o efeito visual permanece.
+2. **No servidor** (`src/lib/zapi.functions.ts`, linhas 510-512), a server function `sendText` também prefixa:
+   ```
+   _*Patrícia*_\n<texto>
+   ```
+   A verificação `text.startsWith("_*Nome*_")` falha porque o cliente usou o formato `*Nome:*` (negrito comum), e não `_*Nome*_` (negrito+itálico). Resultado final enviado ao WhatsApp:
+   ```
+   _*Patrícia*_
+   *Patrícia:* teste
+   ```
+   Que aparece no WhatsApp como:
+   ```
+   Patrícia
+   Patrícia: teste
+   ```
 
-## Mudança
+Isso só afeta usuários cujo "apelido" enviado pelo cliente coincide com o primeiro nome do perfil (cenário comum). Quando o toggle "sem nome" está ligado no cliente, o servidor ainda prefixa — ou seja, o toggle também está parcialmente quebrado.
 
-Arquivo: `src/routes/central.tsx`, linha 3158 (ScrollArea que envolve as mensagens):
+## Solução
 
-- Adicionar utilitário Tailwind que força o wrapper interno do Viewport a `display:block`:
+Tornar o **servidor a única fonte de verdade** para o prefixo do nome do operador, e deixar o toggle do cliente realmente desabilitar o prefixo.
 
-```text
-<ScrollArea className="flex-1 p-4 [&>div>div]:!block">
-```
+### Mudanças
 
-Isso afeta exclusivamente o `ScrollArea` da timeline do chat (não tabs do painel direito nem outras `ScrollArea` da página). Com `block`, o viewport passa a respeitar a largura do contêiner pai, fazendo o `max-w-[75%]` da bolha funcionar corretamente.
+**1. `src/lib/zapi.functions.ts` — `sendText`**
+- Adicionar parâmetro opcional `includeOperatorName?: boolean` no input validator (default `true`).
+- Reforçar a detecção de prefixo já existente para cobrir formatos legados antes de prefixar:
+  - `_*Nome*_` (atual)
+  - `*Nome:*` (formato enviado pelo cliente hoje)
+  - `Nome:` no início da primeira linha
+- Se `includeOperatorName === false`, não prefixar.
+- Aplicar a mesma lógica ao envio com mídia/caption se existir caminho equivalente que prefixe nome (verificar `sendMedia`/`sendImage` correlatos no mesmo arquivo e ajustar de forma consistente).
 
-## Validação
+**2. `src/routes/central.tsx` — `handleSend` (linhas 2416-2428)**
+- Remover o prefixo manual `*${nicknameSource}:* ...`. Enviar somente o texto puro.
+- Passar `includeOperatorName: nicknameMode && !whisperMode` para `sendMutation`.
+- Atualizar a chamada de `sendMutation.mutate` e a definição de `sendMutation` para repassar a flag à server function.
 
-1. Abrir conversa com mensagem longa (caso "Logística MDGEO" com link do Waze).
-2. Confirmar visualmente que:
-   - O balão não passa por baixo do painel direito.
-   - Texto e URL quebram dentro do balão.
-   - Scroll vertical continua funcionando; não aparece scroll horizontal.
-3. Repetir em viewport mais estreito (~1280px) para validar responsividade.
+**3. Render da bolha (`src/routes/central.tsx`, linhas 3323-3336)**
+- A regex de strip do prefixo `^\*[^*\n]+:\*\s+` pode ser mantida por compatibilidade com mensagens antigas, mas adicionar também o strip de `^_\*[^*\n]+\*_\n` para a nova primeira linha (caso a UI local também precise esconder — verificar se já é feito; se a UI mostra o nome separadamente via `senderFirstName`, remover a duplicata visual).
 
-## Não escopo
+## Detalhes técnicos
 
-Sem alterações no componente `ScrollArea` global, em outras telas ou em lógica de negócio.
+- Não alterar o schema do banco nem mensagens já persistidas.
+- O servidor continua sendo o único ponto que decide o formato final enviado ao Z-API, garantindo consistência entre todos os operadores e clientes (web, mobile etc.).
+- Backward compatibility: a detecção ampliada no servidor evita re-prefixar mensagens que ainda venham com o formato antigo durante a transição/cache.
+
+## Fora de escopo
+
+- Caminhos de envio diferentes de texto puro (áudio, anexos sem caption) — não causam essa duplicação.
+- Mensagens automáticas de bot / templates — fluxo separado.
