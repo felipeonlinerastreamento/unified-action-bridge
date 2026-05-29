@@ -203,6 +203,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   const [editingCategory, setEditingCategory] = useState(false);
   const [categoryDraft, setCategoryDraft] = useState("");
   const [subcategoryDraft, setSubcategoryDraft] = useState<string>("");
+  const [equipmentModelDraft, setEquipmentModelDraft] = useState<string>("");
   const [savingCategory, setSavingCategory] = useState(false);
   const [editingNotes, setEditingNotes] = useState(false);
   const [notesDraft, setNotesDraft] = useState("");
