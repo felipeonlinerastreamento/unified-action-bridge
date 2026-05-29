@@ -71,6 +71,10 @@ const MESSAGE_EVENT_TYPES = new Set([
   "MessageSentCallback",
 ]);
 
+function rawHasLidMarker(rawPhone: string): boolean {
+  return /@lid$/i.test(rawPhone) || /^lid:/i.test(rawPhone);
+}
+
 function normalizeIncomingPhone(rawPhone: string, isGroup: boolean): string {
   if (isGroup) {
     // Para grupos preservamos o hífen entre <criador>-<timestamp>; sem ele
@@ -87,7 +91,8 @@ function normalizeIncomingPhone(rawPhone: string, isGroup: boolean): string {
 
   let digits = rawPhone.replace(/\D/g, "");
   if (!digits) return "";
-  if (digits.length >= 15) return digits;
+  // BR phones are at most 13 digits (55 + DDD + 9 + 8). 14+ é LID.
+  if (digits.length >= 14) return digits;
   if (digits.length >= 10 && digits.length <= 11) digits = `55${digits}`;
 
   // BR mobile: canonical 55 + DDD + 9 + 8 digits.
@@ -96,6 +101,7 @@ function normalizeIncomingPhone(rawPhone: string, isGroup: boolean): string {
   }
   return digits;
 }
+
 
 /**
  * Picks the least-loaded online operator for a sector. Falls back to
@@ -319,7 +325,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
             }
 
             let existingChat: any = null;
-            const isLidIdentifier = !isGroup && phoneN.length >= 15;
+            const isLidIdentifier = !isGroup && (rawHasLidMarker(rawPhone) || phoneN.length >= 14);
             const candidateName = String(p.senderName || "").trim();
             // 1) Lookup by stored LID mapping or any captured alias
             //    (LIDs for call events sometimes differ from message LIDs).
@@ -736,14 +742,19 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
             existing = byNorm || null;
           }
 
-          // LID guard: WhatsApp sometimes sends a 15-digit "linked id" in
-          // `phone` instead of the real number (especially on SentCallback for
-          // own-account devices). That creates a duplicate chat for the same
-          // contact. If `phone` looks like a LID (15+ digits, not a group)
-          // and we don't already have a chat for it, try to resolve to an
-          // existing chat by sender name; if none, drop the event.
+          // LID guard: WhatsApp sometimes sends um "linked id" em `phone`
+          // ao invés do número real (especialmente em chamadas e em
+          // SentCallback de dispositivos próprios). Isso criaria um chat
+          // duplicado para o mesmo contato. Detectamos LID por sufixo @lid
+          // / prefixo lid: no payload bruto, ou por comprimento (telefone BR
+          // tem no máximo 13 dígitos). Quando identificado, tentamos
+          // resolver para um chat existente por contact_name; se não
+          // houver, descartamos o evento.
           const isLidIdentifier =
-            !isGroupMessage && !existing && phone.length >= 15;
+            !isGroupMessage &&
+            !existing &&
+            (rawHasLidMarker(rawPhone) || phone.length >= 14);
+
           if (isLidIdentifier) {
             const candidateName = (incomingContactName || "").trim();
             if (candidateName) {
