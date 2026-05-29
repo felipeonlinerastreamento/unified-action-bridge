@@ -3155,7 +3155,7 @@ function CentralPage() {
                   </div>
 
                   {/* Messages */}
-                  <ScrollArea className="flex-1 p-4">
+                  <ScrollArea className="flex-1 p-4 [&>div>div]:!block">
                     <div className="space-y-2">
                       {messages.length > 0 && hasOlder && (
                         <div className="flex justify-center mb-2">
