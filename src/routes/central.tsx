@@ -307,6 +307,9 @@ function CentralPage() {
   const [escalateToGestao, setEscalateToGestao] = useState(false);
   const [finalizeStatus, setFinalizeStatus] = useState<string>("A resolver");
   const [finalizeTipoPendencia, setFinalizeTipoPendencia] = useState<string>("");
+  const [finalizeSubcategoryId, setFinalizeSubcategoryId] = useState<string>("");
+  const [finalizeEquipmentModelId, setFinalizeEquipmentModelId] = useState<string>("");
+
   const [showTeDialog, setShowTeDialog] = useState(false);
   const [teData, setTeData] = useState<TesteEquipamentoData>(EMPTY_TESTE_EQUIPAMENTO);
   const [showLiberacaoDialog, setShowLiberacaoDialog] = useState(false);
