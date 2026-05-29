@@ -1202,6 +1202,11 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
                         </Select>
                       </div>
                     )}
+                    {subcategoryDraft && equipmentModels.length === 0 && (
+                      <p className="text-[10px] text-muted-foreground italic">
+                        Sem modelos vinculados — Configurações › Sub-Menu de Categorias
+                      </p>
+                    )}
                   </div>
                 ) : (
                   <div className="flex items-center gap-1 group">
