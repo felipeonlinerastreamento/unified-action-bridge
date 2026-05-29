@@ -99,6 +99,31 @@ export function useSubcategoryEquipmentModels(subcategoryId?: string | null) {
   });
 }
 
+/**
+ * Igual a `useSubcategoryEquipmentModels`, mas se o sub-item não tiver modelos
+ * vinculados, faz fallback para o catálogo completo de Liberação de Equipamento.
+ * `isFallback` indica que está mostrando o catálogo inteiro.
+ */
+export function useSubcategoryEquipmentModelsWithFallback(
+  subcategoryId?: string | null,
+): { models: SubcategoryEquipmentModel[]; isFallback: boolean; isLoading: boolean } {
+  const linked = useSubcategoryEquipmentModels(subcategoryId);
+  const catalog = useLiberacaoCatalog(!!subcategoryId);
+  const linkedModels = linked.data || [];
+  if (linkedModels.length > 0) {
+    return { models: linkedModels, isFallback: false, isLoading: linked.isLoading };
+  }
+  const fallback: SubcategoryEquipmentModel[] = (catalog.data || []).map((c) => ({
+    equipment_item_id: c.id,
+    name: c.name,
+  }));
+  return {
+    models: fallback,
+    isFallback: fallback.length > 0,
+    isLoading: linked.isLoading || catalog.isLoading,
+  };
+}
+
 /** Retorna apenas os IDs vinculados ao sub-item (para preencher o admin). */
 export function useSubcategoryEquipmentModelLinks(subcategoryId?: string | null) {
   return useQuery({
