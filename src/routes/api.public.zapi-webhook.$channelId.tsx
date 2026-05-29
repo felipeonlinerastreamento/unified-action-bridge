@@ -325,7 +325,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
             }
 
             let existingChat: any = null;
-            const isLidIdentifier = !isGroup && phoneN.length >= 15;
+            const isLidIdentifier = !isGroup && (rawHasLidMarker(rawPhone) || phoneN.length >= 14);
             const candidateName = String(p.senderName || "").trim();
             // 1) Lookup by stored LID mapping or any captured alias
             //    (LIDs for call events sometimes differ from message LIDs).
