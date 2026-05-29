@@ -1461,7 +1461,8 @@ function CentralPage() {
       text,
       whisper,
       replyToMessageId,
-    }: { text: string; whisper: boolean; replyToMessageId?: string | null }) => {
+      includeOperatorName,
+    }: { text: string; whisper: boolean; replyToMessageId?: string | null; includeOperatorName?: boolean }) => {
       if (whisper) {
         // Whisper: persist locally only, never sent to client via Z-API
         const { data: chatRow } = await supabase
