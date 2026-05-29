@@ -820,6 +820,38 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
               </SelectContent>
             </Select>
           </div>
+          {category && subcategoryOptions.length > 0 && (
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Sub-item</label>
+              <Select value={subcategoryId || "__none__"} onValueChange={(v) => setSubcategoryId(v === "__none__" ? "" : v)}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Selecione..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">— Sem sub-item —</SelectItem>
+                  {subcategoryOptions.map((s: any) => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          {subcategoryId && (equipmentModels as any[]).length > 0 && (
+            <div className="space-y-1">
+              <label className="text-xs font-medium">Modelo do equipamento *</label>
+              <Select value={equipmentModelId} onValueChange={setEquipmentModelId}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Selecione o modelo..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {(equipmentModels as any[]).map((m: any) => (
+                    <SelectItem key={m.equipment_item_id} value={m.equipment_item_id}>{m.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
           {showTracking && (
             <div className="space-y-1">
               <label className="text-xs font-medium flex items-center gap-1">
