@@ -501,15 +501,25 @@ export const sendText = createServerFn({ method: "POST" })
     // (negrito + itálico) numa linha acima do conteúdo da mensagem.
     let outgoingText = text;
     let operatorFirstName: string | undefined;
-    if (context.userId) {
+    const includeName = data.includeOperatorName !== false;
+    if (includeName && context.userId) {
       const { data: prof } = await context.supabase
         .from("profiles")
         .select("name")
         .eq("user_id", context.userId)
         .maybeSingle();
       operatorFirstName = firstNameOf(prof?.name);
-      if (operatorFirstName && !text.startsWith(`_*${operatorFirstName}*_`)) {
-        outgoingText = `_*${operatorFirstName}*_\n${text}`;
+      if (operatorFirstName) {
+        const esc = operatorFirstName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+        // Detecta qualquer prefixo de nome já existente (formato atual, antigo
+        // do cliente `*Nome:*`, ou simplesmente `Nome:` no início).
+        const alreadyPrefixed = new RegExp(
+          `^(_\\*${esc}\\*_\\n|\\*${esc}:\\*\\s+|${esc}:\\s+)`,
+          "i"
+        ).test(text);
+        if (!alreadyPrefixed) {
+          outgoingText = `_*${operatorFirstName}*_\n${text}`;
+        }
       }
     }
 
