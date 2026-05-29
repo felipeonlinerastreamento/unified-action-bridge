@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -22,7 +22,15 @@ import {
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
-import { Plus, Pencil, Trash2, ListTree, Loader2 } from "lucide-react";
+import { Plus, Pencil, Trash2, ListTree, Loader2, Package } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import {
+  useLiberacaoCatalog,
+  useSubcategoryEquipmentModelLinks,
+  useAllSubcategoryModelCounts,
+  syncSubcategoryEquipmentModels,
+} from "@/hooks/use-liberacao-equipamento";
 
 type Subcategory = {
   id: string;
@@ -48,6 +56,24 @@ export function TicketSubcategoriesConfig() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [isActive, setIsActive] = useState(true);
+  const [selectedModelIds, setSelectedModelIds] = useState<string[]>([]);
+
+  const { data: equipmentCatalog = [] } = useLiberacaoCatalog(isAuthenticated && dialogOpen);
+  const { data: existingLinks = [] } = useSubcategoryEquipmentModelLinks(editing?.id);
+  const { data: modelCounts = {} } = useAllSubcategoryModelCounts();
+
+  // Hydrate selection when opening edit dialog (after links load)
+  useEffect(() => {
+    if (editing && dialogOpen) {
+      setSelectedModelIds(existingLinks);
+    }
+  }, [editing, dialogOpen, existingLinks]);
+
+  const toggleModelId = (id: string) => {
+    setSelectedModelIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
 
   const getAuthHeaders = async () => {
     const { data: { session } } = await supabase.auth.getSession();
@@ -97,6 +123,7 @@ export function TicketSubcategoriesConfig() {
     setName("");
     setDescription("");
     setIsActive(true);
+    setSelectedModelIds([]);
   };
 
   const openCreate = () => {
@@ -110,6 +137,7 @@ export function TicketSubcategoriesConfig() {
     setName(s.name);
     setDescription(s.description || "");
     setIsActive(s.is_active);
+    setSelectedModelIds([]); // hydrated via useEffect when links arrive
     setDialogOpen(true);
   };
 
@@ -125,20 +153,31 @@ export function TicketSubcategoriesConfig() {
         description: description.trim() || null,
         is_active: isActive,
       };
+      let subId: string;
       if (editing) {
         const { error } = await supabase
           .from("ticket_subcategories")
           .update(payload)
           .eq("id", editing.id);
         if (error) throw error;
+        subId = editing.id;
       } else {
-        const { error } = await supabase.from("ticket_subcategories").insert(payload);
+        const { data, error } = await supabase
+          .from("ticket_subcategories")
+          .insert(payload)
+          .select("id")
+          .single();
         if (error) throw error;
+        subId = (data as any).id;
       }
+      await syncSubcategoryEquipmentModels(subId, selectedModelIds);
     },
     onSuccess: () => {
       toast.success(editing ? "Sub-item atualizado" : "Sub-item criado");
       queryClient.invalidateQueries({ queryKey: ["ticket-subcategories"] });
+      queryClient.invalidateQueries({ queryKey: ["subcategory-equipment-model-counts"] });
+      queryClient.invalidateQueries({ queryKey: ["subcategory-equipment-model-links"] });
+      queryClient.invalidateQueries({ queryKey: ["subcategory-equipment-models"] });
       setDialogOpen(false);
       resetForm();
     },
@@ -236,7 +275,17 @@ export function TicketSubcategoriesConfig() {
                   <TableCell>
                     <Badge variant="outline">{s.category_label || s.category_key}</Badge>
                   </TableCell>
-                  <TableCell className="font-medium">{s.name}</TableCell>
+                  <TableCell className="font-medium">
+                    <div className="flex items-center gap-2">
+                      <span>{s.name}</span>
+                      {(modelCounts as Record<string, number>)[s.id] > 0 && (
+                        <Badge variant="secondary" className="text-[10px] gap-1">
+                          <Package className="h-3 w-3" />
+                          {(modelCounts as Record<string, number>)[s.id]} modelo{(modelCounts as Record<string, number>)[s.id] === 1 ? "" : "s"}
+                        </Badge>
+                      )}
+                    </div>
+                  </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
                     {s.description || "—"}
                   </TableCell>
@@ -315,6 +364,50 @@ export function TicketSubcategoriesConfig() {
                 onChange={(e) => setDescription(e.target.value)}
                 rows={3}
               />
+            </div>
+            <div className="space-y-1.5 rounded-md border border-border bg-muted/30 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <Label className="flex items-center gap-1.5">
+                  <Package className="h-4 w-4 text-primary" />
+                  Modelos de equipamento vinculados
+                </Label>
+                <span className="text-[11px] text-muted-foreground">
+                  {selectedModelIds.length} selecionado{selectedModelIds.length === 1 ? "" : "s"}
+                </span>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Os modelos selecionados serão exibidos como opções obrigatórias na criação do chamado quando este sub-item for escolhido. Use o cadastro em <strong>Liberação de Equipamento</strong> para adicionar novos modelos.
+              </p>
+              {equipmentCatalog.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-2 text-center">
+                  Nenhum modelo cadastrado no catálogo.
+                </p>
+              ) : (
+                <ScrollArea className="h-[180px] rounded-md border bg-background">
+                  <div className="p-2 space-y-1">
+                    {equipmentCatalog.map((m) => (
+                      <label
+                        key={m.id}
+                        className="flex items-start gap-2 rounded px-2 py-1.5 hover:bg-muted cursor-pointer"
+                      >
+                        <Checkbox
+                          checked={selectedModelIds.includes(m.id)}
+                          onCheckedChange={() => toggleModelId(m.id)}
+                          className="mt-0.5"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium">{m.name}</div>
+                          {m.description && (
+                            <div className="text-[11px] text-muted-foreground truncate">
+                              {m.description}
+                            </div>
+                          )}
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
             </div>
             <div className="flex items-center gap-3">
               <Switch checked={isActive} onCheckedChange={setIsActive} />

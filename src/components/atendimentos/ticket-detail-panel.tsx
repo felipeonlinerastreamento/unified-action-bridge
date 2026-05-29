@@ -62,6 +62,7 @@ import { TicketPurchaseSection } from "./ticket-purchase-section";
 import { TicketPerdidosSection } from "./ticket-perdidos-section";
 import { TicketAttachmentsSection } from "./ticket-attachments-section";
 import { TicketActivitiesSection, getPendingActivities } from "./ticket-activities-section";
+import { useSubcategoryEquipmentModels } from "@/hooks/use-liberacao-equipamento";
 import {
   useTesteEquipamentoSettings,
   isTesteEquipamentoCategory,
@@ -203,6 +204,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   const [editingCategory, setEditingCategory] = useState(false);
   const [categoryDraft, setCategoryDraft] = useState("");
   const [subcategoryDraft, setSubcategoryDraft] = useState<string>("");
+  const [equipmentModelDraft, setEquipmentModelDraft] = useState<string>("");
   const [savingCategory, setSavingCategory] = useState(false);
   const [editingNotes, setEditingNotes] = useState(false);
   const [notesDraft, setNotesDraft] = useState("");
@@ -295,6 +297,8 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   const subcategoryOptions = (subcategoriesAll as any[]).filter(
     (s) => s.category_key === categoryDraft
   );
+
+  const { data: equipmentModels = [] } = useSubcategoryEquipmentModels(subcategoryDraft || null);
 
   // Load active sectors for forward dropdown
   const { data: sectors = [] } = useQuery({

@@ -1,51 +1,62 @@
-## Problema (chamado #01838)
+# Vínculo de Modelo de Equipamento ao Sub-Item
 
-A linha "Responsável" no painel é a **união** de `service_tickets.assigned_to` + `ticket_agents.user_id` (linhas 1019–1026 de `ticket-detail-panel.tsx`). No #01838:
+Permitir que cada sub-item de categoria (ex.: "Pane Rastreador → Buzzer disparado") tenha uma lista própria de modelos de equipamento (vindos do catálogo de Liberação de Equipamento). Ao criar um chamado em uma categoria que tenha sub-itens, o operador escolhe o problema (sub-item) **e** o modelo do equipamento (obrigatório).
 
-- `assigned_to` = **Fernanda** (definida antes)
-- Usuário vinculou e depois removeu Kauã via *Atendentes Vinculados*
-- Encaminhou para o setor "Laboratorio" 3x — o RPC `pick_least_loaded_agent` retornou `null` (ninguém online/disponível no setor), então **o `assigned_to` nunca foi alterado** → Fernanda continua aparecendo.
+## 1. Banco de dados (migration)
 
-Hoje, "Encaminhar para Setor" e "Encaminhar para Usuário" são fluxos separados, e o encaminhamento de setor preserva o responsável antigo quando não encontra ninguém disponível.
+**Nova tabela `ticket_subcategory_equipment_models`** (N:N entre sub-item e itens do catálogo):
+- `subcategory_id` → `ticket_subcategories.id` (cascade)
+- `equipment_item_id` → `liberacao_equipamento_items.id` (cascade)
+- `position` int (ordenação)
+- PK composta (subcategory_id, equipment_item_id)
+- GRANTs: select para `authenticated`; insert/update/delete só para admin via RLS
+- RLS: leitura para authenticated; escrita só `has_role(auth.uid(), 'admin')`
 
-## O que vai mudar
+**Novas colunas em `service_tickets`** (gravar o modelo escolhido no chamado):
+- `equipment_model_id uuid` (FK soft → `liberacao_equipamento_items`, ON DELETE SET NULL)
+- `equipment_model_name text` (snapshot para histórico, caso o item seja renomeado/excluído)
 
-### 1. Encaminhar para Setor (sem operador escolhido) — fallback de roteamento
+## 2. Tela de configuração (`ticket-subcategories-config.tsx`)
 
-`forwardToSector` em `src/components/atendimentos/ticket-detail-panel.tsx`:
+No dialog de criar/editar sub-item, abaixo de "Descrição":
+- Novo bloco **"Modelos de equipamento vinculados"** — multi-select com checkboxes da lista `liberacao_equipamento_items` (ativos), ordenável por arrastar (opcional, ou simples ordem alfabética).
+- Ao salvar o sub-item, sincroniza a tabela `ticket_subcategory_equipment_models` (delete + insert dos selecionados).
+- Na tabela de listagem, mostrar badge com a contagem ("3 modelos vinculados").
 
-1. Tenta `pick_least_loaded_agent(_sector)` (agentes online + disponíveis para chat).
-2. Se retornar `null`, tenta `pick_least_loaded_agent_any(_sector)` (qualquer agente do setor, ignorando presença/disponibilidade) — função já existe no banco.
-3. Mesmo se ambas retornarem `null`, **sempre** seta `assigned_to` no update (incluindo `null` quando não houver candidato), para **desvincular** o responsável antigo. Hoje só inclui `assigned_to` no payload quando há agente.
-4. Comentário de sistema reflete o novo estado:
-   - encaminhado + atribuído a X (menor carga online)
-   - encaminhado + atribuído a X (menor carga, agente offline)
-   - encaminhado + nenhum atendente no setor → responsável removido
+## 3. Hook compartilhado
 
-### 2. Encaminhar para Setor (com operador escolhido) — atribuição manual
+Novo `useSubcategoryEquipmentModels(subcategoryId)` em `src/hooks/use-liberacao-equipamento.tsx`:
+- Retorna a lista de itens do catálogo vinculados ao sub-item, já com `id`/`name`.
+- Cacheado por `queryKey: ["subcategory-equipment-models", subcategoryId]`.
 
-Adicionar um segundo `Select` opcional ("Operador específico — opcional") logo abaixo do select de setor. O Select de operador filtra para mostrar apenas usuários atribuídos ao setor selecionado (via `user_sector_assignments` + `sectors`), com opção "— Roteamento automático —" no topo.
+## 4. Fluxo de criação do chamado
 
-Quando o operador é escolhido:
+Locais a alterar (ambos já têm o select de sub-item):
+- **`src/components/atendimentos/ticket-create-dialog.tsx`** (criação via Atendimentos)
+- **`src/routes/central.tsx`** — fluxo de finalização no chat (já carrega `subcategoriesAll`)
+- **`src/components/atendimentos/ticket-detail-panel.tsx`** — edição inline da categoria/sub-item (espelhar o mesmo campo)
 
-- Pula os RPCs, usa o `user_id` selecionado direto como `assigned_to`.
-- Atualiza `sector` e `assigned_to` no mesmo update.
-- Registra histórico em `ticket_assignments` e comentário "Encaminhado para setor X → atribuído a Y".
+Comportamento:
+1. Quando o sub-item for selecionado, buscar `useSubcategoryEquipmentModels(subId)`.
+2. Se a lista tiver itens → exibir um `Select` **"Modelo do equipamento *"** logo abaixo do sub-item.
+3. Se a lista estiver vazia → não exibir o campo (sub-item não exige modelo).
+4. Validação no submit: se o sub-item tem modelos vinculados e nenhum foi escolhido → `toast.error("Selecione o modelo do equipamento")` e bloqueia.
+5. Ao criar/atualizar, gravar `equipment_model_id` + `equipment_model_name` (snapshot do nome no momento).
 
-### 3. Sem alterações em "Atendentes Vinculados"
+## 5. Exibição no painel do chamado
 
-O componente `TicketAgentsSection` continua existindo para casos onde se quer adicionar **co-atendentes** sem trocar o responsável principal. Para reduzir a confusão atual, renomear o label da linha 1019 de "Responsável" para **"Responsável / Atendentes"** e separar visualmente: primeiro o responsável (assigned_to) em destaque, depois os co-atendentes em badges menores. Isso evita o caso onde o usuário pensa que vincular um atendente troca o responsável.
+Em `ticket-detail-panel.tsx`, exibir uma linha "Modelo do equipamento: {name}" próximo ao sub-item, permitindo edição inline (mesmo `Select`) — invalida o sub-item ao trocar (se o modelo atual não estiver mais vinculado ao novo sub-item, limpa).
+
+## 6. Detalhes técnicos
+
+- Reaproveitar `useLiberacaoCatalog()` para a lista completa de modelos no admin.
+- Sem alteração no PDF de tratativa (fora de escopo); o campo fica disponível para futuros relatórios via `equipment_model_name`.
+- Sem impacto em chamados antigos: colunas nuláveis, validação só dispara quando há vínculos cadastrados para o sub-item.
 
 ## Arquivos afetados
-
-- `src/components/atendimentos/ticket-detail-panel.tsx`
-  - `forwardToSector`: fallback para `pick_least_loaded_agent_any`, sempre setar `assigned_to` (mesmo `null`).
-  - UI "Encaminhar para Setor": novo `Select` opcional de operador filtrado por setor.
-  - Linha 1019 "Responsável": separar visualmente responsável principal × atendentes vinculados.
-- Nenhuma migração de banco — `pick_least_loaded_agent_any` já existe.
-
-## Fora de escopo
-
-- Notificar o operador atribuído automaticamente (já existe via realtime do `assigned_to`).
-- Mudar o comportamento do botão "Atendentes Vinculados" (continua adicionando co-atendentes, não troca responsável).
-- Editar `assigned_to` diretamente clicando no nome do responsável (pode ser feito em seguida se quiser).
+- `supabase/migrations/...` (nova migration: tabela + colunas + RLS + GRANTs)
+- `src/hooks/use-liberacao-equipamento.tsx` (novo hook)
+- `src/components/configuracoes/ticket-subcategories-config.tsx` (UI de vínculo)
+- `src/components/atendimentos/ticket-create-dialog.tsx` (campo + validação)
+- `src/routes/central.tsx` (campo + validação na finalização do chat)
+- `src/components/atendimentos/ticket-detail-panel.tsx` (campo + edição inline + exibição)
