@@ -1852,6 +1852,8 @@ function CentralPage() {
                 closed_by: null,
                 notes: notes || activeTicket.notes || null,
                 category: resolvedCategoryLabel || activeTicket.category || null,
+                ...subFields,
+
               } as any)
               .eq("id", activeTicket.id);
             try {
