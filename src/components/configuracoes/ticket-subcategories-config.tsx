@@ -56,6 +56,24 @@ export function TicketSubcategoriesConfig() {
   const [name, setName] = useState("");
   const [description, setDescription] = useState("");
   const [isActive, setIsActive] = useState(true);
+  const [selectedModelIds, setSelectedModelIds] = useState<string[]>([]);
+
+  const { data: equipmentCatalog = [] } = useLiberacaoCatalog(isAuthenticated && dialogOpen);
+  const { data: existingLinks = [] } = useSubcategoryEquipmentModelLinks(editing?.id);
+  const { data: modelCounts = {} } = useAllSubcategoryModelCounts();
+
+  // Hydrate selection when opening edit dialog (after links load)
+  useEffect(() => {
+    if (editing && dialogOpen) {
+      setSelectedModelIds(existingLinks);
+    }
+  }, [editing, dialogOpen, existingLinks]);
+
+  const toggleModelId = (id: string) => {
+    setSelectedModelIds((prev) =>
+      prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id],
+    );
+  };
 
   const getAuthHeaders = async () => {
     const { data: { session } } = await supabase.auth.getSession();
