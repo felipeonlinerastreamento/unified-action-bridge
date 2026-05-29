@@ -2302,6 +2302,9 @@ function CentralPage() {
       setFinalizeNotes("");
       setFinalizeStatus("A resolver");
       setFinalizeTipoPendencia("");
+      setFinalizeSubcategoryId("");
+      setFinalizeEquipmentModelId("");
+
       setTeData(EMPTY_TESTE_EQUIPAMENTO);
       setLiberacaoItems([]);
       setLiberacaoDate("");
