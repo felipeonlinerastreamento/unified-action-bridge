@@ -570,6 +570,35 @@ function CentralPage() {
     staleTime: 300000,
   });
 
+  // Sub-itens (locais) — filtrados pela categoria GSystem selecionada na finalização
+  const { data: finalizeSubcategoriesAll = [] } = useQuery({
+    queryKey: ["ticket-subcategories-active-central"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("ticket_subcategories")
+        .select("id, name, category_key, is_active")
+        .eq("is_active", true);
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: isAuthenticated,
+    staleTime: 60_000,
+  });
+  const finalizeSubcategoryOptions = (finalizeSubcategoriesAll as any[]).filter(
+    (s) => s.category_key === finalizeTipoPendencia,
+  );
+  const { data: finalizeEquipmentModels = [] } = useSubcategoryEquipmentModels(
+    finalizeSubcategoryId || null,
+  );
+  useEffect(() => {
+    setFinalizeSubcategoryId("");
+    setFinalizeEquipmentModelId("");
+  }, [finalizeTipoPendencia]);
+  useEffect(() => {
+    setFinalizeEquipmentModelId("");
+  }, [finalizeSubcategoryId]);
+
+
   const { data: teSettings } = useTesteEquipamentoSettings();
 
 
