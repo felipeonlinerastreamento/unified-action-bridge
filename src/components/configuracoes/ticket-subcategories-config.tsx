@@ -374,6 +374,59 @@ export function TicketSubcategoriesConfig() {
             <Button variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }}>
               Cancelar
             </Button>
+            <div className="space-y-1.5 rounded-md border border-border bg-muted/30 p-3">
+              <div className="flex items-center justify-between gap-2">
+                <Label className="flex items-center gap-1.5">
+                  <Package className="h-4 w-4 text-primary" />
+                  Modelos de equipamento vinculados
+                </Label>
+                <span className="text-[11px] text-muted-foreground">
+                  {selectedModelIds.length} selecionado{selectedModelIds.length === 1 ? "" : "s"}
+                </span>
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Os modelos selecionados serão exibidos como opções obrigatórias na criação do chamado quando este sub-item for escolhido. Use o cadastro em <strong>Liberação de Equipamento</strong> para adicionar novos modelos.
+              </p>
+              {equipmentCatalog.length === 0 ? (
+                <p className="text-xs text-muted-foreground py-2 text-center">
+                  Nenhum modelo cadastrado no catálogo.
+                </p>
+              ) : (
+                <ScrollArea className="h-[180px] rounded-md border bg-background">
+                  <div className="p-2 space-y-1">
+                    {equipmentCatalog.map((m) => (
+                      <label
+                        key={m.id}
+                        className="flex items-start gap-2 rounded px-2 py-1.5 hover:bg-muted cursor-pointer"
+                      >
+                        <Checkbox
+                          checked={selectedModelIds.includes(m.id)}
+                          onCheckedChange={() => toggleModelId(m.id)}
+                          className="mt-0.5"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-sm font-medium">{m.name}</div>
+                          {m.description && (
+                            <div className="text-[11px] text-muted-foreground truncate">
+                              {m.description}
+                            </div>
+                          )}
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                </ScrollArea>
+              )}
+            </div>
+            <div className="flex items-center gap-3">
+              <Switch checked={isActive} onCheckedChange={setIsActive} />
+              <Label>Ativo</Label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setDialogOpen(false); resetForm(); }}>
+              Cancelar
+            </Button>
             <Button
               onClick={() => saveMutation.mutate()}
               disabled={!categoryKey || !name.trim() || saveMutation.isPending}
