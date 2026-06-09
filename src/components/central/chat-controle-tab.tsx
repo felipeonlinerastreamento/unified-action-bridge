@@ -244,11 +244,20 @@ export function ChatControleTab({ chatId, contactInfo }: Props) {
           <div className="text-sm text-muted-foreground">
             Nenhuma planilha de controle vinculada a este atendimento.
           </div>
-          <Button size="sm" onClick={() => openDialog(null)}>
-            <Plus className="h-4 w-4 mr-1.5" /> Adicionar planilha
-          </Button>
+          <div className="flex gap-2 justify-center flex-wrap">
+            <Button size="sm" onClick={handleCreateSheet}>
+              <FileSpreadsheet className="h-4 w-4 mr-1.5" /> Criar planilha
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => openDialog(null)}>
+              <Plus className="h-4 w-4 mr-1.5" /> Adicionar link
+            </Button>
+          </div>
+          <div className="text-[11px] text-muted-foreground">
+            "Criar planilha" abre uma nova planilha Google em branco e copia o cabeçalho do atendimento para você colar.
+          </div>
         </div>
       )}
+
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
