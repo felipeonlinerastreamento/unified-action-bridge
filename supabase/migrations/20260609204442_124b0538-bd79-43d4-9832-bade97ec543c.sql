@@ -1,0 +1,1 @@
+UPDATE public.sector_groups SET can_finalize_without_message = false WHERE can_finalize_without_message = true;
