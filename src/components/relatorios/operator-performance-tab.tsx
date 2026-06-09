@@ -19,10 +19,13 @@ import {
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import {
   Trophy, Clock, TrendingUp, AlertTriangle, Target, Loader2, ListChecks,
+  Volume2, CalendarClock, Star, Users,
 } from "lucide-react";
 import {
   computeFirstResponseTimes, computeIdleness, computeProductivity,
   computeSectorBottlenecks, suggestActions, formatDuration, formatPct,
+  computeStartDelay, computeOpenSilence, computeClosingPattern,
+  computeQuality, computeTeamDiagnostic,
   type DataSource,
 } from "@/lib/operator-metrics";
 
@@ -117,6 +120,63 @@ export function OperatorPerformanceTab({ dateFrom, dateTo }: Props) {
     },
   });
 
+  // CSAT responses in range
+  const { data: csat = [] } = useQuery({
+    queryKey: ["perf-csat", dateFrom, dateTo],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("csat_responses")
+        .select("operator_user_id,score")
+        .gte("created_at", `${dateFrom}T00:00:00`)
+        .lte("created_at", `${dateTo}T23:59:59`)
+        .limit(10000);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Open chats snapshot (status != finalizado) — para tempo sem interação atual
+  const { data: openChats = [] } = useQuery({
+    queryKey: ["perf-open-chats"],
+    refetchInterval: 30_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("zapi_chats")
+        .select("id,assigned_to,sector_name,status,created_at,last_message_at")
+        .neq("status", "finalizado")
+        .limit(2000);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Open tickets snapshot
+  const { data: openTickets = [] } = useQuery({
+    queryKey: ["perf-open-tickets"],
+    refetchInterval: 30_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("service_tickets")
+        .select("id,assigned_to,sector,category,status,created_at,closed_at")
+        .neq("status", "finalizado")
+        .limit(2000);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Headcount por setor (operadores atribuídos)
+  const { data: sectorHeadcountRows = [] } = useQuery({
+    queryKey: ["perf-sector-headcount"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("user_sector_assignments")
+        .select("user_id, sectors:sector_id(name)");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
   // Available categories from tickets in period
   const availableCategories = useMemo(() => {
     const set = new Set<string>();
@@ -172,6 +232,53 @@ export function OperatorPerformanceTab({ dateFrom, dateTo }: Props) {
     () => suggestActions(idleness, tmpr, productivity),
     [idleness, tmpr, productivity]
   );
+
+  // === Novas métricas ===
+  const startDelay = useMemo(
+    () => computeStartDelay(filteredChats as any, filteredTickets as any, filteredMessages as any, operators as any),
+    [filteredChats, filteredTickets, filteredMessages, operators]
+  );
+
+  const silence = useMemo(
+    () => computeOpenSilence(
+      (openChats as any[]).filter((c) => sector === "__all__" || (c.sector_name || "") === sector),
+      (openTickets as any[]).filter((t) => sector === "__all__" || (t.sector || "") === sector),
+      operators as any,
+      idleThresholdMin * 60_000
+    ),
+    [openChats, openTickets, operators, idleThresholdMin, sector]
+  );
+
+  const closing = useMemo(
+    () => computeClosingPattern(filteredChats as any, filteredTickets as any, null, 30),
+    [filteredChats, filteredTickets]
+  );
+
+  const quality = useMemo(
+    () => computeQuality(source, filteredChats as any, filteredTickets as any, csat as any, operators as any),
+    [source, filteredChats, filteredTickets, csat, operators]
+  );
+
+  const diagnostic = useMemo(() => {
+    const sectorTotals = new Map<string, number>();
+    for (const t of filteredTickets as any[]) {
+      if (t.status !== "finalizado") continue;
+      const s = t.sector || "Sem setor";
+      sectorTotals.set(s, (sectorTotals.get(s) || 0) + 1);
+    }
+    for (const c of filteredChats as any[]) {
+      if (c.status !== "finalizado") continue;
+      const s = c.sector_name || "Sem setor";
+      sectorTotals.set(s, (sectorTotals.get(s) || 0) + 1);
+    }
+    const headcount = new Map<string, number>();
+    for (const row of sectorHeadcountRows as any[]) {
+      const name = row?.sectors?.name;
+      if (!name) continue;
+      headcount.set(name, (headcount.get(name) || 0) + 1);
+    }
+    return computeTeamDiagnostic(productivity, startDelay, silence, quality, operators as any, sectorTotals, headcount);
+  }, [filteredTickets, filteredChats, sectorHeadcountRows, productivity, startDelay, silence, quality, operators]);
 
   const isLoading = ticketsLoading || chatsLoading || msgsLoading;
 
@@ -472,6 +579,291 @@ export function OperatorPerformanceTab({ dateFrom, dateTo }: Props) {
                   </CardContent>
                 </Card>
               ))}
+            </CardContent>
+          </Card>
+
+          {/* 6. Atraso & Silêncio */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Volume2 className="h-4 w-4 text-amber-600" />
+                Atraso de Início & Silêncio em Abertos
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">Abertos parados (&gt; {idleThresholdMin} min)</p>
+                  <p className="text-2xl font-bold">{silence.silentCount} <span className="text-xs text-muted-foreground font-normal">/ {silence.totalOpen}</span></p>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">Silêncio médio</p>
+                  <p className="text-2xl font-bold">{formatDuration(silence.avgSilenceMs)}</p>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">Silêncio p90</p>
+                  <p className="text-2xl font-bold">{formatDuration(silence.p90SilenceMs)}</p>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">Atraso médio (1ª ação)</p>
+                  <p className="text-2xl font-bold">
+                    {startDelay.length ? formatDuration(startDelay.reduce((s, r) => s + r.avgMs, 0) / startDelay.length) : "—"}
+                  </p>
+                </div>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2">
+                <div>
+                  <p className="text-xs font-medium mb-2">Atraso de início por operador</p>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Operador</TableHead>
+                        <TableHead>Médio</TableHead>
+                        <TableHead>p90</TableHead>
+                        <TableHead>Itens</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {startDelay.length === 0 ? (
+                        <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">Sem dados</TableCell></TableRow>
+                      ) : startDelay.map((r) => (
+                        <TableRow key={r.operatorId}>
+                          <TableCell>{r.operatorName}</TableCell>
+                          <TableCell>{formatDuration(r.avgMs)}</TableCell>
+                          <TableCell>{formatDuration(r.p90Ms)}</TableCell>
+                          <TableCell>{r.itemsAnalyzed}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                <div>
+                  <p className="text-xs font-medium mb-2">Silêncio em abertos por operador</p>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Operador</TableHead>
+                        <TableHead>Parados</TableHead>
+                        <TableHead>Silêncio médio</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {silence.byOperator.length === 0 ? (
+                        <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground">Sem dados</TableCell></TableRow>
+                      ) : silence.byOperator.map((r) => (
+                        <TableRow key={r.operatorId || "none"}>
+                          <TableCell>{r.operatorName}</TableCell>
+                          <TableCell>
+                            <Badge variant={r.silentCount > 3 ? "destructive" : "secondary"}>{r.silentCount}</Badge>
+                          </TableCell>
+                          <TableCell>{formatDuration(r.avgSilenceMs)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+
+              {silence.topSilent.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium mb-2">Top 10 chamados mais silenciosos agora</p>
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Tipo</TableHead>
+                        <TableHead>Setor</TableHead>
+                        <TableHead>Operador</TableHead>
+                        <TableHead>Parado há</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {silence.topSilent.slice(0, 10).map((it) => (
+                        <TableRow key={it.kind + it.id}>
+                          <TableCell><Badge variant="outline">{it.kind === "chat" ? "Chat" : "Atend."}</Badge></TableCell>
+                          <TableCell>{it.sector || "—"}</TableCell>
+                          <TableCell>{it.operatorName}</TableCell>
+                          <TableCell className="font-medium">{formatDuration(it.silenceMs)}</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* 7. Padrão de finalização */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <CalendarClock className="h-4 w-4 text-blue-500" />
+                Padrão de Finalização (hora do dia)
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">Total finalizado</p>
+                  <p className="text-2xl font-bold">{closing.totalClosed}</p>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">% nos últimos 30 min do expediente</p>
+                  <p className="text-2xl font-bold">
+                    <Badge variant={closing.lastWindowPct > 0.2 ? "destructive" : closing.lastWindowPct > 0.1 ? "secondary" : "outline"}>
+                      {formatPct(closing.lastWindowPct)}
+                    </Badge>
+                  </p>
+                </div>
+              </div>
+              <ChartContainer config={chartConfig} className="h-[240px] w-full">
+                <BarChart data={closing.buckets.map((b) => ({ name: `${b.hour.toString().padStart(2, "0")}h`, qtd: b.count }))}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="qtd" fill="hsl(var(--chart-3))" radius={[2, 2, 0, 0]} />
+                </BarChart>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+
+          {/* 8. Qualidade */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Star className="h-4 w-4 text-yellow-500" />
+                Qualidade — CSAT & Reabertura
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Operador</TableHead>
+                    <TableHead>Finalizados</TableHead>
+                    <TableHead>Reabertos</TableHead>
+                    <TableHead>Taxa reabertura</TableHead>
+                    <TableHead>CSAT</TableHead>
+                    <TableHead>Respostas</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {quality.length === 0 ? (
+                    <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">Sem dados</TableCell></TableRow>
+                  ) : quality.map((r) => (
+                    <TableRow key={r.operatorId}>
+                      <TableCell>{r.operatorName}</TableCell>
+                      <TableCell>{r.resolved}</TableCell>
+                      <TableCell>{r.reopened}</TableCell>
+                      <TableCell>
+                        <Badge variant={r.reopenRate > 0.15 ? "destructive" : r.reopenRate > 0.05 ? "secondary" : "outline"}>
+                          {formatPct(r.reopenRate)}
+                        </Badge>
+                      </TableCell>
+                      <TableCell>{r.csatCount > 0 ? r.csatAvg.toFixed(2) : "—"}</TableCell>
+                      <TableCell>{r.csatCount}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+          {/* 9. Diagnóstico de Equipe */}
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm flex items-center gap-2">
+                <Users className="h-4 w-4 text-primary" />
+                Diagnóstico de Equipe — “Preciso desta equipe?”
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">Total resolvido no período</p>
+                  <p className="text-2xl font-bold">{diagnostic.totalResolved}</p>
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">Concentração top‑3</p>
+                  <p className="text-2xl font-bold">
+                    <Badge variant={diagnostic.top3Share > 0.7 ? "destructive" : "secondary"}>
+                      {formatPct(diagnostic.top3Share)}
+                    </Badge>
+                  </p>
+                  {diagnostic.top3Share > 0.7 && (
+                    <p className="text-[10px] text-muted-foreground mt-1">Top‑3 fazem &gt; 70% do volume — possível overstaffing.</p>
+                  )}
+                </div>
+                <div className="rounded-lg border p-3">
+                  <p className="text-xs text-muted-foreground">Concentração top‑5</p>
+                  <p className="text-2xl font-bold">{formatPct(diagnostic.top5Share)}</p>
+                </div>
+              </div>
+
+              <div>
+                <p className="text-xs font-medium mb-2">Rótulo por operador</p>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Operador</TableHead>
+                      <TableHead>Resolvidos</TableHead>
+                      <TableHead>Atraso médio</TableHead>
+                      <TableHead>Parados agora</TableHead>
+                      <TableHead>CSAT</TableHead>
+                      <TableHead>Rótulo</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {diagnostic.operators.length === 0 ? (
+                      <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground">Sem dados</TableCell></TableRow>
+                    ) : diagnostic.operators.map((r) => {
+                      const variant: "default" | "destructive" | "secondary" | "outline" =
+                        r.label === "Alto desempenho" ? "default" :
+                        r.label === "Sobrecarregado" ? "destructive" :
+                        r.label === "Subutilizado" ? "secondary" :
+                        r.label === "Atenção" ? "destructive" : "outline";
+                      return (
+                        <TableRow key={r.operatorId}>
+                          <TableCell>{r.operatorName}</TableCell>
+                          <TableCell>{r.resolved}</TableCell>
+                          <TableCell>{r.startDelayMs ? formatDuration(r.startDelayMs) : "—"}</TableCell>
+                          <TableCell>{r.silentOpen}</TableCell>
+                          <TableCell>{r.csatAvg > 0 ? r.csatAvg.toFixed(2) : "—"}</TableCell>
+                          <TableCell><Badge variant={variant}>{r.label}</Badge></TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+
+              <div>
+                <p className="text-xs font-medium mb-2">Throughput por setor (finalizados ÷ headcount)</p>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Setor</TableHead>
+                      <TableHead>Finalizados</TableHead>
+                      <TableHead>Headcount</TableHead>
+                      <TableHead>Por operador</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {diagnostic.sectorThroughput.length === 0 ? (
+                      <TableRow><TableCell colSpan={4} className="text-center text-muted-foreground">Sem dados</TableCell></TableRow>
+                    ) : diagnostic.sectorThroughput.map((r) => (
+                      <TableRow key={r.sector}>
+                        <TableCell>{r.sector}</TableCell>
+                        <TableCell>{r.resolved}</TableCell>
+                        <TableCell>{r.headcount || "—"}</TableCell>
+                        <TableCell className="font-medium">{r.perHead > 0 ? r.perHead.toFixed(1) : "—"}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
             </CardContent>
           </Card>
         </>
