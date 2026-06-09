@@ -1061,6 +1061,9 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
             <TabsTrigger value="detalhes" className="flex-1">Detalhes</TabsTrigger>
             <TabsTrigger value="comentarios" className="flex-1">Comentários</TabsTrigger>
             <TabsTrigger value="acoes" className="flex-1">Ações</TabsTrigger>
+            <TabsTrigger value="controle" className="flex-1">
+              <FileSpreadsheet className="h-3.5 w-3.5 mr-1" /> Controle
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="detalhes" className="space-y-3 mt-3">
