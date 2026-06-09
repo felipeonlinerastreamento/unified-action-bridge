@@ -219,6 +219,25 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   const [savingField, setSavingField] = useState(false);
   const { data: teSettings } = useTesteEquipamentoSettings();
 
+  // Resolve chat_id vinculado a este ticket (via telefone) para a aba Controle
+  const { data: linkedChatId } = useQuery({
+    queryKey: ["ticket-linked-chat", ticket?.id, ticket?.contact_phone],
+    queryFn: async () => {
+      if (!ticket?.contact_phone) return null;
+      const phone = String(ticket.contact_phone).replace(/\D/g, "");
+      if (!phone) return null;
+      const { data } = await supabase
+        .from("zapi_chats")
+        .select("id")
+        .ilike("phone", `%${phone.slice(-10)}%`)
+        .order("last_message_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return (data as any)?.id || null;
+    },
+    enabled: !!ticket?.contact_phone,
+  });
+
   const { data: companiesList = [] } = useQuery({
     queryKey: ["companies-edit-list"],
     queryFn: async () => {
