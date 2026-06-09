@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,8 +8,14 @@ import { Label } from "@/components/ui/label";
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription,
 } from "@/components/ui/dialog";
-import { FileSpreadsheet, ExternalLink, Pencil, Trash2, Plus, AlertCircle } from "lucide-react";
+import { FileSpreadsheet, ExternalLink, Pencil, Trash2, Plus, AlertCircle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  createChatControleSheet,
+  upsertChatControleLink,
+  deleteChatControleLink,
+  logChatControleOpen,
+} from "@/lib/chat-controle.functions";
 
 interface ContactInfo {
   name?: string | null;
@@ -45,47 +52,17 @@ function isLikelyExcelOnline(url: string): boolean {
   }
 }
 
-function buildHeaderTsv(info?: ContactInfo): string {
-  const date = new Date().toLocaleString("pt-BR");
-  const headers = ["Atendimento", "Contato", "Telefone", "Empresa", "Data"];
-  const values = [
-    info?.protocol || "",
-    info?.name || "",
-    info?.phone || "",
-    info?.companyName || "",
-    date,
-  ];
-  return headers.join("\t") + "\n" + values.join("\t");
-}
-
-async function copyToClipboard(text: string): Promise<boolean> {
-  try {
-    if (navigator.clipboard?.writeText) {
-      await navigator.clipboard.writeText(text);
-      return true;
-    }
-  } catch {}
-  try {
-    const ta = document.createElement("textarea");
-    ta.value = text;
-    ta.style.position = "fixed";
-    ta.style.opacity = "0";
-    document.body.appendChild(ta);
-    ta.select();
-    const ok = document.execCommand("copy");
-    document.body.removeChild(ta);
-    return ok;
-  } catch {
-    return false;
-  }
-}
-
 export function ChatControleTab({ chatId, contactInfo }: Props) {
   const qc = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ControleLink | null>(null);
   const [urlInput, setUrlInput] = useState("");
   const [labelInput, setLabelInput] = useState("");
+
+  const createSheetFn = useServerFn(createChatControleSheet);
+  const upsertLinkFn = useServerFn(upsertChatControleLink);
+  const deleteLinkFn = useServerFn(deleteChatControleLink);
+  const logOpenFn = useServerFn(logChatControleOpen);
 
   const { data: link, isLoading } = useQuery({
     queryKey: ["chat-controle-link", chatId],
@@ -102,23 +79,38 @@ export function ChatControleTab({ chatId, contactInfo }: Props) {
     enabled: !!chatId,
   });
 
+  const createSheetMut = useMutation({
+    mutationFn: async () => {
+      if (!chatId) throw new Error("Chat não selecionado");
+      return await createSheetFn({
+        data: {
+          chatId,
+          contactName: contactInfo?.name ?? null,
+          contactPhone: contactInfo?.phone ?? null,
+          protocol: contactInfo?.protocol ?? null,
+          companyName: contactInfo?.companyName ?? null,
+        },
+      });
+    },
+    onSuccess: (res) => {
+      toast.success("Planilha criada e compartilhada");
+      qc.invalidateQueries({ queryKey: ["chat-controle-link", chatId] });
+      window.open(res.url, "_blank", "noopener,noreferrer");
+    },
+    onError: (e: any) => toast.error(e?.message || "Falha ao criar planilha"),
+  });
+
   const saveMut = useMutation({
     mutationFn: async (vars: { url: string; label: string }) => {
       if (!chatId) throw new Error("Chat não selecionado");
-      const { data: { user } } = await supabase.auth.getUser();
-      const uid = user?.id || null;
-      if (editing) {
-        const { error } = await supabase
-          .from("chat_controle_links" as any)
-          .update({ url: vars.url, label: vars.label || null, updated_by: uid })
-          .eq("id", editing.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("chat_controle_links" as any)
-          .insert({ chat_id: chatId, url: vars.url, label: vars.label || null, created_by: uid, updated_by: uid });
-        if (error) throw error;
-      }
+      return await upsertLinkFn({
+        data: {
+          id: editing?.id,
+          chatId,
+          url: vars.url,
+          label: vars.label || null,
+        },
+      });
     },
     onSuccess: () => {
       toast.success(editing ? "Link atualizado" : "Planilha adicionada");
@@ -134,11 +126,7 @@ export function ChatControleTab({ chatId, contactInfo }: Props) {
   const deleteMut = useMutation({
     mutationFn: async () => {
       if (!link) return;
-      const { error } = await supabase
-        .from("chat_controle_links" as any)
-        .delete()
-        .eq("id", link.id);
-      if (error) throw error;
+      await deleteLinkFn({ data: { id: link.id, chatId: link.chat_id } });
     },
     onSuccess: () => {
       toast.success("Planilha removida");
@@ -161,28 +149,14 @@ export function ChatControleTab({ chatId, contactInfo }: Props) {
     saveMut.mutate({ url, label: labelInput.trim() });
   };
 
-  const handleCreateSheet = async () => {
-    const tsv = buildHeaderTsv(contactInfo);
-    const copied = await copyToClipboard(tsv);
-    window.open("https://sheets.new", "_blank", "noopener,noreferrer");
-    toast.success(
-      copied
-        ? "Planilha aberta. Cabeçalho copiado — cole (Ctrl+V) na nova planilha, salve e cole o link aqui."
-        : "Planilha aberta. Após salvar, copie o link e cole aqui.",
-    );
-    // Abre o dialog já preparado para colar o link gerado
-    setEditing(null);
-    setUrlInput("");
-    setLabelInput(
-      contactInfo?.name
-        ? `Planilha — ${contactInfo.name}`
-        : contactInfo?.protocol
-          ? `Planilha — ${contactInfo.protocol}`
-          : "Planilha de controle",
-    );
-    setDialogOpen(true);
+  const handleOpenSheet = () => {
+    if (!link) return;
+    // Fire-and-forget audit log
+    logOpenFn({
+      data: { id: link.id, chatId: link.chat_id, url: link.url, label: link.label },
+    }).catch(() => {});
+    window.open(link.url, "_blank", "noopener,noreferrer");
   };
-
 
   if (!chatId) {
     return (
@@ -210,6 +184,7 @@ export function ChatControleTab({ chatId, contactInfo }: Props) {
                 href={link.url}
                 target="_blank"
                 rel="noopener noreferrer"
+                onClick={(e) => { e.preventDefault(); handleOpenSheet(); }}
                 className="text-xs text-muted-foreground hover:text-primary truncate block"
                 title={link.url}
               >
@@ -218,11 +193,7 @@ export function ChatControleTab({ chatId, contactInfo }: Props) {
             </div>
           </div>
           <div className="flex gap-2">
-            <Button
-              size="sm"
-              className="flex-1"
-              onClick={() => window.open(link.url, "_blank", "noopener,noreferrer")}
-            >
+            <Button size="sm" className="flex-1" onClick={handleOpenSheet}>
               <ExternalLink className="h-3.5 w-3.5 mr-1.5" /> Abrir planilha
             </Button>
             <Button size="sm" variant="outline" onClick={() => openDialog(link)} title="Editar">
@@ -245,15 +216,25 @@ export function ChatControleTab({ chatId, contactInfo }: Props) {
             Nenhuma planilha de controle vinculada a este atendimento.
           </div>
           <div className="flex gap-2 justify-center flex-wrap">
-            <Button size="sm" onClick={handleCreateSheet}>
-              <FileSpreadsheet className="h-4 w-4 mr-1.5" /> Criar planilha
+            <Button
+              size="sm"
+              onClick={() => createSheetMut.mutate()}
+              disabled={createSheetMut.isPending}
+            >
+              {createSheetMut.isPending ? (
+                <Loader2 className="h-4 w-4 mr-1.5 animate-spin" />
+              ) : (
+                <FileSpreadsheet className="h-4 w-4 mr-1.5" />
+              )}
+              {createSheetMut.isPending ? "Criando…" : "Criar planilha"}
             </Button>
             <Button size="sm" variant="outline" onClick={() => openDialog(null)}>
               <Plus className="h-4 w-4 mr-1.5" /> Adicionar link
             </Button>
           </div>
           <div className="text-[11px] text-muted-foreground">
-            "Criar planilha" abre uma nova planilha Google em branco e copia o cabeçalho do atendimento para você colar.
+            "Criar planilha" gera uma nova planilha Google na conta corporativa, com permissão de
+            edição para quem tiver o link, e registra a ação na auditoria.
           </div>
         </div>
       )}
