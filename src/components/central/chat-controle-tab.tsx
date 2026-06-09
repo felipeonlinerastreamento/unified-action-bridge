@@ -264,7 +264,7 @@ export function ChatControleTab({ chatId, contactInfo }: Props) {
           <DialogHeader>
             <DialogTitle>{editing ? "Editar planilha" : "Adicionar planilha"}</DialogTitle>
             <DialogDescription>
-              Cole o link de compartilhamento do Excel Online (OneDrive ou SharePoint) com permissão de edição.
+              Cole o link de compartilhamento da planilha (Google Sheets, Excel Online, OneDrive ou SharePoint) com permissão de edição.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -272,7 +272,7 @@ export function ChatControleTab({ chatId, contactInfo }: Props) {
               <Label htmlFor="controle-url">URL da planilha</Label>
               <Input
                 id="controle-url"
-                placeholder="https://onedrive.live.com/..."
+                placeholder="https://docs.google.com/spreadsheets/... ou https://onedrive.live.com/..."
                 value={urlInput}
                 onChange={(e) => setUrlInput(e.target.value)}
               />
