@@ -1604,6 +1604,10 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
               </p>
             </div>
           </TabsContent>
+
+          <TabsContent value="controle" className="mt-3">
+            <ChatControleTab chatId={linkedChatId || null} />
+          </TabsContent>
         </Tabs>
       </SheetContent>
       <AlertDialog open={confirmFinalizeOpen} onOpenChange={(o) => { setConfirmFinalizeOpen(o); if (!o) setFinalizeObservation(""); }}>
