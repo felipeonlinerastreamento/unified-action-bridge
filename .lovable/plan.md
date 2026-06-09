@@ -1,36 +1,41 @@
-## Diagnóstico
 
-A Lucia tem **dois chats em aberto**:
+## Objetivo
+Adicionar aba **"Controle"** dentro do atendimento (Central e /atendimentos) onde cada operador pode cadastrar e abrir um link de planilha Excel Online específico daquele atendimento. Ao clicar, abre em nova aba do navegador para edição.
 
-| Chat | `phone` | Mensagens | Origem |
-|---|---|---|---|
-| `6d0a17…c22e42` | `5531991342038` (real) | 10 | mensagens normais |
-| `7f677f…b962644` | `51754490179771` (LID — 14 dígitos) | 5 | evento de chamada |
+## Escopo
+- **Por atendimento** (vinculado ao `chat_id` da `zapi_chats`). Cada conversa tem seu próprio link.
+- Qualquer operador pode cadastrar/editar/remover o link.
+- Abre em nova aba (`target="_blank"`).
 
-Quando o cliente tentou ligar, o Z-API enviou um identificador "LID" (linked id usado pelo WhatsApp para chamadas/privacidade) com **14 dígitos**. O webhook detecta LID apenas quando `phone.length >= 15` (`src/routes/api.public.zapi-webhook.$channelId.tsx` linhas 322 e 746, e função SQL `normalize_zapi_phone`). Como o LID tinha 14 dígitos, escapou da detecção, foi tratado como telefone normal e criou um novo chat em vez de mesclar no existente.
+## Banco (migração)
+Nova tabela `chat_controle_links`:
+- `chat_id` (FK → `zapi_chats.id`, único — um link ativo por chat)
+- `url` (text, validar https + domínios office/sharepoint/onedrive permitidos no front)
+- `label` (text opcional, ex: "Planilha de controle")
+- `created_by`, `updated_by` (uuid → auth.users)
+- `created_at`, `updated_at`
+- RLS: SELECT/INSERT/UPDATE/DELETE para `authenticated` (mesma política aberta usada em outras tabelas operacionais do chat). GRANTs padrão + service_role.
 
-Telefones brasileiros têm no máximo 13 dígitos (`55` + DDD + 9 + 8). Qualquer identificador de 14+ dígitos não-grupo é, na prática, um LID.
+## Frontend
+1. **Central de Atendimento** (painel de detalhes do chat à direita): adicionar nova aba "Controle" junto às existentes (Histórico/Tags/etc.).
+2. **/atendimentos** (painel do ticket): adicionar a mesma aba "Controle". Como o ticket está vinculado ao chat, usa o mesmo `chat_id`.
 
-## Plano
+### Componente compartilhado `ChatControleTab` (`src/components/central/chat-controle-tab.tsx`)
+- Carrega o link atual via `useQuery` (`chat_controle_links` por `chat_id`).
+- **Sem link:** mostra estado vazio + botão "Adicionar planilha" → dialog com input URL + label.
+- **Com link:** card mostrando label + URL (truncada) + 2 botões:
+  - **"Abrir planilha"** (primário) — `window.open(url, "_blank", "noopener,noreferrer")`.
+  - **"Editar"** / **"Remover"** (ícones).
+- Validação simples no input: precisa começar com `https://` e conter `office.com`, `sharepoint.com`, `onedrive.live.com` ou `1drv.ms` (aviso amigável, não bloqueia hard).
+- Mutations com `useMutation` + `qc.invalidateQueries`.
+- Toasts via `sonner`.
 
-### 1. Webhook — `src/routes/api.public.zapi-webhook.$channelId.tsx`
-- Em `normalizeIncomingPhone` (linha 74), capturar a presença de `@lid` (sufixo) ou `lid:` (prefixo) **antes** de remover não-dígitos, e propagar essa informação para o chamador.
-- Baixar o limiar de detecção de LID de `>= 15` para `>= 14` dígitos nos dois pontos:
-  - Event de chamada (linha 322): `const isLidIdentifier = !isGroup && (rawHadLidMarker || phoneN.length >= 14);`
-  - Event de mensagem (linha 746): mesma lógica.
-- Garantir que `replyPhone` para LID continue usando `${phoneN}@lid` quando não houver chat real (linha 356).
+## Detalhes técnicos
+- Sem proxy / sem server function necessários — escrita direta via cliente Supabase com RLS.
+- Sem integração com API do Excel/Microsoft (apenas armazena URL).
+- Aba aparece para qualquer atendimento que tenha `chatId` conhecido. Em tickets sem chat vinculado, a aba fica oculta.
 
-### 2. Função SQL `normalize_zapi_phone` (migração)
-- Trocar `length(digits) >= 15` por `length(digits) >= 14` para que novos chats com LID curto entrem no banco com prefixo `lid:` no `phone_normalized`. Isso mantém as queries existentes (`.not("phone_normalized", "like", "lid:%")`) funcionando como filtro.
-
-### 3. Mesclar o chat duplicado da Lucia (migração de dados)
-- Atualizar as 5 mensagens de `7f677f…b962644` para `chat_id = 6d0a17…c22e42`.
-- Recalcular `last_message_at` e `last_message_preview` no chat real.
-- Marcar o chat LID como `status = 'finalizado'`, `closed_at = now()` e gravar `lid_aliases` com `51754490179771` no chat real (para que futuros eventos com esse mesmo LID sejam reconhecidos via os lookups existentes nas linhas 327–335).
-
-### 4. Sem mudanças em UI/lógica de tickets
-O fluxo de atendimento, KPIs, fila e finalização permanecem intactos — só o roteamento do evento de chamada é corrigido.
-
-## Risco / validação
-- Telefones internacionais de 14 dígitos (fora do BR) ficariam classificados como LID. Hoje o sistema é BR-only, mas vale registrar. Caso apareça, o fallback por `contact_name` (linha 338–347) ainda permite mesclar; sem chat anterior, o evento é apenas dropado com log.
-- Após aplicar, verificar nos logs `[zapi-webhook] LID-only ...` para garantir que nenhum chat legítimo está sendo dropado.
+## Fora de escopo
+- Embed/iframe da planilha (decidido: abrir em nova aba).
+- Sincronização de conteúdo da planilha.
+- Histórico de versões do link.
