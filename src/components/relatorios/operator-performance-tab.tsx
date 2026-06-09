@@ -19,10 +19,13 @@ import {
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid } from "recharts";
 import {
   Trophy, Clock, TrendingUp, AlertTriangle, Target, Loader2, ListChecks,
+  Volume2, CalendarClock, Star, Users,
 } from "lucide-react";
 import {
   computeFirstResponseTimes, computeIdleness, computeProductivity,
   computeSectorBottlenecks, suggestActions, formatDuration, formatPct,
+  computeStartDelay, computeOpenSilence, computeClosingPattern,
+  computeQuality, computeTeamDiagnostic,
   type DataSource,
 } from "@/lib/operator-metrics";
 
