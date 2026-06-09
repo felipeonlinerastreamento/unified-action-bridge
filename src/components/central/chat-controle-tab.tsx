@@ -80,7 +80,7 @@ async function copyToClipboard(text: string): Promise<boolean> {
   }
 }
 
-export function ChatControleTab({ chatId }: Props) {
+export function ChatControleTab({ chatId, contactInfo }: Props) {
   const qc = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ControleLink | null>(null);
