@@ -338,3 +338,352 @@ export function formatDuration(ms: number): string {
 export function formatPct(v: number): string {
   return `${(v * 100).toFixed(1)}%`;
 }
+
+/* ============ 6. Atraso de Início (TMPR-like p/ tickets + chats) ============ */
+
+export interface StartDelayRow {
+  operatorId: string;
+  operatorName: string;
+  avgMs: number;
+  p90Ms: number;
+  itemsAnalyzed: number;
+}
+
+function p90(values: number[]): number {
+  if (!values.length) return 0;
+  const sorted = values.slice().sort((a, b) => a - b);
+  const idx = Math.min(sorted.length - 1, Math.floor(sorted.length * 0.9));
+  return sorted[idx];
+}
+
+/**
+ * Atraso de início por operador:
+ * - Chats: created_at do chat → primeira msg from_me=true (não whisper) do operador.
+ * - Tickets: created_at do ticket → closed_at é fim; aqui só sabemos quando o
+ *   operador "começou" se ele está atribuído. Usamos updated_at se houver
+ *   assigned_to; fallback para o tempo até closed_at se finalizado e não há
+ *   sinal melhor. Para evitar ruído, só considera tickets com assigned_to.
+ */
+export function computeStartDelay(
+  chats: ChatRow[],
+  tickets: TicketRow[],
+  messages: MessageRow[],
+  ops: OperatorRow[]
+): StartDelayRow[] {
+  const opMap = buildOperatorMap(ops);
+  const byChat = new Map<string, MessageRow[]>();
+  for (const m of messages) {
+    const arr = byChat.get(m.chat_id) || [];
+    arr.push(m);
+    byChat.set(m.chat_id, arr);
+  }
+  const acc = new Map<string, number[]>();
+  for (const chat of chats) {
+    const msgs = (byChat.get(chat.id) || []).slice().sort(
+      (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+    );
+    const firstOp = msgs.find((m) => m.from_me === true && !m.is_whisper && m.sent_by_user_id);
+    if (!firstOp || !firstOp.sent_by_user_id) continue;
+    const delta = new Date(firstOp.created_at).getTime() - new Date(chat.created_at).getTime();
+    if (delta < 0) continue;
+    const arr = acc.get(firstOp.sent_by_user_id) || [];
+    arr.push(delta);
+    acc.set(firstOp.sent_by_user_id, arr);
+  }
+  return Array.from(acc.entries())
+    .map(([operatorId, vals]) => ({
+      operatorId,
+      operatorName: operatorName(opMap, operatorId),
+      avgMs: vals.reduce((a, b) => a + b, 0) / vals.length,
+      p90Ms: p90(vals),
+      itemsAnalyzed: vals.length,
+    }))
+    .sort((a, b) => b.avgMs - a.avgMs);
+}
+
+/* ============ 7. Silêncio em chamados ainda abertos (snapshot) ============ */
+
+export interface OpenSilenceItem {
+  id: string;
+  kind: "chat" | "ticket";
+  operatorId: string | null;
+  operatorName: string;
+  sector: string | null;
+  silenceMs: number;
+  createdAt: string;
+}
+
+export interface OpenSilenceSummary {
+  totalOpen: number;
+  silentCount: number;
+  avgSilenceMs: number;
+  p90SilenceMs: number;
+  byOperator: Array<{
+    operatorId: string | null;
+    operatorName: string;
+    silentCount: number;
+    avgSilenceMs: number;
+  }>;
+  topSilent: OpenSilenceItem[];
+}
+
+export function computeOpenSilence(
+  openChats: ChatRow[],
+  openTickets: TicketRow[],
+  ops: OperatorRow[],
+  thresholdMs: number,
+  now: number = Date.now()
+): OpenSilenceSummary {
+  const opMap = buildOperatorMap(ops);
+  const items: OpenSilenceItem[] = [];
+  for (const c of openChats) {
+    const last = c.last_message_at ? new Date(c.last_message_at).getTime() : new Date(c.created_at).getTime();
+    items.push({
+      id: c.id,
+      kind: "chat",
+      operatorId: c.assigned_to,
+      operatorName: operatorName(opMap, c.assigned_to),
+      sector: c.sector_name,
+      silenceMs: Math.max(0, now - last),
+      createdAt: c.created_at,
+    });
+  }
+  for (const t of openTickets) {
+    const last = new Date(t.created_at).getTime();
+    items.push({
+      id: t.id,
+      kind: "ticket",
+      operatorId: t.assigned_to,
+      operatorName: operatorName(opMap, t.assigned_to),
+      sector: t.sector,
+      silenceMs: Math.max(0, now - last),
+      createdAt: t.created_at,
+    });
+  }
+  const silent = items.filter((i) => i.silenceMs > thresholdMs);
+  const byOpMap = new Map<string, { silentCount: number; sum: number; name: string; id: string | null }>();
+  for (const it of silent) {
+    const key = it.operatorId || "__none__";
+    const cur = byOpMap.get(key) || { silentCount: 0, sum: 0, name: it.operatorName, id: it.operatorId };
+    cur.silentCount += 1;
+    cur.sum += it.silenceMs;
+    byOpMap.set(key, cur);
+  }
+  return {
+    totalOpen: items.length,
+    silentCount: silent.length,
+    avgSilenceMs: silent.length ? silent.reduce((s, i) => s + i.silenceMs, 0) / silent.length : 0,
+    p90SilenceMs: p90(silent.map((i) => i.silenceMs)),
+    byOperator: Array.from(byOpMap.values())
+      .map((v) => ({
+        operatorId: v.id,
+        operatorName: v.name,
+        silentCount: v.silentCount,
+        avgSilenceMs: v.silentCount > 0 ? v.sum / v.silentCount : 0,
+      }))
+      .sort((a, b) => b.silentCount - a.silentCount),
+    topSilent: silent.sort((a, b) => b.silenceMs - a.silenceMs).slice(0, 20),
+  };
+}
+
+/* ============ 8. Padrão de finalização ============ */
+
+export interface ClosingPatternResult {
+  buckets: Array<{ hour: number; count: number }>;
+  lastWindowPct: number; // % fechados nos últimos `windowMinutes` antes do close do dia
+  totalClosed: number;
+}
+
+/**
+ * `dayCloseByDow` mapeia dia da semana (0=Dom .. 6=Sáb) para minuto-do-dia do
+ * fechamento do expediente (ex.: 18*60). Quando não informado, usa 18:00.
+ */
+export function computeClosingPattern(
+  chats: ChatRow[],
+  tickets: TicketRow[],
+  dayCloseByDow: Record<number, number> | null = null,
+  windowMinutes: number = 30
+): ClosingPatternResult {
+  const closes: Date[] = [];
+  for (const c of chats) if (c.status === "finalizado" && c.last_message_at) closes.push(new Date(c.last_message_at));
+  for (const t of tickets) if (t.status === "finalizado" && t.closed_at) closes.push(new Date(t.closed_at));
+
+  const buckets = Array.from({ length: 24 }, (_, h) => ({ hour: h, count: 0 }));
+  let inWindow = 0;
+  for (const d of closes) {
+    buckets[d.getHours()].count += 1;
+    const dow = d.getDay();
+    const dayClose = dayCloseByDow?.[dow] ?? 18 * 60;
+    const cur = d.getHours() * 60 + d.getMinutes();
+    if (cur >= dayClose - windowMinutes && cur < dayClose) inWindow += 1;
+  }
+  return {
+    buckets,
+    lastWindowPct: closes.length ? inWindow / closes.length : 0,
+    totalClosed: closes.length,
+  };
+}
+
+/* ============ 9. Qualidade ============ */
+
+export interface CsatRow {
+  operator_user_id: string | null;
+  score: number | null;
+}
+
+export interface QualityRow {
+  operatorId: string;
+  operatorName: string;
+  resolved: number;
+  reopened: number;
+  reopenRate: number;
+  csatAvg: number;
+  csatCount: number;
+}
+
+export function computeQuality(
+  source: DataSource,
+  chats: ChatRow[],
+  tickets: TicketRow[],
+  csat: CsatRow[],
+  ops: OperatorRow[]
+): QualityRow[] {
+  const opMap = buildOperatorMap(ops);
+  const acc = new Map<string, { resolved: number; reopened: number; csatSum: number; csatCount: number }>();
+  function ensure(id: string) {
+    if (!acc.has(id)) acc.set(id, { resolved: 0, reopened: 0, csatSum: 0, csatCount: 0 });
+    return acc.get(id)!;
+  }
+  if (source === "chat" || source === "ambos") {
+    for (const c of chats) {
+      if (!c.assigned_to) continue;
+      const v = ensure(c.assigned_to);
+      if (c.status === "finalizado") v.resolved += 1;
+      if (c.status === "reaberto") v.reopened += 1;
+    }
+  }
+  if (source === "atendimento" || source === "ambos") {
+    for (const t of tickets) {
+      if (!t.assigned_to) continue;
+      const v = ensure(t.assigned_to);
+      if (t.status === "finalizado") v.resolved += 1;
+      if (t.status === "reaberto") v.reopened += 1;
+    }
+  }
+  for (const r of csat) {
+    if (!r.operator_user_id || r.score == null) continue;
+    const v = ensure(r.operator_user_id);
+    v.csatSum += r.score;
+    v.csatCount += 1;
+  }
+  return Array.from(acc.entries())
+    .map(([operatorId, v]) => ({
+      operatorId,
+      operatorName: operatorName(opMap, operatorId),
+      resolved: v.resolved,
+      reopened: v.reopened,
+      reopenRate: v.resolved + v.reopened > 0 ? v.reopened / (v.resolved + v.reopened) : 0,
+      csatAvg: v.csatCount > 0 ? v.csatSum / v.csatCount : 0,
+      csatCount: v.csatCount,
+    }))
+    .sort((a, b) => b.resolved - a.resolved);
+}
+
+/* ============ 10. Diagnóstico de Equipe ============ */
+
+export type OperatorLabel = "Alto desempenho" | "Sobrecarregado" | "Subutilizado" | "Atenção" | "Regular";
+
+export interface TeamDiagnosticRow {
+  operatorId: string;
+  operatorName: string;
+  resolved: number;
+  startDelayMs: number;
+  silentOpen: number;
+  csatAvg: number;
+  label: OperatorLabel;
+}
+
+export interface TeamDiagnosticSummary {
+  operators: TeamDiagnosticRow[];
+  totalResolved: number;
+  top3Share: number; // 0..1
+  top5Share: number;
+  sectorThroughput: Array<{ sector: string; resolved: number; headcount: number; perHead: number }>;
+}
+
+export function computeTeamDiagnostic(
+  productivity: ProductivityRow[],
+  startDelays: StartDelayRow[],
+  silence: OpenSilenceSummary,
+  quality: QualityRow[],
+  ops: OperatorRow[],
+  sectorTotals: Map<string, number>,
+  sectorHeadcount: Map<string, number>
+): TeamDiagnosticSummary {
+  const opMap = buildOperatorMap(ops);
+  const prodMap = new Map(productivity.map((p) => [p.operatorId, p.resolved]));
+  const delayMap = new Map(startDelays.map((p) => [p.operatorId, p.avgMs]));
+  const silentMap = new Map(silence.byOperator.map((p) => [p.operatorId || "__none__", p.silentCount]));
+  const csatMap = new Map(quality.map((p) => [p.operatorId, p.csatAvg]));
+
+  const totalResolved = productivity.reduce((s, p) => s + p.resolved, 0);
+  const sortedByResolved = productivity.slice().sort((a, b) => b.resolved - a.resolved);
+  const top3 = sortedByResolved.slice(0, 3).reduce((s, p) => s + p.resolved, 0);
+  const top5 = sortedByResolved.slice(0, 5).reduce((s, p) => s + p.resolved, 0);
+
+  const medianResolved = median(productivity.map((p) => p.resolved));
+  const medianDelay = median(startDelays.map((p) => p.avgMs));
+
+  const ids = new Set<string>([
+    ...productivity.map((p) => p.operatorId),
+    ...startDelays.map((p) => p.operatorId),
+    ...quality.map((q) => q.operatorId),
+  ]);
+
+  const operators: TeamDiagnosticRow[] = Array.from(ids).map((id) => {
+    const resolved = prodMap.get(id) || 0;
+    const startDelayMs = delayMap.get(id) || 0;
+    const silentOpen = silentMap.get(id) || 0;
+    const csatAvg = csatMap.get(id) || 0;
+
+    let label: OperatorLabel = "Regular";
+    const highVolume = resolved > medianResolved && medianResolved > 0;
+    const lowVolume = resolved < medianResolved * 0.5;
+    const fastStart = medianDelay > 0 && startDelayMs > 0 && startDelayMs < medianDelay;
+    const slowStart = medianDelay > 0 && startDelayMs > medianDelay;
+
+    if (highVolume && fastStart && (csatAvg === 0 || csatAvg >= 4)) label = "Alto desempenho";
+    else if (resolved >= (sortedByResolved[2]?.resolved ?? 0) && silentOpen > 2) label = "Sobrecarregado";
+    else if (lowVolume) label = "Subutilizado";
+    else if (slowStart || silentOpen > 3) label = "Atenção";
+
+    return {
+      operatorId: id,
+      operatorName: operatorName(opMap, id),
+      resolved,
+      startDelayMs,
+      silentOpen,
+      csatAvg,
+      label,
+    };
+  }).sort((a, b) => b.resolved - a.resolved);
+
+  const sectorThroughput = Array.from(sectorTotals.entries()).map(([sector, resolved]) => {
+    const headcount = sectorHeadcount.get(sector) || 0;
+    return {
+      sector,
+      resolved,
+      headcount,
+      perHead: headcount > 0 ? resolved / headcount : 0,
+    };
+  }).sort((a, b) => b.perHead - a.perHead);
+
+  return {
+    operators,
+    totalResolved,
+    top3Share: totalResolved > 0 ? top3 / totalResolved : 0,
+    top5Share: totalResolved > 0 ? top5 / totalResolved : 0,
+    sectorThroughput,
+  };
+}
+
