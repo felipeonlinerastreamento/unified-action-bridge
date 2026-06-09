@@ -50,7 +50,9 @@ import {
   Minimize2,
   Bell,
   CheckSquare,
+  FileSpreadsheet,
 } from "lucide-react";
+import { ChatControleTab } from "@/components/central/chat-controle-tab";
 import { TaskFormDialog } from "@/components/tarefas/task-form-dialog";
 import { TicketReminderSection } from "./ticket-reminder-section";
 import { TicketAgentsSection } from "./ticket-agents-section";
