@@ -120,6 +120,63 @@ export function OperatorPerformanceTab({ dateFrom, dateTo }: Props) {
     },
   });
 
+  // CSAT responses in range
+  const { data: csat = [] } = useQuery({
+    queryKey: ["perf-csat", dateFrom, dateTo],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("csat_responses")
+        .select("operator_user_id,score")
+        .gte("created_at", `${dateFrom}T00:00:00`)
+        .lte("created_at", `${dateTo}T23:59:59`)
+        .limit(10000);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Open chats snapshot (status != finalizado) — para tempo sem interação atual
+  const { data: openChats = [] } = useQuery({
+    queryKey: ["perf-open-chats"],
+    refetchInterval: 30_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("zapi_chats")
+        .select("id,assigned_to,sector_name,status,created_at,last_message_at")
+        .neq("status", "finalizado")
+        .limit(2000);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Open tickets snapshot
+  const { data: openTickets = [] } = useQuery({
+    queryKey: ["perf-open-tickets"],
+    refetchInterval: 30_000,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("service_tickets")
+        .select("id,assigned_to,sector,category,status,created_at,closed_at")
+        .neq("status", "finalizado")
+        .limit(2000);
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
+  // Headcount por setor (operadores atribuídos)
+  const { data: sectorHeadcountRows = [] } = useQuery({
+    queryKey: ["perf-sector-headcount"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("user_sector_assignments")
+        .select("user_id, sectors:sector_id(name)");
+      if (error) throw error;
+      return data || [];
+    },
+  });
+
   // Available categories from tickets in period
   const availableCategories = useMemo(() => {
     const set = new Set<string>();
