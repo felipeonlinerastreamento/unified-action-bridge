@@ -10,8 +10,16 @@ import {
 import { FileSpreadsheet, ExternalLink, Pencil, Trash2, Plus, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
+interface ContactInfo {
+  name?: string | null;
+  phone?: string | null;
+  protocol?: string | null;
+  companyName?: string | null;
+}
+
 interface Props {
   chatId: string | null | undefined;
+  contactInfo?: ContactInfo;
 }
 
 interface ControleLink {
@@ -22,13 +30,51 @@ interface ControleLink {
   updated_at: string;
 }
 
-const ALLOWED_HOSTS = ["office.com", "sharepoint.com", "onedrive.live.com", "1drv.ms", "live.com"];
+const ALLOWED_HOSTS = [
+  "office.com", "sharepoint.com", "onedrive.live.com", "1drv.ms", "live.com",
+  "docs.google.com", "google.com",
+];
 
 function isLikelyExcelOnline(url: string): boolean {
   try {
     const u = new URL(url);
     if (u.protocol !== "https:") return false;
     return ALLOWED_HOSTS.some((h) => u.hostname === h || u.hostname.endsWith("." + h));
+  } catch {
+    return false;
+  }
+}
+
+function buildHeaderTsv(info?: ContactInfo): string {
+  const date = new Date().toLocaleString("pt-BR");
+  const headers = ["Atendimento", "Contato", "Telefone", "Empresa", "Data"];
+  const values = [
+    info?.protocol || "",
+    info?.name || "",
+    info?.phone || "",
+    info?.companyName || "",
+    date,
+  ];
+  return headers.join("\t") + "\n" + values.join("\t");
+}
+
+async function copyToClipboard(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {}
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
   } catch {
     return false;
   }
