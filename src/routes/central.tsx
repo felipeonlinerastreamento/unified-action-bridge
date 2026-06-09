@@ -77,6 +77,7 @@ import {
   Building2,
   FileText,
   History,
+  FileSpreadsheet,
   AlertCircle,
   Link as LinkIcon,
   UserPlus,
