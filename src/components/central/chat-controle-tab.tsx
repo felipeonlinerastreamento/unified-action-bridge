@@ -161,6 +161,29 @@ export function ChatControleTab({ chatId, contactInfo }: Props) {
     saveMut.mutate({ url, label: labelInput.trim() });
   };
 
+  const handleCreateSheet = async () => {
+    const tsv = buildHeaderTsv(contactInfo);
+    const copied = await copyToClipboard(tsv);
+    window.open("https://sheets.new", "_blank", "noopener,noreferrer");
+    toast.success(
+      copied
+        ? "Planilha aberta. Cabeçalho copiado — cole (Ctrl+V) na nova planilha, salve e cole o link aqui."
+        : "Planilha aberta. Após salvar, copie o link e cole aqui.",
+    );
+    // Abre o dialog já preparado para colar o link gerado
+    setEditing(null);
+    setUrlInput("");
+    setLabelInput(
+      contactInfo?.name
+        ? `Planilha — ${contactInfo.name}`
+        : contactInfo?.protocol
+          ? `Planilha — ${contactInfo.protocol}`
+          : "Planilha de controle",
+    );
+    setDialogOpen(true);
+  };
+
+
   if (!chatId) {
     return (
       <div className="p-4 text-xs text-muted-foreground">
