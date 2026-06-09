@@ -1,41 +1,32 @@
+# Botão "Criar planilha" na aba Controle
 
 ## Objetivo
-Adicionar aba **"Controle"** dentro do atendimento (Central e /atendimentos) onde cada operador pode cadastrar e abrir um link de planilha Excel Online específico daquele atendimento. Ao clicar, abre em nova aba do navegador para edição.
+No estado vazio da aba **Controle** (Central e /atendimentos), além de "Adicionar planilha" (colar link existente), incluir botão **"Criar planilha"** que:
+1. Abre `https://sheets.new` em nova aba (planilha Google em branco na conta do operador).
+2. Copia automaticamente para a área de transferência um cabeçalho com os dados do atendimento, para o operador colar na nova planilha.
+3. Mostra um diálogo orientando o operador a, após salvar a planilha no Drive, copiar o link e colar no campo "Adicionar planilha" (que já abre em seguida).
 
-## Escopo
-- **Por atendimento** (vinculado ao `chat_id` da `zapi_chats`). Cada conversa tem seu próprio link.
-- Qualquer operador pode cadastrar/editar/remover o link.
-- Abre em nova aba (`target="_blank"`).
+Sem integração com API do Google — apenas abrir nova aba + clipboard + fluxo guiado.
 
-## Banco (migração)
-Nova tabela `chat_controle_links`:
-- `chat_id` (FK → `zapi_chats.id`, único — um link ativo por chat)
-- `url` (text, validar https + domínios office/sharepoint/onedrive permitidos no front)
-- `label` (text opcional, ex: "Planilha de controle")
-- `created_by`, `updated_by` (uuid → auth.users)
-- `created_at`, `updated_at`
-- RLS: SELECT/INSERT/UPDATE/DELETE para `authenticated` (mesma política aberta usada em outras tabelas operacionais do chat). GRANTs padrão + service_role.
+## Mudanças
 
-## Frontend
-1. **Central de Atendimento** (painel de detalhes do chat à direita): adicionar nova aba "Controle" junto às existentes (Histórico/Tags/etc.).
-2. **/atendimentos** (painel do ticket): adicionar a mesma aba "Controle". Como o ticket está vinculado ao chat, usa o mesmo `chat_id`.
+### `src/components/central/chat-controle-tab.tsx`
+- Aceitar nova prop opcional `contactInfo?: { name?, phone?, protocol?, companyName? }` para gerar o cabeçalho.
+- No empty state, adicionar segundo botão **"Criar planilha"** (variant secondary) ao lado de "Adicionar planilha".
+- Handler `handleCreateSheet()`:
+  - Monta TSV com 2 linhas (cabeçalho + valores): `Atendimento\tContato\tTelefone\tEmpresa\tData`.
+  - `navigator.clipboard.writeText(tsv)` (com fallback se indisponível).
+  - `window.open("https://sheets.new", "_blank", "noopener,noreferrer")`.
+  - Toast: "Planilha aberta. Cabeçalho copiado — cole (Ctrl+V) na nova planilha, salve e copie o link aqui."
+  - Abre o dialog de "Adicionar planilha" já com label pré-preenchido (ex: "Planilha — {contato}").
 
-### Componente compartilhado `ChatControleTab` (`src/components/central/chat-controle-tab.tsx`)
-- Carrega o link atual via `useQuery` (`chat_controle_links` por `chat_id`).
-- **Sem link:** mostra estado vazio + botão "Adicionar planilha" → dialog com input URL + label.
-- **Com link:** card mostrando label + URL (truncada) + 2 botões:
-  - **"Abrir planilha"** (primário) — `window.open(url, "_blank", "noopener,noreferrer")`.
-  - **"Editar"** / **"Remover"** (ícones).
-- Validação simples no input: precisa começar com `https://` e conter `office.com`, `sharepoint.com`, `onedrive.live.com` ou `1drv.ms` (aviso amigável, não bloqueia hard).
-- Mutations com `useMutation` + `qc.invalidateQueries`.
-- Toasts via `sonner`.
+### `src/routes/central.tsx`
+- Passar `contactInfo` para `<ChatControleTab>` derivado do chat selecionado (nome, telefone, protocolo se houver, empresa).
 
-## Detalhes técnicos
-- Sem proxy / sem server function necessários — escrita direta via cliente Supabase com RLS.
-- Sem integração com API do Excel/Microsoft (apenas armazena URL).
-- Aba aparece para qualquer atendimento que tenha `chatId` conhecido. Em tickets sem chat vinculado, a aba fica oculta.
+### `src/components/atendimentos/ticket-detail-panel.tsx`
+- Passar `contactInfo` para `<ChatControleTab>` a partir do `ticket` (contact_name, contact_phone, protocol, company name).
 
 ## Fora de escopo
-- Embed/iframe da planilha (decidido: abrir em nova aba).
-- Sincronização de conteúdo da planilha.
-- Histórico de versões do link.
+- Criar planilha via API Google (exigiria conector / OAuth — usuário escolheu "abrir em branco").
+- Pré-preencher conteúdo dentro da planilha automaticamente (não é possível sem API).
+- Salvar/recuperar link automaticamente — operador continua colando manualmente.
