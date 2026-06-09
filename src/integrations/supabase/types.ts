@@ -728,6 +728,47 @@ export type Database = {
         }
         Relationships: []
       }
+      chat_controle_links: {
+        Row: {
+          chat_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          label: string | null
+          updated_at: string
+          updated_by: string | null
+          url: string
+        }
+        Insert: {
+          chat_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          label?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          url: string
+        }
+        Update: {
+          chat_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          label?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          url?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_controle_links_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: true
+            referencedRelation: "zapi_chats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       chat_idle_auto_message_logs: {
         Row: {
           channel_id: string | null

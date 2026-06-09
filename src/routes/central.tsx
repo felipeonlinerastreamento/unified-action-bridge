@@ -52,6 +52,7 @@ import { SubClientLinker } from "@/components/central/sub-client-linker";
 import { ContactPicker, type PickedContact } from "@/components/central/contact-picker";
 import { ReferralPicker } from "@/components/crm/referral-picker";
 import { ContactHistoryPanel } from "@/components/central/contact-history-panel";
+import { ChatControleTab } from "@/components/central/chat-controle-tab";
 import { FullConversationHistoryDialog } from "@/components/central/full-conversation-history-dialog";
 import {
   createCrmContactWithCompany,
@@ -76,6 +77,7 @@ import {
   Building2,
   FileText,
   History,
+  FileSpreadsheet,
   AlertCircle,
   Link as LinkIcon,
   UserPlus,
@@ -3568,6 +3570,9 @@ function CentralPage() {
                     <TabsTrigger value="historico" className="flex-1 text-xs">
                       <History className="h-3 w-3 mr-1" /> Histórico
                     </TabsTrigger>
+                    <TabsTrigger value="controle" className="flex-1 text-xs">
+                      <FileSpreadsheet className="h-3 w-3 mr-1" /> Controle
+                    </TabsTrigger>
                     {aiEnabled && (
                       <TabsTrigger value="ia" className="flex-1 text-xs">
                         <Bot className="h-3 w-3 mr-1" /> Supervisor IA
@@ -3982,6 +3987,11 @@ function CentralPage() {
                         })()}
                       </div>
                     </ScrollArea>
+                  </TabsContent>
+
+                  {/* Controle Tab */}
+                  <TabsContent value="controle" className="flex-1 overflow-auto m-0">
+                    <ChatControleTab chatId={selectedChatId || null} />
                   </TabsContent>
 
                   {/* IA Tab */}

@@ -50,7 +50,9 @@ import {
   Minimize2,
   Bell,
   CheckSquare,
+  FileSpreadsheet,
 } from "lucide-react";
+import { ChatControleTab } from "@/components/central/chat-controle-tab";
 import { TaskFormDialog } from "@/components/tarefas/task-form-dialog";
 import { TicketReminderSection } from "./ticket-reminder-section";
 import { TicketAgentsSection } from "./ticket-agents-section";
@@ -216,6 +218,25 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   const [fieldDraft, setFieldDraft] = useState<string>("");
   const [savingField, setSavingField] = useState(false);
   const { data: teSettings } = useTesteEquipamentoSettings();
+
+  // Resolve chat_id vinculado a este ticket (via telefone) para a aba Controle
+  const { data: linkedChatId } = useQuery({
+    queryKey: ["ticket-linked-chat", ticket?.id, ticket?.contact_phone],
+    queryFn: async () => {
+      if (!ticket?.contact_phone) return null;
+      const phone = String(ticket.contact_phone).replace(/\D/g, "");
+      if (!phone) return null;
+      const { data } = await supabase
+        .from("zapi_chats")
+        .select("id")
+        .ilike("phone", `%${phone.slice(-10)}%`)
+        .order("last_message_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      return (data as any)?.id || null;
+    },
+    enabled: !!ticket?.contact_phone,
+  });
 
   const { data: companiesList = [] } = useQuery({
     queryKey: ["companies-edit-list"],
@@ -1040,6 +1061,9 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
             <TabsTrigger value="detalhes" className="flex-1">Detalhes</TabsTrigger>
             <TabsTrigger value="comentarios" className="flex-1">Comentários</TabsTrigger>
             <TabsTrigger value="acoes" className="flex-1">Ações</TabsTrigger>
+            <TabsTrigger value="controle" className="flex-1">
+              <FileSpreadsheet className="h-3.5 w-3.5 mr-1" /> Controle
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="detalhes" className="space-y-3 mt-3">
@@ -1579,6 +1603,10 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
                 Cria pendência no GSystem com toda a descrição do atendimento.
               </p>
             </div>
+          </TabsContent>
+
+          <TabsContent value="controle" className="mt-3">
+            <ChatControleTab chatId={linkedChatId || null} />
           </TabsContent>
         </Tabs>
       </SheetContent>
