@@ -3989,6 +3989,11 @@ function CentralPage() {
                     </ScrollArea>
                   </TabsContent>
 
+                  {/* Controle Tab */}
+                  <TabsContent value="controle" className="flex-1 overflow-auto m-0">
+                    <ChatControleTab chatId={selectedChatId || null} />
+                  </TabsContent>
+
                   {/* IA Tab */}
                   <TabsContent value="ia" className="flex-1 overflow-hidden m-0 flex flex-col">
                     {/* Service time badge */}
