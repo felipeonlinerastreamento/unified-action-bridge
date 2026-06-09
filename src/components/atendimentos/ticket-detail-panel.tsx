@@ -53,6 +53,7 @@ import {
   FileSpreadsheet,
 } from "lucide-react";
 import { ChatControleTab } from "@/components/central/chat-controle-tab";
+import { CopyProtocolButton } from "./copy-protocol-button";
 import { TaskFormDialog } from "@/components/tarefas/task-form-dialog";
 import { TicketReminderSection } from "./ticket-reminder-section";
 import { TicketAgentsSection } from "./ticket-agents-section";
@@ -1022,6 +1023,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
           <SheetTitle className="flex items-center gap-2 text-base">
             {ticket.contact_name || ticket.attendance_id || "Ticket"}
             <Badge variant="outline" className="text-xs">#{formatTicketProtocol(ticket)}</Badge>
+            <CopyProtocolButton protocol={formatTicketProtocol(ticket)} />
             <Button
               size="sm"
               variant="ghost"
