@@ -233,6 +233,53 @@ export function OperatorPerformanceTab({ dateFrom, dateTo }: Props) {
     [idleness, tmpr, productivity]
   );
 
+  // === Novas métricas ===
+  const startDelay = useMemo(
+    () => computeStartDelay(filteredChats as any, filteredTickets as any, filteredMessages as any, operators as any),
+    [filteredChats, filteredTickets, filteredMessages, operators]
+  );
+
+  const silence = useMemo(
+    () => computeOpenSilence(
+      (openChats as any[]).filter((c) => sector === "__all__" || (c.sector_name || "") === sector),
+      (openTickets as any[]).filter((t) => sector === "__all__" || (t.sector || "") === sector),
+      operators as any,
+      idleThresholdMin * 60_000
+    ),
+    [openChats, openTickets, operators, idleThresholdMin, sector]
+  );
+
+  const closing = useMemo(
+    () => computeClosingPattern(filteredChats as any, filteredTickets as any, null, 30),
+    [filteredChats, filteredTickets]
+  );
+
+  const quality = useMemo(
+    () => computeQuality(source, filteredChats as any, filteredTickets as any, csat as any, operators as any),
+    [source, filteredChats, filteredTickets, csat, operators]
+  );
+
+  const diagnostic = useMemo(() => {
+    const sectorTotals = new Map<string, number>();
+    for (const t of filteredTickets as any[]) {
+      if (t.status !== "finalizado") continue;
+      const s = t.sector || "Sem setor";
+      sectorTotals.set(s, (sectorTotals.get(s) || 0) + 1);
+    }
+    for (const c of filteredChats as any[]) {
+      if (c.status !== "finalizado") continue;
+      const s = c.sector_name || "Sem setor";
+      sectorTotals.set(s, (sectorTotals.get(s) || 0) + 1);
+    }
+    const headcount = new Map<string, number>();
+    for (const row of sectorHeadcountRows as any[]) {
+      const name = row?.sectors?.name;
+      if (!name) continue;
+      headcount.set(name, (headcount.get(name) || 0) + 1);
+    }
+    return computeTeamDiagnostic(productivity, startDelay, silence, quality, operators as any, sectorTotals, headcount);
+  }, [filteredTickets, filteredChats, sectorHeadcountRows, productivity, startDelay, silence, quality, operators]);
+
   const isLoading = ticketsLoading || chatsLoading || msgsLoading;
 
   const tmprChart = tmpr.slice(0, 15).map((r) => ({
