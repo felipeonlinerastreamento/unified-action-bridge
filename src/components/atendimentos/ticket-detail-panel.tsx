@@ -1606,7 +1606,15 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
           </TabsContent>
 
           <TabsContent value="controle" className="mt-3">
-            <ChatControleTab chatId={linkedChatId || null} />
+            <ChatControleTab
+              chatId={linkedChatId || null}
+              contactInfo={{
+                name: ticket.contact_name || null,
+                phone: ticket.contact_phone || null,
+                protocol: (ticket as any).protocol || (ticket as any).pendencia_key || (ticket as any).attendance_id || null,
+                companyName: (ticket as any).company_name || (ticket as any).companies?.name || null,
+              }}
+            />
           </TabsContent>
         </Tabs>
       </SheetContent>
