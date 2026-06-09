@@ -3991,7 +3991,15 @@ function CentralPage() {
 
                   {/* Controle Tab */}
                   <TabsContent value="controle" className="flex-1 overflow-auto m-0">
-                    <ChatControleTab chatId={selectedChatId || null} />
+                    <ChatControleTab
+                      chatId={selectedChatId || null}
+                      contactInfo={{
+                        name: chatDetail?.contact?.name || chatDetail?.description || null,
+                        phone: contactPhone || null,
+                        protocol: (currentTicket as any)?.protocol || (currentTicket as any)?.pendencia_key || null,
+                        companyName: (currentTicket as any)?.company_name || (currentTicket as any)?.companies?.name || null,
+                      }}
+                    />
                   </TabsContent>
 
                   {/* IA Tab */}

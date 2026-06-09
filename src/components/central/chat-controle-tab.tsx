@@ -10,8 +10,16 @@ import {
 import { FileSpreadsheet, ExternalLink, Pencil, Trash2, Plus, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 
+interface ContactInfo {
+  name?: string | null;
+  phone?: string | null;
+  protocol?: string | null;
+  companyName?: string | null;
+}
+
 interface Props {
   chatId: string | null | undefined;
+  contactInfo?: ContactInfo;
 }
 
 interface ControleLink {
@@ -22,7 +30,10 @@ interface ControleLink {
   updated_at: string;
 }
 
-const ALLOWED_HOSTS = ["office.com", "sharepoint.com", "onedrive.live.com", "1drv.ms", "live.com"];
+const ALLOWED_HOSTS = [
+  "office.com", "sharepoint.com", "onedrive.live.com", "1drv.ms", "live.com",
+  "docs.google.com", "google.com",
+];
 
 function isLikelyExcelOnline(url: string): boolean {
   try {
@@ -34,7 +45,42 @@ function isLikelyExcelOnline(url: string): boolean {
   }
 }
 
-export function ChatControleTab({ chatId }: Props) {
+function buildHeaderTsv(info?: ContactInfo): string {
+  const date = new Date().toLocaleString("pt-BR");
+  const headers = ["Atendimento", "Contato", "Telefone", "Empresa", "Data"];
+  const values = [
+    info?.protocol || "",
+    info?.name || "",
+    info?.phone || "",
+    info?.companyName || "",
+    date,
+  ];
+  return headers.join("\t") + "\n" + values.join("\t");
+}
+
+async function copyToClipboard(text: string): Promise<boolean> {
+  try {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return true;
+    }
+  } catch {}
+  try {
+    const ta = document.createElement("textarea");
+    ta.value = text;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    const ok = document.execCommand("copy");
+    document.body.removeChild(ta);
+    return ok;
+  } catch {
+    return false;
+  }
+}
+
+export function ChatControleTab({ chatId, contactInfo }: Props) {
   const qc = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ControleLink | null>(null);
@@ -115,6 +161,29 @@ export function ChatControleTab({ chatId }: Props) {
     saveMut.mutate({ url, label: labelInput.trim() });
   };
 
+  const handleCreateSheet = async () => {
+    const tsv = buildHeaderTsv(contactInfo);
+    const copied = await copyToClipboard(tsv);
+    window.open("https://sheets.new", "_blank", "noopener,noreferrer");
+    toast.success(
+      copied
+        ? "Planilha aberta. Cabeçalho copiado — cole (Ctrl+V) na nova planilha, salve e cole o link aqui."
+        : "Planilha aberta. Após salvar, copie o link e cole aqui.",
+    );
+    // Abre o dialog já preparado para colar o link gerado
+    setEditing(null);
+    setUrlInput("");
+    setLabelInput(
+      contactInfo?.name
+        ? `Planilha — ${contactInfo.name}`
+        : contactInfo?.protocol
+          ? `Planilha — ${contactInfo.protocol}`
+          : "Planilha de controle",
+    );
+    setDialogOpen(true);
+  };
+
+
   if (!chatId) {
     return (
       <div className="p-4 text-xs text-muted-foreground">
@@ -175,18 +244,27 @@ export function ChatControleTab({ chatId }: Props) {
           <div className="text-sm text-muted-foreground">
             Nenhuma planilha de controle vinculada a este atendimento.
           </div>
-          <Button size="sm" onClick={() => openDialog(null)}>
-            <Plus className="h-4 w-4 mr-1.5" /> Adicionar planilha
-          </Button>
+          <div className="flex gap-2 justify-center flex-wrap">
+            <Button size="sm" onClick={handleCreateSheet}>
+              <FileSpreadsheet className="h-4 w-4 mr-1.5" /> Criar planilha
+            </Button>
+            <Button size="sm" variant="outline" onClick={() => openDialog(null)}>
+              <Plus className="h-4 w-4 mr-1.5" /> Adicionar link
+            </Button>
+          </div>
+          <div className="text-[11px] text-muted-foreground">
+            "Criar planilha" abre uma nova planilha Google em branco e copia o cabeçalho do atendimento para você colar.
+          </div>
         </div>
       )}
+
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{editing ? "Editar planilha" : "Adicionar planilha"}</DialogTitle>
             <DialogDescription>
-              Cole o link de compartilhamento do Excel Online (OneDrive ou SharePoint) com permissão de edição.
+              Cole o link de compartilhamento da planilha (Google Sheets, Excel Online, OneDrive ou SharePoint) com permissão de edição.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -194,14 +272,14 @@ export function ChatControleTab({ chatId }: Props) {
               <Label htmlFor="controle-url">URL da planilha</Label>
               <Input
                 id="controle-url"
-                placeholder="https://onedrive.live.com/..."
+                placeholder="https://docs.google.com/spreadsheets/... ou https://onedrive.live.com/..."
                 value={urlInput}
                 onChange={(e) => setUrlInput(e.target.value)}
               />
               {!urlValid && (
                 <div className="text-xs text-amber-600 flex items-start gap-1">
                   <AlertCircle className="h-3 w-3 mt-0.5 shrink-0" />
-                  A URL não parece ser do Excel Online (Office/SharePoint/OneDrive). Pode continuar, mas confira o link.
+                  A URL não parece ser de uma planilha online (Google Sheets, Office, SharePoint ou OneDrive). Pode continuar, mas confira o link.
                 </div>
               )}
             </div>
