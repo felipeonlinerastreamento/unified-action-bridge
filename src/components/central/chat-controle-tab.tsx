@@ -279,7 +279,7 @@ export function ChatControleTab({ chatId, contactInfo }: Props) {
               {!urlValid && (
                 <div className="text-xs text-amber-600 flex items-start gap-1">
                   <AlertCircle className="h-3 w-3 mt-0.5 shrink-0" />
-                  A URL não parece ser do Excel Online (Office/SharePoint/OneDrive). Pode continuar, mas confira o link.
+                  A URL não parece ser de uma planilha online (Google Sheets, Office, SharePoint ou OneDrive). Pode continuar, mas confira o link.
                 </div>
               )}
             </div>
