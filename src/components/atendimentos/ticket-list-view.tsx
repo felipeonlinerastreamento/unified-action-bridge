@@ -6,6 +6,7 @@ import { SuprimentoBadge } from "./suprimento-badge";
 import { CompraEquipamentoBadge } from "./compra-equipamento-badge";
 import { ComprasInfo } from "./compras-info";
 import { formatTicketProtocol } from "@/lib/protocol-format";
+import { CopyProtocolButton } from "./copy-protocol-button";
 
 interface TicketListViewProps {
   tickets: any[];
@@ -163,8 +164,9 @@ export function TicketListView({ tickets, onSelect, profiles = [] }: TicketListV
                 })()}
                 <ComprasInfo ticket={t} />
               </div>
-              <span className="text-xs text-muted-foreground whitespace-nowrap">
+              <span className="text-xs text-muted-foreground whitespace-nowrap flex items-center gap-1">
                 #{formatTicketProtocol(t)}
+                <CopyProtocolButton protocol={formatTicketProtocol(t)} />
               </span>
             </div>
           </CardContent>
