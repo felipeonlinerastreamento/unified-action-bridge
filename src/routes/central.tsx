@@ -3997,7 +3997,7 @@ function CentralPage() {
                         name: chatDetail?.contact?.name || chatDetail?.description || null,
                         phone: contactPhone || null,
                         protocol: (currentTicket as any)?.protocol || (currentTicket as any)?.pendencia_key || null,
-                        companyName: selectedCompany?.name || null,
+                        companyName: (currentTicket as any)?.company_name || (currentTicket as any)?.companies?.name || null,
                       }}
                     />
                   </TabsContent>
