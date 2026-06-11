@@ -188,10 +188,12 @@ export const createChatControleSheet = createServerFn({ method: "POST" })
         ? `Planilha — ${data.protocol}`
         : "Planilha de controle";
 
+    const targetCol = data.chatId ? "chat_id" : "ticket_id";
+    const targetVal = data.chatId ?? data.ticketId!;
     const { data: existing } = await supabase
       .from("chat_controle_links")
       .select("id")
-      .eq("chat_id", data.chatId)
+      .eq(targetCol, targetVal)
       .maybeSingle();
 
     let rowId: string;
@@ -208,7 +210,8 @@ export const createChatControleSheet = createServerFn({ method: "POST" })
       const { data: inserted, error } = await supabase
         .from("chat_controle_links")
         .insert({
-          chat_id: data.chatId,
+          chat_id: data.chatId ?? null,
+          ticket_id: data.ticketId ?? null,
           url: spreadsheetUrl,
           label,
           created_by: userId,
