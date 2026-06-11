@@ -231,7 +231,8 @@ export const createChatControleSheet = createServerFn({ method: "POST" })
       target_id: rowId,
       target_label: label,
       metadata: {
-        chat_id: data.chatId,
+        chat_id: data.chatId ?? null,
+        ticket_id: data.ticketId ?? null,
         spreadsheet_id: spreadsheetId,
         url: spreadsheetUrl,
         protocol: data.protocol ?? null,
