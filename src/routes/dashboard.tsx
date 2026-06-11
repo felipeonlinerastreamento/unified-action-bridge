@@ -23,16 +23,91 @@ function DashboardPage() {
   const { isAuthenticated, isLoading, hasRole } = useAuth();
   const isAdmin = hasRole("admin") || hasRole("gestor");
 
-  const { data: ticketStats } = useQuery({
-    queryKey: ["dashboard-ticket-stats"],
+  // Janelas de tempo (fuso local do browser)
+  const now = new Date();
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const sevenDaysAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
+  const thirtyDaysAgo = new Date(today.getTime() - 30 * 24 * 60 * 60 * 1000);
+  const todayISO = today.toISOString();
+  const thirtyDaysAgoISO = thirtyDaysAgo.toISOString();
+
+  // Tickets em aberto/em andamento/reaberto (volume pequeno, cabe num único select)
+  const { data: openTicketsData = [] } = useQuery<any[]>({
+    queryKey: ["dashboard-open-tickets"],
     queryFn: async () => {
-      const { data: tickets } = await supabase
+      const { data } = await supabase
         .from("service_tickets")
-        .select("id, status, created_at, closed_at, opened_by, assigned_to, sector, company_id, contact_name, attendance_id, category");
-      return tickets || [];
+        .select("id, status, created_at, opened_by, assigned_to, sector, company_id, contact_name, attendance_id, category")
+        .in("status", ["aberto", "em_andamento", "reaberto"])
+        .order("created_at", { ascending: false })
+        .limit(1000);
+      return data || [];
     },
     enabled: isAuthenticated,
     refetchInterval: 30000,
+  });
+
+  // Finalizados hoje
+  const { data: closedTodayData = [] } = useQuery<any[]>({
+    queryKey: ["dashboard-closed-today", todayISO],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("service_tickets")
+        .select("id, status, created_at, closed_at, opened_by, sector, contact_name, attendance_id, category")
+        .eq("status", "finalizado")
+        .gte("closed_at", todayISO)
+        .order("closed_at", { ascending: false })
+        .limit(1000);
+      return data || [];
+    },
+    enabled: isAuthenticated,
+    refetchInterval: 30000,
+  });
+
+  // Finalizados nos últimos 30 dias (janela usada em Tempo Médio, Operadores e SLA)
+  const { data: closedRecentData = [] } = useQuery<any[]>({
+    queryKey: ["dashboard-closed-recent", thirtyDaysAgoISO],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("service_tickets")
+        .select("id, status, created_at, closed_at, opened_by, sector, contact_name, attendance_id, category")
+        .eq("status", "finalizado")
+        .gte("closed_at", thirtyDaysAgoISO)
+        .order("closed_at", { ascending: false })
+        .limit(2000);
+      return data || [];
+    },
+    enabled: isAuthenticated,
+    refetchInterval: 60000,
+  });
+
+  // Últimos atendimentos (lista compacta, qualquer status)
+  const { data: recentTickets = [] } = useQuery<any[]>({
+    queryKey: ["dashboard-recent-tickets"],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("service_tickets")
+        .select("id, status, contact_name, attendance_id, created_at")
+        .order("created_at", { ascending: false })
+        .limit(8);
+      return data || [];
+    },
+    enabled: isAuthenticated,
+    refetchInterval: 30000,
+  });
+
+  // Contagens totais (head: true só retorna count) — evita o limite de 1000 linhas
+  const { data: totalCounts } = useQuery({
+    queryKey: ["dashboard-total-counts"],
+    queryFn: async () => {
+      const [allRes, finRes] = await Promise.all([
+        supabase.from("service_tickets").select("id", { count: "exact", head: true }),
+        supabase.from("service_tickets").select("id", { count: "exact", head: true }).eq("status", "finalizado"),
+      ]);
+      return { total: allRes.count || 0, finalizado: finRes.count || 0 };
+    },
+    enabled: isAuthenticated,
+    refetchInterval: 60000,
   });
 
   const { data: profiles = [] } = useQuery({
@@ -105,12 +180,7 @@ function DashboardPage() {
     refetchInterval: 30000,
   });
 
-  const tickets = ticketStats || [];
   const inventory = inventoryStats || [];
-
-  const now = new Date();
-  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-  const sevenDaysAgo = new Date(today.getTime() - 7 * 24 * 60 * 60 * 1000);
 
   // Lab liberation aggregations (sum quantities, not row count)
   const labStats = useMemo(() => {
@@ -130,15 +200,17 @@ function DashboardPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [labLiberacoes]);
 
-  const openTickets = tickets.filter((t) => t.status === "aberto");
-  const inProgressTickets = tickets.filter((t) => t.status === "em_andamento");
-  const closedToday = tickets.filter(
-    (t) => t.status === "finalizado" && t.closed_at && new Date(t.closed_at) >= today
-  );
-  const allClosed = tickets.filter((t) => t.status === "finalizado" && t.closed_at);
+  const openTickets = openTicketsData.filter((t: any) => t.status === "aberto" || t.status === "reaberto");
+  const inProgressTickets = openTicketsData.filter((t: any) => t.status === "em_andamento");
+  const closedToday = closedTodayData;
+  // Total de tickets / finalizados (via count exato, sem ler linhas)
+  const totalTickets = totalCounts?.total ?? 0;
+  const totalFinalizado = totalCounts?.finalizado ?? 0;
+  // Janela usada em Tempo Médio / Operadores / SLA: últimos 30 dias
+  const allClosed = closedRecentData;
 
   const avgTime = allClosed.length > 0
-    ? allClosed.reduce((acc, t) => {
+    ? allClosed.reduce((acc: number, t: any) => {
         const start = new Date(t.created_at).getTime();
         const end = new Date(t.closed_at!).getTime();
         return acc + (end - start) / 60000;
@@ -154,7 +226,12 @@ function DashboardPage() {
   };
 
   const profileMap = Object.fromEntries(profiles.map((p) => [p.user_id, p.name]));
-  const operatorStats = getOperatorStats(tickets, profileMap);
+  // Agregações por operador: junta abertos + finalizados dos últimos 30 dias
+  const ticketsForAgg = useMemo(
+    () => [...openTicketsData, ...closedRecentData],
+    [openTicketsData, closedRecentData]
+  );
+  const operatorStats = getOperatorStats(ticketsForAgg, profileMap);
 
   const availableItems = inventory.filter((i) => i.status === "disponivel");
   const linkedItems = inventory.filter((i) => i.status === "vinculado");
@@ -167,7 +244,7 @@ function DashboardPage() {
     return operatorStats.reduce((a, b) => a.avgTime > b.avgTime ? a : b);
   }, [operatorStats]);
 
-  // SLA breach analysis
+  // SLA breach analysis (janela: últimos 30 dias)
   const slaBreach = useMemo(() => {
     const defaultLimitMinutes = 60;
     const sectorLimits: Record<string, number> = {};
@@ -176,7 +253,7 @@ function DashboardPage() {
     }
     const breached: any[] = [];
     const onTime: any[] = [];
-    for (const t of tickets) {
+    for (const t of allClosed) {
       if (!t.closed_at) continue;
       const durationMins = (new Date(t.closed_at).getTime() - new Date(t.created_at).getTime()) / 60000;
       const limit = (t.sector && sectorLimits[t.sector]) ? sectorLimits[t.sector] : defaultLimitMinutes;
@@ -204,7 +281,7 @@ function DashboardPage() {
       byOperator: Object.entries(byOperator).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
       byCategory: Object.entries(byCategory).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count),
     };
-  }, [tickets, slaRules, profileMap]);
+  }, [allClosed, slaRules, profileMap]);
 
   if (isLoading) {
     return (
