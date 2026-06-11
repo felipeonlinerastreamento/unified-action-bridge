@@ -359,9 +359,9 @@ function DashboardPage() {
             {/* Atendimentos Tab */}
             <TabsContent value="atendimentos" className="space-y-4 mt-4">
               <div className="grid gap-4 md:grid-cols-3">
-                <MetricCard label="Total de chamados" value={String(tickets.length)} icon={Activity} />
+                <MetricCard label="Total de chamados" value={String(totalTickets)} icon={Activity} />
                 <MetricCard label="Abertos" value={String(openTickets.length + inProgressTickets.length)} icon={MessageSquare} />
-                <MetricCard label="Finalizados" value={String(allClosed.length)} icon={CheckCircle} />
+                <MetricCard label="Finalizados" value={String(totalFinalizado)} icon={CheckCircle} />
               </div>
 
               <div className="grid gap-4 md:grid-cols-2">
@@ -370,9 +370,9 @@ function DashboardPage() {
                     <CardTitle className="text-base">Distribuição por Status</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-3">
-                    <StatusBar label="Aberto" count={openTickets.length} total={tickets.length} color="bg-amber-500" />
-                    <StatusBar label="Em andamento" count={inProgressTickets.length} total={tickets.length} color="bg-blue-500" />
-                    <StatusBar label="Finalizado" count={allClosed.length} total={tickets.length} color="bg-emerald-500" />
+                    <StatusBar label="Aberto" count={openTickets.length} total={totalTickets} color="bg-amber-500" />
+                    <StatusBar label="Em andamento" count={inProgressTickets.length} total={totalTickets} color="bg-blue-500" />
+                    <StatusBar label="Finalizado" count={totalFinalizado} total={totalTickets} color="bg-emerald-500" />
                   </CardContent>
                 </Card>
 
@@ -381,11 +381,11 @@ function DashboardPage() {
                     <CardTitle className="text-base">Últimos Atendimentos</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    {tickets.length === 0 ? (
+                    {recentTickets.length === 0 ? (
                       <p className="text-sm text-muted-foreground">Nenhum atendimento registrado.</p>
                     ) : (
                       <div className="space-y-2 max-h-48 overflow-y-auto">
-                        {tickets.slice(0, 8).map((t) => (
+                        {recentTickets.map((t: any) => (
                           <div key={t.id} className="flex items-center justify-between text-sm">
                             <span className="truncate max-w-[60%]">{t.contact_name || t.attendance_id}</span>
                             <Badge variant={t.status === "finalizado" ? "secondary" : t.status === "em_andamento" ? "default" : "outline"} className="text-xs">
