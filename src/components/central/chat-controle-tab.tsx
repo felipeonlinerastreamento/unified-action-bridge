@@ -53,7 +53,7 @@ function isLikelyExcelOnline(url: string): boolean {
   }
 }
 
-export function ChatControleTab({ chatId, contactInfo }: Props) {
+export function ChatControleTab({ chatId, ticketId, contactInfo }: Props) {
   const qc = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ControleLink | null>(null);
