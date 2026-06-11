@@ -1610,6 +1610,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
           <TabsContent value="controle" className="mt-3">
             <ChatControleTab
               chatId={linkedChatId || null}
+              ticketId={ticket.id}
               contactInfo={{
                 name: ticket.contact_name || null,
                 phone: ticket.contact_phone || null,
