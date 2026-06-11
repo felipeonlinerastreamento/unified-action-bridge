@@ -32,7 +32,8 @@ interface Props {
 
 interface ControleLink {
   id: string;
-  chat_id: string;
+  chat_id: string | null;
+  ticket_id?: string | null;
   url: string;
   label: string | null;
   updated_at: string;
