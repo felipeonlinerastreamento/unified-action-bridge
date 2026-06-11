@@ -97,12 +97,13 @@ async function readGatewayError(res: Response): Promise<string> {
 }
 
 const createSchema = z.object({
-  chatId: z.string().uuid(),
+  chatId: z.string().uuid().optional().nullable(),
+  ticketId: z.string().uuid().optional().nullable(),
   contactName: z.string().max(255).optional().nullable(),
   contactPhone: z.string().max(64).optional().nullable(),
   protocol: z.string().max(64).optional().nullable(),
   companyName: z.string().max(255).optional().nullable(),
-});
+}).refine((d) => !!d.chatId || !!d.ticketId, { message: "chatId ou ticketId é obrigatório" });
 
 export const createChatControleSheet = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
