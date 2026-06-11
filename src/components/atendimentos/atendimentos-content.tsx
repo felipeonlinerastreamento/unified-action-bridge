@@ -247,7 +247,11 @@ export function AtendimentosContent({ autoOpenTicketId }: { autoOpenTicketId?: s
       )}
 
       {/* KPIs — refletem os filtros aplicados */}
-      <TicketKpis tickets={filteredTickets} />
+      <TicketKpis
+        tickets={filteredTickets}
+        activeStatus={filters.status}
+        onStatusClick={(status) => setFilters((f) => ({ ...f, status: f.status === status ? "todos" : status }))}
+      />
 
       {/* View mode tabs */}
       <Tabs value={viewMode} onValueChange={(v) => setViewMode(v as any)}>
