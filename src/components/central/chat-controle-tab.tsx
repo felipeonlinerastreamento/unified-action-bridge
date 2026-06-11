@@ -25,7 +25,8 @@ interface ContactInfo {
 }
 
 interface Props {
-  chatId: string | null | undefined;
+  chatId?: string | null | undefined;
+  ticketId?: string | null | undefined;
   contactInfo?: ContactInfo;
 }
 
