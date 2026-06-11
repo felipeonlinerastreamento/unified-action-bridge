@@ -160,12 +160,12 @@ export function ChatControleTab({ chatId, ticketId, contactInfo }: Props) {
     if (!link) return;
     // Fire-and-forget audit log
     logOpenFn({
-      data: { id: link.id, chatId: link.chat_id, url: link.url, label: link.label },
+      data: { id: link.id, chatId: link.chat_id ?? undefined, url: link.url, label: link.label },
     }).catch(() => {});
     window.open(link.url, "_blank", "noopener,noreferrer");
   };
 
-  if (!chatId) {
+  if (!targetKey) {
     return (
       <div className="p-4 text-xs text-muted-foreground">
         Selecione um atendimento para gerenciar a planilha de controle.
