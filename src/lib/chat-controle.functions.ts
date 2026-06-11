@@ -97,12 +97,13 @@ async function readGatewayError(res: Response): Promise<string> {
 }
 
 const createSchema = z.object({
-  chatId: z.string().uuid(),
+  chatId: z.string().uuid().optional().nullable(),
+  ticketId: z.string().uuid().optional().nullable(),
   contactName: z.string().max(255).optional().nullable(),
   contactPhone: z.string().max(64).optional().nullable(),
   protocol: z.string().max(64).optional().nullable(),
   companyName: z.string().max(255).optional().nullable(),
-});
+}).refine((d) => !!d.chatId || !!d.ticketId, { message: "chatId ou ticketId é obrigatório" });
 
 export const createChatControleSheet = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -187,10 +188,12 @@ export const createChatControleSheet = createServerFn({ method: "POST" })
         ? `Planilha — ${data.protocol}`
         : "Planilha de controle";
 
+    const targetCol = data.chatId ? "chat_id" : "ticket_id";
+    const targetVal = data.chatId ?? data.ticketId!;
     const { data: existing } = await supabase
       .from("chat_controle_links")
       .select("id")
-      .eq("chat_id", data.chatId)
+      .eq(targetCol, targetVal)
       .maybeSingle();
 
     let rowId: string;
@@ -207,7 +210,8 @@ export const createChatControleSheet = createServerFn({ method: "POST" })
       const { data: inserted, error } = await supabase
         .from("chat_controle_links")
         .insert({
-          chat_id: data.chatId,
+          chat_id: data.chatId ?? null,
+          ticket_id: data.ticketId ?? null,
           url: spreadsheetUrl,
           label,
           created_by: userId,
@@ -227,7 +231,8 @@ export const createChatControleSheet = createServerFn({ method: "POST" })
       target_id: rowId,
       target_label: label,
       metadata: {
-        chat_id: data.chatId,
+        chat_id: data.chatId ?? null,
+        ticket_id: data.ticketId ?? null,
         spreadsheet_id: spreadsheetId,
         url: spreadsheetUrl,
         protocol: data.protocol ?? null,
@@ -242,10 +247,11 @@ export const createChatControleSheet = createServerFn({ method: "POST" })
 
 const upsertLinkSchema = z.object({
   id: z.string().uuid().optional(),
-  chatId: z.string().uuid(),
+  chatId: z.string().uuid().optional().nullable(),
+  ticketId: z.string().uuid().optional().nullable(),
   url: z.string().url().max(2048),
   label: z.string().max(255).optional().nullable(),
-});
+}).refine((d) => !!d.id || !!d.chatId || !!d.ticketId, { message: "id, chatId ou ticketId é obrigatório" });
 
 export const upsertChatControleLink = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
@@ -275,10 +281,9 @@ export const upsertChatControleLink = createServerFn({ method: "POST" })
         target_id: updated.id,
         target_label: updated.label || updated.url,
         metadata: {
-          chat_id: data.chatId,
-          before: before
-            ? { url: before.url, label: before.label }
-            : null,
+          chat_id: data.chatId ?? null,
+          ticket_id: data.ticketId ?? null,
+          before: before ? { url: before.url, label: before.label } : null,
           after: { url: updated.url, label: updated.label },
         },
       });
@@ -288,7 +293,8 @@ export const upsertChatControleLink = createServerFn({ method: "POST" })
     const { data: inserted, error } = await supabase
       .from("chat_controle_links")
       .insert({
-        chat_id: data.chatId,
+        chat_id: data.chatId ?? null,
+        ticket_id: data.ticketId ?? null,
         url: data.url,
         label: data.label ?? null,
         created_by: userId,
@@ -305,7 +311,8 @@ export const upsertChatControleLink = createServerFn({ method: "POST" })
       target_id: inserted.id,
       target_label: inserted.label || inserted.url,
       metadata: {
-        chat_id: data.chatId,
+        chat_id: data.chatId ?? null,
+        ticket_id: data.ticketId ?? null,
         url: inserted.url,
         source: "manual_link",
       },

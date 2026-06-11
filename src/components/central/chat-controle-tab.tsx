@@ -25,13 +25,15 @@ interface ContactInfo {
 }
 
 interface Props {
-  chatId: string | null | undefined;
+  chatId?: string | null | undefined;
+  ticketId?: string | null | undefined;
   contactInfo?: ContactInfo;
 }
 
 interface ControleLink {
   id: string;
-  chat_id: string;
+  chat_id: string | null;
+  ticket_id?: string | null;
   url: string;
   label: string | null;
   updated_at: string;
@@ -52,7 +54,7 @@ function isLikelyExcelOnline(url: string): boolean {
   }
 }
 
-export function ChatControleTab({ chatId, contactInfo }: Props) {
+export function ChatControleTab({ chatId, ticketId, contactInfo }: Props) {
   const qc = useQueryClient();
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<ControleLink | null>(null);
@@ -64,27 +66,32 @@ export function ChatControleTab({ chatId, contactInfo }: Props) {
   const deleteLinkFn = useServerFn(deleteChatControleLink);
   const logOpenFn = useServerFn(logChatControleOpen);
 
+  const targetKey = chatId ? `chat:${chatId}` : ticketId ? `ticket:${ticketId}` : null;
+
   const { data: link, isLoading } = useQuery({
-    queryKey: ["chat-controle-link", chatId],
+    queryKey: ["chat-controle-link", targetKey],
     queryFn: async () => {
-      if (!chatId) return null;
+      if (!targetKey) return null;
+      const col = chatId ? "chat_id" : "ticket_id";
+      const val = (chatId ?? ticketId)!;
       const { data, error } = await supabase
         .from("chat_controle_links" as any)
         .select("*")
-        .eq("chat_id", chatId)
+        .eq(col, val)
         .maybeSingle();
       if (error) throw error;
       return (data as unknown as ControleLink) || null;
     },
-    enabled: !!chatId,
+    enabled: !!targetKey,
   });
 
   const createSheetMut = useMutation({
     mutationFn: async () => {
-      if (!chatId) throw new Error("Chat não selecionado");
+      if (!targetKey) throw new Error("Atendimento não selecionado");
       return await createSheetFn({
         data: {
-          chatId,
+          chatId: chatId ?? null,
+          ticketId: ticketId ?? null,
           contactName: contactInfo?.name ?? null,
           contactPhone: contactInfo?.phone ?? null,
           protocol: contactInfo?.protocol ?? null,
@@ -94,7 +101,7 @@ export function ChatControleTab({ chatId, contactInfo }: Props) {
     },
     onSuccess: (res) => {
       toast.success("Planilha criada e compartilhada");
-      qc.invalidateQueries({ queryKey: ["chat-controle-link", chatId] });
+      qc.invalidateQueries({ queryKey: ["chat-controle-link", targetKey] });
       window.open(res.url, "_blank", "noopener,noreferrer");
     },
     onError: (e: any) => toast.error(e?.message || "Falha ao criar planilha"),
@@ -102,11 +109,12 @@ export function ChatControleTab({ chatId, contactInfo }: Props) {
 
   const saveMut = useMutation({
     mutationFn: async (vars: { url: string; label: string }) => {
-      if (!chatId) throw new Error("Chat não selecionado");
+      if (!targetKey) throw new Error("Atendimento não selecionado");
       return await upsertLinkFn({
         data: {
           id: editing?.id,
-          chatId,
+          chatId: chatId ?? null,
+          ticketId: ticketId ?? null,
           url: vars.url,
           label: vars.label || null,
         },
@@ -114,7 +122,7 @@ export function ChatControleTab({ chatId, contactInfo }: Props) {
     },
     onSuccess: () => {
       toast.success(editing ? "Link atualizado" : "Planilha adicionada");
-      qc.invalidateQueries({ queryKey: ["chat-controle-link", chatId] });
+      qc.invalidateQueries({ queryKey: ["chat-controle-link", targetKey] });
       setDialogOpen(false);
       setEditing(null);
       setUrlInput("");
@@ -126,11 +134,11 @@ export function ChatControleTab({ chatId, contactInfo }: Props) {
   const deleteMut = useMutation({
     mutationFn: async () => {
       if (!link) return;
-      await deleteLinkFn({ data: { id: link.id, chatId: link.chat_id } });
+      await deleteLinkFn({ data: { id: link.id, chatId: link.chat_id ?? undefined } });
     },
     onSuccess: () => {
       toast.success("Planilha removida");
-      qc.invalidateQueries({ queryKey: ["chat-controle-link", chatId] });
+      qc.invalidateQueries({ queryKey: ["chat-controle-link", targetKey] });
     },
     onError: (e: any) => toast.error(e?.message || "Falha ao remover"),
   });
@@ -153,12 +161,12 @@ export function ChatControleTab({ chatId, contactInfo }: Props) {
     if (!link) return;
     // Fire-and-forget audit log
     logOpenFn({
-      data: { id: link.id, chatId: link.chat_id, url: link.url, label: link.label },
+      data: { id: link.id, chatId: link.chat_id ?? undefined, url: link.url, label: link.label },
     }).catch(() => {});
     window.open(link.url, "_blank", "noopener,noreferrer");
   };
 
-  if (!chatId) {
+  if (!targetKey) {
     return (
       <div className="p-4 text-xs text-muted-foreground">
         Selecione um atendimento para gerenciar a planilha de controle.
