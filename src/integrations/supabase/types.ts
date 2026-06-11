@@ -730,31 +730,34 @@ export type Database = {
       }
       chat_controle_links: {
         Row: {
-          chat_id: string
+          chat_id: string | null
           created_at: string
           created_by: string | null
           id: string
           label: string | null
+          ticket_id: string | null
           updated_at: string
           updated_by: string | null
           url: string
         }
         Insert: {
-          chat_id: string
+          chat_id?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
           label?: string | null
+          ticket_id?: string | null
           updated_at?: string
           updated_by?: string | null
           url: string
         }
         Update: {
-          chat_id?: string
+          chat_id?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
           label?: string | null
+          ticket_id?: string | null
           updated_at?: string
           updated_by?: string | null
           url?: string
@@ -765,6 +768,13 @@ export type Database = {
             columns: ["chat_id"]
             isOneToOne: true
             referencedRelation: "zapi_chats"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "chat_controle_links_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "service_tickets"
             referencedColumns: ["id"]
           },
         ]
