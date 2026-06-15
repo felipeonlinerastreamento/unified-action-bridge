@@ -105,13 +105,26 @@ export function PurchaseConfig() {
 function ItemsTab() {
   const qc = useQueryClient();
   const { data: items = [], isLoading } = usePurchaseItems(false);
+  const { data: types = [] } = useQuery({
+    queryKey: ["purchase-item-types"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("purchase_item_types" as any)
+        .select("*")
+        .order("name");
+      if (error) throw error;
+      return ((data || []) as unknown) as { id: string; name: string; is_active: boolean }[];
+    },
+  });
   const [open, setOpen] = useState(false);
+  const [typesOpen, setTypesOpen] = useState(false);
   const [editing, setEditing] = useState<PurchaseItem | null>(null);
   const [name, setName] = useState("");
   const [defaultQty, setDefaultQty] = useState(1);
   const [itemType, setItemType] = useState<string>("none");
   const [isActive, setIsActive] = useState(true);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
 
   const reset = () => {
     setEditing(null);
@@ -253,20 +266,37 @@ function ItemsTab() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label>Tipo</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Tipo</Label>
+                  <Button
+                    type="button"
+                    variant="link"
+                    size="sm"
+                    className="h-auto p-0 text-xs"
+                    onClick={() => setTypesOpen(true)}
+                  >
+                    Gerenciar tipos
+                  </Button>
+                </div>
                 <Select value={itemType} onValueChange={setItemType}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">— sem tipo —</SelectItem>
-                    <SelectItem value="suprimento">Suprimento</SelectItem>
-                    <SelectItem value="equipamento">Equipamento</SelectItem>
-                    <SelectItem value="chip">Chip</SelectItem>
-                    <SelectItem value="outro">Outro</SelectItem>
+                    {types.filter((t) => t.is_active).map((t) => (
+                      <SelectItem key={t.id} value={t.name}>
+                        {t.name.charAt(0).toUpperCase() + t.name.slice(1)}
+                      </SelectItem>
+                    ))}
+                    {itemType !== "none"
+                      && !types.some((t) => t.name === itemType) && (
+                        <SelectItem value={itemType}>{itemType}</SelectItem>
+                      )}
                   </SelectContent>
                 </Select>
               </div>
+
               <div className="space-y-1">
                 <Label>Quantidade padrão</Label>
                 <Input
@@ -295,6 +325,9 @@ function ItemsTab() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <TypesManagerDialog open={typesOpen} onOpenChange={setTypesOpen} types={types} />
+
 
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
         <AlertDialogContent>
@@ -795,5 +828,198 @@ function FlowTab() {
         </Button>
       </div>
     </div>
+  );
+}
+
+// ============================================================================
+// TYPES MANAGER
+// ============================================================================
+function TypesManagerDialog({
+  open,
+  onOpenChange,
+  types,
+}: {
+  open: boolean;
+  onOpenChange: (o: boolean) => void;
+  types: { id: string; name: string; is_active: boolean }[];
+}) {
+  const qc = useQueryClient();
+  const [newName, setNewName] = useState("");
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState("");
+
+  const invalidate = () =>
+    qc.invalidateQueries({ queryKey: ["purchase-item-types"] });
+
+  const create = useMutation({
+    mutationFn: async () => {
+      const name = newName.trim().toLowerCase();
+      if (!name) throw new Error("Informe o nome do tipo");
+      const { error } = await supabase
+        .from("purchase_item_types" as any)
+        .insert({ name });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Tipo criado");
+      setNewName("");
+      invalidate();
+    },
+    onError: (e: any) => toast.error(e?.message || "Erro ao criar tipo"),
+  });
+
+  const update = useMutation({
+    mutationFn: async (vars: { id: string; patch: { name?: string; is_active?: boolean } }) => {
+      const patch = { ...vars.patch };
+      if (patch.name) patch.name = patch.name.trim().toLowerCase();
+      const { error } = await supabase
+        .from("purchase_item_types" as any)
+        .update(patch)
+        .eq("id", vars.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Tipo atualizado");
+      setEditingId(null);
+      setEditingName("");
+      invalidate();
+    },
+    onError: (e: any) => toast.error(e?.message || "Erro ao atualizar"),
+  });
+
+  const remove = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase
+        .from("purchase_item_types" as any)
+        .delete()
+        .eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Tipo excluído");
+      invalidate();
+    },
+    onError: (e: any) => toast.error(e?.message || "Erro ao excluir"),
+  });
+
+  return (
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Gerenciar tipos de item</DialogTitle>
+          <DialogDescription>
+            Acrescente, edite ou remova os tipos disponíveis no campo "Tipo".
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-3">
+          <div className="flex gap-2">
+            <Input
+              placeholder="Novo tipo (ex: acessório)"
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") {
+                  e.preventDefault();
+                  create.mutate();
+                }
+              }}
+            />
+            <Button onClick={() => create.mutate()} disabled={create.isPending}>
+              <Plus className="h-4 w-4 mr-1" /> Adicionar
+            </Button>
+          </div>
+
+          {types.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-4">
+              Nenhum tipo cadastrado.
+            </p>
+          ) : (
+            <div className="space-y-1 max-h-[300px] overflow-y-auto">
+              {types.map((t) => (
+                <div
+                  key={t.id}
+                  className="flex items-center gap-2 border rounded px-2 py-1.5"
+                >
+                  {editingId === t.id ? (
+                    <>
+                      <Input
+                        className="h-8 flex-1"
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
+                        autoFocus
+                      />
+                      <Button
+                        size="sm"
+                        onClick={() =>
+                          update.mutate({ id: t.id, patch: { name: editingName } })
+                        }
+                        disabled={update.isPending}
+                      >
+                        Salvar
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                          setEditingId(null);
+                          setEditingName("");
+                        }}
+                      >
+                        Cancelar
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <span className="flex-1 text-sm capitalize">{t.name}</span>
+                      {!t.is_active && (
+                        <Badge variant="secondary" className="text-[10px]">
+                          inativo
+                        </Badge>
+                      )}
+                      <Switch
+                        checked={t.is_active}
+                        onCheckedChange={(v) =>
+                          update.mutate({ id: t.id, patch: { is_active: v } })
+                        }
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => {
+                          setEditingId(t.id);
+                          setEditingName(t.name);
+                        }}
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => {
+                          if (confirm(`Excluir o tipo "${t.name}"?`)) {
+                            remove.mutate(t.id);
+                          }
+                        }}
+                      >
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>
+            Fechar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
   );
 }
