@@ -113,7 +113,7 @@ function ItemsTab() {
         .select("*")
         .order("name");
       if (error) throw error;
-      return (data || []) as { id: string; name: string; is_active: boolean }[];
+      return ((data || []) as unknown) as { id: string; name: string; is_active: boolean }[];
     },
   });
   const [open, setOpen] = useState(false);
