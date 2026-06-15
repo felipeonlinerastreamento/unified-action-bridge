@@ -517,7 +517,7 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
                   <SelectItem value="__all__">Todos os dias</SelectItem>
                   {availableDays.map((d) => (
                     <SelectItem key={d} value={d}>
-                      {new Date(d).toLocaleDateString("pt-BR")}
+                      {formatDayLabel(d)}
                     </SelectItem>
                   ))}
                 </SelectContent>
