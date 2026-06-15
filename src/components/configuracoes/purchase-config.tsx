@@ -105,13 +105,26 @@ export function PurchaseConfig() {
 function ItemsTab() {
   const qc = useQueryClient();
   const { data: items = [], isLoading } = usePurchaseItems(false);
+  const { data: types = [] } = useQuery({
+    queryKey: ["purchase-item-types"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("purchase_item_types" as any)
+        .select("*")
+        .order("name");
+      if (error) throw error;
+      return (data || []) as { id: string; name: string; is_active: boolean }[];
+    },
+  });
   const [open, setOpen] = useState(false);
+  const [typesOpen, setTypesOpen] = useState(false);
   const [editing, setEditing] = useState<PurchaseItem | null>(null);
   const [name, setName] = useState("");
   const [defaultQty, setDefaultQty] = useState(1);
   const [itemType, setItemType] = useState<string>("none");
   const [isActive, setIsActive] = useState(true);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+
 
   const reset = () => {
     setEditing(null);
