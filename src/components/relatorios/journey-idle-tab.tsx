@@ -292,6 +292,75 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
     () => gaps.reduce((s, g) => s + g.minutes, 0), [gaps]
   );
 
+  // ============ APPLY IN-TAB FILTERS ============
+  const matchesOperator = (uid: string) =>
+    localOperator === "__all__" || uid === localOperator;
+  const matchesContact = (text: string) => {
+    if (!contactSearch.trim()) return true;
+    return text.toLowerCase().includes(contactSearch.trim().toLowerCase());
+  };
+  const matchesDay = (day: string) =>
+    dayFilter === "__all__" || day === dayFilter;
+
+  const filteredJourneyRows = useMemo(
+    () => journeyRows.filter((r) => matchesOperator(r.userId) && matchesDay(r.day)),
+    [journeyRows, localOperator, dayFilter]
+  );
+  const filteredGaps = useMemo(
+    () => gaps.filter((g) =>
+      matchesOperator(g.userId) &&
+      matchesContact(`${g.contact} ${g.phone}`) &&
+      matchesDay(g.start.slice(0, 10))
+    ),
+    [gaps, localOperator, contactSearch, dayFilter]
+  );
+
+  const filteredIdleByOperator = useMemo(() => {
+    const m: Record<string, { name: string; minutes: number; count: number }> = {};
+    filteredGaps.forEach((g) => {
+      if (!m[g.userId]) m[g.userId] = { name: g.userName, minutes: 0, count: 0 };
+      m[g.userId].minutes += g.minutes;
+      m[g.userId].count += 1;
+    });
+    return Object.values(m)
+      .map((v) => ({ ...v, minutes: Math.round(v.minutes) }))
+      .sort((a, b) => b.minutes - a.minutes);
+  }, [filteredGaps]);
+
+  const filteredIdleByDay = useMemo(() => {
+    const m: Record<string, { date: string; minutes: number }> = {};
+    filteredGaps.forEach((g) => {
+      const day = g.start.slice(0, 10);
+      if (!m[day]) m[day] = { date: day, minutes: 0 };
+      m[day].minutes += g.minutes;
+    });
+    return Object.values(m)
+      .map((v) => ({ ...v, minutes: Math.round(v.minutes) }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [filteredGaps]);
+
+  const filteredTotalIdleMinutes = useMemo(
+    () => filteredGaps.reduce((s, g) => s + g.minutes, 0), [filteredGaps]
+  );
+
+  // Available days for the day filter dropdown
+  const availableDays = useMemo(() => {
+    const set = new Set<string>();
+    journeyRows.forEach((r) => set.add(r.day));
+    gaps.forEach((g) => set.add(g.start.slice(0, 10)));
+    return Array.from(set).sort((a, b) => b.localeCompare(a));
+  }, [journeyRows, gaps]);
+
+  const hasActiveFilters =
+    localOperator !== "__all__" || contactSearch.trim() !== "" || dayFilter !== "__all__";
+
+  const clearFilters = () => {
+    setLocalOperator("__all__");
+    setContactSearch("");
+    setDayFilter("__all__");
+  };
+
+
   const applyThreshold = () => {
     const n = Math.max(1, parseInt(thresholdInput, 10) || 10);
     setThreshold(n);
