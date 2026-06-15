@@ -326,6 +326,9 @@ function ItemsTab() {
         </DialogContent>
       </Dialog>
 
+      <TypesManagerDialog open={typesOpen} onOpenChange={setTypesOpen} types={types} />
+
+
       <AlertDialog open={!!deleteId} onOpenChange={(o) => !o && setDeleteId(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
