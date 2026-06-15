@@ -222,6 +222,48 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
         attendancesStarted, messagesSent, timeline,
       });
     });
+
+    // Fallback: synthesize rows for (user, day) pairs that have message activity
+    // but no presence audit events (operators who didn't toggle the availability button).
+    const presenceKeys = new Set(Object.keys(groups));
+    const msgGroups: Record<string, { userId: string; day: string; firsts: string; lasts: string; count: number }> = {};
+    opMessages.forEach((m) => {
+      if (!m.sent_by_user_id) return;
+      const day = m.created_at.slice(0, 10);
+      const key = `${m.sent_by_user_id}::${day}`;
+      if (presenceKeys.has(key)) return;
+      if (!msgGroups[key]) {
+        msgGroups[key] = { userId: m.sent_by_user_id, day, firsts: m.created_at, lasts: m.created_at, count: 0 };
+      }
+      const g = msgGroups[key];
+      if (m.created_at < g.firsts) g.firsts = m.created_at;
+      if (m.created_at > g.lasts) g.lasts = m.created_at;
+      g.count++;
+    });
+    Object.values(msgGroups).forEach((g) => {
+      const todayStr = new Date().toISOString().slice(0, 10);
+      const isToday = g.day === todayStr;
+      const start = new Date(g.firsts).getTime();
+      const end = new Date(g.lasts).getTime();
+      const total = Math.max(0, (end - start) / 60000);
+      const attendancesStarted = chats.filter((c) =>
+        c.assigned_to === g.userId && c.created_at.slice(0, 10) === g.day
+      ).length;
+      out.push({
+        userId: g.userId,
+        userName: opName[g.userId] || "—",
+        day: g.day,
+        firstOnline: g.firsts,
+        lastOffline: isToday ? null : g.lasts,
+        totalMinutes: total,
+        pauses: 0,
+        stillOnline: isToday,
+        attendancesStarted,
+        messagesSent: g.count,
+        timeline: [],
+      });
+    });
+
     return out.sort((a, b) =>
       b.day.localeCompare(a.day) || a.userName.localeCompare(b.userName)
     );
