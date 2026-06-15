@@ -532,11 +532,14 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
                       <TableHead>Fim</TableHead>
                       <TableHead>Tempo Online</TableHead>
                       <TableHead className="text-right">Pausas</TableHead>
+                      <TableHead className="text-right">Atend. iniciados</TableHead>
+                      <TableHead className="text-right">Msgs enviadas</TableHead>
+                      <TableHead>Atividades do dia</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredJourneyRows.map((r) => (
-                      <TableRow key={`${r.userId}-${r.day}`}>
+                      <TableRow key={`${r.userId}-${r.day}`} className="align-top">
                         <TableCell className="font-medium">{r.userName}</TableCell>
                         <TableCell>{new Date(r.day).toLocaleDateString("pt-BR")}</TableCell>
                         <TableCell>{fmtTime(r.firstOnline)}</TableCell>
@@ -549,6 +552,29 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
                         </TableCell>
                         <TableCell>{fmtHm(r.totalMinutes)}</TableCell>
                         <TableCell className="text-right">{r.pauses}</TableCell>
+                        <TableCell className="text-right">{r.attendancesStarted}</TableCell>
+                        <TableCell className="text-right">{r.messagesSent}</TableCell>
+                        <TableCell className="max-w-[320px]">
+                          {r.timeline.length === 0 ? (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          ) : (
+                            <div className="flex flex-wrap gap-1">
+                              {r.timeline.map((t, i) => (
+                                <Badge
+                                  key={i}
+                                  variant="outline"
+                                  className={
+                                    t.type === "set_online"
+                                      ? "bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px]"
+                                      : "bg-amber-50 text-amber-700 border-amber-200 text-[10px]"
+                                  }
+                                >
+                                  {t.type === "set_online" ? "ON" : "OFF"} {fmtTime(t.at)}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
