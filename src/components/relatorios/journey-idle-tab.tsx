@@ -6,6 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
 import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
+import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
@@ -17,7 +20,8 @@ import {
 } from "recharts";
 import { ReportKpiCard } from "@/components/relatorios/report-kpi-card";
 import { exportToCSV } from "@/components/relatorios/export-utils";
-import { Clock, LogIn, LogOut, Timer, AlertTriangle, Loader2, Download } from "lucide-react";
+import { Clock, LogIn, LogOut, Timer, AlertTriangle, Loader2, Download, X } from "lucide-react";
+
 
 interface Props {
   dateFrom: string;
@@ -50,6 +54,10 @@ function fmtDateTime(iso: string | null | undefined) {
 export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
   const [threshold, setThreshold] = useState(10);
   const [thresholdInput, setThresholdInput] = useState("10");
+  const [localOperator, setLocalOperator] = useState<string>("__all__");
+  const [contactSearch, setContactSearch] = useState("");
+  const [dayFilter, setDayFilter] = useState<string>("__all__");
+
 
   const fromIso = `${dateFrom}T00:00:00`;
   const toIso = `${dateTo}T23:59:59`;
@@ -284,6 +292,75 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
     () => gaps.reduce((s, g) => s + g.minutes, 0), [gaps]
   );
 
+  // ============ APPLY IN-TAB FILTERS ============
+  const matchesOperator = (uid: string) =>
+    localOperator === "__all__" || uid === localOperator;
+  const matchesContact = (text: string) => {
+    if (!contactSearch.trim()) return true;
+    return text.toLowerCase().includes(contactSearch.trim().toLowerCase());
+  };
+  const matchesDay = (day: string) =>
+    dayFilter === "__all__" || day === dayFilter;
+
+  const filteredJourneyRows = useMemo(
+    () => journeyRows.filter((r) => matchesOperator(r.userId) && matchesDay(r.day)),
+    [journeyRows, localOperator, dayFilter]
+  );
+  const filteredGaps = useMemo(
+    () => gaps.filter((g) =>
+      matchesOperator(g.userId) &&
+      matchesContact(`${g.contact} ${g.phone}`) &&
+      matchesDay(g.start.slice(0, 10))
+    ),
+    [gaps, localOperator, contactSearch, dayFilter]
+  );
+
+  const filteredIdleByOperator = useMemo(() => {
+    const m: Record<string, { name: string; minutes: number; count: number }> = {};
+    filteredGaps.forEach((g) => {
+      if (!m[g.userId]) m[g.userId] = { name: g.userName, minutes: 0, count: 0 };
+      m[g.userId].minutes += g.minutes;
+      m[g.userId].count += 1;
+    });
+    return Object.values(m)
+      .map((v) => ({ ...v, minutes: Math.round(v.minutes) }))
+      .sort((a, b) => b.minutes - a.minutes);
+  }, [filteredGaps]);
+
+  const filteredIdleByDay = useMemo(() => {
+    const m: Record<string, { date: string; minutes: number }> = {};
+    filteredGaps.forEach((g) => {
+      const day = g.start.slice(0, 10);
+      if (!m[day]) m[day] = { date: day, minutes: 0 };
+      m[day].minutes += g.minutes;
+    });
+    return Object.values(m)
+      .map((v) => ({ ...v, minutes: Math.round(v.minutes) }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [filteredGaps]);
+
+  const filteredTotalIdleMinutes = useMemo(
+    () => filteredGaps.reduce((s, g) => s + g.minutes, 0), [filteredGaps]
+  );
+
+  // Available days for the day filter dropdown
+  const availableDays = useMemo(() => {
+    const set = new Set<string>();
+    journeyRows.forEach((r) => set.add(r.day));
+    gaps.forEach((g) => set.add(g.start.slice(0, 10)));
+    return Array.from(set).sort((a, b) => b.localeCompare(a));
+  }, [journeyRows, gaps]);
+
+  const hasActiveFilters =
+    localOperator !== "__all__" || contactSearch.trim() !== "" || dayFilter !== "__all__";
+
+  const clearFilters = () => {
+    setLocalOperator("__all__");
+    setContactSearch("");
+    setDayFilter("__all__");
+  };
+
+
   const applyThreshold = () => {
     const n = Math.max(1, parseInt(thresholdInput, 10) || 10);
     setThreshold(n);
@@ -292,7 +369,7 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
 
   const exportJourney = () => {
     exportToCSV(
-      journeyRows.map((r) => ({
+      filteredJourneyRows.map((r) => ({
         Operador: r.userName,
         Data: r.day,
         Inicio: fmtTime(r.firstOnline),
@@ -306,7 +383,7 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
 
   const exportIdle = () => {
     exportToCSV(
-      gaps.map((g) => ({
+      filteredGaps.map((g) => ({
         Operador: g.userName,
         Contato: g.contact,
         Telefone: g.phone,
@@ -319,6 +396,7 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
     );
   };
 
+
   const loading = presenceLoading || chatsLoading || msgsLoading;
 
   const cfgBar: ChartConfig = { minutes: { label: "Minutos ociosos", color: "hsl(var(--chart-4))" } };
@@ -326,13 +404,68 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
 
   return (
     <div className="space-y-6">
+      {/* ============ FILTROS ============ */}
+      <Card>
+        <CardContent className="pt-4">
+          <div className="flex flex-wrap items-end gap-3">
+            <div className="flex flex-col gap-1 min-w-[200px]">
+              <Label className="text-xs">Operador</Label>
+              <Select value={localOperator} onValueChange={setLocalOperator}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">Todos os operadores</SelectItem>
+                  {operators.map((o) => (
+                    <SelectItem key={o.id} value={o.id}>{o.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex flex-col gap-1 min-w-[160px]">
+              <Label className="text-xs">Dia</Label>
+              <Select value={dayFilter} onValueChange={setDayFilter}>
+                <SelectTrigger className="h-9">
+                  <SelectValue placeholder="Todos" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__all__">Todos os dias</SelectItem>
+                  {availableDays.map((d) => (
+                    <SelectItem key={d} value={d}>
+                      {new Date(d).toLocaleDateString("pt-BR")}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="flex flex-col gap-1 flex-1 min-w-[200px]">
+              <Label className="text-xs">Buscar contato / telefone</Label>
+              <Input
+                className="h-9"
+                placeholder="Nome ou número..."
+                value={contactSearch}
+                onChange={(e) => setContactSearch(e.target.value)}
+              />
+            </div>
+
+            {hasActiveFilters && (
+              <Button size="sm" variant="ghost" onClick={clearFilters}>
+                <X className="h-3.5 w-3.5 mr-1" /> Limpar filtros
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* ============ JORNADA ============ */}
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-base font-semibold flex items-center gap-2">
             <Clock className="h-4 w-4" /> Jornada do Dia (Online / Offline)
           </h3>
-          <Button size="sm" variant="outline" onClick={exportJourney} disabled={journeyRows.length === 0}>
+          <Button size="sm" variant="outline" onClick={exportJourney} disabled={filteredJourneyRows.length === 0}>
             <Download className="h-3.5 w-3.5 mr-1" /> Exportar CSV
           </Button>
         </div>
@@ -340,23 +473,23 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
         <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
           <ReportKpiCard
             title="Operadores ativos"
-            value={new Set(journeyRows.map((r) => r.userId)).size}
+            value={new Set(filteredJourneyRows.map((r) => r.userId)).size}
             icon={LogIn}
             subtitle={`${dateFrom} a ${dateTo}`}
           />
           <ReportKpiCard
             title="Dias com atividade"
-            value={journeyRows.length}
+            value={filteredJourneyRows.length}
             icon={Timer}
           />
           <ReportKpiCard
             title="Tempo online total"
-            value={fmtHm(journeyRows.reduce((s, r) => s + r.totalMinutes, 0))}
+            value={fmtHm(filteredJourneyRows.reduce((s, r) => s + r.totalMinutes, 0))}
             icon={Clock}
           />
           <ReportKpiCard
             title="Ainda online"
-            value={journeyRows.filter((r) => r.stillOnline).length}
+            value={filteredJourneyRows.filter((r) => r.stillOnline).length}
             icon={LogOut}
           />
         </div>
@@ -367,7 +500,7 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
-            ) : journeyRows.length === 0 ? (
+            ) : filteredJourneyRows.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">
                 Nenhum registro de presença no período.
               </p>
@@ -385,7 +518,7 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {journeyRows.map((r) => (
+                    {filteredJourneyRows.map((r) => (
                       <TableRow key={`${r.userId}-${r.day}`}>
                         <TableCell className="font-medium">{r.userName}</TableCell>
                         <TableCell>{new Date(r.day).toLocaleDateString("pt-BR")}</TableCell>
@@ -409,6 +542,7 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
         </Card>
       </div>
 
+
       {/* ============ OCIOSIDADE ============ */}
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-2 flex-wrap">
@@ -426,7 +560,7 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
                 onKeyDown={(e) => { if (e.key === "Enter") applyThreshold(); }}
               />
             </div>
-            <Button size="sm" variant="outline" onClick={exportIdle} disabled={gaps.length === 0}>
+            <Button size="sm" variant="outline" onClick={exportIdle} disabled={filteredGaps.length === 0}>
               <Download className="h-3.5 w-3.5 mr-1" /> Exportar CSV
             </Button>
           </div>
@@ -435,22 +569,22 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
         <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
           <ReportKpiCard
             title={`Ocorrências (> ${threshold}min)`}
-            value={gaps.length}
+            value={filteredGaps.length}
             icon={AlertTriangle}
           />
           <ReportKpiCard
             title="Tempo ocioso total"
-            value={fmtHm(totalIdleMinutes)}
+            value={fmtHm(filteredTotalIdleMinutes)}
             icon={Timer}
           />
           <ReportKpiCard
             title="Operadores impactados"
-            value={idleByOperator.length}
+            value={filteredIdleByOperator.length}
             icon={LogIn}
           />
           <ReportKpiCard
             title="Chats com ociosidade"
-            value={new Set(gaps.map((g) => g.chatId)).size}
+            value={new Set(filteredGaps.map((g) => g.chatId)).size}
             icon={Clock}
           />
         </div>
@@ -461,11 +595,11 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
               <CardTitle className="text-sm">Ociosidade por Operador (min)</CardTitle>
             </CardHeader>
             <CardContent>
-              {idleByOperator.length === 0 ? (
+              {filteredIdleByOperator.length === 0 ? (
                 <p className="text-xs text-muted-foreground text-center py-8">Sem dados</p>
               ) : (
                 <ChartContainer config={cfgBar} className="h-[280px] w-full">
-                  <BarChart data={idleByOperator}>
+                  <BarChart data={filteredIdleByOperator}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={60} />
                     <YAxis tick={{ fontSize: 10 }} />
@@ -482,11 +616,11 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
               <CardTitle className="text-sm">Ociosidade por Dia (min)</CardTitle>
             </CardHeader>
             <CardContent>
-              {idleByDay.length === 0 ? (
+              {filteredIdleByDay.length === 0 ? (
                 <p className="text-xs text-muted-foreground text-center py-8">Sem dados</p>
               ) : (
                 <ChartContainer config={cfgLine} className="h-[280px] w-full">
-                  <LineChart data={idleByDay}>
+                  <LineChart data={filteredIdleByDay}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" tick={{ fontSize: 10 }} />
                     <YAxis tick={{ fontSize: 10 }} />
@@ -508,7 +642,7 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
-            ) : gaps.length === 0 ? (
+            ) : filteredGaps.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">
                 Nenhum período de ociosidade acima de {threshold} min no período.
               </p>
@@ -525,7 +659,7 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {gaps.slice(0, 200).map((g, i) => (
+                    {filteredGaps.slice(0, 200).map((g, i) => (
                       <TableRow key={`${g.chatId}-${i}`}>
                         <TableCell className="font-medium">{g.userName}</TableCell>
                         <TableCell>
@@ -541,9 +675,10 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
                     ))}
                   </TableBody>
                 </Table>
-                {gaps.length > 200 && (
+                {filteredGaps.length > 200 && (
                   <p className="text-xs text-muted-foreground text-center pt-2">
-                    Exibindo 200 de {gaps.length} ocorrências. Exporte o CSV para ver todas.
+                    Exibindo 200 de {filteredGaps.length} ocorrências. Exporte o CSV para ver todas.
+
                   </p>
                 )}
               </div>
