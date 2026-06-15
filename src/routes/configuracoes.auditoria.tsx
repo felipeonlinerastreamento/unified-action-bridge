@@ -196,7 +196,7 @@ function AuditoriaPage() {
                 className="flex gap-1"
               >
                 <Input
-                  placeholder="alvo, evento, operador..."
+                  placeholder="Nome do contato/grupo, telefone, evento..."
                   value={searchInput}
                   onChange={(e) => setSearchInput(e.target.value)}
                 />

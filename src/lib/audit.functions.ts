@@ -139,7 +139,7 @@ export const listAuditLogs = createServerFn({ method: "POST" })
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
 
-    const items = (rows ?? []).map((r: any) => ({
+    const items: any[] = (rows ?? []).map((r: any) => ({
       id: r.id,
       created_at: r.created_at,
       user_id: r.user_id,
@@ -153,6 +153,97 @@ export const listAuditLogs = createServerFn({ method: "POST" })
       ip_address: r.ip_address ?? null,
       user_agent: r.user_agent ?? null,
     }));
+
+    // Synthesize chat finalization events from zapi_chats history so the
+    // Auditoria also finds chats finalized before audit logging was wired
+    // (or whose audit insert failed).
+    const wantsCentral =
+      !data.categories?.length || data.categories.includes("central_atendimento");
+    if (wantsCentral && !data.event_types?.length) {
+      let zq = supabaseAdmin
+        .from("zapi_chats")
+        .select(
+          "id, phone, contact_name, sector_name, closed_at, closed_by_user_id, created_at",
+        )
+        .eq("status", "finalizado")
+        .not("closed_at", "is", null)
+        .not("closed_by_user_id", "is", null)
+        .order("closed_at", { ascending: false })
+        .limit(limit);
+
+      if (data.user_ids?.length) zq = zq.in("closed_by_user_id", data.user_ids);
+      if (data.date_from) zq = zq.gte("closed_at", data.date_from);
+      if (data.date_to) zq = zq.lte("closed_at", data.date_to);
+      if (data.cursor) zq = zq.lt("closed_at", data.cursor);
+      if (data.search) {
+        const s = `%${data.search}%`;
+        zq = zq.or(`contact_name.ilike.${s},phone.ilike.${s}`);
+      }
+
+      const { data: zrows } = await zq;
+      if (zrows?.length) {
+        const userIds = Array.from(
+          new Set(zrows.map((z: any) => z.closed_by_user_id).filter(Boolean)),
+        ) as string[];
+        const nameMap = new Map<string, string>();
+        if (userIds.length) {
+          const { data: profs } = await supabaseAdmin
+            .from("profiles")
+            .select("user_id, name")
+            .in("user_id", userIds);
+          for (const p of profs ?? []) nameMap.set((p as any).user_id, (p as any).name);
+        }
+
+        const existingIds = new Set(
+          items
+            .filter(
+              (i) =>
+                i.event_type === "chat.finalizado" || i.event_type === "grupo.finalizado",
+            )
+            .map((i) => i.target_id),
+        );
+
+        for (const z of zrows as any[]) {
+          if (existingIds.has(z.id)) continue;
+          const phone = z.phone ?? "";
+          const isGroup = /@g\.us$/.test(phone) || /-\d{8,}/.test(phone);
+          const createdAt = z.created_at ? new Date(z.created_at) : null;
+          const closedAt = z.closed_at ? new Date(z.closed_at) : null;
+          const durationMin =
+            createdAt && closedAt
+              ? Math.max(
+                  0,
+                  Math.round((closedAt.getTime() - createdAt.getTime()) / 60000),
+                )
+              : null;
+          items.push({
+            id: `zchat:${z.id}`,
+            created_at: z.closed_at,
+            user_id: z.closed_by_user_id,
+            user_name: nameMap.get(z.closed_by_user_id) ?? null,
+            event_category: "central_atendimento",
+            event_type: isGroup ? "grupo.finalizado" : "chat.finalizado",
+            target_type: isGroup ? "grupo" : "chat",
+            target_id: z.id,
+            target_label: z.contact_name || phone || z.id,
+            metadata: {
+              phone,
+              is_group: isGroup,
+              sector_name: z.sector_name ?? null,
+              started_at: z.created_at ?? null,
+              closed_at: z.closed_at ?? null,
+              duration_minutes: durationMin,
+              source: "zapi_chats_history",
+            },
+            ip_address: null,
+            user_agent: null,
+          });
+        }
+
+        items.sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+        if (items.length > limit) items.length = limit;
+      }
+    }
 
     const nextCursor = items.length === limit ? items[items.length - 1].created_at : null;
     return { items, nextCursor };
@@ -185,9 +276,77 @@ export const exportAuditLogsCsv = createServerFn({ method: "POST" })
     if (data.user_ids?.length) q = q.in("user_id", data.user_ids);
     if (data.date_from) q = q.gte("created_at", data.date_from);
     if (data.date_to) q = q.lte("created_at", data.date_to);
+    if (data.search) {
+      const s = `%${data.search}%`;
+      q = q.or(
+        `target_label.ilike.${s},user_name.ilike.${s},event_type.ilike.${s},target_id.ilike.${s}`,
+      );
+    }
 
     const { data: rows, error } = await q;
     if (error) throw new Error(error.message);
+
+    const merged: any[] = (rows ?? []).map((r: any) => ({ ...r }));
+
+    // Add virtual zapi_chats finalization rows so CSV matches the UI search.
+    const wantsCentral =
+      !data.categories?.length || data.categories.includes("central_atendimento");
+    if (wantsCentral && !data.event_types?.length) {
+      let zq = supabaseAdmin
+        .from("zapi_chats")
+        .select(
+          "id, phone, contact_name, sector_name, closed_at, closed_by_user_id, created_at",
+        )
+        .eq("status", "finalizado")
+        .not("closed_at", "is", null)
+        .not("closed_by_user_id", "is", null)
+        .order("closed_at", { ascending: false })
+        .limit(10000);
+      if (data.user_ids?.length) zq = zq.in("closed_by_user_id", data.user_ids);
+      if (data.date_from) zq = zq.gte("closed_at", data.date_from);
+      if (data.date_to) zq = zq.lte("closed_at", data.date_to);
+      if (data.search) {
+        const s = `%${data.search}%`;
+        zq = zq.or(`contact_name.ilike.${s},phone.ilike.${s}`);
+      }
+      const { data: zrows } = await zq;
+      if (zrows?.length) {
+        const userIds = Array.from(
+          new Set(zrows.map((z: any) => z.closed_by_user_id).filter(Boolean)),
+        ) as string[];
+        const nameMap = new Map<string, string>();
+        if (userIds.length) {
+          const { data: profs } = await supabaseAdmin
+            .from("profiles")
+            .select("user_id, name")
+            .in("user_id", userIds);
+          for (const p of profs ?? []) nameMap.set((p as any).user_id, (p as any).name);
+        }
+        for (const z of zrows as any[]) {
+          const phone = z.phone ?? "";
+          const isGroup = /@g\.us$/.test(phone) || /-\d{8,}/.test(phone);
+          merged.push({
+            created_at: z.closed_at,
+            user_name: nameMap.get(z.closed_by_user_id) ?? "",
+            event_category: "central_atendimento",
+            event_type: isGroup ? "grupo.finalizado" : "chat.finalizado",
+            target_type: isGroup ? "grupo" : "chat",
+            target_id: z.id,
+            target_label: z.contact_name || phone || z.id,
+            ip_address: "",
+            metadata: {
+              phone,
+              sector_name: z.sector_name ?? null,
+              started_at: z.created_at ?? null,
+              closed_at: z.closed_at ?? null,
+              source: "zapi_chats_history",
+            },
+          });
+        }
+        merged.sort((a, b) => (a.created_at < b.created_at ? 1 : -1));
+      }
+    }
+
 
     const header = [
       "data",
@@ -205,7 +364,7 @@ export const exportAuditLogsCsv = createServerFn({ method: "POST" })
       return `"${s.replace(/"/g, '""')}"`;
     };
     const lines = [header.join(",")];
-    for (const r of rows ?? []) {
+    for (const r of merged) {
       lines.push(
         [
           (r as any).created_at,
@@ -222,5 +381,5 @@ export const exportAuditLogsCsv = createServerFn({ method: "POST" })
           .join(","),
       );
     }
-    return { csv: lines.join("\n"), count: rows?.length ?? 0 };
+    return { csv: lines.join("\n"), count: merged.length };
   });
