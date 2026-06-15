@@ -106,7 +106,6 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
     },
   });
 
-  // Journey rows: per (user, day)
   type JourneyRow = {
     userId: string; userName: string; day: string;
     firstOnline: string | null; lastOffline: string | null;
@@ -114,69 +113,7 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
     attendancesStarted: number; messagesSent: number;
     timeline: Array<{ type: "set_online" | "set_offline"; at: string }>;
   };
-  const journeyRows = useMemo<JourneyRow[]>(() => {
-    const groups: Record<string, { userId: string; userName: string; day: string; events: typeof presence }> = {};
-    presence.forEach((ev) => {
-      const day = ev.created_at.slice(0, 10);
-      const key = `${ev.user_id}::${day}`;
-      if (!groups[key]) {
-        groups[key] = {
-          userId: ev.user_id,
-          userName: ev.user_name || opName[ev.user_id] || "—",
-          day, events: [],
-        };
-      }
-      groups[key].events.push(ev);
-    });
-    const out: JourneyRow[] = [];
-    Object.values(groups).forEach((g) => {
-      const evs = g.events.slice().sort((a, b) => a.created_at.localeCompare(b.created_at));
-      let firstOnline: string | null = null;
-      let lastOffline: string | null = null;
-      let total = 0;
-      let pauses = 0;
-      let openOnline: string | null = null;
-      const dayEndIso = `${g.day}T23:59:59`;
-      const dayEnd = new Date(dayEndIso).getTime();
-      const nowMs = Date.now();
-      const timeline: JourneyRow["timeline"] = [];
-      evs.forEach((ev) => {
-        timeline.push({ type: ev.event_type as "set_online" | "set_offline", at: ev.created_at });
-        if (ev.event_type === "set_online") {
-          if (!firstOnline) firstOnline = ev.created_at;
-          if (!openOnline) openOnline = ev.created_at;
-        } else if (ev.event_type === "set_offline") {
-          lastOffline = ev.created_at;
-          if (openOnline) {
-            total += (new Date(ev.created_at).getTime() - new Date(openOnline).getTime()) / 60000;
-            openOnline = null;
-            pauses++;
-          }
-        }
-      });
-      let stillOnline = false;
-      if (openOnline) {
-        const cap = Math.min(dayEnd, nowMs);
-        total += Math.max(0, (cap - new Date(openOnline).getTime()) / 60000);
-        stillOnline = true;
-      }
-      const attendancesStarted = chats.filter((c) =>
-        c.assigned_to === g.userId && c.created_at.slice(0, 10) === g.day
-      ).length;
-      const messagesSent = opMessages.filter((m) =>
-        m.sent_by_user_id === g.userId && m.created_at.slice(0, 10) === g.day
-      ).length;
-      out.push({
-        userId: g.userId, userName: g.userName, day: g.day,
-        firstOnline, lastOffline, totalMinutes: total,
-        pauses, stillOnline,
-        attendancesStarted, messagesSent, timeline,
-      });
-    });
-    return out.sort((a, b) =>
-      b.day.localeCompare(a.day) || a.userName.localeCompare(b.userName)
-    );
-  }, [presence, opName, chats, opMessages]);
+
 
   // ============ IDLENESS ============
   const { data: chats = [], isLoading: chatsLoading } = useQuery({
