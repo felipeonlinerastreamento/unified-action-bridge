@@ -397,13 +397,38 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
     () => filteredGaps.reduce((s, g) => s + g.minutes, 0), [filteredGaps]
   );
 
-  // Available days for the day filter dropdown
+  // Available days for the day filter dropdown.
+  // Enumerate every day in the selected [dateFrom, dateTo] range so the user
+  // can pick today even if no presence/message data exists yet, and union with
+  // any extra days that show up in data.
   const availableDays = useMemo(() => {
     const set = new Set<string>();
+    if (dateFrom && dateTo) {
+      const [fy, fm, fd] = dateFrom.split("-").map(Number);
+      const [ty, tm, td] = dateTo.split("-").map(Number);
+      const start = new Date(fy, (fm || 1) - 1, fd || 1);
+      const end = new Date(ty, (tm || 1) - 1, td || 1);
+      // safety cap (~2 years) to avoid runaway loops on bad input
+      let guard = 0;
+      const cur = new Date(start);
+      while (cur.getTime() <= end.getTime() && guard < 800) {
+        const y = cur.getFullYear();
+        const m = String(cur.getMonth() + 1).padStart(2, "0");
+        const d = String(cur.getDate()).padStart(2, "0");
+        set.add(`${y}-${m}-${d}`);
+        cur.setDate(cur.getDate() + 1);
+        guard++;
+      }
+    }
     journeyRows.forEach((r) => set.add(r.day));
     gaps.forEach((g) => set.add(g.start.slice(0, 10)));
     return Array.from(set).sort((a, b) => b.localeCompare(a));
-  }, [journeyRows, gaps]);
+  }, [journeyRows, gaps, dateFrom, dateTo]);
+
+  const formatDayLabel = (d: string) => {
+    const [y, m, day] = d.split("-");
+    return `${day}/${m}/${y}`;
+  };
 
   const hasActiveFilters =
     localOperator !== "__all__" || contactSearch.trim() !== "" || dayFilter !== "__all__";
