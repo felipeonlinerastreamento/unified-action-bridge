@@ -23,6 +23,7 @@ export const Route = createFileRoute("/configuracoes/auditoria")({
 const CATEGORIES: { value: string; label: string; color: string }[] = [
   { value: "auth", label: "Login / Logout", color: "bg-blue-100 text-blue-700 border-blue-200" },
   { value: "presence", label: "Presença (Online/Offline)", color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
+  { value: "central_atendimento", label: "Central de Atendimento", color: "bg-teal-100 text-teal-700 border-teal-200" },
   { value: "contact_link", label: "Vinculação de Contato", color: "bg-purple-100 text-purple-700 border-purple-200" },
   { value: "crm", label: "CRM", color: "bg-pink-100 text-pink-700 border-pink-200" },
   { value: "ticket", label: "Atendimento", color: "bg-orange-100 text-orange-700 border-orange-200" },
