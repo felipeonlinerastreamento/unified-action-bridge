@@ -560,7 +560,7 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
                 onKeyDown={(e) => { if (e.key === "Enter") applyThreshold(); }}
               />
             </div>
-            <Button size="sm" variant="outline" onClick={exportIdle} disabled={gaps.length === 0}>
+            <Button size="sm" variant="outline" onClick={exportIdle} disabled={filteredGaps.length === 0}>
               <Download className="h-3.5 w-3.5 mr-1" /> Exportar CSV
             </Button>
           </div>
@@ -569,22 +569,22 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
         <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
           <ReportKpiCard
             title={`Ocorrências (> ${threshold}min)`}
-            value={gaps.length}
+            value={filteredGaps.length}
             icon={AlertTriangle}
           />
           <ReportKpiCard
             title="Tempo ocioso total"
-            value={fmtHm(totalIdleMinutes)}
+            value={fmtHm(filteredTotalIdleMinutes)}
             icon={Timer}
           />
           <ReportKpiCard
             title="Operadores impactados"
-            value={idleByOperator.length}
+            value={filteredIdleByOperator.length}
             icon={LogIn}
           />
           <ReportKpiCard
             title="Chats com ociosidade"
-            value={new Set(gaps.map((g) => g.chatId)).size}
+            value={new Set(filteredGaps.map((g) => g.chatId)).size}
             icon={Clock}
           />
         </div>
@@ -595,11 +595,11 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
               <CardTitle className="text-sm">Ociosidade por Operador (min)</CardTitle>
             </CardHeader>
             <CardContent>
-              {idleByOperator.length === 0 ? (
+              {filteredIdleByOperator.length === 0 ? (
                 <p className="text-xs text-muted-foreground text-center py-8">Sem dados</p>
               ) : (
                 <ChartContainer config={cfgBar} className="h-[280px] w-full">
-                  <BarChart data={idleByOperator}>
+                  <BarChart data={filteredIdleByOperator}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={60} />
                     <YAxis tick={{ fontSize: 10 }} />
@@ -616,11 +616,11 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
               <CardTitle className="text-sm">Ociosidade por Dia (min)</CardTitle>
             </CardHeader>
             <CardContent>
-              {idleByDay.length === 0 ? (
+              {filteredIdleByDay.length === 0 ? (
                 <p className="text-xs text-muted-foreground text-center py-8">Sem dados</p>
               ) : (
                 <ChartContainer config={cfgLine} className="h-[280px] w-full">
-                  <LineChart data={idleByDay}>
+                  <LineChart data={filteredIdleByDay}>
                     <CartesianGrid strokeDasharray="3 3" />
                     <XAxis dataKey="date" tick={{ fontSize: 10 }} />
                     <YAxis tick={{ fontSize: 10 }} />
@@ -642,7 +642,7 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
-            ) : gaps.length === 0 ? (
+            ) : filteredGaps.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">
                 Nenhum período de ociosidade acima de {threshold} min no período.
               </p>
@@ -659,7 +659,7 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {gaps.slice(0, 200).map((g, i) => (
+                    {filteredGaps.slice(0, 200).map((g, i) => (
                       <TableRow key={`${g.chatId}-${i}`}>
                         <TableCell className="font-medium">{g.userName}</TableCell>
                         <TableCell>
@@ -675,9 +675,10 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
                     ))}
                   </TableBody>
                 </Table>
-                {gaps.length > 200 && (
+                {filteredGaps.length > 200 && (
                   <p className="text-xs text-muted-foreground text-center pt-2">
-                    Exibindo 200 de {gaps.length} ocorrências. Exporte o CSV para ver todas.
+                    Exibindo 200 de {filteredGaps.length} ocorrências. Exporte o CSV para ver todas.
+
                   </p>
                 )}
               </div>
