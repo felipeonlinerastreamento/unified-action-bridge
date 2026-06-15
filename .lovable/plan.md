@@ -1,39 +1,56 @@
-# Corrigir Dashboard — Finalizados Hoje não atualiza
+## Nova aba "Jornada & Ociosidade" em Relatórios
 
-## Causa raiz
+Adiciona um relatório por operador com duas seções: jornada do dia (presença) e tempo ocioso de chats.
 
-O dashboard (`src/routes/dashboard.tsx`) usa uma única query que faz `select` em `service_tickets` sem filtro nem ordenação:
+### 1. Jornada do dia (por operador)
 
-```ts
-supabase.from("service_tickets").select("id, status, created_at, closed_at, ...")
-```
+Fonte: `audit_logs` (categoria `presence`, eventos `set_online` / `set_offline`).
 
-O backend já tem **2.319 tickets** (2.203 finalizados). O Supabase retorna no máximo 1.000 linhas por requisição. Sem `order by created_at desc` nem range, os tickets finalizados de hoje ficam fora do conjunto retornado, e os KPIs derivados (Finalizados Hoje, Tempo Médio, Operadores, SLA) ficam desatualizados.
+Por dia + operador, calcular:
+- **Início**: primeiro `set_online` do dia
+- **Fim**: último `set_offline` do dia (se ainda online, mostra "em atividade")
+- **Tempo total online**: soma das janelas `online → offline` no dia
+- **Nº de pausas**: quantidade de ciclos online/offline
 
-## Correção
+Tabela: Operador | Data | Início | Fim | Tempo online | Pausas | Status.
 
-Reescrever as queries do dashboard para nunca depender de "todos os tickets em memória":
+### 2. Ociosidade de chats (>N min)
 
-1. **`dashboard-ticket-stats`** — dividir em queries menores e específicas:
-   - `openTickets` / `inProgressTickets`: filtrar por `status in ('aberto','em_andamento','reaberto')` (poucos registros, cabe).
-   - `closedToday`: filtrar `status = 'finalizado'` + `closed_at >= início_do_dia_local` com `order closed_at desc`.
-   - `closedLast30d` (para Tempo Médio / SLA / Operadores): filtrar `status = 'finalizado'` + `closed_at >= now() - 30d` com `order closed_at desc` e `limit 1000`. Hoje a média é calculada sobre TODOS os finalizados, o que além de errado pelo limite, polui métricas com tickets antigos.
-   - Adicionar `refetchInterval: 30000` nas novas queries que precisam (já existe na principal).
+Definição: período em que o chat estava `em_atendimento`, atribuído ao operador, e o **operador não enviou mensagem** por mais de N minutos (padrão 10, configurável no filtro).
 
-2. **Recalcular agregações** (`operatorStats`, `slaBreach`, distribuição por status, "Últimos atendimentos") a partir das listas certas:
-   - Status / distribuição → contagens vindas das queries de abertos + finalizados recentes.
-   - Operadores e SLA → janela de 30 dias (configurável depois).
-   - "Últimos atendimentos" → query separada `order created_at desc limit 8`.
+Fonte: `zapi_messages` (com `from_me=true` / sender = operador) cruzado com `zapi_chats` para saber atribuição e status.
 
-3. **Janela de "hoje"** — usar início do dia no fuso local do navegador (já é o comportamento de `new Date(y,m,d)`), garantindo que o filtro server-side em `closed_at` seja convertido para ISO antes de mandar ao Supabase.
+Algoritmo (por operador, no período):
+1. Listar chats atribuídos ao operador que estiveram em atendimento.
+2. Para cada chat, ordenar mensagens do operador por tempo.
+3. Calcular gaps entre mensagens consecutivas do operador (e gap final até `closed_at`/agora).
+4. Somar apenas gaps `> N min`.
 
-## Fora de escopo
+Saídas:
+- **KPI**: total de tempo ocioso e nº de ocorrências no período/operador.
+- **Gráfico de barras** (Recharts): tempo ocioso por operador.
+- **Gráfico de linha**: tempo ocioso por dia.
+- **Tabela detalhada**: Operador | Chat | Contato | Início do gap | Fim do gap | Duração.
 
-- Não mexer em outras telas (Atendimentos, Relatórios). A correção é isolada ao arquivo `src/routes/dashboard.tsx`.
-- Não trocar para realtime — `refetchInterval: 30000` já existente é suficiente para o caso.
+### Filtros (topo da aba)
+- Período (data início/fim, padrão últimos 7 dias)
+- Operador (multi-select, padrão "Todos")
+- Limite de ociosidade em minutos (input numérico, padrão 10)
+- Botão Exportar CSV
 
-## Verificação
+### Arquivos
 
-- Após o fix, conferir no preview que "Finalizados Hoje" mostra o valor compatível com:
-  `SELECT count(*) FROM service_tickets WHERE status='finalizado' AND closed_at >= date_trunc('day', now())`.
-- Conferir que "Últimos Atendimentos" lista os mais recentes (ordenados por `created_at desc`).
+- `src/lib/operator-journey.functions.ts` (novo) — 2 server functions:
+  - `getOperatorJourney({ from, to, userIds })` → jornada diária
+  - `getChatIdleness({ from, to, userIds, thresholdMinutes })` → ociosidade
+  - Ambas com `requireSupabaseAuth` + checagem `has_role` (admin/gestor).
+- `src/components/relatorios/operator-journey-tab.tsx` (novo) — UI da aba, usa TanStack Query + Recharts.
+- `src/routes/relatorios.tsx` (editar) — registrar nova aba "Jornada & Ociosidade".
+
+### Permissão
+Apenas admin/gestor (mesmo padrão dos outros relatórios).
+
+### Notas técnicas
+- Datas em timezone do navegador; agregação por dia local.
+- Limitar `zapi_messages` a janela do filtro com índice em `(chat_id, timestamp)` (já existe).
+- Paginação interna nas queries (1000 linhas/batch) para evitar limite do PostgREST.

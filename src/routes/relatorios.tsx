@@ -32,6 +32,7 @@ import { CsatReportTab } from "@/components/relatorios/csat-report-tab";
 import { MessageTriggersTab } from "@/components/relatorios/message-triggers-tab";
 import { PerdidosReportTab } from "@/components/relatorios/perdidos-tab";
 import { PurchaseReportTab } from "@/components/relatorios/purchase-report-tab";
+import { JourneyIdleTab } from "@/components/relatorios/journey-idle-tab";
 
 export const Route = createFileRoute("/relatorios")({
   component: RelatoriosPage,
@@ -355,7 +356,7 @@ function RelatoriosPage() {
 
         <div id="report-content">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="grid w-full grid-cols-12">
+            <TabsList className="flex flex-wrap h-auto w-full">
               <TabsTrigger value="gatilhos" className="gap-1 text-xs">
                 <Bell className="h-3.5 w-3.5" /> Gatilhos
               </TabsTrigger>
@@ -364,6 +365,9 @@ function RelatoriosPage() {
               </TabsTrigger>
               <TabsTrigger value="desempenho" className="gap-1 text-xs">
                 <Trophy className="h-3.5 w-3.5" /> Desempenho
+              </TabsTrigger>
+              <TabsTrigger value="jornada" className="gap-1 text-xs">
+                <Clock className="h-3.5 w-3.5" /> Jornada & Ociosidade
               </TabsTrigger>
               <TabsTrigger value="horarios" className="gap-1 text-xs">
                 <Clock className="h-3.5 w-3.5" /> Horários
@@ -396,6 +400,11 @@ function RelatoriosPage() {
                 <Package className="h-3.5 w-3.5" /> Compras
               </TabsTrigger>
             </TabsList>
+
+            {/* ========== JORNADA & OCIOSIDADE ========== */}
+            <TabsContent value="jornada" className="space-y-4">
+              <JourneyIdleTab dateFrom={dateFrom} dateTo={dateTo} operatorFilter={operatorFilter} />
+            </TabsContent>
 
             {/* ========== DESEMPENHO ========== */}
             <TabsContent value="desempenho" className="space-y-4">
