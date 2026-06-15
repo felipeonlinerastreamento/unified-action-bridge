@@ -106,68 +106,14 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
     },
   });
 
-  // Journey rows: per (user, day)
   type JourneyRow = {
     userId: string; userName: string; day: string;
     firstOnline: string | null; lastOffline: string | null;
     totalMinutes: number; pauses: number; stillOnline: boolean;
+    attendancesStarted: number; messagesSent: number;
+    timeline: Array<{ type: "set_online" | "set_offline"; at: string }>;
   };
-  const journeyRows = useMemo<JourneyRow[]>(() => {
-    // Group events per (user, day)
-    const groups: Record<string, { userId: string; userName: string; day: string; events: typeof presence }> = {};
-    presence.forEach((ev) => {
-      const day = ev.created_at.slice(0, 10);
-      const key = `${ev.user_id}::${day}`;
-      if (!groups[key]) {
-        groups[key] = {
-          userId: ev.user_id,
-          userName: ev.user_name || opName[ev.user_id] || "—",
-          day, events: [],
-        };
-      }
-      groups[key].events.push(ev);
-    });
-    const out: JourneyRow[] = [];
-    Object.values(groups).forEach((g) => {
-      const evs = g.events.slice().sort((a, b) => a.created_at.localeCompare(b.created_at));
-      let firstOnline: string | null = null;
-      let lastOffline: string | null = null;
-      let total = 0;
-      let pauses = 0;
-      let openOnline: string | null = null;
-      const dayEndIso = `${g.day}T23:59:59`;
-      const dayEnd = new Date(dayEndIso).getTime();
-      const nowMs = Date.now();
-      evs.forEach((ev) => {
-        if (ev.event_type === "set_online") {
-          if (!firstOnline) firstOnline = ev.created_at;
-          if (!openOnline) openOnline = ev.created_at;
-        } else if (ev.event_type === "set_offline") {
-          lastOffline = ev.created_at;
-          if (openOnline) {
-            total += (new Date(ev.created_at).getTime() - new Date(openOnline).getTime()) / 60000;
-            openOnline = null;
-            pauses++;
-          }
-        }
-      });
-      let stillOnline = false;
-      if (openOnline) {
-        // Cap at day end or now (whichever is earlier)
-        const cap = Math.min(dayEnd, nowMs);
-        total += Math.max(0, (cap - new Date(openOnline).getTime()) / 60000);
-        stillOnline = true;
-      }
-      out.push({
-        userId: g.userId, userName: g.userName, day: g.day,
-        firstOnline, lastOffline, totalMinutes: total,
-        pauses, stillOnline,
-      });
-    });
-    return out.sort((a, b) =>
-      b.day.localeCompare(a.day) || a.userName.localeCompare(b.userName)
-    );
-  }, [presence, opName]);
+
 
   // ============ IDLENESS ============
   const { data: chats = [], isLoading: chatsLoading } = useQuery({
@@ -216,6 +162,72 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
       return all;
     },
   });
+
+  const journeyRows = useMemo<JourneyRow[]>(() => {
+    const groups: Record<string, { userId: string; userName: string; day: string; events: typeof presence }> = {};
+    presence.forEach((ev) => {
+      const day = ev.created_at.slice(0, 10);
+      const key = `${ev.user_id}::${day}`;
+      if (!groups[key]) {
+        groups[key] = {
+          userId: ev.user_id,
+          userName: ev.user_name || opName[ev.user_id] || "—",
+          day, events: [],
+        };
+      }
+      groups[key].events.push(ev);
+    });
+    const out: JourneyRow[] = [];
+    Object.values(groups).forEach((g) => {
+      const evs = g.events.slice().sort((a, b) => a.created_at.localeCompare(b.created_at));
+      let firstOnline: string | null = null;
+      let lastOffline: string | null = null;
+      let total = 0;
+      let pauses = 0;
+      let openOnline: string | null = null;
+      const dayEndIso = `${g.day}T23:59:59`;
+      const dayEnd = new Date(dayEndIso).getTime();
+      const nowMs = Date.now();
+      const timeline: JourneyRow["timeline"] = [];
+      evs.forEach((ev) => {
+        timeline.push({ type: ev.event_type as "set_online" | "set_offline", at: ev.created_at });
+        if (ev.event_type === "set_online") {
+          if (!firstOnline) firstOnline = ev.created_at;
+          if (!openOnline) openOnline = ev.created_at;
+        } else if (ev.event_type === "set_offline") {
+          lastOffline = ev.created_at;
+          if (openOnline) {
+            total += (new Date(ev.created_at).getTime() - new Date(openOnline).getTime()) / 60000;
+            openOnline = null;
+            pauses++;
+          }
+        }
+      });
+      let stillOnline = false;
+      if (openOnline) {
+        const cap = Math.min(dayEnd, nowMs);
+        total += Math.max(0, (cap - new Date(openOnline).getTime()) / 60000);
+        stillOnline = true;
+      }
+      const attendancesStarted = chats.filter((c) =>
+        c.assigned_to === g.userId && c.created_at.slice(0, 10) === g.day
+      ).length;
+      const messagesSent = opMessages.filter((m) =>
+        m.sent_by_user_id === g.userId && m.created_at.slice(0, 10) === g.day
+      ).length;
+      out.push({
+        userId: g.userId, userName: g.userName, day: g.day,
+        firstOnline, lastOffline, totalMinutes: total,
+        pauses, stillOnline,
+        attendancesStarted, messagesSent, timeline,
+      });
+    });
+    return out.sort((a, b) =>
+      b.day.localeCompare(a.day) || a.userName.localeCompare(b.userName)
+    );
+  }, [presence, opName, chats, opMessages]);
+
+
 
   type Gap = {
     chatId: string; userId: string; userName: string;
@@ -376,6 +388,11 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
         Fim: r.stillOnline ? "Em atividade" : fmtTime(r.lastOffline),
         TempoOnline: fmtHm(r.totalMinutes),
         Pausas: r.pauses,
+        AtendimentosIniciados: r.attendancesStarted,
+        MensagensEnviadas: r.messagesSent,
+        Timeline: r.timeline
+          .map((t) => `${t.type === "set_online" ? "ON" : "OFF"} ${fmtTime(t.at)}`)
+          .join(" | "),
       })),
       `jornada-operadores-${dateFrom}_${dateTo}`
     );
@@ -515,11 +532,14 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
                       <TableHead>Fim</TableHead>
                       <TableHead>Tempo Online</TableHead>
                       <TableHead className="text-right">Pausas</TableHead>
+                      <TableHead className="text-right">Atend. iniciados</TableHead>
+                      <TableHead className="text-right">Msgs enviadas</TableHead>
+                      <TableHead>Atividades do dia</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
                     {filteredJourneyRows.map((r) => (
-                      <TableRow key={`${r.userId}-${r.day}`}>
+                      <TableRow key={`${r.userId}-${r.day}`} className="align-top">
                         <TableCell className="font-medium">{r.userName}</TableCell>
                         <TableCell>{new Date(r.day).toLocaleDateString("pt-BR")}</TableCell>
                         <TableCell>{fmtTime(r.firstOnline)}</TableCell>
@@ -532,6 +552,29 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
                         </TableCell>
                         <TableCell>{fmtHm(r.totalMinutes)}</TableCell>
                         <TableCell className="text-right">{r.pauses}</TableCell>
+                        <TableCell className="text-right">{r.attendancesStarted}</TableCell>
+                        <TableCell className="text-right">{r.messagesSent}</TableCell>
+                        <TableCell className="max-w-[320px]">
+                          {r.timeline.length === 0 ? (
+                            <span className="text-xs text-muted-foreground">—</span>
+                          ) : (
+                            <div className="flex flex-wrap gap-1">
+                              {r.timeline.map((t, i) => (
+                                <Badge
+                                  key={i}
+                                  variant="outline"
+                                  className={
+                                    t.type === "set_online"
+                                      ? "bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px]"
+                                      : "bg-amber-50 text-amber-700 border-amber-200 text-[10px]"
+                                  }
+                                >
+                                  {t.type === "set_online" ? "ON" : "OFF"} {fmtTime(t.at)}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
