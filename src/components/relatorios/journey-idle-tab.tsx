@@ -111,9 +111,10 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
     userId: string; userName: string; day: string;
     firstOnline: string | null; lastOffline: string | null;
     totalMinutes: number; pauses: number; stillOnline: boolean;
+    attendancesStarted: number; messagesSent: number;
+    timeline: Array<{ type: "set_online" | "set_offline"; at: string }>;
   };
   const journeyRows = useMemo<JourneyRow[]>(() => {
-    // Group events per (user, day)
     const groups: Record<string, { userId: string; userName: string; day: string; events: typeof presence }> = {};
     presence.forEach((ev) => {
       const day = ev.created_at.slice(0, 10);
@@ -138,7 +139,9 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
       const dayEndIso = `${g.day}T23:59:59`;
       const dayEnd = new Date(dayEndIso).getTime();
       const nowMs = Date.now();
+      const timeline: JourneyRow["timeline"] = [];
       evs.forEach((ev) => {
+        timeline.push({ type: ev.event_type as "set_online" | "set_offline", at: ev.created_at });
         if (ev.event_type === "set_online") {
           if (!firstOnline) firstOnline = ev.created_at;
           if (!openOnline) openOnline = ev.created_at;
@@ -153,21 +156,27 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
       });
       let stillOnline = false;
       if (openOnline) {
-        // Cap at day end or now (whichever is earlier)
         const cap = Math.min(dayEnd, nowMs);
         total += Math.max(0, (cap - new Date(openOnline).getTime()) / 60000);
         stillOnline = true;
       }
+      const attendancesStarted = chats.filter((c) =>
+        c.assigned_to === g.userId && c.created_at.slice(0, 10) === g.day
+      ).length;
+      const messagesSent = opMessages.filter((m) =>
+        m.sent_by_user_id === g.userId && m.created_at.slice(0, 10) === g.day
+      ).length;
       out.push({
         userId: g.userId, userName: g.userName, day: g.day,
         firstOnline, lastOffline, totalMinutes: total,
         pauses, stillOnline,
+        attendancesStarted, messagesSent, timeline,
       });
     });
     return out.sort((a, b) =>
       b.day.localeCompare(a.day) || a.userName.localeCompare(b.userName)
     );
-  }, [presence, opName]);
+  }, [presence, opName, chats, opMessages]);
 
   // ============ IDLENESS ============
   const { data: chats = [], isLoading: chatsLoading } = useQuery({
