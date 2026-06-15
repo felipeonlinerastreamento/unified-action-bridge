@@ -54,6 +54,10 @@ function fmtDateTime(iso: string | null | undefined) {
 export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
   const [threshold, setThreshold] = useState(10);
   const [thresholdInput, setThresholdInput] = useState("10");
+  const [localOperator, setLocalOperator] = useState<string>("__all__");
+  const [contactSearch, setContactSearch] = useState("");
+  const [dayFilter, setDayFilter] = useState<string>("__all__");
+
 
   const fromIso = `${dateFrom}T00:00:00`;
   const toIso = `${dateTo}T23:59:59`;
