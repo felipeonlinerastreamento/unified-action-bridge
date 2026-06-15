@@ -369,7 +369,7 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
 
   const exportJourney = () => {
     exportToCSV(
-      journeyRows.map((r) => ({
+      filteredJourneyRows.map((r) => ({
         Operador: r.userName,
         Data: r.day,
         Inicio: fmtTime(r.firstOnline),
@@ -383,7 +383,7 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
 
   const exportIdle = () => {
     exportToCSV(
-      gaps.map((g) => ({
+      filteredGaps.map((g) => ({
         Operador: g.userName,
         Contato: g.contact,
         Telefone: g.phone,
@@ -395,6 +395,7 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
       `ociosidade-chats-${threshold}min-${dateFrom}_${dateTo}`
     );
   };
+
 
   const loading = presenceLoading || chatsLoading || msgsLoading;
 
