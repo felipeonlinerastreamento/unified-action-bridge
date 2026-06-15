@@ -388,6 +388,11 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
         Fim: r.stillOnline ? "Em atividade" : fmtTime(r.lastOffline),
         TempoOnline: fmtHm(r.totalMinutes),
         Pausas: r.pauses,
+        AtendimentosIniciados: r.attendancesStarted,
+        MensagensEnviadas: r.messagesSent,
+        Timeline: r.timeline
+          .map((t) => `${t.type === "set_online" ? "ON" : "OFF"} ${fmtTime(t.at)}`)
+          .join(" | "),
       })),
       `jornada-operadores-${dateFrom}_${dateTo}`
     );
