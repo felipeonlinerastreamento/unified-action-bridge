@@ -656,11 +656,63 @@ export const finalizeChat = createServerFn({ method: "POST" })
     z.object({ channelId: z.string().uuid(), chatId: z.string().min(1).max(255) }).parse
   )
   .handler(async ({ data, context }) => {
+    // Snapshot chat before finalize for audit
+    const { data: before } = await context.supabase
+      .from("zapi_chats")
+      .select("id, phone, contact_name, assigned_to, created_at, sector_name")
+      .eq("id", data.chatId)
+      .maybeSingle();
+
     const { error } = await context.supabase
       .from("zapi_chats")
       .update({ status: "finalizado", assigned_to: null })
       .eq("id", data.chatId);
     if (error) throw new Error(error.message);
+
+    // Audit log (fire-and-forget)
+    try {
+      const { writeAuditLog } = await import("@/lib/audit.server");
+      const userId = (context as any).userId as string;
+      let userName: string | null = null;
+      try {
+        const { data: prof } = await context.supabase
+          .from("profiles")
+          .select("name")
+          .eq("user_id", userId)
+          .maybeSingle();
+        userName = prof?.name ?? null;
+      } catch {}
+      const phone = before?.phone ?? "";
+      const isGroup = /@g\.us$/.test(phone) || /-\d{8,}/.test(phone);
+      const closedAt = new Date();
+      const createdAt = before?.created_at ? new Date(before.created_at) : null;
+      const durationMs = createdAt ? closedAt.getTime() - createdAt.getTime() : null;
+      const durationMin =
+        durationMs !== null ? Math.max(0, Math.round(durationMs / 60000)) : null;
+      const label = before?.contact_name || phone || data.chatId;
+      await writeAuditLog({
+        user_id: userId,
+        user_name: userName,
+        event_category: "central_atendimento",
+        event_type: isGroup ? "grupo.finalizado" : "chat.finalizado",
+        target_type: isGroup ? "grupo" : "chat",
+        target_id: data.chatId,
+        target_label: label,
+        metadata: {
+          channel_id: data.channelId,
+          phone,
+          is_group: isGroup,
+          sector_name: before?.sector_name ?? null,
+          previous_assigned_to: before?.assigned_to ?? null,
+          started_at: before?.created_at ?? null,
+          closed_at: closedAt.toISOString(),
+          duration_minutes: durationMin,
+        },
+      });
+    } catch (err) {
+      console.error("[finalizeChat] audit failed", err);
+    }
+
     return { success: true };
   });
 
