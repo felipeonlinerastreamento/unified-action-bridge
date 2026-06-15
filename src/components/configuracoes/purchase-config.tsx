@@ -266,20 +266,37 @@ function ItemsTab() {
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div className="space-y-1">
-                <Label>Tipo</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Tipo</Label>
+                  <Button
+                    type="button"
+                    variant="link"
+                    size="sm"
+                    className="h-auto p-0 text-xs"
+                    onClick={() => setTypesOpen(true)}
+                  >
+                    Gerenciar tipos
+                  </Button>
+                </div>
                 <Select value={itemType} onValueChange={setItemType}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="none">— sem tipo —</SelectItem>
-                    <SelectItem value="suprimento">Suprimento</SelectItem>
-                    <SelectItem value="equipamento">Equipamento</SelectItem>
-                    <SelectItem value="chip">Chip</SelectItem>
-                    <SelectItem value="outro">Outro</SelectItem>
+                    {types.filter((t) => t.is_active).map((t) => (
+                      <SelectItem key={t.id} value={t.name}>
+                        {t.name.charAt(0).toUpperCase() + t.name.slice(1)}
+                      </SelectItem>
+                    ))}
+                    {itemType !== "none"
+                      && !types.some((t) => t.name === itemType) && (
+                        <SelectItem value={itemType}>{itemType}</SelectItem>
+                      )}
                   </SelectContent>
                 </Select>
               </div>
+
               <div className="space-y-1">
                 <Label>Quantidade padrão</Label>
                 <Input
