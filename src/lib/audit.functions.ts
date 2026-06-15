@@ -364,7 +364,7 @@ export const exportAuditLogsCsv = createServerFn({ method: "POST" })
       return `"${s.replace(/"/g, '""')}"`;
     };
     const lines = [header.join(",")];
-    for (const r of rows ?? []) {
+    for (const r of merged) {
       lines.push(
         [
           (r as any).created_at,
@@ -381,5 +381,5 @@ export const exportAuditLogsCsv = createServerFn({ method: "POST" })
           .join(","),
       );
     }
-    return { csv: lines.join("\n"), count: rows?.length ?? 0 };
+    return { csv: lines.join("\n"), count: merged.length };
   });
