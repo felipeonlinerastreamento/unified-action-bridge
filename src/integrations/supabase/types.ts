@@ -1129,6 +1129,41 @@ export type Database = {
           },
         ]
       }
+      company_shared_notes: {
+        Row: {
+          company_id: string
+          content: string
+          created_at: string
+          updated_at: string
+          updated_by: string | null
+          updated_by_name: string
+        }
+        Insert: {
+          company_id: string
+          content?: string
+          created_at?: string
+          updated_at?: string
+          updated_by?: string | null
+          updated_by_name?: string
+        }
+        Update: {
+          company_id?: string
+          content?: string
+          created_at?: string
+          updated_at?: string
+          updated_by?: string | null
+          updated_by_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_shared_notes_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       compra_equipamento_items: {
         Row: {
           created_at: string
