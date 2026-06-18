@@ -3652,6 +3652,8 @@ function CentralPage() {
                             {companyLookup.notes && (
                               <DetailRow label="Observações" value={companyLookup.notes} />
                             )}
+
+                            <CompanySharedNote companyId={companyLookup.id} />
                           </>
                         ) : (
                           <div className="space-y-3">
