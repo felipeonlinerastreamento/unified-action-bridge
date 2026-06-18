@@ -54,6 +54,7 @@ import { ReferralPicker } from "@/components/crm/referral-picker";
 import { ContactHistoryPanel } from "@/components/central/contact-history-panel";
 import { ChatControleTab } from "@/components/central/chat-controle-tab";
 import { FullConversationHistoryDialog } from "@/components/central/full-conversation-history-dialog";
+import { CompanySharedNote } from "@/components/central/company-shared-note";
 import {
   createCrmContactWithCompany,
   createSubClientWithParentCompany,
@@ -3651,6 +3652,8 @@ function CentralPage() {
                             {companyLookup.notes && (
                               <DetailRow label="Observações" value={companyLookup.notes} />
                             )}
+
+                            <CompanySharedNote companyId={companyLookup.id} />
                           </>
                         ) : (
                           <div className="space-y-3">
