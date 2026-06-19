@@ -110,6 +110,7 @@ import {
   Reply,
   CornerDownRight,
   ShieldAlert,
+  Wrench,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -865,7 +866,8 @@ function CentralPage() {
 
 
   // Identification modal form state
-  const [identTab, setIdentTab] = useState<"vincular" | "subcliente" | "vincular-sub" | "crm">("vincular");
+  const [identTab, setIdentTab] = useState<"vincular" | "subcliente" | "vincular-sub" | "crm" | "tecnico">("vincular");
+  const [technicianForm, setTechnicianForm] = useState<{ name: string; phone: string; address: string; notes: string }>({ name: "", phone: "", address: "", notes: "" });
   type IdentContractItem = { categoryId: string; quantity: number; activationValue: number; monthlyValue: number };
   const [identForm, setIdentForm] = useState<{ name: string; phone: string; email: string; notes: string; companyId: string; contactType: "PF" | "PJ" | "FORN"; categoryId: string; cnpj: string; companyNameInput: string; items: IdentContractItem[]; referralId: string; supplierCategory: string }>({ name: "", phone: "", email: "", notes: "", companyId: "", contactType: "PF", categoryId: "", cnpj: "", companyNameInput: "", items: [], referralId: "", supplierCategory: "" });
   const [companySearch, setCompanySearch] = useState("");
@@ -938,6 +940,65 @@ function CentralPage() {
   const getSelectedCompany = (selectedValue: string) => {
     return allCompanies.find((company: any) => company.value === selectedValue) ?? null;
   };
+
+  // ------- Chat technicians (vinculados ao telefone do chat) -------
+  const techPhoneKey = (contactPhone || "").replace(/\D/g, "");
+  const chatTechniciansQuery = useQuery({
+    queryKey: ["chat-technicians", techPhoneKey],
+    queryFn: async () => {
+      if (!techPhoneKey) return [];
+      const { data, error } = await supabase
+        .from("chat_technicians" as any)
+        .select("*")
+        .eq("contact_phone", techPhoneKey)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+    enabled: !!techPhoneKey && isAuthenticated,
+    staleTime: 30_000,
+  });
+
+  const createTechnicianMutation = useMutation({
+    mutationFn: async () => {
+      const name = technicianForm.name.trim();
+      if (!name) throw new Error("Informe o nome do técnico");
+      if (name.length > 120) throw new Error("Nome muito longo (máx. 120)");
+      if (!techPhoneKey) throw new Error("Telefone do contato inválido");
+      const payload = {
+        contact_phone: techPhoneKey,
+        name,
+        phone: technicianForm.phone.trim() || null,
+        address: technicianForm.address.trim() || null,
+        notes: technicianForm.notes.trim() || null,
+        created_by: user?.id || null,
+        created_by_name: profile?.name || user?.email || null,
+        updated_by: user?.id || null,
+        updated_by_name: profile?.name || user?.email || null,
+      };
+      const { error } = await supabase.from("chat_technicians" as any).insert(payload as any);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Técnico cadastrado");
+      setTechnicianForm({ name: "", phone: "", address: "", notes: "" });
+      queryClient.invalidateQueries({ queryKey: ["chat-technicians", techPhoneKey] });
+    },
+    onError: (err: any) => toast.error(err?.message || "Erro ao cadastrar técnico"),
+  });
+
+  const deleteTechnicianMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("chat_technicians" as any).delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Técnico removido");
+      queryClient.invalidateQueries({ queryKey: ["chat-technicians", techPhoneKey] });
+    },
+    onError: (err: any) => toast.error(err?.message || "Erro ao remover"),
+  });
+
 
   // Create sub-client mutation
   const createSubClientMutation = useMutation({
@@ -4136,6 +4197,9 @@ function CentralPage() {
               <TabsTrigger value="crm" className="flex-1 text-xs">
                 <UserPlus className="h-3 w-3 mr-1" /> CRM
               </TabsTrigger>
+              <TabsTrigger value="tecnico" className="flex-1 text-xs">
+                <Wrench className="h-3 w-3 mr-1" /> Técnico
+              </TabsTrigger>
             </TabsList>
 
             {/* Vincular a empresa existente */}
@@ -4542,6 +4606,88 @@ function CentralPage() {
                 {createCrmContactMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <UserPlus className="h-4 w-4 mr-2" />}
                 Cadastrar no CRM
               </Button>
+            </TabsContent>
+
+            {/* Cadastrar técnico vinculado ao telefone do chat */}
+            <TabsContent value="tecnico" className="space-y-3 mt-3">
+              <p className="text-sm text-muted-foreground">
+                Cadastre um técnico vinculado a este número. Ele ficará disponível em Contatos → Técnicos.
+              </p>
+              <div className="space-y-2">
+                <div>
+                  <Label className="text-xs">Nome *</Label>
+                  <Input
+                    value={technicianForm.name}
+                    onChange={(e) => setTechnicianForm((f) => ({ ...f, name: e.target.value }))}
+                    placeholder="Nome do técnico"
+                    maxLength={120}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Telefone</Label>
+                  <Input
+                    value={technicianForm.phone}
+                    onChange={(e) => setTechnicianForm((f) => ({ ...f, phone: e.target.value }))}
+                    placeholder="(31) 99999-9999"
+                    maxLength={40}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Endereço</Label>
+                  <Input
+                    value={technicianForm.address}
+                    onChange={(e) => setTechnicianForm((f) => ({ ...f, address: e.target.value }))}
+                    placeholder="Rua, número, bairro, cidade"
+                    maxLength={300}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Observação</Label>
+                  <Textarea
+                    rows={2}
+                    value={technicianForm.notes}
+                    onChange={(e) => setTechnicianForm((f) => ({ ...f, notes: e.target.value }))}
+                    placeholder="Anotações sobre o técnico"
+                    maxLength={1000}
+                  />
+                </div>
+              </div>
+              <Button
+                className="w-full"
+                onClick={() => createTechnicianMutation.mutate()}
+                disabled={!technicianForm.name.trim() || createTechnicianMutation.isPending}
+              >
+                {createTechnicianMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Wrench className="h-4 w-4 mr-2" />}
+                Salvar Técnico
+              </Button>
+
+              {chatTechniciansQuery.data && chatTechniciansQuery.data.length > 0 && (
+                <div className="space-y-1 pt-2 border-t">
+                  <p className="text-xs font-medium text-muted-foreground">Técnicos deste contato</p>
+                  <div className="max-h-40 overflow-y-auto space-y-1">
+                    {chatTechniciansQuery.data.map((t: any) => (
+                      <div key={t.id} className="flex items-start justify-between gap-2 rounded-md border p-2 text-xs">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium truncate">{t.name}</p>
+                          {t.phone && <p className="text-muted-foreground">{t.phone}</p>}
+                          {t.address && <p className="text-muted-foreground truncate">{t.address}</p>}
+                          {t.notes && <p className="text-muted-foreground line-clamp-2">{t.notes}</p>}
+                        </div>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6 shrink-0"
+                          onClick={() => deleteTechnicianMutation.mutate(t.id)}
+                          disabled={deleteTechnicianMutation.isPending}
+                          title="Remover"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </TabsContent>
           </Tabs>
         </DialogContent>
