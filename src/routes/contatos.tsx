@@ -146,6 +146,9 @@ function ContatosPage() {
             <TabsTrigger value="subclientes" className="gap-1">
               <Users className="h-4 w-4" /> Sub-clientes
             </TabsTrigger>
+            <TabsTrigger value="tecnicos" className="gap-1">
+              <Wrench className="h-4 w-4" /> Técnicos
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="clientes" className="space-y-4 mt-4">
