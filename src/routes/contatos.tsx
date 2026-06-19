@@ -31,8 +31,10 @@ import {
   FileText,
   Building2,
   Eye,
+  Wrench,
 } from "lucide-react";
 import { SubClientsAdmin } from "@/components/contatos/sub-clients-admin";
+import { TechniciansAdmin } from "@/components/contatos/technicians-admin";
 
 export const Route = createFileRoute("/contatos")({
   component: ContatosPage,
