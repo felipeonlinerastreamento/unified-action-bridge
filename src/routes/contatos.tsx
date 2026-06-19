@@ -261,6 +261,10 @@ function ContatosPage() {
           <TabsContent value="subclientes" className="mt-4">
             <SubClientsAdmin />
           </TabsContent>
+
+          <TabsContent value="tecnicos" className="mt-4">
+            <TechniciansAdmin />
+          </TabsContent>
         </Tabs>
       </div>
 
