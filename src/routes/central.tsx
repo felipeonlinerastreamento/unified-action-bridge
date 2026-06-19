@@ -4607,6 +4607,88 @@ function CentralPage() {
                 Cadastrar no CRM
               </Button>
             </TabsContent>
+
+            {/* Cadastrar técnico vinculado ao telefone do chat */}
+            <TabsContent value="tecnico" className="space-y-3 mt-3">
+              <p className="text-sm text-muted-foreground">
+                Cadastre um técnico vinculado a este número. Ele ficará disponível em Contatos → Técnicos.
+              </p>
+              <div className="space-y-2">
+                <div>
+                  <Label className="text-xs">Nome *</Label>
+                  <Input
+                    value={technicianForm.name}
+                    onChange={(e) => setTechnicianForm((f) => ({ ...f, name: e.target.value }))}
+                    placeholder="Nome do técnico"
+                    maxLength={120}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Telefone</Label>
+                  <Input
+                    value={technicianForm.phone}
+                    onChange={(e) => setTechnicianForm((f) => ({ ...f, phone: e.target.value }))}
+                    placeholder="(31) 99999-9999"
+                    maxLength={40}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Endereço</Label>
+                  <Input
+                    value={technicianForm.address}
+                    onChange={(e) => setTechnicianForm((f) => ({ ...f, address: e.target.value }))}
+                    placeholder="Rua, número, bairro, cidade"
+                    maxLength={300}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Observação</Label>
+                  <Textarea
+                    rows={2}
+                    value={technicianForm.notes}
+                    onChange={(e) => setTechnicianForm((f) => ({ ...f, notes: e.target.value }))}
+                    placeholder="Anotações sobre o técnico"
+                    maxLength={1000}
+                  />
+                </div>
+              </div>
+              <Button
+                className="w-full"
+                onClick={() => createTechnicianMutation.mutate()}
+                disabled={!technicianForm.name.trim() || createTechnicianMutation.isPending}
+              >
+                {createTechnicianMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Wrench className="h-4 w-4 mr-2" />}
+                Salvar Técnico
+              </Button>
+
+              {chatTechniciansQuery.data && chatTechniciansQuery.data.length > 0 && (
+                <div className="space-y-1 pt-2 border-t">
+                  <p className="text-xs font-medium text-muted-foreground">Técnicos deste contato</p>
+                  <div className="max-h-40 overflow-y-auto space-y-1">
+                    {chatTechniciansQuery.data.map((t: any) => (
+                      <div key={t.id} className="flex items-start justify-between gap-2 rounded-md border p-2 text-xs">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium truncate">{t.name}</p>
+                          {t.phone && <p className="text-muted-foreground">{t.phone}</p>}
+                          {t.address && <p className="text-muted-foreground truncate">{t.address}</p>}
+                          {t.notes && <p className="text-muted-foreground line-clamp-2">{t.notes}</p>}
+                        </div>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-6 w-6 shrink-0"
+                          onClick={() => deleteTechnicianMutation.mutate(t.id)}
+                          disabled={deleteTechnicianMutation.isPending}
+                          title="Remover"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </TabsContent>
           </Tabs>
         </DialogContent>
       </Dialog>
