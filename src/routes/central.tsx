@@ -941,6 +941,65 @@ function CentralPage() {
     return allCompanies.find((company: any) => company.value === selectedValue) ?? null;
   };
 
+  // ------- Chat technicians (vinculados ao telefone do chat) -------
+  const techPhoneKey = (contactPhone || "").replace(/\D/g, "");
+  const chatTechniciansQuery = useQuery({
+    queryKey: ["chat-technicians", techPhoneKey],
+    queryFn: async () => {
+      if (!techPhoneKey) return [];
+      const { data, error } = await supabase
+        .from("chat_technicians" as any)
+        .select("*")
+        .eq("contact_phone", techPhoneKey)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data || []) as any[];
+    },
+    enabled: !!techPhoneKey && isAuthenticated,
+    staleTime: 30_000,
+  });
+
+  const createTechnicianMutation = useMutation({
+    mutationFn: async () => {
+      const name = technicianForm.name.trim();
+      if (!name) throw new Error("Informe o nome do técnico");
+      if (name.length > 120) throw new Error("Nome muito longo (máx. 120)");
+      if (!techPhoneKey) throw new Error("Telefone do contato inválido");
+      const payload = {
+        contact_phone: techPhoneKey,
+        name,
+        phone: technicianForm.phone.trim() || null,
+        address: technicianForm.address.trim() || null,
+        notes: technicianForm.notes.trim() || null,
+        created_by: user?.id || null,
+        created_by_name: profile?.name || user?.email || null,
+        updated_by: user?.id || null,
+        updated_by_name: profile?.name || user?.email || null,
+      };
+      const { error } = await supabase.from("chat_technicians" as any).insert(payload as any);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Técnico cadastrado");
+      setTechnicianForm({ name: "", phone: "", address: "", notes: "" });
+      queryClient.invalidateQueries({ queryKey: ["chat-technicians", techPhoneKey] });
+    },
+    onError: (err: any) => toast.error(err?.message || "Erro ao cadastrar técnico"),
+  });
+
+  const deleteTechnicianMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("chat_technicians" as any).delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Técnico removido");
+      queryClient.invalidateQueries({ queryKey: ["chat-technicians", techPhoneKey] });
+    },
+    onError: (err: any) => toast.error(err?.message || "Erro ao remover"),
+  });
+
+
   // Create sub-client mutation
   const createSubClientMutation = useMutation({
     mutationFn: async () => {
