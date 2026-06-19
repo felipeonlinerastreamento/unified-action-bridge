@@ -4197,6 +4197,9 @@ function CentralPage() {
               <TabsTrigger value="crm" className="flex-1 text-xs">
                 <UserPlus className="h-3 w-3 mr-1" /> CRM
               </TabsTrigger>
+              <TabsTrigger value="tecnico" className="flex-1 text-xs">
+                <Wrench className="h-3 w-3 mr-1" /> Técnico
+              </TabsTrigger>
             </TabsList>
 
             {/* Vincular a empresa existente */}
