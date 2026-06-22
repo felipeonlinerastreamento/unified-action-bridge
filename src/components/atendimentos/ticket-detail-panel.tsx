@@ -1305,13 +1305,22 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
               </div>
             </div>
 
-            {serviceTemplates.length > 0 && (
+            {serviceTemplates.length > 0 && !ticket.hide_service_templates && (
               <div className="rounded-md border border-amber-200 bg-amber-50/60 dark:bg-amber-950/20 dark:border-amber-900 p-3 space-y-2">
                 <div className="flex items-center gap-2">
                   <ShieldAlert className="h-4 w-4 text-amber-700 dark:text-amber-400" />
-                  <h4 className="text-sm font-semibold text-amber-900 dark:text-amber-200">
+                  <h4 className="text-sm font-semibold text-amber-900 dark:text-amber-200 flex-1">
                     Padrão de Serviços do cliente
                   </h4>
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-6 w-6 -mr-1 text-amber-900/70 hover:text-amber-900 dark:text-amber-200/70"
+                    title="Ocultar este balão neste atendimento"
+                    onClick={() => setHideServiceTemplates(true)}
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
                 <div className="space-y-2">
                   {(serviceTemplates as any[]).map((tpl) => (
@@ -1343,6 +1352,16 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
                   ))}
                 </div>
               </div>
+            )}
+
+            {serviceTemplates.length > 0 && ticket.hide_service_templates && (
+              <button
+                type="button"
+                onClick={() => setHideServiceTemplates(false)}
+                className="text-[11px] text-muted-foreground hover:text-foreground underline-offset-2 hover:underline self-start"
+              >
+                Mostrar padrão do cliente
+              </button>
             )}
 
             <DetailRow label="Criado em" value={ticket.created_at ? new Date(ticket.created_at).toLocaleString("pt-BR") : null} />
