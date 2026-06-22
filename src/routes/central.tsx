@@ -1788,7 +1788,52 @@ function CentralPage() {
 
       let ticketForProtocol = currentTicket;
       let createdProtocolTicket = false;
-      if (!ticketForProtocol && selectedChatId && chatDetail) {
+
+      // VÍNCULO A PROTOCOLO EXISTENTE: não cria/atualiza ticket — apenas anexa
+      // a interação ao protocolo escolhido (comentário + entity_link) e segue
+      // direto para o encerramento do chat.
+      if (linkedId) {
+        const { data: linked } = await supabase
+          .from("service_tickets")
+          .select("*")
+          .eq("id", linkedId)
+          .maybeSingle();
+        if (linked) {
+          ticketForProtocol = linked as any;
+          try {
+            const { data: sess } = await supabase.auth.getSession();
+            const operatorName = profile?.name || sess.session?.user?.email || "operador";
+            const chatProto = chatDetail?.protocol || selectedChatId;
+            const noteLine = notes ? `\n\nObservação: ${notes}` : "";
+            await supabase.from("ticket_comments").insert({
+              ticket_id: (linked as any).id,
+              user_id: sess.session?.user?.id || null,
+              content: `Atendimento vinculado — chat ${chatProto} anexado por ${operatorName}.${noteLine}`,
+              comment_type: "system",
+            } as any);
+            await supabase.from("entity_links").insert({
+              entity_type: "chat_to_ticket_link",
+              local_id: (linked as any).id,
+              external_id: selectedChatId,
+              channel_id: selectedChannelId || null,
+              metadata: {
+                chat_protocol: chatProto,
+                contact_phone: contactPhone || null,
+                contact_name: chatDetail?.contact?.name || chatDetail?.description || null,
+                linked_by_user_id: sess.session?.user?.id || null,
+                linked_by_name: operatorName,
+                notes: notes || null,
+              } as any,
+            } as any);
+          } catch (e: any) {
+            console.warn("[Finalize] Falha ao registrar vínculo:", e?.message);
+          }
+        } else {
+          console.warn("[Finalize] linkedTicketId não encontrado:", linkedId);
+        }
+      }
+
+      if (!linkedId && !ticketForProtocol && selectedChatId && chatDetail) {
         const { data: existing } = await supabase
           .from("service_tickets")
           .select("*")
