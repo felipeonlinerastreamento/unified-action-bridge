@@ -1736,7 +1736,7 @@ function CentralPage() {
 
   // Finalize chat
   const finalizeMutation = useMutation({
-    mutationFn: async ({ notes, status, tipoPendencia, skipClosingMessage: skipMsg, escalateGestao }: { notes?: string; status?: string; tipoPendencia?: string; skipClosingMessage?: boolean; escalateGestao?: boolean } = {}) => {
+    mutationFn: async ({ notes, status, tipoPendencia, skipClosingMessage: skipMsg, escalateGestao, linkedTicketId: linkedId }: { notes?: string; status?: string; tipoPendencia?: string; skipClosingMessage?: boolean; escalateGestao?: boolean; linkedTicketId?: string } = {}) => {
       // "A resolver" = mantém protocolo aberto. O chat sai da Central, mas o
       // ticket NÃO é finalizado e o cliente continua no mesmo protocolo na
       // próxima mensagem (sem disparo do bot/saudação).
