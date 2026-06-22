@@ -4681,6 +4681,7 @@ function CentralPage() {
                           <p className="font-medium truncate">{t.name}</p>
                           {t.phone && <p className="text-muted-foreground">{t.phone}</p>}
                           {t.address && <p className="text-muted-foreground truncate">{t.address}</p>}
+                          {t.city_state && <p className="text-muted-foreground truncate">{t.city_state}</p>}
                           {t.notes && <p className="text-muted-foreground line-clamp-2">{t.notes}</p>}
                         </div>
                         <Button
