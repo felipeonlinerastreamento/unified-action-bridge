@@ -3857,6 +3857,7 @@ export type Database = {
           equipment_model_name: string | null
           escalated_from_ticket_id: string | null
           escalated_to_gestao: boolean
+          hide_service_templates: boolean
           id: string
           liberacao_date: string | null
           notes: string | null
@@ -3890,6 +3891,7 @@ export type Database = {
           equipment_model_name?: string | null
           escalated_from_ticket_id?: string | null
           escalated_to_gestao?: boolean
+          hide_service_templates?: boolean
           id?: string
           liberacao_date?: string | null
           notes?: string | null
@@ -3923,6 +3925,7 @@ export type Database = {
           equipment_model_name?: string | null
           escalated_from_ticket_id?: string | null
           escalated_to_gestao?: boolean
+          hide_service_templates?: boolean
           id?: string
           liberacao_date?: string | null
           notes?: string | null

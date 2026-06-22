@@ -1,34 +1,27 @@
-# Ações de conversa nos cadastros de contato
+## Objetivo
 
-Adicionar dois botões no topo dos diálogos de cadastro/edição de Técnico, Subcliente e Contato do CRM:
+Na categoria "Liberação de Equipamento" (e demais), o balão amarelo **"Padrão de Serviços do cliente"** é carregado automaticamente a partir do cadastro da empresa. Adicionar a opção de **ocultar esse balão apenas para o ticket aberto**, sem afetar o cadastro da empresa nem outros chamados.
 
-- **Histórico de conversa** — abre o `FullConversationHistoryDialog` já existente com todas as mensagens trocadas com aquele número (em qualquer protocolo/chat).
-- **Iniciar conversa** — abre (ou cria) o chat na Central para aquele número e navega direto para `/central?chat=...&channel=...`.
+## Comportamento
 
-Os botões ficam habilitados quando o formulário tem um telefone preenchido. No Técnico, usa `Telefone` (ou `Tel. do contato vinculado` como fallback). Em Subcliente e CRM, usa o `Telefone` do contato.
+- Novo botão "X" (ícone de fechar) no canto superior direito do balão amarelo, ao lado de "Padrão de Serviços do cliente".
+- Ao clicar:
+  - O balão some imediatamente (UI otimista).
+  - É gravado no ticket que esse balão foi dispensado.
+  - Toast de confirmação ("Padrão ocultado neste atendimento").
+- A dispensa é **por ticket** — abrir outro ticket da mesma empresa continua mostrando o balão normalmente.
+- O cadastro de "Padrão de Serviços" da empresa **não é alterado**.
+- Permissões: qualquer usuário autenticado que já enxerga o ticket pode ocultar.
 
-## Componente compartilhado
+## Reversão
 
-Novo `src/components/contatos/contact-chat-actions.tsx` exportando `<ContactChatActions phone name />`:
+Por padrão, uma vez ocultado fica ocultado. Caso o usuário queira reexibir, há um pequeno link discreto **"Mostrar padrão do cliente"** no rodapé das observações, que limpa a flag e traz o balão de volta.
 
-- Botão "Histórico de conversa": ao clicar, resolve o último `zapi_chats` para o telefone (mesmo padrão usado em `ticket-detail-panel.goToChat`: `ilike phone %slice(-10)%`, mais recente). Se achar, abre `FullConversationHistoryDialog` com `channelId`, `contactPhone`, `contactName`. Se não achar, mostra toast "Nenhuma conversa encontrada para este número".
-- Botão "Iniciar conversa": replica `startChatFromTicket` (sem vínculo a ticket). Procura chat existente; se houver, navega; se não, escolhe canal ativo via `rpc('list_channels_safe')` e cria novo `zapi_chats` com `status='em_atendimento'`, `assigned_to = auth user`, depois navega para `/central?chat=...&channel=...` e fecha o diálogo pai (via prop `onNavigate?: () => void`).
+## Detalhes técnicos
 
-Permissão: qualquer usuário autenticado (mesmo padrão da Central).
-
-## Integração nos diálogos
-
-1. **`src/components/contatos/technicians-admin.tsx`** — renderizar `<ContactChatActions>` no topo do conteúdo dos dois Dialogs (novo e editar). Telefone = `form.phone || form.contact_phone`. `onNavigate` fecha o diálogo.
-
-2. **`src/components/contatos/sub-clients-admin.tsx`** — renderizar no topo do Dialog. Telefone = `form.phone`. `onNavigate` fecha o diálogo.
-
-3. **`src/routes/crm.tsx`** — renderizar logo abaixo de `DialogHeader` no Dialog de contato. Telefone = `form.phone`. `onNavigate` fecha o diálogo.
-
-## Arquivos
-
-- novo: `src/components/contatos/contact-chat-actions.tsx`
-- editar: `src/components/contatos/technicians-admin.tsx`
-- editar: `src/components/contatos/sub-clients-admin.tsx`
-- editar: `src/routes/crm.tsx`
-
-Sem alterações de banco/RLS — usa tabelas e RPC já existentes.
+- Nova coluna `service_tickets.hide_service_templates boolean not null default false` (migration).
+- `src/components/atendimentos/ticket-detail-panel.tsx`:
+  - Condicionar a renderização do bloco `serviceTemplates.length > 0` também a `!ticket.hide_service_templates`.
+  - Botão "X" chama `supabase.from('service_tickets').update({ hide_service_templates: true }).eq('id', ticket.id)`, depois `onRefetch()`.
+  - Quando `hide_service_templates === true` e existir `serviceTemplates.length > 0`, renderizar o link "Mostrar padrão do cliente" (ação reversa).
+- Sem alterações em RLS (a tabela `service_tickets` já permite update pelos papéis autorizados). Tipos do Supabase serão regenerados após a migration.
