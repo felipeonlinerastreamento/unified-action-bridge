@@ -1211,6 +1211,26 @@ function CentralPage() {
   // Identification modal is no longer auto-opened on chat start.
   // It is now triggered when the operator clicks "Finalizar" on an unidentified contact.
 
+  // Tickets em aberto da mesma empresa — para vincular a finalização a um protocolo existente
+  const { data: openCompanyTickets = [] } = useQuery({
+    queryKey: ["open-company-tickets", companyLookup?.id, currentTicket?.id, showFinalizeConfirm],
+    queryFn: async () => {
+      if (!companyLookup?.id) return [] as any[];
+      const { data } = await supabase
+        .from("service_tickets")
+        .select("id, attendance_id, plate, category, subcategory_name, created_at, opened_by, status, profiles:opened_by(name)")
+        .eq("company_id", companyLookup.id)
+        .neq("status", "finalizado")
+        .order("created_at", { ascending: false })
+        .limit(20);
+      const list = (data || []) as any[];
+      return currentTicket?.id ? list.filter((t) => t.id !== currentTicket.id) : list;
+    },
+    enabled: !!companyLookup?.id && showFinalizeConfirm && isAuthenticated,
+  });
+
+
+
   const retryPendenciaCreation = useCallback(async () => {
     const ticket = currentTicket;
     if (!ticket || ticket.pendencia_key || !selectedChatId) return;
