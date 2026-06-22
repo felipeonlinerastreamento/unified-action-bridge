@@ -4883,6 +4883,86 @@ function CentralPage() {
               );
             })()}
 
+            {/* Vincular a um protocolo aberto da mesma empresa */}
+            <div className="space-y-2 rounded-md border p-3 bg-muted/20">
+              <Label className="text-xs font-medium">Vincular a um protocolo aberto</Label>
+              {!companyLookup?.id ? (
+                <p className="text-[11px] text-muted-foreground">
+                  Identifique o cliente para listar protocolos em aberto.
+                </p>
+              ) : (openCompanyTickets as any[]).length === 0 ? (
+                <p className="text-[11px] text-muted-foreground">
+                  Nenhum protocolo em aberto para esta empresa.
+                </p>
+              ) : (
+                <>
+                  <p className="text-[11px] text-muted-foreground">
+                    Ao vincular, esta conversa é anexada ao protocolo escolhido — nenhum novo protocolo será gerado.
+                  </p>
+                  <Input
+                    placeholder="Buscar por protocolo, categoria ou placa..."
+                    value={linkedTicketSearch}
+                    onChange={(e) => setLinkedTicketSearch(e.target.value)}
+                    className="h-8 text-xs"
+                  />
+                  <RadioGroup
+                    value={linkedTicketId || "__none__"}
+                    onValueChange={(v) => setLinkedTicketId(v === "__none__" ? "" : v)}
+                    className="max-h-60 overflow-y-auto space-y-1"
+                  >
+                    <label className="flex items-start gap-2 rounded-md border p-2 cursor-pointer hover:bg-muted/40">
+                      <RadioGroupItem value="__none__" id="link-none" className="mt-0.5" />
+                      <div className="text-xs">
+                        <div className="font-medium">Criar novo protocolo</div>
+                        <div className="text-muted-foreground">Mantém o fluxo padrão de finalização.</div>
+                      </div>
+                    </label>
+                    {(openCompanyTickets as any[])
+                      .filter((t) => {
+                        const q = linkedTicketSearch.trim().toLowerCase();
+                        if (!q) return true;
+                        const proto = formatTicketProtocol(t as any).toLowerCase();
+                        const cat = String(t.category || "").toLowerCase();
+                        const sub = String(t.subcategory_name || "").toLowerCase();
+                        const plate = String(t.plate || "").toLowerCase();
+                        return proto.includes(q) || cat.includes(q) || sub.includes(q) || plate.includes(q);
+                      })
+                      .map((t) => {
+                        const proto = formatTicketProtocol(t as any);
+                        const opName = (t as any).profiles?.name || "—";
+                        const date = new Date(t.created_at).toLocaleString("pt-BR");
+                        return (
+                          <label
+                            key={t.id}
+                            className="flex items-start gap-2 rounded-md border p-2 cursor-pointer hover:bg-muted/40"
+                          >
+                            <RadioGroupItem value={t.id} id={`link-${t.id}`} className="mt-0.5" />
+                            <div className="flex-1 text-xs space-y-0.5">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-medium">#{proto}</span>
+                                {t.plate && <Badge variant="outline" className="text-[10px]">{t.plate}</Badge>}
+                                <Badge variant="secondary" className="text-[10px] capitalize">{t.status}</Badge>
+                              </div>
+                              <div className="text-muted-foreground">
+                                {t.category || "Sem categoria"}{t.subcategory_name ? ` · ${t.subcategory_name}` : ""}
+                              </div>
+                              <div className="text-[10px] text-muted-foreground">
+                                Aberto por {opName} · {date}
+                              </div>
+                            </div>
+                          </label>
+                        );
+                      })}
+                  </RadioGroup>
+                  {linkedTicketId && (
+                    <p className="text-[11px] text-primary">
+                      Vínculo selecionado — tipo de pendência, observação e demais campos serão ignorados.
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+
             {canSkipClosing && (
               <div className="flex items-start gap-2 rounded-md border border-dashed p-3 bg-muted/30">
                 <Checkbox
@@ -4902,27 +4982,27 @@ function CentralPage() {
             )}
           </div>
           <div className="flex justify-end gap-2 mt-2">
-            <Button variant="outline" onClick={() => setShowFinalizeConfirm(false)}>
+            <Button variant="outline" onClick={() => { setShowFinalizeConfirm(false); setLinkedTicketId(""); setLinkedTicketSearch(""); }}>
               Cancelar
             </Button>
             <Button
               onClick={() => {
-                if (!finalizeTipoPendencia) {
+                if (!linkedTicketId && !finalizeTipoPendencia) {
                   toast.error("Selecione o tipo de pendência antes de finalizar.");
                   return;
                 }
                 const tipoLabel = tiposPendencia.find((t) => t.Key === finalizeTipoPendencia)?.Descricao || "";
                 const isNaoCategorizar = /n[aã]o\s*categorizar/i.test(tipoLabel);
-                if (isNaoCategorizar && !isAdmin && !finalizeNotes.trim()) {
+                if (!linkedTicketId && isNaoCategorizar && !isAdmin && !finalizeNotes.trim()) {
                   toast.error('Observação é obrigatória quando a categoria for "Não categorizar".');
                   return;
                 }
                 let notesToSend = finalizeNotes || "";
-                if (isTesteEquipamentoCategory(tipoLabel, teSettings)) {
+                if (!linkedTicketId && isTesteEquipamentoCategory(tipoLabel, teSettings)) {
                   notesToSend = buildTesteEquipamentoNotes(teData, notesToSend);
                 }
-                // Persist plate if changed
-                if (currentTicket && ticketPlate !== (currentTicket.plate || "")) {
+                // Persist plate if changed (somente quando não está vinculando a outro protocolo)
+                if (!linkedTicketId && currentTicket && ticketPlate !== (currentTicket.plate || "")) {
                   updatePlateMutation.mutate(ticketPlate);
                 }
                 finalizeMutation.mutate({
@@ -4931,12 +5011,13 @@ function CentralPage() {
                   tipoPendencia: finalizeTipoPendencia,
                   skipClosingMessage: canSkipClosing && skipClosingMessage,
                   escalateGestao: isAdmin && escalateToGestao,
+                  linkedTicketId: linkedTicketId || undefined,
                 });
               }}
-              disabled={!finalizeTipoPendencia || finalizeMutation.isPending}
+              disabled={(!linkedTicketId && !finalizeTipoPendencia) || finalizeMutation.isPending}
             >
               {finalizeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
-              Finalizar
+              {linkedTicketId ? "Vincular e encerrar" : "Finalizar"}
             </Button>
           </div>
         </DialogContent>
