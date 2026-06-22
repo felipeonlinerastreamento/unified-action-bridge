@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
@@ -16,6 +16,7 @@ export function CompanySharedNote({ companyId }: CompanySharedNoteProps) {
   const queryClient = useQueryClient();
   const [content, setContent] = useState("");
   const [dirty, setDirty] = useState(false);
+  const dirtyRef = useRef(false);
 
   const { data, isLoading } = useQuery({
     queryKey: ["company-shared-note", companyId],
@@ -31,9 +32,18 @@ export function CompanySharedNote({ companyId }: CompanySharedNoteProps) {
     enabled: !!companyId,
   });
 
+  // Reset imediato ao trocar de empresa — evita vazar texto entre empresas.
   useEffect(() => {
-    if (!dirty) setContent(data?.content ?? "");
-  }, [data?.content, dirty]);
+    setContent("");
+    setDirty(false);
+    dirtyRef.current = false;
+  }, [companyId]);
+
+  // Hidrata quando dados chegam; usa ref em vez de `dirty` como dependência
+  // para que a troca de empresa não fique bloqueada por edição anterior.
+  useEffect(() => {
+    if (!dirtyRef.current) setContent(data?.content ?? "");
+  }, [companyId, data?.content]);
 
   const saveMutation = useMutation({
     mutationFn: async () => {
