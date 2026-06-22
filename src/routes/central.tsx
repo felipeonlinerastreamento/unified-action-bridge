@@ -19,6 +19,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Checkbox } from "@/components/ui/checkbox";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import {
   Dialog,
   DialogContent,
@@ -313,6 +314,8 @@ function CentralPage() {
   const [finalizeTipoPendencia, setFinalizeTipoPendencia] = useState<string>("");
   const [finalizeSubcategoryId, setFinalizeSubcategoryId] = useState<string>("");
   const [finalizeEquipmentModelId, setFinalizeEquipmentModelId] = useState<string>("");
+  const [linkedTicketId, setLinkedTicketId] = useState<string>("");
+  const [linkedTicketSearch, setLinkedTicketSearch] = useState<string>("");
 
   const [showTeDialog, setShowTeDialog] = useState(false);
   const [teData, setTeData] = useState<TesteEquipamentoData>(EMPTY_TESTE_EQUIPAMENTO);
@@ -603,6 +606,13 @@ function CentralPage() {
 
 
   const { data: teSettings } = useTesteEquipamentoSettings();
+
+
+
+
+
+
+
 
 
   const { data: gsystemUsersList = [] } = useQuery({
@@ -1201,6 +1211,26 @@ function CentralPage() {
   // Identification modal is no longer auto-opened on chat start.
   // It is now triggered when the operator clicks "Finalizar" on an unidentified contact.
 
+  // Tickets em aberto da mesma empresa — para vincular a finalização a um protocolo existente
+  const { data: openCompanyTickets = [] } = useQuery({
+    queryKey: ["open-company-tickets", companyLookup?.id, currentTicket?.id, showFinalizeConfirm],
+    queryFn: async () => {
+      if (!companyLookup?.id) return [] as any[];
+      const { data } = await supabase
+        .from("service_tickets")
+        .select("id, attendance_id, plate, category, subcategory_name, created_at, opened_by, status, profiles:opened_by(name)")
+        .eq("company_id", companyLookup.id)
+        .neq("status", "finalizado")
+        .order("created_at", { ascending: false })
+        .limit(20);
+      const list = (data || []) as any[];
+      return currentTicket?.id ? list.filter((t) => t.id !== currentTicket.id) : list;
+    },
+    enabled: !!companyLookup?.id && showFinalizeConfirm && isAuthenticated,
+  });
+
+
+
   const retryPendenciaCreation = useCallback(async () => {
     const ticket = currentTicket;
     if (!ticket || ticket.pendencia_key || !selectedChatId) return;
@@ -1706,7 +1736,7 @@ function CentralPage() {
 
   // Finalize chat
   const finalizeMutation = useMutation({
-    mutationFn: async ({ notes, status, tipoPendencia, skipClosingMessage: skipMsg, escalateGestao }: { notes?: string; status?: string; tipoPendencia?: string; skipClosingMessage?: boolean; escalateGestao?: boolean } = {}) => {
+    mutationFn: async ({ notes, status, tipoPendencia, skipClosingMessage: skipMsg, escalateGestao, linkedTicketId: linkedId }: { notes?: string; status?: string; tipoPendencia?: string; skipClosingMessage?: boolean; escalateGestao?: boolean; linkedTicketId?: string } = {}) => {
       // "A resolver" = mantém protocolo aberto. O chat sai da Central, mas o
       // ticket NÃO é finalizado e o cliente continua no mesmo protocolo na
       // próxima mensagem (sem disparo do bot/saudação).
@@ -1758,7 +1788,52 @@ function CentralPage() {
 
       let ticketForProtocol = currentTicket;
       let createdProtocolTicket = false;
-      if (!ticketForProtocol && selectedChatId && chatDetail) {
+
+      // VÍNCULO A PROTOCOLO EXISTENTE: não cria/atualiza ticket — apenas anexa
+      // a interação ao protocolo escolhido (comentário + entity_link) e segue
+      // direto para o encerramento do chat.
+      if (linkedId) {
+        const { data: linked } = await supabase
+          .from("service_tickets")
+          .select("*")
+          .eq("id", linkedId)
+          .maybeSingle();
+        if (linked) {
+          ticketForProtocol = linked as any;
+          try {
+            const { data: sess } = await supabase.auth.getSession();
+            const operatorName = profile?.name || sess.session?.user?.email || "operador";
+            const chatProto = chatDetail?.protocol || selectedChatId;
+            const noteLine = notes ? `\n\nObservação: ${notes}` : "";
+            await supabase.from("ticket_comments").insert({
+              ticket_id: (linked as any).id,
+              user_id: sess.session?.user?.id || null,
+              content: `Atendimento vinculado — chat ${chatProto} anexado por ${operatorName}.${noteLine}`,
+              comment_type: "system",
+            } as any);
+            await supabase.from("entity_links").insert({
+              entity_type: "chat_to_ticket_link",
+              local_id: (linked as any).id,
+              external_id: selectedChatId,
+              channel_id: selectedChannelId || null,
+              metadata: {
+                chat_protocol: chatProto,
+                contact_phone: contactPhone || null,
+                contact_name: chatDetail?.contact?.name || chatDetail?.description || null,
+                linked_by_user_id: sess.session?.user?.id || null,
+                linked_by_name: operatorName,
+                notes: notes || null,
+              } as any,
+            } as any);
+          } catch (e: any) {
+            console.warn("[Finalize] Falha ao registrar vínculo:", e?.message);
+          }
+        } else {
+          console.warn("[Finalize] linkedTicketId não encontrado:", linkedId);
+        }
+      }
+
+      if (!linkedId && !ticketForProtocol && selectedChatId && chatDetail) {
         const { data: existing } = await supabase
           .from("service_tickets")
           .select("*")
@@ -1842,7 +1917,7 @@ function CentralPage() {
       // clicked "Finalizar" — the chat MUST be closed regardless of side-effects.
       try {
       const activeTicket = currentTicket || ticketForProtocol;
-      if (activeTicket) {
+      if (!linkedId && activeTicket) {
         let pendenciaKey = activeTicket.pendencia_key;
 
         // If no pendência exists yet, create one now before finalizing
@@ -1965,7 +2040,7 @@ function CentralPage() {
         }
       }
       // Check if this category triggers a service flow
-      if (tipoPendencia) {
+      if (!linkedId && tipoPendencia) {
         try {
           const { data: matchingFlows } = await supabase
             .from("service_flows")
@@ -2017,7 +2092,7 @@ function CentralPage() {
       }
 
       // Check category routing rules for auto-forwarding
-      if (tipoPendencia) {
+      if (!linkedId && tipoPendencia) {
         try {
           const { data: routingRules } = await supabase
             .from("category_routing_rules")
@@ -2370,6 +2445,8 @@ function CentralPage() {
       setFinalizeTipoPendencia("");
       setFinalizeSubcategoryId("");
       setFinalizeEquipmentModelId("");
+      setLinkedTicketId("");
+      setLinkedTicketSearch("");
 
       setTeData(EMPTY_TESTE_EQUIPAMENTO);
       setLiberacaoItems([]);
@@ -4806,6 +4883,86 @@ function CentralPage() {
               );
             })()}
 
+            {/* Vincular a um protocolo aberto da mesma empresa */}
+            <div className="space-y-2 rounded-md border p-3 bg-muted/20">
+              <Label className="text-xs font-medium">Vincular a um protocolo aberto</Label>
+              {!companyLookup?.id ? (
+                <p className="text-[11px] text-muted-foreground">
+                  Identifique o cliente para listar protocolos em aberto.
+                </p>
+              ) : (openCompanyTickets as any[]).length === 0 ? (
+                <p className="text-[11px] text-muted-foreground">
+                  Nenhum protocolo em aberto para esta empresa.
+                </p>
+              ) : (
+                <>
+                  <p className="text-[11px] text-muted-foreground">
+                    Ao vincular, esta conversa é anexada ao protocolo escolhido — nenhum novo protocolo será gerado.
+                  </p>
+                  <Input
+                    placeholder="Buscar por protocolo, categoria ou placa..."
+                    value={linkedTicketSearch}
+                    onChange={(e) => setLinkedTicketSearch(e.target.value)}
+                    className="h-8 text-xs"
+                  />
+                  <RadioGroup
+                    value={linkedTicketId || "__none__"}
+                    onValueChange={(v) => setLinkedTicketId(v === "__none__" ? "" : v)}
+                    className="max-h-60 overflow-y-auto space-y-1"
+                  >
+                    <label className="flex items-start gap-2 rounded-md border p-2 cursor-pointer hover:bg-muted/40">
+                      <RadioGroupItem value="__none__" id="link-none" className="mt-0.5" />
+                      <div className="text-xs">
+                        <div className="font-medium">Criar novo protocolo</div>
+                        <div className="text-muted-foreground">Mantém o fluxo padrão de finalização.</div>
+                      </div>
+                    </label>
+                    {(openCompanyTickets as any[])
+                      .filter((t) => {
+                        const q = linkedTicketSearch.trim().toLowerCase();
+                        if (!q) return true;
+                        const proto = formatTicketProtocol(t as any).toLowerCase();
+                        const cat = String(t.category || "").toLowerCase();
+                        const sub = String(t.subcategory_name || "").toLowerCase();
+                        const plate = String(t.plate || "").toLowerCase();
+                        return proto.includes(q) || cat.includes(q) || sub.includes(q) || plate.includes(q);
+                      })
+                      .map((t) => {
+                        const proto = formatTicketProtocol(t as any);
+                        const opName = (t as any).profiles?.name || "—";
+                        const date = new Date(t.created_at).toLocaleString("pt-BR");
+                        return (
+                          <label
+                            key={t.id}
+                            className="flex items-start gap-2 rounded-md border p-2 cursor-pointer hover:bg-muted/40"
+                          >
+                            <RadioGroupItem value={t.id} id={`link-${t.id}`} className="mt-0.5" />
+                            <div className="flex-1 text-xs space-y-0.5">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-medium">#{proto}</span>
+                                {t.plate && <Badge variant="outline" className="text-[10px]">{t.plate}</Badge>}
+                                <Badge variant="secondary" className="text-[10px] capitalize">{t.status}</Badge>
+                              </div>
+                              <div className="text-muted-foreground">
+                                {t.category || "Sem categoria"}{t.subcategory_name ? ` · ${t.subcategory_name}` : ""}
+                              </div>
+                              <div className="text-[10px] text-muted-foreground">
+                                Aberto por {opName} · {date}
+                              </div>
+                            </div>
+                          </label>
+                        );
+                      })}
+                  </RadioGroup>
+                  {linkedTicketId && (
+                    <p className="text-[11px] text-primary">
+                      Vínculo selecionado — tipo de pendência, observação e demais campos serão ignorados.
+                    </p>
+                  )}
+                </>
+              )}
+            </div>
+
             {canSkipClosing && (
               <div className="flex items-start gap-2 rounded-md border border-dashed p-3 bg-muted/30">
                 <Checkbox
@@ -4825,27 +4982,27 @@ function CentralPage() {
             )}
           </div>
           <div className="flex justify-end gap-2 mt-2">
-            <Button variant="outline" onClick={() => setShowFinalizeConfirm(false)}>
+            <Button variant="outline" onClick={() => { setShowFinalizeConfirm(false); setLinkedTicketId(""); setLinkedTicketSearch(""); }}>
               Cancelar
             </Button>
             <Button
               onClick={() => {
-                if (!finalizeTipoPendencia) {
+                if (!linkedTicketId && !finalizeTipoPendencia) {
                   toast.error("Selecione o tipo de pendência antes de finalizar.");
                   return;
                 }
                 const tipoLabel = tiposPendencia.find((t) => t.Key === finalizeTipoPendencia)?.Descricao || "";
                 const isNaoCategorizar = /n[aã]o\s*categorizar/i.test(tipoLabel);
-                if (isNaoCategorizar && !isAdmin && !finalizeNotes.trim()) {
+                if (!linkedTicketId && isNaoCategorizar && !isAdmin && !finalizeNotes.trim()) {
                   toast.error('Observação é obrigatória quando a categoria for "Não categorizar".');
                   return;
                 }
                 let notesToSend = finalizeNotes || "";
-                if (isTesteEquipamentoCategory(tipoLabel, teSettings)) {
+                if (!linkedTicketId && isTesteEquipamentoCategory(tipoLabel, teSettings)) {
                   notesToSend = buildTesteEquipamentoNotes(teData, notesToSend);
                 }
-                // Persist plate if changed
-                if (currentTicket && ticketPlate !== (currentTicket.plate || "")) {
+                // Persist plate if changed (somente quando não está vinculando a outro protocolo)
+                if (!linkedTicketId && currentTicket && ticketPlate !== (currentTicket.plate || "")) {
                   updatePlateMutation.mutate(ticketPlate);
                 }
                 finalizeMutation.mutate({
@@ -4854,12 +5011,13 @@ function CentralPage() {
                   tipoPendencia: finalizeTipoPendencia,
                   skipClosingMessage: canSkipClosing && skipClosingMessage,
                   escalateGestao: isAdmin && escalateToGestao,
+                  linkedTicketId: linkedTicketId || undefined,
                 });
               }}
-              disabled={!finalizeTipoPendencia || finalizeMutation.isPending}
+              disabled={(!linkedTicketId && !finalizeTipoPendencia) || finalizeMutation.isPending}
             >
               {finalizeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
-              Finalizar
+              {linkedTicketId ? "Vincular e encerrar" : "Finalizar"}
             </Button>
           </div>
         </DialogContent>

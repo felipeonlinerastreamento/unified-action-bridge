@@ -1,53 +1,39 @@
-## Objetivo
-Permitir, dentro de uma proposta (oportunidade) do CRM, gerar novos orçamentos e manter um histórico de cada orçamento gerado com o nome do operador e a data de lançamento.
+# Vincular finalização a protocolo aberto
+
+Objetivo: na tela de "Finalizar atendimento" da Central, mostrar os protocolos em aberto da **mesma empresa** com sua categoria, e permitir que o atendente vincule a conversa a um deles — quando vincular, **não cria um novo ticket**: a interação é anexada ao protocolo existente e o chat é fechado normalmente.
 
 ## Comportamento
 
-Dentro do diálogo de edição de uma oportunidade do CRM:
+1. No diálogo de finalização (acima do botão "Finalizar"), nova seção **"Vincular a um protocolo aberto"**.
+2. Lista todos os `service_tickets` da `company_id` atual com `status != 'finalizado'`, ordenados por `created_at DESC` (limite 20). Cada item mostra: protocolo formatado, categoria, placa (se houver), atendente que abriu, data.
+3. Campo de busca por protocolo/categoria/placa para filtrar a lista.
+4. Radio para escolher: "Criar novo protocolo" (padrão) ou um dos protocolos listados.
+5. Quando um protocolo existente é selecionado, os campos "Tipo de pendência", "Subcategoria" e "Modelo de equipamento" ficam ocultos/desabilitados (são herdados do protocolo vinculado).
+6. Se a empresa não estiver identificada, a seção mostra aviso "Identifique o cliente para ver protocolos em aberto" e o fluxo segue o atual.
 
-1. Novo botão **"Gerar novo orçamento"** ao lado de "Itens da proposta".
-2. Ao clicar, o sistema captura um snapshot dos itens atuais (categoria, quantidade, ativação, mensalidade) + totais e registra como um orçamento no histórico, junto com:
-   - operador (usuário logado)
-   - data/hora do lançamento
-3. Logo abaixo aparece a seção **"Histórico de orçamentos"**, listando cada orçamento gerado em ordem decrescente, mostrando:
-   - Nº do orçamento (sequencial dentro da proposta)
-   - Operador
-   - Data/hora
-   - Totais (ativação, mensalidade, qtd. de itens)
-   - Botão para expandir e ver os itens daquele orçamento (somente leitura)
-4. O histórico fica visível apenas dentro do diálogo da proposta (não na ficha do contato).
+## Efeito do vínculo
 
-Nada é copiado automaticamente entre orçamentos — cada clique apenas armazena o snapshot atual.
+Quando o atendente confirma a finalização com um protocolo escolhido:
 
-## Backend (migração)
+- **Não** cria novo `service_ticket`.
+- Atualiza o ticket vinculado: registra um system comment "Atendimento vinculado — chat <protocolo origem> anexado por <usuário>" + observação digitada e cria uma `ticket_activities` do tipo `linked_chat` (referência ao `attendance_id` e ao chat de origem).
+- Cria uma linha em `entity_links` (tabela já existente) com `source_type='zapi_chat'`, `source_id=selectedChatId`, `target_type='service_ticket'`, `target_id=<id do protocolo escolhido>` para correlação futura.
+- Fecha o `zapi_chat` via `finalizeChat` (igual hoje), preservando `closed_by_user_id`.
+- A mensagem de fechamento ao cliente continua opcional (`skipClosingMessage`).
+- Pendência GSystem **não** é recriada (a do protocolo vinculado segue aberta).
 
-Nova tabela `public.crm_opportunity_quotes`:
+## Mudanças técnicas
 
-- `opportunity_id` (FK → `crm_opportunities`, on delete cascade)
-- `quote_number` (int, sequencial por oportunidade)
-- `items` (jsonb — mesmo formato de `contract_items`)
-- `total_activation` (numeric)
-- `total_monthly` (numeric)
-- `notes` (text, opcional)
-- `created_by` (uuid → auth.users)
-- `created_at`, `updated_at`
+- `src/routes/central.tsx`
+  - Nova query `openCompanyTickets` (habilitada quando `companyLookup?.id` existe e `showFinalizeConfirm` está aberto): seleciona `id, attendance_id, plate, category, subcategory_name, opened_by, created_at, status, profiles(name)` filtrando por `company_id` e `status != 'finalizado'`, excluindo o próprio ticket atual.
+  - Novo state `linkedTicketId` resetado ao abrir o diálogo.
+  - UI dentro do `<Dialog open={showFinalizeConfirm}>` (linhas ~4707–4866): bloco "Vincular a um protocolo aberto" com `Input` de busca, `RadioGroup` com "Criar novo protocolo" + itens da lista; oculta "Tipo de pendência/Subcategoria/Modelo" quando `linkedTicketId` está setado.
+  - `finalizeMutation` (linha 1708) recebe `linkedTicketId`. Quando presente, pula toda a criação/atualização de ticket (linhas ~1760–1955) e em vez disso: insere comentário+atividade no ticket alvo, insere `entity_links`, e segue direto para o `finalizeChat` (linha ~2200) e mensagem de encerramento.
+  - Validação: quando `linkedTicketId` está setado, não exige `finalizeTipoPendencia`.
 
-GRANTs para `authenticated` e `service_role`. RLS habilitado com políticas:
-- SELECT/INSERT para qualquer usuário autenticado (mesmo padrão de `crm_opportunities`).
-- UPDATE/DELETE somente admin/gestor.
-
-Trigger `BEFORE INSERT` que calcula `quote_number` como `MAX(quote_number)+1` por `opportunity_id`.
-
-## Frontend
-
-- `src/lib/crm.functions.ts`: adicionar server functions `createOpportunityQuote` e `listOpportunityQuotes` usando `requireSupabaseAuth`.
-- `src/components/crm/crm-pipeline-tab.tsx`:
-  - No diálogo, adicionar botão "Gerar novo orçamento" que chama `createOpportunityQuote` com os itens do form atual.
-  - Renderizar lista de orçamentos via `useQuery(["crm-opportunity-quotes", editingId])`, com nome do operador (join com `profiles.name`) e data formatada em pt-BR.
-  - Invalidar a query após cada novo orçamento.
-  - Botão só fica ativo quando há `editingId` (proposta já salva) e itens > 0.
+- Sem migração nova — `entity_links`, `ticket_comments` (ou helper `insertSystemComment` em `ticket-finalize-flow.ts`) e `ticket_activities` já existem.
 
 ## Fora de escopo
-- Não há cópia automática de itens entre orçamentos.
-- Não aparece na ficha do cliente/contato.
-- Não há edição de orçamento já lançado (apenas leitura no histórico).
+- Desfazer vínculo posteriormente.
+- Mostrar a lista no painel de Atendimentos (esta tarefa é só na tela de finalização).
+- Vínculo cruzado entre empresas diferentes.
