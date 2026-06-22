@@ -4638,8 +4638,17 @@ function CentralPage() {
                   <Input
                     value={technicianForm.address}
                     onChange={(e) => setTechnicianForm((f) => ({ ...f, address: e.target.value }))}
-                    placeholder="Rua, número, bairro, cidade"
+                    placeholder="Rua, número, bairro"
                     maxLength={300}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Cidade/Estado</Label>
+                  <Input
+                    value={technicianForm.city_state}
+                    onChange={(e) => setTechnicianForm((f) => ({ ...f, city_state: e.target.value }))}
+                    placeholder="Belo Horizonte/MG"
+                    maxLength={120}
                   />
                 </div>
                 <div>
