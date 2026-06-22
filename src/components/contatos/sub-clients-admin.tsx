@@ -17,6 +17,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { ContactChatActions } from "@/components/contatos/contact-chat-actions";
 import {
   Search, UserPlus, Building2, Loader2, Trash2, Edit, Users, Phone,
 } from "lucide-react";
