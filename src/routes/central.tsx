@@ -1917,7 +1917,7 @@ function CentralPage() {
       // clicked "Finalizar" — the chat MUST be closed regardless of side-effects.
       try {
       const activeTicket = currentTicket || ticketForProtocol;
-      if (activeTicket) {
+      if (!linkedId && activeTicket) {
         let pendenciaKey = activeTicket.pendencia_key;
 
         // If no pendência exists yet, create one now before finalizing
