@@ -219,6 +219,11 @@ export function SubClientsAdmin() {
           <DialogHeader>
             <DialogTitle>{editing ? "Editar Sub-cliente" : "Novo Sub-cliente"}</DialogTitle>
           </DialogHeader>
+          <ContactChatActions
+            phone={form.phone}
+            name={form.name}
+            onNavigate={() => { setDialogOpen(false); resetForm(); }}
+          />
           <div className="space-y-3">
             <div>
               <Label>Nome *</Label>
