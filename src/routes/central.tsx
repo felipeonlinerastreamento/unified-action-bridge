@@ -608,6 +608,8 @@ function CentralPage() {
   const { data: teSettings } = useTesteEquipamentoSettings();
 
 
+
+
   const { data: gsystemUsersList = [] } = useQuery({
     queryKey: ["gsystem-users-list", selectedChannelId],
     queryFn: async () => {
