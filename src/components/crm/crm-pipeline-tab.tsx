@@ -258,7 +258,7 @@ export function CrmPipelineTab() {
       const { data: qs, error } = await supabase
         .from("crm_opportunity_quotes")
         .select("*")
-        .eq("opportunity_id", editingId)
+        .eq("opportunity_id", editingId!)
         .order("quote_number", { ascending: false });
       if (error) throw error;
       const ids = Array.from(new Set((qs || []).map((q: any) => q.created_by).filter(Boolean)));
