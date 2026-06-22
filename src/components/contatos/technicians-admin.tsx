@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Search, Loader2, Pencil, Trash2, Wrench, RefreshCw, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { ContactChatActions } from "@/components/contatos/contact-chat-actions";
 
 type Technician = {
   id: string;
