@@ -316,6 +316,21 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
     queryClient.invalidateQueries({ queryKey: ["service-tickets"] });
   };
 
+  const setHideServiceTemplates = async (hide: boolean) => {
+    if (!ticket?.id) return;
+    const { error } = await supabase
+      .from("service_tickets")
+      .update({ hide_service_templates: hide, updated_at: new Date().toISOString() } as any)
+      .eq("id", ticket.id);
+    if (error) {
+      toast.error("Falha ao atualizar visibilidade do padrão");
+      return;
+    }
+    toast.success(hide ? "Padrão ocultado neste atendimento" : "Padrão restaurado");
+    onRefetch();
+    queryClient.invalidateQueries({ queryKey: ["service-tickets"] });
+  };
+
   const subcategoryOptions = (subcategoriesAll as any[]).filter(
     (s) => s.category_key === categoryDraft
   );
