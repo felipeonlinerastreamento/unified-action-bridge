@@ -3792,7 +3792,7 @@ function CentralPage() {
                               <DetailRow label="Observações" value={companyLookup.notes} />
                             )}
 
-                            <CompanySharedNote companyId={companyLookup.id} />
+                            <CompanySharedNote key={companyLookup.id} companyId={companyLookup.id} />
                           </>
                         ) : (
                           <div className="space-y-3">
