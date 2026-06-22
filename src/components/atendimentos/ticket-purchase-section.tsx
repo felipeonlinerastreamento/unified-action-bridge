@@ -510,9 +510,7 @@ export function TicketPurchaseSection({ ticket, userId, onRefetch }: Props) {
               step={0.01}
               className="h-8 text-xs"
               value={form.freight || ""}
-              onChange={(e) =>
-                setForm({ ...form, freight: Math.max(0, parseFloat(e.target.value) || 0) })
-              }
+              onChange={(e) => { const r = e.target.value; const n = r === "" ? 0 : parseFloat(r) || 0; setForm({ ...form, freight: n }); }}
               onBlur={() => saveHeader.mutate({ freight: form.freight })}
             />
           </div>
