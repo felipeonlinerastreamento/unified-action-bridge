@@ -1,0 +1,1 @@
+ALTER TABLE public.service_tickets ADD COLUMN IF NOT EXISTS hide_service_templates boolean NOT NULL DEFAULT false;
