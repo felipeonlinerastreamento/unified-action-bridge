@@ -249,7 +249,51 @@ export function CrmPipelineTab() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  // --- Orçamentos (quotes) por oportunidade ---
+  const [expandedQuote, setExpandedQuote] = useState<string | null>(null);
+  const { data: quotes = [] } = useQuery({
+    queryKey: ["crm-opportunity-quotes", editingId],
+    enabled: !!editingId,
+    queryFn: async () => {
+      const { data: qs, error } = await supabase
+        .from("crm_opportunity_quotes")
+        .select("*")
+        .eq("opportunity_id", editingId)
+        .order("quote_number", { ascending: false });
+      if (error) throw error;
+      const ids = Array.from(new Set((qs || []).map((q: any) => q.created_by).filter(Boolean)));
+      let nameMap: Record<string, string> = {};
+      if (ids.length) {
+        const { data: profs } = await supabase.from("profiles").select("user_id, name").in("user_id", ids);
+        nameMap = Object.fromEntries((profs || []).map((p: any) => [p.user_id, p.name]));
+      }
+      return (qs || []).map((q: any) => ({ ...q, operator_name: nameMap[q.created_by] || "—" }));
+    },
+  });
+
+  const createQuoteMut = useMutation({
+    mutationFn: async () => {
+      if (!editingId) throw new Error("Salve a proposta antes de gerar um orçamento");
+      const items = form.items.filter((i: ContractItem) => i.categoryId);
+      if (items.length === 0) throw new Error("Adicione pelo menos um item para gerar o orçamento");
+      const { error } = await supabase.from("crm_opportunity_quotes").insert({
+        opportunity_id: editingId,
+        items,
+        total_activation: activationTotal,
+        total_monthly: monthlyTotal,
+        created_by: user?.id,
+      } as any);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Orçamento gerado");
+      qc.invalidateQueries({ queryKey: ["crm-opportunity-quotes", editingId] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   if (isLoading) return <Loader2 className="h-5 w-5 animate-spin" />;
+
 
   return (
     <div className="space-y-4">
