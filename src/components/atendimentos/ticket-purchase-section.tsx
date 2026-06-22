@@ -298,13 +298,12 @@ export function TicketPurchaseSection({ ticket, userId, onRefetch }: Props) {
                     className="col-span-1 h-7 text-xs"
                     type="number"
                     min={1}
-                    value={it.quantity}
-                    onChange={(e) =>
-                      updateItem.mutate({
-                        id: it.id,
-                        patch: { quantity: Math.max(1, parseInt(e.target.value, 10) || 1) },
-                      })
-                    }
+                    value={it.quantity || ""}
+                    onChange={(e) => {
+                      const r = e.target.value;
+                      const n = r === "" ? 0 : parseInt(r, 10) || 0;
+                      updateItem.mutate({ id: it.id, patch: { quantity: n } });
+                    }}
                   />
                   {showPrice && (
                     <Input
@@ -314,12 +313,11 @@ export function TicketPurchaseSection({ ticket, userId, onRefetch }: Props) {
                       step={0.01}
                       placeholder="Unit."
                       value={it.unit_price || ""}
-                      onChange={(e) =>
-                        updateItem.mutate({
-                          id: it.id,
-                          patch: { unit_price: Math.max(0, parseFloat(e.target.value) || 0) },
-                        })
-                      }
+                      onChange={(e) => {
+                        const r = e.target.value;
+                        const n = r === "" ? 0 : parseFloat(r) || 0;
+                        updateItem.mutate({ id: it.id, patch: { unit_price: n } });
+                      }}
                     />
                   )}
                   {showPrice && (
