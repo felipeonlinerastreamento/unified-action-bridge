@@ -1574,6 +1574,53 @@ export type Database = {
           },
         ]
       }
+      crm_opportunity_quotes: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          items: Json
+          notes: string | null
+          opportunity_id: string
+          quote_number: number
+          total_activation: number
+          total_monthly: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          items?: Json
+          notes?: string | null
+          opportunity_id: string
+          quote_number: number
+          total_activation?: number
+          total_monthly?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          items?: Json
+          notes?: string | null
+          opportunity_id?: string
+          quote_number?: number
+          total_activation?: number
+          total_monthly?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_opportunity_quotes_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "crm_opportunities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_pipeline_stages: {
         Row: {
           color: string | null

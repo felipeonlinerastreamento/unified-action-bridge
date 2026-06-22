@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Loader2, DollarSign, TrendingUp, X, Pencil, Check, Trash2, Tag, Search } from "lucide-react";
+import { Plus, Loader2, DollarSign, TrendingUp, X, Pencil, Check, Trash2, Tag, Search, FileText, ChevronDown, ChevronRight } from "lucide-react";
 import { toast } from "sonner";
 import { upsertOpportunity, moveOpportunityStage, deleteOpportunity } from "@/lib/crm.functions";
 import { ReferralPicker } from "@/components/crm/referral-picker";
@@ -249,7 +249,51 @@ export function CrmPipelineTab() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  // --- Orçamentos (quotes) por oportunidade ---
+  const [expandedQuote, setExpandedQuote] = useState<string | null>(null);
+  const { data: quotes = [] } = useQuery({
+    queryKey: ["crm-opportunity-quotes", editingId],
+    enabled: !!editingId,
+    queryFn: async () => {
+      const { data: qs, error } = await supabase
+        .from("crm_opportunity_quotes")
+        .select("*")
+        .eq("opportunity_id", editingId!)
+        .order("quote_number", { ascending: false });
+      if (error) throw error;
+      const ids = Array.from(new Set((qs || []).map((q: any) => q.created_by).filter(Boolean)));
+      let nameMap: Record<string, string> = {};
+      if (ids.length) {
+        const { data: profs } = await supabase.from("profiles").select("user_id, name").in("user_id", ids);
+        nameMap = Object.fromEntries((profs || []).map((p: any) => [p.user_id, p.name]));
+      }
+      return (qs || []).map((q: any) => ({ ...q, operator_name: nameMap[q.created_by] || "—" }));
+    },
+  });
+
+  const createQuoteMut = useMutation({
+    mutationFn: async () => {
+      if (!editingId) throw new Error("Salve a proposta antes de gerar um orçamento");
+      const items = form.items.filter((i: ContractItem) => i.categoryId);
+      if (items.length === 0) throw new Error("Adicione pelo menos um item para gerar o orçamento");
+      const { error } = await supabase.from("crm_opportunity_quotes").insert({
+        opportunity_id: editingId,
+        items,
+        total_activation: activationTotal,
+        total_monthly: monthlyTotal,
+        created_by: user?.id,
+      } as any);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Orçamento gerado");
+      qc.invalidateQueries({ queryKey: ["crm-opportunity-quotes", editingId] });
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
   if (isLoading) return <Loader2 className="h-5 w-5 animate-spin" />;
+
 
   return (
     <div className="space-y-4">
@@ -551,7 +595,81 @@ export function CrmPipelineTab() {
               )}
             </div>
 
+            {editingId && (
+              <div className="rounded-md border border-border bg-muted/30 p-3 space-y-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1">
+                    <FileText className="h-3 w-3" /> Histórico de orçamentos
+                  </Label>
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs"
+                    disabled={createQuoteMut.isPending || form.items.filter((i: ContractItem) => i.categoryId).length === 0}
+                    onClick={() => createQuoteMut.mutate()}
+                  >
+                    {createQuoteMut.isPending ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Plus className="h-3 w-3 mr-1" />}
+                    Gerar novo orçamento
+                  </Button>
+                </div>
+                {quotes.length === 0 ? (
+                  <p className="text-[11px] text-muted-foreground italic">
+                    Nenhum orçamento gerado ainda. Os itens atuais da proposta serão armazenados como um snapshot.
+                  </p>
+                ) : (
+                  <div className="space-y-1.5">
+                    {quotes.map((q: any) => {
+                      const isOpen = expandedQuote === q.id;
+                      const dt = new Date(q.created_at);
+                      const dtStr = dt.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
+                      const itemsArr = Array.isArray(q.items) ? q.items : [];
+                      const catName = (id: string) => categories.find((c: any) => c.id === id)?.name || "—";
+                      return (
+                        <div key={q.id} className="rounded-md border border-border bg-background">
+                          <button
+                            type="button"
+                            className="w-full flex items-center justify-between gap-2 px-2 py-1.5 text-xs hover:bg-muted/40"
+                            onClick={() => setExpandedQuote(isOpen ? null : q.id)}
+                          >
+                            <span className="flex items-center gap-2 min-w-0">
+                              {isOpen ? <ChevronDown className="h-3 w-3 shrink-0" /> : <ChevronRight className="h-3 w-3 shrink-0" />}
+                              <Badge variant="secondary" className="h-5 text-[10px]">#{q.quote_number}</Badge>
+                              <span className="truncate font-medium">{q.operator_name}</span>
+                              <span className="text-muted-foreground">{dtStr}</span>
+                            </span>
+                            <span className="flex items-center gap-3 text-muted-foreground shrink-0">
+                              <span>{itemsArr.length} {itemsArr.length === 1 ? "item" : "itens"}</span>
+                              <span>Ativ. <strong className="text-foreground">R$ {Number(q.total_activation || 0).toFixed(2)}</strong></span>
+                              <span>Mens. <strong className="text-foreground">R$ {Number(q.total_monthly || 0).toFixed(2)}</strong></span>
+                            </span>
+                          </button>
+                          {isOpen && (
+                            <div className="border-t border-border px-2 py-2 space-y-1">
+                              {itemsArr.length === 0 ? (
+                                <p className="text-[11px] text-muted-foreground italic">Sem itens.</p>
+                              ) : (
+                                itemsArr.map((it: ContractItem, i: number) => (
+                                  <div key={i} className="grid grid-cols-12 gap-2 text-[11px]">
+                                    <div className="col-span-5 truncate">{catName(it.categoryId)}</div>
+                                    <div className="col-span-2 text-center">Qtd: {it.quantity}</div>
+                                    <div className="col-span-2 text-right">Ativ. R$ {Number(it.activationValue || 0).toFixed(2)}</div>
+                                    <div className="col-span-3 text-right">Mens. R$ {Number(it.monthlyValue || 0).toFixed(2)}</div>
+                                  </div>
+                                ))
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
             <div><Label>Notas</Label><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
+
             <Button className="w-full" disabled={!form.title || createMut.isPending} onClick={() => createMut.mutate()}>
               {createMut.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               <DollarSign className="h-4 w-4 mr-1" /> {editingId ? "Salvar alterações" : "Criar"}
