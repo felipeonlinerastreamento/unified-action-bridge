@@ -590,6 +590,11 @@ function CrmPage() {
           <DialogHeader>
             <DialogTitle>{editingContact ? "Editar Contato" : "Novo Contato CRM"}</DialogTitle>
           </DialogHeader>
+          <ContactChatActions
+            phone={form.phone}
+            name={form.name}
+            onNavigate={() => { setDialogOpen(false); resetForm(); }}
+          />
           <div className="space-y-3">
             <div>
               <Label>Tipo de contato *</Label>
