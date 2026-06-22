@@ -341,6 +341,11 @@ export function TechniciansAdmin() {
               Cadastre um técnico vinculado a um número de contato.
             </DialogDescription>
           </DialogHeader>
+          <ContactChatActions
+            phone={form.phone || form.contact_phone}
+            name={form.name}
+            onNavigate={() => { setCreating(false); setForm(emptyForm); }}
+          />
           <div className="space-y-2">
             <div>
               <Label className="text-xs">Telefone do contato vinculado *</Label>
