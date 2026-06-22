@@ -522,18 +522,18 @@ export function CrmPipelineTab() {
                       </div>
                       <div className="col-span-4 sm:col-span-2">
                         <Label className="text-[10px] text-muted-foreground">Qtd.</Label>
-                        <Input type="number" min={1} className="h-8 text-xs" value={it.quantity}
-                          onChange={(e) => setForm((f: any) => ({ ...f, items: f.items.map((x: ContractItem, i: number) => i === idx ? { ...x, quantity: Number(e.target.value) || 0 } : x) }))} />
+                        <Input type="number" min={1} className="h-8 text-xs" value={it.quantity || ""}
+                          onChange={(e) => { const r = e.target.value; const n = r === "" ? 0 : Number(r); setForm((f: any) => ({ ...f, items: f.items.map((x: ContractItem, i: number) => i === idx ? { ...x, quantity: n } : x) })); }} />
                       </div>
                       <div className="col-span-4 sm:col-span-2">
                         <Label className="text-[10px] text-muted-foreground">Ativação (R$)</Label>
-                        <Input type="number" min={0} step="0.01" className="h-8 text-xs" value={it.activationValue}
-                          onChange={(e) => setForm((f: any) => ({ ...f, items: f.items.map((x: ContractItem, i: number) => i === idx ? { ...x, activationValue: Number(e.target.value) || 0 } : x) }))} />
+                        <Input type="number" min={0} step="0.01" className="h-8 text-xs" value={it.activationValue || ""}
+                          onChange={(e) => { const r = e.target.value; const n = r === "" ? 0 : Number(r); setForm((f: any) => ({ ...f, items: f.items.map((x: ContractItem, i: number) => i === idx ? { ...x, activationValue: n } : x) })); }} />
                       </div>
                       <div className="col-span-3 sm:col-span-3">
                         <Label className="text-[10px] text-muted-foreground">Mensalidade (R$)</Label>
-                        <Input type="number" min={0} step="0.01" className="h-8 text-xs" value={it.monthlyValue}
-                          onChange={(e) => setForm((f: any) => ({ ...f, items: f.items.map((x: ContractItem, i: number) => i === idx ? { ...x, monthlyValue: Number(e.target.value) || 0 } : x) }))} />
+                        <Input type="number" min={0} step="0.01" className="h-8 text-xs" value={it.monthlyValue || ""}
+                          onChange={(e) => { const r = e.target.value; const n = r === "" ? 0 : Number(r); setForm((f: any) => ({ ...f, items: f.items.map((x: ContractItem, i: number) => i === idx ? { ...x, monthlyValue: n } : x) })); }} />
                       </div>
                       <div className="col-span-1">
                         <Button type="button" size="icon" variant="ghost" className="h-8 w-8"

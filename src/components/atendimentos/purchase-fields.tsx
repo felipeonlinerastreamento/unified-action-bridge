@@ -92,12 +92,11 @@ export function PurchaseFields({ items, onChange }: Props) {
                 <Input
                   type="number"
                   min={1}
-                  value={line.quantity}
-                  onChange={(e) =>
-                    updateLine(idx, {
-                      quantity: Math.max(1, parseInt(e.target.value, 10) || 1),
-                    })
-                  }
+                  value={line.quantity || ""}
+                  onChange={(e) => {
+                    const r = e.target.value;
+                    updateLine(idx, { quantity: r === "" ? 0 : parseInt(r, 10) || 0 });
+                  }}
                   className="h-9 w-20"
                   placeholder="Qtd"
                 />
@@ -107,9 +106,10 @@ export function PurchaseFields({ items, onChange }: Props) {
                     min={0}
                     step="0.01"
                     value={line.unit_price || ""}
-                    onChange={(e) =>
-                      updateLine(idx, { unit_price: parseFloat(e.target.value) || 0 })
-                    }
+                    onChange={(e) => {
+                      const r = e.target.value;
+                      updateLine(idx, { unit_price: r === "" ? 0 : parseFloat(r) || 0 });
+                    }}
                     className="h-9 w-24"
                     placeholder="R$"
                   />

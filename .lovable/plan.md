@@ -1,27 +1,35 @@
-## Objetivo
+## Problema
 
-Na categoria "Liberação de Equipamento" (e demais), o balão amarelo **"Padrão de Serviços do cliente"** é carregado automaticamente a partir do cadastro da empresa. Adicionar a opção de **ocultar esse balão apenas para o ticket aberto**, sem afetar o cadastro da empresa nem outros chamados.
+Campos numéricos (Qtd., Valor, etc.) começam com `0` por padrão e, ao apagar, o `onChange` faz `Number("") || 0`, voltando para `0` na hora — impossível digitar um valor novo sem antes selecionar o "0" manualmente.
 
-## Comportamento
+## Solução
 
-- Novo botão "X" (ícone de fechar) no canto superior direito do balão amarelo, ao lado de "Padrão de Serviços do cliente".
-- Ao clicar:
-  - O balão some imediatamente (UI otimista).
-  - É gravado no ticket que esse balão foi dispensado.
-  - Toast de confirmação ("Padrão ocultado neste atendimento").
-- A dispensa é **por ticket** — abrir outro ticket da mesma empresa continua mostrando o balão normalmente.
-- O cadastro de "Padrão de Serviços" da empresa **não é alterado**.
-- Permissões: qualquer usuário autenticado que já enxerga o ticket pode ocultar.
+Padronizar o comportamento em todos os inputs `type="number"` de lançamento de itens:
 
-## Reversão
+- Exibir **vazio** quando o valor for `0` (ou `null`/`undefined`).
+- No `onChange`, manter `""` como `0` internamente (para os cálculos continuarem funcionando), mas **sem reescrever o "0" no campo**.
+- O usuário consegue limpar o campo, digitar o novo número, e o valor é gravado normalmente.
 
-Por padrão, uma vez ocultado fica ocultado. Caso o usuário queira reexibir, há um pequeno link discreto **"Mostrar padrão do cliente"** no rodapé das observações, que limpa a flag e traz o balão de volta.
+## Arquivos a atualizar
 
-## Detalhes técnicos
+Todos os inputs numéricos de itens/quantidades/valores nestes componentes:
 
-- Nova coluna `service_tickets.hide_service_templates boolean not null default false` (migration).
-- `src/components/atendimentos/ticket-detail-panel.tsx`:
-  - Condicionar a renderização do bloco `serviceTemplates.length > 0` também a `!ticket.hide_service_templates`.
-  - Botão "X" chama `supabase.from('service_tickets').update({ hide_service_templates: true }).eq('id', ticket.id)`, depois `onRefetch()`.
-  - Quando `hide_service_templates === true` e existir `serviceTemplates.length > 0`, renderizar o link "Mostrar padrão do cliente" (ação reversa).
-- Sem alterações em RLS (a tabela `service_tickets` já permite update pelos papéis autorizados). Tipos do Supabase serão regenerados após a migration.
+- `src/components/crm/crm-pipeline-tab.tsx` — Qtd., Ativação (R$), Mensalidade (R$) da proposta.
+- `src/components/atendimentos/liberacao-equipamento-fields.tsx` e `ticket-liberacao-section.tsx` — quantidade.
+- `src/components/atendimentos/suprimento-fields.tsx` e `ticket-suprimento-section.tsx` — quantidade.
+- `src/components/atendimentos/compra-equipamento-fields.tsx` e `ticket-compra-equipamento-section.tsx` — quantidade/valor.
+- `src/components/atendimentos/perdidos-fields.tsx` e `ticket-perdidos-section.tsx` — quantidade/valor.
+- `src/components/atendimentos/purchase-fields.tsx` e `ticket-purchase-section.tsx` — quantidade/valor.
+
+Padrão aplicado em cada `<Input type="number" ...>`:
+
+```tsx
+value={it.quantity === 0 ? "" : it.quantity}
+onChange={(e) => {
+  const raw = e.target.value;
+  const n = raw === "" ? 0 : Number(raw);
+  // grava n (mantém 0 quando vazio para totais)
+}}
+```
+
+Sem alteração de schema, sem alteração de validações de submit já existentes (que continuam exigindo `quantity >= 1` quando aplicável).

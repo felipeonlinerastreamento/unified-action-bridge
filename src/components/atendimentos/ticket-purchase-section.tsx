@@ -298,13 +298,12 @@ export function TicketPurchaseSection({ ticket, userId, onRefetch }: Props) {
                     className="col-span-1 h-7 text-xs"
                     type="number"
                     min={1}
-                    value={it.quantity}
-                    onChange={(e) =>
-                      updateItem.mutate({
-                        id: it.id,
-                        patch: { quantity: Math.max(1, parseInt(e.target.value, 10) || 1) },
-                      })
-                    }
+                    value={it.quantity || ""}
+                    onChange={(e) => {
+                      const r = e.target.value;
+                      const n = r === "" ? 0 : parseInt(r, 10) || 0;
+                      updateItem.mutate({ id: it.id, patch: { quantity: n } });
+                    }}
                   />
                   {showPrice && (
                     <Input
@@ -314,12 +313,11 @@ export function TicketPurchaseSection({ ticket, userId, onRefetch }: Props) {
                       step={0.01}
                       placeholder="Unit."
                       value={it.unit_price || ""}
-                      onChange={(e) =>
-                        updateItem.mutate({
-                          id: it.id,
-                          patch: { unit_price: Math.max(0, parseFloat(e.target.value) || 0) },
-                        })
-                      }
+                      onChange={(e) => {
+                        const r = e.target.value;
+                        const n = r === "" ? 0 : parseFloat(r) || 0;
+                        updateItem.mutate({ id: it.id, patch: { unit_price: n } });
+                      }}
                     />
                   )}
                   {showPrice && (
@@ -403,8 +401,8 @@ export function TicketPurchaseSection({ ticket, userId, onRefetch }: Props) {
             <Input
               type="number"
               min={1}
-              value={newQty}
-              onChange={(e) => setNewQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
+              value={newQty || ""}
+              onChange={(e) => { const r = e.target.value; setNewQty(r === "" ? 0 : parseInt(r, 10) || 0); }}
               className="col-span-2 h-8 text-xs"
               placeholder="Qtd"
             />
@@ -414,7 +412,7 @@ export function TicketPurchaseSection({ ticket, userId, onRefetch }: Props) {
                 min={0}
                 step={0.01}
                 value={newPrice || ""}
-                onChange={(e) => setNewPrice(Math.max(0, parseFloat(e.target.value) || 0))}
+                onChange={(e) => { const r = e.target.value; setNewPrice(r === "" ? 0 : parseFloat(r) || 0); }}
                 className="col-span-3 h-8 text-xs"
                 placeholder="Valor unit."
               />
@@ -512,9 +510,7 @@ export function TicketPurchaseSection({ ticket, userId, onRefetch }: Props) {
               step={0.01}
               className="h-8 text-xs"
               value={form.freight || ""}
-              onChange={(e) =>
-                setForm({ ...form, freight: Math.max(0, parseFloat(e.target.value) || 0) })
-              }
+              onChange={(e) => { const r = e.target.value; const n = r === "" ? 0 : parseFloat(r) || 0; setForm({ ...form, freight: n }); }}
               onBlur={() => saveHeader.mutate({ freight: form.freight })}
             />
           </div>
