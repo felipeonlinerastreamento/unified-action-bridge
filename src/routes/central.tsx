@@ -2445,6 +2445,8 @@ function CentralPage() {
       setFinalizeTipoPendencia("");
       setFinalizeSubcategoryId("");
       setFinalizeEquipmentModelId("");
+      setLinkedTicketId("");
+      setLinkedTicketSearch("");
 
       setTeData(EMPTY_TESTE_EQUIPAMENTO);
       setLiberacaoItems([]);
