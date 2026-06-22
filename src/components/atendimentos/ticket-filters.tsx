@@ -40,6 +40,7 @@ export interface TicketFilters {
   assignedTo: string;
   trackingStatus: string;
   recurring: string;
+  controleSheet: string;
 }
 
 export const defaultFilters: TicketFilters = {
@@ -54,6 +55,7 @@ export const defaultFilters: TicketFilters = {
   assignedTo: "todos",
   trackingStatus: "todos",
   recurring: "todos",
+  controleSheet: "todos",
 };
 
 interface Props {
@@ -150,6 +152,7 @@ export function TicketFiltersBar({ filters, onChange, tickets, profiles, open, o
     if (filters.search) c++;
     if (filters.trackingStatus !== "todos") c++;
     if (filters.recurring !== "todos") c++;
+    if (filters.controleSheet !== "todos") c++;
     return c;
   }, [filters]);
 
@@ -271,6 +274,19 @@ export function TicketFiltersBar({ filters, onChange, tickets, profiles, open, o
               </Select>
             </div>
 
+            {/* Planilha de controle */}
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Planilha de controle</label>
+              <Select value={filters.controleSheet} onValueChange={(v) => set({ controleSheet: v })}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos</SelectItem>
+                  <SelectItem value="com">Com planilha</SelectItem>
+                  <SelectItem value="sem">Sem planilha</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Date from */}
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground">Data Início</label>
@@ -350,6 +366,10 @@ export function applyTicketFilters(tickets: any[], filters: TicketFilters): any[
     // Recurring
     if (filters.recurring === "sim" && !t.is_recurring) return false;
     if (filters.recurring === "nao" && t.is_recurring) return false;
+
+    // Planilha de controle
+    if (filters.controleSheet === "com" && !t.has_controle_sheet) return false;
+    if (filters.controleSheet === "sem" && t.has_controle_sheet) return false;
 
     // Sector
     if (filters.sector !== "todos" && t.sector !== filters.sector) return false;
