@@ -2092,7 +2092,7 @@ function CentralPage() {
       }
 
       // Check category routing rules for auto-forwarding
-      if (tipoPendencia) {
+      if (!linkedId && tipoPendencia) {
         try {
           const { data: routingRules } = await supabase
             .from("category_routing_rules")
