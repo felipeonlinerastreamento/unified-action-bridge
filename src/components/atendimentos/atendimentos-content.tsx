@@ -160,6 +160,19 @@ export function AtendimentosContent({ autoOpenTicketId }: { autoOpenTicketId?: s
           if (r.ticket_id) recurringSet.add(r.ticket_id);
         }
       }
+
+      // Planilhas de controle vinculadas (por ticket_id)
+      const controleTicketSet = new Set<string>();
+      if (ids.length > 0) {
+        const { data: links } = await supabase
+          .from("chat_controle_links" as any)
+          .select("ticket_id")
+          .not("ticket_id", "is", null);
+        for (const l of (links as any[]) || []) {
+          if (l.ticket_id) controleTicketSet.add(l.ticket_id);
+        }
+      }
+
       return list.map((t: any) => ({
         ...t,
         last_comment_at: lastByTicket[t.id] || null,
@@ -170,6 +183,7 @@ export function AtendimentosContent({ autoOpenTicketId }: { autoOpenTicketId?: s
         purchase_request: (typeof purchaseRequestByTicket !== "undefined" ? purchaseRequestByTicket[t.id] : undefined) || null,
         agent_user_ids: (typeof agentsByTicket !== "undefined" ? agentsByTicket[t.id] : undefined) || [],
         is_recurring: typeof recurringSet !== "undefined" ? recurringSet.has(t.id) : false,
+        has_controle_sheet: controleTicketSet.has(t.id),
       }));
     },
     refetchInterval: 30000,
