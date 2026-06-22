@@ -1,61 +1,34 @@
-# Aba "Técnico" no chat + listagem em Contatos
+# Ações de conversa nos cadastros de contato
 
-## Objetivo
-Permitir cadastrar um "Técnico" (Nome, Telefone, Endereço, Observação) ao vincular um novo contato no chat. O técnico fica vinculado ao número do chat e é listado em **Contatos → Técnicos**.
+Adicionar dois botões no topo dos diálogos de cadastro/edição de Técnico, Subcliente e Contato do CRM:
 
-## 1. Banco de dados (migration)
+- **Histórico de conversa** — abre o `FullConversationHistoryDialog` já existente com todas as mensagens trocadas com aquele número (em qualquer protocolo/chat).
+- **Iniciar conversa** — abre (ou cria) o chat na Central para aquele número e navega direto para `/central?chat=...&channel=...`.
 
-Nova tabela `public.chat_technicians`:
-- `id uuid` (PK)
-- `contact_phone text not null` — telefone do chat (normalizado em dígitos) ao qual o técnico pertence
-- `name text not null`
-- `phone text` — telefone do técnico
-- `address text`
-- `notes text`
-- `created_by uuid` / `created_by_name text`
-- `updated_by uuid` / `updated_by_name text`
-- `created_at` / `updated_at` (com trigger `update_updated_at_column`)
+Os botões ficam habilitados quando o formulário tem um telefone preenchido. No Técnico, usa `Telefone` (ou `Tel. do contato vinculado` como fallback). Em Subcliente e CRM, usa o `Telefone` do contato.
 
-Índice em `contact_phone`.
+## Componente compartilhado
 
-GRANTs:
-- `GRANT SELECT, INSERT, UPDATE, DELETE ON public.chat_technicians TO authenticated;`
-- `GRANT ALL ON public.chat_technicians TO service_role;`
+Novo `src/components/contatos/contact-chat-actions.tsx` exportando `<ContactChatActions phone name />`:
 
-RLS (todos autenticados podem ler/escrever, conforme escolhido):
-- SELECT/INSERT/UPDATE/DELETE `TO authenticated USING (true) WITH CHECK (true)`.
+- Botão "Histórico de conversa": ao clicar, resolve o último `zapi_chats` para o telefone (mesmo padrão usado em `ticket-detail-panel.goToChat`: `ilike phone %slice(-10)%`, mais recente). Se achar, abre `FullConversationHistoryDialog` com `channelId`, `contactPhone`, `contactName`. Se não achar, mostra toast "Nenhuma conversa encontrada para este número".
+- Botão "Iniciar conversa": replica `startChatFromTicket` (sem vínculo a ticket). Procura chat existente; se houver, navega; se não, escolhe canal ativo via `rpc('list_channels_safe')` e cria novo `zapi_chats` com `status='em_atendimento'`, `assigned_to = auth user`, depois navega para `/central?chat=...&channel=...` e fecha o diálogo pai (via prop `onNavigate?: () => void`).
 
-## 2. Modal de identificação (`src/routes/central.tsx`)
+Permissão: qualquer usuário autenticado (mesmo padrão da Central).
 
-No `Tabs` em `~linha 4125` adicionar 5ª `TabsTrigger value="tecnico"` com ícone `Wrench`/`HardHat`.
+## Integração nos diálogos
 
-Novo `TabsContent value="tecnico"`:
-- Campos: Nome (obrigatório), Telefone (default = `contactPhone` do chat, editável), Endereço (Input), Observação (Textarea).
-- Validação com `zod` (nome 1-100 chars, demais opcionais com limites).
-- Botão "Salvar técnico" → `insert` em `chat_technicians` com `contact_phone = contactPhone normalizado`, captura `created_by`/`name` da sessão.
-- Após sucesso: toast, fecha modal, invalida query `["chat-technicians", contactPhone]`.
+1. **`src/components/contatos/technicians-admin.tsx`** — renderizar `<ContactChatActions>` no topo do conteúdo dos dois Dialogs (novo e editar). Telefone = `form.phone || form.contact_phone`. `onNavigate` fecha o diálogo.
 
-Também exibir abaixo do formulário a lista de técnicos já cadastrados para este `contact_phone`, cada item com botão excluir (mesmo usuário ou qualquer autenticado, conforme regra) — opcional mas útil.
+2. **`src/components/contatos/sub-clients-admin.tsx`** — renderizar no topo do Dialog. Telefone = `form.phone`. `onNavigate` fecha o diálogo.
 
-## 3. Página Contatos (`src/routes/contatos.tsx`)
-
-Adicionar 3ª `TabsTrigger value="tecnicos"` (ícone `Wrench`).
-
-Novo `TabsContent value="tecnicos"` renderiza um novo componente `<TechniciansAdmin />` em `src/components/contatos/technicians-admin.tsx`:
-- Lista paginada/filtrável (busca por nome, telefone do técnico ou telefone do contato).
-- Colunas: Nome, Telefone, Endereço, Observação, Telefone do contato (chat), Criado por, Atualizado em.
-- Ações: editar (dialog com mesmos campos) e excluir (com confirmação).
-- Usa `useQuery`/`useMutation` direto no Supabase com RLS.
-
-## 4. Tipos
-Após a migration aprovada, `src/integrations/supabase/types.ts` é regenerado e os componentes acima compilam.
+3. **`src/routes/crm.tsx`** — renderizar logo abaixo de `DialogHeader` no Dialog de contato. Telefone = `form.phone`. `onNavigate` fecha o diálogo.
 
 ## Arquivos
-- Migration nova: `supabase/migrations/<timestamp>_chat_technicians.sql`
-- Edit: `src/routes/central.tsx` (nova aba no modal de identificação)
-- Edit: `src/routes/contatos.tsx` (nova aba "Técnicos")
-- Novo: `src/components/contatos/technicians-admin.tsx`
 
-## Fora do escopo
-- Não altera tabela de sub-clientes nem CRM.
-- Não expõe técnico no painel lateral direito do chat (apenas no modal de vínculo e em Contatos), conforme respondido.
+- novo: `src/components/contatos/contact-chat-actions.tsx`
+- editar: `src/components/contatos/technicians-admin.tsx`
+- editar: `src/components/contatos/sub-clients-admin.tsx`
+- editar: `src/routes/crm.tsx`
+
+Sem alterações de banco/RLS — usa tabelas e RPC já existentes.

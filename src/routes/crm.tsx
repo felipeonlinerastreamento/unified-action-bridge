@@ -30,6 +30,7 @@ import { CrmBirthdaysTab } from "@/components/crm/crm-birthdays-tab";
 import { CrmPipelineTab } from "@/components/crm/crm-pipeline-tab";
 import { CrmTasksTab } from "@/components/crm/crm-tasks-tab";
 import { CrmFlowsTab } from "@/components/crm/crm-flows-tab";
+import { ContactChatActions } from "@/components/contatos/contact-chat-actions";
 
 export const Route = createFileRoute("/crm")({
   component: CrmPage,
@@ -589,6 +590,11 @@ function CrmPage() {
           <DialogHeader>
             <DialogTitle>{editingContact ? "Editar Contato" : "Novo Contato CRM"}</DialogTitle>
           </DialogHeader>
+          <ContactChatActions
+            phone={form.phone}
+            name={form.name}
+            onNavigate={() => { setDialogOpen(false); resetForm(); }}
+          />
           <div className="space-y-3">
             <div>
               <Label>Tipo de contato *</Label>

@@ -35,6 +35,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Search, Loader2, Pencil, Trash2, Wrench, RefreshCw, Plus } from "lucide-react";
 import { toast } from "sonner";
+import { ContactChatActions } from "@/components/contatos/contact-chat-actions";
 
 type Technician = {
   id: string;
@@ -340,6 +341,11 @@ export function TechniciansAdmin() {
               Cadastre um técnico vinculado a um número de contato.
             </DialogDescription>
           </DialogHeader>
+          <ContactChatActions
+            phone={form.phone || form.contact_phone}
+            name={form.name}
+            onNavigate={() => { setCreating(false); setForm(emptyForm); }}
+          />
           <div className="space-y-2">
             <div>
               <Label className="text-xs">Telefone do contato vinculado *</Label>
@@ -375,6 +381,11 @@ export function TechniciansAdmin() {
           <DialogHeader>
             <DialogTitle>Editar técnico</DialogTitle>
           </DialogHeader>
+          <ContactChatActions
+            phone={form.phone || form.contact_phone}
+            name={form.name}
+            onNavigate={() => setEditing(null)}
+          />
           {FormFields}
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditing(null)}>

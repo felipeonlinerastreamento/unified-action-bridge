@@ -17,6 +17,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
+import { ContactChatActions } from "@/components/contatos/contact-chat-actions";
 import {
   Search, UserPlus, Building2, Loader2, Trash2, Edit, Users, Phone,
 } from "lucide-react";
@@ -218,6 +219,11 @@ export function SubClientsAdmin() {
           <DialogHeader>
             <DialogTitle>{editing ? "Editar Sub-cliente" : "Novo Sub-cliente"}</DialogTitle>
           </DialogHeader>
+          <ContactChatActions
+            phone={form.phone}
+            name={form.name}
+            onNavigate={() => { setDialogOpen(false); resetForm(); }}
+          />
           <div className="space-y-3">
             <div>
               <Label>Nome *</Label>
