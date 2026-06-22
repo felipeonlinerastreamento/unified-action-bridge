@@ -381,6 +381,11 @@ export function TechniciansAdmin() {
           <DialogHeader>
             <DialogTitle>Editar técnico</DialogTitle>
           </DialogHeader>
+          <ContactChatActions
+            phone={form.phone || form.contact_phone}
+            name={form.name}
+            onNavigate={() => setEditing(null)}
+          />
           {FormFields}
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditing(null)}>
