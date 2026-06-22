@@ -151,8 +151,8 @@ export function TicketPerdidosSection({ ticket, userId, onRefetch }: Props) {
           <Input
             type="number"
             min={1}
-            value={newQty}
-            onChange={(e) => setNewQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
+            value={newQty || ""}
+            onChange={(e) => { const r = e.target.value; setNewQty(r === "" ? 0 : parseInt(r, 10) || 0); }}
             className="h-8 w-14 text-xs"
             title="Quantidade"
           />
@@ -160,8 +160,8 @@ export function TicketPerdidosSection({ ticket, userId, onRefetch }: Props) {
             type="number"
             min={0}
             step="0.01"
-            value={newValue}
-            onChange={(e) => setNewValue(Math.max(0, parseFloat(e.target.value) || 0))}
+            value={newValue || ""}
+            onChange={(e) => { const r = e.target.value; setNewValue(r === "" ? 0 : parseFloat(r) || 0); }}
             className="h-8 w-20 text-xs"
             title="Valor unitário"
           />
