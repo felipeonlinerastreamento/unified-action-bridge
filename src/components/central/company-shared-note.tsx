@@ -80,6 +80,7 @@ export function CompanySharedNote({ companyId }: CompanySharedNoteProps) {
         value={content}
         onChange={(e) => {
           setContent(e.target.value);
+          dirtyRef.current = true;
           setDirty(true);
         }}
         placeholder="Anotações compartilhadas sobre este contato/empresa. Visível para todos os usuários."
