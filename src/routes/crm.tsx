@@ -30,6 +30,7 @@ import { CrmBirthdaysTab } from "@/components/crm/crm-birthdays-tab";
 import { CrmPipelineTab } from "@/components/crm/crm-pipeline-tab";
 import { CrmTasksTab } from "@/components/crm/crm-tasks-tab";
 import { CrmFlowsTab } from "@/components/crm/crm-flows-tab";
+import { ContactChatActions } from "@/components/contatos/contact-chat-actions";
 
 export const Route = createFileRoute("/crm")({
   component: CrmPage,
