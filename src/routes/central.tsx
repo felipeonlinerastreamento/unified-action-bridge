@@ -970,6 +970,7 @@ function CentralPage() {
         name,
         phone: technicianForm.phone.trim() || null,
         address: technicianForm.address.trim() || null,
+        city_state: technicianForm.city_state.trim() || null,
         notes: technicianForm.notes.trim() || null,
         created_by: user?.id || null,
         created_by_name: profile?.name || user?.email || null,
@@ -981,7 +982,7 @@ function CentralPage() {
     },
     onSuccess: () => {
       toast.success("Técnico cadastrado");
-      setTechnicianForm({ name: "", phone: "", address: "", notes: "" });
+      setTechnicianForm({ name: "", phone: "", address: "", city_state: "", notes: "" });
       queryClient.invalidateQueries({ queryKey: ["chat-technicians", techPhoneKey] });
     },
     onError: (err: any) => toast.error(err?.message || "Erro ao cadastrar técnico"),
