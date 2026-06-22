@@ -1,35 +1,53 @@
-## Problema
+## Objetivo
+Permitir, dentro de uma proposta (oportunidade) do CRM, gerar novos orçamentos e manter um histórico de cada orçamento gerado com o nome do operador e a data de lançamento.
 
-Campos numéricos (Qtd., Valor, etc.) começam com `0` por padrão e, ao apagar, o `onChange` faz `Number("") || 0`, voltando para `0` na hora — impossível digitar um valor novo sem antes selecionar o "0" manualmente.
+## Comportamento
 
-## Solução
+Dentro do diálogo de edição de uma oportunidade do CRM:
 
-Padronizar o comportamento em todos os inputs `type="number"` de lançamento de itens:
+1. Novo botão **"Gerar novo orçamento"** ao lado de "Itens da proposta".
+2. Ao clicar, o sistema captura um snapshot dos itens atuais (categoria, quantidade, ativação, mensalidade) + totais e registra como um orçamento no histórico, junto com:
+   - operador (usuário logado)
+   - data/hora do lançamento
+3. Logo abaixo aparece a seção **"Histórico de orçamentos"**, listando cada orçamento gerado em ordem decrescente, mostrando:
+   - Nº do orçamento (sequencial dentro da proposta)
+   - Operador
+   - Data/hora
+   - Totais (ativação, mensalidade, qtd. de itens)
+   - Botão para expandir e ver os itens daquele orçamento (somente leitura)
+4. O histórico fica visível apenas dentro do diálogo da proposta (não na ficha do contato).
 
-- Exibir **vazio** quando o valor for `0` (ou `null`/`undefined`).
-- No `onChange`, manter `""` como `0` internamente (para os cálculos continuarem funcionando), mas **sem reescrever o "0" no campo**.
-- O usuário consegue limpar o campo, digitar o novo número, e o valor é gravado normalmente.
+Nada é copiado automaticamente entre orçamentos — cada clique apenas armazena o snapshot atual.
 
-## Arquivos a atualizar
+## Backend (migração)
 
-Todos os inputs numéricos de itens/quantidades/valores nestes componentes:
+Nova tabela `public.crm_opportunity_quotes`:
 
-- `src/components/crm/crm-pipeline-tab.tsx` — Qtd., Ativação (R$), Mensalidade (R$) da proposta.
-- `src/components/atendimentos/liberacao-equipamento-fields.tsx` e `ticket-liberacao-section.tsx` — quantidade.
-- `src/components/atendimentos/suprimento-fields.tsx` e `ticket-suprimento-section.tsx` — quantidade.
-- `src/components/atendimentos/compra-equipamento-fields.tsx` e `ticket-compra-equipamento-section.tsx` — quantidade/valor.
-- `src/components/atendimentos/perdidos-fields.tsx` e `ticket-perdidos-section.tsx` — quantidade/valor.
-- `src/components/atendimentos/purchase-fields.tsx` e `ticket-purchase-section.tsx` — quantidade/valor.
+- `opportunity_id` (FK → `crm_opportunities`, on delete cascade)
+- `quote_number` (int, sequencial por oportunidade)
+- `items` (jsonb — mesmo formato de `contract_items`)
+- `total_activation` (numeric)
+- `total_monthly` (numeric)
+- `notes` (text, opcional)
+- `created_by` (uuid → auth.users)
+- `created_at`, `updated_at`
 
-Padrão aplicado em cada `<Input type="number" ...>`:
+GRANTs para `authenticated` e `service_role`. RLS habilitado com políticas:
+- SELECT/INSERT para qualquer usuário autenticado (mesmo padrão de `crm_opportunities`).
+- UPDATE/DELETE somente admin/gestor.
 
-```tsx
-value={it.quantity === 0 ? "" : it.quantity}
-onChange={(e) => {
-  const raw = e.target.value;
-  const n = raw === "" ? 0 : Number(raw);
-  // grava n (mantém 0 quando vazio para totais)
-}}
-```
+Trigger `BEFORE INSERT` que calcula `quote_number` como `MAX(quote_number)+1` por `opportunity_id`.
 
-Sem alteração de schema, sem alteração de validações de submit já existentes (que continuam exigindo `quantity >= 1` quando aplicável).
+## Frontend
+
+- `src/lib/crm.functions.ts`: adicionar server functions `createOpportunityQuote` e `listOpportunityQuotes` usando `requireSupabaseAuth`.
+- `src/components/crm/crm-pipeline-tab.tsx`:
+  - No diálogo, adicionar botão "Gerar novo orçamento" que chama `createOpportunityQuote` com os itens do form atual.
+  - Renderizar lista de orçamentos via `useQuery(["crm-opportunity-quotes", editingId])`, com nome do operador (join com `profiles.name`) e data formatada em pt-BR.
+  - Invalidar a query após cada novo orçamento.
+  - Botão só fica ativo quando há `editingId` (proposta já salva) e itens > 0.
+
+## Fora de escopo
+- Não há cópia automática de itens entre orçamentos.
+- Não aparece na ficha do cliente/contato.
+- Não há edição de orçamento já lançado (apenas leitura no histórico).
