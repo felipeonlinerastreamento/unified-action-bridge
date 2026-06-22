@@ -61,6 +61,7 @@ export function CompanySharedNote({ companyId }: CompanySharedNoteProps) {
     },
     onSuccess: () => {
       toast.success("Observação salva");
+      dirtyRef.current = false;
       setDirty(false);
       queryClient.invalidateQueries({ queryKey: ["company-shared-note", companyId] });
     },
