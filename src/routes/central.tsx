@@ -867,7 +867,7 @@ function CentralPage() {
 
   // Identification modal form state
   const [identTab, setIdentTab] = useState<"vincular" | "subcliente" | "vincular-sub" | "crm" | "tecnico">("vincular");
-  const [technicianForm, setTechnicianForm] = useState<{ name: string; phone: string; address: string; notes: string }>({ name: "", phone: "", address: "", notes: "" });
+  const [technicianForm, setTechnicianForm] = useState<{ name: string; phone: string; address: string; city_state: string; notes: string }>({ name: "", phone: "", address: "", city_state: "", notes: "" });
   type IdentContractItem = { categoryId: string; quantity: number; activationValue: number; monthlyValue: number };
   const [identForm, setIdentForm] = useState<{ name: string; phone: string; email: string; notes: string; companyId: string; contactType: "PF" | "PJ" | "FORN"; categoryId: string; cnpj: string; companyNameInput: string; items: IdentContractItem[]; referralId: string; supplierCategory: string }>({ name: "", phone: "", email: "", notes: "", companyId: "", contactType: "PF", categoryId: "", cnpj: "", companyNameInput: "", items: [], referralId: "", supplierCategory: "" });
   const [companySearch, setCompanySearch] = useState("");
@@ -970,6 +970,7 @@ function CentralPage() {
         name,
         phone: technicianForm.phone.trim() || null,
         address: technicianForm.address.trim() || null,
+        city_state: technicianForm.city_state.trim() || null,
         notes: technicianForm.notes.trim() || null,
         created_by: user?.id || null,
         created_by_name: profile?.name || user?.email || null,
@@ -981,7 +982,7 @@ function CentralPage() {
     },
     onSuccess: () => {
       toast.success("Técnico cadastrado");
-      setTechnicianForm({ name: "", phone: "", address: "", notes: "" });
+      setTechnicianForm({ name: "", phone: "", address: "", city_state: "", notes: "" });
       queryClient.invalidateQueries({ queryKey: ["chat-technicians", techPhoneKey] });
     },
     onError: (err: any) => toast.error(err?.message || "Erro ao cadastrar técnico"),
@@ -4637,8 +4638,17 @@ function CentralPage() {
                   <Input
                     value={technicianForm.address}
                     onChange={(e) => setTechnicianForm((f) => ({ ...f, address: e.target.value }))}
-                    placeholder="Rua, número, bairro, cidade"
+                    placeholder="Rua, número, bairro"
                     maxLength={300}
+                  />
+                </div>
+                <div>
+                  <Label className="text-xs">Cidade/Estado</Label>
+                  <Input
+                    value={technicianForm.city_state}
+                    onChange={(e) => setTechnicianForm((f) => ({ ...f, city_state: e.target.value }))}
+                    placeholder="Belo Horizonte/MG"
+                    maxLength={120}
                   />
                 </div>
                 <div>
@@ -4671,6 +4681,7 @@ function CentralPage() {
                           <p className="font-medium truncate">{t.name}</p>
                           {t.phone && <p className="text-muted-foreground">{t.phone}</p>}
                           {t.address && <p className="text-muted-foreground truncate">{t.address}</p>}
+                          {t.city_state && <p className="text-muted-foreground truncate">{t.city_state}</p>}
                           {t.notes && <p className="text-muted-foreground line-clamp-2">{t.notes}</p>}
                         </div>
                         <Button

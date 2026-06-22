@@ -973,6 +973,7 @@ export type Database = {
       chat_technicians: {
         Row: {
           address: string | null
+          city_state: string | null
           contact_phone: string
           created_at: string
           created_by: string | null
@@ -987,6 +988,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          city_state?: string | null
           contact_phone: string
           created_at?: string
           created_by?: string | null
@@ -1001,6 +1003,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          city_state?: string | null
           contact_phone?: string
           created_at?: string
           created_by?: string | null

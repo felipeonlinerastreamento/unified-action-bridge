@@ -1,0 +1,1 @@
+ALTER TABLE public.chat_technicians ADD COLUMN IF NOT EXISTS city_state text;
