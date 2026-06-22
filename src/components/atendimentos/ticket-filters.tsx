@@ -367,6 +367,10 @@ export function applyTicketFilters(tickets: any[], filters: TicketFilters): any[
     if (filters.recurring === "sim" && !t.is_recurring) return false;
     if (filters.recurring === "nao" && t.is_recurring) return false;
 
+    // Planilha de controle
+    if (filters.controleSheet === "com" && !t.has_controle_sheet) return false;
+    if (filters.controleSheet === "sem" && t.has_controle_sheet) return false;
+
     // Sector
     if (filters.sector !== "todos" && t.sector !== filters.sector) return false;
 
