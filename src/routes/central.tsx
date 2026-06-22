@@ -314,6 +314,8 @@ function CentralPage() {
   const [finalizeTipoPendencia, setFinalizeTipoPendencia] = useState<string>("");
   const [finalizeSubcategoryId, setFinalizeSubcategoryId] = useState<string>("");
   const [finalizeEquipmentModelId, setFinalizeEquipmentModelId] = useState<string>("");
+  const [linkedTicketId, setLinkedTicketId] = useState<string>("");
+  const [linkedTicketSearch, setLinkedTicketSearch] = useState<string>("");
 
   const [showTeDialog, setShowTeDialog] = useState(false);
   const [teData, setTeData] = useState<TesteEquipamentoData>(EMPTY_TESTE_EQUIPAMENTO);
