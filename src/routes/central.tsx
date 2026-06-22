@@ -2040,7 +2040,7 @@ function CentralPage() {
         }
       }
       // Check if this category triggers a service flow
-      if (tipoPendencia) {
+      if (!linkedId && tipoPendencia) {
         try {
           const { data: matchingFlows } = await supabase
             .from("service_flows")
