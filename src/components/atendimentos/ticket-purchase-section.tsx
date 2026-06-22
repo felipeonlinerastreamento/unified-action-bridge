@@ -401,8 +401,8 @@ export function TicketPurchaseSection({ ticket, userId, onRefetch }: Props) {
             <Input
               type="number"
               min={1}
-              value={newQty}
-              onChange={(e) => setNewQty(Math.max(1, parseInt(e.target.value, 10) || 1))}
+              value={newQty || ""}
+              onChange={(e) => { const r = e.target.value; setNewQty(r === "" ? 0 : parseInt(r, 10) || 0); }}
               className="col-span-2 h-8 text-xs"
               placeholder="Qtd"
             />
@@ -412,7 +412,7 @@ export function TicketPurchaseSection({ ticket, userId, onRefetch }: Props) {
                 min={0}
                 step={0.01}
                 value={newPrice || ""}
-                onChange={(e) => setNewPrice(Math.max(0, parseFloat(e.target.value) || 0))}
+                onChange={(e) => { const r = e.target.value; setNewPrice(r === "" ? 0 : parseFloat(r) || 0); }}
                 className="col-span-3 h-8 text-xs"
                 placeholder="Valor unit."
               />
