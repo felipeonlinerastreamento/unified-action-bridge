@@ -97,23 +97,38 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
   const { data: presence = [], isLoading: presenceLoading } = useQuery({
     queryKey: ["journey-presence", fromIso, toIso, operatorFilter || ""],
     queryFn: async () => {
-      let q = supabase
-        .from("audit_logs")
-        .select("user_id, user_name, event_type, created_at")
-        .eq("event_category", "presence")
-        .in("event_type", ["set_online", "set_offline"])
-        .gte("created_at", fromIso)
-        .lte("created_at", toIso)
-        .order("created_at", { ascending: true });
-      if (operatorFilter) q = q.eq("user_id", operatorFilter);
-      const { data, error } = await q;
-      if (error) throw error;
-      return (data || []) as Array<{
+      const pageSize = 1000;
+      let offset = 0;
+      const all: Array<{
         user_id: string; user_name: string | null;
         event_type: string; created_at: string;
-      }>;
+      }> = [];
+      // Paginate to avoid Supabase's default 1000-row cap dropping the most
+      // recent days when ordering ascending.
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        let q = supabase
+          .from("audit_logs")
+          .select("user_id, user_name, event_type, created_at")
+          .eq("event_category", "presence")
+          .in("event_type", ["set_online", "set_offline"])
+          .gte("created_at", fromIso)
+          .lte("created_at", toIso)
+          .order("created_at", { ascending: true })
+          .range(offset, offset + pageSize - 1);
+        if (operatorFilter) q = q.eq("user_id", operatorFilter);
+        const { data, error } = await q;
+        if (error) throw error;
+        const rows = (data || []) as typeof all;
+        all.push(...rows);
+        if (rows.length < pageSize) break;
+        offset += pageSize;
+        if (offset > 100000) break; // safety
+      }
+      return all;
     },
   });
+
 
   type JourneyRow = {
     userId: string; userName: string; day: string;

@@ -1,70 +1,36 @@
 ## Problema
 
-No relatório **Jornada & Ociosidade**, uma linha (operador × dia) só aparece se:
+No relatório **Jornada & Ociosidade**:
+- Dia 25/06 não mostra nenhum operador
+- Dia 24/06 está faltando Derick, Paulo e Fernanda
 
-1. Há eventos `set_online`/`set_offline` em `audit_logs` (categoria `presence`), OU
-2. O operador enviou mensagens (`zapi_messages.from_me=true`) em chats atribuídos a ele dentro da janela.
+## Causa raiz
 
-Operadores que trabalharam mas não clicaram no toggle de disponibilidade **e** não enviaram mensagens pelo WhatsApp (ex.: trabalharam só em tickets, comentários, transferências, atribuições) ficam invisíveis. Isso explica:
+As duas queries que alimentam o relatório estão sendo **truncadas pelo limite do Supabase**:
 
-- 25/06 → nenhum (ninguém tocou no toggle nem mandou WhatsApp ainda)
-- 24/06 → Derick, Paulo e Fernanda ausentes
-- 23/06 → só Davi
+1. **`journey-presence`** (eventos `set_online`/`set_offline` em `audit_logs`) — não tem `.limit()` definido, então o Supabase aplica o default de **1000 linhas**.
+2. **`journey-activity-logs`** (todos os `audit_logs` para detectar atividade de quem não togglou presença) — tem `.limit(20000)` sem paginação.
+
+Como ambas usam `order("created_at", { ascending: true })` (mais antigos primeiro), quando o volume passa do limite os eventos **mais recentes** (dia 24 final e dia 25 inteiro) são cortados. Por isso o relatório "para" antes de chegar nos dias atuais.
 
 ## Solução
 
-### 1. Ampliar a detecção de "atividade do dia"
+Paginar as duas queries em blocos de 1000 linhas usando `.range(offset, offset+999)`, em loop, até esgotar o intervalo. Mesma técnica usada em outros relatórios do projeto.
 
-Adicionar uma terceira fonte de atividade: **todos os `audit_logs`** do operador no dia (qualquer `event_category`, não só `presence`). Isso captura qualquer ação registrada: abertura/transferência de chat, comentário em ticket, atualização de status, login, etc.
+### Arquivo a alterar
 
-A linha do operador passa a ser criada quando existe **qualquer** das fontes:
-- evento de presença (mantém comportamento atual: calcula tempo online e pausas)
-- mensagem enviada (`zapi_messages`)
-- **(novo)** qualquer audit log do dia
+`src/components/relatorios/journey-idle-tab.tsx`
 
-Quando não há presença, `Tempo Online` continua sendo estimado pelo intervalo da primeira→última atividade (como já faz hoje para o fallback de mensagens), e `Fim` mostra "Em atividade" se a última atividade foi hoje.
+### Mudanças
 
-### 2. Nova coluna "Início / Finalização"
+1. **Query `journey-presence`**: substituir a chamada única por loop paginado de 1000 em 1000 até retornar menos que 1000.
+2. **Query `journey-activity-logs`**: idem — paginar em vez de `.limit(20000)`. Manter o `.not("user_id","is",null)` e demais filtros.
+3. **Manter** ordenação ascendente final (combinando os chunks) — a lógica de `bump()` e agrupamento por dia não muda.
 
-Adicionar coluna à direita de **Fim** mostrando, em formato `HH:mm → HH:mm`, o horário da **primeira** e **última** atividade do dia, computados pela união de:
+Não precisa migration. Não mexe em RLS. Não altera Ociosidade nem coluna Início/Finalização — apenas garante que todos os dados do intervalo sejam carregados.
 
-- `audit_logs.created_at` (todos os eventos do user/dia)
-- `zapi_messages.created_at` (mensagens enviadas)
-- eventos de presença
+## Verificação
 
-A diferença para as colunas atuais:
-- **Início / Fim** atuais refletem só presença (`set_online` / `set_offline`).
-- **Início / Finalização** nova reflete a primeira e a última ação real (mesmo sem toggle).
-
-Também incluída no export CSV (`InicioAtividade`, `FimAtividade`).
-
-## Detalhes técnicos
-
-Arquivo: `src/components/relatorios/journey-idle-tab.tsx`
-
-1. Nova query `activity-audit-logs`:
-   ```ts
-   supabase.from("audit_logs")
-     .select("user_id, user_name, created_at")
-     .gte("created_at", fromIso).lte("created_at", toIso)
-     .order("created_at", { ascending: true })
-   ```
-   (filtra por `operatorFilter` quando setado; sem `event_category`).
-
-2. No `useMemo` que monta `journeyRows`:
-   - Construir índice `activityByUserDay[user::day] = { first, last }` unindo audit_logs + zapi_messages + presence.
-   - Após gerar `out` (presença + fallback mensagens), iterar `activityByUserDay`. Para chaves ainda não presentes em `out`, criar linha sintetizada (sem presença) usando `first`/`last` como `firstOnline`/`lastOffline`, `stillOnline = (day === hoje)`, `totalMinutes = (last-first)/60000`.
-   - Para todas as linhas, anexar `firstActivity` e `lastActivity` (string ISO) a partir do índice.
-
-3. Tipo `JourneyRow` ganha `firstActivity: string | null; lastActivity: string | null`.
-
-4. Tabela: nova `<TableHead>Início / Finalização</TableHead>` após "Fim", renderizando `${fmtTime(firstActivity)} → ${fmtTime(lastActivity)}` (ou `—`).
-
-5. `exportJourney`: novos campos `InicioAtividade`, `FimAtividade`.
-
-Nenhuma migração necessária.
-
-## Fora de escopo
-
-- Não altera a seção de Ociosidade (gaps de chats), apenas Jornada.
-- Não cria registro automático de presença para operadores que esqueceram do toggle — só infere a janela de atividade para exibição.
+Após o fix, abrir o relatório no período que inclui 23–25/06 e confirmar que:
+- Dia 25 mostra operadores que tiveram atividade hoje
+- Dia 24 mostra Derick, Paulo e Fernanda
