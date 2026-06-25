@@ -668,6 +668,17 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
                             </Badge>
                           ) : fmtTime(r.lastOffline)}
                         </TableCell>
+                        <TableCell className="whitespace-nowrap text-xs">
+                          {r.firstActivity || r.lastActivity ? (
+                            <>
+                              {fmtTime(r.firstActivity)}
+                              <span className="text-muted-foreground"> → </span>
+                              {r.stillOnline ? (
+                                <span className="text-emerald-700">agora</span>
+                              ) : fmtTime(r.lastActivity)}
+                            </>
+                          ) : "—"}
+                        </TableCell>
                         <TableCell>{fmtHm(r.totalMinutes)}</TableCell>
                         <TableCell className="text-right">{r.pauses}</TableCell>
                         <TableCell className="text-right">{r.attendancesStarted}</TableCell>
