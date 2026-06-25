@@ -59,8 +59,17 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
   const [dayFilter, setDayFilter] = useState<string>("__all__");
 
 
-  const fromIso = `${dateFrom}T00:00:00`;
-  const toIso = `${dateTo}T23:59:59`;
+  // Janela em horário de Brasília (UTC-3) para que o dia 24 BRT inclua
+  // eventos até 23:59 BRT (que em UTC já são do dia 25).
+  const fromIso = `${dateFrom}T00:00:00-03:00`;
+  const toIso = `${dateTo}T23:59:59-03:00`;
+
+  // Converte ISO (UTC) para data YYYY-MM-DD em horário de Brasília.
+  const brtDay = (iso: string) => {
+    const d = new Date(iso);
+    d.setUTCHours(d.getUTCHours() - 3);
+    return d.toISOString().slice(0, 10);
+  };
 
   // Operators list
   const { data: operators = [] } = useQuery({
