@@ -1,36 +1,38 @@
-## Problema
+## Diagnóstico
 
-No relatório **Jornada & Ociosidade**:
-- Dia 25/06 não mostra nenhum operador
-- Dia 24/06 está faltando Derick, Paulo e Fernanda
+Verifiquei o chat referente ao protocolo **#02897** (telefone 5527999175043, id `70f33d43…`):
 
-## Causa raiz
+- `status = "bot"` (preso no nó `welcome` do fluxo do bot)
+- `assigned_to = null`, `sector_name = null`
+- Última mensagem: 25/06 12:59 — ou seja, o cliente respondeu, mas o bot não avançou e o chat **nunca entrou em `aguardando`**.
 
-As duas queries que alimentam o relatório estão sendo **truncadas pelo limite do Supabase**:
+A rotina que distribui automaticamente para operadores (`/api/public/auto-route-aguardando`) só processa chats com **`status = 'aguardando'`** e `sector_name IS NULL` parados há ≥10 min. Como esse chat ficou em `status = 'bot'`, ele nunca foi considerado para distribuição — por isso continuou sem operador apesar do tempo.
 
-1. **`journey-presence`** (eventos `set_online`/`set_offline` em `audit_logs`) — não tem `.limit()` definido, então o Supabase aplica o default de **1000 linhas**.
-2. **`journey-activity-logs`** (todos os `audit_logs` para detectar atividade de quem não togglou presença) — tem `.limit(20000)` sem paginação.
+Não existe hoje nenhuma rotina que retire chats travados no bot e os encaminhe automaticamente.
 
-Como ambas usam `order("created_at", { ascending: true })` (mais antigos primeiro), quando o volume passa do limite os eventos **mais recentes** (dia 24 final e dia 25 inteiro) são cortados. Por isso o relatório "para" antes de chegar nos dias atuais.
+## Proposta
 
-## Solução
+Estender a rotina `api.public.auto-route-aguardando.tsx` para também tratar chats parados em `status = 'bot'`:
 
-Paginar as duas queries em blocos de 1000 linhas usando `.range(offset, offset+999)`, em loop, até esgotar o intervalo. Mesma técnica usada em outros relatórios do projeto.
+1. Após processar os `aguardando`, buscar `zapi_chats` com:
+   - `status = 'bot'`
+   - `assigned_to IS NULL`
+   - `last_message_at < now() - INTERVAL '10 minutes'` (mesmo `IDLE_MINUTES` atual)
+   - ignorar grupos (`@g.us` / sufixo `-group` / telefone > 15 dígitos), igual ao `chat-idle-scanner`.
+2. Para cada um, chamar `pick_least_loaded_agent_any('Atendimento')` e, se houver operador:
+   - `update` para `status = 'em_atendimento'`, `sector_name = 'Atendimento'`, `assigned_to = <agent>`, `bot_state = {}` (libera do bot).
+   - Log em `attendance_event_logs` com `event_type = 'auto_route_bot_stuck'`.
+3. Se não houver operador disponível: apenas mover o chat para `status = 'aguardando'` + `sector_name = 'Atendimento'` (assim a rotina existente passa a vê-lo) e logar `auto_route_bot_stuck_no_agent`.
+4. Manter `limit(100)` por execução e o response JSON agregando os dois blocos (`aguardando` + `bot`).
 
-### Arquivo a alterar
+## Detalhes técnicos
 
-`src/components/relatorios/journey-idle-tab.tsx`
+- Arquivo único alterado: `src/routes/api.public.auto-route-aguardando.tsx`.
+- Sem migração — usa colunas e RPC já existentes (`pick_least_loaded_agent_any`, `attendance_event_logs`).
+- A cron que já chama esse endpoint passa a cobrir os dois casos sem mudança de agendamento.
+- O chat #02897 específico será capturado na próxima execução da rotina após o deploy.
 
-### Mudanças
+## Pontos a confirmar
 
-1. **Query `journey-presence`**: substituir a chamada única por loop paginado de 1000 em 1000 até retornar menos que 1000.
-2. **Query `journey-activity-logs`**: idem — paginar em vez de `.limit(20000)`. Manter o `.not("user_id","is",null)` e demais filtros.
-3. **Manter** ordenação ascendente final (combinando os chunks) — a lógica de `bump()` e agrupamento por dia não muda.
-
-Não precisa migration. Não mexe em RLS. Não altera Ociosidade nem coluna Início/Finalização — apenas garante que todos os dados do intervalo sejam carregados.
-
-## Verificação
-
-Após o fix, abrir o relatório no período que inclui 23–25/06 e confirmar que:
-- Dia 25 mostra operadores que tiveram atividade hoje
-- Dia 24 mostra Derick, Paulo e Fernanda
+- Manter o limite de **10 minutos** também para chats em `bot`, ou usar um valor diferente (ex.: 15/20 min)?
+- Quando não há operador online, prefere mover para `aguardando` (proposta acima) ou deixar em `bot` e só logar?
