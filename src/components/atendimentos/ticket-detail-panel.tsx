@@ -1721,8 +1721,9 @@ function EditableRow(props: {
   onSave: () => void;
   saving: boolean;
   companies: { id: string; name: string }[];
+  rightAction?: React.ReactNode;
 }) {
-  const { label, field, displayValue, editable, editingField, fieldDraft, setFieldDraft, onStart, onCancel, onSave, saving, companies } = props;
+  const { label, field, displayValue, editable, editingField, fieldDraft, setFieldDraft, onStart, onCancel, onSave, saving, companies, rightAction } = props;
   const isEditing = editingField === field;
   return (
     <div className="flex gap-2 text-sm items-start">
@@ -1774,6 +1775,7 @@ function EditableRow(props: {
                 <Pencil className="h-3 w-3" />
               </Button>
             )}
+            {rightAction}
           </div>
         )}
       </div>
