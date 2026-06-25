@@ -501,6 +501,8 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
         Data: r.day,
         Inicio: fmtTime(r.firstOnline),
         Fim: r.stillOnline ? "Em atividade" : fmtTime(r.lastOffline),
+        InicioAtividade: fmtTime(r.firstActivity),
+        FimAtividade: r.stillOnline ? "Em atividade" : fmtTime(r.lastActivity),
         TempoOnline: fmtHm(r.totalMinutes),
         Pausas: r.pauses,
         AtendimentosIniciados: r.attendancesStarted,
