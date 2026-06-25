@@ -1,14 +1,70 @@
-## Bug
+## Problema
 
-O `CompanySharedNote` é renderizado uma única vez no painel direito da Central. Quando o operador troca de chat (mudando a empresa identificada), o componente é reutilizado com novo `companyId`, mas o `useState` interno mantém o `content` digitado/exibido para a empresa anterior. Como o `useEffect` que sincroniza o conteúdo da query só atualiza quando `dirty === false`, basta o usuário ter editado o texto da empresa anterior (sem salvar) para o texto "viajar" para todas as outras empresas.
+No relatório **Jornada & Ociosidade**, uma linha (operador × dia) só aparece se:
 
-## Fix
+1. Há eventos `set_online`/`set_offline` em `audit_logs` (categoria `presence`), OU
+2. O operador enviou mensagens (`zapi_messages.from_me=true`) em chats atribuídos a ele dentro da janela.
 
-Em `src/components/central/company-shared-note.tsx`:
+Operadores que trabalharam mas não clicaram no toggle de disponibilidade **e** não enviaram mensagens pelo WhatsApp (ex.: trabalharam só em tickets, comentários, transferências, atribuições) ficam invisíveis. Isso explica:
 
-- Resetar `content` e `dirty` sempre que `companyId` mudar, antes da query nova retornar — assim o textarea fica vazio enquanto carrega e a empresa correta sempre é exibida.
-- Substituir o `useEffect([data?.content, dirty])` por um efeito que dispara em `[companyId, data?.content]` e usa `dirty` apenas como guarda interna via ref (não como dependência), evitando o caso em que `dirty` da empresa A bloqueia a hidratação da empresa B.
+- 25/06 → nenhum (ninguém tocou no toggle nem mandou WhatsApp ainda)
+- 24/06 → Derick, Paulo e Fernanda ausentes
+- 23/06 → só Davi
 
-Em `src/routes/central.tsx` (linha 3795): adicionar `key={companyLookup.id}` no `<CompanySharedNote />` como reforço — garante remount quando a empresa muda, eliminando qualquer estado residual.
+## Solução
 
-Sem migração nem mudanças no schema (`company_shared_notes` já é por `company_id`).
+### 1. Ampliar a detecção de "atividade do dia"
+
+Adicionar uma terceira fonte de atividade: **todos os `audit_logs`** do operador no dia (qualquer `event_category`, não só `presence`). Isso captura qualquer ação registrada: abertura/transferência de chat, comentário em ticket, atualização de status, login, etc.
+
+A linha do operador passa a ser criada quando existe **qualquer** das fontes:
+- evento de presença (mantém comportamento atual: calcula tempo online e pausas)
+- mensagem enviada (`zapi_messages`)
+- **(novo)** qualquer audit log do dia
+
+Quando não há presença, `Tempo Online` continua sendo estimado pelo intervalo da primeira→última atividade (como já faz hoje para o fallback de mensagens), e `Fim` mostra "Em atividade" se a última atividade foi hoje.
+
+### 2. Nova coluna "Início / Finalização"
+
+Adicionar coluna à direita de **Fim** mostrando, em formato `HH:mm → HH:mm`, o horário da **primeira** e **última** atividade do dia, computados pela união de:
+
+- `audit_logs.created_at` (todos os eventos do user/dia)
+- `zapi_messages.created_at` (mensagens enviadas)
+- eventos de presença
+
+A diferença para as colunas atuais:
+- **Início / Fim** atuais refletem só presença (`set_online` / `set_offline`).
+- **Início / Finalização** nova reflete a primeira e a última ação real (mesmo sem toggle).
+
+Também incluída no export CSV (`InicioAtividade`, `FimAtividade`).
+
+## Detalhes técnicos
+
+Arquivo: `src/components/relatorios/journey-idle-tab.tsx`
+
+1. Nova query `activity-audit-logs`:
+   ```ts
+   supabase.from("audit_logs")
+     .select("user_id, user_name, created_at")
+     .gte("created_at", fromIso).lte("created_at", toIso)
+     .order("created_at", { ascending: true })
+   ```
+   (filtra por `operatorFilter` quando setado; sem `event_category`).
+
+2. No `useMemo` que monta `journeyRows`:
+   - Construir índice `activityByUserDay[user::day] = { first, last }` unindo audit_logs + zapi_messages + presence.
+   - Após gerar `out` (presença + fallback mensagens), iterar `activityByUserDay`. Para chaves ainda não presentes em `out`, criar linha sintetizada (sem presença) usando `first`/`last` como `firstOnline`/`lastOffline`, `stillOnline = (day === hoje)`, `totalMinutes = (last-first)/60000`.
+   - Para todas as linhas, anexar `firstActivity` e `lastActivity` (string ISO) a partir do índice.
+
+3. Tipo `JourneyRow` ganha `firstActivity: string | null; lastActivity: string | null`.
+
+4. Tabela: nova `<TableHead>Início / Finalização</TableHead>` após "Fim", renderizando `${fmtTime(firstActivity)} → ${fmtTime(lastActivity)}` (ou `—`).
+
+5. `exportJourney`: novos campos `InicioAtividade`, `FimAtividade`.
+
+Nenhuma migração necessária.
+
+## Fora de escopo
+
+- Não altera a seção de Ociosidade (gaps de chats), apenas Jornada.
+- Não cria registro automático de presença para operadores que esqueceram do toggle — só infere a janela de atividade para exibição.
