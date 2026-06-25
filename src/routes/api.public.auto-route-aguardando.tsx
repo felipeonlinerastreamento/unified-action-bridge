@@ -170,12 +170,15 @@ export const Route = createFileRoute("/api/public/auto-route-aguardando")({
     handlers: {
       POST: async ({ request }) => {
         if (!isAuthorizedCronRequest(request)) return unauthorizedCronResponse();
-        const result = await processAutoRoute();
-        return new Response(JSON.stringify(result), {
-          status: result.ok ? 200 : 500,
-          headers: { "Content-Type": "application/json" },
-        });
+        const aguardando = await processAutoRoute();
+        const bot = await processBotStuck();
+        const ok = aguardando.ok && bot.ok;
+        return new Response(
+          JSON.stringify({ ok, aguardando, bot }),
+          { status: ok ? 200 : 500, headers: { "Content-Type": "application/json" } },
+        );
       },
+
       GET: async ({ request }) => {
         if (!isAuthorizedCronRequest(request)) return unauthorizedCronResponse();
         return new Response("ok");
