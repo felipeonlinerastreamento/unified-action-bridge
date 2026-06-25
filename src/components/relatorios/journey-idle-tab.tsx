@@ -109,10 +109,32 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
   type JourneyRow = {
     userId: string; userName: string; day: string;
     firstOnline: string | null; lastOffline: string | null;
+    firstActivity: string | null; lastActivity: string | null;
     totalMinutes: number; pauses: number; stillOnline: boolean;
     attendancesStarted: number; messagesSent: number;
     timeline: Array<{ type: "set_online" | "set_offline"; at: string }>;
   };
+
+  // All audit logs (any category) — used to detect activity for operators
+  // who never toggled presence and didn't send WhatsApp messages.
+  const { data: activityLogs = [], isLoading: activityLoading } = useQuery({
+    queryKey: ["journey-activity-logs", fromIso, toIso, operatorFilter || ""],
+    queryFn: async () => {
+      let q = supabase
+        .from("audit_logs")
+        .select("user_id, user_name, created_at")
+        .not("user_id", "is", null)
+        .gte("created_at", fromIso)
+        .lte("created_at", toIso)
+        .order("created_at", { ascending: true });
+      if (operatorFilter) q = q.eq("user_id", operatorFilter);
+      const { data, error } = await q.limit(20000);
+      if (error) throw error;
+      return (data || []) as Array<{
+        user_id: string; user_name: string | null; created_at: string;
+      }>;
+    },
+  });
 
 
   // ============ IDLENESS ============
