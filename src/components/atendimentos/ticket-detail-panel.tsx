@@ -1127,6 +1127,13 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
               onSave={saveField}
               saving={savingField}
               companies={companiesList}
+              rightAction={
+                ticket.contact_phone && ticket.status !== "finalizado" ? (
+                  <Button size="sm" variant="default" onClick={startChatFromTicket} className="gap-1 ml-1 h-7 text-xs">
+                    <Send className="h-3 w-3" /> Iniciar conversa
+                  </Button>
+                ) : null
+              }
             />
             <EditableRow
               label="Empresa"
