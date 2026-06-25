@@ -531,7 +531,7 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
   };
 
 
-  const loading = presenceLoading || chatsLoading || msgsLoading;
+  const loading = presenceLoading || chatsLoading || msgsLoading || activityLoading;
 
   const cfgBar: ChartConfig = { minutes: { label: "Minutos ociosos", color: "hsl(var(--chart-4))" } };
   const cfgLine: ChartConfig = { minutes: { label: "Minutos ociosos", color: "hsl(var(--chart-2))" } };
