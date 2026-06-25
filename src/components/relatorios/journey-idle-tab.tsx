@@ -219,26 +219,33 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
   });
 
   const { data: opMessages = [], isLoading: msgsLoading } = useQuery({
-    queryKey: ["journey-op-messages", fromIso, toIso, chats.map((c) => c.id).join(",")],
-    enabled: chats.length > 0,
+    queryKey: ["journey-op-messages", fromIso, toIso, operatorFilter || ""],
     queryFn: async () => {
-      const chatIds = chats.map((c) => c.id);
-      // Paginate by 200 chats per request
+      // Conta mensagens enviadas por operador DIRETO de zapi_messages
+      // (independente do chat estar atribuído), para não perder envios em
+      // chats com assigned_to nulo. Pagina para suportar dias com volume.
+      const pageSize = 1000;
+      let offset = 0;
       const all: Array<{ chat_id: string; created_at: string; sent_by_user_id: string | null; from_me: boolean }> = [];
-      const chunk = 200;
-      for (let i = 0; i < chatIds.length; i += chunk) {
-        const slice = chatIds.slice(i, i + chunk);
-        const { data, error } = await supabase
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        let q = supabase
           .from("zapi_messages")
           .select("chat_id, created_at, sent_by_user_id, from_me")
-          .in("chat_id", slice)
           .eq("from_me", true)
+          .not("sent_by_user_id", "is", null)
           .gte("created_at", fromIso)
           .lte("created_at", toIso)
           .order("created_at", { ascending: true })
-          .limit(10000);
+          .range(offset, offset + pageSize - 1);
+        if (operatorFilter) q = q.eq("sent_by_user_id", operatorFilter);
+        const { data, error } = await q;
         if (error) throw error;
-        all.push(...((data || []) as any));
+        const rows = (data || []) as typeof all;
+        all.push(...rows);
+        if (rows.length < pageSize) break;
+        offset += pageSize;
+        if (offset > 100000) break; // safety
       }
       return all;
     },
