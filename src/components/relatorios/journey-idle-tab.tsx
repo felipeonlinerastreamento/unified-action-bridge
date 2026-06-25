@@ -239,57 +239,83 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
       ).length;
       out.push({
         userId: g.userId, userName: g.userName, day: g.day,
-        firstOnline, lastOffline, totalMinutes: total,
+        firstOnline, lastOffline,
+        firstActivity: null, lastActivity: null,
+        totalMinutes: total,
         pauses, stillOnline,
         attendancesStarted, messagesSent, timeline,
       });
     });
 
-    // Fallback: synthesize rows for (user, day) pairs that have message activity
-    // but no presence audit events (operators who didn't toggle the availability button).
-    const presenceKeys = new Set(Object.keys(groups));
-    const msgGroups: Record<string, { userId: string; day: string; firsts: string; lasts: string; count: number }> = {};
-    opMessages.forEach((m) => {
-      if (!m.sent_by_user_id) return;
-      const day = m.created_at.slice(0, 10);
-      const key = `${m.sent_by_user_id}::${day}`;
-      if (presenceKeys.has(key)) return;
-      if (!msgGroups[key]) {
-        msgGroups[key] = { userId: m.sent_by_user_id, day, firsts: m.created_at, lasts: m.created_at, count: 0 };
+    // Build per-(user,day) activity window from union of audit logs, messages, and presence
+    const activityIdx: Record<string, { userId: string; userName: string; day: string; first: string; last: string }> = {};
+    const bump = (uid: string, uname: string | null, at: string) => {
+      const day = at.slice(0, 10);
+      const key = `${uid}::${day}`;
+      if (!activityIdx[key]) {
+        activityIdx[key] = { userId: uid, userName: uname || opName[uid] || "—", day, first: at, last: at };
+      } else {
+        if (at < activityIdx[key].first) activityIdx[key].first = at;
+        if (at > activityIdx[key].last) activityIdx[key].last = at;
+        if (!activityIdx[key].userName || activityIdx[key].userName === "—") {
+          activityIdx[key].userName = uname || opName[uid] || activityIdx[key].userName;
+        }
       }
-      const g = msgGroups[key];
-      if (m.created_at < g.firsts) g.firsts = m.created_at;
-      if (m.created_at > g.lasts) g.lasts = m.created_at;
-      g.count++;
-    });
-    Object.values(msgGroups).forEach((g) => {
-      const todayStr = new Date().toISOString().slice(0, 10);
+    };
+    presence.forEach((ev) => bump(ev.user_id, ev.user_name, ev.created_at));
+    opMessages.forEach((m) => { if (m.sent_by_user_id) bump(m.sent_by_user_id, null, m.created_at); });
+    activityLogs.forEach((a) => bump(a.user_id, a.user_name, a.created_at));
+
+    // Fallback: synthesize rows for (user, day) pairs with activity but no presence row
+    const existingKeys = new Set(out.map((r) => `${r.userId}::${r.day}`));
+    const todayStr = new Date().toISOString().slice(0, 10);
+    Object.values(activityIdx).forEach((g) => {
+      const key = `${g.userId}::${g.day}`;
+      if (existingKeys.has(key)) return;
       const isToday = g.day === todayStr;
-      const start = new Date(g.firsts).getTime();
-      const end = new Date(g.lasts).getTime();
+      const start = new Date(g.first).getTime();
+      const end = new Date(g.last).getTime();
       const total = Math.max(0, (end - start) / 60000);
       const attendancesStarted = chats.filter((c) =>
         c.assigned_to === g.userId && c.created_at.slice(0, 10) === g.day
       ).length;
+      const messagesSent = opMessages.filter((m) =>
+        m.sent_by_user_id === g.userId && m.created_at.slice(0, 10) === g.day
+      ).length;
       out.push({
         userId: g.userId,
-        userName: opName[g.userId] || "—",
+        userName: g.userName,
         day: g.day,
-        firstOnline: g.firsts,
-        lastOffline: isToday ? null : g.lasts,
+        firstOnline: null,
+        lastOffline: null,
+        firstActivity: g.first,
+        lastActivity: isToday ? g.last : g.last,
         totalMinutes: total,
         pauses: 0,
         stillOnline: isToday,
         attendancesStarted,
-        messagesSent: g.count,
+        messagesSent,
         timeline: [],
       });
+    });
+
+    // Attach firstActivity/lastActivity to every row from the activity index
+    out.forEach((r) => {
+      const idx = activityIdx[`${r.userId}::${r.day}`];
+      if (idx) {
+        r.firstActivity = idx.first;
+        r.lastActivity = idx.last;
+      } else {
+        // Fall back to presence times if no other activity recorded
+        r.firstActivity = r.firstOnline;
+        r.lastActivity = r.lastOffline;
+      }
     });
 
     return out.sort((a, b) =>
       b.day.localeCompare(a.day) || a.userName.localeCompare(b.userName)
     );
-  }, [presence, opName, chats, opMessages]);
+  }, [presence, opName, chats, opMessages, activityLogs]);
 
 
 
