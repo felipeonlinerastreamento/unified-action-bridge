@@ -647,6 +647,7 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
                       <TableHead>Data</TableHead>
                       <TableHead>Início</TableHead>
                       <TableHead>Fim</TableHead>
+                      <TableHead>Início / Finalização</TableHead>
                       <TableHead>Tempo Online</TableHead>
                       <TableHead className="text-right">Pausas</TableHead>
                       <TableHead className="text-right">Atend. iniciados</TableHead>
