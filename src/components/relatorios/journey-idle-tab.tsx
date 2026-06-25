@@ -197,7 +197,7 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
   const journeyRows = useMemo<JourneyRow[]>(() => {
     const groups: Record<string, { userId: string; userName: string; day: string; events: typeof presence }> = {};
     presence.forEach((ev) => {
-      const day = ev.created_at.slice(0, 10);
+      const day = brtDay(ev.created_at);
       const key = `${ev.user_id}::${day}`;
       if (!groups[key]) {
         groups[key] = {
@@ -241,10 +241,10 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
         stillOnline = true;
       }
       const attendancesStarted = chats.filter((c) =>
-        c.assigned_to === g.userId && c.created_at.slice(0, 10) === g.day
+        c.assigned_to === g.userId && brtDay(c.created_at) === g.day
       ).length;
       const messagesSent = opMessages.filter((m) =>
-        m.sent_by_user_id === g.userId && m.created_at.slice(0, 10) === g.day
+        m.sent_by_user_id === g.userId && brtDay(m.created_at) === g.day
       ).length;
       out.push({
         userId: g.userId, userName: g.userName, day: g.day,
@@ -259,7 +259,7 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
     // Build per-(user,day) activity window from union of audit logs, messages, and presence
     const activityIdx: Record<string, { userId: string; userName: string; day: string; first: string; last: string }> = {};
     const bump = (uid: string, uname: string | null, at: string) => {
-      const day = at.slice(0, 10);
+      const day = brtDay(at);
       const key = `${uid}::${day}`;
       if (!activityIdx[key]) {
         activityIdx[key] = { userId: uid, userName: uname || opName[uid] || "—", day, first: at, last: at };
@@ -277,7 +277,7 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
 
     // Fallback: synthesize rows for (user, day) pairs with activity but no presence row
     const existingKeys = new Set(out.map((r) => `${r.userId}::${r.day}`));
-    const todayStr = new Date().toISOString().slice(0, 10);
+    const todayStr = brtDay(new Date().toISOString());
     Object.values(activityIdx).forEach((g) => {
       const key = `${g.userId}::${g.day}`;
       if (existingKeys.has(key)) return;
@@ -286,10 +286,10 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
       const end = new Date(g.last).getTime();
       const total = Math.max(0, (end - start) / 60000);
       const attendancesStarted = chats.filter((c) =>
-        c.assigned_to === g.userId && c.created_at.slice(0, 10) === g.day
+        c.assigned_to === g.userId && brtDay(c.created_at) === g.day
       ).length;
       const messagesSent = opMessages.filter((m) =>
-        m.sent_by_user_id === g.userId && m.created_at.slice(0, 10) === g.day
+        m.sent_by_user_id === g.userId && brtDay(m.created_at) === g.day
       ).length;
       out.push({
         userId: g.userId,
@@ -390,7 +390,7 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
   const idleByDay = useMemo(() => {
     const m: Record<string, { date: string; minutes: number }> = {};
     gaps.forEach((g) => {
-      const day = g.start.slice(0, 10);
+      const day = brtDay(g.start);
       if (!m[day]) m[day] = { date: day, minutes: 0 };
       m[day].minutes += g.minutes;
     });
@@ -421,7 +421,7 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
     () => gaps.filter((g) =>
       matchesOperator(g.userId) &&
       matchesContact(`${g.contact} ${g.phone}`) &&
-      matchesDay(g.start.slice(0, 10))
+      matchesDay(brtDay(g.start))
     ),
     [gaps, localOperator, contactSearch, dayFilter]
   );
@@ -441,7 +441,7 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
   const filteredIdleByDay = useMemo(() => {
     const m: Record<string, { date: string; minutes: number }> = {};
     filteredGaps.forEach((g) => {
-      const day = g.start.slice(0, 10);
+      const day = brtDay(g.start);
       if (!m[day]) m[day] = { date: day, minutes: 0 };
       m[day].minutes += g.minutes;
     });
@@ -478,7 +478,7 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
       }
     }
     journeyRows.forEach((r) => set.add(r.day));
-    gaps.forEach((g) => set.add(g.start.slice(0, 10)));
+    gaps.forEach((g) => set.add(brtDay(g.start)));
     return Array.from(set).sort((a, b) => b.localeCompare(a));
   }, [journeyRows, gaps, dateFrom, dateTo]);
 
