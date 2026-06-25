@@ -179,21 +179,42 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
   const { data: chats = [], isLoading: chatsLoading } = useQuery({
     queryKey: ["journey-chats", fromIso, toIso, operatorFilter || ""],
     queryFn: async () => {
-      let q = supabase
-        .from("zapi_chats")
-        .select("id, phone, contact_name, assigned_to, status, created_at, closed_at, last_message_at")
-        .not("assigned_to", "is", null)
-        .or(`closed_at.gte.${fromIso},closed_at.is.null`)
-        .lte("created_at", toIso);
-      if (operatorFilter) q = q.eq("assigned_to", operatorFilter);
-      const { data, error } = await q.limit(2000);
-      if (error) throw error;
-      return (data || []) as Array<{
+      // Chats relevantes à janela: criados, fechados OU com última mensagem
+      // dentro do período. Sem `.or()` truncado, sem `.limit(2000)` sem
+      // ordenação (que descartava os chats mais recentes do dia atual).
+      const pageSize = 1000;
+      let offset = 0;
+      type Row = {
         id: string; phone: string; contact_name: string | null;
         assigned_to: string; status: string;
         created_at: string; closed_at: string | null;
         last_message_at: string | null;
-      }>;
+      };
+      const all: Row[] = [];
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        let q = supabase
+          .from("zapi_chats")
+          .select("id, phone, contact_name, assigned_to, status, created_at, closed_at, last_message_at")
+          .not("assigned_to", "is", null)
+          .or(
+            `last_message_at.gte.${fromIso},` +
+            `closed_at.gte.${fromIso},` +
+            `created_at.gte.${fromIso}`
+          )
+          .lte("created_at", toIso)
+          .order("last_message_at", { ascending: false, nullsFirst: false })
+          .range(offset, offset + pageSize - 1);
+        if (operatorFilter) q = q.eq("assigned_to", operatorFilter);
+        const { data, error } = await q;
+        if (error) throw error;
+        const rows = (data || []) as Row[];
+        all.push(...rows);
+        if (rows.length < pageSize) break;
+        offset += pageSize;
+        if (offset > 20000) break; // safety
+      }
+      return all;
     },
   });
 
