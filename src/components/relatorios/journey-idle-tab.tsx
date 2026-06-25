@@ -144,21 +144,35 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
   const { data: activityLogs = [], isLoading: activityLoading } = useQuery({
     queryKey: ["journey-activity-logs", fromIso, toIso, operatorFilter || ""],
     queryFn: async () => {
-      let q = supabase
-        .from("audit_logs")
-        .select("user_id, user_name, created_at")
-        .not("user_id", "is", null)
-        .gte("created_at", fromIso)
-        .lte("created_at", toIso)
-        .order("created_at", { ascending: true });
-      if (operatorFilter) q = q.eq("user_id", operatorFilter);
-      const { data, error } = await q.limit(20000);
-      if (error) throw error;
-      return (data || []) as Array<{
+      const pageSize = 1000;
+      let offset = 0;
+      const all: Array<{
         user_id: string; user_name: string | null; created_at: string;
-      }>;
+      }> = [];
+      // Paginate to avoid truncating recent days when the period is busy.
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        let q = supabase
+          .from("audit_logs")
+          .select("user_id, user_name, created_at")
+          .not("user_id", "is", null)
+          .gte("created_at", fromIso)
+          .lte("created_at", toIso)
+          .order("created_at", { ascending: true })
+          .range(offset, offset + pageSize - 1);
+        if (operatorFilter) q = q.eq("user_id", operatorFilter);
+        const { data, error } = await q;
+        if (error) throw error;
+        const rows = (data || []) as typeof all;
+        all.push(...rows);
+        if (rows.length < pageSize) break;
+        offset += pageSize;
+        if (offset > 200000) break; // safety
+      }
+      return all;
     },
   });
+
 
 
   // ============ IDLENESS ============
