@@ -307,6 +307,7 @@ function CentralPage() {
   const [newChatTab, setNewChatTab] = useState<"saved" | "manual">("saved");
   const [newChatPickedContact, setNewChatPickedContact] = useState<PickedContact | null>(null);
   const [showFinalizeConfirm, setShowFinalizeConfirm] = useState(false);
+  const [showFinalizeReview, setShowFinalizeReview] = useState(false);
   const [finalizeNotes, setFinalizeNotes] = useState("");
   const [skipClosingMessage, setSkipClosingMessage] = useState(false);
   const [escalateToGestao, setEscalateToGestao] = useState(false);
