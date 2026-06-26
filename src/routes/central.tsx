@@ -448,7 +448,9 @@ function CentralPage() {
       }) as { chats: ChatItem[]; users: any[]; total: number };
     },
     enabled: !!selectedChannelId && isAuthenticated,
-    refetchInterval: 10000,
+    refetchInterval: 20000,
+    staleTime: 15000,
+    refetchOnWindowFocus: false,
   });
 
   const allChats = openChatsData?.chats || [];
