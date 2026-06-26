@@ -307,6 +307,7 @@ function CentralPage() {
   const [newChatTab, setNewChatTab] = useState<"saved" | "manual">("saved");
   const [newChatPickedContact, setNewChatPickedContact] = useState<PickedContact | null>(null);
   const [showFinalizeConfirm, setShowFinalizeConfirm] = useState(false);
+  const [showFinalizeReview, setShowFinalizeReview] = useState(false);
   const [finalizeNotes, setFinalizeNotes] = useState("");
   const [skipClosingMessage, setSkipClosingMessage] = useState(false);
   const [escalateToGestao, setEscalateToGestao] = useState(false);
@@ -4999,6 +5000,68 @@ function CentralPage() {
                   toast.error('Observação é obrigatória quando a categoria for "Não categorizar".');
                   return;
                 }
+                // Abre revisão final (Cliente / Placa / Descrição)
+                setShowFinalizeReview(true);
+              }}
+              disabled={(!linkedTicketId && !finalizeTipoPendencia) || finalizeMutation.isPending}
+            >
+              {finalizeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+              {linkedTicketId ? "Vincular e encerrar" : "Finalizar"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Revisão final antes de finalizar — confere Cliente / Placa / Descrição */}
+      <Dialog open={showFinalizeReview} onOpenChange={setShowFinalizeReview}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <CheckCircle2 className="h-5 w-5 text-primary" />
+              Confira antes de finalizar
+            </DialogTitle>
+            <DialogDescription>
+              Revise os dados abaixo. A placa é opcional — você pode finalizar mesmo sem informá-la.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3 text-sm">
+            <div className="rounded-md border p-3 space-y-2 bg-muted/20">
+              <div className="flex gap-2">
+                <span className="font-medium text-muted-foreground min-w-[88px]">Cliente:</span>
+                <span className="break-all">
+                  {companyLookup?.name
+                    || subClientLookup?.name
+                    || chatDetail?.contact?.name
+                    || chatDetail?.description
+                    || contactPhone
+                    || "—"}
+                </span>
+              </div>
+              <div className="flex gap-2 items-center">
+                <span className="font-medium text-muted-foreground min-w-[88px]">Placa:</span>
+                <Input
+                  className="h-8 text-sm flex-1"
+                  placeholder="Opcional — ex: ABC1D23"
+                  value={ticketPlate}
+                  onChange={(e) => setTicketPlate(e.target.value.toUpperCase().replace(/\s|-/g, ""))}
+                  maxLength={8}
+                />
+              </div>
+              <div className="flex gap-2">
+                <span className="font-medium text-muted-foreground min-w-[88px]">Descrição:</span>
+                <span className="break-words whitespace-pre-wrap flex-1">
+                  {finalizeNotes.trim() || <span className="text-muted-foreground italic">(sem observação)</span>}
+                </span>
+              </div>
+            </div>
+          </div>
+          <div className="flex justify-end gap-2 mt-2">
+            <Button variant="outline" onClick={() => setShowFinalizeReview(false)}>
+              Voltar
+            </Button>
+            <Button
+              onClick={() => {
+                const tipoLabel = tiposPendencia.find((t) => t.Key === finalizeTipoPendencia)?.Descricao || "";
                 let notesToSend = finalizeNotes || "";
                 if (!linkedTicketId && isTesteEquipamentoCategory(tipoLabel, teSettings)) {
                   notesToSend = buildTesteEquipamentoNotes(teData, notesToSend);
@@ -5015,11 +5078,12 @@ function CentralPage() {
                   escalateGestao: isAdmin && escalateToGestao,
                   linkedTicketId: linkedTicketId || undefined,
                 });
+                setShowFinalizeReview(false);
               }}
-              disabled={(!linkedTicketId && !finalizeTipoPendencia) || finalizeMutation.isPending}
+              disabled={finalizeMutation.isPending}
             >
               {finalizeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
-              {linkedTicketId ? "Vincular e encerrar" : "Finalizar"}
+              Confirmar e Finalizar
             </Button>
           </div>
         </DialogContent>
