@@ -25,11 +25,12 @@ import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { listGSystemUsers, listSectors, listAllOpenChats } from "@/lib/gsystem.functions";
 import { getGSystemColaboradores } from "@/lib/gsystem-api.functions";
-import { createUser, updateUserRole, updateUserName, deleteUser, resetUserPassword, updateUserGroup } from "@/lib/user-admin.functions";
+import { createUser, updateUserRole, updateUserName, deleteUser, resetUserPassword, updateUserGroup, setUserActive } from "@/lib/user-admin.functions";
 import { toast } from "sonner";
 import {
   Users, Link as LinkIcon, Unlink, Loader2, Bot, Clock, Headphones,
   Moon, FolderTree, RefreshCw, UserPlus, Pencil, Trash2, KeyRound, Building2,
+  UserCheck, UserX,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
@@ -93,7 +94,7 @@ function UsuariosConfigPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("user_id, name, avatar_url, group_id, attendance_target_minutes, can_access_ai_manager")
+        .select("user_id, name, avatar_url, group_id, attendance_target_minutes, can_access_ai_manager, is_active")
         .order("name");
       if (error) throw error;
       return data || [];
@@ -359,6 +360,17 @@ function UsuariosConfigPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const activeMutation = useMutation({
+    mutationFn: async ({ userId, active }: { userId: string; active: boolean }) => {
+      await setUserActive({ data: { targetUserId: userId, active } });
+    },
+    onSuccess: (_d, vars) => {
+      toast.success(vars.active ? "Usuário reativado" : "Usuário inativado — acesso suspenso e fora da fila de chats");
+      queryClient.invalidateQueries({ queryKey: ["admin-profiles"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   // ========== Helpers ==========
   const getRolesForUser = (userId: string) => userRoles.filter((r) => r.user_id === userId).map((r) => r.role);
   const getLinkForUser = (userId: string) => gsystemLinks.find((l) => l.user_id === userId);
@@ -568,8 +580,15 @@ function UsuariosConfigPage() {
                     const userSectors = getSectorsForUser(profile.user_id);
                     const isSelf = profile.user_id === currentUser?.id;
                     return (
-                      <TableRow key={profile.user_id}>
-                        <TableCell className="font-medium">{profile.name || "Sem nome"}</TableCell>
+                      <TableRow key={profile.user_id} className={profile.is_active === false ? "opacity-60" : undefined}>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            <span>{profile.name || "Sem nome"}</span>
+                            {profile.is_active === false && (
+                              <Badge variant="outline" className="text-[10px] border-destructive text-destructive">Inativo</Badge>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             {roles.length > 0 && (
@@ -654,6 +673,29 @@ function UsuariosConfigPage() {
                             {!isSelf && (
                               <Button size="sm" variant="outline" onClick={() => handleOpenReset(profile)} title="Redefinir Senha">
                                 <KeyRound className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                            {!isSelf && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  const willInactivate = profile.is_active !== false;
+                                  const msg = willInactivate
+                                    ? `Inativar "${profile.name || "este usuário"}"? Ele perderá acesso ao sistema e deixará de receber novas conversas.`
+                                    : `Reativar "${profile.name || "este usuário"}"?`;
+                                  if (confirm(msg)) {
+                                    activeMutation.mutate({ userId: profile.user_id, active: !willInactivate ? true : false });
+                                  }
+                                }}
+                                disabled={activeMutation.isPending}
+                                title={profile.is_active === false ? "Reativar usuário" : "Inativar usuário"}
+                              >
+                                {profile.is_active === false ? (
+                                  <UserCheck className="h-3.5 w-3.5 text-emerald-600" />
+                                ) : (
+                                  <UserX className="h-3.5 w-3.5 text-amber-600" />
+                                )}
                               </Button>
                             )}
                             {!isSelf && (

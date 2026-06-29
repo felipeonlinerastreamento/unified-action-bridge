@@ -3473,6 +3473,7 @@ export type Database = {
           created_at: string
           group_id: string | null
           id: string
+          is_active: boolean
           is_chat_available: boolean
           last_seen_at: string | null
           name: string
@@ -3487,6 +3488,7 @@ export type Database = {
           created_at?: string
           group_id?: string | null
           id?: string
+          is_active?: boolean
           is_chat_available?: boolean
           last_seen_at?: string | null
           name?: string
@@ -3501,6 +3503,7 @@ export type Database = {
           created_at?: string
           group_id?: string | null
           id?: string
+          is_active?: boolean
           is_chat_available?: boolean
           last_seen_at?: string | null
           name?: string
