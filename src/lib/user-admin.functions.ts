@@ -179,6 +179,42 @@ export const deleteUser = createServerFn({ method: "POST" })
     return { success: true };
   });
 
+// Activate / Inactivate user
+// - Inativo: bane no Auth (impede login), marca is_active=false e is_chat_available=false (não recebe chats)
+// - Ativo: remove ban, marca is_active=true
+export const setUserActive = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    z.object({
+      targetUserId: z.string().uuid(),
+      active: z.boolean(),
+    }).parse
+  )
+  .handler(async ({ data, context }): Promise<{ success: boolean }> => {
+    await requireAdmin(context.supabase, context.userId);
+
+    if (data.targetUserId === context.userId) {
+      throw new Error("Você não pode inativar sua própria conta");
+    }
+
+    // Atualiza ban no Auth: 'none' libera, '876000h' (~100 anos) bloqueia
+    const { error: authErr } = await supabaseAdmin.auth.admin.updateUserById(data.targetUserId, {
+      ban_duration: data.active ? "none" : "876000h",
+    } as any);
+    if (authErr) throw new Error(`Erro ao atualizar acesso: ${authErr.message}`);
+
+    const patch: Record<string, unknown> = { is_active: data.active };
+    if (!data.active) patch.is_chat_available = false;
+
+    const { error: profErr } = await supabaseAdmin
+      .from("profiles")
+      .update(patch)
+      .eq("user_id", data.targetUserId);
+    if (profErr) throw new Error(`Erro ao atualizar perfil: ${profErr.message}`);
+
+    return { success: true };
+  });
+
 // List all profiles (bypasses RLS) — needed so atendentes can see/select
 // any user when forwarding tickets or linking ticket agents.
 export const listAllProfiles = createServerFn({ method: "POST" })
