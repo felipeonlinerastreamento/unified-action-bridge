@@ -94,7 +94,7 @@ function UsuariosConfigPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("user_id, name, avatar_url, group_id, attendance_target_minutes, can_access_ai_manager")
+        .select("user_id, name, avatar_url, group_id, attendance_target_minutes, can_access_ai_manager, is_active")
         .order("name");
       if (error) throw error;
       return data || [];
