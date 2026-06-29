@@ -5026,16 +5026,34 @@ function CentralPage() {
           </DialogHeader>
           <div className="space-y-3 text-sm">
             <div className="rounded-md border p-3 space-y-2 bg-muted/20">
-              <div className="flex gap-2">
-                <span className="font-medium text-muted-foreground min-w-[88px]">Cliente:</span>
-                <span className="break-all">
-                  {companyLookup?.name
-                    || subClientLookup?.name
-                    || chatDetail?.contact?.name
-                    || chatDetail?.description
-                    || contactPhone
-                    || "—"}
-                </span>
+              <div className="flex gap-2 items-start">
+                <span className="font-medium text-muted-foreground min-w-[88px] pt-1">Cliente:</span>
+                <div className="flex-1 space-y-2">
+                  <span className="break-all block">
+                    {companyLookup?.name
+                      || subClientLookup?.name
+                      || chatDetail?.contact?.name
+                      || chatDetail?.description
+                      || contactPhone
+                      || "—"}
+                  </span>
+                  <Select
+                    onValueChange={(companyId) => {
+                      linkCompanyMutation.mutate(companyId);
+                    }}
+                  >
+                    <SelectTrigger className="h-8 text-xs">
+                      <SelectValue placeholder={companyLookup ? "Alterar cliente..." : "Vincular a um cliente..."} />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {allCompanies.map((c: any) => (
+                        <SelectItem key={c.value} value={c.value}>
+                          {c.name}{c.fantasia && c.fantasia !== c.name ? ` (${c.fantasia})` : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <div className="flex gap-2 items-center">
                 <span className="font-medium text-muted-foreground min-w-[88px]">Placa:</span>
@@ -5055,6 +5073,7 @@ function CentralPage() {
               </div>
             </div>
           </div>
+
           <div className="flex justify-end gap-2 mt-2">
             <Button variant="outline" onClick={() => setShowFinalizeReview(false)}>
               Voltar
