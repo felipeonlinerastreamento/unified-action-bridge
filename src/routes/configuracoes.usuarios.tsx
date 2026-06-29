@@ -25,7 +25,7 @@ import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { listGSystemUsers, listSectors, listAllOpenChats } from "@/lib/gsystem.functions";
 import { getGSystemColaboradores } from "@/lib/gsystem-api.functions";
-import { createUser, updateUserRole, updateUserName, deleteUser, resetUserPassword, updateUserGroup } from "@/lib/user-admin.functions";
+import { createUser, updateUserRole, updateUserName, deleteUser, resetUserPassword, updateUserGroup, setUserActive } from "@/lib/user-admin.functions";
 import { toast } from "sonner";
 import {
   Users, Link as LinkIcon, Unlink, Loader2, Bot, Clock, Headphones,
