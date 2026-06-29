@@ -208,7 +208,7 @@ export const setUserActive = createServerFn({ method: "POST" })
 
     const { error: profErr } = await supabaseAdmin
       .from("profiles")
-      .update(patch)
+      .update(patch as any)
       .eq("user_id", data.targetUserId);
     if (profErr) throw new Error(`Erro ao atualizar perfil: ${profErr.message}`);
 
