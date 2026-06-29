@@ -580,8 +580,15 @@ function UsuariosConfigPage() {
                     const userSectors = getSectorsForUser(profile.user_id);
                     const isSelf = profile.user_id === currentUser?.id;
                     return (
-                      <TableRow key={profile.user_id}>
-                        <TableCell className="font-medium">{profile.name || "Sem nome"}</TableCell>
+                      <TableRow key={profile.user_id} className={profile.is_active === false ? "opacity-60" : undefined}>
+                        <TableCell className="font-medium">
+                          <div className="flex items-center gap-2">
+                            <span>{profile.name || "Sem nome"}</span>
+                            {profile.is_active === false && (
+                              <Badge variant="outline" className="text-[10px] border-destructive text-destructive">Inativo</Badge>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2">
                             {roles.length > 0 && (
