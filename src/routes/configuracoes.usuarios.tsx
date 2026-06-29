@@ -360,6 +360,17 @@ function UsuariosConfigPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const activeMutation = useMutation({
+    mutationFn: async ({ userId, active }: { userId: string; active: boolean }) => {
+      await setUserActive({ data: { targetUserId: userId, active } });
+    },
+    onSuccess: (_d, vars) => {
+      toast.success(vars.active ? "Usuário reativado" : "Usuário inativado — acesso suspenso e fora da fila de chats");
+      queryClient.invalidateQueries({ queryKey: ["admin-profiles"] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   // ========== Helpers ==========
   const getRolesForUser = (userId: string) => userRoles.filter((r) => r.user_id === userId).map((r) => r.role);
   const getLinkForUser = (userId: string) => gsystemLinks.find((l) => l.user_id === userId);
