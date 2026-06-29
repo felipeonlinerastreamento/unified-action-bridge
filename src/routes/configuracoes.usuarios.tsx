@@ -676,6 +676,29 @@ function UsuariosConfigPage() {
                               </Button>
                             )}
                             {!isSelf && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  const willInactivate = profile.is_active !== false;
+                                  const msg = willInactivate
+                                    ? `Inativar "${profile.name || "este usuário"}"? Ele perderá acesso ao sistema e deixará de receber novas conversas.`
+                                    : `Reativar "${profile.name || "este usuário"}"?`;
+                                  if (confirm(msg)) {
+                                    activeMutation.mutate({ userId: profile.user_id, active: !willInactivate ? true : false });
+                                  }
+                                }}
+                                disabled={activeMutation.isPending}
+                                title={profile.is_active === false ? "Reativar usuário" : "Inativar usuário"}
+                              >
+                                {profile.is_active === false ? (
+                                  <UserCheck className="h-3.5 w-3.5 text-emerald-600" />
+                                ) : (
+                                  <UserX className="h-3.5 w-3.5 text-amber-600" />
+                                )}
+                              </Button>
+                            )}
+                            {!isSelf && (
                               <Button size="sm" variant="ghost" onClick={() => handleOpenDelete(profile)} title="Excluir">
                                 <Trash2 className="h-3.5 w-3.5 text-destructive" />
                               </Button>
