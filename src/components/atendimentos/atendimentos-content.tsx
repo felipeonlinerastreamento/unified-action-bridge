@@ -51,11 +51,23 @@ export function AtendimentosContent({ autoOpenTicketId }: { autoOpenTicketId?: s
   const { data: tickets = [], isLoading, isError, error, refetch, isFetching } = useQuery({
     queryKey: ["service-tickets"],
     queryFn: async () => {
-      const { data } = await supabase
-        .from("service_tickets")
-        .select("*, companies(name), ticket_tracking(last_status, last_status_date, last_location, is_delivered, tracking_code)")
-        .order("created_at", { ascending: false });
-      const list = data || [];
+      // Paginar para evitar o teto padrão do PostgREST (1000 linhas)
+      const PAGE = 1000;
+      let from = 0;
+      const list: any[] = [];
+      // hard cap defensivo (20k) — evita loop infinito em cenários anômalos
+      while (from < 20000) {
+        const { data, error } = await supabase
+          .from("service_tickets")
+          .select("*, companies(name), ticket_tracking(last_status, last_status_date, last_location, is_delivered, tracking_code)")
+          .order("created_at", { ascending: false })
+          .range(from, from + PAGE - 1);
+        if (error) throw error;
+        const chunk = data || [];
+        list.push(...chunk);
+        if (chunk.length < PAGE) break;
+        from += PAGE;
+      }
 
       // Buscar último comentário por ticket
       const ids = list.map((t: any) => t.id);
