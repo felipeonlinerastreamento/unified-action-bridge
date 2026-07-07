@@ -744,18 +744,28 @@ function CentralPage() {
   // Detect plates in messages
   const detectedPlates = useMemo(() => detectPlates(messages), [messages]);
 
-  // Auto-set plate from detection
+  // Auto-set plate from detection — only once per chat, so o usuário
+  // pode limpar/editar o campo (inclusive deixar em branco) sem que a
+  // detecção automática re-preencha em seguida.
+  const plateAutoAppliedRef = useRef<string | null>(null);
   useEffect(() => {
-    if (detectedPlates.length > 0 && !ticketPlate) {
+    if (
+      detectedPlates.length > 0 &&
+      !ticketPlate &&
+      plateAutoAppliedRef.current !== selectedChatId
+    ) {
+      plateAutoAppliedRef.current = selectedChatId;
       setTicketPlate(detectedPlates[detectedPlates.length - 1]);
     }
-  }, [detectedPlates, ticketPlate]);
+  }, [detectedPlates, ticketPlate, selectedChatId]);
 
   // Reset plate when changing chat
   useEffect(() => {
     setTicketPlate("");
     setReplyingTo(null);
+    plateAutoAppliedRef.current = null;
   }, [selectedChatId]);
+
 
   // Company lookup by contact phone
   const contactPhone = chatDetail?.contact?.number || chatDetail?.contact?.secondaryName || "";
