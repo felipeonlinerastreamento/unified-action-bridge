@@ -73,8 +73,14 @@ function shouldRunBot(botMode: string | null): boolean {
 }
 
 async function pickLeastLoaded(sectorName: string): Promise<string | null> {
+  // 1ª tentativa: operador do setor ativo, disponível e com presença recente.
   const { data } = await supabaseAdmin.rpc("pick_least_loaded_agent", { _sector: sectorName });
-  return (data as string | null) || null;
+  const strict = (data as string | null) || null;
+  if (strict) return strict;
+  // Fallback: qualquer operador ativo do setor (mesmo offline/indisponível),
+  // para garantir que a conversa nunca fique sem responsável quando roteada.
+  const { data: any } = await supabaseAdmin.rpc("pick_least_loaded_agent_any", { _sector: sectorName });
+  return (any as string | null) || null;
 }
 
 function matchMenuOption(node: FlowNode, incomingText: string) {
