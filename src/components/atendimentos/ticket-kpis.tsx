@@ -1,9 +1,9 @@
 import { Card, CardContent } from "@/components/ui/card";
-import { AlertCircle, Clock, CheckCircle, RotateCcw } from "lucide-react";
+import { AlertCircle, Clock, CheckCircle, Hash } from "lucide-react";
 
 interface TicketKpisProps {
   tickets: any[];
-  onStatusClick?: (status: "abertos_em_andamento" | "aberto" | "em_andamento" | "finalizado" | "reaberto") => void;
+  onStatusClick?: (status: "abertos_em_andamento" | "aberto" | "em_andamento" | "finalizado") => void;
   activeStatus?: string;
 }
 
@@ -14,13 +14,13 @@ export function TicketKpis({ tickets, onStatusClick, activeStatus }: TicketKpisP
   const finalizadosHoje = tickets.filter(
     (t) => t.status === "finalizado" && t.closed_at && new Date(t.closed_at).toDateString() === today
   ).length;
-  const reabertos = tickets.filter((t) => t.status === "reaberto").length;
+  const total = abertos + emAndamento;
 
   const kpis = [
+    { label: "Total", value: total, icon: Hash, color: "text-slate-500", status: "abertos_em_andamento" as const },
     { label: "Abertos", value: abertos, icon: AlertCircle, color: "text-amber-500", status: "aberto" as const },
     { label: "Em Andamento", value: emAndamento, icon: Clock, color: "text-blue-500", status: "em_andamento" as const },
     { label: "Finalizados Hoje", value: finalizadosHoje, icon: CheckCircle, color: "text-emerald-500", status: "finalizado" as const },
-    { label: "Reabertos", value: reabertos, icon: RotateCcw, color: "text-orange-500", status: "reaberto" as const },
   ];
 
   return (
