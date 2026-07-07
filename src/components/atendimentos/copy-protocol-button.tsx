@@ -15,7 +15,7 @@ export function CopyProtocolButton({ protocol, className }: CopyProtocolButtonPr
     e.stopPropagation();
     e.preventDefault();
     try {
-      await navigator.clipboard.writeText(protocol);
+      await navigator.clipboard.writeText(`#${protocol}`);
       setCopied(true);
       toast.success("Protocolo copiado");
       setTimeout(() => setCopied(false), 1500);
