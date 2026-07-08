@@ -182,6 +182,41 @@ export function CrmPipelineTab() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  const createTypeMut = useMutation({
+    mutationFn: async () => {
+      const name = typeDraft.trim();
+      if (!name) throw new Error("Informe o nome");
+      const { error } = await supabase.from("crm_opportunity_types" as any).insert({ name, position: (oppTypes.length + 1) } as any);
+      if (error) throw error;
+    },
+    onSuccess: () => { setTypeDraft(""); qc.invalidateQueries({ queryKey: ["crm-opportunity-types"] }); toast.success("Tipo criado"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const updateTypeMut = useMutation({
+    mutationFn: async () => {
+      if (!editingTypeId || !editingTypeName.trim()) throw new Error("Informe o nome");
+      const { error } = await supabase.from("crm_opportunity_types" as any).update({ name: editingTypeName.trim() } as any).eq("id", editingTypeId);
+      if (error) throw error;
+    },
+    onSuccess: () => { setEditingTypeId(null); setEditingTypeName(""); qc.invalidateQueries({ queryKey: ["crm-opportunity-types"] }); toast.success("Atualizado"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const deleteTypeMut = useMutation({
+    mutationFn: async (id: string) => {
+      const t = oppTypes.find((x: any) => x.id === id);
+      const { error } = await supabase.from("crm_opportunity_types" as any).delete().eq("id", id);
+      if (error) throw error;
+      return t?.name;
+    },
+    onSuccess: (name) => {
+      if (name && form.opportunity_type === name) setForm((f: any) => ({ ...f, opportunity_type: "" }));
+      qc.invalidateQueries({ queryKey: ["crm-opportunity-types"] });
+      toast.success("Removido");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+
   const totals = useMemo(() => {
     const open = filteredOpps.filter((o: any) => o.status === "open");
     const won = filteredOpps.filter((o: any) => o.status === "won");
