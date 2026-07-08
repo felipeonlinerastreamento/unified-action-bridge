@@ -10,7 +10,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Plus, Loader2, DollarSign, TrendingUp, X, Pencil, Check, Trash2, Tag, Search, FileText, ChevronDown, ChevronRight } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Plus, Loader2, DollarSign, TrendingUp, X, Pencil, Check, Trash2, Tag, Search, FileText, ChevronDown, ChevronRight, Building2 } from "lucide-react";
 import { toast } from "sonner";
 import { upsertOpportunity, moveOpportunityStage, deleteOpportunity } from "@/lib/crm.functions";
 import { ReferralPicker } from "@/components/crm/referral-picker";
@@ -23,6 +25,7 @@ const emptyForm = {
   opportunity_type: "new",
   notes: "",
   contact_name: "",
+  company_id: "",
   company_name: "",
   contact_phone: "",
   contact_email: "",
@@ -92,6 +95,21 @@ export function CrmPipelineTab() {
     queryKey: ["crm-all-profiles"],
     queryFn: async () => {
       const { data } = await supabase.from("profiles").select("user_id, name").order("name");
+      return (data as any[]) || [];
+    },
+  });
+
+  // Companies for the "Empresa" picker in the create/edit dialog
+  const [companySearch, setCompanySearch] = useState("");
+  const [companyPickerOpen, setCompanyPickerOpen] = useState(false);
+  const { data: companyOptions = [] } = useQuery({
+    queryKey: ["crm-company-picker", companySearch],
+    enabled: open,
+    queryFn: async () => {
+      const term = companySearch.trim();
+      let q = supabase.from("companies").select("id, name, cnpj").order("name").limit(20);
+      if (term) q = q.or(`name.ilike.%${term}%,cnpj.ilike.%${term}%`);
+      const { data } = await q;
       return (data as any[]) || [];
     },
   });
@@ -189,6 +207,7 @@ export function CrmPipelineTab() {
           stage_id: editingId ? undefined : stage?.id,
           source: "manual",
           contact_name: form.contact_name || null,
+          company_id: form.company_id || null,
           company_name: form.company_name || null,
           contact_phone: form.contact_phone || null,
           contact_email: form.contact_email || null,
@@ -229,6 +248,7 @@ export function CrmPipelineTab() {
       opportunity_type: o.opportunity_type || "new",
       notes: o.notes || "",
       contact_name: o.contact_name || "",
+      company_id: o.company_id || "",
       company_name: o.company_name || "",
       contact_phone: o.contact_phone || "",
       contact_email: o.contact_email || "",
@@ -430,7 +450,62 @@ export function CrmPipelineTab() {
 
             <div className="grid grid-cols-2 gap-2">
               <div><Label>Nome do contato</Label><Input value={form.contact_name} onChange={(e) => setForm({ ...form, contact_name: e.target.value })} /></div>
-              <div><Label>Nome da empresa</Label><Input value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })} /></div>
+              <div>
+                <Label>Empresa</Label>
+                <div className="flex gap-1">
+                  <Popover open={companyPickerOpen} onOpenChange={setCompanyPickerOpen}>
+                    <PopoverTrigger asChild>
+                      <Button type="button" variant="outline" size="icon" className="shrink-0" title="Vincular cliente existente">
+                        <Building2 className="h-4 w-4" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="p-0 w-[320px]" align="start">
+                      <Command shouldFilter={false}>
+                        <CommandInput placeholder="Buscar cliente por nome ou CNPJ..." value={companySearch} onValueChange={setCompanySearch} />
+                        <CommandList>
+                          <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
+                          <CommandGroup>
+                            {form.company_id && (
+                              <CommandItem
+                                onSelect={() => {
+                                  setForm({ ...form, company_id: "", company_name: "", cnpj: "" });
+                                  setCompanyPickerOpen(false);
+                                }}
+                              >
+                                <X className="h-3 w-3 mr-2" /> Desvincular cliente
+                              </CommandItem>
+                            )}
+                            {companyOptions.map((c: any) => (
+                              <CommandItem
+                                key={c.id}
+                                onSelect={() => {
+                                  setForm({ ...form, company_id: c.id, company_name: c.name || "", cnpj: c.cnpj || form.cnpj });
+                                  setCompanyPickerOpen(false);
+                                }}
+                              >
+                                <div className="flex flex-col">
+                                  <span className="text-sm">{c.name}</span>
+                                  {c.cnpj && <span className="text-[10px] text-muted-foreground">{c.cnpj}</span>}
+                                </div>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  <Input
+                    placeholder="Nome da empresa"
+                    value={form.company_name}
+                    onChange={(e) => setForm({ ...form, company_name: e.target.value, company_id: "" })}
+                  />
+                </div>
+                {form.company_id && (
+                  <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1">
+                    <Check className="h-3 w-3 text-green-600" /> Vinculado a cliente existente
+                  </p>
+                )}
+              </div>
               <div><Label>Telefone</Label><Input value={form.contact_phone} onChange={(e) => setForm({ ...form, contact_phone: e.target.value })} /></div>
               <div><Label>E-mail</Label><Input type="email" value={form.contact_email} onChange={(e) => setForm({ ...form, contact_email: e.target.value })} /></div>
               <div className="col-span-2"><Label>CNPJ</Label><Input value={form.cnpj} onChange={(e) => setForm({ ...form, cnpj: e.target.value })} /></div>
