@@ -76,6 +76,13 @@ export function CrmPipelineTab() {
       return data || [];
     },
   });
+  const { data: oppTypes = [] } = useQuery({
+    queryKey: ["crm-opportunity-types"],
+    queryFn: async () => {
+      const { data } = await supabase.from("crm_opportunity_types" as any).select("id, name, position").order("position").order("name");
+      return (data as any[]) || [];
+    },
+  });
   const { data: categories = [] } = useQuery({
     queryKey: ["crm-categories"],
     queryFn: async () => {
