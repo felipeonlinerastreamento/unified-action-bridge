@@ -23,6 +23,7 @@ const emptyForm = {
   opportunity_type: "new",
   notes: "",
   contact_name: "",
+  company_id: "",
   company_name: "",
   contact_phone: "",
   contact_email: "",
