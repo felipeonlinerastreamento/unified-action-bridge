@@ -1621,6 +1621,30 @@ export type Database = {
           },
         ]
       }
+      crm_opportunity_types: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          position: number
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          position?: number
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          position?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       crm_pipeline_stages: {
         Row: {
           color: string | null

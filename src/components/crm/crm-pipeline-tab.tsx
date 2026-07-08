@@ -46,6 +46,10 @@ export function CrmPipelineTab() {
   const [catDraft, setCatDraft] = useState("");
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
   const [editingCatName, setEditingCatName] = useState("");
+  const [typeDraft, setTypeDraft] = useState("");
+  const [editingTypeId, setEditingTypeId] = useState<string | null>(null);
+  const [editingTypeName, setEditingTypeName] = useState("");
+  const [typeManagerOpen, setTypeManagerOpen] = useState(false);
 
   // Filters
   const [ownerFilter, setOwnerFilter] = useState<string>("mine"); // mine | all | <userId>
@@ -70,6 +74,13 @@ export function CrmPipelineTab() {
         .select("*, crm_contacts(name), companies(name)")
         .order("created_at", { ascending: false });
       return data || [];
+    },
+  });
+  const { data: oppTypes = [] } = useQuery({
+    queryKey: ["crm-opportunity-types"],
+    queryFn: async () => {
+      const { data } = await supabase.from("crm_opportunity_types" as any).select("id, name, position").order("position").order("name");
+      return (data as any[]) || [];
     },
   });
   const { data: categories = [] } = useQuery({
@@ -170,6 +181,41 @@ export function CrmPipelineTab() {
     },
     onError: (e: any) => toast.error(e.message),
   });
+
+  const createTypeMut = useMutation({
+    mutationFn: async () => {
+      const name = typeDraft.trim();
+      if (!name) throw new Error("Informe o nome");
+      const { error } = await supabase.from("crm_opportunity_types" as any).insert({ name, position: (oppTypes.length + 1) } as any);
+      if (error) throw error;
+    },
+    onSuccess: () => { setTypeDraft(""); qc.invalidateQueries({ queryKey: ["crm-opportunity-types"] }); toast.success("Tipo criado"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const updateTypeMut = useMutation({
+    mutationFn: async () => {
+      if (!editingTypeId || !editingTypeName.trim()) throw new Error("Informe o nome");
+      const { error } = await supabase.from("crm_opportunity_types" as any).update({ name: editingTypeName.trim() } as any).eq("id", editingTypeId);
+      if (error) throw error;
+    },
+    onSuccess: () => { setEditingTypeId(null); setEditingTypeName(""); qc.invalidateQueries({ queryKey: ["crm-opportunity-types"] }); toast.success("Atualizado"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+  const deleteTypeMut = useMutation({
+    mutationFn: async (id: string) => {
+      const t = oppTypes.find((x: any) => x.id === id);
+      const { error } = await supabase.from("crm_opportunity_types" as any).delete().eq("id", id);
+      if (error) throw error;
+      return t?.name;
+    },
+    onSuccess: (name) => {
+      if (name && form.opportunity_type === name) setForm((f: any) => ({ ...f, opportunity_type: "" }));
+      qc.invalidateQueries({ queryKey: ["crm-opportunity-types"] });
+      toast.success("Removido");
+    },
+    onError: (e: any) => toast.error(e.message),
+  });
+
 
   const totals = useMemo(() => {
     const open = filteredOpps.filter((o: any) => o.status === "open");
@@ -513,16 +559,61 @@ export function CrmPipelineTab() {
 
             <div className="grid grid-cols-2 gap-2">
               <div>
-                <Label>Tipo</Label>
+                <div className="flex items-center justify-between">
+                  <Label>Tipo</Label>
+                  <Button type="button" size="sm" variant="ghost" className="h-6 text-[10px] px-2" onClick={() => setTypeManagerOpen((v) => !v)}>
+                    {typeManagerOpen ? "Fechar" : "Gerenciar"}
+                  </Button>
+                </div>
                 <Select value={form.opportunity_type} onValueChange={(v) => setForm({ ...form, opportunity_type: v })}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="new">Nova venda</SelectItem>
-                    <SelectItem value="upsell">Upsell</SelectItem>
-                    <SelectItem value="renewal">Renovação</SelectItem>
-                    <SelectItem value="recovery">Recuperação</SelectItem>
+                    {oppTypes.length === 0 ? (
+                      <div className="px-2 py-3 text-xs text-muted-foreground">Nenhum tipo cadastrado.</div>
+                    ) : oppTypes.map((t: any) => <SelectItem key={t.id} value={t.name}>{t.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
+                {typeManagerOpen && (
+                  <div className="mt-2 rounded-md border border-border bg-background p-2 space-y-2">
+                    <div className="flex gap-2">
+                      <Input value={typeDraft} onChange={(e) => setTypeDraft(e.target.value)} placeholder="Novo tipo" className="h-8 text-xs" />
+                      <Button type="button" size="icon" className="h-8 w-8 shrink-0" onClick={() => createTypeMut.mutate()} disabled={!typeDraft.trim() || createTypeMut.isPending}>
+                        {createTypeMut.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                      </Button>
+                    </div>
+                    <div className="max-h-32 overflow-y-auto space-y-1">
+                      {oppTypes.length === 0 ? (
+                        <p className="text-xs text-muted-foreground flex items-center gap-1 py-1"><Tag className="h-3 w-3" /> Nenhum tipo</p>
+                      ) : oppTypes.map((t: any) => (
+                        <div key={t.id} className="flex items-center gap-1 rounded-md px-1 py-0.5 hover:bg-accent/50">
+                          {editingTypeId === t.id ? (
+                            <>
+                              <Input value={editingTypeName} onChange={(e) => setEditingTypeName(e.target.value)} className="h-7 text-xs" autoFocus />
+                              <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={() => updateTypeMut.mutate()} disabled={!editingTypeName.trim() || updateTypeMut.isPending}>
+                                {updateTypeMut.isPending ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                              </Button>
+                              <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setEditingTypeId(null); setEditingTypeName(""); }}>
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <button type="button" className="flex-1 truncate text-left text-xs py-1" onClick={() => setForm((f: any) => ({ ...f, opportunity_type: t.name }))}>
+                                {form.opportunity_type === t.name ? "✓ " : ""}{t.name}
+                              </button>
+                              <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setEditingTypeId(t.id); setEditingTypeName(t.name); }}>
+                                <Pencil className="h-3 w-3" />
+                              </Button>
+                              <Button type="button" size="icon" variant="ghost" className="h-7 w-7" onClick={() => { if (confirm("Remover tipo?")) deleteTypeMut.mutate(t.id); }} disabled={deleteTypeMut.isPending}>
+                                <Trash2 className="h-3 w-3 text-destructive" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
               <div><Label>Probabilidade %</Label><Input type="number" min={0} max={100} value={form.probability} onChange={(e) => setForm({ ...form, probability: e.target.value })} /></div>
             </div>
