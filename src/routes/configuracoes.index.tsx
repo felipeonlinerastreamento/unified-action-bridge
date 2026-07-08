@@ -126,43 +126,150 @@ function GsystemConnectionTest() {
   );
 }
 
+const SYNC_STATUS_KEY = "gsystem_sync_status_v1";
+
+type SyncStatus = {
+  lastRunAt: string | null;
+  lastSuccessAt: string | null;
+  lastError: string | null;
+  lastSummary: any | null;
+  status: "idle" | "success" | "error";
+};
+
+function loadSyncStatus(): SyncStatus {
+  if (typeof window === "undefined") return { lastRunAt: null, lastSuccessAt: null, lastError: null, lastSummary: null, status: "idle" };
+  try {
+    const raw = localStorage.getItem(SYNC_STATUS_KEY);
+    if (raw) return JSON.parse(raw);
+  } catch {}
+  return { lastRunAt: null, lastSuccessAt: null, lastError: null, lastSummary: null, status: "idle" };
+}
+
+function saveSyncStatus(s: SyncStatus) {
+  try { localStorage.setItem(SYNC_STATUS_KEY, JSON.stringify(s)); } catch {}
+}
+
+function formatRelative(iso: string | null): string {
+  if (!iso) return "nunca";
+  const diff = Date.now() - new Date(iso).getTime();
+  const sec = Math.floor(diff / 1000);
+  if (sec < 60) return `há ${sec}s`;
+  const min = Math.floor(sec / 60);
+  if (min < 60) return `há ${min}min`;
+  const h = Math.floor(min / 60);
+  if (h < 24) return `há ${h}h`;
+  const d = Math.floor(h / 24);
+  return `há ${d}d`;
+}
+
 function GsystemForceSync() {
   const [syncing, setSyncing] = useState(false);
-  const [summary, setSummary] = useState<any>(null);
+  const [statusState, setStatusState] = useState<SyncStatus>(() => loadSyncStatus());
+  const summary = statusState.lastSummary;
+
+  useEffect(() => {
+    const t = setInterval(() => setStatusState((s) => ({ ...s })), 30_000);
+    return () => clearInterval(t);
+  }, []);
 
   const handleForceSync = async () => {
     setSyncing(true);
-    setSummary(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
       const res = await forceSyncGsystemClientes({
         headers: { authorization: `Bearer ${session?.access_token}` },
       });
-      setSummary(res);
+      const now = new Date().toISOString();
+      const next: SyncStatus = {
+        lastRunAt: now,
+        lastSuccessAt: now,
+        lastError: null,
+        lastSummary: res,
+        status: "success",
+      };
+      setStatusState(next);
+      saveSyncStatus(next);
       toast.success("Sincronização com GSystem concluída");
     } catch (err: any) {
+      const now = new Date().toISOString();
+      const next: SyncStatus = {
+        ...statusState,
+        lastRunAt: now,
+        lastError: err?.message || "Erro desconhecido",
+        status: "error",
+      };
+      setStatusState(next);
+      saveSyncStatus(next);
       toast.error(err?.message || "Erro ao sincronizar com GSystem");
     } finally {
       setSyncing(false);
     }
   };
 
+  const cardBorder = syncing
+    ? "border-muted bg-muted/30"
+    : statusState.status === "success"
+      ? "border-emerald-200 bg-emerald-50/40"
+      : statusState.status === "error"
+        ? "border-destructive/30 bg-destructive/10"
+        : "border-muted";
+
+  const statusIcon = syncing ? (
+    <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+  ) : statusState.status === "success" ? (
+    <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+  ) : statusState.status === "error" ? (
+    <AlertTriangle className="h-5 w-5 text-destructive" />
+  ) : (
+    <Clock className="h-5 w-5 text-muted-foreground" />
+  );
+
+  const statusLabel = syncing
+    ? "Sincronizando..."
+    : statusState.status === "success"
+      ? "Sincronizado com sucesso"
+      : statusState.status === "error"
+        ? "Falha na última sincronização"
+        : "Nunca sincronizado";
+
   return (
-    <Card>
+    <Card className={`transition-colors ${cardBorder}`}>
       <CardHeader className="flex flex-row items-center justify-between gap-4">
-        <div>
-          <CardTitle className="text-base">Sincronização GSystem</CardTitle>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            Atualiza empresas locais e vínculos a partir dos clientes do GSystem.
-          </p>
+        <div className="flex items-center gap-3">
+          {statusIcon}
+          <div>
+            <CardTitle className="text-base">Sincronização GSystem</CardTitle>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {statusLabel}
+              {statusState.lastRunAt && (
+                <> · Última execução {formatRelative(statusState.lastRunAt)}</>
+              )}
+            </p>
+          </div>
         </div>
         <Button size="sm" onClick={handleForceSync} disabled={syncing}>
           {syncing ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1" />}
           {syncing ? "Sincronizando..." : "Forçar sincronização"}
         </Button>
       </CardHeader>
-      {summary && (
-        <CardContent>
+      <CardContent className="space-y-3">
+        <div className="grid gap-2 text-xs sm:grid-cols-2">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Clock className="h-3.5 w-3.5" />
+            Última execução: {statusState.lastRunAt ? new Date(statusState.lastRunAt).toLocaleString("pt-BR") : "nunca"}
+          </div>
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <CheckCircle2 className="h-3.5 w-3.5" />
+            Último sucesso: {statusState.lastSuccessAt ? new Date(statusState.lastSuccessAt).toLocaleString("pt-BR") : "nunca"}
+          </div>
+        </div>
+        {statusState.lastError && (
+          <div className="flex items-start gap-2 p-3 rounded-lg border border-destructive/30 bg-destructive/10 text-destructive text-sm">
+            <XCircle className="h-4 w-4 mt-0.5 shrink-0" />
+            <span>{statusState.lastError}</span>
+          </div>
+        )}
+        {summary && (
           <div className="grid gap-2 text-sm sm:grid-cols-5">
             <Badge variant="secondary">Lidos: {summary.total ?? 0}</Badge>
             <Badge variant="secondary">Criados: {summary.created ?? 0}</Badge>
@@ -170,8 +277,8 @@ function GsystemForceSync() {
             <Badge variant="secondary">Vinculados: {summary.linked ?? 0}</Badge>
             <Badge variant="secondary">Ignorados: {summary.skipped ?? 0}</Badge>
           </div>
-        </CardContent>
-      )}
+        )}
+      </CardContent>
     </Card>
   );
 }
