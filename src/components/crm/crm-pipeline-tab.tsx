@@ -190,6 +190,7 @@ export function CrmPipelineTab() {
           stage_id: editingId ? undefined : stage?.id,
           source: "manual",
           contact_name: form.contact_name || null,
+          company_id: form.company_id || null,
           company_name: form.company_name || null,
           contact_phone: form.contact_phone || null,
           contact_email: form.contact_email || null,
