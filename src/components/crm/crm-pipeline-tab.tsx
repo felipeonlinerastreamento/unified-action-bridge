@@ -450,7 +450,62 @@ export function CrmPipelineTab() {
 
             <div className="grid grid-cols-2 gap-2">
               <div><Label>Nome do contato</Label><Input value={form.contact_name} onChange={(e) => setForm({ ...form, contact_name: e.target.value })} /></div>
-              <div><Label>Nome da empresa</Label><Input value={form.company_name} onChange={(e) => setForm({ ...form, company_name: e.target.value })} /></div>
+              <div>
+                <Label>Empresa</Label>
+                <div className="flex gap-1">
+                  <Popover open={companyPickerOpen} onOpenChange={setCompanyPickerOpen}>
+                    <PopoverTrigger asChild>
+                      <Button type="button" variant="outline" size="icon" className="shrink-0" title="Vincular cliente existente">
+                        <Building2 className="h-4 w-4" />
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="p-0 w-[320px]" align="start">
+                      <Command shouldFilter={false}>
+                        <CommandInput placeholder="Buscar cliente por nome ou CNPJ..." value={companySearch} onValueChange={setCompanySearch} />
+                        <CommandList>
+                          <CommandEmpty>Nenhum cliente encontrado.</CommandEmpty>
+                          <CommandGroup>
+                            {form.company_id && (
+                              <CommandItem
+                                onSelect={() => {
+                                  setForm({ ...form, company_id: "", company_name: "", cnpj: "" });
+                                  setCompanyPickerOpen(false);
+                                }}
+                              >
+                                <X className="h-3 w-3 mr-2" /> Desvincular cliente
+                              </CommandItem>
+                            )}
+                            {companyOptions.map((c: any) => (
+                              <CommandItem
+                                key={c.id}
+                                onSelect={() => {
+                                  setForm({ ...form, company_id: c.id, company_name: c.name || "", cnpj: c.cnpj || form.cnpj });
+                                  setCompanyPickerOpen(false);
+                                }}
+                              >
+                                <div className="flex flex-col">
+                                  <span className="text-sm">{c.name}</span>
+                                  {c.cnpj && <span className="text-[10px] text-muted-foreground">{c.cnpj}</span>}
+                                </div>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  <Input
+                    placeholder="Nome da empresa"
+                    value={form.company_name}
+                    onChange={(e) => setForm({ ...form, company_name: e.target.value, company_id: "" })}
+                  />
+                </div>
+                {form.company_id && (
+                  <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1">
+                    <Check className="h-3 w-3 text-green-600" /> Vinculado a cliente existente
+                  </p>
+                )}
+              </div>
               <div><Label>Telefone</Label><Input value={form.contact_phone} onChange={(e) => setForm({ ...form, contact_phone: e.target.value })} /></div>
               <div><Label>E-mail</Label><Input type="email" value={form.contact_email} onChange={(e) => setForm({ ...form, contact_email: e.target.value })} /></div>
               <div className="col-span-2"><Label>CNPJ</Label><Input value={form.cnpj} onChange={(e) => setForm({ ...form, cnpj: e.target.value })} /></div>
