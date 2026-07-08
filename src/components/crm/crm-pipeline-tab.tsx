@@ -99,6 +99,21 @@ export function CrmPipelineTab() {
     },
   });
 
+  // Companies for the "Empresa" picker in the create/edit dialog
+  const [companySearch, setCompanySearch] = useState("");
+  const [companyPickerOpen, setCompanyPickerOpen] = useState(false);
+  const { data: companyOptions = [] } = useQuery({
+    queryKey: ["crm-company-picker", companySearch],
+    enabled: open,
+    queryFn: async () => {
+      const term = companySearch.trim();
+      let q = supabase.from("companies").select("id, name, cnpj").order("name").limit(20);
+      if (term) q = q.or(`name.ilike.%${term}%,cnpj.ilike.%${term}%`);
+      const { data } = await q;
+      return (data as any[]) || [];
+    },
+  });
+
   const filteredOpps = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
     const min = minValue ? Number(minValue) : null;
