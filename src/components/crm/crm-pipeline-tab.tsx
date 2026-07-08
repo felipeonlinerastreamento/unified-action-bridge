@@ -46,6 +46,10 @@ export function CrmPipelineTab() {
   const [catDraft, setCatDraft] = useState("");
   const [editingCatId, setEditingCatId] = useState<string | null>(null);
   const [editingCatName, setEditingCatName] = useState("");
+  const [typeDraft, setTypeDraft] = useState("");
+  const [editingTypeId, setEditingTypeId] = useState<string | null>(null);
+  const [editingTypeName, setEditingTypeName] = useState("");
+  const [typeManagerOpen, setTypeManagerOpen] = useState(false);
 
   // Filters
   const [ownerFilter, setOwnerFilter] = useState<string>("mine"); // mine | all | <userId>
