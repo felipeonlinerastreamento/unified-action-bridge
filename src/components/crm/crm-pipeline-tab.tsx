@@ -231,6 +231,7 @@ export function CrmPipelineTab() {
       opportunity_type: o.opportunity_type || "new",
       notes: o.notes || "",
       contact_name: o.contact_name || "",
+      company_id: o.company_id || "",
       company_name: o.company_name || "",
       contact_phone: o.contact_phone || "",
       contact_email: o.contact_email || "",
