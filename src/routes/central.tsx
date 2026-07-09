@@ -3558,69 +3558,8 @@ function CentralPage() {
                         </Button>
                       </div>
                     )}
-                    <div className="flex gap-2">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button
-                            size="icon"
-                            variant="outline"
-                            className="shrink-0"
-                            title="Opções de mensagem"
-                          >
-                            <Plus className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="start" className="w-56">
-                          <DropdownMenuLabel>Opções de envio</DropdownMenuLabel>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuCheckboxItem
-                            checked={whisperMode}
-                            onCheckedChange={(v) => {
-                              setWhisperMode(!!v);
-                              if (v) setNicknameMode(false);
-                            }}
-                          >
-                            <EyeOff className="h-4 w-4 mr-2" />
-                            Enviar sussurro
-                          </DropdownMenuCheckboxItem>
-                          <DropdownMenuCheckboxItem
-                            checked={!nicknameMode}
-                            onCheckedChange={(v) => {
-                              setNicknameMode(!v);
-                              if (v) setWhisperMode(false);
-                            }}
-                          >
-                            <UserX className="h-4 w-4 mr-2" />
-                            Interagir sem apelido
-                          </DropdownMenuCheckboxItem>
-                          {currentTicket?.id && currentTicket?.protocol_number != null && (
-                            <>
-                              <DropdownMenuSeparator />
-                              <DropdownMenuItem
-                                onClick={() =>
-                                  navigate({
-                                    to: "/atendimentos",
-                                    search: { ticket: currentTicket.id } as any,
-                                  })
-                                }
-                              >
-                                <FileText className="h-4 w-4 mr-2" />
-                                Ir no Protocolo #{formatTicketProtocol(currentTicket)}
-                              </DropdownMenuItem>
-                            </>
-                          )}
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                      <QuickRepliesPopover
-                        onPick={(text) => {
-                          const resolved = applyQuickReplyVars(text, {
-                            operatorName: profile?.name,
-                            contactName: chatDetail?.contact?.name || chatDetail?.description,
-                            protocol: currentTicket?.protocol_number != null ? formatTicketProtocol(currentTicket) : "",
-                          });
-                          setMessageInput((prev) => prev ? `${prev} ${resolved}` : resolved);
-                        }}
-                      />
+                    <div className="flex gap-2 items-end">
+                      {/* Hidden file input */}
                       <input
                         ref={fileInputRef}
                         type="file"
@@ -3632,30 +3571,128 @@ function CentralPage() {
                           if (fileInputRef.current) fileInputRef.current.value = "";
                         }}
                       />
-                      <Button
-                        size="icon"
-                        variant="outline"
-                        type="button"
-                        title="Anexar arquivo"
-                        onClick={() => fileInputRef.current?.click()}
-                        disabled={mediaMutation.isPending || chatDetail?.status === 3 || whisperMode}
-                      >
-                        {mediaMutation.isPending ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Paperclip className="h-4 w-4" />
+                      {/* External quick replies popover (controlled via state) */}
+                      <QuickRepliesPopover
+                        hideTrigger
+                        open={quickRepliesMenuOpen}
+                        onOpenChange={setQuickRepliesMenuOpen}
+                        onPick={(text) => {
+                          const resolved = applyQuickReplyVars(text, {
+                            operatorName: profile?.name,
+                            contactName: chatDetail?.contact?.name || chatDetail?.description,
+                            protocol: currentTicket?.protocol_number != null ? formatTicketProtocol(currentTicket) : "",
+                          });
+                          setMessageInput((prev) => prev ? `${prev} ${resolved}` : resolved);
+                          setActionsOpen(false);
+                        }}
+                      />
+                      {/* Actions menu + */}
+                      <div className="relative" ref={actionsMenuRef}>
+                        <Button
+                          size="icon"
+                          variant="outline"
+                          type="button"
+                          className={`shrink-0 ${actionsOpen ? "bg-accent" : ""}`}
+                          title="Ações"
+                          onClick={() => setActionsOpen((v) => !v)}
+                        >
+                          <Plus className="h-4 w-4" />
+                        </Button>
+                        {actionsOpen && (
+                          <div className="absolute bottom-full left-0 mb-2 bg-popover border rounded-xl shadow-lg p-2 flex flex-col gap-2 w-56 z-50">
+                            <div className="grid grid-cols-4 gap-1">
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                type="button"
+                                title="Anexar arquivo"
+                                onClick={() => {
+                                  fileInputRef.current?.click();
+                                  setActionsOpen(false);
+                                }}
+                                disabled={mediaMutation.isPending || chatDetail?.status === 3 || whisperMode}
+                              >
+                                {mediaMutation.isPending ? (
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                ) : (
+                                  <Paperclip className="h-4 w-4" />
+                                )}
+                              </Button>
+                              <AudioRecorderButton
+                                disabled={mediaMutation.isPending || chatDetail?.status === 3 || whisperMode}
+                                onRecorded={async (dataUrl) =>
+                                  mediaMutation.mutateAsync({ kind: "audio", dataUrl })
+                                }
+                              />
+                              <EmojiPickerButton
+                                disabled={sendMutation.isPending || chatDetail?.status === 3}
+                                onPick={(emoji: string) => setMessageInput((prev) => `${prev}${emoji}`)}
+                              />
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                type="button"
+                                title="Respostas rápidas"
+                                onClick={() => {
+                                  setQuickRepliesMenuOpen(true);
+                                  setActionsOpen(false);
+                                }}
+                              >
+                                <Zap className="h-4 w-4" />
+                              </Button>
+                            </div>
+                            <Separator />
+                            <div className="flex flex-col gap-0.5">
+                              <button
+                                type="button"
+                                className={`flex items-center gap-2 px-2 py-1.5 text-sm rounded-md hover:bg-accent ${whisperMode ? "bg-accent" : ""}`}
+                                onClick={() => {
+                                  setWhisperMode((v) => {
+                                    const next = !v;
+                                    if (next) setNicknameMode(false);
+                                    return next;
+                                  });
+                                  setActionsOpen(false);
+                                }}
+                              >
+                                <EyeOff className="h-4 w-4 shrink-0" />
+                                Enviar sussurro
+                              </button>
+                              <button
+                                type="button"
+                                className={`flex items-center gap-2 px-2 py-1.5 text-sm rounded-md hover:bg-accent ${!nicknameMode ? "bg-accent" : ""}`}
+                                onClick={() => {
+                                  setNicknameMode((v) => {
+                                    const next = !v;
+                                    if (!next) setWhisperMode(false);
+                                    return next;
+                                  });
+                                  setActionsOpen(false);
+                                }}
+                              >
+                                <UserX className="h-4 w-4 shrink-0" />
+                                Interagir sem apelido
+                              </button>
+                              {currentTicket?.id && currentTicket?.protocol_number != null && (
+                                <button
+                                  type="button"
+                                  className="flex items-center gap-2 px-2 py-1.5 text-sm rounded-md hover:bg-accent text-left"
+                                  onClick={() => {
+                                    navigate({
+                                      to: "/atendimentos",
+                                      search: { ticket: currentTicket.id } as any,
+                                    });
+                                    setActionsOpen(false);
+                                  }}
+                                >
+                                  <FileText className="h-4 w-4 shrink-0" />
+                                  Ir no Protocolo #{formatTicketProtocol(currentTicket)}
+                                </button>
+                              )}
+                            </div>
+                          </div>
                         )}
-                      </Button>
-                      <AudioRecorderButton
-                        disabled={mediaMutation.isPending || chatDetail?.status === 3 || whisperMode}
-                        onRecorded={async (dataUrl) =>
-                          mediaMutation.mutateAsync({ kind: "audio", dataUrl })
-                        }
-                      />
-                      <EmojiPickerButton
-                        disabled={sendMutation.isPending || chatDetail?.status === 3}
-                        onPick={(emoji: string) => setMessageInput((prev) => `${prev}${emoji}`)}
-                      />
+                      </div>
                       <Textarea
                         placeholder={whisperMode ? "Sussurro interno (não vai para o cliente). Shift+Enter para nova linha." : (!nicknameMode ? "Mensagem será enviada SEM seu nome. Shift+Enter para nova linha." : "Digite uma mensagem... (Shift+Enter para nova linha, Ctrl+V para colar arquivos)")}
                         value={messageInput}
@@ -3678,8 +3715,8 @@ function CentralPage() {
                           files.forEach((f) => queueAttachment(f));
                         }}
                         disabled={sendMutation.isPending || chatDetail?.status === 3}
-                        rows={1}
-                        className={`flex-1 min-h-[36px] resize-none py-2 overflow-y-auto ${whisperMode ? "border-amber-400 focus-visible:ring-amber-400" : ""}`}
+                        rows={3}
+                        className={`flex-1 min-h-[72px] max-h-[192px] resize-none rounded-2xl py-3 px-4 overflow-y-auto ${whisperMode ? "border-amber-400 focus-visible:ring-amber-400" : ""}`}
                       />
                       <Button
                         onClick={handleSend}
