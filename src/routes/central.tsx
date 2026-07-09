@@ -317,6 +317,9 @@ function CentralPage() {
   const [finalizeEquipmentModelId, setFinalizeEquipmentModelId] = useState<string>("");
   const [linkedTicketId, setLinkedTicketId] = useState<string>("");
   const [linkedTicketSearch, setLinkedTicketSearch] = useState<string>("");
+  const [actionsOpen, setActionsOpen] = useState(false);
+  const actionsMenuRef = useRef<HTMLDivElement>(null);
+  const [quickRepliesMenuOpen, setQuickRepliesMenuOpen] = useState(false);
 
   const [showTeDialog, setShowTeDialog] = useState(false);
   const [teData, setTeData] = useState<TesteEquipamentoData>(EMPTY_TESTE_EQUIPAMENTO);
