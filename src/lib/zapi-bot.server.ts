@@ -197,8 +197,7 @@ export async function processIncomingForBot(params: ProcessParams): Promise<bool
           return true;
         }
         console.log(`[bot] menu no match for input="${incomingText}", re-sending menu (cooldown elapsed)`);
-        await zapiSendText(creds, phone, renderText(node.text || "", vars));
-        await persistOutgoing(chatId, renderText(node.text || "", vars));
+        await sendAndPersist(creds, phone, chatId, renderText(node.text || "", vars));
         await supabaseAdmin
           .from("zapi_chats")
           .update({ bot_state: { ...botState, current_node: node.id, last_menu_sent_at: nowMs }, status: "bot" })
@@ -221,8 +220,7 @@ export async function processIncomingForBot(params: ProcessParams): Promise<bool
     if (!node) break;
 
     if (node.type === "menu") {
-      await zapiSendText(creds, phone, renderText(node.text || "", vars));
-      await persistOutgoing(chatId, renderText(node.text || "", vars));
+      await sendAndPersist(creds, phone, chatId, renderText(node.text || "", vars));
       await supabaseAdmin
         .from("zapi_chats")
         .update({ bot_state: { ...botState, current_node: node.id, last_menu_sent_at: Date.now() }, status: "bot" })
@@ -231,8 +229,7 @@ export async function processIncomingForBot(params: ProcessParams): Promise<bool
     }
 
     if (node.type === "message") {
-      await zapiSendText(creds, phone, renderText(node.text || "", vars));
-      await persistOutgoing(chatId, renderText(node.text || "", vars));
+      await sendAndPersist(creds, phone, chatId, renderText(node.text || "", vars));
       if (!node.next) {
         await supabaseAdmin
           .from("zapi_chats")
@@ -264,8 +261,7 @@ export async function processIncomingForBot(params: ProcessParams): Promise<bool
 
     if (node.type === "ask_input") {
       // Send the prompt and wait for user reply
-      await zapiSendText(creds, phone, renderText(node.text || "", vars));
-      await persistOutgoing(chatId, renderText(node.text || "", vars));
+      await sendAndPersist(creds, phone, chatId, renderText(node.text || "", vars));
       await supabaseAdmin
         .from("zapi_chats")
         .update({ bot_state: { ...botState, current_node: node.id }, status: "bot" })
@@ -307,8 +303,7 @@ export async function processIncomingForBot(params: ProcessParams): Promise<bool
         continue;
       }
 
-      await zapiSendText(creds, phone, renderText(messageToSend, vars));
-      await persistOutgoing(chatId, renderText(messageToSend, vars));
+      await sendAndPersist(creds, phone, chatId, renderText(messageToSend, vars));
 
       // Roteia para humano após enviar boletos (fallback / continuidade)
       let assignedTo: string | null = null;
@@ -366,8 +361,7 @@ export async function processIncomingForBot(params: ProcessParams): Promise<bool
         }
       }
 
-      await zapiSendText(creds, phone, renderText(messageToSend, vars));
-      await persistOutgoing(chatId, renderText(messageToSend, vars));
+      await sendAndPersist(creds, phone, chatId, renderText(messageToSend, vars));
 
       let assignedTo: string | null = null;
       try {
@@ -389,8 +383,7 @@ export async function processIncomingForBot(params: ProcessParams): Promise<bool
 
     if (node.type === "end") {
       if (node.text) {
-        await zapiSendText(creds, phone, renderText(node.text, vars));
-        await persistOutgoing(chatId, renderText(node.text, vars));
+        await sendAndPersist(creds, phone, chatId, renderText(node.text, vars));
       }
       await supabaseAdmin
         .from("zapi_chats")
@@ -405,9 +398,12 @@ export async function processIncomingForBot(params: ProcessParams): Promise<bool
   return false;
 }
 
-async function persistOutgoing(chatId: string, text: string) {
+async function persistOutgoing(chatId: string, text: string, sendResult?: any) {
+  const zapiMessageId =
+    sendResult?.messageId || sendResult?.id || sendResult?.zaapId || null;
   await supabaseAdmin.from("zapi_messages").insert({
     chat_id: chatId,
+    zapi_message_id: zapiMessageId,
     from_me: true,
     text,
     status: "sent",
@@ -416,6 +412,17 @@ async function persistOutgoing(chatId: string, text: string) {
     .from("zapi_chats")
     .update({ last_message_at: new Date().toISOString(), last_message_preview: text.slice(0, 120) })
     .eq("id", chatId);
+}
+
+async function sendAndPersist(
+  creds: Parameters<typeof zapiSendText>[0],
+  phone: string,
+  chatId: string,
+  text: string,
+) {
+  const result = await zapiSendText(creds, phone, text);
+  await persistOutgoing(chatId, text, result);
+  return result;
 }
 
 // ============================================================
