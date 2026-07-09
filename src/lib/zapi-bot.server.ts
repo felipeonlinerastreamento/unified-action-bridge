@@ -405,9 +405,12 @@ export async function processIncomingForBot(params: ProcessParams): Promise<bool
   return false;
 }
 
-async function persistOutgoing(chatId: string, text: string) {
+async function persistOutgoing(chatId: string, text: string, sendResult?: any) {
+  const zapiMessageId =
+    sendResult?.messageId || sendResult?.id || sendResult?.zaapId || null;
   await supabaseAdmin.from("zapi_messages").insert({
     chat_id: chatId,
+    zapi_message_id: zapiMessageId,
     from_me: true,
     text,
     status: "sent",
@@ -416,6 +419,17 @@ async function persistOutgoing(chatId: string, text: string) {
     .from("zapi_chats")
     .update({ last_message_at: new Date().toISOString(), last_message_preview: text.slice(0, 120) })
     .eq("id", chatId);
+}
+
+async function sendAndPersist(
+  creds: Parameters<typeof zapiSendText>[0],
+  phone: string,
+  chatId: string,
+  text: string,
+) {
+  const result = await zapiSendText(creds, phone, text);
+  await persistOutgoing(chatId, text, result);
+  return result;
 }
 
 // ============================================================
