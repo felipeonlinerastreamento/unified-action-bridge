@@ -391,6 +391,18 @@ function CentralPage() {
     };
   }, []);
 
+  // Close actions menu when clicking outside
+  useEffect(() => {
+    if (!actionsOpen) return;
+    const handle = (e: MouseEvent) => {
+      if (actionsMenuRef.current && !actionsMenuRef.current.contains(e.target as Node)) {
+        setActionsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, [actionsOpen]);
+
   // Load channels from DB
   const { data: channels = [] } = useQuery({
     queryKey: ["channels"],
