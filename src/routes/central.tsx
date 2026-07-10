@@ -2586,11 +2586,22 @@ function CentralPage() {
 
   const handleSend = () => {
     if (!messageInput.trim() || !selectedChatId) return;
+    // Guarda anti-duplo-envio: se já existe um envio em andamento, ignora.
+    if (sendMutation.isPending) return;
+    const textToSend = messageInput.trim();
+    // Limpa o input imediatamente para evitar reenvio caso o usuário
+    // pressione Enter novamente antes do onSuccess disparar.
+    setMessageInput("");
     sendMutation.mutate({
-      text: messageInput.trim(),
+      text: textToSend,
       whisper: whisperMode,
       replyToMessageId: replyingTo?.id || null,
       includeOperatorName: nicknameMode && !whisperMode,
+    }, {
+      onError: () => {
+        // Restaura o texto se o envio falhar, para que o operador possa tentar de novo.
+        setMessageInput((prev) => prev || textToSend);
+      },
     });
   };
 
