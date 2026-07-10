@@ -819,6 +819,9 @@ function CentralPage() {
     },
     enabled: !!selectedChannelId && isAuthenticated && showNewChatModal && newChatTab === "groups",
     staleTime: 30_000,
+  });
+
+
 
   // Contact "typing..." indicator from Z-API presence webhook (stored in zapi_chats.bot_state)
   const isContactTyping = !!(localZapiChat?.bot_state as any)?.is_typing;
