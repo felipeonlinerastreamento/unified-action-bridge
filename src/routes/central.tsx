@@ -304,7 +304,8 @@ function CentralPage() {
   const [newChatPhone, setNewChatPhone] = useState("");
   const [newChatMessage, setNewChatMessage] = useState("");
   const [newChatSector, setNewChatSector] = useState("");
-  const [newChatTab, setNewChatTab] = useState<"saved" | "manual">("saved");
+  const [newChatTab, setNewChatTab] = useState<"saved" | "manual" | "groups">("saved");
+  const [groupsSearch, setGroupsSearch] = useState("");
   const [newChatPickedContact, setNewChatPickedContact] = useState<PickedContact | null>(null);
   const [showFinalizeConfirm, setShowFinalizeConfirm] = useState(false);
   const [showFinalizeReview, setShowFinalizeReview] = useState(false);
