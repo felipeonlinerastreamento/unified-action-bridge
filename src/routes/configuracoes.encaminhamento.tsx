@@ -285,6 +285,10 @@ function EncaminhamentoPage() {
 
         <TicketSubcategoriesConfig />
 
+        <ChatTagCatalogConfig />
+
+
+
         <Card>
           <CardHeader>
             <CardTitle>Regras de Encaminhamento</CardTitle>
