@@ -50,6 +50,7 @@ import { EscalonamentoGestaoConfig } from "@/components/configuracoes/escaloname
 import { ChatIdleAutoMessagesConfig } from "@/components/configuracoes/chat-idle-auto-messages-config";
 import { TicketActivitiesConfig } from "@/components/configuracoes/ticket-activities-config";
 import { TicketSubcategoriesConfig } from "@/components/configuracoes/ticket-subcategories-config";
+import { ChatTagCatalogConfig } from "@/components/configuracoes/chat-tag-catalog-config";
 
 export const Route = createFileRoute("/configuracoes/encaminhamento")({
   component: EncaminhamentoPage,
