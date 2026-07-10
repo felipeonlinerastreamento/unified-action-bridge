@@ -5440,13 +5440,16 @@ function CentralPage() {
             </DialogDescription>
           </DialogHeader>
 
-          <Tabs value={newChatTab} onValueChange={(v) => setNewChatTab(v as "saved" | "manual")} className="mt-2">
-            <TabsList className="grid grid-cols-2 w-full">
+          <Tabs value={newChatTab} onValueChange={(v) => setNewChatTab(v as "saved" | "manual" | "groups")} className="mt-2">
+            <TabsList className="grid grid-cols-3 w-full">
               <TabsTrigger value="saved" className="gap-1.5">
-                <Users className="h-3.5 w-3.5" /> Contato salvo
+                <Users className="h-3.5 w-3.5" /> Contato
               </TabsTrigger>
               <TabsTrigger value="manual" className="gap-1.5">
-                <Phone className="h-3.5 w-3.5" /> Telefone manual
+                <Phone className="h-3.5 w-3.5" /> Telefone
+              </TabsTrigger>
+              <TabsTrigger value="groups" className="gap-1.5">
+                <Users className="h-3.5 w-3.5" /> Grupos
               </TabsTrigger>
             </TabsList>
 
@@ -5488,40 +5491,94 @@ function CentralPage() {
                 <p className="text-[10px] text-muted-foreground mt-1">Formato: código do país + DDD + número</p>
               </div>
             </TabsContent>
+
+            <TabsContent value="groups" className="space-y-2 mt-3">
+              <Input
+                placeholder="Buscar grupo..."
+                value={groupsSearch}
+                onChange={(e) => setGroupsSearch(e.target.value)}
+              />
+              <div className="max-h-[320px] overflow-y-auto rounded-md border divide-y">
+                {loadingGroups && (
+                  <div className="p-4 text-center text-xs text-muted-foreground flex items-center justify-center gap-2">
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" /> Carregando grupos...
+                  </div>
+                )}
+                {!loadingGroups && groupsList.length === 0 && (
+                  <div className="p-4 text-center text-xs text-muted-foreground">Nenhum grupo encontrado.</div>
+                )}
+                {!loadingGroups && groupsList
+                  .filter((g: any) => {
+                    const q = groupsSearch.trim().toLowerCase();
+                    if (!q) return true;
+                    return (g.contact_name || "").toLowerCase().includes(q) || (g.phone || "").toLowerCase().includes(q);
+                  })
+                  .map((g: any) => {
+                    const name = g.contact_name || g.phone;
+                    const initials = String(name).substring(0, 2).toUpperCase();
+                    return (
+                      <button
+                        key={g.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedChatId(g.id);
+                          setShowNewChatModal(false);
+                          setGroupsSearch("");
+                          setNewChatTab("saved");
+                        }}
+                        className="w-full flex items-center gap-2 p-2 hover:bg-accent text-left transition-colors"
+                      >
+                        <Avatar className="h-8 w-8 shrink-0">
+                          {g.contact_avatar && <AvatarImage src={g.contact_avatar} />}
+                          <AvatarFallback className="text-[10px] bg-primary/10 text-primary">{initials}</AvatarFallback>
+                        </Avatar>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">{name}</p>
+                          {g.last_message_preview && (
+                            <p className="text-[11px] text-muted-foreground truncate">{g.last_message_preview}</p>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+              </div>
+            </TabsContent>
           </Tabs>
 
-          <div className="space-y-3 mt-4">
-            <div>
-              <Label className="text-xs">Mensagem inicial (opcional)</Label>
-              <Textarea
-                rows={3}
-                placeholder="Olá, como posso ajudar?"
-                value={newChatMessage}
-                onChange={(e) => setNewChatMessage(e.target.value)}
-              />
+          {newChatTab !== "groups" && (
+            <div className="space-y-3 mt-4">
+              <div>
+                <Label className="text-xs">Mensagem inicial (opcional)</Label>
+                <Textarea
+                  rows={3}
+                  placeholder="Olá, como posso ajudar?"
+                  value={newChatMessage}
+                  onChange={(e) => setNewChatMessage(e.target.value)}
+                />
+              </div>
+              <div>
+                <Label className="text-xs">Setor (opcional)</Label>
+                <Select value={newChatSector} onValueChange={setNewChatSector}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecionar setor..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sectors.map((s: any) => (
+                      <SelectItem key={s.id} value={s.id}>{s.name || s.description}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                className="w-full"
+                onClick={() => createChatMutation.mutate()}
+                disabled={!newChatPhone || newChatPhone.replace(/\D/g, "").length < 10 || createChatMutation.isPending}
+              >
+                {createChatMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+                Iniciar Conversa
+              </Button>
             </div>
-            <div>
-              <Label className="text-xs">Setor (opcional)</Label>
-              <Select value={newChatSector} onValueChange={setNewChatSector}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecionar setor..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {sectors.map((s: any) => (
-                    <SelectItem key={s.id} value={s.id}>{s.name || s.description}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button
-              className="w-full"
-              onClick={() => createChatMutation.mutate()}
-              disabled={!newChatPhone || newChatPhone.replace(/\D/g, "").length < 10 || createChatMutation.isPending}
-            >
-              {createChatMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
-              Iniciar Conversa
-            </Button>
-          </div>
+          )}
         </DialogContent>
       </Dialog>
 
