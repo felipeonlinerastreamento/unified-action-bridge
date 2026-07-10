@@ -803,6 +803,23 @@ function CentralPage() {
     refetchInterval: 5000,
   });
 
+  // Groups list for the "Grupos" tab in the new chat modal
+  const { data: groupsList = [], isLoading: loadingGroups } = useQuery({
+    queryKey: ["zapi-groups-list", selectedChannelId],
+    queryFn: async () => {
+      if (!selectedChannelId) return [] as any[];
+      const { data } = await supabase
+        .from("zapi_chats")
+        .select("id, contact_name, contact_avatar, phone, last_message_at, last_message_preview")
+        .eq("channel_id", selectedChannelId)
+        .or("phone.ilike.%-%,phone.ilike.%@g.us%")
+        .order("last_message_at", { ascending: false, nullsFirst: false })
+        .limit(500);
+      return data || [];
+    },
+    enabled: !!selectedChannelId && isAuthenticated && showNewChatModal && newChatTab === "groups",
+    staleTime: 30_000,
+
   // Contact "typing..." indicator from Z-API presence webhook (stored in zapi_chats.bot_state)
   const isContactTyping = !!(localZapiChat?.bot_state as any)?.is_typing;
 
