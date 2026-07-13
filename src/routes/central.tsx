@@ -3682,7 +3682,7 @@ function CentralPage() {
                                 onClick={() => {
                                   setWhisperMode((v) => {
                                     const next = !v;
-                                    if (next) setNicknameMode(true);
+                                    if (next) setNicknameMode(false);
                                     return next;
                                   });
                                 }}
