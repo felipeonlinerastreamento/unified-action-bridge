@@ -3631,8 +3631,8 @@ function CentralPage() {
                           <Plus className="h-4 w-4" />
                         </Button>
                         {actionsOpen && (
-                          <div className="absolute bottom-full left-0 mb-2 bg-popover border rounded-xl shadow-lg p-2 flex flex-col gap-2 w-56 z-50">
-                            <div className="grid grid-cols-4 gap-1">
+                          <div className="absolute bottom-full left-0 mb-2 bg-popover border rounded-xl shadow-lg p-3 flex flex-col gap-3 w-72 z-50">
+                            <div className="grid grid-cols-4 gap-1.5">
                               <Button
                                 size="icon"
                                 variant="ghost"
@@ -3674,36 +3674,41 @@ function CentralPage() {
                               </Button>
                             </div>
                             <Separator />
-                            <div className="flex flex-col gap-0.5">
+                            <div className="flex flex-col gap-1.5">
+                              <p className="text-[10px] font-semibold uppercase tracking-wide text-muted-foreground px-1">Modos de envio</p>
                               <button
                                 type="button"
-                                className={`flex items-center gap-2 px-2 py-1.5 text-sm rounded-md hover:bg-accent ${whisperMode ? "bg-accent" : ""}`}
+                                className={`flex items-center gap-2.5 px-2.5 py-2.5 text-sm rounded-md border transition-colors text-left ${whisperMode ? "bg-amber-500/15 border-amber-500/60 text-amber-700 dark:text-amber-300" : "border-transparent hover:bg-accent"}`}
                                 onClick={() => {
                                   setWhisperMode((v) => {
                                     const next = !v;
-                                    if (next) setNicknameMode(false);
+                                    if (next) setNicknameMode(true);
                                     return next;
                                   });
-                                  setActionsOpen(false);
                                 }}
                               >
                                 <EyeOff className="h-4 w-4 shrink-0" />
-                                Enviar sussurro
+                                <span className="flex-1">Enviar sussurro</span>
+                                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${whisperMode ? "bg-amber-500 text-white" : "bg-muted text-muted-foreground"}`}>
+                                  {whisperMode ? "ATIVO" : "OFF"}
+                                </span>
                               </button>
                               <button
                                 type="button"
-                                className={`flex items-center gap-2 px-2 py-1.5 text-sm rounded-md hover:bg-accent ${!nicknameMode ? "bg-accent" : ""}`}
+                                className={`flex items-center gap-2.5 px-2.5 py-2.5 text-sm rounded-md border transition-colors text-left ${!nicknameMode ? "bg-primary/10 border-primary/50 text-primary" : "border-transparent hover:bg-accent"}`}
                                 onClick={() => {
                                   setNicknameMode((v) => {
                                     const next = !v;
                                     if (!next) setWhisperMode(false);
                                     return next;
                                   });
-                                  setActionsOpen(false);
                                 }}
                               >
                                 <UserX className="h-4 w-4 shrink-0" />
-                                Interagir sem apelido
+                                <span className="flex-1">Interagir sem apelido</span>
+                                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${!nicknameMode ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"}`}>
+                                  {!nicknameMode ? "ATIVO" : "OFF"}
+                                </span>
                               </button>
                               {currentTicket?.id && currentTicket?.protocol_number != null && (
                                 <button
