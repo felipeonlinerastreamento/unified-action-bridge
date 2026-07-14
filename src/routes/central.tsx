@@ -2987,6 +2987,8 @@ function CentralPage() {
                 onlineAgents={onlineAgents}
                 getSlaColor={getSlaColor}
                 formatServiceTime={formatServiceTime}
+                currentAgentName={profile?.name}
+                onZombieCountChange={setMyZombieCount}
               />
             </div>
             )}
