@@ -283,12 +283,14 @@ function ChatListItem({
   onSelect,
   getSlaColor,
   formatServiceTime,
+  nowTick,
 }: {
   chat: ChatItem;
   isSelected: boolean;
   onSelect: () => void;
   getSlaColor: (chat: ChatItem) => { bg: string; text: string; label: string };
   formatServiceTime: (chat: ChatItem) => string;
+  nowTick: number;
 }) {
   const name = chat.description || chat.contact?.name || chat.contact?.number || `Chat ${chat.attendanceId?.slice(0, 6)}`;
   const initials = name.substring(0, 2).toUpperCase();
@@ -307,6 +309,12 @@ function ChatListItem({
   const hasLastMsg = !!chat.lastMessage;
   const unread = chat.countUnreadMessages ?? 0;
   const clientWaiting = hasLastMsg && lastMsgIsMe === false;
+  const waitMs = useMemo(() => {
+    if (!clientWaiting || !chat.lastMessage?.utcDhMessage) return 0;
+    return Math.max(0, nowTick - new Date(chat.lastMessage.utcDhMessage).getTime());
+  }, [clientWaiting, chat.lastMessage?.utcDhMessage, nowTick]);
+  const isZombie = waitMs >= ZOMBIE_MS;
+  const wc = waitMs > 0 ? waitColor(waitMs) : null;
   const { openChat } = useFloatingChats();
 
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
