@@ -102,10 +102,47 @@ function initials(name?: string | null): string {
 }
 
 function PainelTvPage() {
-  const { hasRole, isAuthenticated } = useAuth();
+  const { hasRole, isAuthenticated, user } = useAuth();
   const { canSeeMenu, isLoading: permLoading } = useUserPermissions();
   const isAdmin = hasRole("admin") || hasRole("gestor");
   const allowed = isAdmin || canSeeMenu("painel-tv");
+
+  // ============ Layout personalizável (por usuário) ============
+  const layoutKey = user?.id ? `painel-tv-layout:${user.id}` : null;
+  const [layout, setLayout] = useState<LayoutState>(DEFAULT_LAYOUT);
+
+  useEffect(() => {
+    if (!layoutKey) return;
+    try {
+      const raw = localStorage.getItem(layoutKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        setLayout({
+          visible: { ...DEFAULT_LAYOUT.visible, ...(parsed?.visible ?? {}) },
+          span:    { ...DEFAULT_LAYOUT.span,    ...(parsed?.span    ?? {}) },
+        });
+      }
+    } catch { /* ignore */ }
+  }, [layoutKey]);
+
+  const persistLayout = (next: LayoutState) => {
+    setLayout(next);
+    if (layoutKey) {
+      try { localStorage.setItem(layoutKey, JSON.stringify(next)); } catch { /* ignore */ }
+    }
+  };
+  const toggleVisible = (id: BlockId) =>
+    persistLayout({ ...layout, visible: { ...layout.visible, [id]: !layout.visible[id] } });
+  const setSpan = (id: BlockId, span: number) => {
+    const max = maxSpanFor(BLOCK_META[id].group);
+    const clamped = Math.max(1, Math.min(max, span));
+    persistLayout({ ...layout, span: { ...layout.span, [id]: clamped } });
+  };
+  const resetLayout = () => persistLayout(DEFAULT_LAYOUT);
+
+  const isVisible = (id: BlockId) => layout.visible[id] !== false;
+  const kpiClass = (id: BlockId) => KPI_SPAN_CLASS[layout.span[id] ?? BLOCK_META[id].defaultSpan] ?? "lg:col-span-1";
+  const panelClass = (id: BlockId) => PANEL_SPAN_CLASS[layout.span[id] ?? BLOCK_META[id].defaultSpan] ?? "md:col-span-1";
 
   const [isFs, setIsFs] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
