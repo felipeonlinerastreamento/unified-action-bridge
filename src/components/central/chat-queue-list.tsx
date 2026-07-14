@@ -136,6 +136,8 @@ export function ChatQueueList({
   onlineAgents,
   getSlaColor,
   formatServiceTime,
+  currentAgentName,
+  onZombieCountChange,
 }: ChatQueueListProps) {
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
     automatic: true,
@@ -144,6 +146,30 @@ export function ChatQueueList({
     manual: true,
     group: true,
   });
+
+  // Tick a cada 15s para atualizar cronômetros/zumbis
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNowTick(Date.now()), 15000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Reporta contagem de chats zumbis do operador logado
+  useEffect(() => {
+    if (!onZombieCountChange) return;
+    const norm = (currentAgentName || "").trim().toLowerCase();
+    let count = 0;
+    for (const c of chats) {
+      const mine = norm && (c._agentName || c.currentUser?.name || "").trim().toLowerCase() === norm;
+      if (!mine) continue;
+      const last = c.lastMessage;
+      if (!last || last.sender?.isMe !== false) continue;
+      const t = last.utcDhMessage ? new Date(last.utcDhMessage).getTime() : 0;
+      if (t && nowTick - t >= ZOMBIE_MS) count += 1;
+    }
+    onZombieCountChange(count);
+  }, [chats, nowTick, currentAgentName, onZombieCountChange]);
+
 
   const toggleGroup = (key: string) => {
     setExpandedGroups((prev) => ({ ...prev, [key]: !prev[key] }));
