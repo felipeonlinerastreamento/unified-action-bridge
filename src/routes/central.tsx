@@ -283,6 +283,7 @@ function CentralPage() {
   const navigate = useNavigate();
 
   const [selectedChannelId, setSelectedChannelId] = useState<string>("");
+  const [myZombieCount, setMyZombieCount] = useState(0);
   const [selectedChatId, setSelectedChatId] = useState<string>("");
   const [messageInput, setMessageInput] = useState("");
   const [whisperMode, setWhisperMode] = useState(false);
