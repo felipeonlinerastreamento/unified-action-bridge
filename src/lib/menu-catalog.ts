@@ -65,6 +65,7 @@ export const URL_TO_MENU_SLUG: Record<string, string> = {
   "/okr": "okr",
   "/atendimentos": "atendimentos",
   "/chat-operadores": "chat-operadores",
+  "/painel-tv": "painel-tv",
   "/configuracoes": "config.integracoes",
   "/configuracoes/central-atendimento": "config.central-atendimento",
   "/configuracoes/fluxo-atendimento": "config.fluxo-atendimento",
