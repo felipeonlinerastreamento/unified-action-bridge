@@ -783,6 +783,7 @@ function PainelTvPage() {
       )}
 
       {/* Ranking Operadores */}
+      {isVisible("ranking") && (
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
