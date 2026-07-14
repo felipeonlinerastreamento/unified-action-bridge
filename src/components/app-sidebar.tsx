@@ -28,7 +28,10 @@ import {
   ShieldCheck,
   Megaphone,
   FileText,
+  Monitor,
 } from "lucide-react";
+
+
 import { Link, useLocation } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { useUserPermissions } from "@/hooks/use-user-permissions";
@@ -64,6 +67,7 @@ const mainItems = [
   { title: "OKR", url: "/okr", icon: Target },
   
   { title: "Chat com Operadores", url: "/chat-operadores", icon: MessageCircle },
+  { title: "Painel TV", url: "/painel-tv", icon: Monitor },
 ];
 
 const atendimentosSubItems: { title: string; url: string; icon: typeof List }[] = [

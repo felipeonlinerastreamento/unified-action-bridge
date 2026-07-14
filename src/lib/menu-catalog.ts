@@ -21,6 +21,7 @@ export const MENU_CATALOG: MenuEntry[] = [
   { slug: "okr", label: "OKR", category: "main" },
   { slug: "atendimentos", label: "Atendimentos", category: "main" },
   { slug: "chat-operadores", label: "Chat com Operadores", category: "main" },
+  { slug: "painel-tv", label: "Painel TV (Monitoramento)", category: "main" },
 
   // Configurações
   { slug: "config.integracoes", label: "Integrações", category: "config" },
@@ -64,6 +65,7 @@ export const URL_TO_MENU_SLUG: Record<string, string> = {
   "/okr": "okr",
   "/atendimentos": "atendimentos",
   "/chat-operadores": "chat-operadores",
+  "/painel-tv": "painel-tv",
   "/configuracoes": "config.integracoes",
   "/configuracoes/central-atendimento": "config.central-atendimento",
   "/configuracoes/fluxo-atendimento": "config.fluxo-atendimento",

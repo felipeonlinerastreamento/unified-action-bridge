@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TratativasRouteImport } from './routes/tratativas'
 import { Route as RelatoriosRouteImport } from './routes/relatorios'
+import { Route as PainelTvRouteImport } from './routes/painel-tv'
 import { Route as OkrRouteImport } from './routes/okr'
 import { Route as EstoqueRouteImport } from './routes/estoque'
 import { Route as EmpresasRouteImport } from './routes/empresas'
@@ -52,6 +53,11 @@ const TratativasRoute = TratativasRouteImport.update({
 const RelatoriosRoute = RelatoriosRouteImport.update({
   id: '/relatorios',
   path: '/relatorios',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PainelTvRoute = PainelTvRouteImport.update({
+  id: '/painel-tv',
+  path: '/painel-tv',
   getParentRoute: () => rootRouteImport,
 } as any)
 const OkrRoute = OkrRouteImport.update({
@@ -238,6 +244,7 @@ export interface FileRoutesByFullPath {
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
   '/okr': typeof OkrRoute
+  '/painel-tv': typeof PainelTvRoute
   '/relatorios': typeof RelatoriosRoute
   '/tratativas': typeof TratativasRoute
   '/atendimentos/tarefas': typeof AtendimentosTarefasRoute
@@ -273,6 +280,7 @@ export interface FileRoutesByTo {
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
   '/okr': typeof OkrRoute
+  '/painel-tv': typeof PainelTvRoute
   '/relatorios': typeof RelatoriosRoute
   '/tratativas': typeof TratativasRoute
   '/atendimentos/tarefas': typeof AtendimentosTarefasRoute
@@ -310,6 +318,7 @@ export interface FileRoutesById {
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
   '/okr': typeof OkrRoute
+  '/painel-tv': typeof PainelTvRoute
   '/relatorios': typeof RelatoriosRoute
   '/tratativas': typeof TratativasRoute
   '/atendimentos_/tarefas': typeof AtendimentosTarefasRoute
@@ -348,6 +357,7 @@ export interface FileRouteTypes {
     | '/empresas'
     | '/estoque'
     | '/okr'
+    | '/painel-tv'
     | '/relatorios'
     | '/tratativas'
     | '/atendimentos/tarefas'
@@ -383,6 +393,7 @@ export interface FileRouteTypes {
     | '/empresas'
     | '/estoque'
     | '/okr'
+    | '/painel-tv'
     | '/relatorios'
     | '/tratativas'
     | '/atendimentos/tarefas'
@@ -419,6 +430,7 @@ export interface FileRouteTypes {
     | '/empresas'
     | '/estoque'
     | '/okr'
+    | '/painel-tv'
     | '/relatorios'
     | '/tratativas'
     | '/atendimentos_/tarefas'
@@ -456,6 +468,7 @@ export interface RootRouteChildren {
   EmpresasRoute: typeof EmpresasRoute
   EstoqueRoute: typeof EstoqueRoute
   OkrRoute: typeof OkrRoute
+  PainelTvRoute: typeof PainelTvRoute
   RelatoriosRoute: typeof RelatoriosRoute
   TratativasRoute: typeof TratativasRoute
   AtendimentosTarefasRoute: typeof AtendimentosTarefasRoute
@@ -481,6 +494,13 @@ declare module '@tanstack/react-router' {
       path: '/relatorios'
       fullPath: '/relatorios'
       preLoaderRoute: typeof RelatoriosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/painel-tv': {
+      id: '/painel-tv'
+      path: '/painel-tv'
+      fullPath: '/painel-tv'
+      preLoaderRoute: typeof PainelTvRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/okr': {
@@ -761,6 +781,7 @@ const rootRouteChildren: RootRouteChildren = {
   EmpresasRoute: EmpresasRoute,
   EstoqueRoute: EstoqueRoute,
   OkrRoute: OkrRoute,
+  PainelTvRoute: PainelTvRoute,
   RelatoriosRoute: RelatoriosRoute,
   TratativasRoute: TratativasRoute,
   AtendimentosTarefasRoute: AtendimentosTarefasRoute,
@@ -774,13 +795,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
