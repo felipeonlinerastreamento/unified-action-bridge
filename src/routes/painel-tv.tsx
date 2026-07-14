@@ -13,6 +13,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Users, Clock, MessageSquare, Bot, CheckCircle2, UserCheck,
   Timer, AlertTriangle, Maximize2, Minimize2, TrendingUp,
+  Zap, Ghost, MessageCircleWarning,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -25,6 +26,9 @@ const THRESH = {
   queueYellowMin: 5,
   queueRedMin: 10,
   botIdleMin: 10,
+  zombieMin: 5,               // chat em_atendimento sem resposta do operador > 5min
+  engagementTargetMin: 2,     // 1ª resposta do operador em ≤ 2min
+  tmerTargetMin: 3,           // tempo médio entre msgs do cliente e resposta
   operatorOnlineMin: 2,
   tmrTargetMin: 3,
   tmaTargetMin: 20,
