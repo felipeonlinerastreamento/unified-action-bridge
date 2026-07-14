@@ -28,7 +28,8 @@ import {
   ShieldCheck,
   Megaphone,
   FileText,
-} from "lucide-react";
+  Monitor,
+
 import { Link, useLocation } from "@tanstack/react-router";
 import { useAuth } from "@/hooks/use-auth";
 import { useUserPermissions } from "@/hooks/use-user-permissions";
