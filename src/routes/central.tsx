@@ -112,6 +112,7 @@ import {
   CornerDownRight,
   ShieldAlert,
   Wrench,
+  AlertTriangle,
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -283,6 +284,7 @@ function CentralPage() {
   const navigate = useNavigate();
 
   const [selectedChannelId, setSelectedChannelId] = useState<string>("");
+  const [myZombieCount, setMyZombieCount] = useState(0);
   const [selectedChatId, setSelectedChatId] = useState<string>("");
   const [messageInput, setMessageInput] = useState("");
   const [whisperMode, setWhisperMode] = useState(false);
@@ -2832,6 +2834,12 @@ function CentralPage() {
               </p>
             </div>
             <MyAttendanceKpis />
+            {myZombieCount > 0 && (
+              <Badge variant="destructive" className="gap-1 animate-pulse text-xs h-7 px-2">
+                <AlertTriangle className="h-3.5 w-3.5" />
+                {myZombieCount} chat{myZombieCount > 1 ? "s" : ""} zumbi{myZombieCount > 1 ? "s" : ""} (&gt;5min)
+              </Badge>
+            )}
           </div>
           <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             {isConnected ? (
@@ -2986,6 +2994,8 @@ function CentralPage() {
                 onlineAgents={onlineAgents}
                 getSlaColor={getSlaColor}
                 formatServiceTime={formatServiceTime}
+                currentAgentName={profile?.name}
+                onZombieCountChange={setMyZombieCount}
               />
             </div>
             )}

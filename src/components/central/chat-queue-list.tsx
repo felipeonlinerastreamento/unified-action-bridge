@@ -1,10 +1,28 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Bot, Clock, Headset, Users, Moon, ChevronDown, ChevronRight, MessageSquare, ArrowUp, ArrowDown } from "lucide-react";
+import { Loader2, Bot, Clock, Headset, Users, Moon, ChevronDown, ChevronRight, MessageSquare, ArrowUp, ArrowDown, AlertTriangle } from "lucide-react";
 import { useFloatingChats } from "./floating-chats-context";
 import { isGroupChat } from "@/lib/chat-utils";
+
+// Meta de resposta: verde ≤2min, amarelo 2-5min, vermelho >5min (zumbi)
+const WARN_MS = 2 * 60 * 1000;
+const ZOMBIE_MS = 5 * 60 * 1000;
+
+function formatWait(ms: number): string {
+  if (ms < 60000) return `${Math.floor(ms / 1000)}s`;
+  const totalSec = Math.floor(ms / 1000);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return s > 0 ? `${m}m${s.toString().padStart(2, "0")}s` : `${m}m`;
+}
+
+function waitColor(ms: number): { bg: string; label: string } {
+  if (ms >= ZOMBIE_MS) return { bg: "#dc2626", label: "ZUMBI" };
+  if (ms >= WARN_MS) return { bg: "#f59e0b", label: "atento" };
+  return { bg: "#10b981", label: "ok" };
+}
 
 interface ChatItem {
   attendanceId: string;
@@ -53,6 +71,8 @@ interface ChatQueueListProps {
   onlineAgents: number;
   getSlaColor: (chat: ChatItem) => { bg: string; text: string; label: string };
   formatServiceTime: (chat: ChatItem) => string;
+  currentAgentName?: string | null;
+  onZombieCountChange?: (count: number) => void;
 }
 
 // Agent color palette
@@ -116,6 +136,8 @@ export function ChatQueueList({
   onlineAgents,
   getSlaColor,
   formatServiceTime,
+  currentAgentName,
+  onZombieCountChange,
 }: ChatQueueListProps) {
   const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
     automatic: true,
@@ -124,6 +146,30 @@ export function ChatQueueList({
     manual: true,
     group: true,
   });
+
+  // Tick a cada 15s para atualizar cronômetros/zumbis
+  const [nowTick, setNowTick] = useState(() => Date.now());
+  useEffect(() => {
+    const t = setInterval(() => setNowTick(Date.now()), 15000);
+    return () => clearInterval(t);
+  }, []);
+
+  // Reporta contagem de chats zumbis do operador logado
+  useEffect(() => {
+    if (!onZombieCountChange) return;
+    const norm = (currentAgentName || "").trim().toLowerCase();
+    let count = 0;
+    for (const c of chats) {
+      const mine = norm && (c._agentName || c.currentUser?.name || "").trim().toLowerCase() === norm;
+      if (!mine) continue;
+      const last = c.lastMessage;
+      if (!last || last.sender?.isMe !== false) continue;
+      const t = last.utcDhMessage ? new Date(last.utcDhMessage).getTime() : 0;
+      if (t && nowTick - t >= ZOMBIE_MS) count += 1;
+    }
+    onZombieCountChange(count);
+  }, [chats, nowTick, currentAgentName, onZombieCountChange]);
+
 
   const toggleGroup = (key: string) => {
     setExpandedGroups((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -221,6 +267,7 @@ export function ChatQueueList({
                   onSelect={() => onSelectChat(chat.attendanceId)}
                   getSlaColor={getSlaColor}
                   formatServiceTime={formatServiceTime}
+                  nowTick={nowTick}
                 />
               ))}
           </div>
@@ -236,12 +283,14 @@ function ChatListItem({
   onSelect,
   getSlaColor,
   formatServiceTime,
+  nowTick,
 }: {
   chat: ChatItem;
   isSelected: boolean;
   onSelect: () => void;
   getSlaColor: (chat: ChatItem) => { bg: string; text: string; label: string };
   formatServiceTime: (chat: ChatItem) => string;
+  nowTick: number;
 }) {
   const name = chat.description || chat.contact?.name || chat.contact?.number || `Chat ${chat.attendanceId?.slice(0, 6)}`;
   const initials = name.substring(0, 2).toUpperCase();
@@ -260,6 +309,12 @@ function ChatListItem({
   const hasLastMsg = !!chat.lastMessage;
   const unread = chat.countUnreadMessages ?? 0;
   const clientWaiting = hasLastMsg && lastMsgIsMe === false;
+  const waitMs = useMemo(() => {
+    if (!clientWaiting || !chat.lastMessage?.utcDhMessage) return 0;
+    return Math.max(0, nowTick - new Date(chat.lastMessage.utcDhMessage).getTime());
+  }, [clientWaiting, chat.lastMessage?.utcDhMessage, nowTick]);
+  const isZombie = waitMs >= ZOMBIE_MS;
+  const wc = waitMs > 0 ? waitColor(waitMs) : null;
   const { openChat } = useFloatingChats();
 
   const handleDragStart = (e: React.DragEvent<HTMLDivElement>) => {
@@ -301,7 +356,7 @@ function ChatListItem({
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(); } }}
       className={`w-full text-left px-3 py-2.5 border-b hover:bg-accent/50 transition-colors cursor-grab active:cursor-grabbing ${
         isSelected ? "bg-accent" : ""
-      } ${clientWaiting ? "animate-name-blink" : ""}`}
+      } ${clientWaiting ? "animate-name-blink" : ""} ${isZombie ? "ring-2 ring-inset ring-red-500 bg-red-50/40 dark:bg-red-950/20" : ""}`}
       title="Clique para abrir no painel ou arraste para fora para janela flutuante"
     >
       <div className="flex items-start gap-2.5">
@@ -384,14 +439,24 @@ function ChatListItem({
               </p>
             </div>
           )}
-          {/* Row 3: SLA time badge */}
-          <div className="flex items-center gap-1.5 mt-1">
+          {/* Row 3: SLA + wait timer badges */}
+          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
             <span
               className="text-[10px] font-semibold px-1.5 py-0 rounded-full text-white leading-4"
               style={{ backgroundColor: sla.bg }}
             >
               ⏱ {time}
             </span>
+            {wc && (
+              <span
+                className={`text-[10px] font-semibold px-1.5 py-0 rounded-full text-white leading-4 inline-flex items-center gap-1 ${isZombie ? "animate-pulse" : ""}`}
+                style={{ backgroundColor: wc.bg }}
+                title="Tempo aguardando resposta do operador"
+              >
+                {isZombie && <AlertTriangle className="h-2.5 w-2.5" />}
+                aguarda {formatWait(waitMs)}
+              </span>
+            )}
           </div>
 
           {/* Row 4: Last message */}
