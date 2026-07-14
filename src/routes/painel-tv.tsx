@@ -832,6 +832,7 @@ function PainelTvPage() {
           )}
         </CardContent>
       </Card>
+      )}
     </div>
   );
 
