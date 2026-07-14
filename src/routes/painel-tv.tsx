@@ -13,6 +13,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Users, Clock, MessageSquare, Bot, CheckCircle2, UserCheck,
   Timer, AlertTriangle, Maximize2, Minimize2, TrendingUp,
+  Zap, Ghost, MessageCircleWarning,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -25,6 +26,9 @@ const THRESH = {
   queueYellowMin: 5,
   queueRedMin: 10,
   botIdleMin: 10,
+  zombieMin: 5,               // chat em_atendimento sem resposta do operador > 5min
+  engagementTargetMin: 2,     // 1ª resposta do operador em ≤ 2min
+  tmerTargetMin: 3,           // tempo médio entre msgs do cliente e resposta
   operatorOnlineMin: 2,
   tmrTargetMin: 3,
   tmaTargetMin: 20,
@@ -151,6 +155,61 @@ function PainelTvPage() {
       return chunks;
     },
   });
+  // Todas as mensagens (ambos sentidos) dos chats de hoje — para TMER e Engajamento
+  const { data: todayMessages = [] } = useQuery<any[]>({
+    queryKey: ["painel-tv-today-messages", todayChats.map((c) => c.id).join(",")],
+    enabled: isAuthenticated && allowed && todayChats.length > 0,
+    refetchInterval: 30000,
+    queryFn: async () => {
+      const ids = todayChats.map((c) => c.id);
+      const chunks: any[] = [];
+      for (let i = 0; i < ids.length; i += 200) {
+        const slice = ids.slice(i, i + 200);
+        const { data } = await supabase
+          .from("zapi_messages")
+          .select("chat_id, created_at, from_me, sent_by_user_id, is_whisper")
+          .in("chat_id", slice)
+          .gte("created_at", todayStartISO)
+          .or("is_whisper.is.null,is_whisper.eq.false")
+          .order("created_at", { ascending: true })
+          .limit(5000);
+        chunks.push(...(data || []));
+      }
+      return chunks;
+    },
+  });
+
+  // Última mensagem por chat em atendimento — para detectar "chats zumbis"
+  const inAttendanceIds = openChats.filter((c) => c.status === "em_atendimento").map((c) => c.id);
+  const { data: lastMsgByChat = [] } = useQuery<any[]>({
+    queryKey: ["painel-tv-last-msg", inAttendanceIds.join(",")],
+    enabled: isAuthenticated && allowed && inAttendanceIds.length > 0,
+    refetchInterval: 15000,
+    queryFn: async () => {
+      const chunks: any[] = [];
+      for (let i = 0; i < inAttendanceIds.length; i += 100) {
+        const slice = inAttendanceIds.slice(i, i + 100);
+        const { data } = await supabase
+          .from("zapi_messages")
+          .select("chat_id, created_at, from_me, is_whisper")
+          .in("chat_id", slice)
+          .or("is_whisper.is.null,is_whisper.eq.false")
+          .order("created_at", { ascending: false })
+          .limit(1000);
+        chunks.push(...(data || []));
+      }
+      // manter apenas a mais recente por chat
+      const seen = new Set<string>();
+      const latest: any[] = [];
+      for (const m of chunks) {
+        if (seen.has(m.chat_id)) continue;
+        seen.add(m.chat_id);
+        latest.push(m);
+      }
+      return latest;
+    },
+  });
+
 
   // Operadores (perfis)
   const { data: profiles = [] } = useQuery<any[]>({
@@ -192,6 +251,49 @@ function PainelTvPage() {
     if (diff >= 0 && diff < 24 * 60) tmrValues.push(diff);
   }
   const tmrAvg = tmrValues.length ? tmrValues.reduce((a, b) => a + b, 0) / tmrValues.length : 0;
+
+  // Engajamento: % de chats onde 1ª resposta ≤ engagementTargetMin
+  const engagedCount = tmrValues.filter((v) => v <= THRESH.engagementTargetMin).length;
+  const engagementRate = tmrValues.length ? (engagedCount / tmrValues.length) * 100 : 0;
+
+  // TMER: tempo médio entre msg do cliente e próxima resposta do operador (mesmo chat)
+  const tmerValues: number[] = [];
+  const msgsByChat = new Map<string, any[]>();
+  for (const m of todayMessages) {
+    if (!msgsByChat.has(m.chat_id)) msgsByChat.set(m.chat_id, []);
+    msgsByChat.get(m.chat_id)!.push(m);
+  }
+  for (const arr of msgsByChat.values()) {
+    for (let i = 0; i < arr.length; i++) {
+      const cur = arr[i];
+      if (cur.from_me) continue; // buscar msgs do cliente
+      // próximo operador
+      for (let j = i + 1; j < arr.length; j++) {
+        const nx = arr[j];
+        if (nx.from_me && nx.sent_by_user_id) {
+          const diff = (new Date(nx.created_at).getTime() - new Date(cur.created_at).getTime()) / 60000;
+          if (diff >= 0 && diff < 6 * 60) tmerValues.push(diff);
+          break;
+        }
+      }
+    }
+  }
+  const tmerAvg = tmerValues.length ? tmerValues.reduce((a, b) => a + b, 0) / tmerValues.length : 0;
+
+  // Chats Zumbis: em_atendimento cuja última msg é do cliente há > zombieMin
+  const lastMap = new Map(lastMsgByChat.map((m) => [m.chat_id, m]));
+  const zombies = inAttendance
+    .map((c) => {
+      const last = lastMap.get(c.id);
+      if (!last || last.from_me) return null;
+      const idle = minutesAgo(last.created_at);
+      if (idle < THRESH.zombieMin) return null;
+      return { ...c, idleMin: idle };
+    })
+    .filter(Boolean) as any[];
+  zombies.sort((a, b) => b.idleMin - a.idleMin);
+
+
 
   // TMA hoje: média de (closed_at - created_at) para tickets finalizados hoje
   const tmaValues = closedToday
@@ -367,6 +469,91 @@ function PainelTvPage() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Nova linha — KPIs de desempenho da equipe */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+        <Card className={cn(zombies.length > 0 && "border-2 border-destructive bg-destructive/10")}>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase text-muted-foreground">Chats zumbis</span>
+              <Ghost className={cn("h-5 w-5", zombies.length > 0 ? "text-destructive" : "text-muted-foreground")} />
+            </div>
+            <p className={cn("text-4xl font-black mt-2", zombies.length > 0 ? "text-destructive" : "text-foreground")}>{zombies.length}</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              em atendimento sem resposta &gt; {THRESH.zombieMin}min
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase text-muted-foreground">Taxa de engajamento</span>
+              <Zap className={cn("h-5 w-5", engagementRate >= 70 ? "text-emerald-500" : engagementRate >= 40 ? "text-amber-500" : "text-destructive")} />
+            </div>
+            <p className={cn("text-4xl font-black mt-2",
+              engagementRate >= 70 ? "text-emerald-600 dark:text-emerald-400"
+              : engagementRate >= 40 ? "text-amber-600 dark:text-amber-400"
+              : "text-destructive")}>
+              {tmrValues.length ? `${Math.round(engagementRate)}%` : "—"}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              respondidos em ≤ {THRESH.engagementTargetMin}min ({engagedCount}/{tmrValues.length})
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase text-muted-foreground">TMER (resposta média)</span>
+              <MessageCircleWarning className={cn("h-5 w-5", tmerAvg > THRESH.tmerTargetMin ? "text-destructive" : "text-emerald-500")} />
+            </div>
+            <p className={cn("text-4xl font-black mt-2", tmerAvg > THRESH.tmerTargetMin ? "text-destructive" : "text-emerald-600 dark:text-emerald-400")}>
+              {tmerValues.length ? fmtMinutes(tmerAvg) : "—"}
+            </p>
+            <p className="text-xs text-muted-foreground mt-1">
+              entre msg do cliente e resposta (meta ≤ {THRESH.tmerTargetMin}min)
+            </p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Chats Zumbis — lista */}
+      {zombies.length > 0 && (
+        <Card className="border-destructive/50">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Ghost className="h-4 w-4 text-destructive" />
+              Chats zumbis — sem resposta do operador
+              <Badge variant="destructive" className="ml-auto">{zombies.length}</Badge>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <ScrollArea className="h-[220px]">
+              <div className="divide-y">
+                {zombies.slice(0, 20).map((c) => {
+                  const prof = profiles.find((p) => p.user_id === c.assigned_to);
+                  return (
+                    <div key={c.id} className="flex items-center justify-between px-4 py-2 text-sm">
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium truncate">{c.contact_name || c.phone || "Sem nome"}</p>
+                        <p className="text-xs text-muted-foreground truncate">
+                          Operador: {prof?.name || "—"} • Setor: {c.sector_name || "—"}
+                        </p>
+                      </div>
+                      <div className="text-right font-mono font-semibold text-destructive">
+                        {fmtMinutes(c.idleMin)}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+      )}
+
 
       {/* Segunda linha — Operadores online */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
