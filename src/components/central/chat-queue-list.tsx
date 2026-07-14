@@ -71,6 +71,8 @@ interface ChatQueueListProps {
   onlineAgents: number;
   getSlaColor: (chat: ChatItem) => { bg: string; text: string; label: string };
   formatServiceTime: (chat: ChatItem) => string;
+  currentAgentName?: string | null;
+  onZombieCountChange?: (count: number) => void;
 }
 
 // Agent color palette
