@@ -470,9 +470,50 @@ function CentralPage() {
     refetchOnWindowFocus: false,
   });
 
-  const allChats = openChatsData?.chats || [];
+  const rawAllChats = openChatsData?.chats || [];
   const gsystemUsers = openChatsData?.users || [];
   const onlineAgents = gsystemUsers.filter((u: any) => u.status === "ONLINE").length;
+
+  // Fetch WhatsApp avatars from zapi_chats to enrich the list (GSystem often
+  // returns "avatar-default"; fall back to the real photo captured via Z-API).
+  const { data: avatarByPhone } = useQuery({
+    queryKey: ["chat-avatars-by-phone", selectedChannelId],
+    enabled: !!selectedChannelId && isAuthenticated,
+    refetchInterval: 60000,
+    staleTime: 60000,
+    queryFn: async () => {
+      if (!selectedChannelId) return {} as Record<string, string>;
+      const { data } = await supabase
+        .from("zapi_chats")
+        .select("phone, contact_avatar")
+        .eq("channel_id", selectedChannelId)
+        .not("contact_avatar", "is", null);
+      const map: Record<string, string> = {};
+      (data || []).forEach((r: any) => {
+        if (!r.contact_avatar) return;
+        const digits = String(r.phone || "").replace(/\D/g, "");
+        if (digits) map[digits] = r.contact_avatar as string;
+      });
+      return map;
+    },
+  });
+
+  const allChats = useMemo(() => {
+    const map = avatarByPhone || {};
+    if (!Object.keys(map).length) return rawAllChats;
+    return rawAllChats.map((c: any) => {
+      const currentImg = c.linkImage || c.contact?.linkImage;
+      if (currentImg && !String(currentImg).includes("avatar-default")) return c;
+      const digits = String(c.contact?.number || c.contact?.secondaryName || "").replace(/\D/g, "");
+      const found = digits ? map[digits] : undefined;
+      if (!found) return c;
+      return {
+        ...c,
+        linkImage: found,
+        contact: { ...(c.contact || {}), linkImage: found },
+      };
+    });
+  }, [rawAllChats, avatarByPhone]);
 
   // Fetch SLA rules for time-based coloring
   const { data: slaRules = [] } = useQuery({
