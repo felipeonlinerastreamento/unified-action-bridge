@@ -267,6 +267,7 @@ export function ChatQueueList({
                   onSelect={() => onSelectChat(chat.attendanceId)}
                   getSlaColor={getSlaColor}
                   formatServiceTime={formatServiceTime}
+                  nowTick={nowTick}
                 />
               ))}
           </div>
