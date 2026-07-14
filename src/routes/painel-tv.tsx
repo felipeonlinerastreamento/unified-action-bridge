@@ -252,6 +252,49 @@ function PainelTvPage() {
   }
   const tmrAvg = tmrValues.length ? tmrValues.reduce((a, b) => a + b, 0) / tmrValues.length : 0;
 
+  // Engajamento: % de chats onde 1ª resposta ≤ engagementTargetMin
+  const engagedCount = tmrValues.filter((v) => v <= THRESH.engagementTargetMin).length;
+  const engagementRate = tmrValues.length ? (engagedCount / tmrValues.length) * 100 : 0;
+
+  // TMER: tempo médio entre msg do cliente e próxima resposta do operador (mesmo chat)
+  const tmerValues: number[] = [];
+  const msgsByChat = new Map<string, any[]>();
+  for (const m of todayMessages) {
+    if (!msgsByChat.has(m.chat_id)) msgsByChat.set(m.chat_id, []);
+    msgsByChat.get(m.chat_id)!.push(m);
+  }
+  for (const arr of msgsByChat.values()) {
+    for (let i = 0; i < arr.length; i++) {
+      const cur = arr[i];
+      if (cur.from_me) continue; // buscar msgs do cliente
+      // próximo operador
+      for (let j = i + 1; j < arr.length; j++) {
+        const nx = arr[j];
+        if (nx.from_me && nx.sent_by_user_id) {
+          const diff = (new Date(nx.created_at).getTime() - new Date(cur.created_at).getTime()) / 60000;
+          if (diff >= 0 && diff < 6 * 60) tmerValues.push(diff);
+          break;
+        }
+      }
+    }
+  }
+  const tmerAvg = tmerValues.length ? tmerValues.reduce((a, b) => a + b, 0) / tmerValues.length : 0;
+
+  // Chats Zumbis: em_atendimento cuja última msg é do cliente há > zombieMin
+  const lastMap = new Map(lastMsgByChat.map((m) => [m.chat_id, m]));
+  const zombies = inAttendance
+    .map((c) => {
+      const last = lastMap.get(c.id);
+      if (!last || last.from_me) return null;
+      const idle = minutesAgo(last.created_at);
+      if (idle < THRESH.zombieMin) return null;
+      return { ...c, idleMin: idle };
+    })
+    .filter(Boolean) as any[];
+  zombies.sort((a, b) => b.idleMin - a.idleMin);
+
+
+
   // TMA hoje: média de (closed_at - created_at) para tickets finalizados hoje
   const tmaValues = closedToday
     .map((t) => (new Date(t.closed_at).getTime() - new Date(t.created_at).getTime()) / 60000)
