@@ -155,6 +155,61 @@ function PainelTvPage() {
       return chunks;
     },
   });
+  // Todas as mensagens (ambos sentidos) dos chats de hoje — para TMER e Engajamento
+  const { data: todayMessages = [] } = useQuery<any[]>({
+    queryKey: ["painel-tv-today-messages", todayChats.map((c) => c.id).join(",")],
+    enabled: isAuthenticated && allowed && todayChats.length > 0,
+    refetchInterval: 30000,
+    queryFn: async () => {
+      const ids = todayChats.map((c) => c.id);
+      const chunks: any[] = [];
+      for (let i = 0; i < ids.length; i += 200) {
+        const slice = ids.slice(i, i + 200);
+        const { data } = await supabase
+          .from("zapi_messages")
+          .select("chat_id, created_at, from_me, sent_by_user_id, is_whisper")
+          .in("chat_id", slice)
+          .gte("created_at", todayStartISO)
+          .or("is_whisper.is.null,is_whisper.eq.false")
+          .order("created_at", { ascending: true })
+          .limit(5000);
+        chunks.push(...(data || []));
+      }
+      return chunks;
+    },
+  });
+
+  // Última mensagem por chat em atendimento — para detectar "chats zumbis"
+  const inAttendanceIds = openChats.filter((c) => c.status === "em_atendimento").map((c) => c.id);
+  const { data: lastMsgByChat = [] } = useQuery<any[]>({
+    queryKey: ["painel-tv-last-msg", inAttendanceIds.join(",")],
+    enabled: isAuthenticated && allowed && inAttendanceIds.length > 0,
+    refetchInterval: 15000,
+    queryFn: async () => {
+      const chunks: any[] = [];
+      for (let i = 0; i < inAttendanceIds.length; i += 100) {
+        const slice = inAttendanceIds.slice(i, i + 100);
+        const { data } = await supabase
+          .from("zapi_messages")
+          .select("chat_id, created_at, from_me, is_whisper")
+          .in("chat_id", slice)
+          .or("is_whisper.is.null,is_whisper.eq.false")
+          .order("created_at", { ascending: false })
+          .limit(1000);
+        chunks.push(...(data || []));
+      }
+      // manter apenas a mais recente por chat
+      const seen = new Set<string>();
+      const latest: any[] = [];
+      for (const m of chunks) {
+        if (seen.has(m.chat_id)) continue;
+        seen.add(m.chat_id);
+        latest.push(m);
+      }
+      return latest;
+    },
+  });
+
 
   // Operadores (perfis)
   const { data: profiles = [] } = useQuery<any[]>({
