@@ -6,7 +6,7 @@ import { Card } from "@/components/ui/card";
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
-import { Briefcase, Timer, Target } from "lucide-react";
+import { Briefcase, Timer, Target, Trophy } from "lucide-react";
 
 type Period = "day" | "week" | "month";
 
