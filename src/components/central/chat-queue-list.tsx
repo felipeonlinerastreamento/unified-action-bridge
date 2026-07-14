@@ -439,14 +439,24 @@ function ChatListItem({
               </p>
             </div>
           )}
-          {/* Row 3: SLA time badge */}
-          <div className="flex items-center gap-1.5 mt-1">
+          {/* Row 3: SLA + wait timer badges */}
+          <div className="flex items-center gap-1.5 mt-1 flex-wrap">
             <span
               className="text-[10px] font-semibold px-1.5 py-0 rounded-full text-white leading-4"
               style={{ backgroundColor: sla.bg }}
             >
               ⏱ {time}
             </span>
+            {wc && (
+              <span
+                className={`text-[10px] font-semibold px-1.5 py-0 rounded-full text-white leading-4 inline-flex items-center gap-1 ${isZombie ? "animate-pulse" : ""}`}
+                style={{ backgroundColor: wc.bg }}
+                title="Tempo aguardando resposta do operador"
+              >
+                {isZombie && <AlertTriangle className="h-2.5 w-2.5" />}
+                aguarda {formatWait(waitMs)}
+              </span>
+            )}
           </div>
 
           {/* Row 4: Last message */}
