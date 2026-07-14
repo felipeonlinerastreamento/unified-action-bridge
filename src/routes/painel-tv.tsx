@@ -10,12 +10,60 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
 import {
   Users, Clock, MessageSquare, Bot, CheckCircle2, UserCheck,
   Timer, AlertTriangle, Maximize2, Minimize2, TrendingUp,
-  Zap, Ghost, MessageCircleWarning,
+  Zap, Ghost, MessageCircleWarning, Settings2, RotateCcw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+// ============ Personalização de layout ============
+type BlockId =
+  | "queue" | "inatt" | "bot" | "tmr" | "tma" | "fin"
+  | "zombie" | "engage" | "tmer"
+  | "ops" | "critical" | "zombieList" | "ranking";
+
+type BlockGroup = "kpi" | "panel" | "full";
+
+const BLOCK_META: Record<BlockId, { label: string; group: BlockGroup; defaultSpan: number; defaultVisible: boolean }> = {
+  queue:      { label: "KPI • Fila aguardando",       group: "kpi",   defaultSpan: 1, defaultVisible: true },
+  inatt:      { label: "KPI • Em atendimento",        group: "kpi",   defaultSpan: 1, defaultVisible: true },
+  bot:        { label: "KPI • Bot travado",           group: "kpi",   defaultSpan: 1, defaultVisible: true },
+  tmr:        { label: "KPI • TMR",                   group: "kpi",   defaultSpan: 1, defaultVisible: true },
+  tma:        { label: "KPI • TMA hoje",              group: "kpi",   defaultSpan: 1, defaultVisible: true },
+  fin:        { label: "KPI • Finalizados hoje",      group: "kpi",   defaultSpan: 1, defaultVisible: true },
+  zombie:     { label: "KPI • Chats zumbis",          group: "kpi",   defaultSpan: 2, defaultVisible: true },
+  engage:     { label: "KPI • Taxa de engajamento",   group: "kpi",   defaultSpan: 2, defaultVisible: true },
+  tmer:       { label: "KPI • TMER",                  group: "kpi",   defaultSpan: 2, defaultVisible: true },
+  ops:        { label: "Painel • Operadores online", group: "panel", defaultSpan: 1, defaultVisible: true },
+  critical:   { label: "Painel • Fila crítica",      group: "panel", defaultSpan: 3, defaultVisible: true },
+  zombieList: { label: "Painel • Lista de zumbis",   group: "full",  defaultSpan: 1, defaultVisible: true },
+  ranking:    { label: "Painel • Ranking",           group: "full",  defaultSpan: 1, defaultVisible: true },
+};
+
+type LayoutState = {
+  visible: Record<BlockId, boolean>;
+  span: Record<BlockId, number>;
+};
+
+const DEFAULT_LAYOUT: LayoutState = {
+  visible: Object.fromEntries((Object.keys(BLOCK_META) as BlockId[]).map((k) => [k, BLOCK_META[k].defaultVisible])) as Record<BlockId, boolean>,
+  span:    Object.fromEntries((Object.keys(BLOCK_META) as BlockId[]).map((k) => [k, BLOCK_META[k].defaultSpan]))    as Record<BlockId, number>,
+};
+
+const KPI_SPAN_CLASS: Record<number, string> = {
+  1: "lg:col-span-1", 2: "lg:col-span-2", 3: "lg:col-span-3",
+  4: "lg:col-span-4", 5: "lg:col-span-5", 6: "lg:col-span-6",
+};
+const PANEL_SPAN_CLASS: Record<number, string> = {
+  1: "md:col-span-1", 2: "md:col-span-2", 3: "md:col-span-3", 4: "md:col-span-4",
+};
+
+function maxSpanFor(group: BlockGroup): number {
+  return group === "kpi" ? 6 : group === "panel" ? 4 : 1;
+}
 
 export const Route = createFileRoute("/painel-tv")({
   component: PainelTvPage,
