@@ -251,6 +251,19 @@ export function MyAttendanceKpis() {
           </p>
         </div>
       </Card>
+
+      {/* Meu ranking */}
+      <Card className="px-3 py-2 flex items-center gap-2">
+        <Trophy className="h-4 w-4 text-amber-500" />
+        <div className="leading-tight">
+          <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Meu ranking (hoje)</p>
+          <p className="text-sm font-semibold">
+            {ranking && ranking.total > 0
+              ? `#${ranking.position} de ${ranking.total} • ${ranking.finalized} finalizado${ranking.finalized === 1 ? "" : "s"}`
+              : "—"}
+          </p>
+        </div>
+      </Card>
     </div>
   );
 }
