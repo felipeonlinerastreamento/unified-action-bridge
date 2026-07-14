@@ -1,10 +1,28 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Bot, Clock, Headset, Users, Moon, ChevronDown, ChevronRight, MessageSquare, ArrowUp, ArrowDown } from "lucide-react";
+import { Loader2, Bot, Clock, Headset, Users, Moon, ChevronDown, ChevronRight, MessageSquare, ArrowUp, ArrowDown, AlertTriangle } from "lucide-react";
 import { useFloatingChats } from "./floating-chats-context";
 import { isGroupChat } from "@/lib/chat-utils";
+
+// Meta de resposta: verde ≤2min, amarelo 2-5min, vermelho >5min (zumbi)
+const WARN_MS = 2 * 60 * 1000;
+const ZOMBIE_MS = 5 * 60 * 1000;
+
+function formatWait(ms: number): string {
+  if (ms < 60000) return `${Math.floor(ms / 1000)}s`;
+  const totalSec = Math.floor(ms / 1000);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return s > 0 ? `${m}m${s.toString().padStart(2, "0")}s` : `${m}m`;
+}
+
+function waitColor(ms: number): { bg: string; label: string } {
+  if (ms >= ZOMBIE_MS) return { bg: "#dc2626", label: "ZUMBI" };
+  if (ms >= WARN_MS) return { bg: "#f59e0b", label: "atento" };
+  return { bg: "#10b981", label: "ok" };
+}
 
 interface ChatItem {
   attendanceId: string;
