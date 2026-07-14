@@ -167,6 +167,37 @@ export function MyAttendanceKpis() {
     staleTime: 15000,
   });
 
+  // Meu ranking do dia: posição pelo nº de chats finalizados hoje entre todos os operadores
+  const { data: ranking } = useQuery({
+    queryKey: ["my-ranking-today", user?.id],
+    queryFn: async () => {
+      if (!user?.id) return null;
+      const since = new Date();
+      since.setHours(0, 0, 0, 0);
+      const { data } = await supabase
+        .from("zapi_chats" as any)
+        .select("closed_by_user_id")
+        .eq("status", "finalizado")
+        .gte("closed_at", since.toISOString())
+        .not("closed_by_user_id", "is", null);
+      const rows = (data as any[]) || [];
+      const counts = new Map<string, number>();
+      for (const r of rows) {
+        const k = r.closed_by_user_id as string;
+        counts.set(k, (counts.get(k) || 0) + 1);
+      }
+      const mine = counts.get(user.id) || 0;
+      const ordered = Array.from(counts.values()).sort((a, b) => b - a);
+      const total = ordered.length;
+      let pos = ordered.findIndex((v) => v === mine) + 1;
+      if (mine === 0) pos = total + 1;
+      return { position: pos, total: Math.max(total, pos), finalized: mine };
+    },
+    enabled: !!user?.id,
+    refetchInterval: 30000,
+    staleTime: 15000,
+  });
+
   const meta = useMemo(() => {
     if (targetMinutes == null) return null;
     return Number(targetMinutes);
