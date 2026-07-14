@@ -10,12 +10,60 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Switch } from "@/components/ui/switch";
 import {
   Users, Clock, MessageSquare, Bot, CheckCircle2, UserCheck,
   Timer, AlertTriangle, Maximize2, Minimize2, TrendingUp,
-  Zap, Ghost, MessageCircleWarning,
+  Zap, Ghost, MessageCircleWarning, Settings2, RotateCcw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+// ============ Personalização de layout ============
+type BlockId =
+  | "queue" | "inatt" | "bot" | "tmr" | "tma" | "fin"
+  | "zombie" | "engage" | "tmer"
+  | "ops" | "critical" | "zombieList" | "ranking";
+
+type BlockGroup = "kpi" | "panel" | "full";
+
+const BLOCK_META: Record<BlockId, { label: string; group: BlockGroup; defaultSpan: number; defaultVisible: boolean }> = {
+  queue:      { label: "KPI • Fila aguardando",       group: "kpi",   defaultSpan: 1, defaultVisible: true },
+  inatt:      { label: "KPI • Em atendimento",        group: "kpi",   defaultSpan: 1, defaultVisible: true },
+  bot:        { label: "KPI • Bot travado",           group: "kpi",   defaultSpan: 1, defaultVisible: true },
+  tmr:        { label: "KPI • TMR",                   group: "kpi",   defaultSpan: 1, defaultVisible: true },
+  tma:        { label: "KPI • TMA hoje",              group: "kpi",   defaultSpan: 1, defaultVisible: true },
+  fin:        { label: "KPI • Finalizados hoje",      group: "kpi",   defaultSpan: 1, defaultVisible: true },
+  zombie:     { label: "KPI • Chats zumbis",          group: "kpi",   defaultSpan: 2, defaultVisible: true },
+  engage:     { label: "KPI • Taxa de engajamento",   group: "kpi",   defaultSpan: 2, defaultVisible: true },
+  tmer:       { label: "KPI • TMER",                  group: "kpi",   defaultSpan: 2, defaultVisible: true },
+  ops:        { label: "Painel • Operadores online", group: "panel", defaultSpan: 1, defaultVisible: true },
+  critical:   { label: "Painel • Fila crítica",      group: "panel", defaultSpan: 3, defaultVisible: true },
+  zombieList: { label: "Painel • Lista de zumbis",   group: "full",  defaultSpan: 1, defaultVisible: true },
+  ranking:    { label: "Painel • Ranking",           group: "full",  defaultSpan: 1, defaultVisible: true },
+};
+
+type LayoutState = {
+  visible: Record<BlockId, boolean>;
+  span: Record<BlockId, number>;
+};
+
+const DEFAULT_LAYOUT: LayoutState = {
+  visible: Object.fromEntries((Object.keys(BLOCK_META) as BlockId[]).map((k) => [k, BLOCK_META[k].defaultVisible])) as Record<BlockId, boolean>,
+  span:    Object.fromEntries((Object.keys(BLOCK_META) as BlockId[]).map((k) => [k, BLOCK_META[k].defaultSpan]))    as Record<BlockId, number>,
+};
+
+const KPI_SPAN_CLASS: Record<number, string> = {
+  1: "lg:col-span-1", 2: "lg:col-span-2", 3: "lg:col-span-3",
+  4: "lg:col-span-4", 5: "lg:col-span-5", 6: "lg:col-span-6",
+};
+const PANEL_SPAN_CLASS: Record<number, string> = {
+  1: "md:col-span-1", 2: "md:col-span-2", 3: "md:col-span-3", 4: "md:col-span-4",
+};
+
+function maxSpanFor(group: BlockGroup): number {
+  return group === "kpi" ? 6 : group === "panel" ? 4 : 1;
+}
 
 export const Route = createFileRoute("/painel-tv")({
   component: PainelTvPage,
@@ -54,10 +102,47 @@ function initials(name?: string | null): string {
 }
 
 function PainelTvPage() {
-  const { hasRole, isAuthenticated } = useAuth();
+  const { hasRole, isAuthenticated, user } = useAuth();
   const { canSeeMenu, isLoading: permLoading } = useUserPermissions();
   const isAdmin = hasRole("admin") || hasRole("gestor");
   const allowed = isAdmin || canSeeMenu("painel-tv");
+
+  // ============ Layout personalizável (por usuário) ============
+  const layoutKey = user?.id ? `painel-tv-layout:${user.id}` : null;
+  const [layout, setLayout] = useState<LayoutState>(DEFAULT_LAYOUT);
+
+  useEffect(() => {
+    if (!layoutKey) return;
+    try {
+      const raw = localStorage.getItem(layoutKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        setLayout({
+          visible: { ...DEFAULT_LAYOUT.visible, ...(parsed?.visible ?? {}) },
+          span:    { ...DEFAULT_LAYOUT.span,    ...(parsed?.span    ?? {}) },
+        });
+      }
+    } catch { /* ignore */ }
+  }, [layoutKey]);
+
+  const persistLayout = (next: LayoutState) => {
+    setLayout(next);
+    if (layoutKey) {
+      try { localStorage.setItem(layoutKey, JSON.stringify(next)); } catch { /* ignore */ }
+    }
+  };
+  const toggleVisible = (id: BlockId) =>
+    persistLayout({ ...layout, visible: { ...layout.visible, [id]: !layout.visible[id] } });
+  const setSpan = (id: BlockId, span: number) => {
+    const max = maxSpanFor(BLOCK_META[id].group);
+    const clamped = Math.max(1, Math.min(max, span));
+    persistLayout({ ...layout, span: { ...layout.span, [id]: clamped } });
+  };
+  const resetLayout = () => persistLayout(DEFAULT_LAYOUT);
+
+  const isVisible = (id: BlockId) => layout.visible[id] !== false;
+  const kpiClass = (id: BlockId) => KPI_SPAN_CLASS[layout.span[id] ?? BLOCK_META[id].defaultSpan] ?? "lg:col-span-1";
+  const panelClass = (id: BlockId) => PANEL_SPAN_CLASS[layout.span[id] ?? BLOCK_META[id].defaultSpan] ?? "md:col-span-1";
 
   const [isFs, setIsFs] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -381,146 +466,224 @@ function PainelTvPage() {
   const content = (
     <div ref={containerRef} className={cn("space-y-4 bg-background", isFs && "min-h-screen p-6 overflow-auto")}>
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <TrendingUp className="h-6 w-6 text-primary" /> Painel de Monitoramento
           </h1>
           <p className="text-xs text-muted-foreground">Atualização a cada 15s • {new Date().toLocaleTimeString("pt-BR")}</p>
         </div>
-        <Button variant="outline" size="sm" onClick={toggleFs}>
-          {isFs ? <><Minimize2 className="h-4 w-4 mr-1" /> Sair Tela Cheia</> : <><Maximize2 className="h-4 w-4 mr-1" /> Tela Cheia</>}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm">
+                <Settings2 className="h-4 w-4 mr-1" /> Personalizar
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-96 p-0" align="end">
+              <div className="flex items-center justify-between p-3 border-b">
+                <div className="text-sm font-semibold">Layout do painel</div>
+                <Button variant="ghost" size="sm" onClick={resetLayout}>
+                  <RotateCcw className="h-3.5 w-3.5 mr-1" /> Restaurar
+                </Button>
+              </div>
+              <ScrollArea className="h-[420px]">
+                <div className="p-3 space-y-2">
+                  {(Object.keys(BLOCK_META) as BlockId[]).map((id) => {
+                    const meta = BLOCK_META[id];
+                    const max = maxSpanFor(meta.group);
+                    const currentSpan = layout.span[id] ?? meta.defaultSpan;
+                    return (
+                      <div key={id} className="flex items-center gap-2 p-2 rounded-md border">
+                        <Switch
+                          checked={isVisible(id)}
+                          onCheckedChange={() => toggleVisible(id)}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">{meta.label}</p>
+                          {max > 1 && (
+                            <div className="flex items-center gap-1 mt-1">
+                              <span className="text-[10px] text-muted-foreground uppercase mr-1">Tam.</span>
+                              {Array.from({ length: max }, (_, i) => i + 1).map((n) => (
+                                <button
+                                  key={n}
+                                  type="button"
+                                  disabled={!isVisible(id)}
+                                  onClick={() => setSpan(id, n)}
+                                  className={cn(
+                                    "h-6 w-6 text-xs rounded border font-mono",
+                                    currentSpan === n
+                                      ? "bg-primary text-primary-foreground border-primary"
+                                      : "bg-background hover:bg-muted",
+                                    !isVisible(id) && "opacity-40 cursor-not-allowed",
+                                  )}
+                                  title={`${n} coluna${n > 1 ? "s" : ""}`}
+                                >
+                                  {n}
+                                </button>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+              <div className="p-2 text-[11px] text-muted-foreground border-t">
+                Preferências salvas neste dispositivo para o seu usuário.
+              </div>
+            </PopoverContent>
+          </Popover>
+          <Button variant="outline" size="sm" onClick={toggleFs}>
+            {isFs ? <><Minimize2 className="h-4 w-4 mr-1" /> Sair Tela Cheia</> : <><Maximize2 className="h-4 w-4 mr-1" /> Tela Cheia</>}
+          </Button>
+        </div>
       </div>
 
-      {/* KPIs (6) */}
+      {/* KPIs — grid único cols-6 com spans personalizáveis */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        <Card className={cn("border-2", queueBg)}>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase text-muted-foreground">Fila aguardando</span>
-              <Clock className={cn("h-5 w-5", queueColor)} />
-            </div>
-            <p className={cn("text-4xl font-black mt-2", queueColor)}>{waiting.length}</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              + antigo: <span className={cn("font-semibold", queueColor)}>{fmtMinutes(oldestWaitingMin)}</span>
-            </p>
-          </CardContent>
-        </Card>
+        {isVisible("queue") && (
+          <Card className={cn("border-2", queueBg, kpiClass("queue"))}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase text-muted-foreground">Fila aguardando</span>
+                <Clock className={cn("h-5 w-5", queueColor)} />
+              </div>
+              <p className={cn("text-4xl font-black mt-2", queueColor)}>{waiting.length}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                + antigo: <span className={cn("font-semibold", queueColor)}>{fmtMinutes(oldestWaitingMin)}</span>
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase text-muted-foreground">Em atendimento</span>
-              <MessageSquare className="h-5 w-5 text-blue-500" />
-            </div>
-            <p className="text-4xl font-black mt-2 text-blue-600 dark:text-blue-400">{inAttendance.length}</p>
-            <p className="text-xs text-muted-foreground mt-1">chats ativos</p>
-          </CardContent>
-        </Card>
+        {isVisible("inatt") && (
+          <Card className={kpiClass("inatt")}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase text-muted-foreground">Em atendimento</span>
+                <MessageSquare className="h-5 w-5 text-blue-500" />
+              </div>
+              <p className="text-4xl font-black mt-2 text-blue-600 dark:text-blue-400">{inAttendance.length}</p>
+              <p className="text-xs text-muted-foreground mt-1">chats ativos</p>
+            </CardContent>
+          </Card>
+        )}
 
-        <Card className={cn(botStuck.length > 0 && "border-2 border-amber-500 bg-amber-500/10")}>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase text-muted-foreground">Bot travado</span>
-              <Bot className={cn("h-5 w-5", botStuck.length > 0 ? "text-amber-500" : "text-muted-foreground")} />
-            </div>
-            <p className={cn("text-4xl font-black mt-2", botStuck.length > 0 ? "text-amber-600 dark:text-amber-400" : "text-foreground")}>{botStuck.length}</p>
-            <p className="text-xs text-muted-foreground mt-1">&gt; {THRESH.botIdleMin}min sem resposta</p>
-          </CardContent>
-        </Card>
+        {isVisible("bot") && (
+          <Card className={cn(botStuck.length > 0 && "border-2 border-amber-500 bg-amber-500/10", kpiClass("bot"))}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase text-muted-foreground">Bot travado</span>
+                <Bot className={cn("h-5 w-5", botStuck.length > 0 ? "text-amber-500" : "text-muted-foreground")} />
+              </div>
+              <p className={cn("text-4xl font-black mt-2", botStuck.length > 0 ? "text-amber-600 dark:text-amber-400" : "text-foreground")}>{botStuck.length}</p>
+              <p className="text-xs text-muted-foreground mt-1">&gt; {THRESH.botIdleMin}min sem resposta</p>
+            </CardContent>
+          </Card>
+        )}
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase text-muted-foreground">TMR (1ª resposta)</span>
-              <Timer className={cn("h-5 w-5", tmrAvg > THRESH.tmrTargetMin ? "text-destructive" : "text-emerald-500")} />
-            </div>
-            <p className={cn("text-4xl font-black mt-2", tmrAvg > THRESH.tmrTargetMin ? "text-destructive" : "text-emerald-600 dark:text-emerald-400")}>
-              {tmrValues.length ? fmtMinutes(tmrAvg) : "—"}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">meta ≤ {THRESH.tmrTargetMin}min</p>
-          </CardContent>
-        </Card>
+        {isVisible("tmr") && (
+          <Card className={kpiClass("tmr")}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase text-muted-foreground">TMR (1ª resposta)</span>
+                <Timer className={cn("h-5 w-5", tmrAvg > THRESH.tmrTargetMin ? "text-destructive" : "text-emerald-500")} />
+              </div>
+              <p className={cn("text-4xl font-black mt-2", tmrAvg > THRESH.tmrTargetMin ? "text-destructive" : "text-emerald-600 dark:text-emerald-400")}>
+                {tmrValues.length ? fmtMinutes(tmrAvg) : "—"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">meta ≤ {THRESH.tmrTargetMin}min</p>
+            </CardContent>
+          </Card>
+        )}
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase text-muted-foreground">TMA hoje</span>
-              <Timer className={cn("h-5 w-5", tmaAvg > THRESH.tmaTargetMin ? "text-destructive" : "text-emerald-500")} />
-            </div>
-            <p className={cn("text-4xl font-black mt-2", tmaAvg > THRESH.tmaTargetMin ? "text-destructive" : "text-emerald-600 dark:text-emerald-400")}>
-              {tmaValues.length ? fmtMinutes(tmaAvg) : "—"}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">meta ≤ {THRESH.tmaTargetMin}min</p>
-          </CardContent>
-        </Card>
+        {isVisible("tma") && (
+          <Card className={kpiClass("tma")}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase text-muted-foreground">TMA hoje</span>
+                <Timer className={cn("h-5 w-5", tmaAvg > THRESH.tmaTargetMin ? "text-destructive" : "text-emerald-500")} />
+              </div>
+              <p className={cn("text-4xl font-black mt-2", tmaAvg > THRESH.tmaTargetMin ? "text-destructive" : "text-emerald-600 dark:text-emerald-400")}>
+                {tmaValues.length ? fmtMinutes(tmaAvg) : "—"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">meta ≤ {THRESH.tmaTargetMin}min</p>
+            </CardContent>
+          </Card>
+        )}
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase text-muted-foreground">Finalizados hoje</span>
-              <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-            </div>
-            <p className="text-4xl font-black mt-2 text-emerald-600 dark:text-emerald-400">{finalizedToday}</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              meta {THRESH.dailyFinalizedGoal} • {Math.round((finalizedToday / THRESH.dailyFinalizedGoal) * 100)}%
-            </p>
-          </CardContent>
-        </Card>
-      </div>
+        {isVisible("fin") && (
+          <Card className={kpiClass("fin")}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase text-muted-foreground">Finalizados hoje</span>
+                <CheckCircle2 className="h-5 w-5 text-emerald-500" />
+              </div>
+              <p className="text-4xl font-black mt-2 text-emerald-600 dark:text-emerald-400">{finalizedToday}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                meta {THRESH.dailyFinalizedGoal} • {Math.round((finalizedToday / THRESH.dailyFinalizedGoal) * 100)}%
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
-      {/* Nova linha — KPIs de desempenho da equipe */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-        <Card className={cn(zombies.length > 0 && "border-2 border-destructive bg-destructive/10")}>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase text-muted-foreground">Chats zumbis</span>
-              <Ghost className={cn("h-5 w-5", zombies.length > 0 ? "text-destructive" : "text-muted-foreground")} />
-            </div>
-            <p className={cn("text-4xl font-black mt-2", zombies.length > 0 ? "text-destructive" : "text-foreground")}>{zombies.length}</p>
-            <p className="text-xs text-muted-foreground mt-1">
-              em atendimento sem resposta &gt; {THRESH.zombieMin}min
-            </p>
-          </CardContent>
-        </Card>
+        {isVisible("zombie") && (
+          <Card className={cn(zombies.length > 0 && "border-2 border-destructive bg-destructive/10", kpiClass("zombie"))}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase text-muted-foreground">Chats zumbis</span>
+                <Ghost className={cn("h-5 w-5", zombies.length > 0 ? "text-destructive" : "text-muted-foreground")} />
+              </div>
+              <p className={cn("text-4xl font-black mt-2", zombies.length > 0 ? "text-destructive" : "text-foreground")}>{zombies.length}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                em atendimento sem resposta &gt; {THRESH.zombieMin}min
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase text-muted-foreground">Taxa de engajamento</span>
-              <Zap className={cn("h-5 w-5", engagementRate >= 70 ? "text-emerald-500" : engagementRate >= 40 ? "text-amber-500" : "text-destructive")} />
-            </div>
-            <p className={cn("text-4xl font-black mt-2",
-              engagementRate >= 70 ? "text-emerald-600 dark:text-emerald-400"
-              : engagementRate >= 40 ? "text-amber-600 dark:text-amber-400"
-              : "text-destructive")}>
-              {tmrValues.length ? `${Math.round(engagementRate)}%` : "—"}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              respondidos em ≤ {THRESH.engagementTargetMin}min ({engagedCount}/{tmrValues.length})
-            </p>
-          </CardContent>
-        </Card>
+        {isVisible("engage") && (
+          <Card className={kpiClass("engage")}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase text-muted-foreground">Taxa de engajamento</span>
+                <Zap className={cn("h-5 w-5", engagementRate >= 70 ? "text-emerald-500" : engagementRate >= 40 ? "text-amber-500" : "text-destructive")} />
+              </div>
+              <p className={cn("text-4xl font-black mt-2",
+                engagementRate >= 70 ? "text-emerald-600 dark:text-emerald-400"
+                : engagementRate >= 40 ? "text-amber-600 dark:text-amber-400"
+                : "text-destructive")}>
+                {tmrValues.length ? `${Math.round(engagementRate)}%` : "—"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                respondidos em ≤ {THRESH.engagementTargetMin}min ({engagedCount}/{tmrValues.length})
+              </p>
+            </CardContent>
+          </Card>
+        )}
 
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase text-muted-foreground">TMER (resposta média)</span>
-              <MessageCircleWarning className={cn("h-5 w-5", tmerAvg > THRESH.tmerTargetMin ? "text-destructive" : "text-emerald-500")} />
-            </div>
-            <p className={cn("text-4xl font-black mt-2", tmerAvg > THRESH.tmerTargetMin ? "text-destructive" : "text-emerald-600 dark:text-emerald-400")}>
-              {tmerValues.length ? fmtMinutes(tmerAvg) : "—"}
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">
-              entre msg do cliente e resposta (meta ≤ {THRESH.tmerTargetMin}min)
-            </p>
-          </CardContent>
-        </Card>
+        {isVisible("tmer") && (
+          <Card className={kpiClass("tmer")}>
+            <CardContent className="p-4">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-semibold uppercase text-muted-foreground">TMER (resposta média)</span>
+                <MessageCircleWarning className={cn("h-5 w-5", tmerAvg > THRESH.tmerTargetMin ? "text-destructive" : "text-emerald-500")} />
+              </div>
+              <p className={cn("text-4xl font-black mt-2", tmerAvg > THRESH.tmerTargetMin ? "text-destructive" : "text-emerald-600 dark:text-emerald-400")}>
+                {tmerValues.length ? fmtMinutes(tmerAvg) : "—"}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                entre msg do cliente e resposta (meta ≤ {THRESH.tmerTargetMin}min)
+              </p>
+            </CardContent>
+          </Card>
+        )}
       </div>
 
       {/* Chats Zumbis — lista */}
-      {zombies.length > 0 && (
+      {isVisible("zombieList") && zombies.length > 0 && (
         <Card className="border-destructive/50">
           <CardHeader className="pb-2">
             <CardTitle className="text-sm flex items-center gap-2">
@@ -555,66 +718,72 @@ function PainelTvPage() {
       )}
 
 
-      {/* Segunda linha — Operadores online */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-        <Card className="md:col-span-1">
-          <CardContent className="p-4">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-semibold uppercase text-muted-foreground">Operadores online</span>
-              <UserCheck className="h-5 w-5 text-emerald-500" />
-            </div>
-            <p className="text-4xl font-black mt-2">
-              <span className="text-emerald-600 dark:text-emerald-400">{operatorsOnline}</span>
-              <span className="text-muted-foreground text-2xl"> / {profiles.length}</span>
-            </p>
-            <p className="text-xs text-muted-foreground mt-1">ativos nos últimos {THRESH.operatorOnlineMin}min</p>
-          </CardContent>
-        </Card>
+      {/* Operadores online + Fila crítica */}
+      {(isVisible("ops") || isVisible("critical")) && (
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          {isVisible("ops") && (
+            <Card className={panelClass("ops")}>
+              <CardContent className="p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-semibold uppercase text-muted-foreground">Operadores online</span>
+                  <UserCheck className="h-5 w-5 text-emerald-500" />
+                </div>
+                <p className="text-4xl font-black mt-2">
+                  <span className="text-emerald-600 dark:text-emerald-400">{operatorsOnline}</span>
+                  <span className="text-muted-foreground text-2xl"> / {profiles.length}</span>
+                </p>
+                <p className="text-xs text-muted-foreground mt-1">ativos nos últimos {THRESH.operatorOnlineMin}min</p>
+              </CardContent>
+            </Card>
+          )}
 
-        {/* Fila Crítica */}
-        <Card className="md:col-span-3">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-amber-500" />
-              Fila crítica — aguardando atendimento
-              <Badge variant="secondary" className="ml-auto">{waiting.length}</Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <ScrollArea className="h-[280px]">
-              {criticalQueue.length === 0 ? (
-                <div className="p-6 text-center text-sm text-muted-foreground">
-                  Sem chats aguardando — 🎉 fila zerada!
-                </div>
-              ) : (
-                <div className="divide-y">
-                  {criticalQueue.map((c) => {
-                    const color =
-                      c.waitingMin >= THRESH.queueRedMin ? "text-destructive"
-                      : c.waitingMin >= THRESH.queueYellowMin ? "text-amber-500"
-                      : "text-muted-foreground";
-                    return (
-                      <div key={c.id} className="flex items-center justify-between px-4 py-2 text-sm">
-                        <div className="flex-1 min-w-0">
-                          <p className="font-medium truncate">{c.contact_name || c.phone || "Sem nome"}</p>
-                          <p className="text-xs text-muted-foreground truncate">
-                            Setor: {c.sector_name || "—"}
-                          </p>
-                        </div>
-                        <div className={cn("text-right font-mono font-semibold", color)}>
-                          {fmtMinutes(c.waitingMin)}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </ScrollArea>
-          </CardContent>
-        </Card>
-      </div>
+          {isVisible("critical") && (
+            <Card className={panelClass("critical")}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center gap-2">
+                  <AlertTriangle className="h-4 w-4 text-amber-500" />
+                  Fila crítica — aguardando atendimento
+                  <Badge variant="secondary" className="ml-auto">{waiting.length}</Badge>
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <ScrollArea className="h-[280px]">
+                  {criticalQueue.length === 0 ? (
+                    <div className="p-6 text-center text-sm text-muted-foreground">
+                      Sem chats aguardando — 🎉 fila zerada!
+                    </div>
+                  ) : (
+                    <div className="divide-y">
+                      {criticalQueue.map((c) => {
+                        const color =
+                          c.waitingMin >= THRESH.queueRedMin ? "text-destructive"
+                          : c.waitingMin >= THRESH.queueYellowMin ? "text-amber-500"
+                          : "text-muted-foreground";
+                        return (
+                          <div key={c.id} className="flex items-center justify-between px-4 py-2 text-sm">
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium truncate">{c.contact_name || c.phone || "Sem nome"}</p>
+                              <p className="text-xs text-muted-foreground truncate">
+                                Setor: {c.sector_name || "—"}
+                              </p>
+                            </div>
+                            <div className={cn("text-right font-mono font-semibold", color)}>
+                              {fmtMinutes(c.waitingMin)}
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+      )}
 
       {/* Ranking Operadores */}
+      {isVisible("ranking") && (
       <Card>
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
@@ -663,6 +832,7 @@ function PainelTvPage() {
           )}
         </CardContent>
       </Card>
+      )}
     </div>
   );
 
