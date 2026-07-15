@@ -175,37 +175,12 @@ export function ChatQueueList({
     setExpandedGroups((prev) => ({ ...prev, [key]: !prev[key] }));
   };
 
-  const grouped = useMemo(() => {
-    const groups: Record<string, ChatItem[]> = {
-      automatic: [],
-      waiting: [],
-      outOfHour: [],
-      manual: [],
-      group: [],
+  const sortedChats = useMemo(() => {
+    const getTs = (c: ChatItem) => {
+      const t = c.lastMessage?.utcDhMessage || c.utcDhStartChat;
+      return t ? new Date(t).getTime() : 0;
     };
-
-    for (const chat of chats) {
-      // Group chats always land in the "Grupos" bucket
-      if (isGroupChat(chat)) {
-        groups.group.push(chat);
-        continue;
-      }
-      // Check out-of-hour first
-      if ((chat.timeInOutOfHour || 0) > 0 && chat.status !== 2) {
-        groups.outOfHour.push(chat);
-      } else if (chat.status === 0) {
-        groups.automatic.push(chat);
-      } else if (chat.status === 1) {
-        groups.waiting.push(chat);
-      } else if (chat.status === 2) {
-        groups.manual.push(chat);
-      } else {
-        // Fallback to manual
-        groups.manual.push(chat);
-      }
-    }
-
-    return groups;
+    return [...chats].sort((a, b) => getTs(b) - getTs(a));
   }, [chats]);
 
   if (isLoading && totalChats === 0) {
@@ -231,48 +206,17 @@ export function ChatQueueList({
 
   return (
     <ScrollArea className="flex-1">
-      {GROUP_CONFIGS.map((group) => {
-        const items = grouped[group.key];
-        if (!items || items.length === 0) return null;
-        const isExpanded = expandedGroups[group.key] ?? true;
-
-        return (
-          <div key={group.key}>
-            {/* Group header */}
-            <button
-              onClick={() => toggleGroup(group.key)}
-              className={`w-full flex items-center gap-2 px-3 py-2 ${group.headerBg} border-b sticky top-0 z-10 hover:opacity-90 transition-opacity`}
-            >
-              <span className={group.headerText}>{group.icon}</span>
-              <span className={`text-xs font-semibold ${group.headerText} flex-1 text-left`}>
-                {group.label}
-              </span>
-              <Badge variant="secondary" className="text-[10px] h-5 min-w-[20px] justify-center">
-                {items.length}
-              </Badge>
-              {isExpanded ? (
-                <ChevronDown className={`h-3.5 w-3.5 ${group.headerText}`} />
-              ) : (
-                <ChevronRight className={`h-3.5 w-3.5 ${group.headerText}`} />
-              )}
-            </button>
-
-            {/* Chat items */}
-            {isExpanded &&
-              items.map((chat) => (
-                <ChatListItem
-                  key={chat.attendanceId}
-                  chat={chat}
-                  isSelected={selectedChatId === chat.attendanceId}
-                  onSelect={() => onSelectChat(chat.attendanceId)}
-                  getSlaColor={getSlaColor}
-                  formatServiceTime={formatServiceTime}
-                  nowTick={nowTick}
-                />
-              ))}
-          </div>
-        );
-      })}
+      {sortedChats.map((chat) => (
+        <ChatListItem
+          key={chat.attendanceId}
+          chat={chat}
+          isSelected={selectedChatId === chat.attendanceId}
+          onSelect={() => onSelectChat(chat.attendanceId)}
+          getSlaColor={getSlaColor}
+          formatServiceTime={formatServiceTime}
+          nowTick={nowTick}
+        />
+      ))}
     </ScrollArea>
   );
 }
