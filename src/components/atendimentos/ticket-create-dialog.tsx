@@ -620,7 +620,7 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
         }
       }
 
-      toast.success("Ticket criado com sucesso");
+      toast.success(finalize ? "Ticket criado e finalizado" : "Ticket criado com sucesso");
       resetForm();
       onCreated();
       onClose();
