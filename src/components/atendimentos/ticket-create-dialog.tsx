@@ -363,7 +363,7 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
     return created.id;
   };
 
-  const handleCreate = async () => {
+  const handleCreate = async (finalize: boolean = false) => {
     if (!selectedCliente) {
       toast.error("Selecione a empresa do cliente");
       return;
@@ -492,7 +492,8 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
           ? ((equipmentModels as any[]).find((m: any) => m.equipment_item_id === equipmentModelId)?.name || null)
           : null,
         sector: sectorName,
-        status: "aberto",
+        status: finalize ? "finalizado" : "aberto",
+        closed_at: finalize ? new Date().toISOString() : null,
         tracking_code: trackCodeClean,
         opened_by: creatorId,
         assigned_to: creatorId,
@@ -619,7 +620,7 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
         }
       }
 
-      toast.success("Ticket criado com sucesso");
+      toast.success(finalize ? "Ticket criado e finalizado" : "Ticket criado com sucesso");
       resetForm();
       onCreated();
       onClose();
@@ -937,9 +938,20 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
             />
           </div>
 
-          <Button onClick={handleCreate} disabled={loading} className="w-full">
-            {loading ? "Criando..." : "Criar Ticket"}
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => handleCreate(false)} disabled={loading} className="flex-1">
+              {loading ? "Salvando..." : "Criar Ticket"}
+            </Button>
+            <Button
+              onClick={() => handleCreate(true)}
+              disabled={loading}
+              variant="secondary"
+              className="flex-1"
+              title="Cria o ticket já com status finalizado"
+            >
+              {loading ? "Salvando..." : "Criar e Finalizar"}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
