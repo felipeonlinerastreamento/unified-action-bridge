@@ -3160,6 +3160,35 @@ function CentralPage() {
                             <ShieldAlert className="h-4 w-4" />
                             <span className="hidden sm:inline">Gestão</span>
                           </Button>
+                         )}
+                        {session?.user?.id && assignedOperatorId !== session.user.id && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            title="Atribuir este atendimento a mim"
+                            onClick={async () => {
+                              if (!selectedChatId || !selectedChannelId) return;
+                              try {
+                                await transferChat({
+                                  data: {
+                                    channelId: selectedChannelId,
+                                    chatId: selectedChatId,
+                                    userId: session.user.id,
+                                  },
+                                  ...await getAuthHeaders(),
+                                });
+                                toast.success("Atendimento atribuído a você");
+                                refetchChats();
+                                queryClient.invalidateQueries({ queryKey: ["chat-detail", selectedChannelId, selectedChatId] });
+                              } catch (err: any) {
+                                toast.error(err?.message || "Falha ao atribuir");
+                              }
+                            }}
+                            className="gap-1 h-8"
+                          >
+                            <UserPlus className="h-4 w-4" />
+                            <span className="hidden sm:inline">Atribuir a mim</span>
+                          </Button>
                         )}
                         <Button
                           variant="outline"
