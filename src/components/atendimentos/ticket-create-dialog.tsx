@@ -492,7 +492,8 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
           ? ((equipmentModels as any[]).find((m: any) => m.equipment_item_id === equipmentModelId)?.name || null)
           : null,
         sector: sectorName,
-        status: "aberto",
+        status: finalize ? "finalizado" : "aberto",
+        closed_at: finalize ? new Date().toISOString() : null,
         tracking_code: trackCodeClean,
         opened_by: creatorId,
         assigned_to: creatorId,
