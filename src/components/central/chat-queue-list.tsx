@@ -91,21 +91,6 @@ function getAgentColor(agentName: string): string {
   return agentColorMap.get(agentName)!;
 }
 
-interface GroupConfig {
-  key: string;
-  label: string;
-  icon: React.ReactNode;
-  headerBg: string;
-  headerText: string;
-}
-
-const GROUP_CONFIGS: GroupConfig[] = [
-  { key: "automatic", label: "Automático", icon: <Bot className="h-4 w-4" />, headerBg: "bg-blue-50 dark:bg-blue-950/30", headerText: "text-blue-700 dark:text-blue-300" },
-  { key: "waiting", label: "Aguardando", icon: <Clock className="h-4 w-4" />, headerBg: "bg-amber-50 dark:bg-amber-950/30", headerText: "text-amber-700 dark:text-amber-300" },
-  { key: "outOfHour", label: "Fora de hora", icon: <Moon className="h-4 w-4" />, headerBg: "bg-purple-50 dark:bg-purple-950/30", headerText: "text-purple-700 dark:text-purple-300" },
-  { key: "manual", label: "Manual", icon: <Headset className="h-4 w-4" />, headerBg: "bg-emerald-50 dark:bg-emerald-950/30", headerText: "text-emerald-700 dark:text-emerald-300" },
-  { key: "group", label: "Grupos", icon: <Users className="h-4 w-4" />, headerBg: "bg-slate-50 dark:bg-slate-950/30", headerText: "text-slate-700 dark:text-slate-300" },
-];
 
 function formatTime(dateStr?: string): string {
   if (!dateStr) return "";
