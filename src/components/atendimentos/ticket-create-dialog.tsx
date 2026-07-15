@@ -363,7 +363,7 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
     return created.id;
   };
 
-  const handleCreate = async () => {
+  const handleCreate = async (finalize: boolean = false) => {
     if (!selectedCliente) {
       toast.error("Selecione a empresa do cliente");
       return;
