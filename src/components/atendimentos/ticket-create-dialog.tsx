@@ -938,9 +938,20 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
             />
           </div>
 
-          <Button onClick={handleCreate} disabled={loading} className="w-full">
-            {loading ? "Criando..." : "Criar Ticket"}
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={() => handleCreate(false)} disabled={loading} className="flex-1">
+              {loading ? "Salvando..." : "Criar Ticket"}
+            </Button>
+            <Button
+              onClick={() => handleCreate(true)}
+              disabled={loading}
+              variant="secondary"
+              className="flex-1"
+              title="Cria o ticket já com status finalizado"
+            >
+              {loading ? "Salvando..." : "Criar e Finalizar"}
+            </Button>
+          </div>
         </div>
       </DialogContent>
     </Dialog>
