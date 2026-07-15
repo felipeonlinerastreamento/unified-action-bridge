@@ -148,9 +148,7 @@ export function ChatQueueList({
   }, [chats, nowTick, currentAgentName, onZombieCountChange]);
 
 
-  const toggleGroup = (key: string) => {
-    setExpandedGroups((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
+
 
   const sortedChats = useMemo(() => {
     const getTs = (c: ChatItem) => {
