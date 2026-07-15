@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Bot, Clock, Headset, Users, Moon, ChevronDown, ChevronRight, MessageSquare, ArrowUp, ArrowDown, AlertTriangle } from "lucide-react";
+import { Loader2, Users, MessageSquare, ArrowUp, ArrowDown, AlertTriangle } from "lucide-react";
 import { useFloatingChats } from "./floating-chats-context";
 import { isGroupChat } from "@/lib/chat-utils";
 
@@ -91,21 +91,6 @@ function getAgentColor(agentName: string): string {
   return agentColorMap.get(agentName)!;
 }
 
-interface GroupConfig {
-  key: string;
-  label: string;
-  icon: React.ReactNode;
-  headerBg: string;
-  headerText: string;
-}
-
-const GROUP_CONFIGS: GroupConfig[] = [
-  { key: "automatic", label: "Automático", icon: <Bot className="h-4 w-4" />, headerBg: "bg-blue-50 dark:bg-blue-950/30", headerText: "text-blue-700 dark:text-blue-300" },
-  { key: "waiting", label: "Aguardando", icon: <Clock className="h-4 w-4" />, headerBg: "bg-amber-50 dark:bg-amber-950/30", headerText: "text-amber-700 dark:text-amber-300" },
-  { key: "outOfHour", label: "Fora de hora", icon: <Moon className="h-4 w-4" />, headerBg: "bg-purple-50 dark:bg-purple-950/30", headerText: "text-purple-700 dark:text-purple-300" },
-  { key: "manual", label: "Manual", icon: <Headset className="h-4 w-4" />, headerBg: "bg-emerald-50 dark:bg-emerald-950/30", headerText: "text-emerald-700 dark:text-emerald-300" },
-  { key: "group", label: "Grupos", icon: <Users className="h-4 w-4" />, headerBg: "bg-slate-50 dark:bg-slate-950/30", headerText: "text-slate-700 dark:text-slate-300" },
-];
 
 function formatTime(dateStr?: string): string {
   if (!dateStr) return "";
@@ -139,14 +124,6 @@ export function ChatQueueList({
   currentAgentName,
   onZombieCountChange,
 }: ChatQueueListProps) {
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
-    automatic: true,
-    waiting: true,
-    outOfHour: true,
-    manual: true,
-    group: true,
-  });
-
   // Tick a cada 15s para atualizar cronômetros/zumbis
   const [nowTick, setNowTick] = useState(() => Date.now());
   useEffect(() => {
@@ -171,41 +148,14 @@ export function ChatQueueList({
   }, [chats, nowTick, currentAgentName, onZombieCountChange]);
 
 
-  const toggleGroup = (key: string) => {
-    setExpandedGroups((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
 
-  const grouped = useMemo(() => {
-    const groups: Record<string, ChatItem[]> = {
-      automatic: [],
-      waiting: [],
-      outOfHour: [],
-      manual: [],
-      group: [],
+
+  const sortedChats = useMemo(() => {
+    const getTs = (c: ChatItem) => {
+      const t = c.lastMessage?.utcDhMessage || c.utcDhStartChat;
+      return t ? new Date(t).getTime() : 0;
     };
-
-    for (const chat of chats) {
-      // Group chats always land in the "Grupos" bucket
-      if (isGroupChat(chat)) {
-        groups.group.push(chat);
-        continue;
-      }
-      // Check out-of-hour first
-      if ((chat.timeInOutOfHour || 0) > 0 && chat.status !== 2) {
-        groups.outOfHour.push(chat);
-      } else if (chat.status === 0) {
-        groups.automatic.push(chat);
-      } else if (chat.status === 1) {
-        groups.waiting.push(chat);
-      } else if (chat.status === 2) {
-        groups.manual.push(chat);
-      } else {
-        // Fallback to manual
-        groups.manual.push(chat);
-      }
-    }
-
-    return groups;
+    return [...chats].sort((a, b) => getTs(b) - getTs(a));
   }, [chats]);
 
   if (isLoading && totalChats === 0) {
@@ -231,48 +181,17 @@ export function ChatQueueList({
 
   return (
     <ScrollArea className="flex-1">
-      {GROUP_CONFIGS.map((group) => {
-        const items = grouped[group.key];
-        if (!items || items.length === 0) return null;
-        const isExpanded = expandedGroups[group.key] ?? true;
-
-        return (
-          <div key={group.key}>
-            {/* Group header */}
-            <button
-              onClick={() => toggleGroup(group.key)}
-              className={`w-full flex items-center gap-2 px-3 py-2 ${group.headerBg} border-b sticky top-0 z-10 hover:opacity-90 transition-opacity`}
-            >
-              <span className={group.headerText}>{group.icon}</span>
-              <span className={`text-xs font-semibold ${group.headerText} flex-1 text-left`}>
-                {group.label}
-              </span>
-              <Badge variant="secondary" className="text-[10px] h-5 min-w-[20px] justify-center">
-                {items.length}
-              </Badge>
-              {isExpanded ? (
-                <ChevronDown className={`h-3.5 w-3.5 ${group.headerText}`} />
-              ) : (
-                <ChevronRight className={`h-3.5 w-3.5 ${group.headerText}`} />
-              )}
-            </button>
-
-            {/* Chat items */}
-            {isExpanded &&
-              items.map((chat) => (
-                <ChatListItem
-                  key={chat.attendanceId}
-                  chat={chat}
-                  isSelected={selectedChatId === chat.attendanceId}
-                  onSelect={() => onSelectChat(chat.attendanceId)}
-                  getSlaColor={getSlaColor}
-                  formatServiceTime={formatServiceTime}
-                  nowTick={nowTick}
-                />
-              ))}
-          </div>
-        );
-      })}
+      {sortedChats.map((chat) => (
+        <ChatListItem
+          key={chat.attendanceId}
+          chat={chat}
+          isSelected={selectedChatId === chat.attendanceId}
+          onSelect={() => onSelectChat(chat.attendanceId)}
+          getSlaColor={getSlaColor}
+          formatServiceTime={formatServiceTime}
+          nowTick={nowTick}
+        />
+      ))}
     </ScrollArea>
   );
 }
