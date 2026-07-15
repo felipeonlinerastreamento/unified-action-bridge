@@ -124,14 +124,6 @@ export function ChatQueueList({
   currentAgentName,
   onZombieCountChange,
 }: ChatQueueListProps) {
-  const [expandedGroups, setExpandedGroups] = useState<Record<string, boolean>>({
-    automatic: true,
-    waiting: true,
-    outOfHour: true,
-    manual: true,
-    group: true,
-  });
-
   // Tick a cada 15s para atualizar cronômetros/zumbis
   const [nowTick, setNowTick] = useState(() => Date.now());
   useEffect(() => {
