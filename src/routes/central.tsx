@@ -1298,7 +1298,8 @@ function CentralPage() {
   // Identification modal — only for contacts without any existing link (and not groups).
   // Wait for ALL lookups to settle before deciding (otherwise modal flashes open while data loads).
   const lookupsReady = companyLookupFetched && subClientLookupFetched && crmContactLookupFetched && currentTicketFetched;
-  const isUnidentified = lookupsReady && !isGroup && !!chatDetail && !!contactPhone && !companyLookup && !subClientLookup && !crmContactLookup && !currentTicket?.company_id;
+  const hasTechnicianRegistered = ((chatTechniciansQuery.data as any[]) || []).length > 0;
+  const isUnidentified = lookupsReady && !isGroup && !!chatDetail && !!contactPhone && !companyLookup && !subClientLookup && !crmContactLookup && !currentTicket?.company_id && !hasTechnicianRegistered;
 
   // Identification modal is no longer auto-opened on chat start.
   // It is now triggered when the operator clicks "Finalizar" on an unidentified contact.
