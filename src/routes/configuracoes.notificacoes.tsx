@@ -15,7 +15,55 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Send, Megaphone, Users, User, Building2, Globe, CheckCheck, MessageCircle, Lock } from "lucide-react";
+import { Send, Megaphone, Users, User, Building2, Globe, CheckCheck, MessageCircle, Lock, BellOff } from "lucide-react";
+
+export const REMINDER_NOTIF_PREF_KEY = (uid: string) => `pref:reminder-notifications:${uid}`;
+
+function ReminderNotificationsPreferenceCard() {
+  const [uid, setUid] = useState<string | null>(null);
+  const [enabled, setEnabled] = useState(true);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      const id = data?.user?.id || null;
+      setUid(id);
+      if (id) {
+        const v = localStorage.getItem(REMINDER_NOTIF_PREF_KEY(id));
+        setEnabled(v === null ? true : v === "1");
+      }
+    });
+  }, []);
+
+  const handleToggle = (v: boolean) => {
+    setEnabled(v);
+    if (uid) {
+      localStorage.setItem(REMINDER_NOTIF_PREF_KEY(uid), v ? "1" : "0");
+      window.dispatchEvent(new CustomEvent("reminder-notif-pref-changed"));
+      toast.success(v ? "Notificações de lembretes ativadas" : "Notificações de lembretes desativadas");
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-base flex items-center gap-2">
+          <BellOff className="h-4 w-4" /> Preferências pessoais
+        </CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="flex items-center justify-between rounded-lg border p-3">
+          <div className="space-y-0.5">
+            <Label className="text-sm">Receber avisos de lembretes vencidos</Label>
+            <p className="text-xs text-muted-foreground">
+              Quando desativado, o toast "⏰ Lembrete: ..." não será exibido nesta conta/navegador.
+            </p>
+          </div>
+          <Switch checked={enabled} onCheckedChange={handleToggle} disabled={!uid} />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 export const Route = createFileRoute("/configuracoes/notificacoes")({
   component: NotificacoesConfigPage,
