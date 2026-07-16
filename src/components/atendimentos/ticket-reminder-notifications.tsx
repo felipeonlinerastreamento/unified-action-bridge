@@ -1,11 +1,13 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Bell } from "lucide-react";
+
+const PREF_KEY = (uid: string) => `pref:reminder-notifications:${uid}`;
 
 export function TicketReminderNotifications() {
   const notifiedRef = useRef<Set<string>>(new Set());
+  const [prefEnabled, setPrefEnabled] = useState(true);
 
   const { data: currentUser } = useQuery({
     queryKey: ["current-user"],
