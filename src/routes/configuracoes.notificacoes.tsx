@@ -98,6 +98,7 @@ function NotificacoesConfigPage() {
             <StartOperatorChatCard />
           </TabsContent>
         </Tabs>
+        <ReminderNotificationsPreferenceCard />
         <CampaignsHistoryCard />
       </div>
     </AppLayout>
