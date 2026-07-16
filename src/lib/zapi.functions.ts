@@ -663,16 +663,46 @@ export const sendMedia = createServerFn({ method: "POST" })
       document: "[documento]",
     };
 
-    await context.supabase.from("zapi_messages").insert({
+    const outgoingMessageId = result?.messageId || result?.id || null;
+    const mediaRow = {
       chat_id: data.chatId,
-      zapi_message_id: result?.messageId || result?.id || null,
+      zapi_message_id: outgoingMessageId,
       from_me: true,
       sent_by_user_id: context.userId,
       text: data.caption || labels[data.kind],
       media_url: hostedUrl || data.dataUrl,
       media_type: data.kind,
       status: "sent",
-    });
+    };
+    let mediaInserted = false;
+    if (outgoingMessageId) {
+      const { data: existing } = await context.supabase
+        .from("zapi_messages")
+        .select("id")
+        .eq("chat_id", data.chatId)
+        .eq("zapi_message_id", outgoingMessageId)
+        .maybeSingle();
+      if ((existing as any)?.id) {
+        await context.supabase
+          .from("zapi_messages")
+          .update({
+            sent_by_user_id: context.userId,
+            text: mediaRow.text,
+            media_url: mediaRow.media_url,
+            media_type: mediaRow.media_type,
+            status: "sent",
+          })
+          .eq("id", (existing as any).id);
+        mediaInserted = true;
+      }
+    }
+    if (!mediaInserted) {
+      const { error: insErr } = await context.supabase.from("zapi_messages").insert(mediaRow);
+      if (insErr && (insErr as any).code !== "23505") {
+        console.error("[sendMedia] insert falhou:", insErr);
+      }
+    }
+
 
     await context.supabase
       .from("zapi_chats")
