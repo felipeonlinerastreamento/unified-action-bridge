@@ -65,7 +65,9 @@ const emptyForm: FormState = { name: "", phone: "", address: "", city_state: "",
 
 export function TechniciansAdmin() {
   const { user, profile } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [startingId, setStartingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<Technician | null>(null);
   const [creating, setCreating] = useState(false);
