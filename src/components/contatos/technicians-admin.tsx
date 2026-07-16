@@ -33,7 +33,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, Loader2, Pencil, Trash2, Wrench, RefreshCw, Plus } from "lucide-react";
+import { Search, Loader2, Pencil, Trash2, Wrench, RefreshCw, Plus, MessageSquare } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { ContactChatActions } from "@/components/contatos/contact-chat-actions";
 
