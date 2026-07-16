@@ -73,7 +73,7 @@ export function TicketReminderNotifications() {
         },
       });
     }
-  }, [dueReminders, currentUser]);
+  }, [dueReminders, currentUser, prefEnabled]);
 
   return null;
 }
