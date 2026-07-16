@@ -35,7 +35,23 @@ export function TicketReminderNotifications() {
   });
 
   useEffect(() => {
-    if (!currentUser || dueReminders.length === 0) return;
+    if (!currentUser) return;
+    const read = () => {
+      const v = localStorage.getItem(PREF_KEY(currentUser.id));
+      setPrefEnabled(v === null ? true : v === "1");
+    };
+    read();
+    const handler = () => read();
+    window.addEventListener("reminder-notif-pref-changed", handler);
+    window.addEventListener("storage", handler);
+    return () => {
+      window.removeEventListener("reminder-notif-pref-changed", handler);
+      window.removeEventListener("storage", handler);
+    };
+  }, [currentUser]);
+
+  useEffect(() => {
+    if (!currentUser || !prefEnabled || dueReminders.length === 0) return;
 
     for (const reminder of dueReminders as any[]) {
       if (notifiedRef.current.has(reminder.id)) continue;
