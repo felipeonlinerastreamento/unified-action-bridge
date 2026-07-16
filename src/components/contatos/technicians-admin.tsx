@@ -341,24 +341,22 @@ export function TechniciansAdmin() {
               <TableRow>
                 <TableHead>Nome</TableHead>
                 <TableHead>Telefone</TableHead>
-                <TableHead>Endereço</TableHead>
                 <TableHead>Cidade/Estado</TableHead>
                 <TableHead>Observação</TableHead>
                 <TableHead>Tel. do contato</TableHead>
-                <TableHead>Atualizado</TableHead>
-                <TableHead className="w-24">Ações</TableHead>
+                <TableHead className="w-32">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8">
+                  <TableCell colSpan={6} className="text-center py-8">
                     <Loader2 className="h-5 w-5 animate-spin mx-auto" />
                   </TableCell>
                 </TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
                     <Wrench className="h-8 w-8 mx-auto mb-2 opacity-50" />
                     Nenhum técnico cadastrado.
                   </TableCell>
@@ -368,9 +366,6 @@ export function TechniciansAdmin() {
                   <TableRow key={t.id}>
                     <TableCell className="font-medium">{t.name}</TableCell>
                     <TableCell className="font-mono text-sm">{t.phone || "—"}</TableCell>
-                    <TableCell className="max-w-xs truncate" title={t.address || ""}>
-                      {t.address || "—"}
-                    </TableCell>
                     <TableCell className="max-w-[12rem] truncate" title={t.city_state || ""}>
                       {t.city_state || "—"}
                     </TableCell>
@@ -380,12 +375,21 @@ export function TechniciansAdmin() {
                     <TableCell className="font-mono text-xs text-muted-foreground">
                       {t.contact_phone}
                     </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {new Date(t.updated_at).toLocaleString("pt-BR")}
-                      {t.updated_by_name && <div className="text-[10px]">por {t.updated_by_name}</div>}
-                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => startChatFromTechnician(t)}
+                          disabled={startingId === t.id}
+                          title="Encaminhar para conversa no chat"
+                        >
+                          {startingId === t.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <MessageSquare className="h-4 w-4" />
+                          )}
+                        </Button>
                         <Button variant="ghost" size="icon" onClick={() => openEdit(t)} title="Editar">
                           <Pencil className="h-4 w-4" />
                         </Button>
