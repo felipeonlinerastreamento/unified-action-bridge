@@ -33,7 +33,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, Loader2, Pencil, Trash2, Wrench, RefreshCw, Plus } from "lucide-react";
+import { Search, Loader2, Pencil, Trash2, Wrench, RefreshCw, Plus, MessageSquare } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { ContactChatActions } from "@/components/contatos/contact-chat-actions";
 
@@ -64,7 +65,9 @@ const emptyForm: FormState = { name: "", phone: "", address: "", city_state: "",
 
 export function TechniciansAdmin() {
   const { user, profile } = useAuth();
+  const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const [startingId, setStartingId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [editing, setEditing] = useState<Technician | null>(null);
   const [creating, setCreating] = useState(false);
@@ -85,18 +88,89 @@ export function TechniciansAdmin() {
   });
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return data;
-    const term = search.toLowerCase().trim();
-    const digits = term.replace(/\D/g, "");
-    return data.filter(
-      (t) =>
-        t.name?.toLowerCase().includes(term) ||
-        (t.phone || "").toLowerCase().includes(term) ||
-        (digits && (t.contact_phone || "").includes(digits)) ||
-        (t.address || "").toLowerCase().includes(term) ||
-        (t.city_state || "").toLowerCase().includes(term),
+    const base = !search.trim()
+      ? data
+      : (() => {
+          const term = search.toLowerCase().trim();
+          const digits = term.replace(/\D/g, "");
+          return data.filter(
+            (t) =>
+              t.name?.toLowerCase().includes(term) ||
+              (t.phone || "").toLowerCase().includes(term) ||
+              (digits && (t.contact_phone || "").includes(digits)) ||
+              (t.address || "").toLowerCase().includes(term) ||
+              (t.city_state || "").toLowerCase().includes(term),
+          );
+        })();
+    return [...base].sort((a, b) =>
+      (a.name || "").localeCompare(b.name || "", "pt-BR", { sensitivity: "base" }),
     );
   }, [data, search]);
+
+  const startChatFromTechnician = async (t: Technician) => {
+    const digits = (t.phone || t.contact_phone || "").replace(/\D/g, "");
+    if (digits.length < 10) {
+      toast.error("Telefone inválido para iniciar conversa.");
+      return;
+    }
+    setStartingId(t.id);
+    try {
+      const uid = user?.id || null;
+      const { data: existing } = await supabase
+        .from("zapi_chats")
+        .select("id, channel_id, status, assigned_to")
+        .ilike("phone", `%${digits.slice(-10)}%`)
+        .order("last_message_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      let chatId: string | null = null;
+      let channelId: string | null = null;
+
+      if (existing) {
+        chatId = (existing as any).id;
+        channelId = (existing as any).channel_id;
+        const upd: any = {};
+        if ((existing as any).status === "aguardando" || !(existing as any).assigned_to) {
+          upd.status = "em_atendimento";
+          if (uid) upd.assigned_to = uid;
+        }
+        if (Object.keys(upd).length > 0) {
+          await supabase.from("zapi_chats").update(upd).eq("id", chatId!);
+        }
+      } else {
+        const { data: channels } = await (supabase as any).rpc("list_channels_safe");
+        const active = (channels || []).find((c: any) => c.is_active) || (channels || [])[0];
+        if (!active) {
+          toast.error("Nenhum canal disponível para iniciar conversa.");
+          return;
+        }
+        channelId = active.id;
+        const { data: created, error } = await supabase
+          .from("zapi_chats")
+          .insert({
+            channel_id: channelId,
+            phone: digits,
+            contact_name: t.name || null,
+            status: "em_atendimento",
+            assigned_to: uid,
+          } as any)
+          .select("id")
+          .single();
+        if (error || !created) {
+          toast.error("Falha ao criar conversa: " + (error?.message || ""));
+          return;
+        }
+        chatId = (created as any).id;
+      }
+      toast.success("Conversa aberta na Central");
+      navigate({ to: "/central", search: { chat: chatId!, channel: channelId! } as any });
+    } catch (e: any) {
+      toast.error(e?.message || "Erro ao iniciar conversa");
+    } finally {
+      setStartingId(null);
+    }
+  };
 
   const openCreate = () => {
     setForm(emptyForm);
@@ -267,24 +341,22 @@ export function TechniciansAdmin() {
               <TableRow>
                 <TableHead>Nome</TableHead>
                 <TableHead>Telefone</TableHead>
-                <TableHead>Endereço</TableHead>
                 <TableHead>Cidade/Estado</TableHead>
                 <TableHead>Observação</TableHead>
                 <TableHead>Tel. do contato</TableHead>
-                <TableHead>Atualizado</TableHead>
-                <TableHead className="w-24">Ações</TableHead>
+                <TableHead className="w-32">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-8">
+                  <TableCell colSpan={6} className="text-center py-8">
                     <Loader2 className="h-5 w-5 animate-spin mx-auto" />
                   </TableCell>
                 </TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={8} className="text-center py-10 text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
                     <Wrench className="h-8 w-8 mx-auto mb-2 opacity-50" />
                     Nenhum técnico cadastrado.
                   </TableCell>
@@ -294,9 +366,6 @@ export function TechniciansAdmin() {
                   <TableRow key={t.id}>
                     <TableCell className="font-medium">{t.name}</TableCell>
                     <TableCell className="font-mono text-sm">{t.phone || "—"}</TableCell>
-                    <TableCell className="max-w-xs truncate" title={t.address || ""}>
-                      {t.address || "—"}
-                    </TableCell>
                     <TableCell className="max-w-[12rem] truncate" title={t.city_state || ""}>
                       {t.city_state || "—"}
                     </TableCell>
@@ -306,12 +375,21 @@ export function TechniciansAdmin() {
                     <TableCell className="font-mono text-xs text-muted-foreground">
                       {t.contact_phone}
                     </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {new Date(t.updated_at).toLocaleString("pt-BR")}
-                      {t.updated_by_name && <div className="text-[10px]">por {t.updated_by_name}</div>}
-                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => startChatFromTechnician(t)}
+                          disabled={startingId === t.id}
+                          title="Encaminhar para conversa no chat"
+                        >
+                          {startingId === t.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <MessageSquare className="h-4 w-4" />
+                          )}
+                        </Button>
                         <Button variant="ghost" size="icon" onClick={() => openEdit(t)} title="Editar">
                           <Pencil className="h-4 w-4" />
                         </Button>
