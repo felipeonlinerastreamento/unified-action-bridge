@@ -542,9 +542,13 @@ export const sendText = createServerFn({ method: "POST" })
       });
     }
 
-    await context.supabase.from("zapi_messages").insert({
+    // Race-safe insert: se o webhook do Z-API chegar antes deste insert,
+    // ele terá criado uma linha com o mesmo zapi_message_id (from_me=true).
+    // Nesse caso, apenas atualizamos os campos do operador em vez de duplicar.
+    const outgoingMessageId = result?.messageId || result?.id || null;
+    const outgoingRow = {
       chat_id: data.chatId,
-      zapi_message_id: result?.messageId || result?.id || null,
+      zapi_message_id: outgoingMessageId,
       from_me: true,
       sent_by_user_id: context.userId,
       text: outgoingText,
@@ -552,7 +556,38 @@ export const sendText = createServerFn({ method: "POST" })
       reply_to_message_id: data.replyToMessageId || null,
       reply_to_text: replyToText,
       reply_to_author: replyToAuthor,
-    });
+    };
+    let inserted = false;
+    if (outgoingMessageId) {
+      const { data: existing } = await context.supabase
+        .from("zapi_messages")
+        .select("id")
+        .eq("chat_id", data.chatId)
+        .eq("zapi_message_id", outgoingMessageId)
+        .maybeSingle();
+      if ((existing as any)?.id) {
+        await context.supabase
+          .from("zapi_messages")
+          .update({
+            sent_by_user_id: context.userId,
+            text: outgoingText,
+            reply_to_message_id: data.replyToMessageId || null,
+            reply_to_text: replyToText,
+            reply_to_author: replyToAuthor,
+            status: "sent",
+          })
+          .eq("id", (existing as any).id);
+        inserted = true;
+      }
+    }
+    if (!inserted) {
+      const { error: insErr } = await context.supabase.from("zapi_messages").insert(outgoingRow);
+      // 23505 = unique violation: webhook inseriu no meio do caminho, ignoramos.
+      if (insErr && (insErr as any).code !== "23505") {
+        console.error("[sendText] insert falhou:", insErr);
+      }
+    }
+
     // Operator interaction cancels the bot flow: assume chat and clear bot state
     // so the automatic sector-routing menu is not re-sent.
     const { data: currentChat } = await context.supabase
@@ -628,16 +663,46 @@ export const sendMedia = createServerFn({ method: "POST" })
       document: "[documento]",
     };
 
-    await context.supabase.from("zapi_messages").insert({
+    const outgoingMessageId = result?.messageId || result?.id || null;
+    const mediaRow = {
       chat_id: data.chatId,
-      zapi_message_id: result?.messageId || result?.id || null,
+      zapi_message_id: outgoingMessageId,
       from_me: true,
       sent_by_user_id: context.userId,
       text: data.caption || labels[data.kind],
       media_url: hostedUrl || data.dataUrl,
       media_type: data.kind,
       status: "sent",
-    });
+    };
+    let mediaInserted = false;
+    if (outgoingMessageId) {
+      const { data: existing } = await context.supabase
+        .from("zapi_messages")
+        .select("id")
+        .eq("chat_id", data.chatId)
+        .eq("zapi_message_id", outgoingMessageId)
+        .maybeSingle();
+      if ((existing as any)?.id) {
+        await context.supabase
+          .from("zapi_messages")
+          .update({
+            sent_by_user_id: context.userId,
+            text: mediaRow.text,
+            media_url: mediaRow.media_url,
+            media_type: mediaRow.media_type,
+            status: "sent",
+          })
+          .eq("id", (existing as any).id);
+        mediaInserted = true;
+      }
+    }
+    if (!mediaInserted) {
+      const { error: insErr } = await context.supabase.from("zapi_messages").insert(mediaRow);
+      if (insErr && (insErr as any).code !== "23505") {
+        console.error("[sendMedia] insert falhou:", insErr);
+      }
+    }
+
 
     await context.supabase
       .from("zapi_chats")
