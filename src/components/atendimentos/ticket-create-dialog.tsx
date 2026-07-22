@@ -216,6 +216,8 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
     data: clientes = [],
     isLoading: clientesLoading,
     error: clientesError,
+    refetch: refetchClientes,
+    isFetching: clientesFetching,
   } = useQuery({
     queryKey: ["gsystem-clientes"],
     queryFn: async () => {
@@ -227,7 +229,8 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
       return [];
     },
     enabled: open,
-    staleTime: 60_000,
+    staleTime: 0,
+    refetchOnMount: "always",
   });
 
   // GSystem categories (tipos de pendência)
