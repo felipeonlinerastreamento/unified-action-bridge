@@ -665,7 +665,19 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
         <div className="space-y-3">
           {/* Company - first field, synced with GSystem (Contatos) */}
           <div className="space-y-1">
-            <label className="text-xs font-medium">Nome da Empresa *</label>
+            <div className="flex items-center justify-between">
+              <label className="text-xs font-medium">Nome da Empresa *</label>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-6 px-2 text-xs"
+                onClick={() => refetchClientes()}
+                disabled={clientesFetching}
+              >
+                {clientesFetching ? <Loader2 className="h-3 w-3 animate-spin" /> : "Atualizar lista"}
+              </Button>
+            </div>
             <Popover open={companyOpen} onOpenChange={setCompanyOpen}>
               <PopoverTrigger asChild>
                 <Button
