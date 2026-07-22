@@ -219,8 +219,12 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
   } = useQuery({
     queryKey: ["gsystem-clientes"],
     queryFn: async () => {
-      const result = await getClientes({ data: {}, ...(await getAuthHeaders()) });
-      return Array.isArray(result) ? result : result?.data || result?.Data || [];
+      const result: any = await getClientes({ data: {}, ...(await getAuthHeaders()) });
+      if (Array.isArray(result)) return result;
+      for (const k of ["Items", "items", "Data", "data", "Dados", "dados", "Resultado", "resultado", "Results", "results"]) {
+        if (Array.isArray(result?.[k])) return result[k];
+      }
+      return [];
     },
     enabled: open,
     staleTime: 60_000,
