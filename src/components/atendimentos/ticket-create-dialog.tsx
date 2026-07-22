@@ -296,14 +296,14 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
 
   const filteredClientes = useMemo(() => {
     const term = companySearch.trim().toLowerCase();
-    if (!term) return clientes.slice(0, 50);
+    if (!term) return clientes.slice(0, 200);
     return clientes
       .filter((c: GsystemCliente) => {
         const name = (c.Nome || c.nome || c.RazaoSocial || "").toLowerCase();
         const doc = (c.CpfCnpj || c.cpf_cnpj || "").toLowerCase();
         return name.includes(term) || doc.includes(term);
       })
-      .slice(0, 50);
+      .slice(0, 200);
   }, [clientes, companySearch]);
 
   const selectedCompanyLabel = useMemo(() => {
