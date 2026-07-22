@@ -862,22 +862,38 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
             if (!p.fromMe && !isGroupMessage && text) {
               const trimmed = text.trim();
               if (trimmed.length > 0) {
-                const since = new Date(Date.now() - 60_000).toISOString();
-                const { data: recentEcho } = await supabaseAdmin
-                  .from("zapi_messages")
-                  .select("id")
-                  .eq("chat_id", existing.id)
-                  .eq("from_me", true)
-                  .eq("text", trimmed)
-                  .gte("created_at", since)
-                  .limit(1)
-                  .maybeSingle();
-                if (recentEcho) {
-                  console.log("[zapi-webhook] dropping echo of own outbound message (early)", {
-                    chatId: existing.id,
-                    preview: trimmed.slice(0, 60),
-                  });
-                  return;
+                // Se o payload traz um messageId real da Z-API e essa mensagem
+                // AINDA não existe no DB, é uma mensagem legítima (ex.: enviada
+                // pelo celular do operador via outro dispositivo) — não é eco
+                // do nosso próprio envio. Deixa passar para persistência normal.
+                let hasFreshMessageId = false;
+                if (p.messageId) {
+                  const { data: alreadyStored } = await supabaseAdmin
+                    .from("zapi_messages")
+                    .select("id")
+                    .eq("chat_id", existing.id)
+                    .eq("zapi_message_id", p.messageId)
+                    .maybeSingle();
+                  hasFreshMessageId = !alreadyStored;
+                }
+                if (!hasFreshMessageId) {
+                  const since = new Date(Date.now() - 60_000).toISOString();
+                  const { data: recentEcho } = await supabaseAdmin
+                    .from("zapi_messages")
+                    .select("id")
+                    .eq("chat_id", existing.id)
+                    .eq("from_me", true)
+                    .eq("text", trimmed)
+                    .gte("created_at", since)
+                    .limit(1)
+                    .maybeSingle();
+                  if (recentEcho) {
+                    console.log("[zapi-webhook] dropping echo of own outbound message (early)", {
+                      chatId: existing.id,
+                      preview: trimmed.slice(0, 60),
+                    });
+                    return;
+                  }
                 }
               }
             }
@@ -1073,22 +1089,34 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
             if (!p.fromMe && !isGroupMessage && text) {
               const trimmed = text.trim();
               if (trimmed.length > 0) {
-                const since = new Date(Date.now() - 60_000).toISOString();
-                const { data: recentEcho } = await supabaseAdmin
-                  .from("zapi_messages")
-                  .select("id")
-                  .eq("chat_id", chatId)
-                  .eq("from_me", true)
-                  .eq("text", trimmed)
-                  .gte("created_at", since)
-                  .limit(1)
-                  .maybeSingle();
-                if (recentEcho) {
-                  console.log("[zapi-webhook] dropping echo of own outbound message", {
-                    chatId,
-                    preview: trimmed.slice(0, 60),
-                  });
-                  return;
+                let hasFreshMessageId = false;
+                if (p.messageId) {
+                  const { data: alreadyStored } = await supabaseAdmin
+                    .from("zapi_messages")
+                    .select("id")
+                    .eq("chat_id", chatId)
+                    .eq("zapi_message_id", p.messageId)
+                    .maybeSingle();
+                  hasFreshMessageId = !alreadyStored;
+                }
+                if (!hasFreshMessageId) {
+                  const since = new Date(Date.now() - 60_000).toISOString();
+                  const { data: recentEcho } = await supabaseAdmin
+                    .from("zapi_messages")
+                    .select("id")
+                    .eq("chat_id", chatId)
+                    .eq("from_me", true)
+                    .eq("text", trimmed)
+                    .gte("created_at", since)
+                    .limit(1)
+                    .maybeSingle();
+                  if (recentEcho) {
+                    console.log("[zapi-webhook] dropping echo of own outbound message", {
+                      chatId,
+                      preview: trimmed.slice(0, 60),
+                    });
+                    return;
+                  }
                 }
               }
             }
