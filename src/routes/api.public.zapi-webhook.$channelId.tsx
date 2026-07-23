@@ -332,7 +332,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
             if (isLidIdentifier) {
               const { data: byLid } = await supabaseAdmin
                 .from("zapi_chats")
-                .select("id, phone, unread_count, status, closed_at")
+                .select("id, phone, unread_count, status, closed_at, lid_aliases")
                 .eq("channel_id", channelId)
                 .or(`lid.eq.${phoneN},lid_aliases.cs.{${phoneN}}`)
                 .not("phone_normalized", "like", "lid:%")
@@ -340,30 +340,31 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                 .limit(1);
               existingChat = byLid?.[0] || null;
             }
-            // 2) Fallback: by sender name (only when present)
+            // 2) Fallback: by sender name (case-insensitive, exact or first-token)
             if (isLidIdentifier && !existingChat && candidateName) {
+              const firstToken = candidateName.split(/\s+/)[0] || candidateName;
               const { data: byRealName } = await supabaseAdmin
                 .from("zapi_chats")
-                .select("id, phone, unread_count, status, closed_at")
+                .select("id, phone, unread_count, status, closed_at, contact_name, last_message_at, lid_aliases")
                 .eq("channel_id", channelId)
-                .eq("contact_name", candidateName)
                 .not("phone_normalized", "like", "lid:%")
+                .or(`contact_name.ilike.${candidateName},contact_name.ilike.${firstToken}%,contact_name.ilike.%${firstToken}%`)
                 .order("last_message_at", { ascending: false })
-                .limit(5);
+                .limit(10);
               existingChat = byRealName?.find((chat: any) => chat.status !== "finalizado") || null;
             }
             if (isLidIdentifier && !existingChat) {
-              console.log("[zapi-webhook] LID-only call event without real-phone chat; replying directly to @lid", {
+              console.log("[zapi-webhook] LID-only call event without real-phone chat; replying directly to @lid without creating new chat", {
                 phone: phoneN,
                 senderName: p.senderName,
                 type: eventType,
               });
             }
             const replyPhone = isLidIdentifier && !existingChat ? `${phoneN}@lid` : phoneN;
-            if (!existingChat) {
+            if (!existingChat && !isLidIdentifier) {
               let query = supabaseAdmin
                 .from("zapi_chats")
-                .select("id, phone, unread_count, status, closed_at")
+                .select("id, phone, unread_count, status, closed_at, lid_aliases")
                 .eq("channel_id", channelId)
                 .order("last_message_at", { ascending: false })
                 .limit(1);
@@ -371,19 +372,13 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               const { data: byPhone } = await query;
               existingChat = byPhone?.[0] || null;
             }
-            if (isLidIdentifier && !existingChat) {
-              const { data: byLidPhone } = await supabaseAdmin
-                .from("zapi_chats")
-                .select("id, phone, unread_count, status, closed_at")
-                .eq("channel_id", channelId)
-                .eq("phone", replyPhone)
-                .order("last_message_at", { ascending: false })
-                .limit(1);
-              existingChat = byLidPhone?.[0] || null;
-            }
 
             let chatRowId: string | null = (existingChat as any)?.id || null;
-            if (!chatRowId) {
+            // IMPORTANTE: Se é evento de chamada por LID sem match, NÃO criar
+            // novo chat — apenas registrar log e enviar a auto-resposta direto
+            // para o @lid. Criar novo chat aqui gera duplicidade (bug reportado:
+            // cliente com chat aberto tentando ligar abria uma nova conversa).
+            if (!chatRowId && !isLidIdentifier) {
               const { data: created } = await supabaseAdmin
                 .from("zapi_chats")
                 .insert({
@@ -398,16 +393,29 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                 .select("id")
                 .maybeSingle();
               chatRowId = (created as any)?.id || null;
-            } else {
+            } else if (chatRowId) {
+              const updatePayload: any = {
+                last_message_at: new Date().toISOString(),
+                last_message_preview: callText,
+                unread_count: ((existingChat as any).unread_count || 0) + 1,
+              };
+              // Registrar o LID nesta conversa para que próximas chamadas do
+              // mesmo LID resolvam direto (sem depender do match por nome).
+              if (isLidIdentifier) {
+                const currentAliases: string[] = Array.isArray((existingChat as any).lid_aliases)
+                  ? (existingChat as any).lid_aliases
+                  : [];
+                if (!currentAliases.includes(phoneN)) {
+                  updatePayload.lid_aliases = [...currentAliases, phoneN];
+                }
+              }
               await supabaseAdmin
                 .from("zapi_chats")
-                .update({
-                  last_message_at: new Date().toISOString(),
-                  last_message_preview: callText,
-                  unread_count: ((existingChat as any).unread_count || 0) + 1,
-                } as any)
+                .update(updatePayload)
                 .eq("id", chatRowId);
             }
+
+
 
             if (chatRowId) {
               await persistZapiMessage({
