@@ -809,7 +809,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                 channel_id: channelId,
                 phone,
                 contact_name: incomingContactName,
-                contact_avatar: p.senderPhoto || null,
+                contact_avatar: (isGroupMessage ? groupPhoto : p.senderPhoto) || null,
                 status: initialStatus,
                 assigned_to: initialAssigned,
                 sector_name: initialSector,
