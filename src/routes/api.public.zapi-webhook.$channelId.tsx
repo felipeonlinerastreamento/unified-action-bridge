@@ -534,12 +534,15 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
           // For groups, prefer the group name (chatName/groupName) over the sender's name.
           // For direct chats, use senderName.
           let groupDisplayName = p.chatName || p.groupName || p.name || p.subject || null;
-          if (isGroupMessage && !groupDisplayName) {
+          let groupPhoto: string | null = null;
+          if (isGroupMessage) {
             try {
               const creds = await loadZapiChannel(supabaseAdmin, channelId);
-              groupDisplayName = await zapiGetGroupName(creds, rawPhone);
+              const meta = await zapiGetGroupMetadata(creds, rawPhone);
+              if (!groupDisplayName) groupDisplayName = meta.name;
+              groupPhoto = meta.photo;
             } catch (error) {
-              console.warn("[zapi-webhook] cannot resolve group name", { phone, error });
+              console.warn("[zapi-webhook] cannot resolve group metadata", { phone, error });
             }
           }
           const incomingContactName = isGroupMessage
