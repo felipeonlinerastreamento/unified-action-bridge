@@ -214,7 +214,38 @@ function extractGroupName(payload: any): string | null {
   return name ? name.trim() : null;
 }
 
-export async function zapiGetGroupName(channel: ZapiChannelCreds, groupPhone: string): Promise<string | null> {
+function extractGroupPhoto(payload: any): string | null {
+  const candidates = [
+    payload?.groupPicture,
+    payload?.picture,
+    payload?.photo,
+    payload?.image,
+    payload?.imageUrl,
+    payload?.profilePicture,
+    payload?.profilePic,
+    payload?.linkImage,
+    payload?.group?.picture,
+    payload?.group?.photo,
+    payload?.group?.image,
+    payload?.group?.imageUrl,
+    payload?.group?.profilePicture,
+    payload?.data?.picture,
+    payload?.data?.photo,
+    payload?.data?.image,
+    payload?.data?.imageUrl,
+    payload?.data?.profilePicture,
+    payload?.data?.groupPicture,
+  ];
+  const photo = candidates.find(
+    (value) => typeof value === "string" && /^https?:\/\//i.test(value.trim())
+  );
+  return photo ? photo.trim() : null;
+}
+
+export async function zapiGetGroupMetadata(
+  channel: ZapiChannelCreds,
+  groupPhone: string
+): Promise<{ name: string | null; photo: string | null }> {
   const groupId = groupPhone.includes("@g.us") ? groupPhone : `${groupPhone}@g.us`;
   const paths = [
     `/group-metadata/${encodeURIComponent(groupId)}`,
@@ -223,17 +254,45 @@ export async function zapiGetGroupName(channel: ZapiChannelCreds, groupPhone: st
     `/groups/${encodeURIComponent(groupPhone)}`,
   ];
 
+  let name: string | null = null;
+  let photo: string | null = null;
   for (const path of paths) {
     try {
       const payload = await zapiFetch(channel, path, "GET");
-      const name = extractGroupName(payload);
-      if (name) return name;
+      if (!name) name = extractGroupName(payload);
+      if (!photo) photo = extractGroupPhoto(payload);
+      if (name && photo) break;
     } catch (error) {
-      console.warn(`[zapi] cannot fetch group name via ${path}`, error);
+      console.warn(`[zapi] cannot fetch group metadata via ${path}`, error);
     }
   }
 
-  return null;
+  if (!photo) {
+    // Fallback: dedicated profile-picture endpoint used by Z-API for both
+    // contacts and groups.
+    const picPaths = [
+      `/profile-picture?phone=${encodeURIComponent(groupId)}`,
+      `/profile-picture?phone=${encodeURIComponent(groupPhone)}`,
+    ];
+    for (const path of picPaths) {
+      try {
+        const payload = await zapiFetch(channel, path, "GET");
+        const url = extractGroupPhoto(payload) || payload?.link || payload?.url || null;
+        if (typeof url === "string" && /^https?:\/\//i.test(url)) {
+          photo = url;
+          break;
+        }
+      } catch (error) {
+        console.warn(`[zapi] cannot fetch group picture via ${path}`, error);
+      }
+    }
+  }
+
+  return { name, photo };
+}
+
+export async function zapiGetGroupName(channel: ZapiChannelCreds, groupPhone: string): Promise<string | null> {
+  return (await zapiGetGroupMetadata(channel, groupPhone)).name;
 }
 
 /**
