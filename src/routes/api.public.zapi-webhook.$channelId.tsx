@@ -940,7 +940,9 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               lid_aliases?: string[];
             } = {
               contact_name: nameToStore,
-              contact_avatar: p.senderPhoto || undefined,
+              contact_avatar: isGroupMessage
+                ? (groupPhoto || undefined)
+                : (p.senderPhoto || undefined),
               last_message_at: new Date().toISOString(),
               last_message_preview: text.slice(0, 120),
               unread_count: p.fromMe
