@@ -243,9 +243,15 @@ export async function processIncomingForBot(params: ProcessParams): Promise<bool
 
     if (node.type === "route_to_sector" || node.type === "route_to_least_loaded") {
       const sector = node.target_sector || "Atendimento";
+      // Sempre tenta atribuir automaticamente ao operador menos sobrecarregado
+      // do setor (respeita presença/disponibilidade e cai para fallback "any").
+      // Antes, `route_to_sector` deixava assigned_to = null, o que fazia o chat
+      // ficar em atendimento sem responsável (bug: nenhum operador designado).
       let assignedTo: string | null = null;
-      if (node.type === "route_to_least_loaded") {
+      try {
         assignedTo = await pickLeastLoaded(sector);
+      } catch (err) {
+        console.warn("[bot] pickLeastLoaded failed for sector", sector, err);
       }
       await supabaseAdmin
         .from("zapi_chats")
@@ -258,6 +264,7 @@ export async function processIncomingForBot(params: ProcessParams): Promise<bool
         .eq("id", chatId);
       return true;
     }
+
 
     if (node.type === "ask_input") {
       // Send the prompt and wait for user reply
