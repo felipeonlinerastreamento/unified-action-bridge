@@ -137,16 +137,18 @@ export async function processIncomingForBot(params: ProcessParams): Promise<bool
     .single();
 
   if (!shouldRunBot(channel?.bot_mode || null)) {
-    // Skip bot, mark as waiting for human
-    await supabaseAdmin
-      .from("zapi_chats")
-      .update({ status: "aguardando" })
-      .eq("id", chatId);
+    // Bot desativado: encaminha automaticamente para o setor Atendimento
+    await autoRouteToAtendimento(chatId);
     return false;
   }
 
   const flow = await findActiveFlow(channelId);
-  if (!flow || !Array.isArray(flow.nodes) || flow.nodes.length === 0) return false;
+  if (!flow || !Array.isArray(flow.nodes) || flow.nodes.length === 0) {
+    // Sem fluxo ativo: encaminha automaticamente para o setor Atendimento
+    await autoRouteToAtendimento(chatId);
+    return false;
+  }
+
 
   const botState = (chat.bot_state || {}) as { current_node?: string; [k: string]: any };
   const vars = { contactName: contactName || undefined };
