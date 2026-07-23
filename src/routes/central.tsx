@@ -5279,10 +5279,10 @@ function CentralPage() {
                 });
                 setShowFinalizeReview(false);
               }}
-              disabled={finalizeMutation.isPending}
+              disabled={finalizeMutation.isPending || linkCompanyMutation.isPending}
             >
-              {finalizeMutation.isPending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
-              Confirmar e Finalizar
+              {(finalizeMutation.isPending || linkCompanyMutation.isPending) ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <CheckCircle2 className="h-4 w-4 mr-2" />}
+              {linkCompanyMutation.isPending ? "Atualizando cliente..." : "Confirmar e Finalizar"}
             </Button>
           </div>
         </DialogContent>
