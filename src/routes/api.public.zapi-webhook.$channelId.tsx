@@ -3,7 +3,7 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { isGroupPhoneIdentifier } from "@/lib/chat-utils";
 import { processIncomingForBot } from "@/lib/zapi-bot.server";
-import { loadZapiChannel, zapiGetGroupName, zapiSendText } from "@/lib/zapi.server";
+import { loadZapiChannel, zapiGetGroupMetadata, zapiSendText } from "@/lib/zapi.server";
 import {
   loadBusinessHoursSettings,
   isWithinBusinessHours,
@@ -534,12 +534,15 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
           // For groups, prefer the group name (chatName/groupName) over the sender's name.
           // For direct chats, use senderName.
           let groupDisplayName = p.chatName || p.groupName || p.name || p.subject || null;
-          if (isGroupMessage && !groupDisplayName) {
+          let groupPhoto: string | null = null;
+          if (isGroupMessage) {
             try {
               const creds = await loadZapiChannel(supabaseAdmin, channelId);
-              groupDisplayName = await zapiGetGroupName(creds, rawPhone);
+              const meta = await zapiGetGroupMetadata(creds, rawPhone);
+              if (!groupDisplayName) groupDisplayName = meta.name;
+              groupPhoto = meta.photo;
             } catch (error) {
-              console.warn("[zapi-webhook] cannot resolve group name", { phone, error });
+              console.warn("[zapi-webhook] cannot resolve group metadata", { phone, error });
             }
           }
           const incomingContactName = isGroupMessage
@@ -806,7 +809,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                 channel_id: channelId,
                 phone,
                 contact_name: incomingContactName,
-                contact_avatar: p.senderPhoto || null,
+                contact_avatar: (isGroupMessage ? groupPhoto : p.senderPhoto) || null,
                 status: initialStatus,
                 assigned_to: initialAssigned,
                 sector_name: initialSector,
@@ -937,7 +940,9 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               lid_aliases?: string[];
             } = {
               contact_name: nameToStore,
-              contact_avatar: p.senderPhoto || undefined,
+              contact_avatar: isGroupMessage
+                ? (groupPhoto || undefined)
+                : (p.senderPhoto || undefined),
               last_message_at: new Date().toISOString(),
               last_message_preview: text.slice(0, 120),
               unread_count: p.fromMe
