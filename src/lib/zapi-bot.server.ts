@@ -83,6 +83,26 @@ async function pickLeastLoaded(sectorName: string): Promise<string | null> {
   return (any as string | null) || null;
 }
 
+async function autoRouteToAtendimento(chatId: string): Promise<void> {
+  const sector = "Atendimento";
+  let assignedTo: string | null = null;
+  try {
+    assignedTo = await pickLeastLoaded(sector);
+  } catch (err) {
+    console.warn("[bot] auto-route pickLeastLoaded failed", err);
+  }
+  await supabaseAdmin
+    .from("zapi_chats")
+    .update({
+      status: "em_atendimento",
+      sector_name: sector,
+      assigned_to: assignedTo,
+      bot_state: {},
+    })
+    .eq("id", chatId);
+}
+
+
 function matchMenuOption(node: FlowNode, incomingText: string) {
   if (node.type !== "menu" || !node.options) return null;
 
