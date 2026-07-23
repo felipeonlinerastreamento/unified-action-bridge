@@ -332,7 +332,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
             if (isLidIdentifier) {
               const { data: byLid } = await supabaseAdmin
                 .from("zapi_chats")
-                .select("id, phone, unread_count, status, closed_at")
+                .select("id, phone, unread_count, status, closed_at, lid_aliases")
                 .eq("channel_id", channelId)
                 .or(`lid.eq.${phoneN},lid_aliases.cs.{${phoneN}}`)
                 .not("phone_normalized", "like", "lid:%")
@@ -345,7 +345,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               const firstToken = candidateName.split(/\s+/)[0] || candidateName;
               const { data: byRealName } = await supabaseAdmin
                 .from("zapi_chats")
-                .select("id, phone, unread_count, status, closed_at, contact_name, last_message_at")
+                .select("id, phone, unread_count, status, closed_at, contact_name, last_message_at, lid_aliases")
                 .eq("channel_id", channelId)
                 .not("phone_normalized", "like", "lid:%")
                 .or(`contact_name.ilike.${candidateName},contact_name.ilike.${firstToken}%,contact_name.ilike.%${firstToken}%`)
@@ -364,7 +364,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
             if (!existingChat && !isLidIdentifier) {
               let query = supabaseAdmin
                 .from("zapi_chats")
-                .select("id, phone, unread_count, status, closed_at")
+                .select("id, phone, unread_count, status, closed_at, lid_aliases")
                 .eq("channel_id", channelId)
                 .order("last_message_at", { ascending: false })
                 .limit(1);
