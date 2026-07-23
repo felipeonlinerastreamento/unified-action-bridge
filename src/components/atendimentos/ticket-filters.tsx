@@ -391,18 +391,24 @@ export function applyTicketFilters(tickets: any[], filters: TicketFilters): any[
       if (!phone.includes(filter)) return false;
     }
 
-    // Date range
-    if (filters.dateFrom) {
-      const created = new Date(t.created_at);
-      const from = new Date(filters.dateFrom);
-      from.setHours(0, 0, 0, 0);
-      if (created < from) return false;
-    }
-    if (filters.dateTo) {
-      const created = new Date(t.created_at);
-      const to = new Date(filters.dateTo);
-      to.setHours(23, 59, 59, 999);
-      if (created > to) return false;
+    // Date range — para finalizados, considera created_at OU closed_at dentro do intervalo
+    if (filters.dateFrom || filters.dateTo) {
+      const from = filters.dateFrom ? new Date(filters.dateFrom) : null;
+      if (from) from.setHours(0, 0, 0, 0);
+      const to = filters.dateTo ? new Date(filters.dateTo) : null;
+      if (to) to.setHours(23, 59, 59, 999);
+
+      const inRange = (iso: string | null | undefined) => {
+        if (!iso) return false;
+        const d = new Date(iso);
+        if (from && d < from) return false;
+        if (to && d > to) return false;
+        return true;
+      };
+
+      const createdMatch = inRange(t.created_at);
+      const closedMatch = t.status === "finalizado" && inRange(t.closed_at);
+      if (!createdMatch && !closedMatch) return false;
     }
 
     // Tracking status (only meaningful for Correios)
