@@ -394,15 +394,27 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                 .maybeSingle();
               chatRowId = (created as any)?.id || null;
             } else if (chatRowId) {
+              const updatePayload: any = {
+                last_message_at: new Date().toISOString(),
+                last_message_preview: callText,
+                unread_count: ((existingChat as any).unread_count || 0) + 1,
+              };
+              // Registrar o LID nesta conversa para que próximas chamadas do
+              // mesmo LID resolvam direto (sem depender do match por nome).
+              if (isLidIdentifier) {
+                const currentAliases: string[] = Array.isArray((existingChat as any).lid_aliases)
+                  ? (existingChat as any).lid_aliases
+                  : [];
+                if (!currentAliases.includes(phoneN)) {
+                  updatePayload.lid_aliases = [...currentAliases, phoneN];
+                }
+              }
               await supabaseAdmin
                 .from("zapi_chats")
-                .update({
-                  last_message_at: new Date().toISOString(),
-                  last_message_preview: callText,
-                  unread_count: ((existingChat as any).unread_count || 0) + 1,
-                } as any)
+                .update(updatePayload)
                 .eq("id", chatRowId);
             }
+
 
 
             if (chatRowId) {
