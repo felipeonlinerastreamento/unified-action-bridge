@@ -1880,6 +1880,21 @@ function CentralPage() {
         isTesteEquipamentoCategory(resolvedCategoryLabel, teFresh);
 
       let ticketForProtocol = currentTicket;
+      // Recarrega o ticket do banco para garantir que mudanças recentes
+      // (ex.: troca de cliente feita no diálogo de finalização) sejam
+      // consideradas — o cache do React Query pode não ter revalidado ainda.
+      if (ticketForProtocol?.id) {
+        try {
+          const { data: freshTicket } = await supabase
+            .from("service_tickets")
+            .select("*")
+            .eq("id", ticketForProtocol.id)
+            .maybeSingle();
+          if (freshTicket) ticketForProtocol = freshTicket as any;
+        } catch (e) {
+          console.warn("[Finalize] failed to refresh ticket before finalize:", e);
+        }
+      }
       let createdProtocolTicket = false;
 
       // VÍNCULO A PROTOCOLO EXISTENTE: não cria/atualiza ticket — apenas anexa
