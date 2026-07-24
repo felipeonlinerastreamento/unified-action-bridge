@@ -1,4 +1,13 @@
 import { useState, useMemo, useCallback, useEffect } from "react";
+
+function useDebouncedValue<T>(value: T, delay: number): T {
+  const [v, setV] = useState(value);
+  useEffect(() => {
+    const t = setTimeout(() => setV(value), delay);
+    return () => clearTimeout(t);
+  }, [value, delay]);
+  return v;
+}
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
