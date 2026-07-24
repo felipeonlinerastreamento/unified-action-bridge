@@ -752,7 +752,15 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
                       </div>
                     ) : (
                       <>
-                        <CommandEmpty>Nenhuma empresa encontrada.</CommandEmpty>
+                        <CommandEmpty>
+                          {fallbackFetching ? (
+                            <span className="flex items-center justify-center gap-2 py-2">
+                              <Loader2 className="h-3 w-3 animate-spin" /> Buscando no GSystem...
+                            </span>
+                          ) : (
+                            "Nenhuma empresa encontrada."
+                          )}
+                        </CommandEmpty>
                         <CommandGroup>
                           {filteredClientes.map((c: GsystemCliente, idx: number) => {
                             const key = String(c.Key || c.key || idx);
