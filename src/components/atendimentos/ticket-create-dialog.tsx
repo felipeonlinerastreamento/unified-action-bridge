@@ -294,7 +294,7 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
     enabled: open,
   });
 
-  const filteredClientes = useMemo(() => {
+  const localFiltered = useMemo(() => {
     const term = companySearch.trim().toLowerCase();
     if (!term) return clientes.slice(0, 200);
     return clientes
@@ -305,6 +305,39 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
       })
       .slice(0, 200);
   }, [clientes, companySearch]);
+
+  // Fallback: se busca >= 3 chars e a listagem local não trouxe resultados,
+  // tenta buscar direto no GSystem via /clientes/{term} (útil quando o
+  // GSystem não devolve o cliente na listagem geral).
+  const debouncedTerm = useDebouncedValue(companySearch.trim(), 400);
+  const shouldFallback =
+    debouncedTerm.length >= 3 && localFiltered.length === 0 && !clientesLoading;
+  const { data: fallbackClientes = [], isFetching: fallbackFetching } = useQuery({
+    queryKey: ["gsystem-clientes-fallback", debouncedTerm],
+    queryFn: async () => {
+      const result: any = await getClientes({
+        data: { identifiers: debouncedTerm },
+        ...(await getAuthHeaders()),
+      });
+      if (Array.isArray(result)) return result;
+      if (result && typeof result === "object") {
+        for (const k of ["Items", "items", "Data", "data", "Dados", "dados", "Resultado", "resultado", "Results", "results"]) {
+          if (Array.isArray(result?.[k])) return result[k];
+        }
+        // objeto único (busca por CNPJ/Key)
+        if ((result as any).Nome || (result as any).nome || (result as any).RazaoSocial) return [result];
+      }
+      return [];
+    },
+    enabled: open && shouldFallback,
+    staleTime: 30_000,
+    retry: false,
+  });
+
+  const filteredClientes = useMemo(() => {
+    if (localFiltered.length > 0) return localFiltered;
+    return (fallbackClientes as GsystemCliente[]).slice(0, 200);
+  }, [localFiltered, fallbackClientes]);
 
   const selectedCompanyLabel = useMemo(() => {
     if (!selectedCliente) return "";
