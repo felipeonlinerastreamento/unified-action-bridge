@@ -62,8 +62,8 @@ export async function syncGsystemEquipamentos(): Promise<{
           serie: it.Serie ?? null,
           observacao: it.Observacao ?? null,
           comunicacao: it.Comunicacao ?? null,
-          empresa: it.Empresa ?? null,
-          parametros: it.Parametros ?? null,
+          empresa: (it.Empresa ?? null) as any,
+          parametros: (it.Parametros ?? null) as any,
           raw: it as any,
           synced_at: new Date().toISOString(),
         }));
