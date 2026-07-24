@@ -17,7 +17,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { GsystemEquipamentosSyncTab } from "@/components/estoque/gsystem-equipamentos-sync-tab";
-import { useUserPermissions } from "@/hooks/use-user-permissions";
 
 export const Route = createFileRoute("/estoque")({
   component: EstoquePage,
