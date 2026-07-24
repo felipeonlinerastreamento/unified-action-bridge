@@ -12,10 +12,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { getVeiculos, getVeiculoTipos, getCadastrosByTipo, discoverEquipamentos, discoverChips, listEquipamentosFromVeiculos, probeEquipamentosDeep } from "@/lib/gsystem-api.functions";
-import { Search, Package, Car, RefreshCw, Loader2, AlertCircle, Cpu, Wifi, Stethoscope } from "lucide-react";
+import { Search, Package, Car, RefreshCw, Loader2, AlertCircle, Cpu, Wifi, Stethoscope, DatabaseZap } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
+import { GsystemEquipamentosSyncTab } from "@/components/estoque/gsystem-equipamentos-sync-tab";
+import { useUserPermissions } from "@/hooks/use-user-permissions";
 
 export const Route = createFileRoute("/estoque")({
   component: EstoquePage,
