@@ -417,10 +417,18 @@ function EstoquePage() {
             <TabsTrigger value="veiculos">
               <Car className="h-4 w-4 mr-1" /> Veículos
             </TabsTrigger>
+            <TabsTrigger value="sync">
+              <DatabaseZap className="h-4 w-4 mr-1" /> Sincronizados
+            </TabsTrigger>
             <TabsTrigger value="local">
               <Package className="h-4 w-4 mr-1" /> Estoque Local
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="sync">
+            <GsystemEquipamentosSyncTab canSync={hasRole("admin") || hasRole("gestor")} />
+          </TabsContent>
+
 
           {/* Filters */}
           <div className="flex items-center gap-2 flex-wrap mt-4">
