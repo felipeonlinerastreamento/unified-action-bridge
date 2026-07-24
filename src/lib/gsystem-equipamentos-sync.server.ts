@@ -39,9 +39,9 @@ export async function syncGsystemEquipamentos(): Promise<{
 
     do {
       const qs = new URLSearchParams();
-      qs.set("Limit", "200");
+      qs.set("Limit", "100");
       if (cursor) qs.set("Cursor", cursor);
-      const res: any = await gsystemApiFetch(`/equipamentos?${qs.toString()}`, "GET");
+      const res: any = await fetchEquipamentosWithRetry(qs.toString());
 
       // pode vir array puro ou { Items, Pagination: { NextCursor } }
       const items: Equipamento[] = Array.isArray(res)
