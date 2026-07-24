@@ -18,6 +18,30 @@ interface Equipamento {
   [k: string]: unknown;
 }
 
+/**
+ * Retry wrapper para /equipamentos: API do GSystem costuma retornar 524/timeout
+ * quando páginas grandes demoram. Fazemos backoff em 429/5xx e erros de rede.
+ */
+async function fetchEquipamentosWithRetry(qs: string, maxAttempts = 4): Promise<any> {
+  let lastErr: unknown;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      return await gsystemApiFetch(`/equipamentos?${qs}`, "GET");
+    } catch (e: any) {
+      lastErr = e;
+      const msg = String(e?.message ?? e);
+      const m = msg.match(/GSystem API error \[(\d+)\]/);
+      const status = m ? Number(m[1]) : 0;
+      const retriable = status === 0 || status === 429 || status === 502 || status === 503 || status === 504 || status === 524;
+      if (!retriable || attempt === maxAttempts) throw e;
+      const wait = Math.min(30000, 2000 * Math.pow(2, attempt - 1)); // 2s,4s,8s
+      console.warn(`[sync equipamentos] tentativa ${attempt} falhou (${status || "network"}), retry em ${wait}ms`);
+      await new Promise((r) => setTimeout(r, wait));
+    }
+  }
+  throw lastErr;
+}
+
 export async function syncGsystemEquipamentos(): Promise<{
   ok: boolean;
   itemsCount: number;
@@ -39,9 +63,9 @@ export async function syncGsystemEquipamentos(): Promise<{
 
     do {
       const qs = new URLSearchParams();
-      qs.set("Limit", "200");
+      qs.set("Limit", "100");
       if (cursor) qs.set("Cursor", cursor);
-      const res: any = await gsystemApiFetch(`/equipamentos?${qs.toString()}`, "GET");
+      const res: any = await fetchEquipamentosWithRetry(qs.toString());
 
       // pode vir array puro ou { Items, Pagination: { NextCursor } }
       const items: Equipamento[] = Array.isArray(res)
