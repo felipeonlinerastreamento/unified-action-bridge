@@ -2495,6 +2495,75 @@ export type Database = {
         }
         Relationships: []
       }
+      gsystem_equipamentos: {
+        Row: {
+          codigo: number
+          comunicacao: string | null
+          display_name: string | null
+          empresa: Json | null
+          equipamento: string | null
+          observacao: string | null
+          parametros: Json | null
+          raw: Json | null
+          serie: string | null
+          synced_at: string
+        }
+        Insert: {
+          codigo: number
+          comunicacao?: string | null
+          display_name?: string | null
+          empresa?: Json | null
+          equipamento?: string | null
+          observacao?: string | null
+          parametros?: Json | null
+          raw?: Json | null
+          serie?: string | null
+          synced_at?: string
+        }
+        Update: {
+          codigo?: number
+          comunicacao?: string | null
+          display_name?: string | null
+          empresa?: Json | null
+          equipamento?: string | null
+          observacao?: string | null
+          parametros?: Json | null
+          raw?: Json | null
+          serie?: string | null
+          synced_at?: string
+        }
+        Relationships: []
+      }
+      gsystem_sync_status: {
+        Row: {
+          id: string
+          items_count: number | null
+          last_error: string | null
+          last_finished_at: string | null
+          last_started_at: string | null
+          last_success_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          id: string
+          items_count?: number | null
+          last_error?: string | null
+          last_finished_at?: string | null
+          last_started_at?: string | null
+          last_success_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          items_count?: number | null
+          last_error?: string | null
+          last_finished_at?: string | null
+          last_started_at?: string | null
+          last_success_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       integration_logs: {
         Row: {
           channel_id: string | null
