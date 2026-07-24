@@ -792,25 +792,19 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
           let chatId = existing?.id as string | undefined;
           let justReopenedSilently = false;
           if (!chatId) {
-            // Groups never go through the bot, and inbound own-channel
-            // messages also bypass the bot — in both cases pre-assign the
-            // chat to the least-loaded operator so it does not sit
-            // unattended in the queue. Individual chats from real customers
-            // start in "bot" status so the welcome flow can run.
-            const preAssignForNew = isGroupMessage || !!p.fromMe;
+            // Toda nova conversa deve entrar diretamente no setor Atendimento
+            // com o operador menos carregado. Isso evita que chats individuais
+            // fiquem presos no bot sem responsável quando o cliente não escolhe
+            // uma opção do menu.
             let initialAssigned: string | null = null;
-            let initialSector: string | null = null;
-            let initialStatus: "bot" | "em_atendimento" | "aguardando" = "bot";
-            if (preAssignForNew) {
-              initialSector = "Atendimento";
-              initialAssigned = await pickLeastLoadedAgent(initialSector);
-              if (!initialAssigned) {
-                // Garante que grupos / fromMe sempre sejam atribuídos mesmo
-                // quando nenhum operador está marcado como online.
-                initialAssigned = await pickLeastLoadedAgentAny(initialSector);
-              }
-              initialStatus = initialAssigned ? "em_atendimento" : "aguardando";
+            const initialSector = "Atendimento";
+            initialAssigned = await pickLeastLoadedAgent(initialSector);
+            if (!initialAssigned) {
+              initialAssigned = await pickLeastLoadedAgentAny(initialSector);
             }
+            const initialStatus: "em_atendimento" | "aguardando" = initialAssigned
+              ? "em_atendimento"
+              : "aguardando";
             const { data: created, error: insertError } = await supabaseAdmin
               .from("zapi_chats")
               .insert({
@@ -982,32 +976,14 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               }
             }
             if (shouldReopen) {
-              // Regra: toda nova mensagem em chat reaberto (finalizado ou
-              // pending_resolve) volta a passar pelo bot desde o início.
-              // O roteamento por setor acontece DENTRO do fluxo do bot
-              // (nó route_to_least_loaded com target_sector "Atendimento"),
-              // nunca aqui — assim o setor antigo nunca "gruda" no chat.
-              //
-              // EXCEÇÃO: grupos nunca passam pelo bot (mesmo motivo do
-              // bloco de criação inicial, linhas 762-779). Reabrir um grupo
-              // setando status="bot" deixa o chat invisível até alguém
-              // intervir manualmente. Para grupos, pré-atribuímos ao
-              // operador menos carregado de Atendimento na reabertura.
-              if (isGroupMessage) {
-                console.log(`[zapi-webhook] reopening GROUP chat for ${phone} → pre-assign Atendimento (was: ${(existing as any).sector_name || "n/a"})`);
-                let picked = await pickLeastLoadedAgent("Atendimento");
-                if (!picked) picked = await pickLeastLoadedAgentAny("Atendimento");
-                baseUpdate.bot_state = {};
-                baseUpdate.sector_name = "Atendimento";
-                baseUpdate.assigned_to = picked;
-                baseUpdate.status = picked ? "em_atendimento" : "aguardando";
-              } else {
-                console.log(`[zapi-webhook] reopening chat for ${phone} → reset to bot (was: ${(existing as any).sector_name || "n/a"}, pending=${isPendingResolve})`);
-                baseUpdate.bot_state = {};
-                baseUpdate.status = "bot";
-                baseUpdate.assigned_to = null;
-                baseUpdate.sector_name = null;
-              }
+              // Chats reabertos também entram diretamente em Atendimento.
+              console.log(`[zapi-webhook] reopening chat for ${phone} → pre-assign Atendimento (was: ${(existing as any).sector_name || "n/a"})`);
+              let picked = await pickLeastLoadedAgent("Atendimento");
+              if (!picked) picked = await pickLeastLoadedAgentAny("Atendimento");
+              baseUpdate.bot_state = {};
+              baseUpdate.sector_name = "Atendimento";
+              baseUpdate.assigned_to = picked;
+              baseUpdate.status = picked ? "em_atendimento" : "aguardando";
               if (isPendingResolve) {
                 baseUpdate.pending_resolve_user_id = null;
                 baseUpdate.pending_resolve_ticket_id = null;
@@ -1022,10 +998,8 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               .update(baseUpdate)
               .eq("id", chatId!);
 
-            // Auto-atribuição em mensagens inbound do cliente quando o chat
-            // ficou sem operador. Cobre dois cenários:
-            //   1. Grupos: sempre devem ter um operador do setor Atendimento.
-            //   2. Chats individuais com a tag "Osvaldo Btec".
+            // Rede de segurança: qualquer mensagem inbound em chat sem operador
+            // encaminha a conversa ao setor Atendimento.
             if (!p.fromMe && chatId) {
               try {
                 const tagsArr = Array.isArray((existing as any).tags)
@@ -1048,8 +1022,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                     : (existing as any).assigned_to;
                 const eligibleStatus =
                   currentStatus !== "finalizado" && currentStatus !== "bot";
-                const shouldAutoAssign =
-                  !currentAssigned && eligibleStatus && (isGroupMessage || hasOsvaldoTag);
+                const shouldAutoAssign = !currentAssigned && eligibleStatus;
                 if (shouldAutoAssign) {
                   let picked = await pickLeastLoadedAgent("Atendimento");
                   if (!picked) picked = await pickLeastLoadedAgentAny("Atendimento");
@@ -1062,7 +1035,11 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                         status: "em_atendimento",
                       } as any)
                       .eq("id", chatId);
-                    const reason = isGroupMessage ? "group" : "tag:Osvaldo Btec";
+                    const reason = isGroupMessage
+                      ? "group"
+                      : hasOsvaldoTag
+                        ? "tag:Osvaldo Btec"
+                        : "inbound_without_assignee";
                     try {
                       await supabaseAdmin.from("attendance_event_logs").insert({
                         event_type: "auto_assigned_by_rule",
