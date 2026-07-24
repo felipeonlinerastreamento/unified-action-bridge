@@ -5585,11 +5585,22 @@ function CentralPage() {
               <div>
                 <Label className="text-xs">Telefone *</Label>
                 <Input
+                  type="tel"
+                  inputMode="tel"
+                  autoComplete="off"
                   placeholder="5531999999999"
                   value={newChatPhone}
-                  onChange={(e) => { setNewChatPhone(e.target.value); setNewChatPickedContact(null); }}
+                  onChange={(e) => { setNewChatPhone(e.target.value.replace(/\D/g, "")); setNewChatPickedContact(null); }}
+                  onPaste={(e) => {
+                    e.preventDefault();
+                    const text = (e.clipboardData?.getData("text") || "").replace(/\D/g, "");
+                    if (!text) return;
+                    setNewChatPhone(text);
+                    setNewChatPickedContact(null);
+                  }}
                 />
-                <p className="text-[10px] text-muted-foreground mt-1">Formato: código do país + DDD + número</p>
+                <p className="text-[10px] text-muted-foreground mt-1">Formato: código do país + DDD + número. Você pode colar (Ctrl+V) qualquer formato — o sistema remove símbolos.</p>
+
               </div>
             </TabsContent>
 
