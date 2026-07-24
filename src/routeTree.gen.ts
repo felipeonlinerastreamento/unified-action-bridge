@@ -44,6 +44,7 @@ import { Route as ApiPublicCrmDailyRouteImport } from './routes/api.public.crm-d
 import { Route as ApiPublicChatIdleScannerRouteImport } from './routes/api.public.chat-idle-scanner'
 import { Route as ApiPublicAutoRouteAguardandoRouteImport } from './routes/api.public.auto-route-aguardando'
 import { Route as ApiPublicZapiWebhookChannelIdRouteImport } from './routes/api.public.zapi-webhook.$channelId'
+import { Route as ApiPublicHooksSyncGsystemEquipamentosRouteImport } from './routes/api.public.hooks.sync-gsystem-equipamentos'
 
 const TratativasRoute = TratativasRouteImport.update({
   id: '/tratativas',
@@ -231,6 +232,12 @@ const ApiPublicZapiWebhookChannelIdRoute =
     path: '/api/public/zapi-webhook/$channelId',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksSyncGsystemEquipamentosRoute =
+  ApiPublicHooksSyncGsystemEquipamentosRouteImport.update({
+    id: '/api/public/hooks/sync-gsystem-equipamentos',
+    path: '/api/public/hooks/sync-gsystem-equipamentos',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -267,6 +274,7 @@ export interface FileRoutesByFullPath {
   '/api/public/chat-idle-scanner': typeof ApiPublicChatIdleScannerRoute
   '/api/public/crm-daily': typeof ApiPublicCrmDailyRoute
   '/api/public/email-poll': typeof ApiPublicEmailPollRoute
+  '/api/public/hooks/sync-gsystem-equipamentos': typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   '/api/public/zapi-webhook/$channelId': typeof ApiPublicZapiWebhookChannelIdRoute
 }
 export interface FileRoutesByTo {
@@ -303,6 +311,7 @@ export interface FileRoutesByTo {
   '/api/public/chat-idle-scanner': typeof ApiPublicChatIdleScannerRoute
   '/api/public/crm-daily': typeof ApiPublicCrmDailyRoute
   '/api/public/email-poll': typeof ApiPublicEmailPollRoute
+  '/api/public/hooks/sync-gsystem-equipamentos': typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   '/api/public/zapi-webhook/$channelId': typeof ApiPublicZapiWebhookChannelIdRoute
 }
 export interface FileRoutesById {
@@ -341,6 +350,7 @@ export interface FileRoutesById {
   '/api/public/chat-idle-scanner': typeof ApiPublicChatIdleScannerRoute
   '/api/public/crm-daily': typeof ApiPublicCrmDailyRoute
   '/api/public/email-poll': typeof ApiPublicEmailPollRoute
+  '/api/public/hooks/sync-gsystem-equipamentos': typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   '/api/public/zapi-webhook/$channelId': typeof ApiPublicZapiWebhookChannelIdRoute
 }
 export interface FileRouteTypes {
@@ -380,6 +390,7 @@ export interface FileRouteTypes {
     | '/api/public/chat-idle-scanner'
     | '/api/public/crm-daily'
     | '/api/public/email-poll'
+    | '/api/public/hooks/sync-gsystem-equipamentos'
     | '/api/public/zapi-webhook/$channelId'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -416,6 +427,7 @@ export interface FileRouteTypes {
     | '/api/public/chat-idle-scanner'
     | '/api/public/crm-daily'
     | '/api/public/email-poll'
+    | '/api/public/hooks/sync-gsystem-equipamentos'
     | '/api/public/zapi-webhook/$channelId'
   id:
     | '__root__'
@@ -453,6 +465,7 @@ export interface FileRouteTypes {
     | '/api/public/chat-idle-scanner'
     | '/api/public/crm-daily'
     | '/api/public/email-poll'
+    | '/api/public/hooks/sync-gsystem-equipamentos'
     | '/api/public/zapi-webhook/$channelId'
   fileRoutesById: FileRoutesById
 }
@@ -477,6 +490,7 @@ export interface RootRouteChildren {
   ApiPublicChatIdleScannerRoute: typeof ApiPublicChatIdleScannerRoute
   ApiPublicCrmDailyRoute: typeof ApiPublicCrmDailyRoute
   ApiPublicEmailPollRoute: typeof ApiPublicEmailPollRoute
+  ApiPublicHooksSyncGsystemEquipamentosRoute: typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   ApiPublicZapiWebhookChannelIdRoute: typeof ApiPublicZapiWebhookChannelIdRoute
 }
 
@@ -727,6 +741,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicZapiWebhookChannelIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/sync-gsystem-equipamentos': {
+      id: '/api/public/hooks/sync-gsystem-equipamentos'
+      path: '/api/public/hooks/sync-gsystem-equipamentos'
+      fullPath: '/api/public/hooks/sync-gsystem-equipamentos'
+      preLoaderRoute: typeof ApiPublicHooksSyncGsystemEquipamentosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -790,6 +811,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicChatIdleScannerRoute: ApiPublicChatIdleScannerRoute,
   ApiPublicCrmDailyRoute: ApiPublicCrmDailyRoute,
   ApiPublicEmailPollRoute: ApiPublicEmailPollRoute,
+  ApiPublicHooksSyncGsystemEquipamentosRoute:
+    ApiPublicHooksSyncGsystemEquipamentosRoute,
   ApiPublicZapiWebhookChannelIdRoute: ApiPublicZapiWebhookChannelIdRoute,
 }
 export const routeTree = rootRouteImport
