@@ -12,10 +12,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { getVeiculos, getVeiculoTipos, getCadastrosByTipo, discoverEquipamentos, discoverChips, listEquipamentosFromVeiculos, probeEquipamentosDeep } from "@/lib/gsystem-api.functions";
-import { Search, Package, Car, RefreshCw, Loader2, AlertCircle, Cpu, Wifi, Stethoscope } from "lucide-react";
+import { Search, Package, Car, RefreshCw, Loader2, AlertCircle, Cpu, Wifi, Stethoscope, DatabaseZap } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
+import { GsystemEquipamentosSyncTab } from "@/components/estoque/gsystem-equipamentos-sync-tab";
 
 export const Route = createFileRoute("/estoque")({
   component: EstoquePage,
@@ -56,7 +57,7 @@ function classifyStatus(raw: string): "disponivel" | "vinculado" | "inativo" | "
 }
 
 function EstoquePage() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, hasRole } = useAuth();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("disponivel");
   const [modelFilter, setModelFilter] = useState<string>("all");
@@ -415,10 +416,18 @@ function EstoquePage() {
             <TabsTrigger value="veiculos">
               <Car className="h-4 w-4 mr-1" /> Veículos
             </TabsTrigger>
+            <TabsTrigger value="sync">
+              <DatabaseZap className="h-4 w-4 mr-1" /> Sincronizados
+            </TabsTrigger>
             <TabsTrigger value="local">
               <Package className="h-4 w-4 mr-1" /> Estoque Local
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="sync">
+            <GsystemEquipamentosSyncTab canSync={hasRole("admin") || hasRole("gestor")} />
+          </TabsContent>
+
 
           {/* Filters */}
           <div className="flex items-center gap-2 flex-wrap mt-4">
