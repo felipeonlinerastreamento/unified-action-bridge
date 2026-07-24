@@ -58,7 +58,7 @@ function classifyStatus(raw: string): "disponivel" | "vinculado" | "inativo" | "
 }
 
 function EstoquePage() {
-  const { isAuthenticated, isLoading } = useAuth();
+  const { isAuthenticated, isLoading, hasRole } = useAuth();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("disponivel");
   const [modelFilter, setModelFilter] = useState<string>("all");
