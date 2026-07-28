@@ -402,8 +402,7 @@ export async function findOrCreateGSystemClientByCompany(params: {
   // 2) Search by name / phone in the listing
   if (normalizedName || cleanPhone) {
     try {
-      const list = await gsystemApiFetch("/clientes", "GET");
-      const arr = unwrapGsystemList(list);
+      const arr = await listGSystemClientes();
       if (Array.isArray(arr)) {
         const lowerName = normalizeSearchText(normalizedName);
         const match = arr.find((c: any) => {
