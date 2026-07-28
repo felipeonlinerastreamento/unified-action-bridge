@@ -238,6 +238,36 @@ export function clearGsystemToken() {
   tokenExpiry = 0;
 }
 
+/**
+ * Fetch every page of a cursor-paginated GSystem list endpoint.
+ * The API returns { Items: [...], Pagination: { NextCursor, HasMore } } and
+ * caps each page at 200 items, so we must follow the cursor to get everything.
+ */
+export async function gsystemFetchAllPages(
+  basePath: string,
+  { limit = 200, maxPages = 100 }: { limit?: number; maxPages?: number } = {}
+): Promise<any[]> {
+  const all: any[] = [];
+  let cursor: string | null = null;
+  const sep = basePath.includes("?") ? "&" : "?";
+
+  for (let page = 0; page < maxPages; page++) {
+    const url = `${basePath}${sep}Limit=${limit}${cursor ? `&Cursor=${encodeURIComponent(cursor)}` : ""}`;
+    const data = await gsystemApiFetch(url, "GET");
+    const items = unwrapGsystemList(data);
+    all.push(...items);
+    const pagination = data?.Pagination ?? data?.pagination;
+    if (!pagination?.HasMore || !pagination?.NextCursor) break;
+    cursor = String(pagination.NextCursor);
+  }
+
+  return all;
+}
+
+export async function listGSystemClientes(): Promise<any[]> {
+  return gsystemFetchAllPages("/clientes");
+}
+
 function unwrapGsystemList(data: any): any[] {
   if (Array.isArray(data)) return data;
   for (const key of ["Items", "items", "Data", "data", "Dados", "dados", "Resultado", "resultado", "Results", "results"]) {
