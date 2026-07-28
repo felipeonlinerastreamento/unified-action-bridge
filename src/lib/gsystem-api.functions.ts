@@ -23,11 +23,12 @@ export const getClientes = createServerFn({ method: "POST" })
     }).parse
   )
   .handler(async ({ data }) => {
-    const { gsystemApiFetch } = await import("@/lib/gsystem-api.server");
-    const endpoint = data.identifiers
-      ? `/clientes/${encodeURIComponent(data.identifiers)}`
-      : "/clientes";
-    return gsystemApiFetch(endpoint);
+    const { gsystemApiFetch, listGSystemClientes } = await import("@/lib/gsystem-api.server");
+    if (data.identifiers) {
+      return gsystemApiFetch(`/clientes/${encodeURIComponent(data.identifiers)}`);
+    }
+    // Listagem completa (a API do GSystem pagina por cursor, 200 por página)
+    return { Items: await listGSystemClientes() };
   });
 
 export const createCliente = createServerFn({ method: "POST" })
