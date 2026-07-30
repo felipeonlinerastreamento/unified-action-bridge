@@ -296,7 +296,7 @@ export async function processIncomingForBot(params: ProcessParams): Promise<bool
       // ficar em atendimento sem responsável (bug: nenhum operador designado).
       let assignedTo: string | null = null;
       try {
-        assignedTo = await pickLeastLoaded(sector);
+        assignedTo = await keepOrPickAssignee(chatId, sector);
       } catch (err) {
         console.warn("[bot] pickLeastLoaded failed for sector", sector, err);
       }
@@ -362,7 +362,7 @@ export async function processIncomingForBot(params: ProcessParams): Promise<bool
       // Roteia para humano após enviar boletos (fallback / continuidade)
       let assignedTo: string | null = null;
       try {
-        assignedTo = await pickLeastLoaded(fallbackSector);
+        assignedTo = await keepOrPickAssignee(chatId, fallbackSector);
       } catch {
         // ignore
       }
@@ -419,7 +419,7 @@ export async function processIncomingForBot(params: ProcessParams): Promise<bool
 
       let assignedTo: string | null = null;
       try {
-        assignedTo = await pickLeastLoaded(fallbackSector);
+        assignedTo = await keepOrPickAssignee(chatId, fallbackSector);
       } catch {
         // ignore
       }
