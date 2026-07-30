@@ -737,7 +737,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
           if (isGroupMessage) {
             const { data: byPhone } = await supabaseAdmin
               .from("zapi_chats")
-              .select("id, contact_name, status, unread_count, closed_at")
+              .select("id, contact_name, status, unread_count, closed_at, assigned_to, sector_name")
               .eq("channel_id", channelId)
               .eq("phone", phone)
               .maybeSingle();
@@ -746,7 +746,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
           if (!existing) {
             const { data: byNorm } = await supabaseAdmin
               .from("zapi_chats")
-              .select("id, contact_name, status, unread_count, closed_at")
+              .select("id, contact_name, status, unread_count, closed_at, assigned_to, sector_name")
               .eq("channel_id", channelId)
               .eq("phone_normalized", phone)
               .maybeSingle();
@@ -771,7 +771,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
             if (candidateName) {
               const { data: byName } = await supabaseAdmin
                 .from("zapi_chats")
-                .select("id, contact_name, status, unread_count, closed_at")
+                .select("id, contact_name, status, unread_count, closed_at, assigned_to, sector_name")
                 .eq("channel_id", channelId)
                 .eq("contact_name", candidateName)
                 .not("phone_normalized", "like", "lid:%")
@@ -831,14 +831,14 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                 // "lid:..." no DB mas o webhook calcula só dígitos).
                 let { data: raced } = await supabaseAdmin
                   .from("zapi_chats")
-                  .select("id, contact_name, status, unread_count, closed_at")
+                  .select("id, contact_name, status, unread_count, closed_at, assigned_to, sector_name")
                   .eq("channel_id", channelId)
                   .eq("phone", phone)
                   .maybeSingle();
                 if (!raced?.id) {
                   const { data: byNorm } = await supabaseAdmin
                     .from("zapi_chats")
-                    .select("id, contact_name, status, unread_count, closed_at")
+                    .select("id, contact_name, status, unread_count, closed_at, assigned_to, sector_name")
                     .eq("channel_id", channelId)
                     .eq("phone_normalized", phone)
                     .maybeSingle();
