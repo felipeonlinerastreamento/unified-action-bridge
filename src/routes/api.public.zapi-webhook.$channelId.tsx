@@ -978,7 +978,10 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
             if (shouldReopen) {
               // Chats reabertos também entram diretamente em Atendimento.
               console.log(`[zapi-webhook] reopening chat for ${phone} → pre-assign Atendimento (was: ${(existing as any).sector_name || "n/a"})`);
-              let picked = await pickLeastLoadedAgent("Atendimento");
+              // Se o chat já tinha um responsável definido manualmente,
+              // mantemos esse operador em vez de sortear outro.
+              let picked = ((existing as any).assigned_to as string | null) || null;
+              if (!picked) picked = await pickLeastLoadedAgent("Atendimento");
               if (!picked) picked = await pickLeastLoadedAgentAny("Atendimento");
               baseUpdate.bot_state = {};
               baseUpdate.sector_name = "Atendimento";
