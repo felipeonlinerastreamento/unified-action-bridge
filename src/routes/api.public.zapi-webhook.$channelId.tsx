@@ -737,7 +737,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
           if (isGroupMessage) {
             const { data: byPhone } = await supabaseAdmin
               .from("zapi_chats")
-              .select("id, contact_name, status, unread_count, closed_at")
+              .select("id, contact_name, status, unread_count, closed_at, assigned_to, sector_name")
               .eq("channel_id", channelId)
               .eq("phone", phone)
               .maybeSingle();
@@ -746,7 +746,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
           if (!existing) {
             const { data: byNorm } = await supabaseAdmin
               .from("zapi_chats")
-              .select("id, contact_name, status, unread_count, closed_at")
+              .select("id, contact_name, status, unread_count, closed_at, assigned_to, sector_name")
               .eq("channel_id", channelId)
               .eq("phone_normalized", phone)
               .maybeSingle();
@@ -771,7 +771,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
             if (candidateName) {
               const { data: byName } = await supabaseAdmin
                 .from("zapi_chats")
-                .select("id, contact_name, status, unread_count, closed_at")
+                .select("id, contact_name, status, unread_count, closed_at, assigned_to, sector_name")
                 .eq("channel_id", channelId)
                 .eq("contact_name", candidateName)
                 .not("phone_normalized", "like", "lid:%")
@@ -831,14 +831,14 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                 // "lid:..." no DB mas o webhook calcula só dígitos).
                 let { data: raced } = await supabaseAdmin
                   .from("zapi_chats")
-                  .select("id, contact_name, status, unread_count, closed_at")
+                  .select("id, contact_name, status, unread_count, closed_at, assigned_to, sector_name")
                   .eq("channel_id", channelId)
                   .eq("phone", phone)
                   .maybeSingle();
                 if (!raced?.id) {
                   const { data: byNorm } = await supabaseAdmin
                     .from("zapi_chats")
-                    .select("id, contact_name, status, unread_count, closed_at")
+                    .select("id, contact_name, status, unread_count, closed_at, assigned_to, sector_name")
                     .eq("channel_id", channelId)
                     .eq("phone_normalized", phone)
                     .maybeSingle();
@@ -978,7 +978,10 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
             if (shouldReopen) {
               // Chats reabertos também entram diretamente em Atendimento.
               console.log(`[zapi-webhook] reopening chat for ${phone} → pre-assign Atendimento (was: ${(existing as any).sector_name || "n/a"})`);
-              let picked = await pickLeastLoadedAgent("Atendimento");
+              // Se o chat já tinha um responsável definido manualmente,
+              // mantemos esse operador em vez de sortear outro.
+              let picked = ((existing as any).assigned_to as string | null) || null;
+              if (!picked) picked = await pickLeastLoadedAgent("Atendimento");
               if (!picked) picked = await pickLeastLoadedAgentAny("Atendimento");
               baseUpdate.bot_state = {};
               baseUpdate.sector_name = "Atendimento";

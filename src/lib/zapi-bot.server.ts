@@ -83,11 +83,36 @@ async function pickLeastLoaded(sectorName: string): Promise<string | null> {
   return (any as string | null) || null;
 }
 
+/**
+ * Se o chat já tem um operador responsável (ex.: transferência manual feita por
+ * um atendente), NUNCA sobrescrevemos. Só escolhemos automaticamente quando o
+ * chat está realmente sem responsável.
+ */
+async function keepOrPickAssignee(chatId: string, sector: string): Promise<string | null> {
+  try {
+    const { data } = await supabaseAdmin
+      .from("zapi_chats")
+      .select("assigned_to")
+      .eq("id", chatId)
+      .maybeSingle();
+    const current = (data as any)?.assigned_to as string | null | undefined;
+    if (current) return current;
+  } catch (err) {
+    console.warn("[bot] keepOrPickAssignee read failed", err);
+  }
+  try {
+    return await pickLeastLoaded(sector);
+  } catch (err) {
+    console.warn("[bot] pickLeastLoaded failed for sector", sector, err);
+    return null;
+  }
+}
+
 async function autoRouteToAtendimento(chatId: string): Promise<void> {
   const sector = "Atendimento";
   let assignedTo: string | null = null;
   try {
-    assignedTo = await pickLeastLoaded(sector);
+    assignedTo = await keepOrPickAssignee(chatId, sector);
   } catch (err) {
     console.warn("[bot] auto-route pickLeastLoaded failed", err);
   }
@@ -271,7 +296,7 @@ export async function processIncomingForBot(params: ProcessParams): Promise<bool
       // ficar em atendimento sem responsável (bug: nenhum operador designado).
       let assignedTo: string | null = null;
       try {
-        assignedTo = await pickLeastLoaded(sector);
+        assignedTo = await keepOrPickAssignee(chatId, sector);
       } catch (err) {
         console.warn("[bot] pickLeastLoaded failed for sector", sector, err);
       }
@@ -337,7 +362,7 @@ export async function processIncomingForBot(params: ProcessParams): Promise<bool
       // Roteia para humano após enviar boletos (fallback / continuidade)
       let assignedTo: string | null = null;
       try {
-        assignedTo = await pickLeastLoaded(fallbackSector);
+        assignedTo = await keepOrPickAssignee(chatId, fallbackSector);
       } catch {
         // ignore
       }
@@ -394,7 +419,7 @@ export async function processIncomingForBot(params: ProcessParams): Promise<bool
 
       let assignedTo: string | null = null;
       try {
-        assignedTo = await pickLeastLoaded(fallbackSector);
+        assignedTo = await keepOrPickAssignee(chatId, fallbackSector);
       } catch {
         // ignore
       }
