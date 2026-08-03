@@ -338,7 +338,7 @@ export function applyTicketFilters(tickets: any[], filters: TicketFilters): any[
     : "";
 
   return tickets.filter((t) => {
-    // Search (combina com os demais filtros)
+    // Search filter
     if (q) {
       const protocolNumber = formatTicketProtocol(t);
       const protocolFromAttendance = t.attendance_id ? formatProtocol(t.attendance_id) : "";
