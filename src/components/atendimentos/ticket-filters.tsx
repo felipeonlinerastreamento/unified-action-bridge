@@ -352,9 +352,6 @@ export function applyTicketFilters(tickets: any[], filters: TicketFilters): any[
     }
 
 
-    // Quando há busca ativa, ignora os demais filtros (status/setor/categoria/etc.)
-    // para permitir encontrar qualquer protocolo em qualquer estado/setor.
-    if (q) return true;
 
     // Status
     if (filters.status === "abertos_em_andamento") {
