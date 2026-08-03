@@ -3088,6 +3088,41 @@ export type Database = {
         }
         Relationships: []
       }
+      offline_routing_settings: {
+        Row: {
+          id: string
+          is_enabled: boolean
+          target_sector_id: string | null
+          target_sector_name: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          is_enabled?: boolean
+          target_sector_id?: string | null
+          target_sector_name?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          is_enabled?: boolean
+          target_sector_id?: string | null
+          target_sector_name?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "offline_routing_settings_target_sector_id_fkey"
+            columns: ["target_sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       okr_alert_settings: {
         Row: {
           alert_cycle_ending_days: number
