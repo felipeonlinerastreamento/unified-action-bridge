@@ -539,6 +539,55 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
           // correctly regardless of what Z-API reported.
           p.fromMe = effectiveFromMe;
 
+          // Se a mensagem for do cliente, verificar se o operador responsável está offline
+          // para realizar o redirecionamento automático.
+          if (!p.fromMe && !isGroupMessage) {
+            try {
+              const { data: offlineCfg } = await supabaseAdmin
+                .from("offline_routing_settings")
+                .select("is_enabled, target_sector_name")
+                .limit(1)
+                .maybeSingle();
+
+              if (offlineCfg?.is_enabled) {
+                // Buscar chat atual para ver se tem responsável e o status dele
+                const { data: chatInfo } = await supabaseAdmin
+                  .from("zapi_chats")
+                  .select("assigned_to, sector_name")
+                  .eq("channel_id", channelId)
+                  .or(`phone.eq.${phone},phone_normalized.eq.${phone}`)
+                  .limit(1)
+                  .maybeSingle();
+
+                if (chatInfo?.assigned_to) {
+                  const { data: agentProfile } = await supabaseAdmin
+                    .from("profiles")
+                    .select("is_chat_available")
+                    .eq("user_id", chatInfo.assigned_to)
+                    .maybeSingle();
+
+                  if (agentProfile && !agentProfile.is_chat_available) {
+                    // Operador offline! Redirecionar.
+                    const targetSector = chatInfo.sector_name || offlineCfg.target_sector_name || "Atendimento";
+                    const { data: newAgentId } = await supabaseAdmin.rpc("pick_least_loaded_agent", { _sector: targetSector });
+                    
+                    if (newAgentId && newAgentId !== chatInfo.assigned_to) {
+                      console.log(`[zapi-webhook] Redirecting chat ${phone} from offline operator ${chatInfo.assigned_to} to ${newAgentId}`);
+                      await supabaseAdmin
+                        .from("zapi_chats")
+                        .update({ assigned_to: newAgentId as string })
+                        .eq("channel_id", channelId)
+                        .or(`phone.eq.${phone},phone_normalized.eq.${phone}`);
+                    }
+                  }
+                }
+              }
+            } catch (redirErr) {
+              console.warn("[zapi-webhook] offline redirection logic failed:", redirErr);
+            }
+          }
+
+
           // For groups, prefer the group name (chatName/groupName) over the sender's name.
           // For direct chats, use senderName.
           let groupDisplayName = p.chatName || p.groupName || p.name || p.subject || null;
