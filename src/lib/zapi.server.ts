@@ -254,9 +254,16 @@ export async function zapiGetGroupMetadata(
     `/groups/${encodeURIComponent(groupPhone)}`,
   ];
 
+  // Orçamento total: as tentativas são sequenciais e cada fetch pode levar 8s.
+  // Sem esse limite o webhook estourava o tempo do worker e a mensagem do
+  // grupo era perdida.
+  const deadline = Date.now() + 10_000;
+  const outOfTime = () => Date.now() >= deadline;
+
   let name: string | null = null;
   let photo: string | null = null;
   for (const path of paths) {
+    if (outOfTime()) break;
     try {
       const payload = await zapiFetch(channel, path, "GET");
       if (!name) name = extractGroupName(payload);
@@ -267,7 +274,7 @@ export async function zapiGetGroupMetadata(
     }
   }
 
-  if (!photo) {
+  if (!photo && !outOfTime()) {
     // Fallback: dedicated profile-picture endpoint used by Z-API for both
     // contacts and groups.
     const picPaths = [
@@ -275,6 +282,7 @@ export async function zapiGetGroupMetadata(
       `/profile-picture?phone=${encodeURIComponent(groupPhone)}`,
     ];
     for (const path of picPaths) {
+      if (outOfTime()) break;
       try {
         const payload = await zapiFetch(channel, path, "GET");
         const url = extractGroupPhoto(payload) || payload?.link || payload?.url || null;
@@ -287,6 +295,7 @@ export async function zapiGetGroupMetadata(
       }
     }
   }
+
 
   return { name, photo };
 }
