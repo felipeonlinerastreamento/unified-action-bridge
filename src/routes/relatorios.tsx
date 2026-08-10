@@ -400,6 +400,11 @@ function RelatoriosPage() {
               <TabsTrigger value="compras" className="gap-1 text-xs">
                 <Package className="h-3.5 w-3.5" /> Compras
               </TabsTrigger>
+              {canSeeErrors && (
+                <TabsTrigger value="erros" className="gap-1 text-xs">
+                  <AlertTriangle className="h-3.5 w-3.5" /> Erros & Valores
+                </TabsTrigger>
+              )}
             </TabsList>
 
             {/* ========== JORNADA & OCIOSIDADE ========== */}
