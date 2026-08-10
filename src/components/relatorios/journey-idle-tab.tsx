@@ -1061,6 +1061,137 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
           </CardContent>
         </Card>
       </div>
+
+
+      {/* ============ AUSÊNCIA GLOBAL ============ */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <h3 className="text-base font-semibold flex items-center gap-2">
+            <UserX className="h-4 w-4" /> Ausência Global (sem interação em nenhuma conversa)
+          </h3>
+          <Button size="sm" variant="outline" onClick={exportGlobalIdle} disabled={filteredGlobalGaps.length === 0}>
+            <Download className="h-3.5 w-3.5 mr-1" /> Exportar CSV
+          </Button>
+        </div>
+
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+          <ReportKpiCard
+            title={`Ocorrências (> ${threshold}min)`}
+            value={filteredGlobalGaps.length}
+            icon={UserX}
+          />
+          <ReportKpiCard
+            title="Tempo ausente total"
+            value={fmtHm(filteredTotalGlobalIdleMinutes)}
+            icon={Timer}
+          />
+          <ReportKpiCard
+            title="Operadores impactados"
+            value={filteredGlobalIdleByOperator.length}
+            icon={LogIn}
+          />
+          <ReportKpiCard
+            title="Dias com ausência"
+            value={filteredGlobalIdleByDay.length}
+            icon={Clock}
+          />
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Ausência Global por Operador (min)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {filteredGlobalIdleByOperator.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-8">Sem dados</p>
+              ) : (
+                <ChartContainer config={cfgBar} className="h-[280px] w-full">
+                  <BarChart data={filteredGlobalIdleByOperator}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={60} />
+                    <YAxis tick={{ fontSize: 10 }} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar dataKey="minutes" fill="var(--color-minutes)" radius={[2, 2, 0, 0]} />
+                  </BarChart>
+                </ChartContainer>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Ausência Global por Dia (min)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {filteredGlobalIdleByDay.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-8">Sem dados</p>
+              ) : (
+                <ChartContainer config={cfgLine} className="h-[280px] w-full">
+                  <LineChart data={filteredGlobalIdleByDay}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                    <YAxis tick={{ fontSize: 10 }} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Line type="monotone" dataKey="minutes" stroke="var(--color-minutes)" strokeWidth={2} dot={{ r: 3 }} />
+                  </LineChart>
+                </ChartContainer>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Detalhamento da Ausência Global</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : filteredGlobalGaps.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                Nenhuma ausência global acima de {threshold} min no período.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Operador</TableHead>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Período online</TableHead>
+                      <TableHead>Início da ausência</TableHead>
+                      <TableHead>Fim da ausência</TableHead>
+                      <TableHead className="text-right">Duração</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredGlobalGaps.slice(0, 200).map((g, i) => (
+                      <TableRow key={`${g.userId}-${g.day}-${i}`}>
+                        <TableCell className="font-medium">{g.userName}</TableCell>
+                        <TableCell>{new Date(g.day).toLocaleDateString("pt-BR")}</TableCell>
+                        <TableCell className="text-xs">
+                          {fmtTime(g.onlineStart)} <span className="text-muted-foreground">→</span> {fmtTime(g.onlineEnd)}
+                        </TableCell>
+                        <TableCell className="text-xs">{fmtDateTime(g.start)}</TableCell>
+                        <TableCell className="text-xs">{fmtDateTime(g.end)}</TableCell>
+                        <TableCell className="text-right font-medium">{fmtHm(g.minutes)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                {filteredGlobalGaps.length > 200 && (
+                  <p className="text-xs text-muted-foreground text-center pt-2">
+                    Exibindo 200 de {filteredGlobalGaps.length} ocorrências. Exporte o CSV para ver todas.
+                  </p>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
