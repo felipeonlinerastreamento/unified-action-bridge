@@ -1005,6 +1005,9 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
           {isPerdidos && (
             <PerdidosFields items={perdidosItems} onChange={setPerdidosItems} />
           )}
+          {isError && (
+            <ErrorFields items={errorItems} onChange={setErrorItems} />
+          )}
           {isPurchase && (
             <PurchaseFields items={purchaseItems} onChange={setPurchaseItems} />
           )}
