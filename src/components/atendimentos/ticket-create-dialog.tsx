@@ -383,6 +383,7 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
     setSuprimentoItems([]);
     setCompraEquipItems([]);
     setPerdidosItems([]);
+    setErrorItems([]);
     setPurchaseItems([]);
   };
 
