@@ -3,7 +3,7 @@ import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { isGroupPhoneIdentifier } from "@/lib/chat-utils";
 import { processIncomingForBot } from "@/lib/zapi-bot.server";
-import { loadZapiChannel, zapiGetGroupMetadata, zapiSendText } from "@/lib/zapi.server";
+import { loadZapiChannel, zapiSendText } from "@/lib/zapi.server";
 import {
   loadBusinessHoursSettings,
   isWithinBusinessHours,
@@ -593,10 +593,10 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
           let groupDisplayName = p.chatName || p.groupName || p.name || p.subject || null;
           let groupPhoto: string | null = null;
           if (isGroupMessage) {
-            // Só consultamos a Z-API quando ainda não temos nome/foto salvos.
-            // Cada tentativa de /group-metadata pode levar 8s e, encadeadas,
-            // estouravam o tempo do webhook — o que fazia a mensagem do grupo
-            // ser perdida (ex.: "Terc. (ONL) Power & Online").
+            // O recebimento nunca pode depender de /group-metadata: essa API
+            // frequentemente leva mais que todo o orçamento do webhook. Nome e
+            // foto já conhecidos são reaproveitados; ausências podem ser
+            // preenchidas posteriormente, sem impedir a gravação da mensagem.
             const { data: knownChat } = await supabaseAdmin
               .from("zapi_chats")
               .select("contact_name, contact_avatar")
@@ -605,17 +605,6 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               .maybeSingle();
             if (knownChat?.contact_avatar) groupPhoto = knownChat.contact_avatar;
             if (!groupDisplayName && knownChat?.contact_name) groupDisplayName = knownChat.contact_name;
-
-            if (!groupDisplayName || !groupPhoto) {
-              try {
-                const creds = await loadZapiChannel(supabaseAdmin, channelId);
-                const meta = await zapiGetGroupMetadata(creds, rawPhone);
-                if (!groupDisplayName) groupDisplayName = meta.name;
-                if (!groupPhoto) groupPhoto = meta.photo;
-              } catch (error) {
-                console.warn("[zapi-webhook] cannot resolve group metadata", { phone, error });
-              }
-            }
           }
           const incomingContactName = isGroupMessage
             ? (groupDisplayName || p.senderName || null)
