@@ -860,6 +860,12 @@ function RelatoriosPage() {
             <TabsContent value="compras" className="space-y-4">
               <PurchaseReportTab dateFrom={dateFrom} dateTo={dateTo} />
             </TabsContent>
+
+            {canSeeErrors && (
+              <TabsContent value="erros" className="space-y-4">
+                <ErrorsReportTab dateFrom={dateFrom} dateTo={dateTo} />
+              </TabsContent>
+            )}
           </Tabs>
         </div>
       </div>
