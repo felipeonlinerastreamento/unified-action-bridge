@@ -460,6 +460,94 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
     () => gaps.reduce((s, g) => s + g.minutes, 0), [gaps]
   );
 
+  // ============ GLOBAL ABSENCE (no interaction in any chat) ============
+  type GlobalGap = {
+    userId: string; userName: string; day: string;
+    start: string; end: string; minutes: number;
+    onlineStart: string; onlineEnd: string;
+  };
+  const globalGaps = useMemo<GlobalGap[]>(() => {
+    const byUserDay: Record<string, { userId: string; userName: string; day: string; events: typeof presence }> = {};
+    presence.forEach((ev) => {
+      const day = brtDay(ev.created_at);
+      const key = `${ev.user_id}::${day}`;
+      if (!byUserDay[key]) {
+        byUserDay[key] = {
+          userId: ev.user_id,
+          userName: ev.user_name || opName[ev.user_id] || "—",
+          day, events: [],
+        };
+      }
+      byUserDay[key].events.push(ev);
+    });
+
+    const msgsByUserDay: Record<string, typeof opMessages> = {};
+    opMessages.forEach((m) => {
+      if (!m.sent_by_user_id) return;
+      const day = brtDay(m.created_at);
+      const key = `${m.sent_by_user_id}::${day}`;
+      (msgsByUserDay[key] ||= []).push(m);
+    });
+
+    const out: GlobalGap[] = [];
+    const nowMs = Date.now();
+
+    Object.values(byUserDay).forEach((g) => {
+      const evs = g.events.slice().sort((a, b) => a.created_at.localeCompare(b.created_at));
+      const dayEndIso = `${g.day}T23:59:59`;
+      const dayEnd = new Date(dayEndIso).getTime();
+
+      const periods: { start: string; end: string }[] = [];
+      let openOnline: string | null = null;
+      evs.forEach((ev) => {
+        if (ev.event_type === "set_online") {
+          if (!openOnline) openOnline = ev.created_at;
+        } else if (ev.event_type === "set_offline" && openOnline) {
+          periods.push({ start: openOnline, end: ev.created_at });
+          openOnline = null;
+        }
+      });
+      if (openOnline) {
+        const cap = Math.min(dayEnd, nowMs);
+        periods.push({ start: openOnline, end: new Date(cap).toISOString() });
+      }
+
+      const key = `${g.userId}::${g.day}`;
+      const msgs = (msgsByUserDay[key] || [])
+        .slice()
+        .sort((a, b) => a.created_at.localeCompare(b.created_at));
+
+      periods.forEach((period) => {
+        const pStart = new Date(period.start).getTime();
+        const pEnd = new Date(period.end).getTime();
+        if (pEnd <= pStart) return;
+        const periodMsgs = msgs.filter((m) => {
+          const t = new Date(m.created_at).getTime();
+          return t >= pStart && t <= pEnd;
+        });
+        const points = [pStart, ...periodMsgs.map((m) => new Date(m.created_at).getTime()), pEnd];
+        for (let i = 0; i < points.length - 1; i++) {
+          const a = points[i], b = points[i + 1];
+          const mins = (b - a) / 60000;
+          if (mins > threshold) {
+            out.push({
+              userId: g.userId,
+              userName: g.userName,
+              day: g.day,
+              start: new Date(a).toISOString(),
+              end: new Date(b).toISOString(),
+              minutes: mins,
+              onlineStart: period.start,
+              onlineEnd: period.end,
+            });
+          }
+        }
+      });
+    });
+
+    return out.sort((a, b) => b.minutes - a.minutes);
+  }, [presence, opMessages, opName, threshold]);
+
   // ============ APPLY IN-TAB FILTERS ============
   const matchesOperator = (uid: string) =>
     localOperator === "__all__" || uid === localOperator;
