@@ -77,6 +77,8 @@ import {
   validatePerdidosItems,
   type PerdidosLineItem,
 } from "./perdidos-fields";
+import { isErrorCategory } from "@/hooks/use-ticket-errors";
+import { ErrorFields, validateErrorItems, type ErrorLineItem } from "./error-fields";
 import { isPurchaseCategory } from "@/hooks/use-purchase-requests";
 import {
   PurchaseFields,
