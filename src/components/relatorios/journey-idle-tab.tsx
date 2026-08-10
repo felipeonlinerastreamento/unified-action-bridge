@@ -20,7 +20,7 @@ import {
 } from "recharts";
 import { ReportKpiCard } from "@/components/relatorios/report-kpi-card";
 import { exportToCSV } from "@/components/relatorios/export-utils";
-import { Clock, LogIn, LogOut, Timer, AlertTriangle, Loader2, Download, X } from "lucide-react";
+import { Clock, LogIn, LogOut, Timer, AlertTriangle, Loader2, Download, X, UserX } from "lucide-react";
 
 
 interface Props {
