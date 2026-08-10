@@ -500,6 +500,14 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
         return;
       }
     }
+    // Validate Error entries
+    if (isError) {
+      const err = validateErrorItems(errorItems);
+      if (err) {
+        toast.error(err);
+        return;
+      }
+    }
     // Validate Purchase items
     if (isPurchase) {
       const err = validatePurchaseItems(purchaseItems);
