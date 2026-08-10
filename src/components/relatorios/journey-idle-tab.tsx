@@ -718,6 +718,21 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
     );
   };
 
+  const exportGlobalIdle = () => {
+    exportToCSV(
+      filteredGlobalGaps.map((g) => ({
+        Operador: g.userName,
+        Data: g.day,
+        InicioPeriodoOnline: fmtDateTime(g.onlineStart),
+        FimPeriodoOnline: fmtDateTime(g.onlineEnd),
+        InicioAusencia: fmtDateTime(g.start),
+        FimAusencia: fmtDateTime(g.end),
+        Duracao: fmtHm(g.minutes),
+      })),
+      `ausencia-global-${threshold}min-${dateFrom}_${dateTo}`
+    );
+  };
+
 
   const loading = presenceLoading || chatsLoading || msgsLoading || activityLoading;
 
