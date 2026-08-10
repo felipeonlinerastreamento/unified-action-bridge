@@ -63,6 +63,7 @@ import { TicketSuprimentoSection } from "./ticket-suprimento-section";
 import { TicketCompraEquipamentoSection } from "./ticket-compra-equipamento-section";
 import { TicketPurchaseSection } from "./ticket-purchase-section";
 import { TicketPerdidosSection } from "./ticket-perdidos-section";
+import { TicketErrorSection } from "./ticket-error-section";
 import { TicketAttachmentsSection } from "./ticket-attachments-section";
 import { TicketActivitiesSection, getPendingActivities } from "./ticket-activities-section";
 import { useSubcategoryEquipmentModelsWithFallback } from "@/hooks/use-liberacao-equipamento";
