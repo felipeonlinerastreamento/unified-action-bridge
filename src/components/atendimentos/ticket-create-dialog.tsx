@@ -648,7 +648,9 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
         if (pErr) {
           console.error("Erro ao salvar itens perdidos", pErr);
           toast.error("Ticket criado, mas falhou ao salvar itens perdidos.");
+        }
       }
+
 
       // Insert error entries
       if (created?.id && isError && errorItems.length > 0) {
