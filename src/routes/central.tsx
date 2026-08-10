@@ -398,10 +398,20 @@ function CentralPage() {
   useEffect(() => {
     if (!actionsOpen) return;
     const handle = (e: MouseEvent) => {
+      const target = e.target as HTMLElement | null;
+      // Ignore clicks inside portaled overlays (emoji picker, popovers, dialogs)
+      if (
+        target?.closest?.(
+          "[data-radix-popper-content-wrapper],[data-radix-portal],[role='dialog'],.EmojiPickerReact"
+        )
+      ) {
+        return;
+      }
       if (actionsMenuRef.current && !actionsMenuRef.current.contains(e.target as Node)) {
         setActionsOpen(false);
       }
     };
+
     document.addEventListener("mousedown", handle);
     return () => document.removeEventListener("mousedown", handle);
   }, [actionsOpen]);
