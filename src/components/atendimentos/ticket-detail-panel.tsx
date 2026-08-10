@@ -1386,6 +1386,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
             <TicketSuprimentoSection ticket={ticket} userId={userId} onRefetch={onRefetch} />
             <TicketCompraEquipamentoSection ticket={ticket} userId={userId} onRefetch={onRefetch} />
             <TicketPerdidosSection ticket={ticket} userId={userId} onRefetch={onRefetch} />
+            <TicketErrorSection ticket={ticket} userId={userId} onRefetch={onRefetch} />
             <TicketAttachmentsSection ticketId={ticket.id} userId={userId} />
             <TicketActivitiesSection ticketId={ticket.id} profiles={profiles} />
           </TabsContent>
