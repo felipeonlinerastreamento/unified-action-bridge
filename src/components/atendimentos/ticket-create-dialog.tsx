@@ -141,6 +141,8 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
   const [compraEquipItems, setCompraEquipItems] = useState<CompraEquipamentoLineItem[]>([]);
   const isPerdidos = isPerdidosCategory(category);
   const [perdidosItems, setPerdidosItems] = useState<PerdidosLineItem[]>([]);
+  const isError = isErrorCategory(category);
+  const [errorItems, setErrorItems] = useState<ErrorLineItem[]>([]);
   const isPurchase = isPurchaseCategory(category);
   const [purchaseItems, setPurchaseItems] = useState<PurchaseLineItem[]>([]);
 
