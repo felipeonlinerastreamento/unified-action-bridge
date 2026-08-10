@@ -648,8 +648,28 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
         if (pErr) {
           console.error("Erro ao salvar itens perdidos", pErr);
           toast.error("Ticket criado, mas falhou ao salvar itens perdidos.");
+      }
+
+      // Insert error entries
+      if (created?.id && isError && errorItems.length > 0) {
+        const { data: { user: errUser } } = await supabase.auth.getUser();
+        const rows = errorItems.map((it) => ({
+          ticket_id: created.id,
+          operator_user_id: it.operator_user_id,
+          operator_name: it.operator_name,
+          description: it.description?.trim() || null,
+          amount: Math.max(0, Number(it.amount) || 0),
+          created_by: errUser?.id ?? null,
+        }));
+        const { error: eErr } = await supabase
+          .from("ticket_error_entries" as any)
+          .insert(rows);
+        if (eErr) {
+          console.error("Erro ao salvar lançamentos de erro", eErr);
+          toast.error("Ticket criado, mas falhou ao salvar os lançamentos de erro.");
         }
       }
+
 
       // Insert purchase request + items
       if (created?.id && isPurchase && purchaseItems.length > 0) {
