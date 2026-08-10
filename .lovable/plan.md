@@ -1,38 +1,42 @@
-## Diagnóstico
+# Registro de Erros com Valor + Relatório Financeiro de Erros
 
-Verifiquei o chat referente ao protocolo **#02897** (telefone 5527999175043, id `70f33d43…`):
+Quando um atendimento for categorizado como **Erro** (categoria vinda do GSystem), o sistema abre um bloco para registrar o valor do prejuízo e o operador responsável. Esses lançamentos alimentam um novo relatório com filtros de período e estatísticas.
 
-- `status = "bot"` (preso no nó `welcome` do fluxo do bot)
-- `assigned_to = null`, `sector_name = null`
-- Última mensagem: 25/06 12:59 — ou seja, o cliente respondeu, mas o bot não avançou e o chat **nunca entrou em `aguardando`**.
+## 1. Campo de Erro no atendimento
 
-A rotina que distribui automaticamente para operadores (`/api/public/auto-route-aguardando`) só processa chats com **`status = 'aguardando'`** e `sector_name IS NULL` parados há ≥10 min. Como esse chat ficou em `status = 'bot'`, ele nunca foi considerado para distribuição — por isso continuou sem operador apesar do tempo.
+Ao selecionar uma categoria do GSystem cujo nome contenha "erro", aparece o bloco **Erro / Prejuízo** — tanto na criação do atendimento quanto no painel de detalhes:
 
-Não existe hoje nenhuma rotina que retire chats travados no bot e os encaminhe automaticamente.
+- Operador responsável (lista de usuários do sistema)
+- Valor do erro (R$)
+- Descrição do erro (texto curto, opcional)
+- Possibilidade de adicionar mais de um lançamento por atendimento (vários operadores/valores)
+- Total somado exibido no bloco
 
-## Proposta
+No painel de detalhes o bloco permite adicionar, editar e remover lançamentos, seguindo o mesmo padrão visual já usado em "Itens Perdidos".
 
-Estender a rotina `api.public.auto-route-aguardando.tsx` para também tratar chats parados em `status = 'bot'`:
+## 2. Relatório "Erros & Valores"
 
-1. Após processar os `aguardando`, buscar `zapi_chats` com:
-   - `status = 'bot'`
-   - `assigned_to IS NULL`
-   - `last_message_at < now() - INTERVAL '10 minutes'` (mesmo `IDLE_MINUTES` atual)
-   - ignorar grupos (`@g.us` / sufixo `-group` / telefone > 15 dígitos), igual ao `chat-idle-scanner`.
-2. Para cada um, chamar `pick_least_loaded_agent_any('Atendimento')` e, se houver operador:
-   - `update` para `status = 'em_atendimento'`, `sector_name = 'Atendimento'`, `assigned_to = <agent>`, `bot_state = {}` (libera do bot).
-   - Log em `attendance_event_logs` com `event_type = 'auto_route_bot_stuck'`.
-3. Se não houver operador disponível: apenas mover o chat para `status = 'aguardando'` + `sector_name = 'Atendimento'` (assim a rotina existente passa a vê-lo) e logar `auto_route_bot_stuck_no_agent`.
-4. Manter `limit(100)` por execução e o response JSON agregando os dois blocos (`aguardando` + `bot`).
+Nova aba no menu **Relatórios**, visível apenas para Admin e Gestor.
+
+Filtros: período (data de/até, atalhos 7/30/90 dias), operador responsável e busca por protocolo/cliente.
+
+KPIs:
+- Total de erros no período
+- Valor total (R$)
+- Valor médio por erro
+- Operador com maior valor acumulado
+
+Gráficos:
+- Barras: valor total por operador
+- Barras: quantidade de erros por operador
+- Linha: evolução de valor por dia/semana no período
+
+Tabela detalhada: data, protocolo, cliente/contato, categoria, operador responsável, descrição, valor. Exportação em CSV e PDF, igual às demais abas.
 
 ## Detalhes técnicos
 
-- Arquivo único alterado: `src/routes/api.public.auto-route-aguardando.tsx`.
-- Sem migração — usa colunas e RPC já existentes (`pick_least_loaded_agent_any`, `attendance_event_logs`).
-- A cron que já chama esse endpoint passa a cobrir os dois casos sem mudança de agendamento.
-- O chat #02897 específico será capturado na próxima execução da rotina após o deploy.
-
-## Pontos a confirmar
-
-- Manter o limite de **10 minutos** também para chats em `bot`, ou usar um valor diferente (ex.: 15/20 min)?
-- Quando não há operador online, prefere mover para `aguardando` (proposta acima) ou deixar em `bot` e só logar?
+- Nova tabela `ticket_error_entries`: `ticket_id`, `operator_user_id`, `operator_name` (snapshot), `description`, `amount` (numeric 12,2), `created_by`, `created_at`, `updated_at`. RLS: leitura/escrita para usuários autenticados na inserção pelo próprio atendimento; leitura ampla para autenticados (o gate de gestão é feito na tela do relatório, como nas demais abas). Grants para `authenticated` e `service_role`.
+- Novo hook `src/hooks/use-ticket-errors.tsx` com `isErrorCategory(category)` (match por palavra-chave "erro" na descrição da categoria GSystem), consultas do catálogo de operadores (`profiles`) e dos lançamentos do ticket.
+- Novo componente `src/components/atendimentos/error-fields.tsx` (linhas no formulário de criação, espelhando `perdidos-fields.tsx`) e `src/components/atendimentos/ticket-error-section.tsx` (CRUD no painel de detalhes).
+- Integração em `ticket-create-dialog.tsx` (persistir linhas após criar o ticket) e `ticket-detail-panel.tsx` (exibir a seção quando a categoria for de erro).
+- Novo `src/components/relatorios/errors-report-tab.tsx` reutilizando `ReportKpiCard`, `report-filters` e `export-utils`; aba registrada em `src/routes/relatorios.tsx` com renderização condicionada ao papel admin/gestor (via `use-user-permissions`).
