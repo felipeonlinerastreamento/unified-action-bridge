@@ -20,7 +20,7 @@ import {
 } from "recharts";
 import { ReportKpiCard } from "@/components/relatorios/report-kpi-card";
 import { exportToCSV } from "@/components/relatorios/export-utils";
-import { Clock, LogIn, LogOut, Timer, AlertTriangle, Loader2, Download, X } from "lucide-react";
+import { Clock, LogIn, LogOut, Timer, AlertTriangle, Loader2, Download, X, UserX } from "lucide-react";
 
 
 interface Props {
@@ -460,6 +460,94 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
     () => gaps.reduce((s, g) => s + g.minutes, 0), [gaps]
   );
 
+  // ============ GLOBAL ABSENCE (no interaction in any chat) ============
+  type GlobalGap = {
+    userId: string; userName: string; day: string;
+    start: string; end: string; minutes: number;
+    onlineStart: string; onlineEnd: string;
+  };
+  const globalGaps = useMemo<GlobalGap[]>(() => {
+    const byUserDay: Record<string, { userId: string; userName: string; day: string; events: typeof presence }> = {};
+    presence.forEach((ev) => {
+      const day = brtDay(ev.created_at);
+      const key = `${ev.user_id}::${day}`;
+      if (!byUserDay[key]) {
+        byUserDay[key] = {
+          userId: ev.user_id,
+          userName: ev.user_name || opName[ev.user_id] || "—",
+          day, events: [],
+        };
+      }
+      byUserDay[key].events.push(ev);
+    });
+
+    const msgsByUserDay: Record<string, typeof opMessages> = {};
+    opMessages.forEach((m) => {
+      if (!m.sent_by_user_id) return;
+      const day = brtDay(m.created_at);
+      const key = `${m.sent_by_user_id}::${day}`;
+      (msgsByUserDay[key] ||= []).push(m);
+    });
+
+    const out: GlobalGap[] = [];
+    const nowMs = Date.now();
+
+    Object.values(byUserDay).forEach((g) => {
+      const evs = g.events.slice().sort((a, b) => a.created_at.localeCompare(b.created_at));
+      const dayEndIso = `${g.day}T23:59:59`;
+      const dayEnd = new Date(dayEndIso).getTime();
+
+      const periods: { start: string; end: string }[] = [];
+      let openOnline: string | null = null;
+      evs.forEach((ev) => {
+        if (ev.event_type === "set_online") {
+          if (!openOnline) openOnline = ev.created_at;
+        } else if (ev.event_type === "set_offline" && openOnline) {
+          periods.push({ start: openOnline, end: ev.created_at });
+          openOnline = null;
+        }
+      });
+      if (openOnline) {
+        const cap = Math.min(dayEnd, nowMs);
+        periods.push({ start: openOnline, end: new Date(cap).toISOString() });
+      }
+
+      const key = `${g.userId}::${g.day}`;
+      const msgs = (msgsByUserDay[key] || [])
+        .slice()
+        .sort((a, b) => a.created_at.localeCompare(b.created_at));
+
+      periods.forEach((period) => {
+        const pStart = new Date(period.start).getTime();
+        const pEnd = new Date(period.end).getTime();
+        if (pEnd <= pStart) return;
+        const periodMsgs = msgs.filter((m) => {
+          const t = new Date(m.created_at).getTime();
+          return t >= pStart && t <= pEnd;
+        });
+        const points = [pStart, ...periodMsgs.map((m) => new Date(m.created_at).getTime()), pEnd];
+        for (let i = 0; i < points.length - 1; i++) {
+          const a = points[i], b = points[i + 1];
+          const mins = (b - a) / 60000;
+          if (mins > threshold) {
+            out.push({
+              userId: g.userId,
+              userName: g.userName,
+              day: g.day,
+              start: new Date(a).toISOString(),
+              end: new Date(b).toISOString(),
+              minutes: mins,
+              onlineStart: period.start,
+              onlineEnd: period.end,
+            });
+          }
+        }
+      });
+    });
+
+    return out.sort((a, b) => b.minutes - a.minutes);
+  }, [presence, opMessages, opName, threshold]);
+
   // ============ APPLY IN-TAB FILTERS ============
   const matchesOperator = (uid: string) =>
     localOperator === "__all__" || uid === localOperator;
@@ -509,6 +597,40 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
 
   const filteredTotalIdleMinutes = useMemo(
     () => filteredGaps.reduce((s, g) => s + g.minutes, 0), [filteredGaps]
+  );
+
+  const filteredGlobalGaps = useMemo(
+    () => globalGaps.filter((g) =>
+      matchesOperator(g.userId) && matchesDay(g.day)
+    ),
+    [globalGaps, localOperator, dayFilter]
+  );
+
+  const filteredGlobalIdleByOperator = useMemo(() => {
+    const m: Record<string, { name: string; minutes: number; count: number }> = {};
+    filteredGlobalGaps.forEach((g) => {
+      if (!m[g.userId]) m[g.userId] = { name: g.userName, minutes: 0, count: 0 };
+      m[g.userId].minutes += g.minutes;
+      m[g.userId].count += 1;
+    });
+    return Object.values(m)
+      .map((v) => ({ ...v, minutes: Math.round(v.minutes) }))
+      .sort((a, b) => b.minutes - a.minutes);
+  }, [filteredGlobalGaps]);
+
+  const filteredGlobalIdleByDay = useMemo(() => {
+    const m: Record<string, { date: string; minutes: number }> = {};
+    filteredGlobalGaps.forEach((g) => {
+      if (!m[g.day]) m[g.day] = { date: g.day, minutes: 0 };
+      m[g.day].minutes += g.minutes;
+    });
+    return Object.values(m)
+      .map((v) => ({ ...v, minutes: Math.round(v.minutes) }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [filteredGlobalGaps]);
+
+  const filteredTotalGlobalIdleMinutes = useMemo(
+    () => filteredGlobalGaps.reduce((s, g) => s + g.minutes, 0), [filteredGlobalGaps]
   );
 
   // Available days for the day filter dropdown.
@@ -593,6 +715,21 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
         ChatId: g.chatId,
       })),
       `ociosidade-chats-${threshold}min-${dateFrom}_${dateTo}`
+    );
+  };
+
+  const exportGlobalIdle = () => {
+    exportToCSV(
+      filteredGlobalGaps.map((g) => ({
+        Operador: g.userName,
+        Data: g.day,
+        InicioPeriodoOnline: fmtDateTime(g.onlineStart),
+        FimPeriodoOnline: fmtDateTime(g.onlineEnd),
+        InicioAusencia: fmtDateTime(g.start),
+        FimAusencia: fmtDateTime(g.end),
+        Duracao: fmtHm(g.minutes),
+      })),
+      `ausencia-global-${threshold}min-${dateFrom}_${dateTo}`
     );
   };
 
@@ -917,6 +1054,137 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
                   <p className="text-xs text-muted-foreground text-center pt-2">
                     Exibindo 200 de {filteredGaps.length} ocorrências. Exporte o CSV para ver todas.
 
+                  </p>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+
+      {/* ============ AUSÊNCIA GLOBAL ============ */}
+      <div className="space-y-3">
+        <div className="flex items-center justify-between gap-2 flex-wrap">
+          <h3 className="text-base font-semibold flex items-center gap-2">
+            <UserX className="h-4 w-4" /> Ausência Global (sem interação em nenhuma conversa)
+          </h3>
+          <Button size="sm" variant="outline" onClick={exportGlobalIdle} disabled={filteredGlobalGaps.length === 0}>
+            <Download className="h-3.5 w-3.5 mr-1" /> Exportar CSV
+          </Button>
+        </div>
+
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+          <ReportKpiCard
+            title={`Ocorrências (> ${threshold}min)`}
+            value={filteredGlobalGaps.length}
+            icon={UserX}
+          />
+          <ReportKpiCard
+            title="Tempo ausente total"
+            value={fmtHm(filteredTotalGlobalIdleMinutes)}
+            icon={Timer}
+          />
+          <ReportKpiCard
+            title="Operadores impactados"
+            value={filteredGlobalIdleByOperator.length}
+            icon={LogIn}
+          />
+          <ReportKpiCard
+            title="Dias com ausência"
+            value={filteredGlobalIdleByDay.length}
+            icon={Clock}
+          />
+        </div>
+
+        <div className="grid gap-4 lg:grid-cols-2">
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Ausência Global por Operador (min)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {filteredGlobalIdleByOperator.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-8">Sem dados</p>
+              ) : (
+                <ChartContainer config={cfgBar} className="h-[280px] w-full">
+                  <BarChart data={filteredGlobalIdleByOperator}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={60} />
+                    <YAxis tick={{ fontSize: 10 }} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar dataKey="minutes" fill="var(--color-minutes)" radius={[2, 2, 0, 0]} />
+                  </BarChart>
+                </ChartContainer>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm">Ausência Global por Dia (min)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {filteredGlobalIdleByDay.length === 0 ? (
+                <p className="text-xs text-muted-foreground text-center py-8">Sem dados</p>
+              ) : (
+                <ChartContainer config={cfgLine} className="h-[280px] w-full">
+                  <LineChart data={filteredGlobalIdleByDay}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                    <YAxis tick={{ fontSize: 10 }} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Line type="monotone" dataKey="minutes" stroke="var(--color-minutes)" strokeWidth={2} dot={{ r: 3 }} />
+                  </LineChart>
+                </ChartContainer>
+              )}
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm">Detalhamento da Ausência Global</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : filteredGlobalGaps.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                Nenhuma ausência global acima de {threshold} min no período.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Operador</TableHead>
+                      <TableHead>Data</TableHead>
+                      <TableHead>Período online</TableHead>
+                      <TableHead>Início da ausência</TableHead>
+                      <TableHead>Fim da ausência</TableHead>
+                      <TableHead className="text-right">Duração</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filteredGlobalGaps.slice(0, 200).map((g, i) => (
+                      <TableRow key={`${g.userId}-${g.day}-${i}`}>
+                        <TableCell className="font-medium">{g.userName}</TableCell>
+                        <TableCell>{new Date(g.day).toLocaleDateString("pt-BR")}</TableCell>
+                        <TableCell className="text-xs">
+                          {fmtTime(g.onlineStart)} <span className="text-muted-foreground">→</span> {fmtTime(g.onlineEnd)}
+                        </TableCell>
+                        <TableCell className="text-xs">{fmtDateTime(g.start)}</TableCell>
+                        <TableCell className="text-xs">{fmtDateTime(g.end)}</TableCell>
+                        <TableCell className="text-right font-medium">{fmtHm(g.minutes)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                {filteredGlobalGaps.length > 200 && (
+                  <p className="text-xs text-muted-foreground text-center pt-2">
+                    Exibindo 200 de {filteredGlobalGaps.length} ocorrências. Exporte o CSV para ver todas.
                   </p>
                 )}
               </div>
