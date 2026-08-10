@@ -599,6 +599,40 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
     () => filteredGaps.reduce((s, g) => s + g.minutes, 0), [filteredGaps]
   );
 
+  const filteredGlobalGaps = useMemo(
+    () => globalGaps.filter((g) =>
+      matchesOperator(g.userId) && matchesDay(g.day)
+    ),
+    [globalGaps, localOperator, dayFilter]
+  );
+
+  const filteredGlobalIdleByOperator = useMemo(() => {
+    const m: Record<string, { name: string; minutes: number; count: number }> = {};
+    filteredGlobalGaps.forEach((g) => {
+      if (!m[g.userId]) m[g.userId] = { name: g.userName, minutes: 0, count: 0 };
+      m[g.userId].minutes += g.minutes;
+      m[g.userId].count += 1;
+    });
+    return Object.values(m)
+      .map((v) => ({ ...v, minutes: Math.round(v.minutes) }))
+      .sort((a, b) => b.minutes - a.minutes);
+  }, [filteredGlobalGaps]);
+
+  const filteredGlobalIdleByDay = useMemo(() => {
+    const m: Record<string, { date: string; minutes: number }> = {};
+    filteredGlobalGaps.forEach((g) => {
+      if (!m[g.day]) m[g.day] = { date: g.day, minutes: 0 };
+      m[g.day].minutes += g.minutes;
+    });
+    return Object.values(m)
+      .map((v) => ({ ...v, minutes: Math.round(v.minutes) }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  }, [filteredGlobalGaps]);
+
+  const filteredTotalGlobalIdleMinutes = useMemo(
+    () => filteredGlobalGaps.reduce((s, g) => s + g.minutes, 0), [filteredGlobalGaps]
+  );
+
   // Available days for the day filter dropdown.
   // Enumerate every day in the selected [dateFrom, dateTo] range so the user
   // can pick today even if no presence/message data exists yet, and union with
