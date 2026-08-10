@@ -55,7 +55,8 @@ function getDefaultDates() {
 }
 
 function RelatoriosPage() {
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, hasRole } = useAuth();
+  const canSeeErrors = hasRole("admin") || hasRole("gestor");
   const defaults = getDefaultDates();
   const [dateFrom, setDateFrom] = useState(defaults.from);
   const [dateTo, setDateTo] = useState(defaults.to);
