@@ -23,7 +23,7 @@ import {
 } from "recharts";
 import {
   MessageSquare, Clock, Users, Building2, Package, TrendingUp,
-  Loader2, BarChart3, PieChart as PieChartIcon, Activity, Bell, Trophy, PackageX,
+  Loader2, BarChart3, PieChart as PieChartIcon, Activity, Bell, Trophy, PackageX, AlertTriangle,
 } from "lucide-react";
 import { OperatorPerformanceTab } from "@/components/relatorios/operator-performance-tab";
 import { RemindersTab } from "@/components/relatorios/reminders-tab";
@@ -31,6 +31,7 @@ import { InactivityAlertsTab } from "@/components/relatorios/inactivity-alerts-t
 import { CsatReportTab } from "@/components/relatorios/csat-report-tab";
 import { MessageTriggersTab } from "@/components/relatorios/message-triggers-tab";
 import { PerdidosReportTab } from "@/components/relatorios/perdidos-tab";
+import { ErrorsReportTab } from "@/components/relatorios/errors-report-tab";
 import { PurchaseReportTab } from "@/components/relatorios/purchase-report-tab";
 import { JourneyIdleTab } from "@/components/relatorios/journey-idle-tab";
 
@@ -55,7 +56,8 @@ function getDefaultDates() {
 }
 
 function RelatoriosPage() {
-  const { isAuthenticated, isLoading: authLoading } = useAuth();
+  const { isAuthenticated, isLoading: authLoading, hasRole } = useAuth();
+  const canSeeErrors = hasRole("admin") || hasRole("gestor");
   const defaults = getDefaultDates();
   const [dateFrom, setDateFrom] = useState(defaults.from);
   const [dateTo, setDateTo] = useState(defaults.to);
@@ -399,6 +401,11 @@ function RelatoriosPage() {
               <TabsTrigger value="compras" className="gap-1 text-xs">
                 <Package className="h-3.5 w-3.5" /> Compras
               </TabsTrigger>
+              {canSeeErrors && (
+                <TabsTrigger value="erros" className="gap-1 text-xs">
+                  <AlertTriangle className="h-3.5 w-3.5" /> Erros & Valores
+                </TabsTrigger>
+              )}
             </TabsList>
 
             {/* ========== JORNADA & OCIOSIDADE ========== */}
@@ -854,6 +861,12 @@ function RelatoriosPage() {
             <TabsContent value="compras" className="space-y-4">
               <PurchaseReportTab dateFrom={dateFrom} dateTo={dateTo} />
             </TabsContent>
+
+            {canSeeErrors && (
+              <TabsContent value="erros" className="space-y-4">
+                <ErrorsReportTab dateFrom={dateFrom} dateTo={dateTo} />
+              </TabsContent>
+            )}
           </Tabs>
         </div>
       </div>
