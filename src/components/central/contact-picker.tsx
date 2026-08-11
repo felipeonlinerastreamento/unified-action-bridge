@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, Loader2, User, Building2, Users, Phone } from "lucide-react";
+import { Search, Loader2, User, Building2, Users, Phone, MessageCircle } from "lucide-react";
 
 export interface PickedContact {
   id: string;
@@ -42,12 +42,12 @@ export function ContactPicker({ selectedId, onSelect }: Props) {
           .limit(2000),
         supabase
           .from("chat_technicians")
-          .select("id, name, phone, city, state")
+          .select("id, name, phone, contact_phone, city_state")
           .order("name")
           .limit(2000),
         supabase
           .from("zapi_chats")
-          .select("id, contact_name, phone, is_group")
+          .select("id, contact_name, phone")
           .order("last_message_at", { ascending: false })
           .limit(2000),
       ]);
@@ -94,17 +94,18 @@ export function ContactPicker({ selectedId, onSelect }: Props) {
         });
       }
       for (const r of techRes.data || []) {
-        const loc = [(r as any).city, (r as any).state].filter(Boolean).join("/");
+        const loc = (r as any).city_state || undefined;
         addIfNew({
           id: `tec-${r.id}`,
           name: (r as any).name || "Técnico",
-          phone: ((r as any).phone || "").replace(/\D/g, ""),
-          company: loc || undefined,
+          phone: (((r as any).phone || (r as any).contact_phone) || "").replace(/\D/g, ""),
+          company: loc,
           source: "technician",
         });
       }
       for (const r of chatRes.data || []) {
-        if ((r as any).is_group) continue;
+        const raw = String((r as any).phone || "");
+        if (raw.includes("-") || raw.includes("@g.us")) continue;
         addIfNew(
           {
             id: `chat-${r.id}`,
