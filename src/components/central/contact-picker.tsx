@@ -4,14 +4,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, Loader2, User, Building2, Users, Phone } from "lucide-react";
+import { Search, Loader2, User, Building2, Users, Phone, MessageCircle } from "lucide-react";
 
 export interface PickedContact {
   id: string;
   name: string;
   phone: string; // digits only
   company?: string;
-  source: "crm" | "sub_client" | "company_phone";
+  source: "crm" | "sub_client" | "company_phone" | "technician" | "chat";
 }
 
 interface Props {
@@ -25,30 +25,43 @@ export function ContactPicker({ selectedId, onSelect }: Props) {
   const { data: contacts = [], isLoading } = useQuery({
     queryKey: ["contact-picker-all"],
     queryFn: async () => {
-      const [crmRes, subRes, phonesRes] = await Promise.all([
+      const [crmRes, subRes, phonesRes, techRes, chatRes] = await Promise.all([
         supabase
           .from("crm_contacts")
           .select("id, name, phone, email, companies(name)")
           .order("name")
-          .limit(500),
+          .limit(2000),
         supabase
           .from("sub_clients")
           .select("id, name, phone, email, companies(name)")
           .order("name")
-          .limit(500),
+          .limit(2000),
         supabase
           .from("company_phones")
           .select("id, phone_number, companies(name)")
-          .limit(500),
+          .limit(2000),
+        supabase
+          .from("chat_technicians")
+          .select("id, name, phone, contact_phone, city_state")
+          .order("name")
+          .limit(2000),
+        supabase
+          .from("zapi_chats")
+          .select("id, contact_name, phone")
+          .order("last_message_at", { ascending: false })
+          .limit(2000),
       ]);
 
       const list: PickedContact[] = [];
       const seen = new Set<string>();
+      const seenPhones = new Set<string>();
 
-      const addIfNew = (c: PickedContact) => {
+      const addIfNew = (c: PickedContact, dedupeGlobal = false) => {
         const key = `${c.source}:${c.phone}`;
         if (!c.phone || seen.has(key)) return;
+        if (dedupeGlobal && seenPhones.has(c.phone)) return;
         seen.add(key);
+        seenPhones.add(c.phone);
         list.push(c);
       };
 
@@ -80,6 +93,29 @@ export function ContactPicker({ selectedId, onSelect }: Props) {
           source: "company_phone",
         });
       }
+      for (const r of techRes.data || []) {
+        const loc = (r as any).city_state || undefined;
+        addIfNew({
+          id: `tec-${r.id}`,
+          name: (r as any).name || "Técnico",
+          phone: (((r as any).phone || (r as any).contact_phone) || "").replace(/\D/g, ""),
+          company: loc,
+          source: "technician",
+        });
+      }
+      for (const r of chatRes.data || []) {
+        const raw = String((r as any).phone || "");
+        if (raw.includes("-") || raw.includes("@g.us")) continue;
+        addIfNew(
+          {
+            id: `chat-${r.id}`,
+            name: (r as any).contact_name || (r as any).phone || "Contato",
+            phone: ((r as any).phone || "").replace(/\D/g, ""),
+            source: "chat",
+          },
+          true,
+        );
+      }
 
       return list.sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
     },
@@ -103,6 +139,8 @@ export function ContactPicker({ selectedId, onSelect }: Props) {
   const sourceLabel = (s: PickedContact["source"]) => {
     if (s === "crm") return { label: "CRM", icon: User, cls: "bg-blue-50 text-blue-700 border-blue-200" };
     if (s === "sub_client") return { label: "Sub-cliente", icon: Users, cls: "bg-purple-50 text-purple-700 border-purple-200" };
+    if (s === "technician") return { label: "Técnico", icon: User, cls: "bg-emerald-50 text-emerald-700 border-emerald-200" };
+    if (s === "chat") return { label: "Conversa", icon: MessageCircle, cls: "bg-slate-50 text-slate-700 border-slate-200" };
     return { label: "Telefone empresa", icon: Phone, cls: "bg-amber-50 text-amber-700 border-amber-200" };
   };
 
