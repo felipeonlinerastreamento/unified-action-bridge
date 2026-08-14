@@ -1156,7 +1156,19 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
         </Card>
       </div>
 
+      {/* ============ DIAGNÓSTICO ============ */}
+      <OperationInsights
+        rows={summaryRows}
+        totals={summaryTotals}
+        threshold={threshold}
+        shiftStart={shiftStart}
+        shiftEnd={shiftEnd}
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+      />
+
       {/* ============ QUALIDADE & COBERTURA ============ */}
+
       <TeamQualitySection
         dateFrom={dateFrom}
         dateTo={dateTo}
