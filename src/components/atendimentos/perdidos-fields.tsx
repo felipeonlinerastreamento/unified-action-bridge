@@ -1,4 +1,5 @@
-import { usePerdidosCatalog, formatBRL } from "@/hooks/use-perdidos";
+import { formatBRL } from "@/hooks/use-perdidos";
+import { useLiberacaoCatalog } from "@/hooks/use-liberacao-equipamento";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
