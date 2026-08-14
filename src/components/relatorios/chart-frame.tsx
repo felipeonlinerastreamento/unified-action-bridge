@@ -83,7 +83,7 @@ async function exportSvgAsPng(container: HTMLElement | null, filename: string) {
 }
 
 export function ChartFrame({
-  title, data, filename, actions, zoomable = true, children, className,
+  title, data, filename, actions, zoomable = true, bare = false, children, className,
 }: Props) {
   const [zoom, setZoom] = useState(1);
   const [fullscreen, setFullscreen] = useState(false);
