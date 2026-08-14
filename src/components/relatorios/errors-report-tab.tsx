@@ -173,9 +173,8 @@ export function ErrorsReportTab({ dateFrom, dateTo }: Props) {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm">Valor por operador</CardTitle></CardHeader>
-          <CardContent className="h-[260px]">
+        <ChartFrame title="Valor por operador" data={totals.byOperator as any} filename="erros-valor-por-operador">
+          <div className="h-[260px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={totals.byOperator}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
@@ -185,12 +184,11 @@ export function ErrorsReportTab({ dateFrom, dateTo }: Props) {
                 <Bar dataKey="value" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
-          </CardContent>
-        </Card>
+          </div>
+        </ChartFrame>
 
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm">Quantidade de erros por operador</CardTitle></CardHeader>
-          <CardContent className="h-[260px]">
+        <ChartFrame title="Quantidade de erros por operador" data={totals.byOperator as any} filename="erros-qtd-por-operador">
+          <div className="h-[260px]">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={totals.byOperator}>
                 <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
@@ -200,13 +198,12 @@ export function ErrorsReportTab({ dateFrom, dateTo }: Props) {
                 <Bar dataKey="count" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
-          </CardContent>
-        </Card>
+          </div>
+        </ChartFrame>
       </div>
 
-      <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-sm">Evolução do valor no período</CardTitle></CardHeader>
-        <CardContent className="h-[240px]">
+      <ChartFrame title="Evolução do valor no período" data={byDay as any} filename="erros-evolucao">
+        <div className="h-[240px]">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={byDay}>
               <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
@@ -216,8 +213,9 @@ export function ErrorsReportTab({ dateFrom, dateTo }: Props) {
               <Line type="monotone" dataKey="value" stroke="hsl(var(--destructive))" strokeWidth={2} dot={false} />
             </LineChart>
           </ResponsiveContainer>
-        </CardContent>
-      </Card>
+        </div>
+      </ChartFrame>
+
 
       <Card>
         <CardHeader className="pb-2">
