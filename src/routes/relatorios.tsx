@@ -329,9 +329,22 @@ function RelatoriosPage() {
         Nome: c.name, Telefone: c.phone, Email: c.email || "",
         Empresa: (c.companies as any)?.name || "", Categoria: (c.crm_categories as any)?.name || "",
       }));
+    } else if (activeTab === "horarios") {
+      data = ticketsByHour.map((h: any) => ({ Hora: h.hour, Atendimentos: h.count }));
+    } else if (activeTab === "fluxos") {
+      data = flowInstances.map((f: any) => ({
+        ID: f.id, Status: f.status, Tipo: (f.service_flows as any)?.name || f.flow_id || "",
+        Criado: f.created_at, Atualizado: f.updated_at || "",
+      }));
     }
+    if (!data.length) {
+      // fallback: exporta os dados dos gráficos visíveis
+      data = ticketsByDay as any;
+    }
+    if (format === "xlsx") { exportToXLSX(data, `relatorio-${activeTab}`); return; }
     exportToCSV(data, `relatorio-${activeTab}`);
   };
+
 
   if (authLoading || !isAuthenticated) return null;
 
