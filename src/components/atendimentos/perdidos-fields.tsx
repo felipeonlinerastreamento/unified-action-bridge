@@ -73,15 +73,9 @@ export function PerdidosFields({ items, onChange }: PerdidosFieldsProps) {
               return (
                 <div key={idx} className="flex items-center gap-2">
                   <Select
-                    value={line.item_id || ""}
+                    value={line.item_name || ""}
                     onValueChange={(v) => {
-                      const item = catalog.find((c) => c.id === v);
-                      updateLine(idx, {
-                        item_id: v,
-                        item_name: item?.name || line.item_name,
-                        quantity: item?.default_quantity || line.quantity || 1,
-                        unit_value: Number(item?.default_unit_value ?? line.unit_value ?? 0),
-                      });
+                      updateLine(idx, { item_id: null, item_name: v });
                     }}
                   >
                     <SelectTrigger className="h-9 flex-1">
@@ -92,11 +86,11 @@ export function PerdidosFields({ items, onChange }: PerdidosFieldsProps) {
                     <SelectContent>
                       {catalog.length === 0 ? (
                         <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                          Nenhum item cadastrado em Configurações → Encaminhamento.
+                          Nenhum item cadastrado em Configurações → Liberação de Equipamento.
                         </div>
                       ) : (
                         catalog.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
+                          <SelectItem key={c.id} value={c.name}>
                             {c.name}
                           </SelectItem>
                         ))
