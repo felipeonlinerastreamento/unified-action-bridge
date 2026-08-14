@@ -58,6 +58,9 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
   const [localOperator, setLocalOperator] = useState<string>("__all__");
   const [contactSearch, setContactSearch] = useState("");
   const [dayFilter, setDayFilter] = useState<string>("__all__");
+  const [shiftStart, setShiftStart] = useState("08:00");
+  const [shiftEnd, setShiftEnd] = useState("18:00");
+
 
 
   // Janela em horário de Brasília (UTC-3) para que o dia 24 BRT inclua
