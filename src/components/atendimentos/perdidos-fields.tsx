@@ -26,7 +26,8 @@ interface PerdidosFieldsProps {
 }
 
 export function PerdidosFields({ items, onChange }: PerdidosFieldsProps) {
-  const { data: catalog = [], isLoading } = usePerdidosCatalog();
+  // Itens sincronizados com o catálogo de "Liberação de Equipamento" (Configurações)
+  const { data: catalog = [], isLoading } = useLiberacaoCatalog();
 
   const addLine = () =>
     onChange([...items, { item_id: null, item_name: "", quantity: 1, unit_value: 0 }]);
