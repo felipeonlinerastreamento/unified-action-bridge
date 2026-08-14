@@ -728,45 +728,33 @@ function RelatoriosPage() {
               </div>
 
               <div className="grid gap-4 lg:grid-cols-2">
-                <Card>
-                  <CardHeader className="pb-2"><CardTitle className="text-sm">Contatos por Categoria</CardTitle></CardHeader>
-                  <CardContent>
-                    {contactsByCategory.length > 0 ? (
-                      <ChartContainer config={{}} className="h-[280px] w-full">
-                        <PieChart>
-                          <Pie data={contactsByCategory} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={100} label>
-                            {contactsByCategory.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                          </Pie>
-                          <ChartTooltip content={<ChartTooltipContent />} />
-                        </PieChart>
-                      </ChartContainer>
-                    ) : <EmptyChart />}
-                  </CardContent>
-                </Card>
+                <ChartFrame title="Contatos por Categoria" data={contactsByCategory as any} filename="contatos-por-categoria" zoomable={false}>
+                  {contactsByCategory.length > 0 ? (
+                    <ChartContainer config={{}} className="h-[280px] w-full">
+                      <PieChart>
+                        <Pie data={contactsByCategory} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={100} label>
+                          {contactsByCategory.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                        </Pie>
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                      </PieChart>
+                    </ChartContainer>
+                  ) : <EmptyChart />}
+                </ChartFrame>
 
-                <Card>
-                  <CardHeader className="pb-2"><CardTitle className="text-sm">Contatos por Empresa</CardTitle></CardHeader>
-                  <CardContent>
-                    {contacts.length > 0 ? (
-                      <ChartContainer config={{ value: { label: "Contatos", color: "hsl(var(--chart-5))" } }} className="h-[280px] w-full">
-                        <BarChart data={(() => {
-                          const map: Record<string, number> = {};
-                          contacts.forEach((c: any) => {
-                            const co = (c.companies as any)?.name || "Sem empresa";
-                            map[co] = (map[co] || 0) + 1;
-                          });
-                          return Object.entries(map).map(([name, value]) => ({ name, value })).sort((a, b) => b.value - a.value).slice(0, 10);
-                        })()}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="name" tick={{ fontSize: 9 }} />
-                          <YAxis tick={{ fontSize: 10 }} />
-                          <ChartTooltip content={<ChartTooltipContent />} />
-                          <Bar dataKey="value" fill="hsl(var(--chart-5))" radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                      </ChartContainer>
-                    ) : <EmptyChart />}
-                  </CardContent>
-                </Card>
+                <ChartFrame title="Contatos por Empresa" data={contactsByCompany as any} filename="contatos-por-empresa">
+                  {contacts.length > 0 ? (
+                    <ChartContainer config={{ value: { label: "Contatos", color: "hsl(var(--chart-5))" } }} className="h-[280px] w-full">
+                      <BarChart data={contactsByCompany}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" tick={{ fontSize: 9 }} />
+                        <YAxis tick={{ fontSize: 10 }} />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Bar dataKey="value" fill="hsl(var(--chart-5))" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ChartContainer>
+                  ) : <EmptyChart />}
+                </ChartFrame>
+
               </div>
 
               <Card>
