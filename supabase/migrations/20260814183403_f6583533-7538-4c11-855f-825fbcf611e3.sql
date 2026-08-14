@@ -1,0 +1,1 @@
+UPDATE public.pending_reminder_settings SET is_enabled = false, updated_at = now();
