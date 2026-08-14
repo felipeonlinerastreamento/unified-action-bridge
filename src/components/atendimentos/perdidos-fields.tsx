@@ -1,4 +1,5 @@
-import { usePerdidosCatalog, formatBRL } from "@/hooks/use-perdidos";
+import { formatBRL } from "@/hooks/use-perdidos";
+import { useLiberacaoCatalog } from "@/hooks/use-liberacao-equipamento";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -25,7 +26,8 @@ interface PerdidosFieldsProps {
 }
 
 export function PerdidosFields({ items, onChange }: PerdidosFieldsProps) {
-  const { data: catalog = [], isLoading } = usePerdidosCatalog();
+  // Itens sincronizados com o catálogo de "Liberação de Equipamento" (Configurações)
+  const { data: catalog = [], isLoading } = useLiberacaoCatalog();
 
   const addLine = () =>
     onChange([...items, { item_id: null, item_name: "", quantity: 1, unit_value: 0 }]);
@@ -71,15 +73,9 @@ export function PerdidosFields({ items, onChange }: PerdidosFieldsProps) {
               return (
                 <div key={idx} className="flex items-center gap-2">
                   <Select
-                    value={line.item_id || ""}
+                    value={line.item_name || ""}
                     onValueChange={(v) => {
-                      const item = catalog.find((c) => c.id === v);
-                      updateLine(idx, {
-                        item_id: v,
-                        item_name: item?.name || line.item_name,
-                        quantity: item?.default_quantity || line.quantity || 1,
-                        unit_value: Number(item?.default_unit_value ?? line.unit_value ?? 0),
-                      });
+                      updateLine(idx, { item_id: null, item_name: v });
                     }}
                   >
                     <SelectTrigger className="h-9 flex-1">
@@ -90,11 +86,11 @@ export function PerdidosFields({ items, onChange }: PerdidosFieldsProps) {
                     <SelectContent>
                       {catalog.length === 0 ? (
                         <div className="px-2 py-1.5 text-xs text-muted-foreground">
-                          Nenhum item cadastrado em Configurações → Encaminhamento.
+                          Nenhum item cadastrado em Configurações → Liberação de Equipamento.
                         </div>
                       ) : (
                         catalog.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
+                          <SelectItem key={c.id} value={c.name}>
                             {c.name}
                           </SelectItem>
                         ))
@@ -153,7 +149,7 @@ export function PerdidosFields({ items, onChange }: PerdidosFieldsProps) {
 export function validatePerdidosItems(items: PerdidosLineItem[]): string | null {
   if (items.length === 0) return "Adicione ao menos um item perdido.";
   for (const it of items) {
-    if (!it.item_id || !it.item_name) return "Selecione o item em todas as linhas.";
+    if (!it.item_name) return "Selecione o item em todas as linhas.";
     if (!it.quantity || it.quantity < 1) return "Quantidade deve ser maior que 0.";
     if (it.unit_value < 0) return "Valor unitário deve ser maior ou igual a 0.";
   }
