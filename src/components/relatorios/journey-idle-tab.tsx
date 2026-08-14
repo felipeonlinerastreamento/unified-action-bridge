@@ -252,7 +252,41 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
     },
   });
 
+  // Eventos operacionais (assumido / transferido / finalizado) usados no
+  // Resumo da Operação.
+  const { data: opsEvents = [], isLoading: opsEventsLoading } = useQuery({
+    queryKey: ["journey-ops-events", fromIso, toIso, operatorFilter || ""],
+    queryFn: async () => {
+      const pageSize = 1000;
+      let offset = 0;
+      const all: Array<{
+        user_id: string; event_type: string; created_at: string;
+        target_id: string | null; metadata: any;
+      }> = [];
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const q = supabase
+          .from("audit_logs")
+          .select("user_id, event_type, created_at, target_id, metadata")
+          .in("event_type", ["chat.assumido", "chat.transferido", "chat.finalizado", "grupo.finalizado"])
+          .gte("created_at", fromIso)
+          .lte("created_at", toIso)
+          .order("created_at", { ascending: true })
+          .range(offset, offset + pageSize - 1);
+        const { data, error } = await q;
+        if (error) throw error;
+        const rows = (data || []) as typeof all;
+        all.push(...rows);
+        if (rows.length < pageSize) break;
+        offset += pageSize;
+        if (offset > 50000) break;
+      }
+      return all;
+    },
+  });
+
   const journeyRows = useMemo<JourneyRow[]>(() => {
+
     const groups: Record<string, { userId: string; userName: string; day: string; events: typeof presence }> = {};
     presence.forEach((ev) => {
       const day = brtDay(ev.created_at);
