@@ -996,7 +996,167 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
         </CardContent>
       </Card>
 
+      {/* ============ RESUMO DA OPERAÇÃO ============ */}
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-base font-semibold flex items-center gap-2">
+            <Gauge className="h-4 w-4" /> Resumo da Operação (produtividade de interação)
+          </h3>
+          <div className="flex items-end gap-2">
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs">Janela</Label>
+              <div className="flex items-center gap-1">
+                <Input type="time" className="h-8 w-[110px] text-xs" value={shiftStart} onChange={(e) => setShiftStart(e.target.value)} />
+                <span className="text-xs text-muted-foreground">às</span>
+                <Input type="time" className="h-8 w-[110px] text-xs" value={shiftEnd} onChange={(e) => setShiftEnd(e.target.value)} />
+              </div>
+            </div>
+            <Button size="sm" variant="outline" onClick={exportSummary} disabled={summaryRows.length === 0}>
+              <Download className="h-3.5 w-3.5 mr-1" /> Exportar CSV
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+          <ReportKpiCard
+            title="Tempo em atendimento"
+            value={fmtHm(summaryTotals.work)}
+            icon={Clock}
+            subtitle={`Ocupação ${summaryTotals.occupancy.toFixed(0)}%`}
+          />
+          <ReportKpiCard
+            title="Tempo parado"
+            value={fmtHm(summaryTotals.idle)}
+            icon={UserX}
+            subtitle={`${summaryTotals.blocks} blocos de ${threshold}min`}
+          />
+          <ReportKpiCard
+            title={`Atividade ${shiftStart}–${shiftEnd}`}
+            value={fmtHm(summaryTotals.shift)}
+            icon={Timer}
+          />
+          <ReportKpiCard
+            title="Interações por hora ativa"
+            value={summaryTotals.msgsPerHour.toFixed(1)}
+            icon={Gauge}
+            subtitle={`${summaryTotals.messages} mensagens`}
+          />
+        </div>
+
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+          <ReportKpiCard title="Chamados assumidos" value={summaryTotals.assumidos} icon={UserPlus} />
+          <ReportKpiCard title="Transferidos para o operador" value={summaryTotals.transferidos} icon={ArrowRightLeft} />
+          <ReportKpiCard title="Da fila tratados" value={summaryTotals.fila} icon={MessageSquare} />
+          <ReportKpiCard title="Finalizados" value={summaryTotals.finalizados} icon={CheckCircle2} />
+        </div>
+
+        {summaryRows.length > 0 && (
+          <ChartFrame
+            title="Tempo em atendimento x tempo parado por operador"
+            filename="resumo-operacao"
+            data={summaryRows.map((r) => ({
+              Operador: r.userName,
+              "Atendimento (min)": Math.round(r.workMinutes),
+              "Parado (min)": Math.round(r.idleMinutes),
+            }))}
+          >
+            <ChartContainer
+              config={{
+                atendimento: { label: "Em atendimento (min)", color: "hsl(var(--chart-2))" },
+                parado: { label: "Parado (min)", color: "hsl(var(--chart-4))" },
+              }}
+              className="h-[260px] w-full"
+            >
+              <BarChart
+                data={summaryRows.map((r) => ({
+                  name: r.userName,
+                  atendimento: Math.round(r.workMinutes),
+                  parado: Math.round(r.idleMinutes),
+                }))}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                <YAxis tick={{ fontSize: 10 }} />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Bar dataKey="atendimento" stackId="a" fill="var(--color-atendimento)" radius={[0, 0, 0, 0]} />
+                <Bar dataKey="parado" stackId="a" fill="var(--color-parado)" radius={[2, 2, 0, 0]} />
+              </BarChart>
+            </ChartContainer>
+          </ChartFrame>
+        )}
+
+        <Card>
+          <CardContent className="pt-4">
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : summaryRows.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                Sem dados de operação no período selecionado.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Operador</TableHead>
+                      <TableHead className="text-right">Dias</TableHead>
+                      <TableHead className="text-right">Logado</TableHead>
+                      <TableHead className="text-right">Em atendimento</TableHead>
+                      <TableHead className="text-right">Parado</TableHead>
+                      <TableHead className="text-right">Blocos {threshold}min</TableHead>
+                      <TableHead className="text-right">{shiftStart}–{shiftEnd}</TableHead>
+                      <TableHead className="text-right">Assumidos</TableHead>
+                      <TableHead className="text-right">Recebidos</TableHead>
+                      <TableHead className="text-right">Fila tratada</TableHead>
+                      <TableHead className="text-right">Finalizados</TableHead>
+                      <TableHead className="text-right">Ocupação</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {summaryRows.map((r) => {
+                      const occ = r.onlineMinutes > 0 ? (r.workMinutes / r.onlineMinutes) * 100 : 0;
+                      return (
+                        <TableRow key={r.userId}>
+                          <TableCell className="font-medium">{r.userName}</TableCell>
+                          <TableCell className="text-right">{r.days}</TableCell>
+                          <TableCell className="text-right">{fmtHm(r.onlineMinutes)}</TableCell>
+                          <TableCell className="text-right text-emerald-700">{fmtHm(r.workMinutes)}</TableCell>
+                          <TableCell className="text-right text-amber-700">{fmtHm(r.idleMinutes)}</TableCell>
+                          <TableCell className="text-right">{r.idleBlocks}</TableCell>
+                          <TableCell className="text-right">{fmtHm(r.shiftMinutes)}</TableCell>
+                          <TableCell className="text-right">{r.assumidos}</TableCell>
+                          <TableCell className="text-right">{r.transferidosRecebidos}</TableCell>
+                          <TableCell className="text-right">{r.filaTratados}</TableCell>
+                          <TableCell className="text-right">{r.finalizados}</TableCell>
+                          <TableCell className="text-right">
+                            <Badge
+                              variant="outline"
+                              className={
+                                occ >= 70
+                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                  : occ >= 40
+                                    ? "bg-amber-50 text-amber-700 border-amber-200"
+                                    : "bg-red-50 text-red-700 border-red-200"
+                              }
+                            >
+                              {occ.toFixed(0)}%
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
       {/* ============ JORNADA ============ */}
+
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-base font-semibold flex items-center gap-2">
