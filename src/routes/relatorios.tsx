@@ -12,7 +12,9 @@ import {
 } from "@/components/ui/table";
 import { ReportFilters } from "@/components/relatorios/report-filters";
 import { ReportKpiCard } from "@/components/relatorios/report-kpi-card";
-import { exportToCSV, exportToPDF } from "@/components/relatorios/export-utils";
+import { exportToCSV, exportToPDF, exportToXLSX } from "@/components/relatorios/export-utils";
+import { ChartFrame } from "@/components/relatorios/chart-frame";
+
 import {
   ChartContainer, ChartTooltip, ChartTooltipContent,
   type ChartConfig,
@@ -441,82 +443,63 @@ function RelatoriosPage() {
                   </div>
 
                   <div className="grid gap-4 lg:grid-cols-2">
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm">Atendimentos por Dia</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        {ticketsByDay.length > 0 ? (
-                          <ChartContainer config={chartConfigBar} className="h-[280px] w-full">
-                            <BarChart data={ticketsByDay}>
-                              <CartesianGrid strokeDasharray="3 3" />
-                              <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-                              <YAxis tick={{ fontSize: 10 }} />
-                              <ChartTooltip content={<ChartTooltipContent />} />
-                              
-                              <Bar dataKey="aberto" fill="var(--color-aberto)" radius={[2, 2, 0, 0]} />
-                              <Bar dataKey="em_andamento" fill="var(--color-em_andamento)" radius={[2, 2, 0, 0]} />
-                              <Bar dataKey="finalizado" fill="var(--color-finalizado)" radius={[2, 2, 0, 0]} />
-                            </BarChart>
-                          </ChartContainer>
-                        ) : <EmptyChart />}
-                      </CardContent>
-                    </Card>
+                    <ChartFrame title="Atendimentos por Dia" data={ticketsByDay as any} filename="atendimentos-por-dia">
+                      {ticketsByDay.length > 0 ? (
+                        <ChartContainer config={chartConfigBar} className="h-[280px] w-full">
+                          <BarChart data={ticketsByDay}>
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                            <YAxis tick={{ fontSize: 10 }} />
+                            <ChartTooltip content={<ChartTooltipContent />} />
 
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm">Distribuição por Status</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        {ticketsByStatus.length > 0 ? (
-                          <ChartContainer config={{}} className="h-[280px] w-full">
-                            <PieChart>
-                              <Pie data={ticketsByStatus} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label={({ name, percent }: any) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}>
-                                {ticketsByStatus.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                              </Pie>
-                              <ChartTooltip content={<ChartTooltipContent />} />
-                            </PieChart>
-                          </ChartContainer>
-                        ) : <EmptyChart />}
-                      </CardContent>
-                    </Card>
+                            <Bar dataKey="aberto" fill="var(--color-aberto)" radius={[2, 2, 0, 0]} />
+                            <Bar dataKey="em_andamento" fill="var(--color-em_andamento)" radius={[2, 2, 0, 0]} />
+                            <Bar dataKey="finalizado" fill="var(--color-finalizado)" radius={[2, 2, 0, 0]} />
+                          </BarChart>
+                        </ChartContainer>
+                      ) : <EmptyChart />}
+                    </ChartFrame>
 
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm">Volume por Canal</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        {ticketsByChannel.length > 0 ? (
-                          <ChartContainer config={{}} className="h-[280px] w-full">
-                            <PieChart>
-                              <Pie data={ticketsByChannel} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={100} label>
-                                {ticketsByChannel.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                              </Pie>
-                              <ChartTooltip content={<ChartTooltipContent />} />
-                            </PieChart>
-                          </ChartContainer>
-                        ) : <EmptyChart />}
-                      </CardContent>
-                    </Card>
+                    <ChartFrame title="Distribuição por Status" data={ticketsByStatus as any} filename="distribuicao-status" zoomable={false}>
+                      {ticketsByStatus.length > 0 ? (
+                        <ChartContainer config={{}} className="h-[280px] w-full">
+                          <PieChart>
+                            <Pie data={ticketsByStatus} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label={({ name, percent }: any) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}>
+                              {ticketsByStatus.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                            </Pie>
+                            <ChartTooltip content={<ChartTooltipContent />} />
+                          </PieChart>
+                        </ChartContainer>
+                      ) : <EmptyChart />}
+                    </ChartFrame>
 
-                    <Card>
-                      <CardHeader className="pb-2">
-                        <CardTitle className="text-sm">Top Empresas por Volume</CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        {ticketsByCompany.length > 0 ? (
-                          <ChartContainer config={{ value: { label: "Atendimentos", color: "hsl(var(--chart-1))" } }} className="h-[280px] w-full">
-                            <BarChart data={ticketsByCompany} layout="vertical">
-                              <CartesianGrid strokeDasharray="3 3" />
-                              <XAxis type="number" tick={{ fontSize: 10 }} />
-                              <YAxis type="category" dataKey="name" tick={{ fontSize: 9 }} width={120} />
-                              <ChartTooltip content={<ChartTooltipContent />} />
-                              <Bar dataKey="value" fill="hsl(var(--chart-2))" radius={[0, 4, 4, 0]} />
-                            </BarChart>
-                          </ChartContainer>
-                        ) : <EmptyChart />}
-                      </CardContent>
-                    </Card>
+                    <ChartFrame title="Volume por Canal" data={ticketsByChannel as any} filename="volume-por-canal" zoomable={false}>
+                      {ticketsByChannel.length > 0 ? (
+                        <ChartContainer config={{}} className="h-[280px] w-full">
+                          <PieChart>
+                            <Pie data={ticketsByChannel} dataKey="value" nameKey="name" cx="50%" cy="50%" innerRadius={50} outerRadius={100} label>
+                              {ticketsByChannel.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                            </Pie>
+                            <ChartTooltip content={<ChartTooltipContent />} />
+                          </PieChart>
+                        </ChartContainer>
+                      ) : <EmptyChart />}
+                    </ChartFrame>
+
+                    <ChartFrame title="Top Empresas por Volume" data={ticketsByCompany as any} filename="top-empresas">
+                      {ticketsByCompany.length > 0 ? (
+                        <ChartContainer config={{ value: { label: "Atendimentos", color: "hsl(var(--chart-1))" } }} className="h-[280px] w-full">
+                          <BarChart data={ticketsByCompany} layout="vertical">
+                            <CartesianGrid strokeDasharray="3 3" />
+                            <XAxis type="number" tick={{ fontSize: 10 }} />
+                            <YAxis type="category" dataKey="name" tick={{ fontSize: 9 }} width={120} />
+                            <ChartTooltip content={<ChartTooltipContent />} />
+                            <Bar dataKey="value" fill="hsl(var(--chart-2))" radius={[0, 4, 4, 0]} />
+                          </BarChart>
+                        </ChartContainer>
+                      ) : <EmptyChart />}
+                    </ChartFrame>
+
                   </div>
 
                   {/* Tabela detalhada */}
@@ -571,22 +554,20 @@ function RelatoriosPage() {
                 <ReportKpiCard title="Média/hora" value={(tickets.length / 24).toFixed(1)} icon={Activity} />
                 <ReportKpiCard title="Total no Período" value={tickets.length} icon={MessageSquare} />
               </div>
-              <Card>
-                <CardHeader className="pb-2"><CardTitle className="text-sm">Distribuição por Hora do Dia</CardTitle></CardHeader>
-                <CardContent>
-                  {tickets.length > 0 ? (
-                    <ChartContainer config={{ count: { label: "Atendimentos", color: "hsl(var(--chart-1))" } }} className="h-[320px] w-full">
-                      <AreaChart data={ticketsByHour}>
-                        <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="hour" tick={{ fontSize: 10 }} />
-                        <YAxis tick={{ fontSize: 10 }} />
-                        <ChartTooltip content={<ChartTooltipContent />} />
-                        <Area type="monotone" dataKey="count" fill="hsl(var(--chart-1))" fillOpacity={0.3} stroke="hsl(var(--chart-1))" strokeWidth={2} />
-                      </AreaChart>
-                    </ChartContainer>
-                  ) : <EmptyChart />}
-                </CardContent>
-              </Card>
+              <ChartFrame title="Distribuição por Hora do Dia" data={ticketsByHour as any} filename="distribuicao-por-hora">
+                {tickets.length > 0 ? (
+                  <ChartContainer config={{ count: { label: "Atendimentos", color: "hsl(var(--chart-1))" } }} className="h-[320px] w-full">
+                    <AreaChart data={ticketsByHour}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="hour" tick={{ fontSize: 10 }} />
+                      <YAxis tick={{ fontSize: 10 }} />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Area type="monotone" dataKey="count" fill="hsl(var(--chart-1))" fillOpacity={0.3} stroke="hsl(var(--chart-1))" strokeWidth={2} />
+                    </AreaChart>
+                  </ChartContainer>
+                ) : <EmptyChart />}
+              </ChartFrame>
+
 
               <Card>
                 <CardHeader className="pb-2"><CardTitle className="text-sm">Detalhamento por Hora</CardTitle></CardHeader>
@@ -617,58 +598,50 @@ function RelatoriosPage() {
               </div>
 
               <div className="grid gap-4 lg:grid-cols-2">
-                <Card>
-                  <CardHeader className="pb-2"><CardTitle className="text-sm">Status do Estoque</CardTitle></CardHeader>
-                  <CardContent>
-                    {inventoryByStatus.length > 0 ? (
-                      <ChartContainer config={{}} className="h-[280px] w-full">
-                        <PieChart>
-                          <Pie data={inventoryByStatus} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label={({ name, percent }: any) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}>
-                            {inventoryByStatus.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                          </Pie>
-                          <ChartTooltip content={<ChartTooltipContent />} />
-                        </PieChart>
-                      </ChartContainer>
-                    ) : <EmptyChart />}
-                  </CardContent>
-                </Card>
+                <ChartFrame title="Status do Estoque" data={inventoryByStatus as any} filename="status-estoque" zoomable={false}>
+                  {inventoryByStatus.length > 0 ? (
+                    <ChartContainer config={{}} className="h-[280px] w-full">
+                      <PieChart>
+                        <Pie data={inventoryByStatus} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label={({ name, percent }: any) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}>
+                          {inventoryByStatus.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                        </Pie>
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                      </PieChart>
+                    </ChartContainer>
+                  ) : <EmptyChart />}
+                </ChartFrame>
 
-                <Card>
-                  <CardHeader className="pb-2"><CardTitle className="text-sm">Itens por Categoria</CardTitle></CardHeader>
-                  <CardContent>
-                    {inventoryByCategory.length > 0 ? (
-                      <ChartContainer config={{ value: { label: "Itens", color: "hsl(var(--chart-2))" } }} className="h-[280px] w-full">
-                        <BarChart data={inventoryByCategory}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                          <YAxis tick={{ fontSize: 10 }} />
-                          <ChartTooltip content={<ChartTooltipContent />} />
-                          <Bar dataKey="value" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                      </ChartContainer>
-                    ) : <EmptyChart />}
-                  </CardContent>
-                </Card>
-              </div>
-
-              <Card>
-                <CardHeader className="pb-2"><CardTitle className="text-sm">Movimentações por Dia</CardTitle></CardHeader>
-                <CardContent>
-                  {movementsByDay.length > 0 ? (
-                    <ChartContainer config={chartConfigMovements} className="h-[280px] w-full">
-                      <BarChart data={movementsByDay}>
+                <ChartFrame title="Itens por Categoria" data={inventoryByCategory as any} filename="itens-por-categoria">
+                  {inventoryByCategory.length > 0 ? (
+                    <ChartContainer config={{ value: { label: "Itens", color: "hsl(var(--chart-2))" } }} className="h-[280px] w-full">
+                      <BarChart data={inventoryByCategory}>
                         <CartesianGrid strokeDasharray="3 3" />
-                        <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                        <XAxis dataKey="name" tick={{ fontSize: 10 }} />
                         <YAxis tick={{ fontSize: 10 }} />
                         <ChartTooltip content={<ChartTooltipContent />} />
-                        
-                        <Bar dataKey="entrada" fill="var(--color-entrada)" radius={[2, 2, 0, 0]} />
-                        <Bar dataKey="saida" fill="var(--color-saida)" radius={[2, 2, 0, 0]} />
+                        <Bar dataKey="value" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
                       </BarChart>
                     </ChartContainer>
                   ) : <EmptyChart />}
-                </CardContent>
-              </Card>
+                </ChartFrame>
+              </div>
+
+              <ChartFrame title="Movimentações por Dia" data={movementsByDay as any} filename="movimentacoes-por-dia">
+                {movementsByDay.length > 0 ? (
+                  <ChartContainer config={chartConfigMovements} className="h-[280px] w-full">
+                    <BarChart data={movementsByDay}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                      <YAxis tick={{ fontSize: 10 }} />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+
+                      <Bar dataKey="entrada" fill="var(--color-entrada)" radius={[2, 2, 0, 0]} />
+                      <Bar dataKey="saida" fill="var(--color-saida)" radius={[2, 2, 0, 0]} />
+                    </BarChart>
+                  </ChartContainer>
+                ) : <EmptyChart />}
+              </ChartFrame>
+
 
               <Card>
                 <CardHeader className="pb-2"><CardTitle className="text-sm">Detalhamento de Movimentações</CardTitle></CardHeader>
@@ -715,38 +688,33 @@ function RelatoriosPage() {
               </div>
 
               <div className="grid gap-4 lg:grid-cols-2">
-                <Card>
-                  <CardHeader className="pb-2"><CardTitle className="text-sm">Status dos Fluxos</CardTitle></CardHeader>
-                  <CardContent>
-                    {flowsByStatus.length > 0 ? (
-                      <ChartContainer config={{}} className="h-[280px] w-full">
-                        <PieChart>
-                          <Pie data={flowsByStatus} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label={({ name, percent }: any) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}>
-                            {flowsByStatus.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                          </Pie>
-                          <ChartTooltip content={<ChartTooltipContent />} />
-                        </PieChart>
-                      </ChartContainer>
-                    ) : <EmptyChart />}
-                  </CardContent>
-                </Card>
+                <ChartFrame title="Status dos Fluxos" data={flowsByStatus as any} filename="status-fluxos" zoomable={false}>
+                  {flowsByStatus.length > 0 ? (
+                    <ChartContainer config={{}} className="h-[280px] w-full">
+                      <PieChart>
+                        <Pie data={flowsByStatus} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={100} label={({ name, percent }: any) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}>
+                          {flowsByStatus.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
+                        </Pie>
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                      </PieChart>
+                    </ChartContainer>
+                  ) : <EmptyChart />}
+                </ChartFrame>
 
-                <Card>
-                  <CardHeader className="pb-2"><CardTitle className="text-sm">Volume por Tipo de Fluxo</CardTitle></CardHeader>
-                  <CardContent>
-                    {flowsByType.length > 0 ? (
-                      <ChartContainer config={{ value: { label: "Instâncias", color: "hsl(var(--chart-3))" } }} className="h-[280px] w-full">
-                        <BarChart data={flowsByType}>
-                          <CartesianGrid strokeDasharray="3 3" />
-                          <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                          <YAxis tick={{ fontSize: 10 }} />
-                          <ChartTooltip content={<ChartTooltipContent />} />
-                          <Bar dataKey="value" fill="hsl(var(--chart-3))" radius={[4, 4, 0, 0]} />
-                        </BarChart>
-                      </ChartContainer>
-                    ) : <EmptyChart />}
-                  </CardContent>
-                </Card>
+                <ChartFrame title="Volume por Tipo de Fluxo" data={flowsByType as any} filename="volume-tipo-fluxo">
+                  {flowsByType.length > 0 ? (
+                    <ChartContainer config={{ value: { label: "Instâncias", color: "hsl(var(--chart-3))" } }} className="h-[280px] w-full">
+                      <BarChart data={flowsByType}>
+                        <CartesianGrid strokeDasharray="3 3" />
+                        <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                        <YAxis tick={{ fontSize: 10 }} />
+                        <ChartTooltip content={<ChartTooltipContent />} />
+                        <Bar dataKey="value" fill="hsl(var(--chart-3))" radius={[4, 4, 0, 0]} />
+                      </BarChart>
+                    </ChartContainer>
+                  ) : <EmptyChart />}
+                </ChartFrame>
+
               </div>
             </TabsContent>
 
