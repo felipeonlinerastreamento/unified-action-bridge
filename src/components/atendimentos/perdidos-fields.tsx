@@ -149,7 +149,7 @@ export function PerdidosFields({ items, onChange }: PerdidosFieldsProps) {
 export function validatePerdidosItems(items: PerdidosLineItem[]): string | null {
   if (items.length === 0) return "Adicione ao menos um item perdido.";
   for (const it of items) {
-    if (!it.item_id || !it.item_name) return "Selecione o item em todas as linhas.";
+    if (!it.item_name) return "Selecione o item em todas as linhas.";
     if (!it.quantity || it.quantity < 1) return "Quantidade deve ser maior que 0.";
     if (it.unit_value < 0) return "Valor unitário deve ser maior ou igual a 0.";
   }
