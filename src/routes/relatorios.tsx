@@ -25,7 +25,7 @@ import {
 } from "recharts";
 import {
   MessageSquare, Clock, Users, Building2, Package, TrendingUp,
-  Loader2, BarChart3, PieChart as PieChartIcon, Activity, Bell, Trophy, PackageX, AlertTriangle,
+  Loader2, Sparkles, BarChart3, PieChart as PieChartIcon, Activity, Bell, Trophy, PackageX, AlertTriangle,
 } from "lucide-react";
 import { OperatorPerformanceTab } from "@/components/relatorios/operator-performance-tab";
 import { RemindersTab } from "@/components/relatorios/reminders-tab";
@@ -36,6 +36,7 @@ import { PerdidosReportTab } from "@/components/relatorios/perdidos-tab";
 import { ErrorsReportTab } from "@/components/relatorios/errors-report-tab";
 import { PurchaseReportTab } from "@/components/relatorios/purchase-report-tab";
 import { JourneyIdleTab } from "@/components/relatorios/journey-idle-tab";
+import { AiSummaryTab } from "@/components/relatorios/ai-summary-tab";
 
 export const Route = createFileRoute("/relatorios")({
   component: RelatoriosPage,
@@ -388,6 +389,9 @@ function RelatoriosPage() {
         <div id="report-content">
           <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="flex flex-wrap h-auto w-full">
+              <TabsTrigger value="resumo" className="gap-1 text-xs">
+                <Sparkles className="h-3.5 w-3.5" /> Resumo IA
+              </TabsTrigger>
               <TabsTrigger value="gatilhos" className="gap-1 text-xs">
                 <Bell className="h-3.5 w-3.5" /> Gatilhos
               </TabsTrigger>
@@ -835,6 +839,10 @@ function RelatoriosPage() {
 
             <TabsContent value="gatilhos" className="space-y-4">
               <MessageTriggersTab dateFrom={dateFrom} dateTo={dateTo} />
+            </TabsContent>
+
+            <TabsContent value="resumo" className="space-y-4">
+              <AiSummaryTab dateFrom={dateFrom} dateTo={dateTo} />
             </TabsContent>
 
             <TabsContent value="perdidos" className="space-y-4">
