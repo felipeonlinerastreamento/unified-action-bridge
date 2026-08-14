@@ -668,6 +668,168 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
     () => filteredGlobalGaps.reduce((s, g) => s + g.minutes, 0), [filteredGlobalGaps]
   );
 
+  // ============ RESUMO DA OPERAÇÃO (produtividade de interação) ============
+  type SummaryRow = {
+    userId: string; userName: string; days: number;
+    onlineMinutes: number; idleMinutes: number; workMinutes: number;
+    idleBlocks: number; shiftMinutes: number;
+    assumidos: number; transferidosRecebidos: number; filaTratados: number;
+    finalizados: number; messages: number;
+  };
+
+  const summaryRows = useMemo<SummaryRow[]>(() => {
+    const rows: Record<string, SummaryRow> = {};
+    const ensure = (userId: string, userName: string) => {
+      if (!rows[userId]) {
+        rows[userId] = {
+          userId, userName: userName || opName[userId] || "—", days: 0,
+          onlineMinutes: 0, idleMinutes: 0, workMinutes: 0,
+          idleBlocks: 0, shiftMinutes: 0,
+          assumidos: 0, transferidosRecebidos: 0, filaTratados: 0,
+          finalizados: 0, messages: 0,
+        };
+      }
+      return rows[userId];
+    };
+
+    // Mensagens por usuário (timestamps) para detectar lacunas de interação
+    const msgsByUserDay: Record<string, number[]> = {};
+    const chatsByUserDay: Record<string, Set<string>> = {};
+    opMessages.forEach((m) => {
+      if (!m.sent_by_user_id) return;
+      const key = `${m.sent_by_user_id}::${brtDay(m.created_at)}`;
+      (msgsByUserDay[key] ||= []).push(new Date(m.created_at).getTime());
+      (chatsByUserDay[key] ||= new Set()).add(m.chat_id);
+    });
+
+    filteredJourneyRows.forEach((r) => {
+      const row = ensure(r.userId, r.userName);
+      row.days += 1;
+      row.onlineMinutes += r.totalMinutes;
+      row.messages += r.messagesSent;
+
+      const key = `${r.userId}::${r.day}`;
+      row.filaTratados += (chatsByUserDay[key]?.size || 0);
+
+      // Períodos "logado": pares online/offline do dia ou, na ausência de
+      // registros de presença, a janela de atividade detectada.
+      const periods: Array<{ start: number; end: number }> = [];
+      let open: number | null = null;
+      r.timeline.forEach((t) => {
+        if (t.type === "set_online") {
+          if (open === null) open = new Date(t.at).getTime();
+        } else if (open !== null) {
+          periods.push({ start: open, end: new Date(t.at).getTime() });
+          open = null;
+        }
+      });
+      if (open !== null) {
+        const dayEnd = new Date(`${r.day}T23:59:59-03:00`).getTime();
+        periods.push({ start: open, end: Math.min(dayEnd, Date.now()) });
+      }
+      if (periods.length === 0 && r.firstActivity && r.lastActivity) {
+        periods.push({
+          start: new Date(r.firstActivity).getTime(),
+          end: new Date(r.lastActivity).getTime(),
+        });
+      }
+
+      const shiftFrom = new Date(`${r.day}T${shiftStart}:00-03:00`).getTime();
+      const shiftTo = new Date(`${r.day}T${shiftEnd}:00-03:00`).getTime();
+      const msgs = (msgsByUserDay[key] || []).slice().sort((a, b) => a - b);
+
+      periods.forEach((p) => {
+        if (p.end <= p.start) return;
+        // Tempo dentro da janela comercial
+        const ovStart = Math.max(p.start, shiftFrom);
+        const ovEnd = Math.min(p.end, shiftTo);
+        if (ovEnd > ovStart) row.shiftMinutes += (ovEnd - ovStart) / 60000;
+
+        const inside = msgs.filter((t) => t >= p.start && t <= p.end);
+        const points = [p.start, ...inside, p.end];
+        for (let i = 0; i < points.length - 1; i++) {
+          const mins = (points[i + 1] - points[i]) / 60000;
+          if (mins > threshold) {
+            row.idleMinutes += mins;
+            row.idleBlocks += Math.floor(mins / threshold);
+          }
+        }
+      });
+    });
+
+    // Eventos operacionais
+    opsEvents.forEach((e) => {
+      const day = brtDay(e.created_at);
+      if (!matchesDay(day)) return;
+      const meta = (e.metadata || {}) as any;
+      if (e.event_type === "chat.assumido") {
+        if (!matchesOperator(e.user_id)) return;
+        ensure(e.user_id, opName[e.user_id]).assumidos += 1;
+      } else if (e.event_type === "chat.transferido") {
+        const to = meta.to_user_id as string | undefined;
+        if (!to || !matchesOperator(to)) return;
+        ensure(to, opName[to]).transferidosRecebidos += 1;
+      } else {
+        if (!e.user_id || !matchesOperator(e.user_id)) return;
+        ensure(e.user_id, opName[e.user_id]).finalizados += 1;
+      }
+    });
+
+    return Object.values(rows)
+      .map((r) => ({
+        ...r,
+        workMinutes: Math.max(0, r.onlineMinutes - r.idleMinutes),
+      }))
+      .sort((a, b) => b.workMinutes - a.workMinutes);
+  }, [filteredJourneyRows, opMessages, opsEvents, opName, threshold, shiftStart, shiftEnd, localOperator, dayFilter]);
+
+  const summaryTotals = useMemo(() => {
+    const t = summaryRows.reduce(
+      (acc, r) => {
+        acc.online += r.onlineMinutes;
+        acc.idle += r.idleMinutes;
+        acc.work += r.workMinutes;
+        acc.blocks += r.idleBlocks;
+        acc.shift += r.shiftMinutes;
+        acc.assumidos += r.assumidos;
+        acc.transferidos += r.transferidosRecebidos;
+        acc.fila += r.filaTratados;
+        acc.finalizados += r.finalizados;
+        acc.messages += r.messages;
+        return acc;
+      },
+      { online: 0, idle: 0, work: 0, blocks: 0, shift: 0, assumidos: 0, transferidos: 0, fila: 0, finalizados: 0, messages: 0 },
+    );
+    return {
+      ...t,
+      occupancy: t.online > 0 ? (t.work / t.online) * 100 : 0,
+      msgsPerHour: t.work > 0 ? t.messages / (t.work / 60) : 0,
+    };
+  }, [summaryRows]);
+
+  const exportSummary = () => {
+    exportToCSV(
+      summaryRows.map((r) => ({
+        Operador: r.userName,
+        Dias: r.days,
+        "Tempo logado": fmtHm(r.onlineMinutes),
+        "Tempo em atendimento": fmtHm(r.workMinutes),
+        "Tempo parado": fmtHm(r.idleMinutes),
+        [`Blocos de ${threshold}min parado`]: r.idleBlocks,
+        [`Atividade ${shiftStart}-${shiftEnd}`]: fmtHm(r.shiftMinutes),
+        "Chamados assumidos": r.assumidos,
+        "Transferidos para ele": r.transferidosRecebidos,
+        "Da fila tratados": r.filaTratados,
+        Finalizados: r.finalizados,
+        Mensagens: r.messages,
+        "Ocupação %": r.onlineMinutes > 0 ? ((r.workMinutes / r.onlineMinutes) * 100).toFixed(1) : "0",
+      })),
+      `resumo-operacao-${dateFrom}_${dateTo}`,
+    );
+  };
+
+
+
   // Available days for the day filter dropdown.
   // Enumerate every day in the selected [dateFrom, dateTo] range so the user
   // can pick today even if no presence/message data exists yet, and union with
