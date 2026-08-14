@@ -808,13 +808,47 @@ export const transferChat = createServerFn({ method: "POST" })
     }
     update.status = "em_atendimento";
 
+    // Snapshot previous assignee for the productivity report
+    const { data: prevChat } = await context.supabase
+      .from("zapi_chats")
+      .select("assigned_to, contact_name, phone")
+      .eq("id", data.chatId)
+      .maybeSingle();
+
     const { error } = await context.supabase
       .from("zapi_chats")
       .update(update)
       .eq("id", data.chatId);
     if (error) throw new Error(error.message);
+
+    // Audit: distinguish self-assignment ("assumido") from transfer to
+    // another operator ("transferido"), feeding the journey/productivity report.
+    try {
+      const { writeAuditLog } = await import("@/lib/audit.server");
+      const toUserId = (update.assigned_to as string | undefined) || null;
+      const selfAssigned = !!toUserId && toUserId === context.userId;
+      await writeAuditLog({
+        user_id: context.userId,
+        event_category: "central_atendimento",
+        event_type: selfAssigned ? "chat.assumido" : "chat.transferido",
+        target_type: "zapi_chat",
+        target_id: data.chatId,
+        target_label: (prevChat as any)?.contact_name || (prevChat as any)?.phone || null,
+        metadata: {
+          chat_id: data.chatId,
+          from_user_id: (prevChat as any)?.assigned_to || null,
+          to_user_id: toUserId,
+          sector_name: update.sector_name || null,
+          self_assigned: selfAssigned,
+        },
+      });
+    } catch (err) {
+      console.error("[transferChat] audit failed", err);
+    }
+
     return { success: true };
   });
+
 
 // ------------ Compatibility stubs for legacy UI ------------
 
