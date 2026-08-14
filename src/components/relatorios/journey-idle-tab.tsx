@@ -1,5 +1,6 @@
 import { ChartFrame } from "./chart-frame";
 import { TeamQualitySection } from "./team-quality-section";
+import { OperationInsights } from "./operation-insights";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -1156,7 +1157,19 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
         </Card>
       </div>
 
+      {/* ============ DIAGNÓSTICO ============ */}
+      <OperationInsights
+        rows={summaryRows}
+        totals={summaryTotals}
+        threshold={threshold}
+        shiftStart={shiftStart}
+        shiftEnd={shiftEnd}
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+      />
+
       {/* ============ QUALIDADE & COBERTURA ============ */}
+
       <TeamQualitySection
         dateFrom={dateFrom}
         dateTo={dateTo}
