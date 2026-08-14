@@ -193,7 +193,7 @@ function CrmPage() {
     email: c.email,
     notes: c.notes,
     company: c.companies ? { id: c.companies.id, name: c.companies.name, cnpj: c.companies.cnpj } : null,
-    categoryName: c.crm_categories?.name || null,
+    categoryName: c.crm_categories?.name || c.supplier_category || null,
     raw: c,
   }));
 
