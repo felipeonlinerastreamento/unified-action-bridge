@@ -23,9 +23,12 @@ type Props = {
   actions?: ReactNode;
   /** Disable zoom controls (e.g. for pie charts) */
   zoomable?: boolean;
+  /** Render without the Card wrapper (for charts already inside a card) */
+  bare?: boolean;
   children: ReactNode;
   className?: string;
 };
+
 
 async function exportSvgAsPng(container: HTMLElement | null, filename: string) {
   const svg = container?.querySelector("svg");
@@ -156,19 +159,34 @@ export function ChartFrame({
 
   return (
     <>
-      <Card className={className}>
-        <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2 space-y-0">
-          <CardTitle className="text-sm">{title}</CardTitle>
-          {toolbar(false)}
-        </CardHeader>
-        <CardContent>
+      {bare ? (
+        <div className={className}>
+          <div className="flex items-center justify-between gap-2 pb-2">
+            <p className="text-xs font-medium text-muted-foreground">{title}</p>
+            {toolbar(false)}
+          </div>
           <div className="overflow-x-auto" ref={inlineRef}>
             <div style={{ width: `${zoom * 100}%`, minWidth: "100%" }}>
               {children}
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      ) : (
+        <Card className={className}>
+          <CardHeader className="pb-2 flex flex-row items-center justify-between gap-2 space-y-0">
+            <CardTitle className="text-sm">{title}</CardTitle>
+            {toolbar(false)}
+          </CardHeader>
+          <CardContent>
+            <div className="overflow-x-auto" ref={inlineRef}>
+              <div style={{ width: `${zoom * 100}%`, minWidth: "100%" }}>
+                {children}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
 
       <Dialog open={fullscreen} onOpenChange={setFullscreen}>
         <DialogContent className="max-w-[95vw] w-[95vw]">
