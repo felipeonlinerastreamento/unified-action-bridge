@@ -1155,6 +1155,26 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
         </Card>
       </div>
 
+      {/* ============ QUALIDADE & COBERTURA ============ */}
+      <TeamQualitySection
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        operatorFilter={operatorFilter}
+        localOperator={localOperator}
+        dayFilter={dayFilter}
+        shiftStart={shiftStart}
+        shiftEnd={shiftEnd}
+        opName={opName}
+        shiftRows={summaryRows.map((r) => ({
+          userId: r.userId,
+          userName: r.userName,
+          days: r.days,
+          shiftMinutes: r.shiftMinutes,
+        }))}
+      />
+
+
+
       {/* ============ JORNADA ============ */}
 
       <div className="space-y-3">
