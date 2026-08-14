@@ -291,6 +291,20 @@ function RelatoriosPage() {
     return Object.entries(map).map(([name, value]) => ({ name, value }));
   }, [contacts]);
 
+  const contactsByCompany = useMemo(() => {
+    const map: Record<string, number> = {};
+    contacts.forEach((c: any) => {
+      const co = (c.companies as any)?.name || "Sem empresa";
+      map[co] = (map[co] || 0) + 1;
+    });
+    return Object.entries(map)
+      .map(([name, value]) => ({ name, value }))
+      .sort((a, b) => b.value - a.value)
+      .slice(0, 10);
+  }, [contacts]);
+
+
+
   const handleExport = (format: "csv" | "xlsx" | "pdf") => {
     if (format === "pdf") {
       exportToPDF("report-content", `relatorio-${activeTab}`);
