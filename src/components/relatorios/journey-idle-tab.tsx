@@ -1,4 +1,5 @@
 import { ChartFrame } from "./chart-frame";
+import { TeamQualitySection } from "./team-quality-section";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -1154,6 +1155,26 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
           </CardContent>
         </Card>
       </div>
+
+      {/* ============ QUALIDADE & COBERTURA ============ */}
+      <TeamQualitySection
+        dateFrom={dateFrom}
+        dateTo={dateTo}
+        operatorFilter={operatorFilter}
+        localOperator={localOperator}
+        dayFilter={dayFilter}
+        shiftStart={shiftStart}
+        shiftEnd={shiftEnd}
+        opName={opName}
+        shiftRows={summaryRows.map((r) => ({
+          userId: r.userId,
+          userName: r.userName,
+          days: r.days,
+          shiftMinutes: r.shiftMinutes,
+        }))}
+      />
+
+
 
       {/* ============ JORNADA ============ */}
 
