@@ -1,3 +1,4 @@
+import { ChartFrame } from "./chart-frame";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -965,47 +966,38 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
         </div>
 
         <div className="grid gap-4 lg:grid-cols-2">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Ociosidade por Operador (min)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {filteredIdleByOperator.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-8">Sem dados</p>
-              ) : (
-                <ChartContainer config={cfgBar} className="h-[280px] w-full">
-                  <BarChart data={filteredIdleByOperator}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={60} />
-                    <YAxis tick={{ fontSize: 10 }} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Bar dataKey="minutes" fill="var(--color-minutes)" radius={[2, 2, 0, 0]} />
-                  </BarChart>
-                </ChartContainer>
-              )}
-            </CardContent>
-          </Card>
+          <ChartFrame title="Ociosidade por Operador (min)" data={filteredIdleByOperator as any} filename="ociosidade-por-operador">
+            {filteredIdleByOperator.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-8">Sem dados</p>
+            ) : (
+              <ChartContainer config={cfgBar} className="h-[280px] w-full">
+                <BarChart data={filteredIdleByOperator}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={60} />
+                  <YAxis tick={{ fontSize: 10 }} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="minutes" fill="var(--color-minutes)" radius={[2, 2, 0, 0]} />
+                </BarChart>
+              </ChartContainer>
+            )}
+          </ChartFrame>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Ociosidade por Dia (min)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {filteredIdleByDay.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-8">Sem dados</p>
-              ) : (
-                <ChartContainer config={cfgLine} className="h-[280px] w-full">
-                  <LineChart data={filteredIdleByDay}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-                    <YAxis tick={{ fontSize: 10 }} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Line type="monotone" dataKey="minutes" stroke="var(--color-minutes)" strokeWidth={2} dot={{ r: 3 }} />
-                  </LineChart>
-                </ChartContainer>
-              )}
-            </CardContent>
-          </Card>
+          <ChartFrame title="Ociosidade por Dia (min)" data={filteredIdleByDay as any} filename="ociosidade-por-dia">
+            {filteredIdleByDay.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-8">Sem dados</p>
+            ) : (
+              <ChartContainer config={cfgLine} className="h-[280px] w-full">
+                <LineChart data={filteredIdleByDay}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Line type="monotone" dataKey="minutes" stroke="var(--color-minutes)" strokeWidth={2} dot={{ r: 3 }} />
+                </LineChart>
+              </ChartContainer>
+            )}
+          </ChartFrame>
+
         </div>
 
         <Card>
@@ -1098,47 +1090,38 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
         </div>
 
         <div className="grid gap-4 lg:grid-cols-2">
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Ausência Global por Operador (min)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {filteredGlobalIdleByOperator.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-8">Sem dados</p>
-              ) : (
-                <ChartContainer config={cfgBar} className="h-[280px] w-full">
-                  <BarChart data={filteredGlobalIdleByOperator}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={60} />
-                    <YAxis tick={{ fontSize: 10 }} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Bar dataKey="minutes" fill="var(--color-minutes)" radius={[2, 2, 0, 0]} />
-                  </BarChart>
-                </ChartContainer>
-              )}
-            </CardContent>
-          </Card>
+          <ChartFrame title="Ausência Global por Operador (min)" data={filteredGlobalIdleByOperator as any} filename="ausencia-por-operador">
+            {filteredGlobalIdleByOperator.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-8">Sem dados</p>
+            ) : (
+              <ChartContainer config={cfgBar} className="h-[280px] w-full">
+                <BarChart data={filteredGlobalIdleByOperator}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="name" tick={{ fontSize: 10 }} interval={0} angle={-20} textAnchor="end" height={60} />
+                  <YAxis tick={{ fontSize: 10 }} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Bar dataKey="minutes" fill="var(--color-minutes)" radius={[2, 2, 0, 0]} />
+                </BarChart>
+              </ChartContainer>
+            )}
+          </ChartFrame>
 
-          <Card>
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm">Ausência Global por Dia (min)</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {filteredGlobalIdleByDay.length === 0 ? (
-                <p className="text-xs text-muted-foreground text-center py-8">Sem dados</p>
-              ) : (
-                <ChartContainer config={cfgLine} className="h-[280px] w-full">
-                  <LineChart data={filteredGlobalIdleByDay}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="date" tick={{ fontSize: 10 }} />
-                    <YAxis tick={{ fontSize: 10 }} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Line type="monotone" dataKey="minutes" stroke="var(--color-minutes)" strokeWidth={2} dot={{ r: 3 }} />
-                  </LineChart>
-                </ChartContainer>
-              )}
-            </CardContent>
-          </Card>
+          <ChartFrame title="Ausência Global por Dia (min)" data={filteredGlobalIdleByDay as any} filename="ausencia-por-dia">
+            {filteredGlobalIdleByDay.length === 0 ? (
+              <p className="text-xs text-muted-foreground text-center py-8">Sem dados</p>
+            ) : (
+              <ChartContainer config={cfgLine} className="h-[280px] w-full">
+                <LineChart data={filteredGlobalIdleByDay}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} />
+                  <ChartTooltip content={<ChartTooltipContent />} />
+                  <Line type="monotone" dataKey="minutes" stroke="var(--color-minutes)" strokeWidth={2} dot={{ r: 3 }} />
+                </LineChart>
+              </ChartContainer>
+            )}
+          </ChartFrame>
+
         </div>
 
         <Card>

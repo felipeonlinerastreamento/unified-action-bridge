@@ -1,3 +1,4 @@
+import { ChartFrame } from "./chart-frame";
 import { useMemo } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -94,36 +95,38 @@ export function PerdidosReportTab({ dateFrom, dateTo }: Props) {
         />
       </div>
 
-      <Card>
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="text-base">Resumo por item</CardTitle>
-          <div className="flex gap-2">
+      <ChartFrame
+        title="Resumo por item"
+        data={byItem as any}
+        filename={`itens-perdidos-${dateFrom}-a-${dateTo}`}
+        actions={
+          <>
             <Button size="sm" variant="outline" onClick={handleExportCSV}>
               <Download className="h-4 w-4 mr-1" /> CSV
             </Button>
             <Button size="sm" variant="outline" onClick={() => exportToPDF("perdidos-report", "itens-perdidos")}>
               <FileText className="h-4 w-4 mr-1" /> PDF
             </Button>
+          </>
+        }
+      >
+        {byItem.length === 0 ? (
+          <p className="text-sm text-muted-foreground italic">Sem dados no período.</p>
+        ) : (
+          <div className="h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={byItem}>
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
+                <YAxis tick={{ fontSize: 11 }} />
+                <Tooltip formatter={(value: any) => formatBRL(Number(value))} />
+                <Bar dataKey="total" name="Valor total" fill="hsl(var(--chart-1))" />
+              </BarChart>
+            </ResponsiveContainer>
           </div>
-        </CardHeader>
-        <CardContent>
-          {byItem.length === 0 ? (
-            <p className="text-sm text-muted-foreground italic">Sem dados no período.</p>
-          ) : (
-            <div className="h-64 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={byItem}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                  <YAxis tick={{ fontSize: 11 }} />
-                  <Tooltip formatter={(value: any) => formatBRL(Number(value))} />
-                  <Bar dataKey="total" name="Valor total" fill="hsl(var(--chart-1))" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+        )}
+      </ChartFrame>
+
 
       <Card>
         <CardHeader>

@@ -12,9 +12,21 @@ export function exportToCSV(data: Record<string, unknown>[], filename: string) {
 }
 
 export function exportToXLSX(data: Record<string, unknown>[], filename: string) {
-  // Simplified: export as CSV with .xlsx hint — for full XLSX, a library would be needed
-  exportToCSV(data, filename);
+  if (!data.length) { toast.error("Sem dados para exportar"); return; }
+  const headers = Object.keys(data[0]);
+  const esc = (v: unknown) =>
+    String(v ?? "").replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+  const html = `<html xmlns:x="urn:schemas-microsoft-com:office:excel"><head><meta charset="utf-8" /></head><body>
+    <table border="1">
+      <thead><tr>${headers.map((h) => `<th>${esc(h)}</th>`).join("")}</tr></thead>
+      <tbody>${data
+        .map((row) => `<tr>${headers.map((h) => `<td>${esc(row[h])}</td>`).join("")}</tr>`)
+        .join("")}</tbody>
+    </table></body></html>`;
+  downloadFile(html, `${filename}.xls`, "application/vnd.ms-excel;charset=utf-8;");
+  toast.success("Excel exportado com sucesso");
 }
+
 
 export function exportToPDF(elementId: string, filename: string) {
   const el = document.getElementById(elementId);
