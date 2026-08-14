@@ -382,16 +382,19 @@ export function OperatorPerformanceTab({ dateFrom, dateTo }: Props) {
             </CardHeader>
             <CardContent className="space-y-4">
               {tmprChart.length > 0 && (
-                <ChartContainer config={chartConfig} className="h-[280px] w-full">
-                  <BarChart data={tmprChart} layout="vertical" margin={{ left: 80 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" tick={{ fontSize: 10 }} />
-                    <YAxis dataKey="name" type="category" tick={{ fontSize: 10 }} width={120} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Bar dataKey="minutes" fill="var(--color-minutes)" radius={[0, 2, 2, 0]} />
-                  </BarChart>
-                </ChartContainer>
+                <ChartFrame bare title="Ranking TMPR" data={tmprChart as any} filename="ranking-tmpr">
+                  <ChartContainer config={chartConfig} className="h-[280px] w-full">
+                    <BarChart data={tmprChart} layout="vertical" margin={{ left: 80 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" tick={{ fontSize: 10 }} />
+                      <YAxis dataKey="name" type="category" tick={{ fontSize: 10 }} width={120} />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Bar dataKey="minutes" fill="var(--color-minutes)" radius={[0, 2, 2, 0]} />
+                    </BarChart>
+                  </ChartContainer>
+                </ChartFrame>
               )}
+
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -499,16 +502,19 @@ export function OperatorPerformanceTab({ dateFrom, dateTo }: Props) {
             </CardHeader>
             <CardContent className="space-y-4">
               {bottleneckChart.length > 0 && (
-                <ChartContainer config={chartConfig} className="h-[280px] w-full">
-                  <BarChart data={bottleneckChart} layout="vertical" margin={{ left: 120 }}>
-                    <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis type="number" tick={{ fontSize: 10 }} />
-                    <YAxis dataKey="name" type="category" tick={{ fontSize: 10 }} width={160} />
-                    <ChartTooltip content={<ChartTooltipContent />} />
-                    <Bar dataKey="hours" fill="var(--color-hours)" radius={[0, 2, 2, 0]} />
-                  </BarChart>
-                </ChartContainer>
+                <ChartFrame bare title="Gargalos por setor/categoria" data={bottleneckChart as any} filename="gargalos">
+                  <ChartContainer config={chartConfig} className="h-[280px] w-full">
+                    <BarChart data={bottleneckChart} layout="vertical" margin={{ left: 120 }}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis type="number" tick={{ fontSize: 10 }} />
+                      <YAxis dataKey="name" type="category" tick={{ fontSize: 10 }} width={160} />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Bar dataKey="hours" fill="var(--color-hours)" radius={[0, 2, 2, 0]} />
+                    </BarChart>
+                  </ChartContainer>
+                </ChartFrame>
               )}
+
               <Table>
                 <TableHeader>
                   <TableRow>
@@ -717,15 +723,23 @@ export function OperatorPerformanceTab({ dateFrom, dateTo }: Props) {
                   </p>
                 </div>
               </div>
-              <ChartContainer config={chartConfig} className="h-[240px] w-full">
-                <BarChart data={closing.buckets.map((b) => ({ name: `${b.hour.toString().padStart(2, "0")}h`, qtd: b.count }))}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="name" tick={{ fontSize: 10 }} />
-                  <YAxis tick={{ fontSize: 10 }} />
-                  <ChartTooltip content={<ChartTooltipContent />} />
-                  <Bar dataKey="qtd" fill="hsl(var(--chart-3))" radius={[2, 2, 0, 0]} />
-                </BarChart>
-              </ChartContainer>
+              <ChartFrame
+                bare
+                title="Fechamentos por hora"
+                data={closing.buckets.map((b) => ({ Hora: `${b.hour.toString().padStart(2, "0")}h`, Quantidade: b.count })) as any}
+                filename="fechamentos-por-hora"
+              >
+                <ChartContainer config={chartConfig} className="h-[240px] w-full">
+                  <BarChart data={closing.buckets.map((b) => ({ name: `${b.hour.toString().padStart(2, "0")}h`, qtd: b.count }))}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                    <YAxis tick={{ fontSize: 10 }} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                    <Bar dataKey="qtd" fill="hsl(var(--chart-3))" radius={[2, 2, 0, 0]} />
+                  </BarChart>
+                </ChartContainer>
+              </ChartFrame>
+
             </CardContent>
           </Card>
 
