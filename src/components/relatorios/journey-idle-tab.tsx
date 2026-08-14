@@ -21,7 +21,7 @@ import {
 } from "recharts";
 import { ReportKpiCard } from "@/components/relatorios/report-kpi-card";
 import { exportToCSV } from "@/components/relatorios/export-utils";
-import { Clock, LogIn, LogOut, Timer, AlertTriangle, Loader2, Download, X, UserX } from "lucide-react";
+import { Clock, LogIn, LogOut, Timer, AlertTriangle, Loader2, Download, X, UserX, Gauge, UserPlus, ArrowRightLeft, MessageSquare, CheckCircle2 } from "lucide-react";
 
 
 interface Props {
@@ -58,6 +58,9 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
   const [localOperator, setLocalOperator] = useState<string>("__all__");
   const [contactSearch, setContactSearch] = useState("");
   const [dayFilter, setDayFilter] = useState<string>("__all__");
+  const [shiftStart, setShiftStart] = useState("08:00");
+  const [shiftEnd, setShiftEnd] = useState("18:00");
+
 
 
   // Janela em horário de Brasília (UTC-3) para que o dia 24 BRT inclua
@@ -252,7 +255,41 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
     },
   });
 
+  // Eventos operacionais (assumido / transferido / finalizado) usados no
+  // Resumo da Operação.
+  const { data: opsEvents = [], isLoading: opsEventsLoading } = useQuery({
+    queryKey: ["journey-ops-events", fromIso, toIso, operatorFilter || ""],
+    queryFn: async () => {
+      const pageSize = 1000;
+      let offset = 0;
+      const all: Array<{
+        user_id: string; event_type: string; created_at: string;
+        target_id: string | null; metadata: any;
+      }> = [];
+      // eslint-disable-next-line no-constant-condition
+      while (true) {
+        const q = supabase
+          .from("audit_logs")
+          .select("user_id, event_type, created_at, target_id, metadata")
+          .in("event_type", ["chat.assumido", "chat.transferido", "chat.finalizado", "grupo.finalizado"])
+          .gte("created_at", fromIso)
+          .lte("created_at", toIso)
+          .order("created_at", { ascending: true })
+          .range(offset, offset + pageSize - 1);
+        const { data, error } = await q;
+        if (error) throw error;
+        const rows = (data || []) as typeof all;
+        all.push(...rows);
+        if (rows.length < pageSize) break;
+        offset += pageSize;
+        if (offset > 50000) break;
+      }
+      return all;
+    },
+  });
+
   const journeyRows = useMemo<JourneyRow[]>(() => {
+
     const groups: Record<string, { userId: string; userName: string; day: string; events: typeof presence }> = {};
     presence.forEach((ev) => {
       const day = brtDay(ev.created_at);
@@ -634,6 +671,168 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
     () => filteredGlobalGaps.reduce((s, g) => s + g.minutes, 0), [filteredGlobalGaps]
   );
 
+  // ============ RESUMO DA OPERAÇÃO (produtividade de interação) ============
+  type SummaryRow = {
+    userId: string; userName: string; days: number;
+    onlineMinutes: number; idleMinutes: number; workMinutes: number;
+    idleBlocks: number; shiftMinutes: number;
+    assumidos: number; transferidosRecebidos: number; filaTratados: number;
+    finalizados: number; messages: number;
+  };
+
+  const summaryRows = useMemo<SummaryRow[]>(() => {
+    const rows: Record<string, SummaryRow> = {};
+    const ensure = (userId: string, userName: string) => {
+      if (!rows[userId]) {
+        rows[userId] = {
+          userId, userName: userName || opName[userId] || "—", days: 0,
+          onlineMinutes: 0, idleMinutes: 0, workMinutes: 0,
+          idleBlocks: 0, shiftMinutes: 0,
+          assumidos: 0, transferidosRecebidos: 0, filaTratados: 0,
+          finalizados: 0, messages: 0,
+        };
+      }
+      return rows[userId];
+    };
+
+    // Mensagens por usuário (timestamps) para detectar lacunas de interação
+    const msgsByUserDay: Record<string, number[]> = {};
+    const chatsByUserDay: Record<string, Set<string>> = {};
+    opMessages.forEach((m) => {
+      if (!m.sent_by_user_id) return;
+      const key = `${m.sent_by_user_id}::${brtDay(m.created_at)}`;
+      (msgsByUserDay[key] ||= []).push(new Date(m.created_at).getTime());
+      (chatsByUserDay[key] ||= new Set()).add(m.chat_id);
+    });
+
+    filteredJourneyRows.forEach((r) => {
+      const row = ensure(r.userId, r.userName);
+      row.days += 1;
+      row.onlineMinutes += r.totalMinutes;
+      row.messages += r.messagesSent;
+
+      const key = `${r.userId}::${r.day}`;
+      row.filaTratados += (chatsByUserDay[key]?.size || 0);
+
+      // Períodos "logado": pares online/offline do dia ou, na ausência de
+      // registros de presença, a janela de atividade detectada.
+      const periods: Array<{ start: number; end: number }> = [];
+      let open: number | null = null;
+      r.timeline.forEach((t) => {
+        if (t.type === "set_online") {
+          if (open === null) open = new Date(t.at).getTime();
+        } else if (open !== null) {
+          periods.push({ start: open, end: new Date(t.at).getTime() });
+          open = null;
+        }
+      });
+      if (open !== null) {
+        const dayEnd = new Date(`${r.day}T23:59:59-03:00`).getTime();
+        periods.push({ start: open, end: Math.min(dayEnd, Date.now()) });
+      }
+      if (periods.length === 0 && r.firstActivity && r.lastActivity) {
+        periods.push({
+          start: new Date(r.firstActivity).getTime(),
+          end: new Date(r.lastActivity).getTime(),
+        });
+      }
+
+      const shiftFrom = new Date(`${r.day}T${shiftStart}:00-03:00`).getTime();
+      const shiftTo = new Date(`${r.day}T${shiftEnd}:00-03:00`).getTime();
+      const msgs = (msgsByUserDay[key] || []).slice().sort((a, b) => a - b);
+
+      periods.forEach((p) => {
+        if (p.end <= p.start) return;
+        // Tempo dentro da janela comercial
+        const ovStart = Math.max(p.start, shiftFrom);
+        const ovEnd = Math.min(p.end, shiftTo);
+        if (ovEnd > ovStart) row.shiftMinutes += (ovEnd - ovStart) / 60000;
+
+        const inside = msgs.filter((t) => t >= p.start && t <= p.end);
+        const points = [p.start, ...inside, p.end];
+        for (let i = 0; i < points.length - 1; i++) {
+          const mins = (points[i + 1] - points[i]) / 60000;
+          if (mins > threshold) {
+            row.idleMinutes += mins;
+            row.idleBlocks += Math.floor(mins / threshold);
+          }
+        }
+      });
+    });
+
+    // Eventos operacionais
+    opsEvents.forEach((e) => {
+      const day = brtDay(e.created_at);
+      if (!matchesDay(day)) return;
+      const meta = (e.metadata || {}) as any;
+      if (e.event_type === "chat.assumido") {
+        if (!matchesOperator(e.user_id)) return;
+        ensure(e.user_id, opName[e.user_id]).assumidos += 1;
+      } else if (e.event_type === "chat.transferido") {
+        const to = meta.to_user_id as string | undefined;
+        if (!to || !matchesOperator(to)) return;
+        ensure(to, opName[to]).transferidosRecebidos += 1;
+      } else {
+        if (!e.user_id || !matchesOperator(e.user_id)) return;
+        ensure(e.user_id, opName[e.user_id]).finalizados += 1;
+      }
+    });
+
+    return Object.values(rows)
+      .map((r) => ({
+        ...r,
+        workMinutes: Math.max(0, r.onlineMinutes - r.idleMinutes),
+      }))
+      .sort((a, b) => b.workMinutes - a.workMinutes);
+  }, [filteredJourneyRows, opMessages, opsEvents, opName, threshold, shiftStart, shiftEnd, localOperator, dayFilter]);
+
+  const summaryTotals = useMemo(() => {
+    const t = summaryRows.reduce(
+      (acc, r) => {
+        acc.online += r.onlineMinutes;
+        acc.idle += r.idleMinutes;
+        acc.work += r.workMinutes;
+        acc.blocks += r.idleBlocks;
+        acc.shift += r.shiftMinutes;
+        acc.assumidos += r.assumidos;
+        acc.transferidos += r.transferidosRecebidos;
+        acc.fila += r.filaTratados;
+        acc.finalizados += r.finalizados;
+        acc.messages += r.messages;
+        return acc;
+      },
+      { online: 0, idle: 0, work: 0, blocks: 0, shift: 0, assumidos: 0, transferidos: 0, fila: 0, finalizados: 0, messages: 0 },
+    );
+    return {
+      ...t,
+      occupancy: t.online > 0 ? (t.work / t.online) * 100 : 0,
+      msgsPerHour: t.work > 0 ? t.messages / (t.work / 60) : 0,
+    };
+  }, [summaryRows]);
+
+  const exportSummary = () => {
+    exportToCSV(
+      summaryRows.map((r) => ({
+        Operador: r.userName,
+        Dias: r.days,
+        "Tempo logado": fmtHm(r.onlineMinutes),
+        "Tempo em atendimento": fmtHm(r.workMinutes),
+        "Tempo parado": fmtHm(r.idleMinutes),
+        [`Blocos de ${threshold}min parado`]: r.idleBlocks,
+        [`Atividade ${shiftStart}-${shiftEnd}`]: fmtHm(r.shiftMinutes),
+        "Chamados assumidos": r.assumidos,
+        "Transferidos para ele": r.transferidosRecebidos,
+        "Da fila tratados": r.filaTratados,
+        Finalizados: r.finalizados,
+        Mensagens: r.messages,
+        "Ocupação %": r.onlineMinutes > 0 ? ((r.workMinutes / r.onlineMinutes) * 100).toFixed(1) : "0",
+      })),
+      `resumo-operacao-${dateFrom}_${dateTo}`,
+    );
+  };
+
+
+
   // Available days for the day filter dropdown.
   // Enumerate every day in the selected [dateFrom, dateTo] range so the user
   // can pick today even if no presence/message data exists yet, and union with
@@ -797,7 +996,167 @@ export function JourneyIdleTab({ dateFrom, dateTo, operatorFilter }: Props) {
         </CardContent>
       </Card>
 
+      {/* ============ RESUMO DA OPERAÇÃO ============ */}
+      <div className="space-y-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="text-base font-semibold flex items-center gap-2">
+            <Gauge className="h-4 w-4" /> Resumo da Operação (produtividade de interação)
+          </h3>
+          <div className="flex items-end gap-2">
+            <div className="flex flex-col gap-1">
+              <Label className="text-xs">Janela</Label>
+              <div className="flex items-center gap-1">
+                <Input type="time" className="h-8 w-[110px] text-xs" value={shiftStart} onChange={(e) => setShiftStart(e.target.value)} />
+                <span className="text-xs text-muted-foreground">às</span>
+                <Input type="time" className="h-8 w-[110px] text-xs" value={shiftEnd} onChange={(e) => setShiftEnd(e.target.value)} />
+              </div>
+            </div>
+            <Button size="sm" variant="outline" onClick={exportSummary} disabled={summaryRows.length === 0}>
+              <Download className="h-3.5 w-3.5 mr-1" /> Exportar CSV
+            </Button>
+          </div>
+        </div>
+
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+          <ReportKpiCard
+            title="Tempo em atendimento"
+            value={fmtHm(summaryTotals.work)}
+            icon={Clock}
+            subtitle={`Ocupação ${summaryTotals.occupancy.toFixed(0)}%`}
+          />
+          <ReportKpiCard
+            title="Tempo parado"
+            value={fmtHm(summaryTotals.idle)}
+            icon={UserX}
+            subtitle={`${summaryTotals.blocks} blocos de ${threshold}min`}
+          />
+          <ReportKpiCard
+            title={`Atividade ${shiftStart}–${shiftEnd}`}
+            value={fmtHm(summaryTotals.shift)}
+            icon={Timer}
+          />
+          <ReportKpiCard
+            title="Interações por hora ativa"
+            value={summaryTotals.msgsPerHour.toFixed(1)}
+            icon={Gauge}
+            subtitle={`${summaryTotals.messages} mensagens`}
+          />
+        </div>
+
+        <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+          <ReportKpiCard title="Chamados assumidos" value={summaryTotals.assumidos} icon={UserPlus} />
+          <ReportKpiCard title="Transferidos para o operador" value={summaryTotals.transferidos} icon={ArrowRightLeft} />
+          <ReportKpiCard title="Da fila tratados" value={summaryTotals.fila} icon={MessageSquare} />
+          <ReportKpiCard title="Finalizados" value={summaryTotals.finalizados} icon={CheckCircle2} />
+        </div>
+
+        {summaryRows.length > 0 && (
+          <ChartFrame
+            title="Tempo em atendimento x tempo parado por operador"
+            filename="resumo-operacao"
+            data={summaryRows.map((r) => ({
+              Operador: r.userName,
+              "Atendimento (min)": Math.round(r.workMinutes),
+              "Parado (min)": Math.round(r.idleMinutes),
+            }))}
+          >
+            <ChartContainer
+              config={{
+                atendimento: { label: "Em atendimento (min)", color: "hsl(var(--chart-2))" },
+                parado: { label: "Parado (min)", color: "hsl(var(--chart-4))" },
+              }}
+              className="h-[260px] w-full"
+            >
+              <BarChart
+                data={summaryRows.map((r) => ({
+                  name: r.userName,
+                  atendimento: Math.round(r.workMinutes),
+                  parado: Math.round(r.idleMinutes),
+                }))}
+              >
+                <CartesianGrid strokeDasharray="3 3" />
+                <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                <YAxis tick={{ fontSize: 10 }} />
+                <ChartTooltip content={<ChartTooltipContent />} />
+                <Bar dataKey="atendimento" stackId="a" fill="var(--color-atendimento)" radius={[0, 0, 0, 0]} />
+                <Bar dataKey="parado" stackId="a" fill="var(--color-parado)" radius={[2, 2, 0, 0]} />
+              </BarChart>
+            </ChartContainer>
+          </ChartFrame>
+        )}
+
+        <Card>
+          <CardContent className="pt-4">
+            {loading ? (
+              <div className="flex items-center justify-center py-8">
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+              </div>
+            ) : summaryRows.length === 0 ? (
+              <p className="text-sm text-muted-foreground text-center py-8">
+                Sem dados de operação no período selecionado.
+              </p>
+            ) : (
+              <div className="overflow-x-auto">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Operador</TableHead>
+                      <TableHead className="text-right">Dias</TableHead>
+                      <TableHead className="text-right">Logado</TableHead>
+                      <TableHead className="text-right">Em atendimento</TableHead>
+                      <TableHead className="text-right">Parado</TableHead>
+                      <TableHead className="text-right">Blocos {threshold}min</TableHead>
+                      <TableHead className="text-right">{shiftStart}–{shiftEnd}</TableHead>
+                      <TableHead className="text-right">Assumidos</TableHead>
+                      <TableHead className="text-right">Recebidos</TableHead>
+                      <TableHead className="text-right">Fila tratada</TableHead>
+                      <TableHead className="text-right">Finalizados</TableHead>
+                      <TableHead className="text-right">Ocupação</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {summaryRows.map((r) => {
+                      const occ = r.onlineMinutes > 0 ? (r.workMinutes / r.onlineMinutes) * 100 : 0;
+                      return (
+                        <TableRow key={r.userId}>
+                          <TableCell className="font-medium">{r.userName}</TableCell>
+                          <TableCell className="text-right">{r.days}</TableCell>
+                          <TableCell className="text-right">{fmtHm(r.onlineMinutes)}</TableCell>
+                          <TableCell className="text-right text-emerald-700">{fmtHm(r.workMinutes)}</TableCell>
+                          <TableCell className="text-right text-amber-700">{fmtHm(r.idleMinutes)}</TableCell>
+                          <TableCell className="text-right">{r.idleBlocks}</TableCell>
+                          <TableCell className="text-right">{fmtHm(r.shiftMinutes)}</TableCell>
+                          <TableCell className="text-right">{r.assumidos}</TableCell>
+                          <TableCell className="text-right">{r.transferidosRecebidos}</TableCell>
+                          <TableCell className="text-right">{r.filaTratados}</TableCell>
+                          <TableCell className="text-right">{r.finalizados}</TableCell>
+                          <TableCell className="text-right">
+                            <Badge
+                              variant="outline"
+                              className={
+                                occ >= 70
+                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200"
+                                  : occ >= 40
+                                    ? "bg-amber-50 text-amber-700 border-amber-200"
+                                    : "bg-red-50 text-red-700 border-red-200"
+                              }
+                            >
+                              {occ.toFixed(0)}%
+                            </Badge>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
+                  </TableBody>
+                </Table>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
       {/* ============ JORNADA ============ */}
+
       <div className="space-y-3">
         <div className="flex items-center justify-between gap-2">
           <h3 className="text-base font-semibold flex items-center gap-2">
