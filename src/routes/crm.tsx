@@ -45,7 +45,7 @@ function CrmPage() {
   const [companyFilter, setCompanyFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
   const [viewMode, setViewMode] = useState<ViewMode>("all");
-  const [typeFilter, setTypeFilter] = useState<"all" | "PF" | "PJ">("all");
+  const [typeFilter, setTypeFilter] = useState<"all" | "PF" | "PJ" | "FORN">("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<any>(null);
   type ContractItem = { categoryId: string; quantity: number; activationValue: number; monthlyValue: number };
@@ -324,12 +324,13 @@ function CrmPage() {
 
                 <Select value={typeFilter} onValueChange={(v) => setTypeFilter(v as any)}>
                   <SelectTrigger>
-                    <SelectValue placeholder="PF / PJ" />
+                    <SelectValue placeholder="Tipo" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="all">PF e PJ</SelectItem>
+                    <SelectItem value="all">Todos os tipos</SelectItem>
                     <SelectItem value="PF">Pessoa Física (PF)</SelectItem>
                     <SelectItem value="PJ">Pessoa Jurídica (PJ)</SelectItem>
+                    <SelectItem value="FORN">Fornecedor</SelectItem>
                   </SelectContent>
                 </Select>
 
