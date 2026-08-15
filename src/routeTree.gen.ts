@@ -12,7 +12,6 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as TratativasRouteImport } from './routes/tratativas'
 import { Route as RelatoriosRouteImport } from './routes/relatorios'
 import { Route as PainelTvRouteImport } from './routes/painel-tv'
-import { Route as OkrRouteImport } from './routes/okr'
 import { Route as EstoqueRouteImport } from './routes/estoque'
 import { Route as EmpresasRouteImport } from './routes/empresas'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -29,7 +28,6 @@ import { Route as ConfiguracoesZapiRouteImport } from './routes/configuracoes.za
 import { Route as ConfiguracoesUsuariosRouteImport } from './routes/configuracoes.usuarios'
 import { Route as ConfiguracoesStatusUsuariosRouteImport } from './routes/configuracoes.status-usuarios'
 import { Route as ConfiguracoesPopupDiarioRouteImport } from './routes/configuracoes.popup-diario'
-import { Route as ConfiguracoesOkrRouteImport } from './routes/configuracoes.okr'
 import { Route as ConfiguracoesNotificacoesRouteImport } from './routes/configuracoes.notificacoes'
 import { Route as ConfiguracoesFluxoAtendimentoRouteImport } from './routes/configuracoes.fluxo-atendimento'
 import { Route as ConfiguracoesEstoqueRouteImport } from './routes/configuracoes.estoque'
@@ -59,11 +57,6 @@ const RelatoriosRoute = RelatoriosRouteImport.update({
 const PainelTvRoute = PainelTvRouteImport.update({
   id: '/painel-tv',
   path: '/painel-tv',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const OkrRoute = OkrRouteImport.update({
-  id: '/okr',
-  path: '/okr',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EstoqueRoute = EstoqueRouteImport.update({
@@ -148,11 +141,6 @@ const ConfiguracoesPopupDiarioRoute =
     path: '/popup-diario',
     getParentRoute: () => ConfiguracoesRoute,
   } as any)
-const ConfiguracoesOkrRoute = ConfiguracoesOkrRouteImport.update({
-  id: '/okr',
-  path: '/okr',
-  getParentRoute: () => ConfiguracoesRoute,
-} as any)
 const ConfiguracoesNotificacoesRoute =
   ConfiguracoesNotificacoesRouteImport.update({
     id: '/notificacoes',
@@ -250,7 +238,6 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
-  '/okr': typeof OkrRoute
   '/painel-tv': typeof PainelTvRoute
   '/relatorios': typeof RelatoriosRoute
   '/tratativas': typeof TratativasRoute
@@ -263,7 +250,6 @@ export interface FileRoutesByFullPath {
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
   '/configuracoes/fluxo-atendimento': typeof ConfiguracoesFluxoAtendimentoRoute
   '/configuracoes/notificacoes': typeof ConfiguracoesNotificacoesRoute
-  '/configuracoes/okr': typeof ConfiguracoesOkrRoute
   '/configuracoes/popup-diario': typeof ConfiguracoesPopupDiarioRoute
   '/configuracoes/status-usuarios': typeof ConfiguracoesStatusUsuariosRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
@@ -287,7 +273,6 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
-  '/okr': typeof OkrRoute
   '/painel-tv': typeof PainelTvRoute
   '/relatorios': typeof RelatoriosRoute
   '/tratativas': typeof TratativasRoute
@@ -300,7 +285,6 @@ export interface FileRoutesByTo {
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
   '/configuracoes/fluxo-atendimento': typeof ConfiguracoesFluxoAtendimentoRoute
   '/configuracoes/notificacoes': typeof ConfiguracoesNotificacoesRoute
-  '/configuracoes/okr': typeof ConfiguracoesOkrRoute
   '/configuracoes/popup-diario': typeof ConfiguracoesPopupDiarioRoute
   '/configuracoes/status-usuarios': typeof ConfiguracoesStatusUsuariosRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
@@ -326,7 +310,6 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
-  '/okr': typeof OkrRoute
   '/painel-tv': typeof PainelTvRoute
   '/relatorios': typeof RelatoriosRoute
   '/tratativas': typeof TratativasRoute
@@ -339,7 +322,6 @@ export interface FileRoutesById {
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
   '/configuracoes/fluxo-atendimento': typeof ConfiguracoesFluxoAtendimentoRoute
   '/configuracoes/notificacoes': typeof ConfiguracoesNotificacoesRoute
-  '/configuracoes/okr': typeof ConfiguracoesOkrRoute
   '/configuracoes/popup-diario': typeof ConfiguracoesPopupDiarioRoute
   '/configuracoes/status-usuarios': typeof ConfiguracoesStatusUsuariosRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
@@ -366,7 +348,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/empresas'
     | '/estoque'
-    | '/okr'
     | '/painel-tv'
     | '/relatorios'
     | '/tratativas'
@@ -379,7 +360,6 @@ export interface FileRouteTypes {
     | '/configuracoes/estoque'
     | '/configuracoes/fluxo-atendimento'
     | '/configuracoes/notificacoes'
-    | '/configuracoes/okr'
     | '/configuracoes/popup-diario'
     | '/configuracoes/status-usuarios'
     | '/configuracoes/usuarios'
@@ -403,7 +383,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/empresas'
     | '/estoque'
-    | '/okr'
     | '/painel-tv'
     | '/relatorios'
     | '/tratativas'
@@ -416,7 +395,6 @@ export interface FileRouteTypes {
     | '/configuracoes/estoque'
     | '/configuracoes/fluxo-atendimento'
     | '/configuracoes/notificacoes'
-    | '/configuracoes/okr'
     | '/configuracoes/popup-diario'
     | '/configuracoes/status-usuarios'
     | '/configuracoes/usuarios'
@@ -441,7 +419,6 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/empresas'
     | '/estoque'
-    | '/okr'
     | '/painel-tv'
     | '/relatorios'
     | '/tratativas'
@@ -454,7 +431,6 @@ export interface FileRouteTypes {
     | '/configuracoes/estoque'
     | '/configuracoes/fluxo-atendimento'
     | '/configuracoes/notificacoes'
-    | '/configuracoes/okr'
     | '/configuracoes/popup-diario'
     | '/configuracoes/status-usuarios'
     | '/configuracoes/usuarios'
@@ -480,7 +456,6 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   EmpresasRoute: typeof EmpresasRoute
   EstoqueRoute: typeof EstoqueRoute
-  OkrRoute: typeof OkrRoute
   PainelTvRoute: typeof PainelTvRoute
   RelatoriosRoute: typeof RelatoriosRoute
   TratativasRoute: typeof TratativasRoute
@@ -515,13 +490,6 @@ declare module '@tanstack/react-router' {
       path: '/painel-tv'
       fullPath: '/painel-tv'
       preLoaderRoute: typeof PainelTvRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/okr': {
-      id: '/okr'
-      path: '/okr'
-      fullPath: '/okr'
-      preLoaderRoute: typeof OkrRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/estoque': {
@@ -634,13 +602,6 @@ declare module '@tanstack/react-router' {
       path: '/popup-diario'
       fullPath: '/configuracoes/popup-diario'
       preLoaderRoute: typeof ConfiguracoesPopupDiarioRouteImport
-      parentRoute: typeof ConfiguracoesRoute
-    }
-    '/configuracoes/okr': {
-      id: '/configuracoes/okr'
-      path: '/okr'
-      fullPath: '/configuracoes/okr'
-      preLoaderRoute: typeof ConfiguracoesOkrRouteImport
       parentRoute: typeof ConfiguracoesRoute
     }
     '/configuracoes/notificacoes': {
@@ -760,7 +721,6 @@ interface ConfiguracoesRouteChildren {
   ConfiguracoesEstoqueRoute: typeof ConfiguracoesEstoqueRoute
   ConfiguracoesFluxoAtendimentoRoute: typeof ConfiguracoesFluxoAtendimentoRoute
   ConfiguracoesNotificacoesRoute: typeof ConfiguracoesNotificacoesRoute
-  ConfiguracoesOkrRoute: typeof ConfiguracoesOkrRoute
   ConfiguracoesPopupDiarioRoute: typeof ConfiguracoesPopupDiarioRoute
   ConfiguracoesStatusUsuariosRoute: typeof ConfiguracoesStatusUsuariosRoute
   ConfiguracoesUsuariosRoute: typeof ConfiguracoesUsuariosRoute
@@ -778,7 +738,6 @@ const ConfiguracoesRouteChildren: ConfiguracoesRouteChildren = {
   ConfiguracoesEstoqueRoute: ConfiguracoesEstoqueRoute,
   ConfiguracoesFluxoAtendimentoRoute: ConfiguracoesFluxoAtendimentoRoute,
   ConfiguracoesNotificacoesRoute: ConfiguracoesNotificacoesRoute,
-  ConfiguracoesOkrRoute: ConfiguracoesOkrRoute,
   ConfiguracoesPopupDiarioRoute: ConfiguracoesPopupDiarioRoute,
   ConfiguracoesStatusUsuariosRoute: ConfiguracoesStatusUsuariosRoute,
   ConfiguracoesUsuariosRoute: ConfiguracoesUsuariosRoute,
@@ -801,7 +760,6 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   EmpresasRoute: EmpresasRoute,
   EstoqueRoute: EstoqueRoute,
-  OkrRoute: OkrRoute,
   PainelTvRoute: PainelTvRoute,
   RelatoriosRoute: RelatoriosRoute,
   TratativasRoute: TratativasRoute,

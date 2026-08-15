@@ -23,7 +23,6 @@ import {
   CheckSquare,
   List,
   Bell,
-  Target,
   Activity,
   ShieldCheck,
   Megaphone,
