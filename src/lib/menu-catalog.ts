@@ -18,7 +18,6 @@ export const MENU_CATALOG: MenuEntry[] = [
   { slug: "empresas", label: "Empresas", category: "main" },
   { slug: "estoque", label: "Estoque", category: "main" },
   { slug: "relatorios", label: "Relatórios", category: "main" },
-  { slug: "okr", label: "OKR", category: "main" },
   { slug: "atendimentos", label: "Atendimentos", category: "main" },
   { slug: "chat-operadores", label: "Chat com Operadores", category: "main" },
   { slug: "painel-tv", label: "Painel TV (Monitoramento)", category: "main" },
@@ -36,7 +35,6 @@ export const MENU_CATALOG: MenuEntry[] = [
   { slug: "config.usuarios", label: "Usuários", category: "config" },
   { slug: "config.status-usuarios", label: "Status de Usuários", category: "config" },
   { slug: "config.notificacoes", label: "Notificações", category: "config" },
-  { slug: "config.okr", label: "OKR (Ciclos)", category: "config" },
   { slug: "config.auditoria", label: "Auditoria", category: "config" },
 ];
 
@@ -62,7 +60,6 @@ export const URL_TO_MENU_SLUG: Record<string, string> = {
   "/empresas": "empresas",
   "/estoque": "estoque",
   "/relatorios": "relatorios",
-  "/okr": "okr",
   "/atendimentos": "atendimentos",
   "/chat-operadores": "chat-operadores",
   "/painel-tv": "painel-tv",
@@ -78,6 +75,5 @@ export const URL_TO_MENU_SLUG: Record<string, string> = {
   "/configuracoes/usuarios": "config.usuarios",
   "/configuracoes/status-usuarios": "config.status-usuarios",
   "/configuracoes/notificacoes": "config.notificacoes",
-  "/configuracoes/okr": "config.okr",
   "/configuracoes/auditoria": "config.auditoria",
 };
