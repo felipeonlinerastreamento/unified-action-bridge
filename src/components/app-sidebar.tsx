@@ -23,7 +23,6 @@ import {
   CheckSquare,
   List,
   Bell,
-  Target,
   Activity,
   ShieldCheck,
   Megaphone,
@@ -64,7 +63,6 @@ const mainItems = [
   { title: "Empresas", url: "/empresas", icon: Building2 },
   { title: "Estoque", url: "/estoque", icon: Boxes },
   { title: "Relatórios", url: "/relatorios", icon: BarChart3 },
-  { title: "OKR", url: "/okr", icon: Target },
   
   { title: "Chat com Operadores", url: "/chat-operadores", icon: MessageCircle },
   { title: "Painel TV", url: "/painel-tv", icon: Monitor },
@@ -88,7 +86,6 @@ const configSubItems = [
   { title: "Usuários", url: "/configuracoes/usuarios", icon: UserCog },
   { title: "Status de Usuários", url: "/configuracoes/status-usuarios", icon: Activity },
   { title: "Notificações", url: "/configuracoes/notificacoes", icon: Bell },
-  { title: "OKR (Ciclos)", url: "/configuracoes/okr", icon: Target },
   { title: "Auditoria", url: "/configuracoes/auditoria", icon: ShieldCheck },
 ];
 
