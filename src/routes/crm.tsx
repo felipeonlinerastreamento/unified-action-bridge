@@ -36,7 +36,20 @@ export const Route = createFileRoute("/crm")({
   component: CrmPage,
 });
 
-type ViewMode = "all" | "direct" | "subclients";
+// O CRM lista apenas contatos comerciais. Clientes, sub-clientes e técnicos
+// ficam no menu "Contatos" (base operacional).
+export const COMMERCIAL_ROLES = ["lead", "comercial", "parceiro", "fornecedor"];
+
+const ROLE_LABELS: Record<string, string> = {
+  lead: "Lead",
+  comercial: "Comercial",
+  parceiro: "Parceiro",
+  fornecedor: "Fornecedor",
+  cliente: "Cliente",
+  funcionario: "Funcionário",
+  tecnico: "Técnico",
+  outro: "Outro",
+};
 
 function CrmPage() {
   const { isAuthenticated, isLoading } = useAuth();
@@ -44,12 +57,12 @@ function CrmPage() {
   const [search, setSearch] = useState("");
   const [companyFilter, setCompanyFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
-  const [viewMode, setViewMode] = useState<ViewMode>("all");
+  const [roleFilter, setRoleFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<"all" | "PF" | "PJ" | "FORN">("all");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<any>(null);
   type ContractItem = { categoryId: string; quantity: number; activationValue: number; monthlyValue: number };
-  const [form, setForm] = useState({ name: "", phone: "", email: "", notes: "", companyId: "", categoryId: "", contactType: "PF" as "PF" | "PJ", source: "", items: [] as ContractItem[] });
+  const [form, setForm] = useState({ name: "", phone: "", email: "", notes: "", companyId: "", categoryId: "", contactType: "PF" as "PF" | "PJ", source: "", role: "lead", items: [] as ContractItem[] });
 
   const { data: contacts = [], isLoading: contactsLoading } = useQuery({
     queryKey: ["crm-contacts"],
@@ -112,6 +125,7 @@ function CrmPage() {
         activation_total: activationTotal,
         monthly_total: monthlyTotal,
         contact_source: form.source || null,
+        contact_role: form.role || "lead",
         created_by: sess.session?.user?.id || null,
       };
 
@@ -145,7 +159,7 @@ function CrmPage() {
   });
 
   const resetForm = () => {
-    setForm({ name: "", phone: "", email: "", notes: "", companyId: "", categoryId: "", contactType: "PF", source: "", items: [] });
+    setForm({ name: "", phone: "", email: "", notes: "", companyId: "", categoryId: "", contactType: "PF", source: "", role: "lead", items: [] });
     setEditingContact(null);
   };
 
@@ -161,6 +175,7 @@ function CrmPage() {
       contactType: (contact.contact_type === "PJ" ? "PJ" : "PF"),
       items: Array.isArray(contact.contract_items) ? contact.contract_items : [],
       source: contact.contact_source || "",
+      role: contact.contact_role || "lead",
     });
     setDialogOpen(true);
   };
@@ -185,7 +200,11 @@ function CrmPage() {
     raw: any;
   };
 
-  const directRows: Row[] = contacts.map((c: any) => ({
+  const commercialContacts = contacts.filter((c: any) =>
+    COMMERCIAL_ROLES.includes(c.contact_role || "lead"),
+  );
+
+  const directRows: Row[] = commercialContacts.map((c: any) => ({
     id: c.id,
     kind: "direct",
     name: c.name,
@@ -197,22 +216,7 @@ function CrmPage() {
     raw: c,
   }));
 
-  const subRows: Row[] = subClients.map((s: any) => ({
-    id: s.id,
-    kind: "sub",
-    name: s.name,
-    phone: s.phone,
-    email: s.email,
-    notes: s.notes,
-    company: s.companies ? { id: s.companies.id, name: s.companies.name, cnpj: s.companies.cnpj } : null,
-    categoryName: null,
-    raw: s,
-  }));
-
-  const baseRows: Row[] =
-    viewMode === "direct" ? directRows :
-    viewMode === "subclients" ? subRows :
-    [...directRows, ...subRows];
+  const baseRows: Row[] = directRows;
 
   const filtered = baseRows.filter((r) => {
     if (companyFilter !== "all") {
@@ -230,10 +234,10 @@ function CrmPage() {
       }
     }
     if (typeFilter !== "all") {
-      // Sub-clients are always treated as PJ context (linked to a company)
-      const rowType = r.kind === "direct" ? (r.raw.contact_type || "PF") : "PJ";
+      const rowType = r.raw.contact_type || "PF";
       if (rowType !== typeFilter) return false;
     }
+    if (roleFilter !== "all" && (r.raw.contact_role || "lead") !== roleFilter) return false;
     if (!search) return true;
     const s = search.toLowerCase();
     return (
@@ -257,7 +261,7 @@ function CrmPage() {
     );
   })();
 
-  const totalDirect = contacts.length;
+  const totalDirect = commercialContacts.length;
   const totalSubs = subClients.length;
   const isLoadingData = contactsLoading || subClientsLoading;
 
@@ -361,32 +365,30 @@ function CrmPage() {
                 </Select>
               </div>
 
-              <div className="flex items-center gap-2 mt-3">
-                <span className="text-xs text-muted-foreground">Origem:</span>
+              <div className="flex items-center gap-2 mt-3 flex-wrap">
+                <span className="text-xs text-muted-foreground">Classificação:</span>
                 <Button
                   size="sm"
-                  variant={viewMode === "all" ? "default" : "outline"}
-                  onClick={() => setViewMode("all")}
+                  variant={roleFilter === "all" ? "default" : "outline"}
+                  onClick={() => setRoleFilter("all")}
                   className="h-7 text-xs"
                 >
-                  Todos
+                  Todos (comercial)
                 </Button>
-                <Button
-                  size="sm"
-                  variant={viewMode === "direct" ? "default" : "outline"}
-                  onClick={() => setViewMode("direct")}
-                  className="h-7 text-xs"
-                >
-                  Contatos diretos
-                </Button>
-                <Button
-                  size="sm"
-                  variant={viewMode === "subclients" ? "default" : "outline"}
-                  onClick={() => setViewMode("subclients")}
-                  className="h-7 text-xs"
-                >
-                  Sub-clientes
-                </Button>
+                {COMMERCIAL_ROLES.map((r) => (
+                  <Button
+                    key={r}
+                    size="sm"
+                    variant={roleFilter === r ? "default" : "outline"}
+                    onClick={() => setRoleFilter(r)}
+                    className="h-7 text-xs"
+                  >
+                    {ROLE_LABELS[r]}
+                  </Button>
+                ))}
+                <span className="text-[11px] text-muted-foreground ml-auto">
+                  Clientes, sub-clientes e técnicos ficam no menu Contatos.
+                </span>
               </div>
             </Card>
 
@@ -424,20 +426,11 @@ function CrmPage() {
                         <TableRow key={`${row.kind}-${row.id}`}>
                           <TableCell>
                             <div className="flex flex-col gap-1">
-                              {row.kind === "direct" ? (
-                                <Badge variant="default" className="text-[10px] w-fit">
-                                  Direto
-                                </Badge>
-                              ) : (
-                                <Badge variant="secondary" className="text-[10px] gap-1 w-fit">
-                                  <Users className="h-3 w-3" /> Sub-cliente
-                                </Badge>
-                              )}
-                              <Badge
-                                variant="outline"
-                                className="text-[10px] w-fit"
-                              >
-                                {row.kind === "direct" ? (row.raw.contact_type || "PF") : "PJ"}
+                              <Badge variant="default" className="text-[10px] w-fit">
+                                {ROLE_LABELS[row.raw.contact_role || "lead"] || "Lead"}
+                              </Badge>
+                              <Badge variant="outline" className="text-[10px] w-fit">
+                                {row.raw.contact_type || "PF"}
                               </Badge>
                             </div>
                           </TableCell>
@@ -597,6 +590,26 @@ function CrmPage() {
             onNavigate={() => { setDialogOpen(false); resetForm(); }}
           />
           <div className="space-y-3">
+            <div>
+              <Label>Classificação *</Label>
+              <Select value={form.role} onValueChange={(v) => setForm((f) => ({ ...f, role: v }))}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="lead">Lead</SelectItem>
+                  <SelectItem value="comercial">Comercial</SelectItem>
+                  <SelectItem value="parceiro">Parceiro</SelectItem>
+                  <SelectItem value="fornecedor">Fornecedor</SelectItem>
+                  <SelectItem value="cliente">Cliente (move para Contatos)</SelectItem>
+                  <SelectItem value="tecnico">Técnico (move para Contatos)</SelectItem>
+                  <SelectItem value="outro">Outro (move para Contatos)</SelectItem>
+                </SelectContent>
+              </Select>
+              <p className="text-[11px] text-muted-foreground mt-1">
+                Apenas Lead, Comercial, Parceiro e Fornecedor aparecem no CRM.
+              </p>
+            </div>
             <div>
               <Label>Tipo de contato *</Label>
               <div className="flex gap-2 mt-1">
