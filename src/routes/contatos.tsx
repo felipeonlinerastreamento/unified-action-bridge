@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import { SubClientsAdmin } from "@/components/contatos/sub-clients-admin";
 import { TechniciansAdmin } from "@/components/contatos/technicians-admin";
+import { BaseContactsAdmin } from "@/components/contatos/base-contacts-admin";
 
 export const Route = createFileRoute("/contatos")({
   component: ContatosPage,
@@ -148,6 +149,9 @@ function ContatosPage() {
             </TabsTrigger>
             <TabsTrigger value="tecnicos" className="gap-1">
               <Wrench className="h-4 w-4" /> Técnicos
+            </TabsTrigger>
+            <TabsTrigger value="base" className="gap-1">
+              <Users className="h-4 w-4" /> Base de contatos
             </TabsTrigger>
           </TabsList>
 
@@ -264,6 +268,10 @@ function ContatosPage() {
 
           <TabsContent value="tecnicos" className="mt-4">
             <TechniciansAdmin />
+          </TabsContent>
+
+          <TabsContent value="base" className="mt-4">
+            <BaseContactsAdmin />
           </TabsContent>
         </Tabs>
       </div>
