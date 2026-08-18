@@ -37,6 +37,7 @@ import { ErrorsReportTab } from "@/components/relatorios/errors-report-tab";
 import { PurchaseReportTab } from "@/components/relatorios/purchase-report-tab";
 import { JourneyIdleTab } from "@/components/relatorios/journey-idle-tab";
 import { AiSummaryTab } from "@/components/relatorios/ai-summary-tab";
+import { TicketsReportTab } from "@/components/relatorios/tickets-report-tab";
 
 export const Route = createFileRoute("/relatorios")({
   component: RelatoriosPage,
@@ -395,6 +396,9 @@ function RelatoriosPage() {
               <TabsTrigger value="gatilhos" className="gap-1 text-xs">
                 <Bell className="h-3.5 w-3.5" /> Gatilhos
               </TabsTrigger>
+              <TabsTrigger value="chamados" className="gap-1 text-xs">
+                <MessageSquare className="h-3.5 w-3.5" /> Chamados
+              </TabsTrigger>
               <TabsTrigger value="atendimentos" className="gap-1 text-xs">
                 <MessageSquare className="h-3.5 w-3.5" /> Atendimentos
               </TabsTrigger>
@@ -449,6 +453,11 @@ function RelatoriosPage() {
             {/* ========== DESEMPENHO ========== */}
             <TabsContent value="desempenho" className="space-y-4">
               <OperatorPerformanceTab dateFrom={dateFrom} dateTo={dateTo} />
+            </TabsContent>
+
+            {/* ========== CHAMADOS ========== */}
+            <TabsContent value="chamados" className="space-y-4">
+              <TicketsReportTab dateFrom={dateFrom} dateTo={dateTo} />
             </TabsContent>
 
             {/* ========== ATENDIMENTOS ========== */}
