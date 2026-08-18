@@ -192,7 +192,7 @@ export function TicketsReportTab({ dateFrom, dateTo }: Props) {
   const byOperator = useMemo(() => {
     const map = new Map<string, { id: string; name: string; atribuidos: number; finalizados: number; abertos: number; horas: number[]; reaberturas: number }>();
     const ensure = (id: string) => {
-      const cur = map.get(id) || { id, name: nameOf(id), atribuidos: 0, finalizados: 0, abertos: 0, horas: [], reaberturas: 0 };
+      const cur = map.get(id) || { id, name: nameOf(id), atribuidos: 0, finalizados: 0, abertos: 0, horas: [] as number[], reaberturas: 0 };
       map.set(id, cur);
       return cur;
     };
