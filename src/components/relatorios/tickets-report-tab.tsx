@@ -155,7 +155,7 @@ export function TicketsReportTab({ dateFrom, dateTo }: Props) {
     const map = new Map<string, { name: string; total: number; finalizados: number; abertos: number; horas: number[] }>();
     for (const t of rows) {
       const key = t.category || "Sem categoria";
-      const cur = map.get(key) || { name: key, total: 0, finalizados: 0, abertos: 0, horas: [] };
+      const cur = map.get(key) || { name: key, total: 0, finalizados: 0, abertos: 0, horas: [] as number[] };
       cur.total++;
       if (t.status === "finalizado") {
         cur.finalizados++;
