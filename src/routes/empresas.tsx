@@ -277,7 +277,17 @@ function EmpresasPage() {
           }))
         );
       }
+
+      // Sync platforms
+      await supabase.from("company_platforms").delete().eq("company_id", companyId);
+      if (formPlatformIds.length > 0) {
+        const { error: platErr } = await supabase.from("company_platforms").insert(
+          formPlatformIds.map((platform_id) => ({ company_id: companyId, platform_id }))
+        );
+        if (platErr) throw platErr;
+      }
     },
+
     onSuccess: () => {
       toast.success(editingCompany ? "Empresa atualizada" : "Empresa cadastrada");
       queryClient.invalidateQueries({ queryKey: ["companies"] });
