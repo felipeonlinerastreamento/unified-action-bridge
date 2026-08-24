@@ -3181,6 +3181,16 @@ function CentralPage() {
                               <span>Operador: <span className="font-medium text-foreground">{assignedOperator}</span></span>
                             </p>
                           )}
+                          {companyPlatforms.length > 0 && (
+                            <div className="flex items-center gap-1 flex-wrap mt-0.5">
+                              <span className="text-[10px] text-muted-foreground">Plataformas:</span>
+                              {companyPlatforms.map((p) => (
+                                <Badge key={p.id} variant="outline" className="text-[10px] px-1.5 py-0">
+                                  {p.name}
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
                           <div className="flex items-center gap-2 flex-wrap">
                             <p className="text-xs text-muted-foreground truncate">
                               {chatDetail?.contact?.secondaryName || chatDetail?.contact?.number}
