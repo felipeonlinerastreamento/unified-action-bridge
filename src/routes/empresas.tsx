@@ -193,6 +193,13 @@ function EmpresasPage() {
         position: t.position ?? 0,
       }))
     );
+
+    // Load linked platforms
+    const { data: links } = await supabase
+      .from("company_platforms")
+      .select("platform_id")
+      .eq("company_id", company.id);
+    setFormPlatformIds(((links as any[]) || []).map((l) => l.platform_id));
   };
 
   const openNew = () => {
