@@ -98,6 +98,7 @@ function EmpresasPage() {
   const [formMaintenanceScript, setFormMaintenanceScript] = useState("");
   const [formInstallationScript, setFormInstallationScript] = useState("");
   const [formServiceTemplates, setFormServiceTemplates] = useState<ServiceTemplate[]>([]);
+  const [formPlatformIds, setFormPlatformIds] = useState<string[]>([]);
   const [formPhones, setFormPhones] = useState<string[]>([""]);
   const [formContacts, setFormContacts] = useState<{ name: string; role: string; phone: string }[]>([
     { name: "", role: "", phone: "" },
@@ -126,6 +127,20 @@ function EmpresasPage() {
     enabled: isAuthenticated,
   });
 
+  const { data: platforms = [] } = useQuery({
+    queryKey: ["platforms"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("platforms")
+        .select("id, name, description, is_active")
+        .eq("is_active", true)
+        .order("name");
+      if (error) throw error;
+      return (data || []) as { id: string; name: string; description: string; is_active: boolean }[];
+    },
+    enabled: isAuthenticated,
+  });
+
   const resetForm = () => {
     setFormName("");
     setFormCnpj("");
@@ -136,6 +151,8 @@ function EmpresasPage() {
     setFormMaintenanceScript("");
     setFormInstallationScript("");
     setFormServiceTemplates([]);
+    setFormPlatformIds([]);
+
     setFormPhones([""]);
     setFormContacts([{ name: "", role: "", phone: "" }]);
     setEditingCompany(null);
@@ -176,6 +193,13 @@ function EmpresasPage() {
         position: t.position ?? 0,
       }))
     );
+
+    // Load linked platforms
+    const { data: links } = await supabase
+      .from("company_platforms")
+      .select("platform_id")
+      .eq("company_id", company.id);
+    setFormPlatformIds(((links as any[]) || []).map((l) => l.platform_id));
   };
 
   const openNew = () => {
@@ -277,7 +301,17 @@ function EmpresasPage() {
           }))
         );
       }
+
+      // Sync platforms
+      await supabase.from("company_platforms").delete().eq("company_id", companyId);
+      if (formPlatformIds.length > 0) {
+        const { error: platErr } = await supabase.from("company_platforms").insert(
+          formPlatformIds.map((platform_id) => ({ company_id: companyId, platform_id }))
+        );
+        if (platErr) throw platErr;
+      }
     },
+
     onSuccess: () => {
       toast.success(editingCompany ? "Empresa atualizada" : "Empresa cadastrada");
       queryClient.invalidateQueries({ queryKey: ["companies"] });
@@ -516,6 +550,7 @@ function EmpresasPage() {
               <TabsTrigger value="script-manutencao">Script Manutenção</TabsTrigger>
               <TabsTrigger value="script-instalacao">Script Instalação</TabsTrigger>
               <TabsTrigger value="padrao-servicos">Padrão Serviços</TabsTrigger>
+              <TabsTrigger value="plataformas">Plataformas</TabsTrigger>
               <TabsTrigger value="observacoes">Observações</TabsTrigger>
             </TabsList>
 
@@ -783,7 +818,58 @@ function EmpresasPage() {
               )}
             </TabsContent>
 
+            <TabsContent value="plataformas" className="space-y-3 mt-4">
+              <div>
+                <Label>Plataformas do cliente</Label>
+                <p className="text-xs text-muted-foreground">
+                  Selecione uma ou mais plataformas. Cadastre novas em Configurações → Encaminhamento → Plataforma.
+                </p>
+              </div>
+              {platforms.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4">
+                  Nenhuma plataforma cadastrada ainda.
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  {platforms.map((p) => {
+                    const checked = formPlatformIds.includes(p.id);
+                    return (
+                      <button
+                        type="button"
+                        key={p.id}
+                        onClick={() =>
+                          setFormPlatformIds((prev) =>
+                            prev.includes(p.id) ? prev.filter((x) => x !== p.id) : [...prev, p.id]
+                          )
+                        }
+                        className={`flex items-start gap-2 rounded-md border p-2 text-left transition-colors ${
+                          checked ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"
+                        }`}
+                      >
+                        <span
+                          className={`mt-0.5 h-4 w-4 shrink-0 rounded border flex items-center justify-center text-[10px] ${
+                            checked ? "bg-primary text-primary-foreground border-primary" : "border-muted-foreground/40"
+                          }`}
+                        >
+                          {checked ? "✓" : ""}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-sm font-medium truncate">{p.name}</span>
+                          {p.description && (
+                            <span className="block text-xs text-muted-foreground line-clamp-2">
+                              {p.description}
+                            </span>
+                          )}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </TabsContent>
+
             <TabsContent value="observacoes" className="space-y-2 mt-4">
+
               <Label>Observações</Label>
               <Textarea
                 value={formNotes}

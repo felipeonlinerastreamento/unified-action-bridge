@@ -957,6 +957,23 @@ function CentralPage() {
     enabled: !!contactPhone && isAuthenticated,
   });
 
+  // Plataformas vinculadas ao cliente
+  const { data: companyPlatforms = [] } = useQuery({
+    queryKey: ["chat-company-platforms", companyLookup?.id],
+    queryFn: async () => {
+      if (!companyLookup?.id) return [] as { id: string; name: string }[];
+      const { data } = await supabase
+        .from("company_platforms")
+        .select("platform_id, platforms(id, name)")
+        .eq("company_id", companyLookup.id);
+      return ((data as any[]) || [])
+        .map((r) => r.platforms)
+        .filter(Boolean) as { id: string; name: string }[];
+    },
+    enabled: !!companyLookup?.id && isAuthenticated,
+  });
+
+
   // Sub-client lookup by phone
   const { data: subClientLookup, isFetched: subClientLookupFetched } = useQuery({
     queryKey: ["sub-client-lookup", contactPhone],
@@ -3163,6 +3180,16 @@ function CentralPage() {
                               <UserCircle2 className="h-3 w-3" />
                               <span>Operador: <span className="font-medium text-foreground">{assignedOperator}</span></span>
                             </p>
+                          )}
+                          {companyPlatforms.length > 0 && (
+                            <div className="flex items-center gap-1 flex-wrap mt-0.5">
+                              <span className="text-[10px] text-muted-foreground">Plataformas:</span>
+                              {companyPlatforms.map((p) => (
+                                <Badge key={p.id} variant="outline" className="text-[10px] px-1.5 py-0">
+                                  {p.name}
+                                </Badge>
+                              ))}
+                            </div>
                           )}
                           <div className="flex items-center gap-2 flex-wrap">
                             <p className="text-xs text-muted-foreground truncate">

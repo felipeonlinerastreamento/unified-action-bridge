@@ -52,6 +52,7 @@ import { TicketActivitiesConfig } from "@/components/configuracoes/ticket-activi
 import { TicketSubcategoriesConfig } from "@/components/configuracoes/ticket-subcategories-config";
 import { ChatTagCatalogConfig } from "@/components/configuracoes/chat-tag-catalog-config";
 import { OfflineRoutingConfig } from "@/components/configuracoes/offline-routing-config";
+import { PlatformsConfig } from "@/components/configuracoes/platforms-config";
 
 export const Route = createFileRoute("/configuracoes/encaminhamento")({
   component: EncaminhamentoPage,
@@ -289,6 +290,9 @@ function EncaminhamentoPage() {
         <TicketSubcategoriesConfig />
 
         <ChatTagCatalogConfig />
+
+        <PlatformsConfig />
+
 
 
 
