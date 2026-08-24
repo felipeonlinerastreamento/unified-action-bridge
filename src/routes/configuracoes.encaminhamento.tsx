@@ -291,6 +291,9 @@ function EncaminhamentoPage() {
 
         <ChatTagCatalogConfig />
 
+        <PlatformsConfig />
+
+
 
 
         <Card>
