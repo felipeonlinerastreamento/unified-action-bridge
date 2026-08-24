@@ -98,6 +98,7 @@ function EmpresasPage() {
   const [formMaintenanceScript, setFormMaintenanceScript] = useState("");
   const [formInstallationScript, setFormInstallationScript] = useState("");
   const [formServiceTemplates, setFormServiceTemplates] = useState<ServiceTemplate[]>([]);
+  const [formPlatformIds, setFormPlatformIds] = useState<string[]>([]);
   const [formPhones, setFormPhones] = useState<string[]>([""]);
   const [formContacts, setFormContacts] = useState<{ name: string; role: string; phone: string }[]>([
     { name: "", role: "", phone: "" },
