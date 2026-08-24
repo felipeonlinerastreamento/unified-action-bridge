@@ -516,6 +516,7 @@ function EmpresasPage() {
               <TabsTrigger value="script-manutencao">Script Manutenção</TabsTrigger>
               <TabsTrigger value="script-instalacao">Script Instalação</TabsTrigger>
               <TabsTrigger value="padrao-servicos">Padrão Serviços</TabsTrigger>
+              <TabsTrigger value="plataformas">Plataformas</TabsTrigger>
               <TabsTrigger value="observacoes">Observações</TabsTrigger>
             </TabsList>
 
