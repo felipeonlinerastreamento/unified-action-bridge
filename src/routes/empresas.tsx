@@ -783,7 +783,58 @@ function EmpresasPage() {
               )}
             </TabsContent>
 
+            <TabsContent value="plataformas" className="space-y-3 mt-4">
+              <div>
+                <Label>Plataformas do cliente</Label>
+                <p className="text-xs text-muted-foreground">
+                  Selecione uma ou mais plataformas. Cadastre novas em Configurações → Encaminhamento → Plataforma.
+                </p>
+              </div>
+              {platforms.length === 0 ? (
+                <p className="text-sm text-muted-foreground py-4">
+                  Nenhuma plataforma cadastrada ainda.
+                </p>
+              ) : (
+                <div className="grid grid-cols-2 gap-2">
+                  {platforms.map((p) => {
+                    const checked = formPlatformIds.includes(p.id);
+                    return (
+                      <button
+                        type="button"
+                        key={p.id}
+                        onClick={() =>
+                          setFormPlatformIds((prev) =>
+                            prev.includes(p.id) ? prev.filter((x) => x !== p.id) : [...prev, p.id]
+                          )
+                        }
+                        className={`flex items-start gap-2 rounded-md border p-2 text-left transition-colors ${
+                          checked ? "border-primary bg-primary/5" : "border-border hover:bg-muted/50"
+                        }`}
+                      >
+                        <span
+                          className={`mt-0.5 h-4 w-4 shrink-0 rounded border flex items-center justify-center text-[10px] ${
+                            checked ? "bg-primary text-primary-foreground border-primary" : "border-muted-foreground/40"
+                          }`}
+                        >
+                          {checked ? "✓" : ""}
+                        </span>
+                        <span className="min-w-0">
+                          <span className="block text-sm font-medium truncate">{p.name}</span>
+                          {p.description && (
+                            <span className="block text-xs text-muted-foreground line-clamp-2">
+                              {p.description}
+                            </span>
+                          )}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
+            </TabsContent>
+
             <TabsContent value="observacoes" className="space-y-2 mt-4">
+
               <Label>Observações</Label>
               <Textarea
                 value={formNotes}
