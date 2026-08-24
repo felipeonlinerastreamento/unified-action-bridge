@@ -957,6 +957,23 @@ function CentralPage() {
     enabled: !!contactPhone && isAuthenticated,
   });
 
+  // Plataformas vinculadas ao cliente
+  const { data: companyPlatforms = [] } = useQuery({
+    queryKey: ["chat-company-platforms", companyLookup?.id],
+    queryFn: async () => {
+      if (!companyLookup?.id) return [] as { id: string; name: string }[];
+      const { data } = await supabase
+        .from("company_platforms")
+        .select("platform_id, platforms(id, name)")
+        .eq("company_id", companyLookup.id);
+      return ((data as any[]) || [])
+        .map((r) => r.platforms)
+        .filter(Boolean) as { id: string; name: string }[];
+    },
+    enabled: !!companyLookup?.id && isAuthenticated,
+  });
+
+
   // Sub-client lookup by phone
   const { data: subClientLookup, isFetched: subClientLookupFetched } = useQuery({
     queryKey: ["sub-client-lookup", contactPhone],
