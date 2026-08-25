@@ -204,7 +204,10 @@ export const setUserActive = createServerFn({ method: "POST" })
     if (authErr) throw new Error(`Erro ao atualizar acesso: ${authErr.message}`);
 
     const patch: Record<string, unknown> = { is_active: data.active };
-    if (!data.active) patch.is_chat_available = false;
+    if (!data.active) {
+      patch.is_chat_available = false;
+      patch.last_seen_at = null;
+    }
 
     const { error: profErr } = await supabaseAdmin
       .from("profiles")
@@ -212,8 +215,38 @@ export const setUserActive = createServerFn({ method: "POST" })
       .eq("user_id", data.targetUserId);
     if (profErr) throw new Error(`Erro ao atualizar perfil: ${profErr.message}`);
 
+    // Ao inativar: remove o usuário de todos os vínculos operacionais
+    if (!data.active) {
+      const uid = data.targetUserId;
+
+      // Conversas em aberto voltam para a fila (setor preservado)
+      await supabaseAdmin
+        .from("zapi_chats")
+        .update({ assigned_to: null, status: "aguardando" } as any)
+        .eq("assigned_to", uid)
+        .neq("status", "finalizado");
+
+      // Chats já finalizados: apenas desvincula o responsável atual
+      await supabaseAdmin
+        .from("zapi_chats")
+        .update({ assigned_to: null } as any)
+        .eq("assigned_to", uid);
+
+      // Tickets / tarefas: desatribui
+      await supabaseAdmin.from("service_tickets").update({ assigned_to: null } as any).eq("assigned_to", uid);
+      await supabaseAdmin.from("ticket_assignments").update({ assigned_to: null } as any).eq("assigned_to", uid);
+      await supabaseAdmin.from("tasks").update({ assigned_to: null } as any).eq("assigned_to", uid);
+      await supabaseAdmin.from("crm_tasks").update({ assigned_to: null } as any).eq("assigned_to", uid);
+
+      // Vínculos diretos: remove
+      await supabaseAdmin.from("ticket_agents").delete().eq("user_id", uid);
+      await supabaseAdmin.from("task_participants").delete().eq("user_id", uid);
+      await supabaseAdmin.from("user_sector_assignments").delete().eq("user_id", uid);
+    }
+
     return { success: true };
   });
+
 
 // List all profiles (bypasses RLS) — needed so atendentes can see/select
 // any user when forwarding tickets or linking ticket agents.
