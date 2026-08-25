@@ -39,7 +39,11 @@ export function NewOperatorChatDialog({ onCreated, triggerLabel }: Props) {
   const { data: users = [] } = useQuery({
     queryKey: ["all-users-min"],
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("user_id, name").order("name");
+      const { data } = await supabase
+        .from("profiles")
+        .select("user_id, name")
+        .eq("is_active", true)
+        .order("name");
       return data || [];
     },
   });
@@ -64,7 +68,7 @@ export function NewOperatorChatDialog({ onCreated, triggerLabel }: Props) {
 
   const resolveRecipients = async (): Promise<string[]> => {
     if (targetType === "all") {
-      const { data } = await supabase.from("profiles").select("user_id");
+      const { data } = await supabase.from("profiles").select("user_id").eq("is_active", true);
       return (data || []).map((p) => p.user_id);
     }
     if (targetType === "user") return targetId ? [targetId] : [];

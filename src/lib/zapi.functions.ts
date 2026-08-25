@@ -804,6 +804,16 @@ export const transferChat = createServerFn({ method: "POST" })
       if (s?.name) update.sector_name = s.name;
     }
     if (data.userId && /^[0-9a-f-]{36}$/i.test(data.userId)) {
+      const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+      const { data: targetProfile, error: targetError } = await supabaseAdmin
+        .from("profiles")
+        .select("user_id")
+        .eq("user_id", data.userId)
+        .eq("is_active", true)
+        .maybeSingle();
+      if (targetError || !targetProfile) {
+        throw new Error("O operador selecionado está inativo e não pode receber conversas");
+      }
       update.assigned_to = data.userId;
     }
     update.status = "em_atendimento";
@@ -970,6 +980,7 @@ export const listGSystemUsers = createServerFn({ method: "POST" })
     const { data } = await supabaseAdmin
       .from("profiles")
       .select("user_id, name")
+      .eq("is_active", true)
       .order("name", { ascending: true });
     return (data || [])
       .filter((p: any) => p.user_id && p.name)

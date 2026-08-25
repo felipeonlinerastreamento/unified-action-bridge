@@ -197,23 +197,25 @@ export const setUserActive = createServerFn({ method: "POST" })
       throw new Error("Você não pode inativar sua própria conta");
     }
 
-    // Atualiza ban no Auth: 'none' libera, '876000h' (~100 anos) bloqueia
-    const { error: authErr } = await supabaseAdmin.auth.admin.updateUserById(data.targetUserId, {
-      ban_duration: data.active ? "none" : "876000h",
-    } as any);
-    if (authErr) throw new Error(`Erro ao atualizar acesso: ${authErr.message}`);
-
     const patch: Record<string, unknown> = { is_active: data.active };
     if (!data.active) {
       patch.is_chat_available = false;
       patch.last_seen_at = null;
     }
 
-    const { error: profErr } = await supabaseAdmin
+    // Atualiza primeiro o perfil com a sessão do admin. Assim, mesmo se o
+    // bloqueio no Auth falhar, o usuário já deixa de ser elegível para filas.
+    const { error: profErr } = await context.supabase
       .from("profiles")
       .update(patch as any)
       .eq("user_id", data.targetUserId);
     if (profErr) throw new Error(`Erro ao atualizar perfil: ${profErr.message}`);
+
+    // Atualiza ban no Auth: 'none' libera, '876000h' (~100 anos) bloqueia
+    const { error: authErr } = await supabaseAdmin.auth.admin.updateUserById(data.targetUserId, {
+      ban_duration: data.active ? "none" : "876000h",
+    } as any);
+    if (authErr) throw new Error(`Erro ao atualizar acesso: ${authErr.message}`);
 
     // Ao inativar: remove o usuário de todos os vínculos operacionais
     if (!data.active) {
@@ -233,7 +235,11 @@ export const setUserActive = createServerFn({ method: "POST" })
         .eq("assigned_to", uid);
 
       // Tickets / tarefas: desatribui
-      await supabaseAdmin.from("service_tickets").update({ assigned_to: null } as any).eq("assigned_to", uid);
+      await supabaseAdmin
+        .from("service_tickets")
+        .update({ assigned_to: null } as any)
+        .eq("assigned_to", uid)
+        .neq("status", "finalizado");
       await supabaseAdmin.from("ticket_assignments").update({ assigned_to: null } as any).eq("assigned_to", uid);
       await supabaseAdmin.from("tasks").update({ assigned_to: null } as any).eq("assigned_to", uid);
       await supabaseAdmin.from("crm_tasks").update({ assigned_to: null } as any).eq("assigned_to", uid);
@@ -256,6 +262,7 @@ export const listAllProfiles = createServerFn({ method: "POST" })
     const { data } = await supabaseAdmin
       .from("profiles")
       .select("user_id, name, avatar_url, group_id")
+      .eq("is_active", true)
       .order("name", { ascending: true });
     return (data || []).filter((p: any) => p.user_id);
   });

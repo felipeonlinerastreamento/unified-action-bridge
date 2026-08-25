@@ -96,7 +96,15 @@ async function keepOrPickAssignee(chatId: string, sector: string): Promise<strin
       .eq("id", chatId)
       .maybeSingle();
     const current = (data as any)?.assigned_to as string | null | undefined;
-    if (current) return current;
+    if (current) {
+      const { data: activeProfile } = await supabaseAdmin
+        .from("profiles")
+        .select("user_id")
+        .eq("user_id", current)
+        .eq("is_active", true)
+        .maybeSingle();
+      if (activeProfile) return current;
+    }
   } catch (err) {
     console.warn("[bot] keepOrPickAssignee read failed", err);
   }

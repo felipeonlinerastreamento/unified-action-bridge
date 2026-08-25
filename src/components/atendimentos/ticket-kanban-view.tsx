@@ -37,7 +37,7 @@ export function TicketKanbanView({ tickets, onSelect, onRefetch }: TicketKanbanV
   const { data: profiles = [] } = useQuery({
     queryKey: ["all-profiles"],
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("*");
+      const { data } = await supabase.from("profiles").select("*").eq("is_active", true);
       return data || [];
     },
   });
