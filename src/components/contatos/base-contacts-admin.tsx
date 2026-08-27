@@ -477,67 +477,7 @@ export function BaseContactsAdmin() {
               Cadastre um contato operacional (técnico, cliente, funcionário ou outro).
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <Label className="text-xs">Nome *</Label>
-              <Input value={form.name} maxLength={120}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
-            </div>
-            <div>
-              <Label className="text-xs">Telefone *</Label>
-              <Input value={form.phone} maxLength={40} placeholder="Ex.: 5531999999999"
-                onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-                onPaste={(e) => {
-                  e.preventDefault();
-                  const t = e.clipboardData.getData("text").replace(/\D/g, "");
-                  setForm((f) => ({ ...f, phone: t }));
-                }} />
-            </div>
-            <div>
-              <Label className="text-xs">E-mail</Label>
-              <Input value={form.email} maxLength={160}
-                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs">Classificação</Label>
-                <Select value={form.contact_role}
-                  onValueChange={(v) => setForm((f) => ({ ...f, contact_role: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {OPERATIONAL_ROLES.map((r) => (
-                      <SelectItem key={r} value={r}>{ROLE_LABELS[r]}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="text-xs">Tipo</Label>
-                <Select value={form.contact_type}
-                  onValueChange={(v) => setForm((f) => ({ ...f, contact_type: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="PF">Pessoa Física (PF)</SelectItem>
-                    <SelectItem value="PJ">Pessoa Jurídica (PJ)</SelectItem>
-                    <SelectItem value="FORN">Fornecedor</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div>
-              <Label className="text-xs">Empresa</Label>
-              <Select value={form.company_id}
-                onValueChange={(v) => setForm((f) => ({ ...f, company_id: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sem empresa vinculada</SelectItem>
-                  {(allCompanies as any[]).map((co) => (
-                    <SelectItem key={co.id} value={co.id}>{co.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          {formFields}
           <DialogFooter>
             <Button variant="outline" onClick={() => { setCreating(false); setForm(emptyForm); }}>
               Cancelar
@@ -545,6 +485,27 @@ export function BaseContactsAdmin() {
             <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending}>
               {createMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Cadastrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editing} onOpenChange={(o) => { if (!o) { setEditing(null); setForm(emptyForm); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar contato</DialogTitle>
+            <DialogDescription>
+              Atualize os dados do contato operacional.
+            </DialogDescription>
+          </DialogHeader>
+          {formFields}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setEditing(null); setForm(emptyForm); }}>
+              Cancelar
+            </Button>
+            <Button onClick={() => updateMutation.mutate()} disabled={updateMutation.isPending}>
+              {updateMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Salvar
             </Button>
           </DialogFooter>
         </DialogContent>
