@@ -359,19 +359,39 @@ export function BaseContactsAdmin() {
                       </Select>
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title="Iniciar conversa"
-                        disabled={startingId === c.id}
-                        onClick={() => startChat(c)}
-                      >
-                        {startingId === c.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <MessageSquare className="h-4 w-4" />
-                        )}
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Editar contato"
+                          onClick={() => {
+                            setEditing(c);
+                            setForm({
+                              name: c.name || "",
+                              phone: (c.phone || "").replace(/\D/g, ""),
+                              email: c.email || "",
+                              contact_role: c.contact_role || "tecnico",
+                              contact_type: c.contact_type || "PF",
+                              company_id: c.companies?.id || "none",
+                            });
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Iniciar conversa"
+                          disabled={startingId === c.id}
+                          onClick={() => startChat(c)}
+                        >
+                          {startingId === c.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <MessageSquare className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
