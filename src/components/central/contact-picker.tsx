@@ -56,14 +56,11 @@ export function ContactPicker({ selectedId, onSelect }: Props) {
 
       const list: PickedContact[] = [];
       const seen = new Set<string>();
-      const seenPhones = new Set<string>();
 
-      const addIfNew = (c: PickedContact, dedupeGlobal = false) => {
+      const addIfNew = (c: PickedContact) => {
         const key = `${c.source}:${c.phone}`;
         if (!c.phone || seen.has(key)) return;
-        if (dedupeGlobal && seenPhones.has(c.phone)) return;
         seen.add(key);
-        seenPhones.add(c.phone);
         list.push(c);
       };
 
@@ -108,15 +105,12 @@ export function ContactPicker({ selectedId, onSelect }: Props) {
       for (const r of chatRes.data || []) {
         const raw = String((r as any).phone || "");
         if (raw.includes("-") || raw.includes("@g.us")) continue;
-        addIfNew(
-          {
-            id: `chat-${r.id}`,
-            name: (r as any).contact_name || (r as any).phone || "Contato",
-            phone: ((r as any).phone || "").replace(/\D/g, ""),
-            source: "chat",
-          },
-          true,
-        );
+        addIfNew({
+          id: `chat-${r.id}`,
+          name: (r as any).contact_name || (r as any).phone || "Contato",
+          phone: ((r as any).phone || "").replace(/\D/g, ""),
+          source: "chat",
+        });
       }
 
       return list.sort((a, b) => a.name.localeCompare(b.name, "pt-BR"));
