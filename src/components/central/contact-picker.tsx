@@ -125,18 +125,23 @@ export function ContactPicker({ selectedId, onSelect }: Props) {
   });
 
   const filtered = useMemo(() => {
-    if (!search.trim()) return contacts.slice(0, 100);
-    const term = search.toLowerCase().trim();
-    const digits = term.replace(/\D/g, "");
+    if (!search.trim()) return contacts.slice(0, 200);
+    const norm = (s: string) =>
+      s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const terms = norm(search).split(/\s+/).filter(Boolean);
     return contacts
       .filter((c) => {
-        if (c.name.toLowerCase().includes(term)) return true;
-        if (c.company?.toLowerCase().includes(term)) return true;
-        if (digits && c.phone.includes(digits)) return true;
-        return false;
+        const haystack = `${norm(c.name)} ${norm(c.company || "")} ${c.phone}`;
+        // cada termo digitado precisa aparecer em algum campo (busca flexível)
+        return terms.every((t) => {
+          if (haystack.includes(t)) return true;
+          const d = t.replace(/\D/g, "");
+          return !!d && c.phone.includes(d);
+        });
       })
-      .slice(0, 100);
+      .slice(0, 200);
   }, [contacts, search]);
+
 
   const sourceLabel = (s: PickedContact["source"]) => {
     if (s === "crm") return { label: "CRM", icon: User, cls: "bg-blue-50 text-blue-700 border-blue-200" };
