@@ -25,32 +25,34 @@ export function ContactPicker({ selectedId, onSelect }: Props) {
   const { data: contacts = [], isLoading } = useQuery({
     queryKey: ["contact-picker-all"],
     queryFn: async () => {
+      // PostgREST caps responses at 1000 rows: paginate each source explicitly.
+      const fetchAll = async (
+        table: string,
+        columns: string,
+        orderCol: string | null,
+        ascending = true,
+      ) => {
+        const rows: any[] = [];
+        const page = 1000;
+        for (let from = 0; from < 8000; from += page) {
+          let q = (supabase as any).from(table).select(columns).range(from, from + page - 1);
+          if (orderCol) q = q.order(orderCol, { ascending });
+          const { data, error } = await q;
+          if (error || !data) break;
+          rows.push(...data);
+          if (data.length < page) break;
+        }
+        return rows;
+      };
+
       const [crmRes, subRes, phonesRes, techRes, chatRes] = await Promise.all([
-        supabase
-          .from("crm_contacts")
-          .select("id, name, phone, email, companies(name)")
-          .order("name")
-          .limit(2000),
-        supabase
-          .from("sub_clients")
-          .select("id, name, phone, email, companies(name)")
-          .order("name")
-          .limit(2000),
-        supabase
-          .from("company_phones")
-          .select("id, phone_number, companies(name)")
-          .limit(2000),
-        supabase
-          .from("chat_technicians")
-          .select("id, name, phone, contact_phone, city_state")
-          .order("name")
-          .limit(2000),
-        supabase
-          .from("zapi_chats")
-          .select("id, contact_name, phone")
-          .order("last_message_at", { ascending: false })
-          .limit(2000),
-      ]);
+        fetchAll("crm_contacts", "id, name, phone, email, companies(name)", "name"),
+        fetchAll("sub_clients", "id, name, phone, email, companies(name)", "name"),
+        fetchAll("company_phones", "id, phone_number, companies(name)", null),
+        fetchAll("chat_technicians", "id, name, phone, contact_phone, city_state", "name"),
+        fetchAll("zapi_chats", "id, contact_name, phone", "last_message_at", false),
+      ]).then((r) => r.map((data) => ({ data })));
+
 
       const list: PickedContact[] = [];
       const seen = new Set<string>();
