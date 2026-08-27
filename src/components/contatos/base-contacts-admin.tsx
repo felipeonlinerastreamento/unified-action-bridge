@@ -49,6 +49,7 @@ export function BaseContactsAdmin() {
   const [typeFilter, setTypeFilter] = useState("all");
   const [companyFilter, setCompanyFilter] = useState("all");
   const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<any | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [startingId, setStartingId] = useState<string | null>(null);
 
