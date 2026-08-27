@@ -275,6 +275,7 @@ export function BaseContactsAdmin() {
                 <TableHead>E-mail</TableHead>
                 <TableHead>Empresa</TableHead>
                 <TableHead className="w-44">Reclassificar</TableHead>
+                <TableHead className="w-20">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
