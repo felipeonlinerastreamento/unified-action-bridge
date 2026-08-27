@@ -16,7 +16,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Search, Loader2, Users, Building2, Plus, MessageSquare } from "lucide-react";
+import { Search, Loader2, Users, Building2, Plus, MessageSquare, Pencil } from "lucide-react";
 
 const OPERATIONAL_ROLES = ["cliente", "funcionario", "tecnico", "outro"];
 
