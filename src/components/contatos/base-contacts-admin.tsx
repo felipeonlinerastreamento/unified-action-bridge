@@ -86,6 +86,108 @@ export function BaseContactsAdmin() {
     onError: (e: any) => toast.error(e?.message || "Erro ao atualizar"),
   });
 
+  const { data: allCompanies = [] } = useQuery({
+    queryKey: ["companies-min-base-contacts"],
+    queryFn: async () => {
+      const { data } = await supabase.from("companies").select("id, name").order("name").limit(1000);
+      return data || [];
+    },
+  });
+
+  const createMutation = useMutation({
+    mutationFn: async () => {
+      const name = form.name.trim();
+      const phone = form.phone.replace(/\D/g, "");
+      if (!name) throw new Error("Informe o nome");
+      if (phone.length < 10) throw new Error("Informe um telefone válido");
+      const { error } = await supabase.from("crm_contacts").insert({
+        name,
+        phone,
+        email: form.email.trim() || null,
+        contact_role: form.contact_role,
+        contact_type: form.contact_type,
+        company_id: form.company_id === "none" ? null : form.company_id,
+        created_by: user?.id || null,
+      } as any);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Contato cadastrado");
+      setCreating(false);
+      setForm(emptyForm);
+      queryClient.invalidateQueries({ queryKey: ["base-contacts"] });
+      queryClient.invalidateQueries({ queryKey: ["crm-contacts"] });
+      queryClient.invalidateQueries({ queryKey: ["contact-picker-all"] });
+    },
+    onError: (e: any) => toast.error(e?.message || "Erro ao cadastrar"),
+  });
+
+  const startChat = async (c: any) => {
+    const digits = (c.phone || "").replace(/\D/g, "");
+    if (digits.length < 10) {
+      toast.error("Telefone inválido para iniciar conversa.");
+      return;
+    }
+    setStartingId(c.id);
+    try {
+      const uid = user?.id || null;
+      const { data: existing } = await supabase
+        .from("zapi_chats")
+        .select("id, channel_id, status, assigned_to")
+        .ilike("phone", `%${digits.slice(-10)}%`)
+        .order("last_message_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      let chatId: string | null = null;
+      let channelId: string | null = null;
+
+      if (existing) {
+        chatId = (existing as any).id;
+        channelId = (existing as any).channel_id;
+        const upd: any = {};
+        if ((existing as any).status === "aguardando" || !(existing as any).assigned_to) {
+          upd.status = "em_atendimento";
+          if (uid) upd.assigned_to = uid;
+        }
+        if (Object.keys(upd).length > 0) {
+          await supabase.from("zapi_chats").update(upd).eq("id", chatId!);
+        }
+      } else {
+        const { data: channels } = await (supabase as any).rpc("list_channels_safe");
+        const active = (channels || []).find((ch: any) => ch.is_active) || (channels || [])[0];
+        if (!active) {
+          toast.error("Nenhum canal disponível para iniciar conversa.");
+          return;
+        }
+        channelId = active.id;
+        const { data: created, error } = await supabase
+          .from("zapi_chats")
+          .insert({
+            channel_id: channelId,
+            phone: digits,
+            contact_name: c.name || null,
+            status: "em_atendimento",
+            assigned_to: uid,
+          } as any)
+          .select("id")
+          .single();
+        if (error || !created) {
+          toast.error("Falha ao criar conversa: " + (error?.message || ""));
+          return;
+        }
+        chatId = (created as any).id;
+      }
+      toast.success("Conversa aberta na Central");
+      navigate({ to: "/central", search: { chat: chatId!, channel: channelId! } as any });
+    } catch (e: any) {
+      toast.error(e?.message || "Erro ao iniciar conversa");
+    } finally {
+      setStartingId(null);
+    }
+  };
+
+
   const filtered = useMemo(() => {
     const s = search.toLowerCase().trim();
     return (contacts as any[]).filter((c) => {
