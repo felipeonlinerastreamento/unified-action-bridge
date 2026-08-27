@@ -123,6 +123,35 @@ export function BaseContactsAdmin() {
     onError: (e: any) => toast.error(e?.message || "Erro ao cadastrar"),
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async () => {
+      if (!editing) throw new Error("Sem contato selecionado");
+      const name = form.name.trim();
+      if (!name) throw new Error("Informe o nome");
+      const { error } = await supabase
+        .from("crm_contacts")
+        .update({
+          name,
+          phone: form.phone.replace(/\D/g, ""),
+          email: form.email.trim() || null,
+          contact_role: form.contact_role,
+          contact_type: form.contact_type,
+          company_id: form.company_id === "none" ? null : form.company_id,
+        } as any)
+        .eq("id", editing.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Contato atualizado");
+      setEditing(null);
+      setForm(emptyForm);
+      queryClient.invalidateQueries({ queryKey: ["base-contacts"] });
+      queryClient.invalidateQueries({ queryKey: ["crm-contacts"] });
+      queryClient.invalidateQueries({ queryKey: ["contact-picker-all"] });
+    },
+    onError: (e: any) => toast.error(e?.message || "Erro ao atualizar"),
+  });
+
   const startChat = async (c: any) => {
     const digits = (c.phone || "").replace(/\D/g, "");
     if (digits.length < 10) {
