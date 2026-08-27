@@ -16,7 +16,7 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Search, Loader2, Users, Building2, Plus, MessageSquare } from "lucide-react";
+import { Search, Loader2, Users, Building2, Plus, MessageSquare, Pencil } from "lucide-react";
 
 const OPERATIONAL_ROLES = ["cliente", "funcionario", "tecnico", "outro"];
 
@@ -49,6 +49,7 @@ export function BaseContactsAdmin() {
   const [typeFilter, setTypeFilter] = useState("all");
   const [companyFilter, setCompanyFilter] = useState("all");
   const [creating, setCreating] = useState(false);
+  const [editing, setEditing] = useState<any | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [startingId, setStartingId] = useState<string | null>(null);
 
@@ -122,6 +123,35 @@ export function BaseContactsAdmin() {
     onError: (e: any) => toast.error(e?.message || "Erro ao cadastrar"),
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async () => {
+      if (!editing) throw new Error("Sem contato selecionado");
+      const name = form.name.trim();
+      if (!name) throw new Error("Informe o nome");
+      const { error } = await supabase
+        .from("crm_contacts")
+        .update({
+          name,
+          phone: form.phone.replace(/\D/g, ""),
+          email: form.email.trim() || null,
+          contact_role: form.contact_role,
+          contact_type: form.contact_type,
+          company_id: form.company_id === "none" ? null : form.company_id,
+        } as any)
+        .eq("id", editing.id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success("Contato atualizado");
+      setEditing(null);
+      setForm(emptyForm);
+      queryClient.invalidateQueries({ queryKey: ["base-contacts"] });
+      queryClient.invalidateQueries({ queryKey: ["crm-contacts"] });
+      queryClient.invalidateQueries({ queryKey: ["contact-picker-all"] });
+    },
+    onError: (e: any) => toast.error(e?.message || "Erro ao atualizar"),
+  });
+
   const startChat = async (c: any) => {
     const digits = (c.phone || "").replace(/\D/g, "");
     if (digits.length < 10) {
@@ -186,6 +216,72 @@ export function BaseContactsAdmin() {
       setStartingId(null);
     }
   };
+
+  const formFields = (
+    <div className="space-y-3">
+      <div>
+        <Label className="text-xs">Nome *</Label>
+        <Input value={form.name} maxLength={120}
+          onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
+      </div>
+      <div>
+        <Label className="text-xs">Telefone *</Label>
+        <Input value={form.phone} maxLength={40} placeholder="Ex.: 5531999999999"
+          onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
+          onPaste={(e) => {
+            e.preventDefault();
+            const t = e.clipboardData.getData("text").replace(/\D/g, "");
+            setForm((f) => ({ ...f, phone: t }));
+          }} />
+      </div>
+      <div>
+        <Label className="text-xs">E-mail</Label>
+        <Input value={form.email} maxLength={160}
+          onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
+      </div>
+      <div className="grid grid-cols-2 gap-3">
+        <div>
+          <Label className="text-xs">Classificação</Label>
+          <Select value={form.contact_role}
+            onValueChange={(v) => setForm((f) => ({ ...f, contact_role: v }))}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              {OPERATIONAL_ROLES.map((r) => (
+                <SelectItem key={r} value={r}>{ROLE_LABELS[r]}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs">Tipo</Label>
+          <Select value={form.contact_type}
+            onValueChange={(v) => setForm((f) => ({ ...f, contact_type: v }))}>
+            <SelectTrigger><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="PF">Pessoa Física (PF)</SelectItem>
+              <SelectItem value="PJ">Pessoa Jurídica (PJ)</SelectItem>
+              <SelectItem value="FORN">Fornecedor</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+      <div>
+        <Label className="text-xs">Empresa</Label>
+        <Select value={form.company_id}
+          onValueChange={(v) => setForm((f) => ({ ...f, company_id: v }))}>
+          <SelectTrigger><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">Sem empresa vinculada</SelectItem>
+            {(allCompanies as any[]).map((co) => (
+              <SelectItem key={co.id} value={co.id}>{co.name}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+      </div>
+    </div>
+  );
+
+
 
 
   const filtered = useMemo(() => {
@@ -275,7 +371,7 @@ export function BaseContactsAdmin() {
                 <TableHead>E-mail</TableHead>
                 <TableHead>Empresa</TableHead>
                 <TableHead className="w-44">Reclassificar</TableHead>
-                <TableHead className="w-20">Ações</TableHead>
+                <TableHead className="w-28">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -329,19 +425,39 @@ export function BaseContactsAdmin() {
                       </Select>
                     </TableCell>
                     <TableCell>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        title="Iniciar conversa"
-                        disabled={startingId === c.id}
-                        onClick={() => startChat(c)}
-                      >
-                        {startingId === c.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <MessageSquare className="h-4 w-4" />
-                        )}
-                      </Button>
+                      <div className="flex items-center gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Editar contato"
+                          onClick={() => {
+                            setEditing(c);
+                            setForm({
+                              name: c.name || "",
+                              phone: (c.phone || "").replace(/\D/g, ""),
+                              email: c.email || "",
+                              contact_role: c.contact_role || "tecnico",
+                              contact_type: c.contact_type || "PF",
+                              company_id: c.companies?.id || "none",
+                            });
+                          }}
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          title="Iniciar conversa"
+                          disabled={startingId === c.id}
+                          onClick={() => startChat(c)}
+                        >
+                          {startingId === c.id ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <MessageSquare className="h-4 w-4" />
+                          )}
+                        </Button>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))
@@ -361,67 +477,7 @@ export function BaseContactsAdmin() {
               Cadastre um contato operacional (técnico, cliente, funcionário ou outro).
             </DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <Label className="text-xs">Nome *</Label>
-              <Input value={form.name} maxLength={120}
-                onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
-            </div>
-            <div>
-              <Label className="text-xs">Telefone *</Label>
-              <Input value={form.phone} maxLength={40} placeholder="Ex.: 5531999999999"
-                onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-                onPaste={(e) => {
-                  e.preventDefault();
-                  const t = e.clipboardData.getData("text").replace(/\D/g, "");
-                  setForm((f) => ({ ...f, phone: t }));
-                }} />
-            </div>
-            <div>
-              <Label className="text-xs">E-mail</Label>
-              <Input value={form.email} maxLength={160}
-                onChange={(e) => setForm((f) => ({ ...f, email: e.target.value }))} />
-            </div>
-            <div className="grid grid-cols-2 gap-3">
-              <div>
-                <Label className="text-xs">Classificação</Label>
-                <Select value={form.contact_role}
-                  onValueChange={(v) => setForm((f) => ({ ...f, contact_role: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {OPERATIONAL_ROLES.map((r) => (
-                      <SelectItem key={r} value={r}>{ROLE_LABELS[r]}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="text-xs">Tipo</Label>
-                <Select value={form.contact_type}
-                  onValueChange={(v) => setForm((f) => ({ ...f, contact_type: v }))}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="PF">Pessoa Física (PF)</SelectItem>
-                    <SelectItem value="PJ">Pessoa Jurídica (PJ)</SelectItem>
-                    <SelectItem value="FORN">Fornecedor</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-            <div>
-              <Label className="text-xs">Empresa</Label>
-              <Select value={form.company_id}
-                onValueChange={(v) => setForm((f) => ({ ...f, company_id: v }))}>
-                <SelectTrigger><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">Sem empresa vinculada</SelectItem>
-                  {(allCompanies as any[]).map((co) => (
-                    <SelectItem key={co.id} value={co.id}>{co.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+          {formFields}
           <DialogFooter>
             <Button variant="outline" onClick={() => { setCreating(false); setForm(emptyForm); }}>
               Cancelar
@@ -429,6 +485,27 @@ export function BaseContactsAdmin() {
             <Button onClick={() => createMutation.mutate()} disabled={createMutation.isPending}>
               {createMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               Cadastrar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!editing} onOpenChange={(o) => { if (!o) { setEditing(null); setForm(emptyForm); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Editar contato</DialogTitle>
+            <DialogDescription>
+              Atualize os dados do contato operacional.
+            </DialogDescription>
+          </DialogHeader>
+          {formFields}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setEditing(null); setForm(emptyForm); }}>
+              Cancelar
+            </Button>
+            <Button onClick={() => updateMutation.mutate()} disabled={updateMutation.isPending}>
+              {updateMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Salvar
             </Button>
           </DialogFooter>
         </DialogContent>
