@@ -208,10 +208,16 @@ export function BaseContactsAdmin() {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm text-muted-foreground">
-        Base operacional de contatos (clientes, funcionários, técnicos e outros). Leads,
-        parceiros e fornecedores ficam no menu CRM.
-      </p>
+      <div className="flex items-start justify-between gap-2">
+        <p className="text-sm text-muted-foreground">
+          Base operacional de contatos (clientes, funcionários, técnicos e outros). Leads,
+          parceiros e fornecedores ficam no menu CRM.
+        </p>
+        <Button size="sm" className="shrink-0" onClick={() => { setForm(emptyForm); setCreating(true); }}>
+          <Plus className="h-4 w-4 mr-1" /> Novo contato
+        </Button>
+      </div>
+
 
       <Card className="p-3">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
