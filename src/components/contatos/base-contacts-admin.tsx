@@ -31,12 +31,26 @@ const ROLE_LABELS: Record<string, string> = {
   fornecedor: "Fornecedor",
 };
 
+const emptyForm = {
+  name: "",
+  phone: "",
+  email: "",
+  contact_role: "tecnico",
+  contact_type: "PF",
+  company_id: "none",
+};
+
 export function BaseContactsAdmin() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
   const [companyFilter, setCompanyFilter] = useState("all");
+  const [creating, setCreating] = useState(false);
+  const [form, setForm] = useState(emptyForm);
+  const [startingId, setStartingId] = useState<string | null>(null);
 
   const { data: contacts = [], isLoading } = useQuery({
     queryKey: ["base-contacts"],
