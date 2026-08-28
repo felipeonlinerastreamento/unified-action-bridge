@@ -1,0 +1,2 @@
+ALTER TABLE public.companies ADD COLUMN IF NOT EXISTS plan_tier text;
+ALTER TABLE public.companies ADD CONSTRAINT companies_plan_tier_check CHECK (plan_tier IS NULL OR plan_tier IN ('Prime','Plus','Core'));
