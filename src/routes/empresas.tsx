@@ -575,6 +575,26 @@ function EmpresasPage() {
               </div>
 
               <div className="space-y-2">
+                <Label>Plano do cliente</Label>
+                <div className="flex flex-wrap gap-4">
+                  {PLAN_TIERS.map((tier) => (
+                    <label key={tier} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <Checkbox
+                        checked={formPlanTier === tier}
+                        onCheckedChange={(v) => setFormPlanTier(v ? tier : "")}
+                      />
+                      <span>{tier}</span>
+                    </label>
+                  ))}
+                </div>
+                {formPlanTier === "Prime" && (
+                  <p className="text-xs text-muted-foreground">
+                    Conversas deste cliente ficam no topo da fila do chat e são destacadas como atenção.
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
                 <Label>Telefone principal</Label>
                 <Input
                   value={formPhone}
@@ -582,6 +602,7 @@ function EmpresasPage() {
                   placeholder="(00) 00000-0000"
                 />
               </div>
+
 
               <div className="space-y-2">
                 <Label>E-mails (separados por vírgula)</Label>
