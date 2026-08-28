@@ -913,6 +913,34 @@ function CentralPage() {
     return na === nb || na.endsWith(nb) || nb.endsWith(na);
   }, [normalizePhone]);
 
+  // Telefones de clientes com plano Prime (prioridade máxima na fila)
+  const { data: primePhoneKeys = new Set<string>() } = useQuery({
+    queryKey: ["prime-company-phones"],
+    queryFn: async () => {
+      const { data: primeCompanies } = await supabase
+        .from("companies")
+        .select("id, phone")
+        .eq("plan_tier", "Prime");
+      const ids = (primeCompanies || []).map((c: any) => c.id);
+      const keys = new Set<string>();
+      const addKey = (raw?: string | null) => {
+        const digits = String(raw || "").replace(/\D/g, "");
+        if (digits.length >= 8) keys.add(digits.slice(-8));
+      };
+      (primeCompanies || []).forEach((c: any) => addKey(c.phone));
+      if (ids.length > 0) {
+        const { data: phones } = await supabase
+          .from("company_phones")
+          .select("phone_number, company_id")
+          .in("company_id", ids);
+        (phones || []).forEach((p: any) => addKey(p.phone_number));
+      }
+      return keys;
+    },
+    enabled: isAuthenticated,
+    staleTime: 5 * 60 * 1000,
+  });
+
   const { data: companyLookup, isFetched: companyLookupFetched } = useQuery({
     queryKey: ["company-lookup", contactPhone],
     queryFn: async () => {
@@ -3038,6 +3066,7 @@ function CentralPage() {
                 getSlaColor={getSlaColor}
                 formatServiceTime={formatServiceTime}
                 currentAgentName={profile?.name}
+                primePhoneKeys={primePhoneKeys}
                 onZombieCountChange={setMyZombieCount}
               />
             </div>
