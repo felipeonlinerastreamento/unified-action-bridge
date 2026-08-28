@@ -45,6 +45,9 @@ import {
   Send,
 } from "lucide-react";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Checkbox } from "@/components/ui/checkbox";
+
+const PLAN_TIERS = ["Prime", "Plus", "Core"] as const;
 
 export const Route = createFileRoute("/empresas")({
   component: EmpresasPage,
@@ -54,6 +57,7 @@ interface Company {
   id: string;
   name: string;
   cnpj: string | null;
+  plan_tier: string | null;
   phone: string | null;
   emails: string[];
   contacts: any[];
@@ -92,6 +96,7 @@ function EmpresasPage() {
   const [formName, setFormName] = useState("");
   const [formCnpj, setFormCnpj] = useState("");
   const [formPhone, setFormPhone] = useState("");
+  const [formPlanTier, setFormPlanTier] = useState("");
   const [formEmails, setFormEmails] = useState("");
   const [formInstructions, setFormInstructions] = useState("");
   const [formNotes, setFormNotes] = useState("");
@@ -145,6 +150,7 @@ function EmpresasPage() {
     setFormName("");
     setFormCnpj("");
     setFormPhone("");
+    setFormPlanTier("");
     setFormEmails("");
     setFormInstructions("");
     setFormNotes("");
@@ -166,6 +172,7 @@ function EmpresasPage() {
     setFormName(company.name);
     setFormCnpj(company.cnpj || "");
     setFormPhone(company.phone || "");
+    setFormPlanTier(company.plan_tier || "");
     setFormEmails((company.emails || []).join(", "));
     setFormInstructions(company.instructions || "");
     setFormNotes(company.notes || "");
@@ -218,6 +225,7 @@ function EmpresasPage() {
         name: formName.trim(),
         cnpj: formCnpj.trim() || null,
         phone: formPhone.trim() || null,
+        plan_tier: formPlanTier || null,
         emails,
         contacts,
         instructions: formInstructions.trim(),
@@ -487,7 +495,19 @@ function EmpresasPage() {
                           {company.name}
                         </button>
                       </TableCell>
-                      <TableCell>{company.cnpj || "—"}</TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <span>{company.cnpj || "—"}</span>
+                          {company.plan_tier && (
+                            <Badge
+                              variant={company.plan_tier === "Prime" ? "default" : "secondary"}
+                              className="text-[10px]"
+                            >
+                              {company.plan_tier}
+                            </Badge>
+                          )}
+                        </div>
+                      </TableCell>
                       <TableCell>
                         <div className="flex flex-wrap gap-1">
                           {phones.map((p, i) => (
@@ -575,6 +595,26 @@ function EmpresasPage() {
               </div>
 
               <div className="space-y-2">
+                <Label>Plano do cliente</Label>
+                <div className="flex flex-wrap gap-4">
+                  {PLAN_TIERS.map((tier) => (
+                    <label key={tier} className="flex items-center gap-2 text-sm cursor-pointer">
+                      <Checkbox
+                        checked={formPlanTier === tier}
+                        onCheckedChange={(v) => setFormPlanTier(v ? tier : "")}
+                      />
+                      <span>{tier}</span>
+                    </label>
+                  ))}
+                </div>
+                {formPlanTier === "Prime" && (
+                  <p className="text-xs text-muted-foreground">
+                    Conversas deste cliente ficam no topo da fila do chat e são destacadas como atenção.
+                  </p>
+                )}
+              </div>
+
+              <div className="space-y-2">
                 <Label>Telefone principal</Label>
                 <Input
                   value={formPhone}
@@ -582,6 +622,7 @@ function EmpresasPage() {
                   placeholder="(00) 00000-0000"
                 />
               </div>
+
 
               <div className="space-y-2">
                 <Label>E-mails (separados por vírgula)</Label>

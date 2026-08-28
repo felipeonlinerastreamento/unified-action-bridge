@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Users, MessageSquare, ArrowUp, ArrowDown, AlertTriangle } from "lucide-react";
+import { Loader2, Users, MessageSquare, ArrowUp, ArrowDown, AlertTriangle, Crown } from "lucide-react";
 import { useFloatingChats } from "./floating-chats-context";
 import { isGroupChat } from "@/lib/chat-utils";
 
@@ -73,6 +73,21 @@ interface ChatQueueListProps {
   formatServiceTime: (chat: ChatItem) => string;
   currentAgentName?: string | null;
   onZombieCountChange?: (count: number) => void;
+  primePhoneKeys?: Set<string>;
+}
+
+function phoneKey(raw?: string | null): string {
+  const digits = String(raw || "").replace(/\D/g, "");
+  return digits.length >= 8 ? digits.slice(-8) : "";
+}
+
+function isPrimeChat(chat: ChatItem, keys?: Set<string>): boolean {
+  if (!keys || keys.size === 0) return false;
+  const candidates = [chat.contact?.number, chat.contact?.secondaryName, chat.description];
+  return candidates.some((c) => {
+    const k = phoneKey(c);
+    return !!k && keys.has(k);
+  });
 }
 
 // Agent color palette
@@ -123,6 +138,7 @@ export function ChatQueueList({
   formatServiceTime,
   currentAgentName,
   onZombieCountChange,
+  primePhoneKeys,
 }: ChatQueueListProps) {
   // Tick a cada 15s para atualizar cronômetros/zumbis
   const [nowTick, setNowTick] = useState(() => Date.now());
@@ -155,8 +171,13 @@ export function ChatQueueList({
       const t = c.lastMessage?.utcDhMessage || c.utcDhStartChat;
       return t ? new Date(t).getTime() : 0;
     };
-    return [...chats].sort((a, b) => getTs(b) - getTs(a));
-  }, [chats]);
+    return [...chats].sort((a, b) => {
+      const pa = isPrimeChat(a, primePhoneKeys) ? 1 : 0;
+      const pb = isPrimeChat(b, primePhoneKeys) ? 1 : 0;
+      if (pa !== pb) return pb - pa;
+      return getTs(b) - getTs(a);
+    });
+  }, [chats, primePhoneKeys]);
 
   if (isLoading && totalChats === 0) {
     return (
@@ -190,6 +211,7 @@ export function ChatQueueList({
           getSlaColor={getSlaColor}
           formatServiceTime={formatServiceTime}
           nowTick={nowTick}
+          isPrime={isPrimeChat(chat, primePhoneKeys)}
         />
       ))}
     </ScrollArea>
@@ -203,6 +225,7 @@ function ChatListItem({
   getSlaColor,
   formatServiceTime,
   nowTick,
+  isPrime = false,
 }: {
   chat: ChatItem;
   isSelected: boolean;
@@ -210,6 +233,7 @@ function ChatListItem({
   getSlaColor: (chat: ChatItem) => { bg: string; text: string; label: string };
   formatServiceTime: (chat: ChatItem) => string;
   nowTick: number;
+  isPrime?: boolean;
 }) {
   const name = chat.description || chat.contact?.name || chat.contact?.number || `Chat ${chat.attendanceId?.slice(0, 6)}`;
   const initials = name.substring(0, 2).toUpperCase();
@@ -275,7 +299,7 @@ function ChatListItem({
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(); } }}
       className={`w-full text-left px-3 py-2.5 border-b hover:bg-accent/50 transition-colors cursor-grab active:cursor-grabbing ${
         isSelected ? "bg-accent" : ""
-      } ${clientWaiting ? "animate-name-blink" : ""} ${isZombie ? "ring-2 ring-inset ring-red-500 bg-red-50/40 dark:bg-red-950/20" : ""}`}
+      } ${clientWaiting ? "animate-name-blink" : ""} ${isZombie ? "ring-2 ring-inset ring-red-500 bg-red-50/40 dark:bg-red-950/20" : ""} ${isPrime && !isZombie ? "ring-2 ring-inset ring-amber-400 bg-amber-50/50 dark:bg-amber-950/20" : ""}`}
       title="Clique para abrir no painel ou arraste para fora para janela flutuante"
     >
       <div className="flex items-start gap-2.5">
@@ -298,6 +322,9 @@ function ChatListItem({
           {/* Row 1: Name + time/unread */}
           <div className="flex items-center justify-between gap-1">
             <div className="flex items-center gap-1 min-w-0 flex-1">
+              {isPrime && (
+                <Crown className="h-3.5 w-3.5 shrink-0 text-amber-500" aria-label="Cliente Prime" />
+              )}
               {hasLastMsg && (
                 lastMsgIsMe ? (
                   <ArrowUp
@@ -360,6 +387,11 @@ function ChatListItem({
           )}
           {/* Row 3: SLA + wait timer badges */}
           <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+            {isPrime && (
+              <span className="text-[10px] font-bold px-1.5 py-0 rounded-full bg-amber-500 text-white leading-4">
+                PRIME · ATENÇÃO
+              </span>
+            )}
             <span
               className="text-[10px] font-semibold px-1.5 py-0 rounded-full text-white leading-4"
               style={{ backgroundColor: sla.bg }}
