@@ -1,0 +1,1 @@
+UPDATE public.sub_clients SET phone = '5527999843302', updated_at = now() WHERE id = '019b934e-18f1-4614-90e9-613498e21226' AND phone IS NULL;
