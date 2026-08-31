@@ -703,7 +703,8 @@ function CentralPage() {
       }
     },
     enabled: !!selectedChannelId && isAuthenticated,
-    staleTime: 60000,
+    staleTime: 30000,
+    refetchInterval: 60000,
   });
 
   const filteredChats = allChats.filter((chat) => {
