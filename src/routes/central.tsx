@@ -4056,12 +4056,12 @@ function CentralPage() {
                   <TabsContent value="empresa" className="flex-1 overflow-auto m-0">
                     <ScrollArea className="h-full">
                       <div className="p-4 space-y-4">
-                        {companyLookup && !changingCompany ? (
+                        {companyPanelData && !changingCompany ? (
                           <>
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
                                 <Building2 className="h-5 w-5 text-primary" />
-                                <h3 className="font-semibold text-foreground">{companyLookup.name}</h3>
+                                <h3 className="font-semibold text-foreground">{companyPanelData.name}</h3>
                               </div>
                               <Button
                                 size="sm"
@@ -4073,39 +4073,39 @@ function CentralPage() {
                               </Button>
                             </div>
 
-                            {companyLookup.cnpj && (
-                              <DetailRow label="CNPJ" value={companyLookup.cnpj} />
+                            {companyPanelData.cnpj && (
+                              <DetailRow label="CNPJ" value={companyPanelData.cnpj} />
                             )}
 
-                            {companyLookup.instructions && (
+                            {companyPanelData.instructions && (
                               <div>
                                 <p className="text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-1">
                                   <FileText className="h-3 w-3" /> Instruções de Atendimento
                                 </p>
                                 <div className="mt-1 p-3 bg-amber-50 border border-amber-200 rounded-md">
                                   <p className="text-sm text-amber-900 whitespace-pre-wrap">
-                                    {companyLookup.instructions}
+                                    {companyPanelData.instructions}
                                   </p>
                                 </div>
                               </div>
                             )}
 
-                            {companyLookup.emails && (companyLookup.emails as string[]).length > 0 && (
+                            {companyPanelData.emails && (companyPanelData.emails as string[]).length > 0 && (
                               <div>
                                 <p className="text-xs text-muted-foreground uppercase tracking-wider">E-mails</p>
                                 <div className="mt-1 space-y-1">
-                                  {(companyLookup.emails as string[]).map((email: string, i: number) => (
+                                  {(companyPanelData.emails as string[]).map((email: string, i: number) => (
                                     <p key={i} className="text-sm text-foreground">{email}</p>
                                   ))}
                                 </div>
                               </div>
                             )}
 
-                            {companyLookup.contacts && (companyLookup.contacts as any[]).length > 0 && (
+                            {companyPanelData.contacts && (companyPanelData.contacts as any[]).length > 0 && (
                               <div>
                                 <p className="text-xs text-muted-foreground uppercase tracking-wider">Contatos da Empresa</p>
                                 <div className="mt-1 space-y-2">
-                                  {(companyLookup.contacts as any[]).map((c: any, i: number) => (
+                                  {(companyPanelData.contacts as any[]).map((c: any, i: number) => (
                                     <div key={i} className="text-sm bg-muted/50 rounded p-2">
                                       <p className="font-medium text-foreground">{c.name}</p>
                                       {c.role && <p className="text-xs text-muted-foreground">{c.role}</p>}
@@ -4116,19 +4116,19 @@ function CentralPage() {
                               </div>
                             )}
 
-                            {companyLookup.phone && (
-                              <DetailRow label="Telefone principal" value={companyLookup.phone} />
+                            {companyPanelData.phone && (
+                              <DetailRow label="Telefone principal" value={companyPanelData.phone} />
                             )}
 
-                            {companyLookup.notes && (
-                              <DetailRow label="Observações" value={companyLookup.notes} />
+                            {companyPanelData.notes && (
+                              <DetailRow label="Observações" value={companyPanelData.notes} />
                             )}
 
-                            <CompanySharedNote key={companyLookup.id} companyId={companyLookup.id} />
+                            <CompanySharedNote key={companyPanelData.id} companyId={companyPanelData.id} />
                           </>
                         ) : (
                           <div className="space-y-3">
-                            {changingCompany && companyLookup ? (
+                            {changingCompany && companyPanelData ? (
                               <>
                                 <div className="flex items-center justify-between">
                                   <div className="flex items-center gap-2 text-muted-foreground">
@@ -4140,7 +4140,7 @@ function CentralPage() {
                                   </Button>
                                 </div>
                                 <p className="text-xs text-muted-foreground">
-                                  Atualmente vinculado a <strong>{companyLookup.name}</strong>. Selecione outra empresa:
+                                  Atualmente vinculado a <strong>{companyPanelData.name}</strong>. Selecione outra empresa:
                                 </p>
                               </>
                             ) : (
