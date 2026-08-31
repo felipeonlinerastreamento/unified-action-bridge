@@ -4064,6 +4064,7 @@ function CentralPage() {
                                 <Building2 className="h-5 w-5 text-primary" />
                                 <h3 className="font-semibold text-foreground">{companyPanelData.name}</h3>
                               </div>
+                            <div className="flex items-center gap-1">
                               <Button
                                 size="sm"
                                 variant="ghost"
@@ -4072,6 +4073,16 @@ function CentralPage() {
                               >
                                 <ArrowRightLeft className="h-3 w-3 mr-1" /> Alterar
                               </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-xs h-7"
+                                title="Vincular contato a um subcliente"
+                                onClick={() => { setLinkingSubClient(true); setChangingCompany(false); }}
+                              >
+                                <Users className="h-3 w-3 mr-1" /> Sub
+                              </Button>
+                            </div>
                             </div>
 
                             {companyPanelData.cnpj && (
