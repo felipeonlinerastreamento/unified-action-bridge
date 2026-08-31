@@ -332,8 +332,12 @@ function EmpresasPage() {
 
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
-      const { error } = await supabase.from("companies").delete().eq("id", id);
+      const { error, count } = await supabase
+        .from("companies")
+        .delete({ count: "exact" })
+        .eq("id", id);
       if (error) throw error;
+      if (!count) throw new Error("Não foi possível remover: sem permissão para excluir esta empresa.");
     },
     onSuccess: () => {
       toast.success("Empresa removida");
