@@ -3063,9 +3063,20 @@ function CentralPage() {
                       </SelectTrigger>
                       <SelectContent>
                         <SelectItem value="all">Todos os agentes</SelectItem>
-                        {gsystemUsers.map((u: any) => (
-                          <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
-                        ))}
+                        {[...gsystemUsersList]
+                          .sort((a: any, b: any) => (b.status === "ONLINE" ? 1 : 0) - (a.status === "ONLINE" ? 1 : 0))
+                          .map((u: any) => (
+                            <SelectItem key={u.id} value={u.id}>
+                              <span className="flex items-center gap-2">
+                                <span
+                                  className={`inline-block h-2 w-2 rounded-full ${
+                                    u.status === "ONLINE" ? "bg-emerald-500" : "bg-muted-foreground/30"
+                                  }`}
+                                />
+                                {u.name}
+                              </span>
+                            </SelectItem>
+                          ))}
                       </SelectContent>
                     </Select>
                     {(statusFilter !== "all" || sectorFilter !== "all" || agentFilter !== "all") && (
