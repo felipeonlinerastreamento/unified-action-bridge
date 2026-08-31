@@ -42,8 +42,21 @@ export function SubClientsAdmin() {
   const { data: companies = [] } = useQuery({
     queryKey: ["companies-list"],
     queryFn: async () => {
-      const { data } = await supabase.from("companies").select("id, name").order("name");
-      return data || [];
+      // PostgREST limita a 1000 linhas por requisição: paginar explicitamente.
+      const rows: any[] = [];
+      const page = 1000;
+      for (let from = 0; from < 10000; from += page) {
+        const { data, error } = await supabase
+          .from("companies")
+          .select("id, name")
+          .order("name")
+          .range(from, from + page - 1);
+        if (error) throw error;
+        if (!data || data.length === 0) break;
+        rows.push(...data);
+        if (data.length < page) break;
+      }
+      return rows;
     },
   });
 
