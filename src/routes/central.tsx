@@ -1329,6 +1329,24 @@ function CentralPage() {
     enabled: !!selectedChatId && isAuthenticated,
   });
 
+  // Company linked directly to the open ticket (fallback when phone lookup fails)
+  const { data: ticketCompanyLookup } = useQuery({
+    queryKey: ["ticket-company-lookup", currentTicket?.company_id],
+    queryFn: async () => {
+      if (!currentTicket?.company_id) return null;
+      const { data } = await supabase
+        .from("companies")
+        .select("*")
+        .eq("id", currentTicket.company_id)
+        .single();
+      return data ?? null;
+    },
+    enabled: !!currentTicket?.company_id && !companyLookup && isAuthenticated,
+  });
+
+  // Resolved company for the side panel: phone match wins, ticket link as fallback
+  const companyPanelData = (companyLookup ?? ticketCompanyLookup ?? null) as typeof companyLookup;
+
 // CRM contact lookup by phone (also checks ticket's corrected phone)
   const { data: crmContactLookup, isFetched: crmContactLookupFetched } = useQuery({
     queryKey: ["crm-contact-lookup", contactPhone, currentTicket?.contact_phone],
