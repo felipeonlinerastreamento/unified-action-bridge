@@ -4057,7 +4057,7 @@ function CentralPage() {
                   <TabsContent value="empresa" className="flex-1 overflow-auto m-0">
                     <ScrollArea className="h-full">
                       <div className="p-4 space-y-4">
-                        {companyPanelData && !changingCompany ? (
+                        {companyPanelData && !changingCompany && !linkingSubClient ? (
                           <>
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
@@ -4140,7 +4140,33 @@ function CentralPage() {
                           </>
                         ) : (
                           <div className="space-y-3">
-                            {changingCompany && companyPanelData ? (
+                            {linkingSubClient ? (
+                              <>
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2 text-muted-foreground">
+                                    <Users className="h-4 w-4" />
+                                    <p className="text-sm font-medium">Vincular a subcliente</p>
+                                  </div>
+                                  <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => setLinkingSubClient(false)}>
+                                    <X className="h-3 w-3 mr-1" /> Cancelar
+                                  </Button>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                  Selecione um subcliente cadastrado para vincular o número {contactPhone || "deste contato"}:
+                                </p>
+                                <SubClientLinker
+                                  contactPhone={contactPhone}
+                                  ticketId={currentTicket?.id}
+                                  onSuccess={async () => {
+                                    setLinkingSubClient(false);
+                                    queryClient.invalidateQueries({ queryKey: ["sub-client-lookup"] });
+                                    queryClient.invalidateQueries({ queryKey: ["company-lookup"] });
+                                    await refetchTicket();
+                                  }}
+                                />
+                                <Separator />
+                              </>
+                            ) : changingCompany && companyPanelData ? (
                               <>
                                 <div className="flex items-center justify-between">
                                   <div className="flex items-center gap-2 text-muted-foreground">
