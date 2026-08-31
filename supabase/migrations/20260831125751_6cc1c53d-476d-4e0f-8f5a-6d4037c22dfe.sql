@@ -1,0 +1,1 @@
+ALTER TABLE public.sub_clients ALTER COLUMN phone DROP NOT NULL;
