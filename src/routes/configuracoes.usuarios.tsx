@@ -567,7 +567,6 @@ function UsuariosConfigPage() {
                   <TableRow>
                     <TableHead>Nome</TableHead>
                     <TableHead>Papéis</TableHead>
-                    <TableHead>Grupo</TableHead>
                     <TableHead>Setores</TableHead>
                     <TableHead>Agente GSystem</TableHead>
                     <TableHead className="w-[200px]">Ações</TableHead>
@@ -617,22 +616,6 @@ function UsuariosConfigPage() {
                               <span className="text-xs text-muted-foreground">(você)</span>
                             )}
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <Select
-                            value={profile.group_id || "none"}
-                            onValueChange={(v) => groupAssignMutation.mutate({ userId: profile.user_id, groupId: v === "none" ? null : v })}
-                          >
-                            <SelectTrigger className="h-8 w-[140px] text-xs">
-                              <SelectValue placeholder="Sem grupo" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="none">Sem grupo</SelectItem>
-                              {sectorGroups.map((g) => (
-                                <SelectItem key={g.id} value={g.id}>{g.name}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
                         </TableCell>
                         <TableCell>
                           <div className="flex gap-1 flex-wrap">
