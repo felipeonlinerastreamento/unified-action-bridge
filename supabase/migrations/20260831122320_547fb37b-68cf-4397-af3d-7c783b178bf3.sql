@@ -1,0 +1,2 @@
+ALTER TABLE public.service_tickets DROP CONSTRAINT service_tickets_company_id_fkey;
+ALTER TABLE public.service_tickets ADD CONSTRAINT service_tickets_company_id_fkey FOREIGN KEY (company_id) REFERENCES public.companies(id) ON DELETE SET NULL;
