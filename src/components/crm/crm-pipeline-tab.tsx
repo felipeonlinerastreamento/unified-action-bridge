@@ -965,6 +965,8 @@ export function CrmPipelineTab() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ServiceCatalogManager open={catalogOpen} onOpenChange={setCatalogOpen} />
     </div>
   );
 }
@@ -977,6 +979,6 @@ function KPI({ label, value }: { label: string; value: any }) {
         <p className="text-lg font-bold">{value}</p>
       </CardContent>
     </Card>
-      <ServiceCatalogManager open={catalogOpen} onOpenChange={setCatalogOpen} />
   );
 }
+
