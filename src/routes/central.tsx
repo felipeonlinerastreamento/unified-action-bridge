@@ -1015,7 +1015,7 @@ function CentralPage() {
       const match = subClients.find((s: any) => phonesMatch(s.phone, contactPhone));
       return match || null;
     },
-    enabled: !!contactPhone && !companyLookup && isAuthenticated,
+    enabled: !!contactPhone && isAuthenticated,
   });
 
   // Identification modal explicit open state
@@ -4085,9 +4085,20 @@ function CentralPage() {
                             </div>
                             </div>
 
+                            {subClientLookup && (
+                              <div className="flex items-center gap-2 rounded-md border border-primary/30 bg-primary/5 p-2">
+                                <Users className="h-4 w-4 text-primary shrink-0" />
+                                <div className="min-w-0">
+                                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Sub-cliente</p>
+                                  <p className="text-sm font-medium truncate">{(subClientLookup as any).name}</p>
+                                </div>
+                              </div>
+                            )}
+
                             {companyPanelData.cnpj && (
                               <DetailRow label="CNPJ" value={companyPanelData.cnpj} />
                             )}
+
 
                             {companyPanelData.instructions && (
                               <div>

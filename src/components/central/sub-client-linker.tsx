@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useMutation } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { linkPhoneToCompany } from "@/lib/company-sync.functions";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -16,6 +16,7 @@ interface SubClientLinkerProps {
 }
 
 export function SubClientLinker({ contactPhone, ticketId, onSuccess }: SubClientLinkerProps) {
+  const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
   const [selectedSubId, setSelectedSubId] = useState("");
 
@@ -39,41 +40,40 @@ export function SubClientLinker({ contactPhone, ticketId, onSuccess }: SubClient
       if (!company) throw new Error("Empresa do sub-cliente não encontrada");
 
       const cleanPhone = contactPhone.replace(/\D/g, "");
+      const subPhone = (sub.phone || "").replace(/\D/g, "");
 
-      // Update sub-client phone if different
-      const subPhone = sub.phone?.replace(/\D/g, "");
-      if (subPhone !== cleanPhone) {
-        // Link the phone to the company
-        const { data: { session } } = await supabase.auth.getSession();
-        await linkPhoneToCompany({
-          data: {
-            companyName: company.name,
-            companyCnpj: company.cnpj || undefined,
-            phone: contactPhone,
-            ticketId,
-          },
-          headers: { authorization: `Bearer ${session?.access_token}` },
-        });
-      } else {
-        // Just link the phone to the company
-        const { data: { session } } = await supabase.auth.getSession();
-        await linkPhoneToCompany({
-          data: {
-            companyName: company.name,
-            companyCnpj: company.cnpj || undefined,
-            phone: contactPhone,
-            ticketId,
-          },
-          headers: { authorization: `Bearer ${session?.access_token}` },
-        });
+      // Persist the phone on the sub-client record so the contact appears
+      // in Contatos → Sub-clientes and in lookups by phone.
+      if (cleanPhone && subPhone !== cleanPhone) {
+        const { error: subErr } = await supabase
+          .from("sub_clients")
+          .update({ phone: cleanPhone })
+          .eq("id", sub.id);
+        if (subErr) throw subErr;
       }
+
+      // Link the phone to the parent company
+      const { data: { session } } = await supabase.auth.getSession();
+      await linkPhoneToCompany({
+        data: {
+          companyName: company.name,
+          companyCnpj: company.cnpj || undefined,
+          phone: contactPhone,
+          ticketId,
+        },
+        headers: { authorization: `Bearer ${session?.access_token}` },
+      });
     },
     onSuccess: () => {
       toast.success("Contato vinculado ao sub-cliente");
+      queryClient.invalidateQueries({ queryKey: ["all-sub-clients"] });
+      queryClient.invalidateQueries({ queryKey: ["sub-clients-admin"] });
+      queryClient.invalidateQueries({ queryKey: ["sub-client-lookup"] });
       onSuccess();
     },
     onError: (err: any) => toast.error(err?.message || "Erro ao vincular"),
   });
+
 
   const filtered = subClients.filter((s: any) => {
     if (!search) return true;
