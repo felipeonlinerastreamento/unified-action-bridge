@@ -2088,6 +2088,56 @@ export type Database = {
         }
         Relationships: []
       }
+      crm_service_catalog: {
+        Row: {
+          category_id: string | null
+          created_at: string
+          default_activation: number
+          default_monthly: number
+          description: string
+          id: string
+          is_active: boolean
+          name: string
+          position: number
+          unit: string
+          updated_at: string
+        }
+        Insert: {
+          category_id?: string | null
+          created_at?: string
+          default_activation?: number
+          default_monthly?: number
+          description?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          position?: number
+          unit?: string
+          updated_at?: string
+        }
+        Update: {
+          category_id?: string | null
+          created_at?: string
+          default_activation?: number
+          default_monthly?: number
+          description?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          position?: number
+          unit?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_service_catalog_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "crm_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_tasks: {
         Row: {
           assigned_to: string | null

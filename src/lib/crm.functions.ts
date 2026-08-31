@@ -59,10 +59,15 @@ export const completeCrmTask = createServerFn({ method: "POST" })
 // ============== OPPORTUNITIES ==============
 const contractItemSchema = z.object({
   categoryId: z.string().uuid().nullable().optional(),
+  serviceId: z.string().uuid().nullable().optional(),
+  name: z.string().max(200).nullable().optional(),
+  description: z.string().max(2000).nullable().optional(),
+  unit: z.string().max(40).nullable().optional(),
   quantity: z.number().min(0).default(1),
   activationValue: z.number().min(0).default(0),
   monthlyValue: z.number().min(0).default(0),
 });
+
 
 const oppInput = z.object({
   id: z.string().uuid().optional(),
