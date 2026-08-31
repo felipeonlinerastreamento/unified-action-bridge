@@ -4214,6 +4214,14 @@ function CentralPage() {
                                 <Building2 className="h-3 w-3 mr-1" /> Cadastrar nova empresa
                               </a>
                             </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full"
+                              onClick={() => { setLinkingSubClient(true); setChangingCompany(false); }}
+                            >
+                              <Users className="h-3 w-3 mr-1" /> Vincular a subcliente
+                            </Button>
                           </div>
                         )}
 
