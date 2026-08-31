@@ -13,13 +13,12 @@ import {
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
-import {
-  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
-} from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { ContactChatActions } from "@/components/contatos/contact-chat-actions";
 import {
-  Search, UserPlus, Building2, Loader2, Trash2, Edit, Users, Phone,
+  Search, UserPlus, Building2, Loader2, Trash2, Edit, Users, Phone, Check, ChevronsUpDown,
 } from "lucide-react";
 
 export function SubClientsAdmin() {
