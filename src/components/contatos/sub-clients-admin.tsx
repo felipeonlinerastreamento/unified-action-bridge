@@ -64,13 +64,13 @@ export function SubClientsAdmin() {
 
   const saveMutation = useMutation({
     mutationFn: async () => {
-      if (!form.name || !form.phone || !form.companyId) {
-        throw new Error("Nome, telefone e empresa são obrigatórios");
+      if (!form.name || !form.companyId) {
+        throw new Error("Nome e empresa são obrigatórios");
       }
       const { data: sess } = await supabase.auth.getSession();
       const payload = {
         name: form.name.trim(),
-        phone: form.phone.replace(/\D/g, ""),
+        phone: form.phone ? form.phone.replace(/\D/g, "") : null,
         email: form.email || null,
         notes: form.notes || "",
         company_id: form.companyId,
@@ -244,8 +244,8 @@ export function SubClientsAdmin() {
               <Input value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} />
             </div>
             <div>
-              <Label>Telefone *</Label>
-              <Input value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} />
+              <Label>Telefone</Label>
+              <Input value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} placeholder="Opcional" />
             </div>
             <div>
               <Label>Cliente responsável (empresa) *</Label>
@@ -323,7 +323,7 @@ export function SubClientsAdmin() {
             <Button
               className="w-full"
               onClick={() => saveMutation.mutate()}
-              disabled={!form.name || !form.phone || !form.companyId || saveMutation.isPending}
+              disabled={!form.name || !form.companyId || saveMutation.isPending}
             >
               {saveMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               {editing ? "Salvar Alterações" : "Cadastrar Sub-cliente"}
