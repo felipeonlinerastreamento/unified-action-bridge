@@ -89,7 +89,7 @@ export function ServiceCatalogManager({ open, onOpenChange }: { open: boolean; o
 
         <div className="rounded-md border border-border bg-muted/30 p-3 space-y-2">
           <div className="grid grid-cols-12 gap-2">
-            <div className="col-span-12 sm:col-span-7">
+            <div className="col-span-12 sm:col-span-6">
               <Label className="text-[11px]">Serviço</Label>
               <Input className="h-8 text-xs" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} placeholder="Ex.: Vídeo monitoramento" />
             </div>
@@ -97,12 +97,12 @@ export function ServiceCatalogManager({ open, onOpenChange }: { open: boolean; o
               <Label className="text-[11px]">Unidade</Label>
               <Input className="h-8 text-xs" value={draft.unit} onChange={(e) => setDraft({ ...draft, unit: e.target.value })} placeholder="Serviço / Placa" />
             </div>
-            <div className="col-span-4 sm:col-span-1.5">
+            <div className="col-span-4 sm:col-span-2">
               <Label className="text-[11px]">Ativação</Label>
               <Input type="number" min={0} step="0.01" className="h-8 text-xs" value={draft.default_activation || ""}
                 onChange={(e) => setDraft({ ...draft, default_activation: e.target.value === "" ? 0 : Number(e.target.value) })} />
             </div>
-            <div className="col-span-4 sm:col-span-1.5">
+            <div className="col-span-4 sm:col-span-2">
               <Label className="text-[11px]">Mensalidade</Label>
               <Input type="number" min={0} step="0.01" className="h-8 text-xs" value={draft.default_monthly || ""}
                 onChange={(e) => setDraft({ ...draft, default_monthly: e.target.value === "" ? 0 : Number(e.target.value) })} />
