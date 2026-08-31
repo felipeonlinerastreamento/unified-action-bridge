@@ -12,12 +12,23 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Plus, Loader2, DollarSign, TrendingUp, X, Pencil, Check, Trash2, Tag, Search, FileText, ChevronDown, ChevronRight, Building2 } from "lucide-react";
+import { Plus, Loader2, DollarSign, TrendingUp, X, Pencil, Check, Trash2, Tag, Search, FileText, ChevronDown, ChevronRight, Building2, Package } from "lucide-react";
 import { toast } from "sonner";
 import { upsertOpportunity, moveOpportunityStage, deleteOpportunity } from "@/lib/crm.functions";
 import { ReferralPicker } from "@/components/crm/referral-picker";
+import { ServiceCatalogManager, useServiceCatalog, type CatalogService } from "@/components/crm/service-catalog-manager";
+import { generateProposalPDF } from "@/lib/proposal-pdf";
 
-type ContractItem = { categoryId: string; quantity: number; activationValue: number; monthlyValue: number };
+type ContractItem = {
+  categoryId: string;
+  quantity: number;
+  activationValue: number;
+  monthlyValue: number;
+  serviceId?: string | null;
+  name?: string | null;
+  description?: string | null;
+  unit?: string | null;
+};
 
 const emptyForm = {
   title: "",
@@ -50,6 +61,26 @@ export function CrmPipelineTab() {
   const [editingTypeId, setEditingTypeId] = useState<string | null>(null);
   const [editingTypeName, setEditingTypeName] = useState("");
   const [typeManagerOpen, setTypeManagerOpen] = useState(false);
+  const [catalogOpen, setCatalogOpen] = useState(false);
+  const { data: catalogServices = [] } = useServiceCatalog();
+
+  const addServiceItem = (svc: CatalogService) =>
+    setForm((f: any) => ({
+      ...f,
+      items: [
+        ...f.items,
+        {
+          categoryId: f.category_id || "",
+          serviceId: svc.id,
+          name: svc.name,
+          description: svc.description || "",
+          unit: svc.unit || "Serviço",
+          quantity: 1,
+          activationValue: Number(svc.default_activation) || 0,
+          monthlyValue: Number(svc.default_monthly) || 0,
+        },
+      ],
+    }));
 
   // Filters
   const [ownerFilter, setOwnerFilter] = useState<string>("mine"); // mine | all | <userId>
@@ -336,6 +367,40 @@ export function CrmPipelineTab() {
       return (qs || []).map((q: any) => ({ ...q, operator_name: nameMap[q.created_by] || "—" }));
     },
   });
+
+  const downloadProposal = async (quote?: any) => {
+    const src: ContractItem[] = quote
+      ? (Array.isArray(quote.items) ? quote.items : [])
+      : form.items;
+    if (src.length === 0) {
+      toast.error("Adicione itens à proposta");
+      return;
+    }
+    const catName = (id?: string | null) => categories.find((c: any) => c.id === id)?.name || "Serviço";
+    try {
+      await generateProposalPDF({
+        title: form.title || "Proposta comercial",
+        quoteNumber: quote?.quote_number ?? null,
+        companyName: form.company_name || null,
+        contactName: form.contact_name || null,
+        contactPhone: form.contact_phone || null,
+        contactEmail: form.contact_email || null,
+        cnpj: form.cnpj || null,
+        ownerName: allProfiles.find((p: any) => p.user_id === (form.owner_id || user?.id))?.name || null,
+        notes: form.notes || null,
+        items: src.map((it) => ({
+          name: it.name || catName(it.categoryId),
+          description: it.description || "",
+          unit: it.unit || "Serviço",
+          quantity: Number(it.quantity) || 1,
+          activationValue: Number(it.activationValue) || 0,
+          monthlyValue: Number(it.monthlyValue) || 0,
+        })),
+      });
+    } catch (e: any) {
+      toast.error(e?.message || "Falha ao gerar o PDF");
+    }
+  };
 
   const createQuoteMut = useMutation({
     mutationFn: async () => {
@@ -708,17 +773,56 @@ export function CrmPipelineTab() {
             <div className="rounded-md border border-border bg-muted/30 p-3 space-y-2">
               <div className="flex items-center justify-between">
                 <Label className="text-xs uppercase tracking-wide text-muted-foreground">Itens da proposta</Label>
-                <Button type="button" size="sm" variant="outline" className="h-7 text-xs"
-                  onClick={() => setForm((f: any) => ({ ...f, items: [...f.items, { categoryId: "", quantity: 1, activationValue: 0, monthlyValue: 0 }] }))}>
-                  <Plus className="h-3 w-3 mr-1" /> Adicionar item
-                </Button>
+                <div className="flex items-center gap-1.5">
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button type="button" size="sm" variant="default" className="h-7 text-xs">
+                        <Package className="h-3 w-3 mr-1" /> Adicionar serviço
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-80 p-0" align="end">
+                      <Command>
+                        <CommandInput placeholder="Buscar serviço do catálogo..." />
+                        <CommandList>
+                          <CommandEmpty>Nenhum serviço no catálogo.</CommandEmpty>
+                          <CommandGroup heading="Modelo de proposta">
+                            {catalogServices.filter((s: CatalogService) => s.is_active).map((svc: CatalogService) => (
+                              <CommandItem key={svc.id} value={svc.name} onSelect={() => addServiceItem(svc)}>
+                                <div className="min-w-0">
+                                  <p className="text-xs font-medium truncate">{svc.name}</p>
+                                  <p className="text-[10px] text-muted-foreground">
+                                    {svc.unit} · Ativação R$ {Number(svc.default_activation).toFixed(2)} · Mensal R$ {Number(svc.default_monthly).toFixed(2)}
+                                  </p>
+                                </div>
+                              </CommandItem>
+                            ))}
+                          </CommandGroup>
+                        </CommandList>
+                      </Command>
+                    </PopoverContent>
+                  </Popover>
+                  <Button type="button" size="sm" variant="outline" className="h-7 text-xs" onClick={() => setCatalogOpen(true)}>
+                    <Pencil className="h-3 w-3 mr-1" /> Catálogo
+                  </Button>
+                  <Button type="button" size="sm" variant="ghost" className="h-7 text-xs"
+                    onClick={() => setForm((f: any) => ({ ...f, items: [...f.items, { categoryId: "", quantity: 1, activationValue: 0, monthlyValue: 0 }] }))}>
+                    <Plus className="h-3 w-3 mr-1" /> Item livre
+                  </Button>
+                </div>
               </div>
               {form.items.length === 0 ? (
-                <p className="text-[11px] text-muted-foreground italic">Nenhum item. Adicione um item para definir quantidade, ativação e mensalidade.</p>
+                <p className="text-[11px] text-muted-foreground italic">
+                  Nenhum item. Use “Adicionar serviço” para trazer os valores padrão do catálogo automaticamente.
+                </p>
               ) : (
                 <div className="space-y-2">
                   {form.items.map((it: ContractItem, idx: number) => (
                     <div key={idx} className="grid grid-cols-12 gap-2 items-end rounded-md border border-border bg-background p-2">
+                      <div className="col-span-12">
+                        <Label className="text-[10px] text-muted-foreground">Serviço</Label>
+                        <Input className="h-8 text-xs" placeholder="Descrição do serviço" value={it.name || ""}
+                          onChange={(e) => { const v = e.target.value; setForm((f: any) => ({ ...f, items: f.items.map((x: ContractItem, i: number) => i === idx ? { ...x, name: v } : x) })); }} />
+                      </div>
                       <div className="col-span-12 sm:col-span-4">
                         <Label className="text-[10px] text-muted-foreground">Categoria</Label>
                         <Select value={it.categoryId} onValueChange={(v) => setForm((f: any) => ({
@@ -767,6 +871,17 @@ export function CrmPipelineTab() {
                   <Label className="text-xs uppercase tracking-wide text-muted-foreground flex items-center gap-1">
                     <FileText className="h-3 w-3" /> Histórico de orçamentos
                   </Label>
+                  <div className="flex items-center gap-1.5">
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-7 text-xs"
+                    disabled={form.items.length === 0}
+                    onClick={() => downloadProposal()}
+                  >
+                    <FileText className="h-3 w-3 mr-1" /> Baixar proposta (PDF)
+                  </Button>
                   <Button
                     type="button"
                     size="sm"
@@ -778,6 +893,7 @@ export function CrmPipelineTab() {
                     {createQuoteMut.isPending ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Plus className="h-3 w-3 mr-1" />}
                     Gerar novo orçamento
                   </Button>
+                  </div>
                 </div>
                 {quotes.length === 0 ? (
                   <p className="text-[11px] text-muted-foreground italic">
@@ -810,6 +926,12 @@ export function CrmPipelineTab() {
                               <span>Mens. <strong className="text-foreground">R$ {Number(q.total_monthly || 0).toFixed(2)}</strong></span>
                             </span>
                           </button>
+                          <div className="flex justify-end px-2 pb-1.5">
+                            <Button type="button" size="sm" variant="ghost" className="h-6 text-[11px]"
+                              onClick={() => downloadProposal(q)}>
+                              <FileText className="h-3 w-3 mr-1" /> PDF desta versão
+                            </Button>
+                          </div>
                           {isOpen && (
                             <div className="border-t border-border px-2 py-2 space-y-1">
                               {itemsArr.length === 0 ? (
@@ -817,7 +939,7 @@ export function CrmPipelineTab() {
                               ) : (
                                 itemsArr.map((it: ContractItem, i: number) => (
                                   <div key={i} className="grid grid-cols-12 gap-2 text-[11px]">
-                                    <div className="col-span-5 truncate">{catName(it.categoryId)}</div>
+                                    <div className="col-span-5 truncate">{it.name || catName(it.categoryId)}</div>
                                     <div className="col-span-2 text-center">Qtd: {it.quantity}</div>
                                     <div className="col-span-2 text-right">Ativ. R$ {Number(it.activationValue || 0).toFixed(2)}</div>
                                     <div className="col-span-3 text-right">Mens. R$ {Number(it.monthlyValue || 0).toFixed(2)}</div>
@@ -855,5 +977,6 @@ function KPI({ label, value }: { label: string; value: any }) {
         <p className="text-lg font-bold">{value}</p>
       </CardContent>
     </Card>
+      <ServiceCatalogManager open={catalogOpen} onOpenChange={setCatalogOpen} />
   );
 }
