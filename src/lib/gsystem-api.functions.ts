@@ -878,16 +878,9 @@ export const getParametros = createServerFn({ method: "POST" })
 export const forceSyncGsystemClientes = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    const { gsystemApiFetch } = await import("@/lib/gsystem-api.server");
     const { supabase } = context;
 
-    const unwrapList = (payload: any): any[] => {
-      if (Array.isArray(payload)) return payload;
-      for (const key of ["Items", "items", "Data", "data", "Dados", "dados", "Resultado", "resultado", "Results", "results"]) {
-        if (Array.isArray(payload?.[key])) return payload[key];
-      }
-      return [];
-    };
+
     const pick = (item: any, keys: string[]) => {
       for (const key of keys) {
         const value = item?.[key];
