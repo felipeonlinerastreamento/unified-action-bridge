@@ -571,11 +571,8 @@ function EmpresasPage() {
               <TabsTrigger value="dados">Dados</TabsTrigger>
               <TabsTrigger value="contatos">Contatos</TabsTrigger>
               <TabsTrigger value="instrucoes">Instruções</TabsTrigger>
-              <TabsTrigger value="script-manutencao">Script Manutenção</TabsTrigger>
-              <TabsTrigger value="script-instalacao">Script Instalação</TabsTrigger>
               <TabsTrigger value="padrao-servicos">Padrão Serviços</TabsTrigger>
               <TabsTrigger value="plataformas">Plataformas</TabsTrigger>
-              <TabsTrigger value="observacoes">Observações</TabsTrigger>
             </TabsList>
 
             <TabsContent value="dados" className="space-y-4 mt-4">
@@ -748,32 +745,6 @@ function EmpresasPage() {
               />
             </TabsContent>
 
-            <TabsContent value="script-manutencao" className="space-y-2 mt-4">
-              <Label>Script de Manutenção</Label>
-              <p className="text-xs text-muted-foreground">
-                Roteiro a ser seguido pelo atendente em chamados de manutenção desta empresa.
-              </p>
-              <Textarea
-                value={formMaintenanceScript}
-                onChange={(e) => setFormMaintenanceScript(e.target.value)}
-                placeholder="Passo a passo de manutenção..."
-                rows={12}
-              />
-            </TabsContent>
-
-            <TabsContent value="script-instalacao" className="space-y-2 mt-4">
-              <Label>Script de Instalação</Label>
-              <p className="text-xs text-muted-foreground">
-                Roteiro a ser seguido pelo atendente em chamados de instalação desta empresa.
-              </p>
-              <Textarea
-                value={formInstallationScript}
-                onChange={(e) => setFormInstallationScript(e.target.value)}
-                placeholder="Passo a passo de instalação..."
-                rows={12}
-              />
-            </TabsContent>
-
             <TabsContent value="padrao-servicos" className="space-y-3 mt-4">
               <div className="flex items-center justify-between">
                 <div>
@@ -913,16 +884,6 @@ function EmpresasPage() {
               )}
             </TabsContent>
 
-            <TabsContent value="observacoes" className="space-y-2 mt-4">
-
-              <Label>Observações</Label>
-              <Textarea
-                value={formNotes}
-                onChange={(e) => setFormNotes(e.target.value)}
-                placeholder="Observações gerais..."
-                rows={6}
-              />
-            </TabsContent>
           </Tabs>
 
 
