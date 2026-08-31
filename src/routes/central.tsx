@@ -3421,7 +3421,9 @@ function CentralPage() {
                                   Nenhum operador encontrado
                                 </CommandEmpty>
                                 <CommandGroup heading="Atribuir responsável">
-                                  {gsystemUsersList.map((op: any) => {
+                                  {[...gsystemUsersList]
+                                    .sort((a: any, b: any) => (b.status === "ONLINE" ? 1 : 0) - (a.status === "ONLINE" ? 1 : 0))
+                                    .map((op: any) => {
                                     const isCurrent = (chatDetail as any)?.assignedUserId === op.id;
                                     return (
                                       <CommandItem
