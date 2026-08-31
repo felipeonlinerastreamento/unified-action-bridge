@@ -942,20 +942,10 @@ function CentralPage() {
   });
 
   const { data: companyLookup, isFetched: companyLookupFetched } = useQuery({
-    queryKey: ["company-lookup", contactPhone, currentTicket?.company_id],
+    queryKey: ["company-lookup", contactPhone],
     queryFn: async () => {
-      if (!contactPhone && !currentTicket?.company_id) return null;
-      const cleanPhone = contactPhone ? normalizePhone(contactPhone) : "";
-
-      // 0. Direct company link from the open ticket
-      if (currentTicket?.company_id) {
-        const { data: ticketCompany } = await supabase
-          .from("companies")
-          .select("*")
-          .eq("id", currentTicket.company_id)
-          .single();
-        if (ticketCompany) return ticketCompany;
-      }
+      if (!contactPhone) return null;
+      const cleanPhone = normalizePhone(contactPhone);
 
       // 1. Check company_phones table
       const { data: phoneLinks } = await supabase
