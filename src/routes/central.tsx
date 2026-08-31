@@ -335,6 +335,7 @@ function CentralPage() {
   const [showLinkTicketModal, setShowLinkTicketModal] = useState(false);
   const [linkTicketProtocol, setLinkTicketProtocol] = useState<string>("");
   const [changingCompany, setChangingCompany] = useState(false);
+  const [linkingSubClient, setLinkingSubClient] = useState(false);
   const isMobile = useIsMobile();
   const [showLeftPanel, setShowLeftPanel] = useState(true);
   const [showRightPanel, setShowRightPanel] = useState(true);
@@ -4056,13 +4057,14 @@ function CentralPage() {
                   <TabsContent value="empresa" className="flex-1 overflow-auto m-0">
                     <ScrollArea className="h-full">
                       <div className="p-4 space-y-4">
-                        {companyPanelData && !changingCompany ? (
+                        {companyPanelData && !changingCompany && !linkingSubClient ? (
                           <>
                             <div className="flex items-center justify-between">
                               <div className="flex items-center gap-2">
                                 <Building2 className="h-5 w-5 text-primary" />
                                 <h3 className="font-semibold text-foreground">{companyPanelData.name}</h3>
                               </div>
+                            <div className="flex items-center gap-1">
                               <Button
                                 size="sm"
                                 variant="ghost"
@@ -4071,6 +4073,16 @@ function CentralPage() {
                               >
                                 <ArrowRightLeft className="h-3 w-3 mr-1" /> Alterar
                               </Button>
+                              <Button
+                                size="sm"
+                                variant="ghost"
+                                className="text-xs h-7"
+                                title="Vincular contato a um subcliente"
+                                onClick={() => { setLinkingSubClient(true); setChangingCompany(false); }}
+                              >
+                                <Users className="h-3 w-3 mr-1" /> Sub
+                              </Button>
+                            </div>
                             </div>
 
                             {companyPanelData.cnpj && (
@@ -4128,7 +4140,33 @@ function CentralPage() {
                           </>
                         ) : (
                           <div className="space-y-3">
-                            {changingCompany && companyPanelData ? (
+                            {linkingSubClient ? (
+                              <>
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2 text-muted-foreground">
+                                    <Users className="h-4 w-4" />
+                                    <p className="text-sm font-medium">Vincular a subcliente</p>
+                                  </div>
+                                  <Button size="sm" variant="ghost" className="text-xs h-7" onClick={() => setLinkingSubClient(false)}>
+                                    <X className="h-3 w-3 mr-1" /> Cancelar
+                                  </Button>
+                                </div>
+                                <p className="text-xs text-muted-foreground">
+                                  Selecione um subcliente cadastrado para vincular o número {contactPhone || "deste contato"}:
+                                </p>
+                                <SubClientLinker
+                                  contactPhone={contactPhone}
+                                  ticketId={currentTicket?.id}
+                                  onSuccess={async () => {
+                                    setLinkingSubClient(false);
+                                    queryClient.invalidateQueries({ queryKey: ["sub-client-lookup"] });
+                                    queryClient.invalidateQueries({ queryKey: ["company-lookup"] });
+                                    await refetchTicket();
+                                  }}
+                                />
+                                <Separator />
+                              </>
+                            ) : changingCompany && companyPanelData ? (
                               <>
                                 <div className="flex items-center justify-between">
                                   <div className="flex items-center gap-2 text-muted-foreground">
@@ -4175,6 +4213,14 @@ function CentralPage() {
                               <a href="/empresas">
                                 <Building2 className="h-3 w-3 mr-1" /> Cadastrar nova empresa
                               </a>
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="w-full"
+                              onClick={() => { setLinkingSubClient(true); setChangingCompany(false); }}
+                            >
+                              <Users className="h-3 w-3 mr-1" /> Vincular a subcliente
                             </Button>
                           </div>
                         )}
