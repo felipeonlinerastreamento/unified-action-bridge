@@ -27,6 +27,8 @@ export function SubClientsAdmin() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
   const [form, setForm] = useState({ name: "", phone: "", email: "", notes: "", companyId: "" });
+  const [companyOpen, setCompanyOpen] = useState(false);
+  const [companySearch, setCompanySearch] = useState("");
 
   const { data: subClients = [], isLoading } = useQuery({
     queryKey: ["sub-clients-admin"],
