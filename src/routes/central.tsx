@@ -335,6 +335,7 @@ function CentralPage() {
   const [showLinkTicketModal, setShowLinkTicketModal] = useState(false);
   const [linkTicketProtocol, setLinkTicketProtocol] = useState<string>("");
   const [changingCompany, setChangingCompany] = useState(false);
+  const [linkingSubClient, setLinkingSubClient] = useState(false);
   const isMobile = useIsMobile();
   const [showLeftPanel, setShowLeftPanel] = useState(true);
   const [showRightPanel, setShowRightPanel] = useState(true);
