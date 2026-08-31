@@ -248,17 +248,69 @@ export function SubClientsAdmin() {
               <Input value={form.phone} onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))} />
             </div>
             <div>
-              <Label>Empresa *</Label>
-              <Select value={form.companyId} onValueChange={(v) => setForm((f) => ({ ...f, companyId: v }))}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecionar empresa..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {companies.map((c: any) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Label>Cliente responsável (empresa) *</Label>
+              <Popover open={companyOpen} onOpenChange={setCompanyOpen}>
+                <PopoverTrigger asChild>
+                  <Button variant="outline" role="combobox" className="w-full justify-between font-normal">
+                    <span className="truncate">
+                      {form.companyId
+                        ? companies.find((c: any) => c.id === form.companyId)?.name || "Empresa selecionada"
+                        : "Buscar e selecionar empresa..."}
+                    </span>
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-[--radix-popover-trigger-width] p-2" align="start">
+                  <div className="relative mb-2">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      autoFocus
+                      placeholder="Digite o nome da empresa..."
+                      className="pl-8"
+                      value={companySearch}
+                      onChange={(e) => setCompanySearch(e.target.value)}
+                    />
+                  </div>
+                  <ScrollArea className="h-56">
+                    {companies
+                      .filter((c: any) =>
+                        !companySearch.trim() ||
+                        c.name?.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+                          .includes(companySearch.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, ""))
+                      )
+                      .slice(0, 100)
+                      .map((c: any) => (
+                        <button
+                          key={c.id}
+                          onClick={() => {
+                            setForm((f) => ({ ...f, companyId: c.id }));
+                            setCompanyOpen(false);
+                            setCompanySearch("");
+                          }}
+                          className="w-full flex items-center gap-2 text-left px-2 py-1.5 rounded text-sm hover:bg-accent/60"
+                        >
+                          <Check className={`h-4 w-4 shrink-0 ${form.companyId === c.id ? "opacity-100 text-primary" : "opacity-0"}`} />
+                          <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                          <span className="truncate">{c.name}</span>
+                        </button>
+                      ))}
+                    {companies.length === 0 && (
+                      <p className="text-xs text-muted-foreground text-center py-4">
+                        Nenhuma empresa carregada.
+                      </p>
+                    )}
+                    {companies.length > 0 && companySearch &&
+                      companies.filter((c: any) =>
+                        c.name?.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "")
+                          .includes(companySearch.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, ""))
+                      ).length === 0 && (
+                        <p className="text-xs text-muted-foreground text-center py-4">
+                          Nenhuma empresa encontrada para "{companySearch}".
+                        </p>
+                      )}
+                  </ScrollArea>
+                </PopoverContent>
+              </Popover>
             </div>
             <div>
               <Label>E-mail</Label>
