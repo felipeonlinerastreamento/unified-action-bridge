@@ -979,12 +979,17 @@ export const listGSystemUsers = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data } = await supabaseAdmin
       .from("profiles")
-      .select("user_id, name")
+      .select("user_id, name, is_chat_available, last_seen_at")
       .eq("is_active", true)
       .order("name", { ascending: true });
+    const now = Date.now();
     return (data || [])
       .filter((p: any) => p.user_id && p.name)
-      .map((p: any) => ({ id: p.user_id, name: p.name, status: "ONLINE" }));
+      .map((p: any) => {
+        const seenAt = p.last_seen_at ? new Date(p.last_seen_at).getTime() : 0;
+        const online = !!p.is_chat_available && now - seenAt < 2 * 60 * 1000;
+        return { id: p.user_id, name: p.name, status: online ? "ONLINE" : "OFFLINE" };
+      });
   });
 
 export const listContacts = createServerFn({ method: "POST" })

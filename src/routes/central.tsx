@@ -703,7 +703,8 @@ function CentralPage() {
       }
     },
     enabled: !!selectedChannelId && isAuthenticated,
-    staleTime: 60000,
+    staleTime: 30000,
+    refetchInterval: 60000,
   });
 
   const filteredChats = allChats.filter((chat) => {
@@ -3421,7 +3422,9 @@ function CentralPage() {
                                   Nenhum operador encontrado
                                 </CommandEmpty>
                                 <CommandGroup heading="Atribuir responsável">
-                                  {gsystemUsersList.map((op: any) => {
+                                  {[...gsystemUsersList]
+                                    .sort((a: any, b: any) => (b.status === "ONLINE" ? 1 : 0) - (a.status === "ONLINE" ? 1 : 0))
+                                    .map((op: any) => {
                                     const isCurrent = (chatDetail as any)?.assignedUserId === op.id;
                                     return (
                                       <CommandItem
@@ -3451,6 +3454,12 @@ function CentralPage() {
                                       >
                                         <Check
                                           className={`mr-2 h-3 w-3 ${isCurrent ? "opacity-100" : "opacity-0"}`}
+                                        />
+                                        <span
+                                          className={`mr-1.5 inline-block h-2 w-2 rounded-full ${
+                                            op.status === "ONLINE" ? "bg-emerald-500" : "bg-muted-foreground/30"
+                                          }`}
+                                          title={op.status === "ONLINE" ? "Online" : "Offline"}
                                         />
                                         {op.name || "Sem nome"}
                                       </CommandItem>
@@ -5620,11 +5629,20 @@ function CentralPage() {
                   <SelectValue placeholder="Selecione um usuário..." />
                 </SelectTrigger>
                 <SelectContent>
-                  {gsystemUsersList.map((u: any) => (
-                    <SelectItem key={u.id} value={u.id}>
-                      {u.name} {u.status === "ONLINE" ? "🟢" : "⚪"}
-                    </SelectItem>
-                  ))}
+                  {[...gsystemUsersList]
+                    .sort((a: any, b: any) => (b.status === "ONLINE" ? 1 : 0) - (a.status === "ONLINE" ? 1 : 0))
+                    .map((u: any) => (
+                      <SelectItem key={u.id} value={u.id}>
+                        <span className="flex items-center gap-2">
+                          <span
+                            className={`inline-block h-2 w-2 rounded-full ${
+                              u.status === "ONLINE" ? "bg-emerald-500" : "bg-muted-foreground/30"
+                            }`}
+                          />
+                          {u.name}
+                        </span>
+                      </SelectItem>
+                    ))}
                 </SelectContent>
               </Select>
             </div>
