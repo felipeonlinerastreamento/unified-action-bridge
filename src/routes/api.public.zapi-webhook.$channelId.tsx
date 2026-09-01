@@ -606,9 +606,14 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
             if (knownChat?.contact_avatar) groupPhoto = knownChat.contact_avatar;
             if (!groupDisplayName && knownChat?.contact_name) groupDisplayName = knownChat.contact_name;
           }
+          // Eco de mensagem enviada pelo operador (fromMe) traz o senderName da
+          // própria conta conectada (ex.: "Online Rastreamento"), não do
+          // contato. Nesses casos ignoramos o senderName e deixamos o fallback
+          // para o telefone, evitando nomear conversas com o nome da empresa.
+          const senderContactName = p.fromMe ? null : (p.senderName || null);
           const incomingContactName = isGroupMessage
-            ? (groupDisplayName || p.senderName || null)
-            : (p.senderName || null);
+            ? (groupDisplayName || senderContactName || null)
+            : (senderContactName || null);
 
           const contactCard = hasContact ? buildVCardFromContact(firstContact) : null;
 
