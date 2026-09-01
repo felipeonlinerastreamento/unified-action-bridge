@@ -818,7 +818,7 @@ function PainelTvPage() {
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center gap-2">
             <Users className="h-4 w-4 text-primary" />
-            Ranking de operadores — hoje
+            Ranking de operadores — setor Atendimento
           </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
