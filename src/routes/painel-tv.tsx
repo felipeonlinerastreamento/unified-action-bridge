@@ -1100,6 +1100,54 @@ function PainelTvPage() {
               </ScrollArea>
             </div>
           ))}
+
+          {/* Atendimentos abertos por operador (menu Atendimento) */}
+          {isVisible("openTickets") && wrap("openTickets", (
+            <div className={cn("bg-slate-900/40 border border-slate-800 rounded-xl overflow-hidden flex flex-col min-w-0", panelClass("openTickets"))}>
+              <div className="bg-sky-900/20 px-5 py-3.5 border-b border-sky-500/30 flex items-center justify-between">
+                <h3 className="font-bold uppercase tracking-widest text-sky-400 text-sm flex items-center gap-2">
+                  <Users className="h-4 w-4" /> Atendimentos abertos por operador
+                </h3>
+                <span className="font-mono font-bold text-sky-300 bg-sky-950 px-2 py-0.5 rounded text-sm">{openTickets.length}</span>
+              </div>
+              <ScrollArea className="grow max-h-[300px]">
+                {openTicketsByOp.length === 0 ? (
+                  <div className="p-8 text-center text-slate-500 text-sm">Nenhum atendimento aberto no momento.</div>
+                ) : (
+                  <div className="grid grid-cols-4 gap-4 p-4">
+                    {openTicketsByOp.map((g) => (
+                      <div key={g.user_id} className="bg-slate-800/40 border border-slate-800 rounded-lg p-3 min-w-0">
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            {g.online && <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" title="online" />}
+                            <span className="font-bold text-white text-sm truncate uppercase">{g.name}</span>
+                          </div>
+                          <span className="font-mono font-bold text-sky-300 bg-sky-950 px-2 py-0.5 rounded text-xs shrink-0 tabular-nums">
+                            {g.tickets.length} aberto{g.tickets.length === 1 ? "" : "s"}
+                          </span>
+                        </div>
+                        <div className="space-y-1.5">
+                          {g.tickets.slice(0, 6).map((t) => (
+                            <div key={t.id} className="flex items-center justify-between gap-2 text-xs">
+                              <span className="font-mono text-slate-300 shrink-0">#{t.protocol_number ?? "—"}</span>
+                              <span className="text-slate-400 truncate">{t.contact_name || t.plate || t.sector || "—"}</span>
+                              <span className={cn("font-mono shrink-0 tabular-nums",
+                                t.status === "em_andamento" ? "text-blue-400" : t.status === "reaberto" ? "text-amber-400" : "text-slate-500")}>
+                                {fmtMinutes(minutesAgo(t.created_at))}
+                              </span>
+                            </div>
+                          ))}
+                          {g.tickets.length > 6 && (
+                            <div className="text-[10px] text-slate-500 text-center uppercase">+ {g.tickets.length - 6} outros</div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+            </div>
+          ))}
         </div>
       )}
 
