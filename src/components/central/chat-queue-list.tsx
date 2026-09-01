@@ -1,10 +1,13 @@
 import { useState, useMemo, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Users, MessageSquare, ArrowUp, ArrowDown, AlertTriangle } from "lucide-react";
+import { Loader2, Users, MessageSquare, ArrowUp, ArrowDown, AlertTriangle, Star } from "lucide-react";
 import { useFloatingChats } from "./floating-chats-context";
 import { isGroupChat } from "@/lib/chat-utils";
+
 
 // Meta de resposta: verde ≤2min, amarelo 2-5min, vermelho >5min (zumbi)
 const WARN_MS = 2 * 60 * 1000;
@@ -150,13 +153,44 @@ export function ChatQueueList({
 
 
 
+  // Telefones marcados como "Prime" nos contatos das empresas
+  const { data: primePhones = new Set<string>() } = useQuery({
+    queryKey: ["prime-contact-phones"],
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data } = await supabase.from("companies").select("contacts");
+      const set = new Set<string>();
+      for (const row of (data as any[]) || []) {
+        for (const c of (row?.contacts as any[]) || []) {
+          if (!c?.is_prime) continue;
+          const d = String(c.phone || "").replace(/\D/g, "");
+          if (d.length >= 8) set.add(d.slice(-8));
+        }
+      }
+      return set;
+    },
+  });
+
+  const isPrime = useMemo(() => {
+    return (c: ChatItem) => {
+      const d = String(c.contact?.number || "").replace(/\D/g, "");
+      return d.length >= 8 && primePhones.has(d.slice(-8));
+    };
+  }, [primePhones]);
+
   const sortedChats = useMemo(() => {
     const getTs = (c: ChatItem) => {
       const t = c.lastMessage?.utcDhMessage || c.utcDhStartChat;
       return t ? new Date(t).getTime() : 0;
     };
-    return [...chats].sort((a, b) => getTs(b) - getTs(a));
-  }, [chats]);
+    return [...chats].sort((a, b) => {
+      const pa = isPrime(a) ? 1 : 0;
+      const pb = isPrime(b) ? 1 : 0;
+      if (pa !== pb) return pb - pa;
+      return getTs(b) - getTs(a);
+    });
+  }, [chats, isPrime]);
+
 
   if (isLoading && totalChats === 0) {
     return (
@@ -190,7 +224,9 @@ export function ChatQueueList({
           getSlaColor={getSlaColor}
           formatServiceTime={formatServiceTime}
           nowTick={nowTick}
+          prime={isPrime(chat)}
         />
+
       ))}
     </ScrollArea>
   );
@@ -203,6 +239,7 @@ function ChatListItem({
   getSlaColor,
   formatServiceTime,
   nowTick,
+  prime,
 }: {
   chat: ChatItem;
   isSelected: boolean;
@@ -210,7 +247,9 @@ function ChatListItem({
   getSlaColor: (chat: ChatItem) => { bg: string; text: string; label: string };
   formatServiceTime: (chat: ChatItem) => string;
   nowTick: number;
+  prime?: boolean;
 }) {
+
   const name = chat.description || chat.contact?.name || chat.contact?.number || `Chat ${chat.attendanceId?.slice(0, 6)}`;
   const initials = name.substring(0, 2).toUpperCase();
   const imgUrl = chat.linkImage || chat.contact?.linkImage;
@@ -275,7 +314,8 @@ function ChatListItem({
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(); } }}
       className={`w-full text-left px-3 py-2.5 border-b hover:bg-accent/50 transition-colors cursor-grab active:cursor-grabbing ${
         isSelected ? "bg-accent" : ""
-      } ${clientWaiting ? "animate-name-blink" : ""} ${isZombie ? "ring-2 ring-inset ring-red-500 bg-red-50/40 dark:bg-red-950/20" : ""}`}
+      } ${clientWaiting ? "animate-name-blink" : ""} ${prime ? "border-l-4 border-l-amber-500 bg-amber-50/50 dark:bg-amber-950/20" : ""} ${isZombie ? "ring-2 ring-inset ring-red-500 bg-red-50/40 dark:bg-red-950/20" : ""}`}
+
       title="Clique para abrir no painel ou arraste para fora para janela flutuante"
     >
       <div className="flex items-start gap-2.5">
@@ -298,6 +338,15 @@ function ChatListItem({
           {/* Row 1: Name + time/unread */}
           <div className="flex items-center justify-between gap-1">
             <div className="flex items-center gap-1 min-w-0 flex-1">
+              {prime && (
+                <span
+                  className="flex items-center gap-0.5 shrink-0 text-[9px] font-bold uppercase rounded px-1 py-[1px] bg-amber-500 text-white"
+                  title="Contato Prime — prioridade na fila"
+                >
+                  <Star className="h-2.5 w-2.5 fill-current" /> Prime
+                </span>
+              )}
+
               {hasLastMsg && (
                 lastMsgIsMe ? (
                   <ArrowUp

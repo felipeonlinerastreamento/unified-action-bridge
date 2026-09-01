@@ -105,9 +105,10 @@ function EmpresasPage() {
   const [formServiceTemplates, setFormServiceTemplates] = useState<ServiceTemplate[]>([]);
   const [formPlatformIds, setFormPlatformIds] = useState<string[]>([]);
   const [formPhones, setFormPhones] = useState<string[]>([""]);
-  const [formContacts, setFormContacts] = useState<{ name: string; role: string; phone: string }[]>([
-    { name: "", role: "", phone: "" },
+  const [formContacts, setFormContacts] = useState<{ name: string; role: string; phone: string; is_prime?: boolean }[]>([
+    { name: "", role: "", phone: "", is_prime: false },
   ]);
+
 
   const { data: companies = [], isLoading } = useQuery({
     queryKey: ["companies"],
@@ -684,7 +685,7 @@ function EmpresasPage() {
                 </Button>
               </div>
               {formContacts.map((contact, idx) => (
-                <div key={idx} className="flex gap-2">
+                <div key={idx} className="flex flex-wrap items-center gap-2">
                   <Input
                     value={contact.name}
                     onChange={(e) => {
@@ -693,7 +694,7 @@ function EmpresasPage() {
                       setFormContacts(c);
                     }}
                     placeholder="Nome"
-                    className="flex-1"
+                    className="flex-1 min-w-[140px]"
                   />
                   <Input
                     value={contact.role}
@@ -715,6 +716,17 @@ function EmpresasPage() {
                     placeholder="Telefone"
                     className="w-40"
                   />
+                  <label className="flex items-center gap-1.5 text-xs whitespace-nowrap cursor-pointer">
+                    <Checkbox
+                      checked={!!contact.is_prime}
+                      onCheckedChange={(v) => {
+                        const c = [...formContacts];
+                        c[idx] = { ...c[idx], is_prime: v === true };
+                        setFormContacts(c);
+                      }}
+                    />
+                    Prime (prioridade na fila)
+                  </label>
                   {formContacts.length > 1 && (
                     <Button
                       variant="ghost"
@@ -728,6 +740,7 @@ function EmpresasPage() {
                   )}
                 </div>
               ))}
+
             </TabsContent>
 
             <TabsContent value="instrucoes" className="space-y-2 mt-4">
