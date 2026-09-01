@@ -1,4 +1,6 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
+import { useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { AuthForm } from "@/components/auth-form";
 
@@ -27,6 +29,28 @@ function IndexPage() {
 
 function MetaRedirect() {
   const navigate = Route.useNavigate();
-  navigate({ to: "/dashboard" });
+  const { user } = useAuth();
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      if (user?.id) {
+        const { data } = await supabase
+          .from("profiles")
+          .select("panel_only")
+          .eq("user_id", user.id)
+          .maybeSingle();
+        if (!cancelled && (data as any)?.panel_only === true) {
+          navigate({ to: "/painel-tv" });
+          return;
+        }
+      }
+      if (!cancelled) navigate({ to: "/dashboard" });
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [user?.id, navigate]);
+
   return null;
 }

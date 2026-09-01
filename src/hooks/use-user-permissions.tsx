@@ -97,5 +97,5 @@ export function useUserPermissions(): PermissionsResult {
       isLoading,
       canSeeMenu: (slug: string) => allowedMenus.has(slug),
     };
-  }, [data, isAdminOrGestor, isLoading]);
+  }, [data, isAdminOrGestor, isLoading, panelOnly]);
 }
