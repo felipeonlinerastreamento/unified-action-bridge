@@ -416,12 +416,14 @@ function PainelTvPage() {
     (p) => p.last_seen_at && minutesAgo(p.last_seen_at) <= THRESH.operatorOnlineMin,
   ).length;
 
-  // Ranking hoje
+  // Ranking hoje — somente operadores do setor Atendimento
   const ranking = useMemo(() => {
+    const atendimentoSet = new Set(atendimentoUserIds);
     const byUser = new Map<string, { user_id: string; finalized: number; tmaSum: number; tmaCount: number; inService: number }>();
     for (const t of closedToday) {
       const uid = t.opened_by || t.assigned_to;
       if (!uid) continue;
+      if (atendimentoSet.size > 0 && !atendimentoSet.has(uid)) continue;
       const entry = byUser.get(uid) || { user_id: uid, finalized: 0, tmaSum: 0, tmaCount: 0, inService: 0 };
       entry.finalized += 1;
       const dur = (new Date(t.closed_at).getTime() - new Date(t.created_at).getTime()) / 60000;
@@ -433,6 +435,7 @@ function PainelTvPage() {
     }
     for (const c of inAttendance) {
       if (!c.assigned_to) continue;
+      if (atendimentoSet.size > 0 && !atendimentoSet.has(c.assigned_to)) continue;
       const entry = byUser.get(c.assigned_to) || { user_id: c.assigned_to, finalized: 0, tmaSum: 0, tmaCount: 0, inService: 0 };
       entry.inService += 1;
       byUser.set(c.assigned_to, entry);
@@ -452,7 +455,7 @@ function PainelTvPage() {
       })
       .sort((a, b) => b.finalized - a.finalized || a.tmaAvg - b.tmaAvg)
       .slice(0, 12);
-  }, [closedToday, inAttendance, profiles]);
+  }, [closedToday, inAttendance, profiles, atendimentoUserIds]);
 
   // Fila crítica ordenada
   const criticalQueue = useMemo(() => {
