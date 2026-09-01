@@ -19,6 +19,8 @@ export function usePresence() {
         .from("profiles")
         .update({ last_seen_at: new Date().toISOString() })
         .eq("user_id", user.id);
+      // Registra histórico de sessão (online -> offline)
+      await (supabase as any).rpc("presence_heartbeat");
     };
 
     // initial ping
@@ -33,4 +35,5 @@ export function usePresence() {
       document.removeEventListener("visibilitychange", onVisible);
     };
   }, [isAuthenticated, user?.id]);
+
 }
