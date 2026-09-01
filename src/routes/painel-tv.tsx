@@ -946,10 +946,10 @@ function PainelTvPage() {
               {isVisible("ranking") && wrap("ranking", (
                 <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-5 min-w-0 overflow-hidden">
                   <h3 className="font-bold uppercase tracking-widest text-emerald-400 text-sm flex items-center gap-2 mb-3">
-                    <Users className="h-4 w-4" /> Ranking Performance
+                    <Users className="h-4 w-4" /> Distribuição de chamados
                   </h3>
                   {ranking.length === 0 ? (
-                    <div className="py-6 text-center text-slate-500 text-sm">Sem atividade registrada hoje.</div>
+                    <div className="py-6 text-center text-slate-500 text-sm">Sem operadores com chamados em aberto.</div>
                   ) : (
                     <ScrollArea className="max-h-[260px]">
                       <div className="space-y-3 pr-2">
@@ -965,7 +965,7 @@ function PainelTvPage() {
                             </div>
                             <span className={cn("font-mono font-bold px-2 rounded shrink-0 text-sm tabular-nums",
                               i === 0 ? "text-emerald-400 bg-emerald-950" : "text-slate-300 bg-slate-800/60")}>
-                              {r.finalized} ATEND.
+                              {r.inService} ABERTO{r.inService === 1 ? "" : "S"}
                             </span>
                           </div>
                         ))}
