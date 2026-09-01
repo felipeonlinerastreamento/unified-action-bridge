@@ -951,7 +951,7 @@ function PainelTvPage() {
       </div>
 
       {/* Listas detalhadas */}
-      {(isVisible("zombieList") || isVisible("ops") || isVisible("ranking") || isVisible("critical")) && (
+      {(isVisible("zombieList") || isVisible("ops") || isVisible("ranking") || isVisible("critical") || isVisible("openTickets")) && (
         <div className={cn("grid grid-cols-12 gap-6 grow items-start", freeMode && "hidden")}>
           {/* Chats Zumbis */}
           {isVisible("zombieList") && wrap("zombieList", (
