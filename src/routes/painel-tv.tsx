@@ -22,7 +22,7 @@ import { FloatingBlock, type FloatRect } from "@/components/painel/floating-bloc
 type BlockId =
   | "queue" | "inatt" | "bot" | "tmr" | "tma" | "fin"
   | "zombie" | "engage" | "tmer"
-  | "ops" | "critical" | "zombieList" | "ranking";
+  | "ops" | "critical" | "zombieList" | "ranking" | "openTickets";
 
 type BlockGroup = "kpiMain" | "kpiSub" | "panel" | "full";
 
@@ -40,6 +40,7 @@ const BLOCK_META: Record<BlockId, { label: string; group: BlockGroup; defaultSpa
   critical:   { label: "Painel • Fila crítica",      group: "panel",   defaultSpan: 3, defaultVisible: true },
   zombieList: { label: "Painel • Lista de zumbis",   group: "panel",   defaultSpan: 5, defaultVisible: true },
   ranking:    { label: "Painel • Distribuição de chamados", group: "full", defaultSpan: 1, defaultVisible: true },
+  openTickets:{ label: "Painel • Atendimentos abertos por operador", group: "panel", defaultSpan: 12, defaultVisible: true },
 };
 
 type LayoutState = {
@@ -79,6 +80,7 @@ const DEFAULT_FLOAT: Record<BlockId, FloatRect> = {
   ops:        { x: 784,  y: 384, w: 560, h: 250 },
   ranking:    { x: 784,  y: 654, w: 560, h: 250 },
   critical:   { x: 1368, y: 384, w: 528, h: 520 },
+  openTickets:{ x: 0,    y: 924, w: 1904, h: 300 },
 };
 
 function maxSpanFor(group: BlockGroup): number {
