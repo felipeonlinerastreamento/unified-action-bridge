@@ -52,15 +52,15 @@ const DEFAULT_LAYOUT: LayoutState = {
 };
 
 const MAIN_SPAN_CLASS: Record<number, string> = {
-  1: "lg:col-span-1", 2: "lg:col-span-2", 3: "lg:col-span-3", 4: "lg:col-span-4",
+  1: "col-span-1", 2: "col-span-2", 3: "col-span-3", 4: "col-span-4",
 };
 const SUB_SPAN_CLASS: Record<number, string> = {
-  1: "lg:col-span-1", 2: "lg:col-span-2", 3: "lg:col-span-3", 4: "lg:col-span-4", 5: "lg:col-span-5",
+  1: "col-span-1", 2: "col-span-2", 3: "col-span-3", 4: "col-span-4", 5: "col-span-5",
 };
 const PANEL_SPAN_CLASS: Record<number, string> = {
-  1: "md:col-span-1", 2: "md:col-span-2", 3: "md:col-span-3", 4: "md:col-span-4",
-  5: "md:col-span-5", 6: "md:col-span-6", 7: "md:col-span-7", 8: "md:col-span-8",
-  9: "md:col-span-9", 10: "md:col-span-10", 11: "md:col-span-11", 12: "md:col-span-12",
+  1: "col-span-1", 2: "col-span-2", 3: "col-span-3", 4: "col-span-4",
+  5: "col-span-5", 6: "col-span-6", 7: "col-span-7", 8: "col-span-8",
+  9: "col-span-9", 10: "col-span-10", 11: "col-span-11", 12: "col-span-12",
 };
 
 function maxSpanFor(group: BlockGroup): number {
@@ -84,6 +84,53 @@ const THRESH = {
   tmaTargetMin: 20,
   dailyFinalizedGoal: 30,
 };
+
+// Largura de referência do design do painel — todo o conteúdo é renderizado
+// nessa largura e escalado proporcionalmente para caber na tela real.
+const DESIGN_WIDTH = 1600;
+
+/**
+ * Ajuste automático ao tamanho da tela: mede o espaço disponível e aplica
+ * transform: scale() no conteúdo (que é renderizado sempre em DESIGN_WIDTH).
+ * Assim o painel nunca sobrepõe itens nem quebra linhas, em qualquer tela.
+ */
+function useFitScale() {
+  // Callback refs + state: o painel renderiza condicionalmente (loading),
+  // então refs comuns ficariam nulas quando o efeito roda pela 1ª vez.
+  const [container, setContainer] = useState<HTMLDivElement | null>(null);
+  const [content, setContent] = useState<HTMLDivElement | null>(null);
+  const [fit, setFit] = useState({ scale: 1, height: 0, availH: 0 });
+
+  useEffect(() => {
+    if (!container || !content) return;
+
+    const update = () => {
+      const availW = container.clientWidth;
+      const availH = container.clientHeight;
+      if (availW <= 0) return;
+      // Altura natural do conteúdo renderizado na largura de referência
+      content.style.transform = "none";
+      const naturalH = content.scrollHeight;
+      // Escala para caber na largura real: reduz em telas menores e amplia
+      // em TVs grandes (transform: scale mantém texto vetorial/nítido).
+      const scale = Math.max(0.4, Math.min(2, availW / DESIGN_WIDTH));
+      setFit({ scale, height: naturalH * scale, availH });
+      content.style.transform = "";
+    };
+
+    update();
+    const ro = new ResizeObserver(update);
+    ro.observe(container);
+    ro.observe(content);
+    window.addEventListener("resize", update);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", update);
+    };
+  }, [container, content]);
+
+  return { containerRef: setContainer, contentRef: setContent, container, ...fit };
+}
 
 function minutesAgo(iso?: string | null): number {
   if (!iso) return 0;
@@ -138,12 +185,13 @@ function PainelTvPage() {
   const resetLayout = () => persistLayout(DEFAULT_LAYOUT);
 
   const isVisible = (id: BlockId) => layout.visible[id] !== false;
-  const mainKpiClass = (id: BlockId) => MAIN_SPAN_CLASS[layout.span[id] ?? BLOCK_META[id].defaultSpan] ?? "lg:col-span-1";
-  const subKpiClass = (id: BlockId) => SUB_SPAN_CLASS[layout.span[id] ?? BLOCK_META[id].defaultSpan] ?? "lg:col-span-1";
-  const panelClass = (id: BlockId) => PANEL_SPAN_CLASS[layout.span[id] ?? BLOCK_META[id].defaultSpan] ?? "md:col-span-4";
+  const mainKpiClass = (id: BlockId) => MAIN_SPAN_CLASS[layout.span[id] ?? BLOCK_META[id].defaultSpan] ?? "col-span-1";
+  const subKpiClass = (id: BlockId) => SUB_SPAN_CLASS[layout.span[id] ?? BLOCK_META[id].defaultSpan] ?? "col-span-1";
+  const panelClass = (id: BlockId) => PANEL_SPAN_CLASS[layout.span[id] ?? BLOCK_META[id].defaultSpan] ?? "col-span-4";
 
   const [isFs, setIsFs] = useState(false);
-  const containerRef = useRef<HTMLDivElement>(null);
+  // Ajuste automático ao tamanho da tela (detectado via ResizeObserver)
+  const { containerRef, contentRef, container, scale, height: fitHeight, availH } = useFitScale();
 
   // Relógio ao vivo (cabeçalho)
   const [now, setNow] = useState(() => new Date());
@@ -160,7 +208,7 @@ function PainelTvPage() {
 
   const toggleFs = () => {
     if (!document.fullscreenElement) {
-      containerRef.current?.requestFullscreen?.();
+      container?.requestFullscreen?.();
     } else {
       document.exitFullscreen?.();
     }
@@ -496,14 +544,25 @@ function PainelTvPage() {
     <div
       ref={containerRef}
       className={cn(
-        "w-full bg-[#020617] text-slate-100 p-4 md:p-6 lg:p-8 flex flex-col gap-5",
-        isFs ? "h-screen overflow-auto" : "min-h-screen",
+        "w-full bg-[#020617] text-slate-100 overflow-hidden",
+        isFs ? "h-screen" : "min-h-screen",
       )}
     >
+      <div className="relative w-full" style={{ height: Math.max(fitHeight, availH) || undefined }}>
+        <div
+          ref={contentRef}
+          style={{
+            width: DESIGN_WIDTH,
+            minHeight: scale > 0 ? Math.max(fitHeight, availH) / scale : undefined,
+            transform: `scale(${scale})`,
+            transformOrigin: "top left",
+          }}
+          className="p-8 flex flex-col gap-5"
+        >
       {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-4 border-b-2 border-slate-800 pb-4">
         <div>
-          <h1 className="text-3xl lg:text-4xl font-extrabold tracking-tight text-white uppercase flex items-center gap-3">
+          <h1 className="text-4xl font-extrabold tracking-tight text-white uppercase flex items-center gap-3">
             <TrendingUp className="h-8 w-8 text-emerald-400" />
             Monitoramento WhatsApp
           </h1>
@@ -511,7 +570,7 @@ function PainelTvPage() {
         </div>
         <div className="flex items-center gap-4">
           <div className="text-right">
-            <div className="text-2xl lg:text-3xl font-bold font-mono text-emerald-400 tracking-widest tabular-nums">
+            <div className="text-3xl font-bold font-mono text-emerald-400 tracking-widest tabular-nums">
               {now.toLocaleTimeString("pt-BR")}
             </div>
             <div className="flex items-center gap-2 justify-end">
@@ -589,49 +648,49 @@ function PainelTvPage() {
       </div>
 
       {/* KPIs principais */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+      <div className="grid grid-cols-4 gap-6">
         {isVisible("queue") && (
-          <div className={cn("bg-slate-900 border-l-8 p-5 lg:p-6 rounded-r-xl shadow-2xl min-w-0 overflow-hidden", queueAccent, mainKpiClass("queue"))}>
+          <div className={cn("bg-slate-900 border-l-8 p-6 rounded-r-xl shadow-2xl min-w-0 overflow-hidden", queueAccent, mainKpiClass("queue"))}>
             <div className="flex items-center justify-between gap-2">
-              <span className="text-slate-400 text-xs lg:text-sm font-bold uppercase tracking-widest truncate">Fila Aguardando</span>
+              <span className="text-slate-400 text-sm font-bold uppercase tracking-widest truncate">Fila Aguardando</span>
               <Clock className={cn("h-5 w-5 shrink-0", queueText)} />
             </div>
             <div className={cn("text-[clamp(2.75rem,5.5vw,6rem)] leading-none font-black mt-2 tabular-nums whitespace-nowrap", queueText)}>{waiting.length}</div>
-            <p className="text-xs lg:text-sm text-slate-500 mt-2">
+            <p className="text-sm text-slate-500 mt-2">
               + antigo: <span className={cn("font-bold", queueText)}>{fmtMinutes(oldestWaitingMin)}</span>
             </p>
           </div>
         )}
         {isVisible("inatt") && (
-          <div className={cn("bg-slate-900 border-l-8 border-blue-500 p-5 lg:p-6 rounded-r-xl shadow-2xl min-w-0 overflow-hidden", mainKpiClass("inatt"))}>
+          <div className={cn("bg-slate-900 border-l-8 border-blue-500 p-6 rounded-r-xl shadow-2xl min-w-0 overflow-hidden", mainKpiClass("inatt"))}>
             <div className="flex items-center justify-between gap-2">
-              <span className="text-slate-400 text-xs lg:text-sm font-bold uppercase tracking-widest truncate">Em Atendimento</span>
+              <span className="text-slate-400 text-sm font-bold uppercase tracking-widest truncate">Em Atendimento</span>
               <MessageSquare className="h-5 w-5 text-blue-400 shrink-0" />
             </div>
             <div className="text-[clamp(2.75rem,5.5vw,6rem)] leading-none font-black text-blue-400 mt-2 tabular-nums whitespace-nowrap">{inAttendance.length}</div>
-            <p className="text-xs lg:text-sm text-slate-500 mt-2">chats ativos</p>
+            <p className="text-sm text-slate-500 mt-2">chats ativos</p>
           </div>
         )}
         {isVisible("bot") && (
-          <div className={cn("bg-slate-900 border-l-8 p-5 lg:p-6 rounded-r-xl shadow-2xl min-w-0 overflow-hidden", botStuck.length > 0 ? "border-red-600" : "border-slate-700", mainKpiClass("bot"))}>
+          <div className={cn("bg-slate-900 border-l-8 p-6 rounded-r-xl shadow-2xl min-w-0 overflow-hidden", botStuck.length > 0 ? "border-red-600" : "border-slate-700", mainKpiClass("bot"))}>
             <div className="flex items-center justify-between gap-2">
-              <span className="text-slate-400 text-xs lg:text-sm font-bold uppercase tracking-widest truncate">Bot Travado</span>
+              <span className="text-slate-400 text-sm font-bold uppercase tracking-widest truncate">Bot Travado</span>
               <Bot className={cn("h-5 w-5 shrink-0", botStuck.length > 0 ? "text-red-500" : "text-slate-500")} />
             </div>
             <div className={cn("text-[clamp(2.75rem,5.5vw,6rem)] leading-none font-black mt-2 tabular-nums whitespace-nowrap", botStuck.length > 0 ? "text-red-500" : "text-slate-300")}>
               {String(botStuck.length).padStart(2, "0")}
             </div>
-            <p className="text-xs lg:text-sm text-slate-500 mt-2">&gt; {THRESH.botIdleMin}min sem resposta</p>
+            <p className="text-sm text-slate-500 mt-2">&gt; {THRESH.botIdleMin}min sem resposta</p>
           </div>
         )}
         {isVisible("fin") && (
-          <div className={cn("bg-slate-900 border-l-8 border-emerald-500 p-5 lg:p-6 rounded-r-xl shadow-2xl min-w-0 overflow-hidden", mainKpiClass("fin"))}>
+          <div className={cn("bg-slate-900 border-l-8 border-emerald-500 p-6 rounded-r-xl shadow-2xl min-w-0 overflow-hidden", mainKpiClass("fin"))}>
             <div className="flex items-center justify-between gap-2">
-              <span className="text-slate-400 text-xs lg:text-sm font-bold uppercase tracking-widest truncate">Finalizados Hoje</span>
+              <span className="text-slate-400 text-sm font-bold uppercase tracking-widest truncate">Finalizados Hoje</span>
               <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
             </div>
             <div className="text-[clamp(2.75rem,5.5vw,6rem)] leading-none font-black text-emerald-400 mt-2 tabular-nums whitespace-nowrap">{finalizedToday}</div>
-            <p className="text-xs lg:text-sm text-slate-500 mt-2">
+            <p className="text-sm text-slate-500 mt-2">
               meta {THRESH.dailyFinalizedGoal} • <span className="text-emerald-400 font-bold">{Math.round((finalizedToday / THRESH.dailyFinalizedGoal) * 100)}%</span>
             </p>
           </div>
@@ -639,7 +698,7 @@ function PainelTvPage() {
       </div>
 
       {/* Métricas secundárias */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 lg:gap-4">
+      <div className="grid grid-cols-5 gap-4">
         {isVisible("tmr") && (
           <div className={cn("bg-slate-900/50 p-4 rounded-lg border border-slate-800 min-w-0 overflow-hidden", subKpiClass("tmr"))}>
             <span className="text-slate-500 text-xs font-bold uppercase">TMR (1ª resposta)</span>
@@ -690,7 +749,7 @@ function PainelTvPage() {
 
       {/* Listas detalhadas */}
       {(isVisible("zombieList") || isVisible("ops") || isVisible("ranking") || isVisible("critical")) && (
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 lg:gap-6 grow items-start">
+        <div className="grid grid-cols-12 gap-6 grow items-start">
           {/* Chats Zumbis */}
           {isVisible("zombieList") && (
             <div className={cn("bg-slate-900/40 border border-slate-800 rounded-xl overflow-hidden flex flex-col min-w-0", panelClass("zombieList"))}>
@@ -712,7 +771,7 @@ function PainelTvPage() {
                         <th className="px-5 py-3 font-semibold text-right">Tempo</th>
                       </tr>
                     </thead>
-                    <tbody className="text-base lg:text-lg">
+                    <tbody className="text-lg">
                       {zombies.slice(0, 20).map((c) => {
                         const prof = profiles.find((p) => p.user_id === c.assigned_to);
                         return (
@@ -735,7 +794,7 @@ function PainelTvPage() {
 
           {/* Operadores + Ranking */}
           {(isVisible("ops") || isVisible("ranking")) && (
-            <div className={cn("grid gap-4 lg:gap-6 content-start auto-rows-min min-w-0", panelClass("ops"))}>
+            <div className={cn("grid gap-6 content-start auto-rows-min min-w-0", panelClass("ops"))}>
               {isVisible("ops") && (
                 <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-5 min-w-0 overflow-hidden">
                   <div className="flex items-center justify-between mb-3">
@@ -826,7 +885,7 @@ function PainelTvPage() {
                           <div className={cn("text-[11px] uppercase font-bold tracking-tight", hot ? "text-red-400" : warm ? "text-amber-400" : "text-slate-400")}>
                             {c.sector_name || "Sem setor"}
                           </div>
-                          <div className="text-base lg:text-lg font-black text-white truncate">{c.contact_name || c.phone || "Sem nome"}</div>
+                          <div className="text-lg font-black text-white truncate">{c.contact_name || c.phone || "Sem nome"}</div>
                           <div className={cn("text-sm mt-0.5 font-mono tabular-nums", hot ? "text-red-300" : warm ? "text-amber-300" : "text-slate-400")}>
                             Aguardando: {fmtMinutes(c.waitingMin)}
                           </div>
@@ -843,13 +902,15 @@ function PainelTvPage() {
 
       {/* Rodapé / ticker */}
       <div className="bg-slate-900 p-3 rounded-lg border border-slate-800 flex justify-between items-center px-5 mt-auto">
-        <div className="text-xs lg:text-sm font-bold text-slate-500 uppercase tracking-widest italic flex items-center gap-2">
+        <div className="text-sm font-bold text-slate-500 uppercase tracking-widest italic flex items-center gap-2">
           <AlertTriangle className="h-4 w-4 text-slate-600" />
           Atualização automática a cada 15s
         </div>
-        <div className="text-xs lg:text-sm font-bold text-blue-400 flex items-center gap-2">
+        <div className="text-sm font-bold text-blue-400 flex items-center gap-2">
           <Zap className="h-4 w-4" />
           {now.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" })}
+        </div>
+      </div>
         </div>
       </div>
     </div>
