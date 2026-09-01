@@ -43,6 +43,7 @@ export function NewOperatorChatDialog({ onCreated, triggerLabel }: Props) {
         .from("profiles")
         .select("user_id, name")
         .eq("is_active", true)
+        .eq("panel_only", false)
         .order("name");
       return data || [];
     },
@@ -68,7 +69,7 @@ export function NewOperatorChatDialog({ onCreated, triggerLabel }: Props) {
 
   const resolveRecipients = async (): Promise<string[]> => {
     if (targetType === "all") {
-      const { data } = await supabase.from("profiles").select("user_id").eq("is_active", true);
+      const { data } = await supabase.from("profiles").select("user_id").eq("is_active", true).eq("panel_only", false);
       return (data || []).map((p) => p.user_id);
     }
     if (targetType === "user") return targetId ? [targetId] : [];

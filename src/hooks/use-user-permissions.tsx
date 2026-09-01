@@ -21,6 +21,21 @@ export function useUserPermissions(): PermissionsResult {
   const { user, hasRole } = useAuth();
   const isAdminOrGestor = hasRole("admin") || hasRole("gestor");
 
+  // Usuários "Apenas Painel TV" (panel_only) só enxergam o menu Painel TV.
+  const { data: panelOnly } = useQuery({
+    queryKey: ["user-panel-only", user?.id],
+    enabled: !!user?.id,
+    staleTime: 60_000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("panel_only")
+        .eq("user_id", user!.id)
+        .maybeSingle();
+      return (data as any)?.panel_only === true;
+    },
+  });
+
   const { data, isLoading } = useQuery({
     queryKey: ["user-permissions", user?.id, isAdminOrGestor],
     enabled: !!user?.id && !isAdminOrGestor,
@@ -42,6 +57,14 @@ export function useUserPermissions(): PermissionsResult {
   });
 
   return useMemo<PermissionsResult>(() => {
+    if (panelOnly) {
+      return {
+        allowedMenus: new Set(["painel-tv"]),
+        canFinalizeWithoutMessage: false,
+        isLoading: false,
+        canSeeMenu: (slug: string) => slug === "painel-tv",
+      };
+    }
     if (isAdminOrGestor) {
       return {
         allowedMenus: null,
@@ -74,5 +97,5 @@ export function useUserPermissions(): PermissionsResult {
       isLoading,
       canSeeMenu: (slug: string) => allowedMenus.has(slug),
     };
-  }, [data, isAdminOrGestor, isLoading]);
+  }, [data, isAdminOrGestor, isLoading, panelOnly]);
 }

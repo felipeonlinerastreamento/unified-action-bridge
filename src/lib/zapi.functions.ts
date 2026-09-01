@@ -810,6 +810,7 @@ export const transferChat = createServerFn({ method: "POST" })
         .select("user_id")
         .eq("user_id", data.userId)
         .eq("is_active", true)
+        .eq("panel_only", false)
         .maybeSingle();
       if (targetError || !targetProfile) {
         throw new Error("O operador selecionado está inativo e não pode receber conversas");
@@ -981,6 +982,7 @@ export const listGSystemUsers = createServerFn({ method: "POST" })
       .from("profiles")
       .select("user_id, name, is_chat_available, last_seen_at")
       .eq("is_active", true)
+      .eq("panel_only", false)
       .order("name", { ascending: true });
     const now = Date.now();
     return (data || [])

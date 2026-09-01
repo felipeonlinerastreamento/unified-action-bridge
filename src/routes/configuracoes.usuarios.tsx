@@ -73,6 +73,7 @@ function UsuariosConfigPage() {
   const [editRole, setEditRole] = useState<"admin" | "gestor" | "atendente">("atendente");
   const [editTargetMinutes, setEditTargetMinutes] = useState<string>("");
   const [editCanAccessAiManager, setEditCanAccessAiManager] = useState<boolean>(true);
+  const [editPanelOnly, setEditPanelOnly] = useState<boolean>(false);
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
@@ -94,7 +95,7 @@ function UsuariosConfigPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("user_id, name, avatar_url, group_id, attendance_target_minutes, can_access_ai_manager, is_active")
+        .select("user_id, name, avatar_url, group_id, attendance_target_minutes, can_access_ai_manager, is_active, panel_only")
         .order("name");
       if (error) throw error;
       return data || [];
@@ -253,6 +254,9 @@ function UsuariosConfigPage() {
         .update({
           attendance_target_minutes: Number.isFinite(parsed as number) ? parsed : null,
           can_access_ai_manager: editCanAccessAiManager,
+          panel_only: editPanelOnly,
+          // Usuário somente-painel não pode receber chats
+          ...(editPanelOnly ? { is_chat_available: false } : {}),
         } as any)
         .eq("user_id", editUserId);
       if (profErr) throw profErr;
@@ -396,7 +400,7 @@ function UsuariosConfigPage() {
     setSectorDialogOpen(true);
   };
 
-  const handleOpenEdit = (profile: { user_id: string; name: string; attendance_target_minutes?: number | null; can_access_ai_manager?: boolean | null }) => {
+  const handleOpenEdit = (profile: { user_id: string; name: string; attendance_target_minutes?: number | null; can_access_ai_manager?: boolean | null; panel_only?: boolean | null }) => {
     setEditUserId(profile.user_id);
     setEditName(profile.name || "");
     const roles = getRolesForUser(profile.user_id);
@@ -405,6 +409,7 @@ function UsuariosConfigPage() {
       profile.attendance_target_minutes != null ? String(profile.attendance_target_minutes) : ""
     );
     setEditCanAccessAiManager(profile.can_access_ai_manager ?? true);
+    setEditPanelOnly(profile.panel_only ?? false);
     setEditDialogOpen(true);
   };
 
@@ -800,6 +805,18 @@ function UsuariosConfigPage() {
               <Switch
                 checked={editCanAccessAiManager}
                 onCheckedChange={setEditCanAccessAiManager}
+              />
+            </div>
+            <div className="flex items-center justify-between gap-4 rounded-lg border p-3">
+              <div className="space-y-0.5">
+                <Label className="text-sm font-medium">Apenas Painel TV</Label>
+                <p className="text-xs text-muted-foreground">
+                  O usuário terá acesso somente ao menu Painel TV e não aparecerá em filas de atendimento, transferências ou distribuição de conversas.
+                </p>
+              </div>
+              <Switch
+                checked={editPanelOnly}
+                onCheckedChange={setEditPanelOnly}
               />
             </div>
             <div className="flex justify-end gap-2 pt-2">
