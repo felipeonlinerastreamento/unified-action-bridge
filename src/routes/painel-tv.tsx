@@ -108,14 +108,12 @@ function useFitScale() {
       const availW = container.clientWidth;
       const availH = container.clientHeight;
       if (availW <= 0) return;
-      // Altura natural do conteúdo renderizado na largura de referência
-      content.style.transform = "none";
+      // Altura natural do conteúdo (transform: scale não afeta scrollHeight)
       const naturalH = content.scrollHeight;
       // Escala para caber na largura real: reduz em telas menores e amplia
       // em TVs grandes (transform: scale mantém texto vetorial/nítido).
       const scale = Math.max(0.4, Math.min(2, availW / DESIGN_WIDTH));
       setFit({ scale, height: naturalH * scale, availH });
-      content.style.transform = "";
     };
 
     update();
