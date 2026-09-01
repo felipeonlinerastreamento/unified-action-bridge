@@ -373,8 +373,8 @@ function PainelTvPage() {
     },
   });
 
-  // Atendimentos abertos (menu Atendimento) — por operador
-  const { data: openTickets = [] } = useQuery<any[]>({
+  // Atendimentos abertos (menu Atendimento) — por operador, somente setor Atendimento
+  const { data: openTicketsRaw = [] } = useQuery<any[]>({
     queryKey: ["painel-tv-open-tickets"],
     enabled: isAuthenticated && allowed,
     refetchInterval: 10000,
@@ -390,6 +390,10 @@ function PainelTvPage() {
       return data || [];
     },
   });
+  const openTickets = useMemo(
+    () => openTicketsRaw.filter((t) => typeof t.sector === "string" && t.sector.toLowerCase().includes("atendimento")),
+    [openTicketsRaw],
+  );
 
   useEffect(() => {
     if (!isAuthenticated || !allowed) return;
