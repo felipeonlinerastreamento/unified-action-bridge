@@ -87,7 +87,7 @@ const THRESH = {
 
 // Largura de referência do design do painel — todo o conteúdo é renderizado
 // nessa largura e escalado proporcionalmente para caber na tela real.
-const DESIGN_WIDTH = 1600;
+const DESIGN_WIDTH = 1920;
 
 /**
  * Ajuste automático ao tamanho da tela: mede o espaço disponível e aplica
