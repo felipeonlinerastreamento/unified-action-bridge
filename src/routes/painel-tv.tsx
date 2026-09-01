@@ -322,6 +322,7 @@ function PainelTvPage() {
   }, []);
 
   // Chats abertos (aguardando / em_atendimento / bot)
+  const queryClient = useQueryClient();
   const { data: openChats = [] } = useQuery<any[]>({
     queryKey: ["painel-tv-open-chats"],
     enabled: isAuthenticated && allowed,
