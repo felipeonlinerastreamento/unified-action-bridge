@@ -110,11 +110,14 @@ function useFitScale() {
       if (availW <= 0) return;
       // Altura natural do conteúdo (transform: scale não afeta scrollHeight)
       const naturalH = content.scrollHeight;
-      // Escala para caber na largura real: reduz em telas menores e amplia
-      // em TVs grandes (transform: scale mantém texto vetorial/nítido).
-      const scale = Math.max(0.4, Math.min(2, availW / DESIGN_WIDTH));
+      // Escala para caber por completo na tela (largura E altura): em TVs
+      // grandes o painel amplia até preencher; em telas pequenas reduz.
+      const byW = availW / DESIGN_WIDTH;
+      const byH = naturalH > 0 && availH > 0 ? availH / naturalH : byW;
+      const scale = Math.max(0.35, Math.min(3, Math.min(byW, byH)));
       setFit({ scale, height: naturalH * scale, availH });
     };
+
 
     update();
     const ro = new ResizeObserver(update);
