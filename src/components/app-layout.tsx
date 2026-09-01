@@ -27,23 +27,29 @@ function OperatorSoundTracker() {
 
 /**
  * Usuários marcados como "Apenas Painel TV" (profiles.panel_only) só podem
- * acessar /painel-tv. Qualquer outra rota redireciona para o painel.
+ * acessar /painel-tv e /central (chat). Qualquer outra rota redireciona para o painel.
  */
 function PanelOnlyGuard({ children }: { children: React.ReactNode }) {
   const { allowedMenus, isLoading } = useUserPermissions();
   const location = useLocation();
   const navigate = useNavigate();
   const isPanelOnly =
-    allowedMenus !== null && allowedMenus.size === 1 && allowedMenus.has("painel-tv");
+    allowedMenus !== null &&
+    allowedMenus.has("painel-tv") &&
+    [...allowedMenus].every((m) => m === "painel-tv" || m === "central");
+
+  const isAllowedPath =
+    location.pathname.startsWith("/painel-tv") ||
+    (allowedMenus?.has("central") && location.pathname.startsWith("/central"));
 
   useEffect(() => {
     if (isLoading || !isPanelOnly) return;
-    if (!location.pathname.startsWith("/painel-tv")) {
+    if (!isAllowedPath) {
       navigate({ to: "/painel-tv", replace: true });
     }
-  }, [isLoading, isPanelOnly, location.pathname, navigate]);
+  }, [isLoading, isPanelOnly, isAllowedPath, navigate]);
 
-  if (isPanelOnly && !location.pathname.startsWith("/painel-tv")) return null;
+  if (isPanelOnly && !isAllowedPath) return null;
   return <>{children}</>;
 }
 
