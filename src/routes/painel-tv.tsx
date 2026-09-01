@@ -693,7 +693,7 @@ function PainelTvPage() {
         <div className="grid grid-cols-1 md:grid-cols-12 gap-4 lg:gap-6 grow">
           {/* Chats Zumbis */}
           {isVisible("zombieList") && (
-            <div className={cn("bg-slate-900/40 border border-slate-800 rounded-xl overflow-hidden flex flex-col", panelClass("zombieList"))}>
+            <div className={cn("bg-slate-900/40 border border-slate-800 rounded-xl overflow-hidden flex flex-col min-w-0", panelClass("zombieList"))}>
               <div className="bg-purple-900/20 px-5 py-3.5 border-b border-purple-500/30 flex items-center justify-between">
                 <h3 className="font-bold uppercase tracking-widest text-purple-400 text-sm flex items-center gap-2">
                   <Ghost className="h-4 w-4" /> Lista de Chats Zumbis
@@ -735,9 +735,9 @@ function PainelTvPage() {
 
           {/* Operadores + Ranking */}
           {(isVisible("ops") || isVisible("ranking")) && (
-            <div className={cn("grid gap-4 lg:gap-6 content-start", isVisible("ops") && isVisible("ranking") ? "grid-rows-2" : "", panelClass("ops"))}>
+            <div className={cn("grid gap-4 lg:gap-6 content-start auto-rows-min min-w-0", panelClass("ops"))}>
               {isVisible("ops") && (
-                <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-5">
+                <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-5 min-w-0 overflow-hidden">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="font-bold uppercase tracking-widest text-blue-400 text-sm flex items-center gap-2">
                       <UserCheck className="h-4 w-4" /> Operadores Online ({operatorsOnline})
@@ -764,7 +764,7 @@ function PainelTvPage() {
                 </div>
               )}
               {isVisible("ranking") && (
-                <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-5">
+                <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-5 min-w-0 overflow-hidden">
                   <h3 className="font-bold uppercase tracking-widest text-emerald-400 text-sm flex items-center gap-2 mb-3">
                     <Users className="h-4 w-4" /> Ranking Performance
                   </h3>
@@ -799,7 +799,7 @@ function PainelTvPage() {
 
           {/* Fila Crítica */}
           {isVisible("critical") && (
-            <div className={cn("rounded-xl p-5 flex flex-col border-2",
+            <div className={cn("rounded-xl p-5 flex flex-col border-2 min-w-0 overflow-hidden",
               waiting.length >= THRESH.queueRedMin
                 ? "bg-red-950/20 border-red-900/50"
                 : "bg-slate-900/40 border-slate-800",
