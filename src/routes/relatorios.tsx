@@ -454,6 +454,12 @@ function RelatoriosPage() {
               <JourneyIdleTab dateFrom={dateFrom} dateTo={dateTo} operatorFilter={operatorFilter} />
             </TabsContent>
 
+            {/* ========== SESSÕES ONLINE / OFFLINE ========== */}
+            <TabsContent value="sessoes" className="space-y-4">
+              <PresenceSessionsTab dateFrom={dateFrom} dateTo={dateTo} operatorFilter={operatorFilter} />
+            </TabsContent>
+
+
             {/* ========== DESEMPENHO ========== */}
             <TabsContent value="desempenho" className="space-y-4">
               <OperatorPerformanceTab dateFrom={dateFrom} dateTo={dateTo} />
