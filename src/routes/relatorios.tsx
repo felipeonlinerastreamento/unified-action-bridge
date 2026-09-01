@@ -408,6 +408,10 @@ function RelatoriosPage() {
               <TabsTrigger value="jornada" className="gap-1 text-xs">
                 <Clock className="h-3.5 w-3.5" /> Jornada & Ociosidade
               </TabsTrigger>
+              <TabsTrigger value="sessoes" className="gap-1 text-xs">
+                <Clock className="h-3.5 w-3.5" /> Online / Offline
+              </TabsTrigger>
+
               <TabsTrigger value="horarios" className="gap-1 text-xs">
                 <Clock className="h-3.5 w-3.5" /> Horários
               </TabsTrigger>
