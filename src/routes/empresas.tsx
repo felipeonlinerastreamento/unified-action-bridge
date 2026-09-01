@@ -608,11 +608,6 @@ function EmpresasPage() {
                     </label>
                   ))}
                 </div>
-                {formPlanTier === "Prime" && (
-                  <p className="text-xs text-muted-foreground">
-                    Conversas deste cliente ficam no topo da fila do chat e são destacadas como atenção.
-                  </p>
-                )}
               </div>
 
               <div className="space-y-2">
