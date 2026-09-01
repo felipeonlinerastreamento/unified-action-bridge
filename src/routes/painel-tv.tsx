@@ -97,11 +97,6 @@ function fmtMinutes(m: number): string {
   return h > 0 ? `${h}h${String(r).padStart(2, "0")}` : `${r}min`;
 }
 
-function initials(name?: string | null): string {
-  if (!name) return "?";
-  const parts = name.trim().split(/\s+/);
-  return ((parts[0]?.[0] ?? "") + (parts[parts.length - 1]?.[0] ?? "")).toUpperCase();
-}
 
 function PainelTvPage() {
   const { hasRole, isAuthenticated, user } = useAuth();
