@@ -325,8 +325,9 @@ function PainelTvPage() {
   const { data: openChats = [] } = useQuery<any[]>({
     queryKey: ["painel-tv-open-chats"],
     enabled: isAuthenticated && allowed,
-    refetchInterval: 15000,
+    refetchInterval: 8000,
     refetchIntervalInBackground: true,
+    staleTime: 0,
     queryFn: async () => {
       const { data } = await supabase
         .from("zapi_chats")
