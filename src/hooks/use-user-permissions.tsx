@@ -58,11 +58,12 @@ export function useUserPermissions(): PermissionsResult {
 
   return useMemo<PermissionsResult>(() => {
     if (panelOnly) {
+      const panelOnlyMenus = new Set(["painel-tv", "central"]);
       return {
-        allowedMenus: new Set(["painel-tv"]),
+        allowedMenus: panelOnlyMenus,
         canFinalizeWithoutMessage: false,
         isLoading: false,
-        canSeeMenu: (slug: string) => slug === "painel-tv",
+        canSeeMenu: (slug: string) => panelOnlyMenus.has(slug),
       };
     }
     if (isAdminOrGestor) {
