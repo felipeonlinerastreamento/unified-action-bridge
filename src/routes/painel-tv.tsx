@@ -22,7 +22,7 @@ import { FloatingBlock, type FloatRect } from "@/components/painel/floating-bloc
 type BlockId =
   | "queue" | "inatt" | "bot" | "tmr" | "tma" | "fin"
   | "zombie" | "engage" | "tmer"
-  | "ops" | "critical" | "zombieList" | "ranking";
+  | "ops" | "critical" | "zombieList" | "ranking" | "openTickets";
 
 type BlockGroup = "kpiMain" | "kpiSub" | "panel" | "full";
 
@@ -40,6 +40,7 @@ const BLOCK_META: Record<BlockId, { label: string; group: BlockGroup; defaultSpa
   critical:   { label: "Painel • Fila crítica",      group: "panel",   defaultSpan: 3, defaultVisible: true },
   zombieList: { label: "Painel • Lista de zumbis",   group: "panel",   defaultSpan: 5, defaultVisible: true },
   ranking:    { label: "Painel • Distribuição de chamados", group: "full", defaultSpan: 1, defaultVisible: true },
+  openTickets:{ label: "Painel • Atendimentos abertos por operador", group: "panel", defaultSpan: 12, defaultVisible: true },
 };
 
 type LayoutState = {
@@ -79,6 +80,7 @@ const DEFAULT_FLOAT: Record<BlockId, FloatRect> = {
   ops:        { x: 784,  y: 384, w: 560, h: 250 },
   ranking:    { x: 784,  y: 654, w: 560, h: 250 },
   critical:   { x: 1368, y: 384, w: 528, h: 520 },
+  openTickets:{ x: 0,    y: 924, w: 1904, h: 300 },
 };
 
 function maxSpanFor(group: BlockGroup): number {
@@ -371,6 +373,37 @@ function PainelTvPage() {
     },
   });
 
+  // Atendimentos abertos (menu Atendimento) — por operador
+  const { data: openTickets = [] } = useQuery<any[]>({
+    queryKey: ["painel-tv-open-tickets"],
+    enabled: isAuthenticated && allowed,
+    refetchInterval: 10000,
+    refetchIntervalInBackground: true,
+    staleTime: 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("service_tickets")
+        .select("id, protocol_number, contact_name, plate, sector, status, assigned_to, created_at")
+        .in("status", ["aberto", "em_andamento", "reaberto"])
+        .order("created_at", { ascending: true })
+        .limit(1000);
+      return data || [];
+    },
+  });
+
+  useEffect(() => {
+    if (!isAuthenticated || !allowed) return;
+    const channel = supabase
+      .channel("painel-tv-tickets")
+      .on("postgres_changes", { event: "*", schema: "public", table: "service_tickets" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["painel-tv-open-tickets"] });
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [isAuthenticated, allowed, queryClient]);
+
   // Chats de hoje (para TMR)
   const { data: todayChats = [] } = useQuery<any[]>({
     queryKey: ["painel-tv-today-chats", todayStartISO],
@@ -645,6 +678,28 @@ function PainelTvPage() {
     // `now` força o recálculo do tempo a cada tick do relógio
   }, [waiting, now]);
 
+  // Atendimentos abertos (menu Atendimento) agrupados por operador
+  const openTicketsByOp = useMemo(() => {
+    const profMap = new Map(profiles.map((p) => [p.user_id, p]));
+    const groups = new Map<string, { user_id: string; name: string; online: boolean; tickets: any[] }>();
+    for (const t of openTickets) {
+      const uid = t.assigned_to || "sem-operador";
+      const p = profMap.get(uid);
+      const g = groups.get(uid) || {
+        user_id: uid,
+        name: t.assigned_to ? (p?.name || "—") : "Sem operador",
+        online: !!(p?.last_seen_at && minutesAgo(p.last_seen_at) <= THRESH.operatorOnlineMin),
+        tickets: [] as any[],
+      };
+      g.tickets.push(t);
+      groups.set(uid, g);
+    }
+    return Array.from(groups.values())
+      .sort((a, b) => b.tickets.length - a.tickets.length)
+      .slice(0, 8);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openTickets, profiles, now]);
+
   if (!isAuthenticated || permLoading) {
     return <AppLayout><div className="p-4">Carregando...</div></AppLayout>;
   }
@@ -896,7 +951,7 @@ function PainelTvPage() {
       </div>
 
       {/* Listas detalhadas */}
-      {(isVisible("zombieList") || isVisible("ops") || isVisible("ranking") || isVisible("critical")) && (
+      {(isVisible("zombieList") || isVisible("ops") || isVisible("ranking") || isVisible("critical") || isVisible("openTickets")) && (
         <div className={cn("grid grid-cols-12 gap-6 grow items-start", freeMode && "hidden")}>
           {/* Chats Zumbis */}
           {isVisible("zombieList") && wrap("zombieList", (
@@ -1040,6 +1095,54 @@ function PainelTvPage() {
                         </div>
                       );
                     })}
+                  </div>
+                )}
+              </ScrollArea>
+            </div>
+          ))}
+
+          {/* Atendimentos abertos por operador (menu Atendimento) */}
+          {isVisible("openTickets") && wrap("openTickets", (
+            <div className={cn("bg-slate-900/40 border border-slate-800 rounded-xl overflow-hidden flex flex-col min-w-0", panelClass("openTickets"))}>
+              <div className="bg-sky-900/20 px-5 py-3.5 border-b border-sky-500/30 flex items-center justify-between">
+                <h3 className="font-bold uppercase tracking-widest text-sky-400 text-sm flex items-center gap-2">
+                  <Users className="h-4 w-4" /> Atendimentos abertos por operador
+                </h3>
+                <span className="font-mono font-bold text-sky-300 bg-sky-950 px-2 py-0.5 rounded text-sm">{openTickets.length}</span>
+              </div>
+              <ScrollArea className="grow max-h-[300px]">
+                {openTicketsByOp.length === 0 ? (
+                  <div className="p-8 text-center text-slate-500 text-sm">Nenhum atendimento aberto no momento.</div>
+                ) : (
+                  <div className="grid grid-cols-4 gap-4 p-4">
+                    {openTicketsByOp.map((g) => (
+                      <div key={g.user_id} className="bg-slate-800/40 border border-slate-800 rounded-lg p-3 min-w-0">
+                        <div className="flex items-center justify-between gap-2 mb-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            {g.online && <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" title="online" />}
+                            <span className="font-bold text-white text-sm truncate uppercase">{g.name}</span>
+                          </div>
+                          <span className="font-mono font-bold text-sky-300 bg-sky-950 px-2 py-0.5 rounded text-xs shrink-0 tabular-nums">
+                            {g.tickets.length} aberto{g.tickets.length === 1 ? "" : "s"}
+                          </span>
+                        </div>
+                        <div className="space-y-1.5">
+                          {g.tickets.slice(0, 6).map((t) => (
+                            <div key={t.id} className="flex items-center justify-between gap-2 text-xs">
+                              <span className="font-mono text-slate-300 shrink-0">#{t.protocol_number ?? "—"}</span>
+                              <span className="text-slate-400 truncate">{t.contact_name || t.plate || t.sector || "—"}</span>
+                              <span className={cn("font-mono shrink-0 tabular-nums",
+                                t.status === "em_andamento" ? "text-blue-400" : t.status === "reaberto" ? "text-amber-400" : "text-slate-500")}>
+                                {fmtMinutes(minutesAgo(t.created_at))}
+                              </span>
+                            </div>
+                          ))}
+                          {g.tickets.length > 6 && (
+                            <div className="text-[10px] text-slate-500 text-center uppercase">+ {g.tickets.length - 6} outros</div>
+                          )}
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 )}
               </ScrollArea>
