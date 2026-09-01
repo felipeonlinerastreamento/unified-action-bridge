@@ -338,6 +338,15 @@ function ChatListItem({
           {/* Row 1: Name + time/unread */}
           <div className="flex items-center justify-between gap-1">
             <div className="flex items-center gap-1 min-w-0 flex-1">
+              {prime && (
+                <span
+                  className="flex items-center gap-0.5 shrink-0 text-[9px] font-bold uppercase rounded px-1 py-[1px] bg-amber-500 text-white"
+                  title="Contato Prime — prioridade na fila"
+                >
+                  <Star className="h-2.5 w-2.5 fill-current" /> Prime
+                </span>
+              )}
+
               {hasLastMsg && (
                 lastMsgIsMe ? (
                   <ArrowUp
