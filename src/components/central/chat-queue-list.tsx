@@ -224,7 +224,9 @@ export function ChatQueueList({
           getSlaColor={getSlaColor}
           formatServiceTime={formatServiceTime}
           nowTick={nowTick}
+          prime={isPrime(chat)}
         />
+
       ))}
     </ScrollArea>
   );
