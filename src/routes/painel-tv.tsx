@@ -137,7 +137,10 @@ function useFitScale() {
       // sobra espaço morto na lateral direita.
       const byW = availW / DESIGN_WIDTH;
       const byH = naturalH > 0 ? availH / naturalH : byW;
-      const scale = Math.max(0.3, Math.min(3, Math.max(byW * 0.75, Math.min(byW, byH))));
+      // Preenche sempre pelo menos 85% da largura; se o conteúdo ficar um
+      // pouco mais alto que a tela, o excesso rola dentro do painel (em vez
+      // de encolher tudo e deixar espaço vazio à direita).
+      const scale = Math.max(0.3, Math.min(3, Math.max(Math.min(byW, byH), byW * 0.85)));
       setFit({ scale, height: naturalH * scale, availH });
 
     };
@@ -173,9 +176,14 @@ function fmtMinutes(m: number): string {
 
 function PainelTvPage() {
   const { hasRole, isAuthenticated, user } = useAuth();
-  const { canSeeMenu, isLoading: permLoading } = useUserPermissions();
+  const { canSeeMenu, isLoading: permLoading, allowedMenus } = useUserPermissions();
   const isAdmin = hasRole("admin") || hasRole("gestor");
   const allowed = isAdmin || canSeeMenu("painel-tv");
+  // Usuário "Apenas Painel TV": renderiza sem sidebar/header para usar a TV toda
+  const isPanelOnly =
+    allowedMenus !== null &&
+    allowedMenus.has("painel-tv") &&
+    [...allowedMenus].every((m) => m === "painel-tv" || m === "central");
 
   // ============ Layout personalizável (por usuário) ============
   const layoutKey = user?.id ? `painel-tv-layout:${user.id}` : null;
@@ -1029,7 +1037,7 @@ function PainelTvPage() {
     </div>
   );
 
-  // Em fullscreen: renderiza sem AppLayout para ganhar toda a tela
-  if (isFs) return content;
+  // Em fullscreen ou para usuário "Apenas Painel TV": sem AppLayout (tela toda)
+  if (isFs || isPanelOnly) return content;
   return <AppLayout>{content}</AppLayout>;
 }
