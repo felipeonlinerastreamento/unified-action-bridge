@@ -496,8 +496,8 @@ function PainelTvPage() {
     <div
       ref={containerRef}
       className={cn(
-        "min-h-screen w-full bg-[#020617] text-slate-100 p-4 md:p-6 lg:p-8 flex flex-col gap-5",
-        isFs && "overflow-auto",
+        "w-full bg-[#020617] text-slate-100 p-4 md:p-6 lg:p-8 flex flex-col gap-5",
+        isFs ? "h-screen overflow-auto" : "min-h-screen",
       )}
     >
       {/* Header */}
@@ -690,7 +690,7 @@ function PainelTvPage() {
 
       {/* Listas detalhadas */}
       {(isVisible("zombieList") || isVisible("ops") || isVisible("ranking") || isVisible("critical")) && (
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 lg:gap-6 grow">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 lg:gap-6 grow items-start">
           {/* Chats Zumbis */}
           {isVisible("zombieList") && (
             <div className={cn("bg-slate-900/40 border border-slate-800 rounded-xl overflow-hidden flex flex-col min-w-0", panelClass("zombieList"))}>
