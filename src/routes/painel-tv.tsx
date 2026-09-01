@@ -475,16 +475,6 @@ function PainelTvPage() {
       .map((c) => ({ ...c, waitingMin: minutesAgo(c.created_at) }));
   }, [waiting]);
 
-  // Cor da fila
-  const queueColor =
-    oldestWaitingMin >= THRESH.queueRedMin ? "text-destructive"
-    : oldestWaitingMin >= THRESH.queueYellowMin ? "text-amber-500"
-    : "text-emerald-500";
-  const queueBg =
-    oldestWaitingMin >= THRESH.queueRedMin ? "bg-destructive/10 border-destructive"
-    : oldestWaitingMin >= THRESH.queueYellowMin ? "bg-amber-500/10 border-amber-500"
-    : "bg-emerald-500/10 border-emerald-500";
-
   if (!isAuthenticated || permLoading) {
     return <AppLayout><div className="p-4">Carregando...</div></AppLayout>;
   }
