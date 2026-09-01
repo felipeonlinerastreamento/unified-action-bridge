@@ -13,9 +13,10 @@ import { Switch } from "@/components/ui/switch";
 import {
   Users, Clock, MessageSquare, Bot, CheckCircle2, UserCheck,
   AlertTriangle, Maximize2, Minimize2, TrendingUp,
-  Zap, Ghost, Settings2, RotateCcw,
+  Zap, Ghost, Settings2, RotateCcw, Move,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { FloatingBlock, type FloatRect } from "@/components/painel/floating-block";
 
 // ============ Personalização de layout ============
 type BlockId =
@@ -61,6 +62,23 @@ const PANEL_SPAN_CLASS: Record<number, string> = {
   1: "col-span-1", 2: "col-span-2", 3: "col-span-3", 4: "col-span-4",
   5: "col-span-5", 6: "col-span-6", 7: "col-span-7", 8: "col-span-8",
   9: "col-span-9", 10: "col-span-10", 11: "col-span-11", 12: "col-span-12",
+};
+
+// Posições padrão do modo "balões flutuantes" (canvas de 1920px de largura)
+const DEFAULT_FLOAT: Record<BlockId, FloatRect> = {
+  queue:      { x: 0,    y: 0,   w: 456, h: 200 },
+  inatt:      { x: 480,  y: 0,   w: 456, h: 200 },
+  bot:        { x: 960,  y: 0,   w: 456, h: 200 },
+  fin:        { x: 1440, y: 0,   w: 456, h: 200 },
+  tmr:        { x: 0,    y: 220, w: 360, h: 140 },
+  tma:        { x: 384,  y: 220, w: 360, h: 140 },
+  tmer:       { x: 768,  y: 220, w: 360, h: 140 },
+  engage:     { x: 1152, y: 220, w: 360, h: 140 },
+  zombie:     { x: 1536, y: 220, w: 360, h: 140 },
+  zombieList: { x: 0,    y: 384, w: 760, h: 520 },
+  ops:        { x: 784,  y: 384, w: 560, h: 250 },
+  ranking:    { x: 784,  y: 654, w: 560, h: 250 },
+  critical:   { x: 1368, y: 384, w: 528, h: 520 },
 };
 
 function maxSpanFor(group: BlockGroup): number {
@@ -197,9 +215,75 @@ function PainelTvPage() {
   const subKpiClass = (id: BlockId) => SUB_SPAN_CLASS[layout.span[id] ?? BLOCK_META[id].defaultSpan] ?? "col-span-1";
   const panelClass = (id: BlockId) => PANEL_SPAN_CLASS[layout.span[id] ?? BLOCK_META[id].defaultSpan] ?? "col-span-4";
 
+  // ============ Modo balões flutuantes (arrastar / redimensionar) ============
+  const freeKey = user?.id ? `painel-tv-float:${user.id}` : null;
+  const [freeMode, setFreeMode] = useState(false);
+  const [floats, setFloats] = useState<Record<BlockId, FloatRect>>(DEFAULT_FLOAT);
+  const [canvas, setCanvas] = useState<HTMLDivElement | null>(null);
+  const scaleRef = useRef(1);
+
+  useEffect(() => {
+    if (!freeKey) return;
+    try {
+      const raw = localStorage.getItem(freeKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        setFreeMode(!!parsed?.enabled);
+        setFloats({ ...DEFAULT_FLOAT, ...(parsed?.rects ?? {}) });
+      }
+    } catch { /* ignore */ }
+  }, [freeKey]);
+
+  const persistFloat = (enabled: boolean, rects: Record<BlockId, FloatRect>) => {
+    if (!freeKey) return;
+    try { localStorage.setItem(freeKey, JSON.stringify({ enabled, rects })); } catch { /* ignore */ }
+  };
+  const setRect = (id: BlockId, rect: FloatRect, commit = false) => {
+    setFloats((prev) => {
+      const next = { ...prev, [id]: rect };
+      if (commit) persistFloat(freeMode, next);
+      return next;
+    });
+  };
+  const toggleFreeMode = () => {
+    const next = !freeMode;
+    setFreeMode(next);
+    persistFloat(next, floats);
+  };
+  const resetFloats = () => {
+    setFloats(DEFAULT_FLOAT);
+    persistFloat(freeMode, DEFAULT_FLOAT);
+  };
+
+  const canvasHeight = useMemo(() => {
+    const bottoms = (Object.keys(BLOCK_META) as BlockId[])
+      .filter((id) => layout.visible[id] !== false)
+      .map((id) => (floats[id] ?? DEFAULT_FLOAT[id]).y + (floats[id] ?? DEFAULT_FLOAT[id]).h);
+    return Math.max(600, ...bottoms) + 48;
+  }, [floats, layout.visible]);
+
+  const wrap = (id: BlockId, node: React.ReactNode) => {
+    if (!freeMode) return node;
+    return (
+      <FloatingBlock
+        key={id}
+        id={id}
+        label={BLOCK_META[id].label}
+        rect={floats[id] ?? DEFAULT_FLOAT[id]}
+        canvas={canvas}
+        scaleRef={scaleRef}
+        onChange={(r) => setRect(id, r)}
+        onCommit={(r) => setRect(id, r, true)}
+      >
+        {node}
+      </FloatingBlock>
+    );
+  };
+
   const [isFs, setIsFs] = useState(false);
   // Ajuste automático ao tamanho da tela (detectado via ResizeObserver)
   const { containerRef, contentRef, container, scale, height: fitHeight, availH } = useFitScale();
+  scaleRef.current = scale;
 
   // Relógio ao vivo (cabeçalho)
   const [now, setNow] = useState(() => new Date());
@@ -651,6 +735,19 @@ function PainelTvPage() {
                 </div>
               </PopoverContent>
             </Popover>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleFreeMode}
+              className={cn("border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800 hover:text-white", freeMode && "border-emerald-500 text-emerald-400")}
+            >
+              <Move className="h-4 w-4 mr-1" /> {freeMode ? "Balões livres" : "Modo grade"}
+            </Button>
+            {freeMode && (
+              <Button variant="ghost" size="sm" onClick={resetFloats} className="text-slate-400 hover:text-white">
+                <RotateCcw className="h-4 w-4 mr-1" /> Posições
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={toggleFs} className="border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800 hover:text-white">
               {isFs ? <><Minimize2 className="h-4 w-4 mr-1" /> Sair</> : <><Maximize2 className="h-4 w-4 mr-1" /> Tela Cheia</>}
             </Button>
@@ -658,8 +755,13 @@ function PainelTvPage() {
         </div>
       </div>
 
+      {/* Canvas dos balões flutuantes */}
+      {freeMode && (
+        <div ref={setCanvas} className="relative w-full" style={{ height: canvasHeight }} />
+      )}
+
       {/* KPIs principais */}
-      <div className="grid grid-cols-4 gap-6">
+      <div className={cn("grid grid-cols-4 gap-6", freeMode && "hidden")}>
         {isVisible("queue") && wrap("queue", (
           <div className={cn("bg-slate-900 border-l-8 p-6 rounded-r-xl shadow-2xl min-w-0 overflow-hidden", queueAccent, mainKpiClass("queue"))}>
             <div className="flex items-center justify-between gap-2">
@@ -709,7 +811,7 @@ function PainelTvPage() {
       </div>
 
       {/* Métricas secundárias */}
-      <div className="grid grid-cols-5 gap-4">
+      <div className={cn("grid grid-cols-5 gap-4", freeMode && "hidden")}>
         {isVisible("tmr") && wrap("tmr", (
           <div className={cn("bg-slate-900/50 p-4 rounded-lg border border-slate-800 min-w-0 overflow-hidden", subKpiClass("tmr"))}>
             <span className="text-slate-500 text-xs font-bold uppercase">TMR (1ª resposta)</span>
@@ -760,7 +862,7 @@ function PainelTvPage() {
 
       {/* Listas detalhadas */}
       {(isVisible("zombieList") || isVisible("ops") || isVisible("ranking") || isVisible("critical")) && (
-        <div className="grid grid-cols-12 gap-6 grow items-start">
+        <div className={cn("grid grid-cols-12 gap-6 grow items-start", freeMode && "hidden")}>
           {/* Chats Zumbis */}
           {isVisible("zombieList") && wrap("zombieList", (
             <div className={cn("bg-slate-900/40 border border-slate-800 rounded-xl overflow-hidden flex flex-col min-w-0", panelClass("zombieList"))}>
