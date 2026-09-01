@@ -25,22 +25,22 @@ type BlockId =
   | "zombie" | "engage" | "tmer"
   | "ops" | "critical" | "zombieList" | "ranking";
 
-type BlockGroup = "kpi" | "panel" | "full";
+type BlockGroup = "kpiMain" | "kpiSub" | "panel" | "full";
 
 const BLOCK_META: Record<BlockId, { label: string; group: BlockGroup; defaultSpan: number; defaultVisible: boolean }> = {
-  queue:      { label: "KPI • Fila aguardando",       group: "kpi",   defaultSpan: 1, defaultVisible: true },
-  inatt:      { label: "KPI • Em atendimento",        group: "kpi",   defaultSpan: 1, defaultVisible: true },
-  bot:        { label: "KPI • Bot travado",           group: "kpi",   defaultSpan: 1, defaultVisible: true },
-  tmr:        { label: "KPI • TMR",                   group: "kpi",   defaultSpan: 1, defaultVisible: true },
-  tma:        { label: "KPI • TMA hoje",              group: "kpi",   defaultSpan: 1, defaultVisible: true },
-  fin:        { label: "KPI • Finalizados hoje",      group: "kpi",   defaultSpan: 1, defaultVisible: true },
-  zombie:     { label: "KPI • Chats zumbis",          group: "kpi",   defaultSpan: 2, defaultVisible: true },
-  engage:     { label: "KPI • Taxa de engajamento",   group: "kpi",   defaultSpan: 2, defaultVisible: true },
-  tmer:       { label: "KPI • TMER",                  group: "kpi",   defaultSpan: 2, defaultVisible: true },
-  ops:        { label: "Painel • Operadores online", group: "panel", defaultSpan: 1, defaultVisible: true },
-  critical:   { label: "Painel • Fila crítica",      group: "panel", defaultSpan: 3, defaultVisible: true },
-  zombieList: { label: "Painel • Lista de zumbis",   group: "full",  defaultSpan: 1, defaultVisible: true },
-  ranking:    { label: "Painel • Ranking",           group: "full",  defaultSpan: 1, defaultVisible: true },
+  queue:      { label: "KPI • Fila aguardando",       group: "kpiMain", defaultSpan: 1, defaultVisible: true },
+  inatt:      { label: "KPI • Em atendimento",        group: "kpiMain", defaultSpan: 1, defaultVisible: true },
+  bot:        { label: "KPI • Bot travado",           group: "kpiMain", defaultSpan: 1, defaultVisible: true },
+  fin:        { label: "KPI • Finalizados hoje",      group: "kpiMain", defaultSpan: 1, defaultVisible: true },
+  tmr:        { label: "Métrica • TMR",               group: "kpiSub",  defaultSpan: 1, defaultVisible: true },
+  tma:        { label: "Métrica • TMA hoje",          group: "kpiSub",  defaultSpan: 1, defaultVisible: true },
+  tmer:       { label: "Métrica • TMER",              group: "kpiSub",  defaultSpan: 1, defaultVisible: true },
+  engage:     { label: "Métrica • Taxa de engajamento", group: "kpiSub", defaultSpan: 1, defaultVisible: true },
+  zombie:     { label: "Métrica • Chats zumbis",      group: "kpiSub",  defaultSpan: 1, defaultVisible: true },
+  ops:        { label: "Painel • Operadores online", group: "panel",   defaultSpan: 4, defaultVisible: true },
+  critical:   { label: "Painel • Fila crítica",      group: "panel",   defaultSpan: 3, defaultVisible: true },
+  zombieList: { label: "Painel • Lista de zumbis",   group: "panel",   defaultSpan: 5, defaultVisible: true },
+  ranking:    { label: "Painel • Ranking",           group: "full",    defaultSpan: 1, defaultVisible: true },
 };
 
 type LayoutState = {
@@ -53,16 +53,20 @@ const DEFAULT_LAYOUT: LayoutState = {
   span:    Object.fromEntries((Object.keys(BLOCK_META) as BlockId[]).map((k) => [k, BLOCK_META[k].defaultSpan]))    as Record<BlockId, number>,
 };
 
-const KPI_SPAN_CLASS: Record<number, string> = {
-  1: "lg:col-span-1", 2: "lg:col-span-2", 3: "lg:col-span-3",
-  4: "lg:col-span-4", 5: "lg:col-span-5", 6: "lg:col-span-6",
+const MAIN_SPAN_CLASS: Record<number, string> = {
+  1: "lg:col-span-1", 2: "lg:col-span-2", 3: "lg:col-span-3", 4: "lg:col-span-4",
+};
+const SUB_SPAN_CLASS: Record<number, string> = {
+  1: "lg:col-span-1", 2: "lg:col-span-2", 3: "lg:col-span-3", 4: "lg:col-span-4", 5: "lg:col-span-5",
 };
 const PANEL_SPAN_CLASS: Record<number, string> = {
   1: "md:col-span-1", 2: "md:col-span-2", 3: "md:col-span-3", 4: "md:col-span-4",
+  5: "md:col-span-5", 6: "md:col-span-6", 7: "md:col-span-7", 8: "md:col-span-8",
+  9: "md:col-span-9", 10: "md:col-span-10", 11: "md:col-span-11", 12: "md:col-span-12",
 };
 
 function maxSpanFor(group: BlockGroup): number {
-  return group === "kpi" ? 6 : group === "panel" ? 4 : 1;
+  return group === "kpiMain" ? 4 : group === "kpiSub" ? 5 : group === "panel" ? 12 : 1;
 }
 
 export const Route = createFileRoute("/painel-tv")({
