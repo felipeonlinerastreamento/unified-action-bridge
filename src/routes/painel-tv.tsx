@@ -591,24 +591,24 @@ function PainelTvPage() {
       {/* KPIs principais */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
         {isVisible("queue") && (
-          <div className={cn("bg-slate-900 border-l-8 p-5 lg:p-6 rounded-r-xl shadow-2xl", queueAccent, mainKpiClass("queue"))}>
-            <div className="flex items-center justify-between">
-              <span className="text-slate-400 text-xs lg:text-sm font-bold uppercase tracking-widest">Fila Aguardando</span>
-              <Clock className={cn("h-5 w-5", queueText)} />
+          <div className={cn("bg-slate-900 border-l-8 p-5 lg:p-6 rounded-r-xl shadow-2xl min-w-0 overflow-hidden", queueAccent, mainKpiClass("queue"))}>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-slate-400 text-xs lg:text-sm font-bold uppercase tracking-widest truncate">Fila Aguardando</span>
+              <Clock className={cn("h-5 w-5 shrink-0", queueText)} />
             </div>
-            <div className={cn("text-6xl lg:text-7xl xl:text-8xl font-black mt-2 tabular-nums", queueText)}>{waiting.length}</div>
+            <div className={cn("text-[clamp(2.75rem,5.5vw,6rem)] leading-none font-black mt-2 tabular-nums whitespace-nowrap", queueText)}>{waiting.length}</div>
             <p className="text-xs lg:text-sm text-slate-500 mt-2">
               + antigo: <span className={cn("font-bold", queueText)}>{fmtMinutes(oldestWaitingMin)}</span>
             </p>
           </div>
         )}
         {isVisible("inatt") && (
-          <div className={cn("bg-slate-900 border-l-8 border-blue-500 p-5 lg:p-6 rounded-r-xl shadow-2xl", mainKpiClass("inatt"))}>
-            <div className="flex items-center justify-between">
-              <span className="text-slate-400 text-xs lg:text-sm font-bold uppercase tracking-widest">Em Atendimento</span>
-              <MessageSquare className="h-5 w-5 text-blue-400" />
+          <div className={cn("bg-slate-900 border-l-8 border-blue-500 p-5 lg:p-6 rounded-r-xl shadow-2xl min-w-0 overflow-hidden", mainKpiClass("inatt"))}>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-slate-400 text-xs lg:text-sm font-bold uppercase tracking-widest truncate">Em Atendimento</span>
+              <MessageSquare className="h-5 w-5 text-blue-400 shrink-0" />
             </div>
-            <div className="text-6xl lg:text-7xl xl:text-8xl font-black text-blue-400 mt-2 tabular-nums">{inAttendance.length}</div>
+            <div className="text-[clamp(2.75rem,5.5vw,6rem)] leading-none font-black text-blue-400 mt-2 tabular-nums whitespace-nowrap">{inAttendance.length}</div>
             <p className="text-xs lg:text-sm text-slate-500 mt-2">chats ativos</p>
           </div>
         )}
