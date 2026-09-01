@@ -980,9 +980,15 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               !p.fromMe && (existing.status === "finalizado" || isPendingResolve) && groupReopenGuard;
             // For groups, ALWAYS prefer the latest group name (it can change),
             // overriding any previously stored sender name.
+            // Em eco (fromMe) o senderName é o da conta conectada — nunca
+            // sobrescreve o nome do contato. Se o nome salvo for exatamente o
+            // eco da conta (bug anterior), substituímos pelo telefone.
+            const accountEchoName =
+              p.fromMe && p.senderName && existing.contact_name === p.senderName;
+            const existingNameSafe = accountEchoName ? null : existing.contact_name;
             const nameToStore = isGroupMessage
-              ? (groupDisplayName || existing.contact_name || p.senderName || null)
-              : (existing.contact_name || p.senderName || null);
+              ? (groupDisplayName || existingNameSafe || senderContactName || null)
+              : (existingNameSafe || senderContactName || null);
             const baseUpdate: {
               contact_name: string | null;
               contact_avatar?: string;
