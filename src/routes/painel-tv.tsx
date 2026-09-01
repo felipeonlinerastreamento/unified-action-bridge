@@ -145,11 +145,19 @@ function PainelTvPage() {
   const resetLayout = () => persistLayout(DEFAULT_LAYOUT);
 
   const isVisible = (id: BlockId) => layout.visible[id] !== false;
-  const kpiClass = (id: BlockId) => KPI_SPAN_CLASS[layout.span[id] ?? BLOCK_META[id].defaultSpan] ?? "lg:col-span-1";
-  const panelClass = (id: BlockId) => PANEL_SPAN_CLASS[layout.span[id] ?? BLOCK_META[id].defaultSpan] ?? "md:col-span-1";
+  const mainKpiClass = (id: BlockId) => MAIN_SPAN_CLASS[layout.span[id] ?? BLOCK_META[id].defaultSpan] ?? "lg:col-span-1";
+  const subKpiClass = (id: BlockId) => SUB_SPAN_CLASS[layout.span[id] ?? BLOCK_META[id].defaultSpan] ?? "lg:col-span-1";
+  const panelClass = (id: BlockId) => PANEL_SPAN_CLASS[layout.span[id] ?? BLOCK_META[id].defaultSpan] ?? "md:col-span-4";
 
   const [isFs, setIsFs] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Relógio ao vivo (cabeçalho)
+  const [now, setNow] = useState(() => new Date());
+  useEffect(() => {
+    const t = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(t);
+  }, []);
 
   useEffect(() => {
     const onFs = () => setIsFs(!!document.fullscreenElement);
