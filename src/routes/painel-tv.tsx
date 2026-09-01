@@ -310,6 +310,26 @@ function PainelTvPage() {
     },
   });
 
+  // Operadores do setor "Atendimento" (para o card Operadores online)
+  const { data: atendimentoUserIds = [] } = useQuery<string[]>({
+    queryKey: ["painel-tv-atendimento-ops"],
+    enabled: isAuthenticated && allowed,
+    refetchInterval: 60000,
+    queryFn: async () => {
+      const { data: sectorRows } = await supabase
+        .from("sectors")
+        .select("id")
+        .ilike("name", "atendimento");
+      const sectorIds = (sectorRows || []).map((s: any) => s.id);
+      if (sectorIds.length === 0) return [];
+      const { data: assigns } = await supabase
+        .from("user_sector_assignments")
+        .select("user_id")
+        .in("sector_id", sectorIds);
+      return Array.from(new Set((assigns || []).map((a: any) => a.user_id).filter(Boolean))) as string[];
+    },
+  });
+
   // ==== Cálculos ====
   const waiting = openChats.filter((c) => c.status === "aguardando");
   const inAttendance = openChats.filter((c) => c.status === "em_atendimento");
@@ -387,7 +407,12 @@ function PainelTvPage() {
   const tmaAvg = tmaValues.length ? tmaValues.reduce((a, b) => a + b, 0) / tmaValues.length : 0;
 
   const finalizedToday = closedToday.length;
-  const operatorsOnline = profiles.filter(
+  // Card "Operadores online": somente operadores do setor Atendimento
+  const atendimentoSet = new Set(atendimentoUserIds);
+  const opsProfiles = atendimentoSet.size > 0
+    ? profiles.filter((p) => atendimentoSet.has(p.user_id))
+    : profiles;
+  const operatorsOnline = opsProfiles.filter(
     (p) => p.last_seen_at && minutesAgo(p.last_seen_at) <= THRESH.operatorOnlineMin,
   ).length;
 
@@ -730,9 +755,11 @@ function PainelTvPage() {
                 </div>
                 <p className="text-4xl font-black mt-2">
                   <span className="text-emerald-600 dark:text-emerald-400">{operatorsOnline}</span>
-                  <span className="text-muted-foreground text-2xl"> / {profiles.length}</span>
+                  <span className="text-muted-foreground text-2xl"> / {opsProfiles.length}</span>
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">ativos nos últimos {THRESH.operatorOnlineMin}min</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  setor Atendimento • ativos nos últimos {THRESH.operatorOnlineMin}min
+                </p>
               </CardContent>
             </Card>
           )}
