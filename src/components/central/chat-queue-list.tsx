@@ -1,10 +1,13 @@
 import { useState, useMemo, useEffect } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Users, MessageSquare, ArrowUp, ArrowDown, AlertTriangle } from "lucide-react";
+import { Loader2, Users, MessageSquare, ArrowUp, ArrowDown, AlertTriangle, Star } from "lucide-react";
 import { useFloatingChats } from "./floating-chats-context";
 import { isGroupChat } from "@/lib/chat-utils";
+
 
 // Meta de resposta: verde ≤2min, amarelo 2-5min, vermelho >5min (zumbi)
 const WARN_MS = 2 * 60 * 1000;
