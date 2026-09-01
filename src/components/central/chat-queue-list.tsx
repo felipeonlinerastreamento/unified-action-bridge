@@ -314,7 +314,8 @@ function ChatListItem({
       onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); onSelect(); } }}
       className={`w-full text-left px-3 py-2.5 border-b hover:bg-accent/50 transition-colors cursor-grab active:cursor-grabbing ${
         isSelected ? "bg-accent" : ""
-      } ${clientWaiting ? "animate-name-blink" : ""} ${isZombie ? "ring-2 ring-inset ring-red-500 bg-red-50/40 dark:bg-red-950/20" : ""}`}
+      } ${clientWaiting ? "animate-name-blink" : ""} ${prime ? "border-l-4 border-l-amber-500 bg-amber-50/50 dark:bg-amber-950/20" : ""} ${isZombie ? "ring-2 ring-inset ring-red-500 bg-red-50/40 dark:bg-red-950/20" : ""}`}
+
       title="Clique para abrir no painel ou arraste para fora para janela flutuante"
     >
       <div className="flex items-start gap-2.5">
