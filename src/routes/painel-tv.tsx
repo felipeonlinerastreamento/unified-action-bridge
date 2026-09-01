@@ -13,9 +13,10 @@ import { Switch } from "@/components/ui/switch";
 import {
   Users, Clock, MessageSquare, Bot, CheckCircle2, UserCheck,
   AlertTriangle, Maximize2, Minimize2, TrendingUp,
-  Zap, Ghost, Settings2, RotateCcw,
+  Zap, Ghost, Settings2, RotateCcw, Move,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { FloatingBlock, type FloatRect } from "@/components/painel/floating-block";
 
 // ============ Personalização de layout ============
 type BlockId =
@@ -61,6 +62,23 @@ const PANEL_SPAN_CLASS: Record<number, string> = {
   1: "col-span-1", 2: "col-span-2", 3: "col-span-3", 4: "col-span-4",
   5: "col-span-5", 6: "col-span-6", 7: "col-span-7", 8: "col-span-8",
   9: "col-span-9", 10: "col-span-10", 11: "col-span-11", 12: "col-span-12",
+};
+
+// Posições padrão do modo "balões flutuantes" (canvas de 1920px de largura)
+const DEFAULT_FLOAT: Record<BlockId, FloatRect> = {
+  queue:      { x: 0,    y: 0,   w: 456, h: 200 },
+  inatt:      { x: 480,  y: 0,   w: 456, h: 200 },
+  bot:        { x: 960,  y: 0,   w: 456, h: 200 },
+  fin:        { x: 1440, y: 0,   w: 456, h: 200 },
+  tmr:        { x: 0,    y: 220, w: 360, h: 140 },
+  tma:        { x: 384,  y: 220, w: 360, h: 140 },
+  tmer:       { x: 768,  y: 220, w: 360, h: 140 },
+  engage:     { x: 1152, y: 220, w: 360, h: 140 },
+  zombie:     { x: 1536, y: 220, w: 360, h: 140 },
+  zombieList: { x: 0,    y: 384, w: 760, h: 520 },
+  ops:        { x: 784,  y: 384, w: 560, h: 250 },
+  ranking:    { x: 784,  y: 654, w: 560, h: 250 },
+  critical:   { x: 1368, y: 384, w: 528, h: 520 },
 };
 
 function maxSpanFor(group: BlockGroup): number {
@@ -197,9 +215,75 @@ function PainelTvPage() {
   const subKpiClass = (id: BlockId) => SUB_SPAN_CLASS[layout.span[id] ?? BLOCK_META[id].defaultSpan] ?? "col-span-1";
   const panelClass = (id: BlockId) => PANEL_SPAN_CLASS[layout.span[id] ?? BLOCK_META[id].defaultSpan] ?? "col-span-4";
 
+  // ============ Modo balões flutuantes (arrastar / redimensionar) ============
+  const freeKey = user?.id ? `painel-tv-float:${user.id}` : null;
+  const [freeMode, setFreeMode] = useState(false);
+  const [floats, setFloats] = useState<Record<BlockId, FloatRect>>(DEFAULT_FLOAT);
+  const [canvas, setCanvas] = useState<HTMLDivElement | null>(null);
+  const scaleRef = useRef(1);
+
+  useEffect(() => {
+    if (!freeKey) return;
+    try {
+      const raw = localStorage.getItem(freeKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        setFreeMode(!!parsed?.enabled);
+        setFloats({ ...DEFAULT_FLOAT, ...(parsed?.rects ?? {}) });
+      }
+    } catch { /* ignore */ }
+  }, [freeKey]);
+
+  const persistFloat = (enabled: boolean, rects: Record<BlockId, FloatRect>) => {
+    if (!freeKey) return;
+    try { localStorage.setItem(freeKey, JSON.stringify({ enabled, rects })); } catch { /* ignore */ }
+  };
+  const setRect = (id: BlockId, rect: FloatRect, commit = false) => {
+    setFloats((prev) => {
+      const next = { ...prev, [id]: rect };
+      if (commit) persistFloat(freeMode, next);
+      return next;
+    });
+  };
+  const toggleFreeMode = () => {
+    const next = !freeMode;
+    setFreeMode(next);
+    persistFloat(next, floats);
+  };
+  const resetFloats = () => {
+    setFloats(DEFAULT_FLOAT);
+    persistFloat(freeMode, DEFAULT_FLOAT);
+  };
+
+  const canvasHeight = useMemo(() => {
+    const bottoms = (Object.keys(BLOCK_META) as BlockId[])
+      .filter((id) => layout.visible[id] !== false)
+      .map((id) => (floats[id] ?? DEFAULT_FLOAT[id]).y + (floats[id] ?? DEFAULT_FLOAT[id]).h);
+    return Math.max(600, ...bottoms) + 48;
+  }, [floats, layout.visible]);
+
+  const wrap = (id: BlockId, node: React.ReactNode) => {
+    if (!freeMode) return node;
+    return (
+      <FloatingBlock
+        key={id}
+        id={id}
+        label={BLOCK_META[id].label}
+        rect={floats[id] ?? DEFAULT_FLOAT[id]}
+        canvas={canvas}
+        scaleRef={scaleRef}
+        onChange={(r) => setRect(id, r)}
+        onCommit={(r) => setRect(id, r, true)}
+      >
+        {node}
+      </FloatingBlock>
+    );
+  };
+
   const [isFs, setIsFs] = useState(false);
   // Ajuste automático ao tamanho da tela (detectado via ResizeObserver)
   const { containerRef, contentRef, container, scale, height: fitHeight, availH } = useFitScale();
+  scaleRef.current = scale;
 
   // Relógio ao vivo (cabeçalho)
   const [now, setNow] = useState(() => new Date());
@@ -651,6 +735,19 @@ function PainelTvPage() {
                 </div>
               </PopoverContent>
             </Popover>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={toggleFreeMode}
+              className={cn("border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800 hover:text-white", freeMode && "border-emerald-500 text-emerald-400")}
+            >
+              <Move className="h-4 w-4 mr-1" /> {freeMode ? "Balões livres" : "Modo grade"}
+            </Button>
+            {freeMode && (
+              <Button variant="ghost" size="sm" onClick={resetFloats} className="text-slate-400 hover:text-white">
+                <RotateCcw className="h-4 w-4 mr-1" /> Posições
+              </Button>
+            )}
             <Button variant="outline" size="sm" onClick={toggleFs} className="border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800 hover:text-white">
               {isFs ? <><Minimize2 className="h-4 w-4 mr-1" /> Sair</> : <><Maximize2 className="h-4 w-4 mr-1" /> Tela Cheia</>}
             </Button>
@@ -658,9 +755,14 @@ function PainelTvPage() {
         </div>
       </div>
 
+      {/* Canvas dos balões flutuantes */}
+      {freeMode && (
+        <div ref={setCanvas} className="relative w-full" style={{ height: canvasHeight }} />
+      )}
+
       {/* KPIs principais */}
-      <div className="grid grid-cols-4 gap-6">
-        {isVisible("queue") && (
+      <div className={cn("grid grid-cols-4 gap-6", freeMode && "hidden")}>
+        {isVisible("queue") && wrap("queue", (
           <div className={cn("bg-slate-900 border-l-8 p-6 rounded-r-xl shadow-2xl min-w-0 overflow-hidden", queueAccent, mainKpiClass("queue"))}>
             <div className="flex items-center justify-between gap-2">
               <span className="text-slate-400 text-sm font-bold uppercase tracking-widest truncate">Fila Aguardando</span>
@@ -671,8 +773,8 @@ function PainelTvPage() {
               + antigo: <span className={cn("font-bold", queueText)}>{fmtMinutes(oldestWaitingMin)}</span>
             </p>
           </div>
-        )}
-        {isVisible("inatt") && (
+        ))}
+        {isVisible("inatt") && wrap("inatt", (
           <div className={cn("bg-slate-900 border-l-8 border-blue-500 p-6 rounded-r-xl shadow-2xl min-w-0 overflow-hidden", mainKpiClass("inatt"))}>
             <div className="flex items-center justify-between gap-2">
               <span className="text-slate-400 text-sm font-bold uppercase tracking-widest truncate">Em Atendimento</span>
@@ -681,8 +783,8 @@ function PainelTvPage() {
             <div className="text-[clamp(2.75rem,5.5vw,6rem)] leading-none font-black text-blue-400 mt-2 tabular-nums whitespace-nowrap">{inAttendance.length}</div>
             <p className="text-sm text-slate-500 mt-2">chats ativos</p>
           </div>
-        )}
-        {isVisible("bot") && (
+        ))}
+        {isVisible("bot") && wrap("bot", (
           <div className={cn("bg-slate-900 border-l-8 p-6 rounded-r-xl shadow-2xl min-w-0 overflow-hidden", botStuck.length > 0 ? "border-red-600" : "border-slate-700", mainKpiClass("bot"))}>
             <div className="flex items-center justify-between gap-2">
               <span className="text-slate-400 text-sm font-bold uppercase tracking-widest truncate">Bot Travado</span>
@@ -693,8 +795,8 @@ function PainelTvPage() {
             </div>
             <p className="text-sm text-slate-500 mt-2">&gt; {THRESH.botIdleMin}min sem resposta</p>
           </div>
-        )}
-        {isVisible("fin") && (
+        ))}
+        {isVisible("fin") && wrap("fin", (
           <div className={cn("bg-slate-900 border-l-8 border-emerald-500 p-6 rounded-r-xl shadow-2xl min-w-0 overflow-hidden", mainKpiClass("fin"))}>
             <div className="flex items-center justify-between gap-2">
               <span className="text-slate-400 text-sm font-bold uppercase tracking-widest truncate">Finalizados Hoje</span>
@@ -705,12 +807,12 @@ function PainelTvPage() {
               meta {THRESH.dailyFinalizedGoal} • <span className="text-emerald-400 font-bold">{Math.round((finalizedToday / THRESH.dailyFinalizedGoal) * 100)}%</span>
             </p>
           </div>
-        )}
+        ))}
       </div>
 
       {/* Métricas secundárias */}
-      <div className="grid grid-cols-5 gap-4">
-        {isVisible("tmr") && (
+      <div className={cn("grid grid-cols-5 gap-4", freeMode && "hidden")}>
+        {isVisible("tmr") && wrap("tmr", (
           <div className={cn("bg-slate-900/50 p-4 rounded-lg border border-slate-800 min-w-0 overflow-hidden", subKpiClass("tmr"))}>
             <span className="text-slate-500 text-xs font-bold uppercase">TMR (1ª resposta)</span>
             <div className={cn("text-[clamp(1.5rem,2.6vw,2.5rem)] leading-none font-bold mt-1 font-mono tabular-nums whitespace-nowrap", tmrAvg > THRESH.tmrTargetMin ? "text-red-400" : "text-white")}>
@@ -718,8 +820,8 @@ function PainelTvPage() {
             </div>
             <p className="text-[11px] text-slate-600 mt-1 uppercase">meta ≤ {THRESH.tmrTargetMin}min</p>
           </div>
-        )}
-        {isVisible("tma") && (
+        ))}
+        {isVisible("tma") && wrap("tma", (
           <div className={cn("bg-slate-900/50 p-4 rounded-lg border border-slate-800 min-w-0 overflow-hidden", subKpiClass("tma"))}>
             <span className="text-slate-500 text-xs font-bold uppercase">TMA (Média)</span>
             <div className={cn("text-[clamp(1.5rem,2.6vw,2.5rem)] leading-none font-bold mt-1 font-mono tabular-nums whitespace-nowrap", tmaAvg > THRESH.tmaTargetMin ? "text-red-400" : "text-white")}>
@@ -727,8 +829,8 @@ function PainelTvPage() {
             </div>
             <p className="text-[11px] text-slate-600 mt-1 uppercase">meta ≤ {THRESH.tmaTargetMin}min</p>
           </div>
-        )}
-        {isVisible("tmer") && (
+        ))}
+        {isVisible("tmer") && wrap("tmer", (
           <div className={cn("bg-slate-900/50 p-4 rounded-lg border border-slate-800 min-w-0 overflow-hidden", subKpiClass("tmer"))}>
             <span className="text-slate-500 text-xs font-bold uppercase">TMER</span>
             <div className={cn("text-[clamp(1.5rem,2.6vw,2.5rem)] leading-none font-bold mt-1 font-mono tabular-nums whitespace-nowrap", tmerAvg > THRESH.tmerTargetMin ? "text-red-400" : "text-white")}>
@@ -736,8 +838,8 @@ function PainelTvPage() {
             </div>
             <p className="text-[11px] text-slate-600 mt-1 uppercase">meta ≤ {THRESH.tmerTargetMin}min</p>
           </div>
-        )}
-        {isVisible("engage") && (
+        ))}
+        {isVisible("engage") && wrap("engage", (
           <div className={cn("bg-slate-900/50 p-4 rounded-lg border border-slate-800 min-w-0 overflow-hidden", subKpiClass("engage"))}>
             <span className="text-slate-500 text-xs font-bold uppercase">Taxa Engajamento</span>
             <div className={cn("text-[clamp(1.5rem,2.6vw,2.5rem)] leading-none font-bold mt-1 font-mono tabular-nums whitespace-nowrap",
@@ -746,8 +848,8 @@ function PainelTvPage() {
             </div>
             <p className="text-[11px] text-slate-600 mt-1 uppercase">≤ {THRESH.engagementTargetMin}min ({engagedCount}/{tmrValues.length})</p>
           </div>
-        )}
-        {isVisible("zombie") && (
+        ))}
+        {isVisible("zombie") && wrap("zombie", (
           <div className={cn("bg-slate-900/50 p-4 rounded-lg border", zombies.length > 0 ? "border-purple-500/50" : "border-slate-800", "min-w-0 overflow-hidden", subKpiClass("zombie"))}>
             <span className="text-slate-500 text-xs font-bold uppercase">Chats Zumbis</span>
             <div className={cn("text-[clamp(1.5rem,2.6vw,2.5rem)] leading-none font-bold mt-1 font-mono tabular-nums whitespace-nowrap", zombies.length > 0 ? "text-purple-400" : "text-white")}>
@@ -755,14 +857,14 @@ function PainelTvPage() {
             </div>
             <p className="text-[11px] text-slate-600 mt-1 uppercase">sem resposta &gt; {THRESH.zombieMin}min</p>
           </div>
-        )}
+        ))}
       </div>
 
       {/* Listas detalhadas */}
       {(isVisible("zombieList") || isVisible("ops") || isVisible("ranking") || isVisible("critical")) && (
-        <div className="grid grid-cols-12 gap-6 grow items-start">
+        <div className={cn("grid grid-cols-12 gap-6 grow items-start", freeMode && "hidden")}>
           {/* Chats Zumbis */}
-          {isVisible("zombieList") && (
+          {isVisible("zombieList") && wrap("zombieList", (
             <div className={cn("bg-slate-900/40 border border-slate-800 rounded-xl overflow-hidden flex flex-col min-w-0", panelClass("zombieList"))}>
               <div className="bg-purple-900/20 px-5 py-3.5 border-b border-purple-500/30 flex items-center justify-between">
                 <h3 className="font-bold uppercase tracking-widest text-purple-400 text-sm flex items-center gap-2">
@@ -801,12 +903,12 @@ function PainelTvPage() {
                 )}
               </ScrollArea>
             </div>
-          )}
+          ))}
 
           {/* Operadores + Ranking */}
           {(isVisible("ops") || isVisible("ranking")) && (
             <div className={cn("grid gap-6 content-start auto-rows-min min-w-0", panelClass("ops"))}>
-              {isVisible("ops") && (
+              {isVisible("ops") && wrap("ops", (
                 <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-5 min-w-0 overflow-hidden">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="font-bold uppercase tracking-widest text-blue-400 text-sm flex items-center gap-2">
@@ -832,8 +934,8 @@ function PainelTvPage() {
                   </div>
                   <p className="text-[11px] text-slate-600 mt-3 uppercase">setor Atendimento • online = ativo nos últimos {THRESH.operatorOnlineMin}min</p>
                 </div>
-              )}
-              {isVisible("ranking") && (
+              ))}
+              {isVisible("ranking") && wrap("ranking", (
                 <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-5 min-w-0 overflow-hidden">
                   <h3 className="font-bold uppercase tracking-widest text-emerald-400 text-sm flex items-center gap-2 mb-3">
                     <Users className="h-4 w-4" /> Ranking Performance
@@ -863,12 +965,12 @@ function PainelTvPage() {
                     </ScrollArea>
                   )}
                 </div>
-              )}
+              ))}
             </div>
           )}
 
           {/* Fila Crítica */}
-          {isVisible("critical") && (
+          {isVisible("critical") && wrap("critical", (
             <div className={cn("rounded-xl p-5 flex flex-col border-2 min-w-0 overflow-hidden",
               waiting.length >= THRESH.queueRedMin
                 ? "bg-red-950/20 border-red-900/50"
@@ -907,7 +1009,7 @@ function PainelTvPage() {
                 )}
               </ScrollArea>
             </div>
-          )}
+          ))}
         </div>
       )}
 
