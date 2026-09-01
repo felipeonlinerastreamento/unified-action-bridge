@@ -407,7 +407,12 @@ function PainelTvPage() {
   const tmaAvg = tmaValues.length ? tmaValues.reduce((a, b) => a + b, 0) / tmaValues.length : 0;
 
   const finalizedToday = closedToday.length;
-  const operatorsOnline = profiles.filter(
+  // Card "Operadores online": somente operadores do setor Atendimento
+  const atendimentoSet = new Set(atendimentoUserIds);
+  const opsProfiles = atendimentoSet.size > 0
+    ? profiles.filter((p) => atendimentoSet.has(p.user_id))
+    : profiles;
+  const operatorsOnline = opsProfiles.filter(
     (p) => p.last_seen_at && minutesAgo(p.last_seen_at) <= THRESH.operatorOnlineMin,
   ).length;
 
