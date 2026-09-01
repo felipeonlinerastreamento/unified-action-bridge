@@ -554,12 +554,16 @@ function PainelTvPage() {
           ref={contentRef}
           style={{
             width: DESIGN_WIDTH,
-            minHeight: scale > 0 ? Math.max(fitHeight, availH) / scale : undefined,
             transform: `scale(${scale})`,
             transformOrigin: "top left",
+            marginLeft:
+              container && scale > 0
+                ? Math.max(0, (container.clientWidth - DESIGN_WIDTH * scale) / 2) / scale
+                : undefined,
           }}
           className="p-8 flex flex-col gap-5"
         >
+
       {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-4 border-b-2 border-slate-800 pb-4">
         <div>
