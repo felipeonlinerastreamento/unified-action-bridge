@@ -484,13 +484,23 @@ function PainelTvPage() {
   });
 
   // ==== Cálculos ====
-  const waiting = openChats.filter((c) => c.status === "aguardando");
+  // Aguardando = chats na fila (sem responsável) OU chats com mensagem do cliente
+  // ainda não respondida (unread_count > 0). O tempo de espera considera a última
+  // mensagem recebida, e não a criação do chat.
+  const waitingRef = (c: any) => c.last_message_at || c.created_at;
+  const waiting = openChats
+    .filter(
+      (c) =>
+        c.status === "aguardando" ||
+        (c.status !== "bot" && Number(c.unread_count || 0) > 0),
+    )
+    .sort((a, b) => new Date(waitingRef(a)).getTime() - new Date(waitingRef(b)).getTime());
   const inAttendance = openChats.filter((c) => c.status === "em_atendimento");
   const botStuck = openChats.filter(
     (c) => c.status === "bot" && minutesAgo(c.last_message_at || c.updated_at) >= THRESH.botIdleMin,
   );
   const oldestWaitingMin = waiting.length
-    ? minutesAgo(waiting[0].created_at)
+    ? minutesAgo(waitingRef(waiting[0]))
     : 0;
 
   // TMR: primeiro from_me por chat criado hoje
