@@ -1,3 +1,5 @@
+import { useEffect } from "react";
+import { useLocation, useNavigate } from "@tanstack/react-router";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Toaster } from "@/components/ui/sonner";
@@ -11,6 +13,7 @@ import { MessageTriggerAlert } from "@/components/message-trigger-alert";
 import { ChatAvailabilityToggle } from "@/components/chat-availability-toggle";
 import { usePresence } from "@/hooks/use-presence";
 import { useOperatorSoundNotifications } from "@/hooks/use-operator-sound-notifications";
+import { useUserPermissions } from "@/hooks/use-user-permissions";
 
 function PresenceTracker() {
   usePresence();
@@ -22,30 +25,54 @@ function OperatorSoundTracker() {
   return null;
 }
 
+/**
+ * Usuários marcados como "Apenas Painel TV" (profiles.panel_only) só podem
+ * acessar /painel-tv. Qualquer outra rota redireciona para o painel.
+ */
+function PanelOnlyGuard({ children }: { children: React.ReactNode }) {
+  const { allowedMenus, isLoading } = useUserPermissions();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const isPanelOnly =
+    allowedMenus !== null && allowedMenus.size === 1 && allowedMenus.has("painel-tv");
+
+  useEffect(() => {
+    if (isLoading || !isPanelOnly) return;
+    if (!location.pathname.startsWith("/painel-tv")) {
+      navigate({ to: "/painel-tv", replace: true });
+    }
+  }, [isLoading, isPanelOnly, location.pathname, navigate]);
+
+  if (isPanelOnly && !location.pathname.startsWith("/painel-tv")) return null;
+  return <>{children}</>;
+}
+
 export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <PresenceTracker />
       <OperatorSoundTracker />
-      <div className="min-h-screen flex w-full">
-        <AppSidebar />
-        <div className="flex-1 flex flex-col min-w-0">
-          <header className="h-12 flex items-center justify-between border-b px-4 shrink-0">
-            <SidebarTrigger />
-            <div className="flex items-center gap-2">
-              <ChatAvailabilityToggle />
-              <NotificationsBell />
-            </div>
-          </header>
-          <main className="flex-1 overflow-auto p-4 md:p-6">{children}</main>
+      <PanelOnlyGuard>
+        <div className="min-h-screen flex w-full">
+          <AppSidebar />
+          <div className="flex-1 flex flex-col min-w-0">
+            <header className="h-12 flex items-center justify-between border-b px-4 shrink-0">
+              <SidebarTrigger />
+              <div className="flex items-center gap-2">
+                <ChatAvailabilityToggle />
+                <NotificationsBell />
+              </div>
+            </header>
+            <main className="flex-1 overflow-auto p-4 md:p-6">{children}</main>
+          </div>
         </div>
-      </div>
-      <DailyWelcomeDialog />
-      <PendingReminderPopup />
-      <NotificationPopup />
-      <OperatorChatLockOverlay />
-      <ChatInactivityAlert />
-      <MessageTriggerAlert />
+        <DailyWelcomeDialog />
+        <PendingReminderPopup />
+        <NotificationPopup />
+        <OperatorChatLockOverlay />
+        <ChatInactivityAlert />
+        <MessageTriggerAlert />
+      </PanelOnlyGuard>
       <Toaster />
     </SidebarProvider>
   );
