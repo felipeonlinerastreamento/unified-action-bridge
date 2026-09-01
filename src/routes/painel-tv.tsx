@@ -503,378 +503,372 @@ function PainelTvPage() {
     );
   }
 
+  // Estilo do KPI principal conforme criticidade da fila
+  const queueAccent =
+    oldestWaitingMin >= THRESH.queueRedMin ? "border-red-600" : "border-amber-500";
+  const queueText =
+    oldestWaitingMin >= THRESH.queueRedMin ? "text-red-500" : "text-amber-500";
+
   const content = (
-    <div ref={containerRef} className={cn("space-y-4 bg-background", isFs && "min-h-screen p-6 overflow-auto")}>
-      {/* Header */}
-      <div className="flex items-center justify-between gap-2">
-        <div>
-          <h1 className="text-2xl font-bold flex items-center gap-2">
-            <TrendingUp className="h-6 w-6 text-primary" /> Painel de Monitoramento
-          </h1>
-          <p className="text-xs text-muted-foreground">Atualização a cada 15s • {new Date().toLocaleTimeString("pt-BR")}</p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" size="sm">
-                <Settings2 className="h-4 w-4 mr-1" /> Personalizar
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-96 p-0" align="end">
-              <div className="flex items-center justify-between p-3 border-b">
-                <div className="text-sm font-semibold">Layout do painel</div>
-                <Button variant="ghost" size="sm" onClick={resetLayout}>
-                  <RotateCcw className="h-3.5 w-3.5 mr-1" /> Restaurar
-                </Button>
-              </div>
-              <ScrollArea className="h-[420px]">
-                <div className="p-3 space-y-2">
-                  {(Object.keys(BLOCK_META) as BlockId[]).map((id) => {
-                    const meta = BLOCK_META[id];
-                    const max = maxSpanFor(meta.group);
-                    const currentSpan = layout.span[id] ?? meta.defaultSpan;
-                    return (
-                      <div key={id} className="flex items-center gap-2 p-2 rounded-md border">
-                        <Switch
-                          checked={isVisible(id)}
-                          onCheckedChange={() => toggleVisible(id)}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">{meta.label}</p>
-                          {max > 1 && (
-                            <div className="flex items-center gap-1 mt-1">
-                              <span className="text-[10px] text-muted-foreground uppercase mr-1">Tam.</span>
-                              {Array.from({ length: max }, (_, i) => i + 1).map((n) => (
-                                <button
-                                  key={n}
-                                  type="button"
-                                  disabled={!isVisible(id)}
-                                  onClick={() => setSpan(id, n)}
-                                  className={cn(
-                                    "h-6 w-6 text-xs rounded border font-mono",
-                                    currentSpan === n
-                                      ? "bg-primary text-primary-foreground border-primary"
-                                      : "bg-background hover:bg-muted",
-                                    !isVisible(id) && "opacity-40 cursor-not-allowed",
-                                  )}
-                                  title={`${n} coluna${n > 1 ? "s" : ""}`}
-                                >
-                                  {n}
-                                </button>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              </ScrollArea>
-              <div className="p-2 text-[11px] text-muted-foreground border-t">
-                Preferências salvas neste dispositivo para o seu usuário.
-              </div>
-            </PopoverContent>
-          </Popover>
-          <Button variant="outline" size="sm" onClick={toggleFs}>
-            {isFs ? <><Minimize2 className="h-4 w-4 mr-1" /> Sair Tela Cheia</> : <><Maximize2 className="h-4 w-4 mr-1" /> Tela Cheia</>}
-          </Button>
-        </div>
-      </div>
-
-      {/* KPIs — grid único cols-6 com spans personalizáveis */}
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
-        {isVisible("queue") && (
-          <Card className={cn("border-2", queueBg, kpiClass("queue"))}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase text-muted-foreground">Fila aguardando</span>
-                <Clock className={cn("h-5 w-5", queueColor)} />
-              </div>
-              <p className={cn("text-4xl font-black mt-2", queueColor)}>{waiting.length}</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                + antigo: <span className={cn("font-semibold", queueColor)}>{fmtMinutes(oldestWaitingMin)}</span>
-              </p>
-            </CardContent>
-          </Card>
-        )}
-
-        {isVisible("inatt") && (
-          <Card className={kpiClass("inatt")}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase text-muted-foreground">Em atendimento</span>
-                <MessageSquare className="h-5 w-5 text-blue-500" />
-              </div>
-              <p className="text-4xl font-black mt-2 text-blue-600 dark:text-blue-400">{inAttendance.length}</p>
-              <p className="text-xs text-muted-foreground mt-1">chats ativos</p>
-            </CardContent>
-          </Card>
-        )}
-
-        {isVisible("bot") && (
-          <Card className={cn(botStuck.length > 0 && "border-2 border-amber-500 bg-amber-500/10", kpiClass("bot"))}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase text-muted-foreground">Bot travado</span>
-                <Bot className={cn("h-5 w-5", botStuck.length > 0 ? "text-amber-500" : "text-muted-foreground")} />
-              </div>
-              <p className={cn("text-4xl font-black mt-2", botStuck.length > 0 ? "text-amber-600 dark:text-amber-400" : "text-foreground")}>{botStuck.length}</p>
-              <p className="text-xs text-muted-foreground mt-1">&gt; {THRESH.botIdleMin}min sem resposta</p>
-            </CardContent>
-          </Card>
-        )}
-
-        {isVisible("tmr") && (
-          <Card className={kpiClass("tmr")}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase text-muted-foreground">TMR (1ª resposta)</span>
-                <Timer className={cn("h-5 w-5", tmrAvg > THRESH.tmrTargetMin ? "text-destructive" : "text-emerald-500")} />
-              </div>
-              <p className={cn("text-4xl font-black mt-2", tmrAvg > THRESH.tmrTargetMin ? "text-destructive" : "text-emerald-600 dark:text-emerald-400")}>
-                {tmrValues.length ? fmtMinutes(tmrAvg) : "—"}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">meta ≤ {THRESH.tmrTargetMin}min</p>
-            </CardContent>
-          </Card>
-        )}
-
-        {isVisible("tma") && (
-          <Card className={kpiClass("tma")}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase text-muted-foreground">TMA hoje</span>
-                <Timer className={cn("h-5 w-5", tmaAvg > THRESH.tmaTargetMin ? "text-destructive" : "text-emerald-500")} />
-              </div>
-              <p className={cn("text-4xl font-black mt-2", tmaAvg > THRESH.tmaTargetMin ? "text-destructive" : "text-emerald-600 dark:text-emerald-400")}>
-                {tmaValues.length ? fmtMinutes(tmaAvg) : "—"}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">meta ≤ {THRESH.tmaTargetMin}min</p>
-            </CardContent>
-          </Card>
-        )}
-
-        {isVisible("fin") && (
-          <Card className={kpiClass("fin")}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase text-muted-foreground">Finalizados hoje</span>
-                <CheckCircle2 className="h-5 w-5 text-emerald-500" />
-              </div>
-              <p className="text-4xl font-black mt-2 text-emerald-600 dark:text-emerald-400">{finalizedToday}</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                meta {THRESH.dailyFinalizedGoal} • {Math.round((finalizedToday / THRESH.dailyFinalizedGoal) * 100)}%
-              </p>
-            </CardContent>
-          </Card>
-        )}
-
-        {isVisible("zombie") && (
-          <Card className={cn(zombies.length > 0 && "border-2 border-destructive bg-destructive/10", kpiClass("zombie"))}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase text-muted-foreground">Chats zumbis</span>
-                <Ghost className={cn("h-5 w-5", zombies.length > 0 ? "text-destructive" : "text-muted-foreground")} />
-              </div>
-              <p className={cn("text-4xl font-black mt-2", zombies.length > 0 ? "text-destructive" : "text-foreground")}>{zombies.length}</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                em atendimento sem resposta &gt; {THRESH.zombieMin}min
-              </p>
-            </CardContent>
-          </Card>
-        )}
-
-        {isVisible("engage") && (
-          <Card className={kpiClass("engage")}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase text-muted-foreground">Taxa de engajamento</span>
-                <Zap className={cn("h-5 w-5", engagementRate >= 70 ? "text-emerald-500" : engagementRate >= 40 ? "text-amber-500" : "text-destructive")} />
-              </div>
-              <p className={cn("text-4xl font-black mt-2",
-                engagementRate >= 70 ? "text-emerald-600 dark:text-emerald-400"
-                : engagementRate >= 40 ? "text-amber-600 dark:text-amber-400"
-                : "text-destructive")}>
-                {tmrValues.length ? `${Math.round(engagementRate)}%` : "—"}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                respondidos em ≤ {THRESH.engagementTargetMin}min ({engagedCount}/{tmrValues.length})
-              </p>
-            </CardContent>
-          </Card>
-        )}
-
-        {isVisible("tmer") && (
-          <Card className={kpiClass("tmer")}>
-            <CardContent className="p-4">
-              <div className="flex items-center justify-between">
-                <span className="text-xs font-semibold uppercase text-muted-foreground">TMER (resposta média)</span>
-                <MessageCircleWarning className={cn("h-5 w-5", tmerAvg > THRESH.tmerTargetMin ? "text-destructive" : "text-emerald-500")} />
-              </div>
-              <p className={cn("text-4xl font-black mt-2", tmerAvg > THRESH.tmerTargetMin ? "text-destructive" : "text-emerald-600 dark:text-emerald-400")}>
-                {tmerValues.length ? fmtMinutes(tmerAvg) : "—"}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                entre msg do cliente e resposta (meta ≤ {THRESH.tmerTargetMin}min)
-              </p>
-            </CardContent>
-          </Card>
-        )}
-      </div>
-
-      {/* Chats Zumbis — lista */}
-      {isVisible("zombieList") && zombies.length > 0 && (
-        <Card className="border-destructive/50">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm flex items-center gap-2">
-              <Ghost className="h-4 w-4 text-destructive" />
-              Chats zumbis — sem resposta do operador
-              <Badge variant="destructive" className="ml-auto">{zombies.length}</Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <ScrollArea className="h-[220px]">
-              <div className="divide-y">
-                {zombies.slice(0, 20).map((c) => {
-                  const prof = profiles.find((p) => p.user_id === c.assigned_to);
-                  return (
-                    <div key={c.id} className="flex items-center justify-between px-4 py-2 text-sm">
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium truncate">{c.contact_name || c.phone || "Sem nome"}</p>
-                        <p className="text-xs text-muted-foreground truncate">
-                          Operador: {prof?.name || "—"} • Setor: {c.sector_name || "—"}
-                        </p>
-                      </div>
-                      <div className="text-right font-mono font-semibold text-destructive">
-                        {fmtMinutes(c.idleMin)}
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </ScrollArea>
-          </CardContent>
-        </Card>
+    <div
+      ref={containerRef}
+      className={cn(
+        "min-h-screen w-full bg-[#020617] text-slate-100 p-4 md:p-6 lg:p-8 flex flex-col gap-5",
+        isFs && "overflow-auto",
       )}
-
-
-      {/* Operadores online + Fila crítica */}
-      {(isVisible("ops") || isVisible("critical")) && (
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-          {isVisible("ops") && (
-            <Card className={panelClass("ops")}>
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between">
-                  <span className="text-xs font-semibold uppercase text-muted-foreground">Operadores online</span>
-                  <UserCheck className="h-5 w-5 text-emerald-500" />
+    >
+      {/* Header */}
+      <div className="flex flex-wrap items-end justify-between gap-4 border-b-2 border-slate-800 pb-4">
+        <div>
+          <h1 className="text-3xl lg:text-4xl font-extrabold tracking-tight text-white uppercase flex items-center gap-3">
+            <TrendingUp className="h-8 w-8 text-emerald-400" />
+            Monitoramento WhatsApp
+          </h1>
+          <p className="text-slate-400 font-medium">Central de Atendimento em Tempo Real</p>
+        </div>
+        <div className="flex items-center gap-4">
+          <div className="text-right">
+            <div className="text-2xl lg:text-3xl font-bold font-mono text-emerald-400 tracking-widest tabular-nums">
+              {now.toLocaleTimeString("pt-BR")}
+            </div>
+            <div className="flex items-center gap-2 justify-end">
+              <span className="h-3 w-3 rounded-full bg-emerald-500 animate-pulse" />
+              <span className="text-xs text-slate-400 uppercase font-bold tracking-widest">Sistema Online</span>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" size="sm" className="border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800 hover:text-white">
+                  <Settings2 className="h-4 w-4 mr-1" /> Personalizar
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-96 p-0" align="end">
+                <div className="flex items-center justify-between p-3 border-b">
+                  <div className="text-sm font-semibold">Layout do painel</div>
+                  <Button variant="ghost" size="sm" onClick={resetLayout}>
+                    <RotateCcw className="h-3.5 w-3.5 mr-1" /> Restaurar
+                  </Button>
                 </div>
-                <p className="text-4xl font-black mt-2">
-                  <span className="text-emerald-600 dark:text-emerald-400">{operatorsOnline}</span>
-                  <span className="text-muted-foreground text-2xl"> / {opsProfiles.length}</span>
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  setor Atendimento • ativos nos últimos {THRESH.operatorOnlineMin}min
-                </p>
-              </CardContent>
-            </Card>
-          )}
-
-          {isVisible("critical") && (
-            <Card className={panelClass("critical")}>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <AlertTriangle className="h-4 w-4 text-amber-500" />
-                  Fila crítica — aguardando atendimento
-                  <Badge variant="secondary" className="ml-auto">{waiting.length}</Badge>
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <ScrollArea className="h-[280px]">
-                  {criticalQueue.length === 0 ? (
-                    <div className="p-6 text-center text-sm text-muted-foreground">
-                      Sem chats aguardando — 🎉 fila zerada!
-                    </div>
-                  ) : (
-                    <div className="divide-y">
-                      {criticalQueue.map((c) => {
-                        const color =
-                          c.waitingMin >= THRESH.queueRedMin ? "text-destructive"
-                          : c.waitingMin >= THRESH.queueYellowMin ? "text-amber-500"
-                          : "text-muted-foreground";
-                        return (
-                          <div key={c.id} className="flex items-center justify-between px-4 py-2 text-sm">
-                            <div className="flex-1 min-w-0">
-                              <p className="font-medium truncate">{c.contact_name || c.phone || "Sem nome"}</p>
-                              <p className="text-xs text-muted-foreground truncate">
-                                Setor: {c.sector_name || "—"}
-                              </p>
-                            </div>
-                            <div className={cn("text-right font-mono font-semibold", color)}>
-                              {fmtMinutes(c.waitingMin)}
-                            </div>
+                <ScrollArea className="h-[420px]">
+                  <div className="p-3 space-y-2">
+                    {(Object.keys(BLOCK_META) as BlockId[]).map((id) => {
+                      const meta = BLOCK_META[id];
+                      const max = maxSpanFor(meta.group);
+                      const currentSpan = layout.span[id] ?? meta.defaultSpan;
+                      return (
+                        <div key={id} className="flex items-center gap-2 p-2 rounded-md border">
+                          <Switch
+                            checked={isVisible(id)}
+                            onCheckedChange={() => toggleVisible(id)}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium truncate">{meta.label}</p>
+                            {max > 1 && (
+                              <div className="flex items-center gap-1 mt-1 flex-wrap">
+                                <span className="text-[10px] text-muted-foreground uppercase mr-1">Tam.</span>
+                                {Array.from({ length: max }, (_, i) => i + 1).map((n) => (
+                                  <button
+                                    key={n}
+                                    type="button"
+                                    disabled={!isVisible(id)}
+                                    onClick={() => setSpan(id, n)}
+                                    className={cn(
+                                      "h-6 w-6 text-xs rounded border font-mono",
+                                      currentSpan === n
+                                        ? "bg-primary text-primary-foreground border-primary"
+                                        : "bg-background hover:bg-muted",
+                                      !isVisible(id) && "opacity-40 cursor-not-allowed",
+                                    )}
+                                    title={`${n} coluna${n > 1 ? "s" : ""}`}
+                                  >
+                                    {n}
+                                  </button>
+                                ))}
+                              </div>
+                            )}
                           </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+                <div className="p-2 text-[11px] text-muted-foreground border-t">
+                  Preferências salvas neste dispositivo para o seu usuário.
+                </div>
+              </PopoverContent>
+            </Popover>
+            <Button variant="outline" size="sm" onClick={toggleFs} className="border-slate-700 bg-slate-900 text-slate-200 hover:bg-slate-800 hover:text-white">
+              {isFs ? <><Minimize2 className="h-4 w-4 mr-1" /> Sair</> : <><Maximize2 className="h-4 w-4 mr-1" /> Tela Cheia</>}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* KPIs principais */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
+        {isVisible("queue") && (
+          <div className={cn("bg-slate-900 border-l-8 p-5 lg:p-6 rounded-r-xl shadow-2xl", queueAccent, mainKpiClass("queue"))}>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400 text-xs lg:text-sm font-bold uppercase tracking-widest">Fila Aguardando</span>
+              <Clock className={cn("h-5 w-5", queueText)} />
+            </div>
+            <div className={cn("text-6xl lg:text-7xl xl:text-8xl font-black mt-2 tabular-nums", queueText)}>{waiting.length}</div>
+            <p className="text-xs lg:text-sm text-slate-500 mt-2">
+              + antigo: <span className={cn("font-bold", queueText)}>{fmtMinutes(oldestWaitingMin)}</span>
+            </p>
+          </div>
+        )}
+        {isVisible("inatt") && (
+          <div className={cn("bg-slate-900 border-l-8 border-blue-500 p-5 lg:p-6 rounded-r-xl shadow-2xl", mainKpiClass("inatt"))}>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400 text-xs lg:text-sm font-bold uppercase tracking-widest">Em Atendimento</span>
+              <MessageSquare className="h-5 w-5 text-blue-400" />
+            </div>
+            <div className="text-6xl lg:text-7xl xl:text-8xl font-black text-blue-400 mt-2 tabular-nums">{inAttendance.length}</div>
+            <p className="text-xs lg:text-sm text-slate-500 mt-2">chats ativos</p>
+          </div>
+        )}
+        {isVisible("bot") && (
+          <div className={cn("bg-slate-900 border-l-8 p-5 lg:p-6 rounded-r-xl shadow-2xl", botStuck.length > 0 ? "border-red-600" : "border-slate-700", mainKpiClass("bot"))}>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400 text-xs lg:text-sm font-bold uppercase tracking-widest">Bot Travado</span>
+              <Bot className={cn("h-5 w-5", botStuck.length > 0 ? "text-red-500" : "text-slate-500")} />
+            </div>
+            <div className={cn("text-6xl lg:text-7xl xl:text-8xl font-black mt-2 tabular-nums", botStuck.length > 0 ? "text-red-500" : "text-slate-300")}>
+              {String(botStuck.length).padStart(2, "0")}
+            </div>
+            <p className="text-xs lg:text-sm text-slate-500 mt-2">&gt; {THRESH.botIdleMin}min sem resposta</p>
+          </div>
+        )}
+        {isVisible("fin") && (
+          <div className={cn("bg-slate-900 border-l-8 border-emerald-500 p-5 lg:p-6 rounded-r-xl shadow-2xl", mainKpiClass("fin"))}>
+            <div className="flex items-center justify-between">
+              <span className="text-slate-400 text-xs lg:text-sm font-bold uppercase tracking-widest">Finalizados Hoje</span>
+              <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+            </div>
+            <div className="text-6xl lg:text-7xl xl:text-8xl font-black text-emerald-400 mt-2 tabular-nums">{finalizedToday}</div>
+            <p className="text-xs lg:text-sm text-slate-500 mt-2">
+              meta {THRESH.dailyFinalizedGoal} • <span className="text-emerald-400 font-bold">{Math.round((finalizedToday / THRESH.dailyFinalizedGoal) * 100)}%</span>
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Métricas secundárias */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 lg:gap-4">
+        {isVisible("tmr") && (
+          <div className={cn("bg-slate-900/50 p-4 rounded-lg border border-slate-800", subKpiClass("tmr"))}>
+            <span className="text-slate-500 text-xs font-bold uppercase">TMR (1ª resposta)</span>
+            <div className={cn("text-3xl lg:text-4xl font-bold mt-1 font-mono tabular-nums", tmrAvg > THRESH.tmrTargetMin ? "text-red-400" : "text-white")}>
+              {tmrValues.length ? fmtMinutes(tmrAvg) : "—"}
+            </div>
+            <p className="text-[11px] text-slate-600 mt-1 uppercase">meta ≤ {THRESH.tmrTargetMin}min</p>
+          </div>
+        )}
+        {isVisible("tma") && (
+          <div className={cn("bg-slate-900/50 p-4 rounded-lg border border-slate-800", subKpiClass("tma"))}>
+            <span className="text-slate-500 text-xs font-bold uppercase">TMA (Média)</span>
+            <div className={cn("text-3xl lg:text-4xl font-bold mt-1 font-mono tabular-nums", tmaAvg > THRESH.tmaTargetMin ? "text-red-400" : "text-white")}>
+              {tmaValues.length ? fmtMinutes(tmaAvg) : "—"}
+            </div>
+            <p className="text-[11px] text-slate-600 mt-1 uppercase">meta ≤ {THRESH.tmaTargetMin}min</p>
+          </div>
+        )}
+        {isVisible("tmer") && (
+          <div className={cn("bg-slate-900/50 p-4 rounded-lg border border-slate-800", subKpiClass("tmer"))}>
+            <span className="text-slate-500 text-xs font-bold uppercase">TMER</span>
+            <div className={cn("text-3xl lg:text-4xl font-bold mt-1 font-mono tabular-nums", tmerAvg > THRESH.tmerTargetMin ? "text-red-400" : "text-white")}>
+              {tmerValues.length ? fmtMinutes(tmerAvg) : "—"}
+            </div>
+            <p className="text-[11px] text-slate-600 mt-1 uppercase">meta ≤ {THRESH.tmerTargetMin}min</p>
+          </div>
+        )}
+        {isVisible("engage") && (
+          <div className={cn("bg-slate-900/50 p-4 rounded-lg border border-slate-800", subKpiClass("engage"))}>
+            <span className="text-slate-500 text-xs font-bold uppercase">Taxa Engajamento</span>
+            <div className={cn("text-3xl lg:text-4xl font-bold mt-1 font-mono tabular-nums",
+              engagementRate >= 70 ? "text-emerald-400" : engagementRate >= 40 ? "text-amber-400" : "text-red-400")}>
+              {tmrValues.length ? `${Math.round(engagementRate)}%` : "—"}
+            </div>
+            <p className="text-[11px] text-slate-600 mt-1 uppercase">≤ {THRESH.engagementTargetMin}min ({engagedCount}/{tmrValues.length})</p>
+          </div>
+        )}
+        {isVisible("zombie") && (
+          <div className={cn("bg-slate-900/50 p-4 rounded-lg border", zombies.length > 0 ? "border-purple-500/50" : "border-slate-800", subKpiClass("zombie"))}>
+            <span className="text-slate-500 text-xs font-bold uppercase">Chats Zumbis</span>
+            <div className={cn("text-3xl lg:text-4xl font-bold mt-1 font-mono tabular-nums", zombies.length > 0 ? "text-purple-400" : "text-white")}>
+              {String(zombies.length).padStart(2, "0")}
+            </div>
+            <p className="text-[11px] text-slate-600 mt-1 uppercase">sem resposta &gt; {THRESH.zombieMin}min</p>
+          </div>
+        )}
+      </div>
+
+      {/* Listas detalhadas */}
+      {(isVisible("zombieList") || isVisible("ops") || isVisible("ranking") || isVisible("critical")) && (
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 lg:gap-6 grow">
+          {/* Chats Zumbis */}
+          {isVisible("zombieList") && (
+            <div className={cn("bg-slate-900/40 border border-slate-800 rounded-xl overflow-hidden flex flex-col", panelClass("zombieList"))}>
+              <div className="bg-purple-900/20 px-5 py-3.5 border-b border-purple-500/30 flex items-center justify-between">
+                <h3 className="font-bold uppercase tracking-widest text-purple-400 text-sm flex items-center gap-2">
+                  <Ghost className="h-4 w-4" /> Lista de Chats Zumbis
+                </h3>
+                <span className="font-mono font-bold text-purple-300 bg-purple-950 px-2 py-0.5 rounded text-sm">{zombies.length}</span>
+              </div>
+              <ScrollArea className="grow max-h-[420px]">
+                {zombies.length === 0 ? (
+                  <div className="p-8 text-center text-slate-500 text-sm">Nenhum chat zumbi no momento — tudo respondido.</div>
+                ) : (
+                  <table className="w-full text-left">
+                    <thead className="bg-slate-800/50 text-slate-400 text-xs uppercase sticky top-0">
+                      <tr>
+                        <th className="px-5 py-3 font-semibold">Contato / Operador</th>
+                        <th className="px-5 py-3 font-semibold">Setor</th>
+                        <th className="px-5 py-3 font-semibold text-right">Tempo</th>
+                      </tr>
+                    </thead>
+                    <tbody className="text-base lg:text-lg">
+                      {zombies.slice(0, 20).map((c) => {
+                        const prof = profiles.find((p) => p.user_id === c.assigned_to);
+                        return (
+                          <tr key={c.id} className="border-b border-slate-800/50">
+                            <td className="px-5 py-3">
+                              <div className="font-semibold text-white truncate max-w-[220px]">{c.contact_name || c.phone || "Sem nome"}</div>
+                              <div className="text-xs text-slate-500 truncate">{prof?.name || "—"}</div>
+                            </td>
+                            <td className="px-5 py-3 text-slate-400 text-xs uppercase">{c.sector_name || "—"}</td>
+                            <td className="px-5 py-3 text-right font-mono text-purple-400 font-bold tabular-nums">{fmtMinutes(c.idleMin)}</td>
+                          </tr>
                         );
                       })}
-                    </div>
+                    </tbody>
+                  </table>
+                )}
+              </ScrollArea>
+            </div>
+          )}
+
+          {/* Operadores + Ranking */}
+          {(isVisible("ops") || isVisible("ranking")) && (
+            <div className={cn("grid gap-4 lg:gap-6 content-start", isVisible("ops") && isVisible("ranking") ? "grid-rows-2" : "", panelClass("ops"))}>
+              {isVisible("ops") && (
+                <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-5">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-bold uppercase tracking-widest text-blue-400 text-sm flex items-center gap-2">
+                      <UserCheck className="h-4 w-4" /> Operadores Online ({operatorsOnline})
+                    </h3>
+                    <span className="text-xs text-slate-500 font-mono">{opsProfiles.length} no setor</span>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {opsProfiles
+                      .filter((p) => p.last_seen_at && minutesAgo(p.last_seen_at) <= THRESH.operatorOnlineMin)
+                      .map((p) => (
+                        <span key={p.user_id} className="px-3 py-1 bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs font-bold rounded uppercase">
+                          {p.name}
+                        </span>
+                      ))}
+                    {opsProfiles
+                      .filter((p) => !(p.last_seen_at && minutesAgo(p.last_seen_at) <= THRESH.operatorOnlineMin))
+                      .map((p) => (
+                        <span key={p.user_id} className="px-3 py-1 bg-slate-800/50 border border-slate-700 text-slate-500 text-xs font-bold rounded uppercase">
+                          {p.name}
+                        </span>
+                      ))}
+                  </div>
+                  <p className="text-[11px] text-slate-600 mt-3 uppercase">setor Atendimento • online = ativo nos últimos {THRESH.operatorOnlineMin}min</p>
+                </div>
+              )}
+              {isVisible("ranking") && (
+                <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-5">
+                  <h3 className="font-bold uppercase tracking-widest text-emerald-400 text-sm flex items-center gap-2 mb-3">
+                    <Users className="h-4 w-4" /> Ranking Performance
+                  </h3>
+                  {ranking.length === 0 ? (
+                    <div className="py-6 text-center text-slate-500 text-sm">Sem atividade registrada hoje.</div>
+                  ) : (
+                    <ScrollArea className="max-h-[260px]">
+                      <div className="space-y-3 pr-2">
+                        {ranking.map((r, i) => (
+                          <div key={r.user_id} className={cn("flex justify-between items-center gap-3", i === 1 && "opacity-80", i >= 2 && "opacity-60")}>
+                            <div className="flex items-center gap-2 min-w-0">
+                              <span className={cn("font-black w-6 text-center shrink-0",
+                                i === 0 ? "text-yellow-400" : i === 1 ? "text-slate-300" : i === 2 ? "text-orange-400" : "text-slate-500")}>
+                                {i + 1}
+                              </span>
+                              {r.online && <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" title="online" />}
+                              <span className="font-bold text-white truncate">{r.name}</span>
+                            </div>
+                            <span className={cn("font-mono font-bold px-2 rounded shrink-0 text-sm tabular-nums",
+                              i === 0 ? "text-emerald-400 bg-emerald-950" : "text-slate-300 bg-slate-800/60")}>
+                              {r.finalized} ATEND.
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    </ScrollArea>
                   )}
-                </ScrollArea>
-              </CardContent>
-            </Card>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Fila Crítica */}
+          {isVisible("critical") && (
+            <div className={cn("rounded-xl p-5 flex flex-col border-2",
+              waiting.length >= THRESH.queueRedMin
+                ? "bg-red-950/20 border-red-900/50"
+                : "bg-slate-900/40 border-slate-800",
+              panelClass("critical"))}>
+              <h3 className={cn("font-black uppercase tracking-widest mb-4 flex items-center gap-2 text-sm",
+                waiting.length >= THRESH.queueRedMin ? "text-red-500" : "text-amber-400")}>
+                <span className={cn("w-3 h-3 rounded-full", waiting.length > 0 ? "bg-red-600 animate-ping" : "bg-slate-600")} />
+                Fila Crítica
+                <span className="ml-auto font-mono font-bold text-slate-300 bg-slate-800/60 px-2 rounded text-sm">{waiting.length}</span>
+              </h3>
+              <ScrollArea className="grow max-h-[420px]">
+                {criticalQueue.length === 0 ? (
+                  <div className="p-6 text-center text-slate-500 text-sm">Sem chats aguardando — fila zerada.</div>
+                ) : (
+                  <div className="space-y-3 pr-2">
+                    {criticalQueue.map((c) => {
+                      const hot = c.waitingMin >= THRESH.queueRedMin;
+                      const warm = c.waitingMin >= THRESH.queueYellowMin;
+                      return (
+                        <div key={c.id} className={cn("p-3.5 rounded-lg border-l-4",
+                          hot ? "bg-red-900/30 border-red-600"
+                          : warm ? "bg-amber-900/20 border-amber-500"
+                          : "bg-slate-800/30 border-slate-600")}>
+                          <div className={cn("text-[11px] uppercase font-bold tracking-tight", hot ? "text-red-400" : warm ? "text-amber-400" : "text-slate-400")}>
+                            {c.sector_name || "Sem setor"}
+                          </div>
+                          <div className="text-base lg:text-lg font-black text-white truncate">{c.contact_name || c.phone || "Sem nome"}</div>
+                          <div className={cn("text-sm mt-0.5 font-mono tabular-nums", hot ? "text-red-300" : warm ? "text-amber-300" : "text-slate-400")}>
+                            Aguardando: {fmtMinutes(c.waitingMin)}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </ScrollArea>
+            </div>
           )}
         </div>
       )}
 
-      {/* Ranking Operadores */}
-      {isVisible("ranking") && (
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Users className="h-4 w-4 text-primary" />
-            Ranking de operadores — setor Atendimento
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          {ranking.length === 0 ? (
-            <div className="p-6 text-center text-sm text-muted-foreground">Sem atividade registrada hoje.</div>
-          ) : (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2 p-3">
-              {ranking.map((r, i) => (
-                <div
-                  key={r.user_id}
-                  className={cn(
-                    "flex items-center gap-3 p-3 rounded-lg border",
-                    i === 0 && "border-yellow-500 bg-yellow-500/10",
-                    i === 1 && "border-slate-400 bg-slate-400/10",
-                    i === 2 && "border-orange-500 bg-orange-500/10",
-                  )}
-                >
-                  <div className="text-lg font-black w-6 text-center text-muted-foreground">
-                    {i + 1}
-                  </div>
-                  <Avatar className="h-10 w-10">
-                    {r.avatar_url ? <img src={r.avatar_url} alt={r.name} /> : null}
-                    <AvatarFallback>{initials(r.name)}</AvatarFallback>
-                  </Avatar>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-1">
-                      <p className="font-semibold text-sm truncate">{r.name}</p>
-                      {r.online && <span className="h-2 w-2 rounded-full bg-emerald-500 shrink-0" title="online" />}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {r.inService} em atendimento • TMA {fmtMinutes(r.tmaAvg)}
-                    </p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-black text-primary leading-none">{r.finalized}</p>
-                    <p className="text-[10px] text-muted-foreground uppercase">finaliz.</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-      )}
+      {/* Rodapé / ticker */}
+      <div className="bg-slate-900 p-3 rounded-lg border border-slate-800 flex justify-between items-center px-5 mt-auto">
+        <div className="text-xs lg:text-sm font-bold text-slate-500 uppercase tracking-widest italic flex items-center gap-2">
+          <AlertTriangle className="h-4 w-4 text-slate-600" />
+          Atualização automática a cada 15s
+        </div>
+        <div className="text-xs lg:text-sm font-bold text-blue-400 flex items-center gap-2">
+          <Zap className="h-4 w-4" />
+          {now.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" })}
+        </div>
+      </div>
     </div>
   );
 
