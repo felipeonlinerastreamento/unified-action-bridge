@@ -678,6 +678,28 @@ function PainelTvPage() {
     // `now` força o recálculo do tempo a cada tick do relógio
   }, [waiting, now]);
 
+  // Atendimentos abertos (menu Atendimento) agrupados por operador
+  const openTicketsByOp = useMemo(() => {
+    const profMap = new Map(profiles.map((p) => [p.user_id, p]));
+    const groups = new Map<string, { user_id: string; name: string; online: boolean; tickets: any[] }>();
+    for (const t of openTickets) {
+      const uid = t.assigned_to || "sem-operador";
+      const p = profMap.get(uid);
+      const g = groups.get(uid) || {
+        user_id: uid,
+        name: t.assigned_to ? (p?.name || "—") : "Sem operador",
+        online: !!(p?.last_seen_at && minutesAgo(p.last_seen_at) <= THRESH.operatorOnlineMin),
+        tickets: [],
+      };
+      g.tickets.push(t);
+      groups.set(uid, g);
+    }
+    return Array.from(groups.values())
+      .sort((a, b) => b.tickets.length - a.tickets.length)
+      .slice(0, 8);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [openTickets, profiles, now]);
+
   if (!isAuthenticated || permLoading) {
     return <AppLayout><div className="p-4">Carregando...</div></AppLayout>;
   }
