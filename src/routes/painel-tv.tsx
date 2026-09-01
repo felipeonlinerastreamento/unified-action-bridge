@@ -5,17 +5,15 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useUserPermissions } from "@/hooks/use-user-permissions";
 import { AppLayout } from "@/components/app-layout";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Switch } from "@/components/ui/switch";
 import {
   Users, Clock, MessageSquare, Bot, CheckCircle2, UserCheck,
-  Timer, AlertTriangle, Maximize2, Minimize2, TrendingUp,
-  Zap, Ghost, MessageCircleWarning, Settings2, RotateCcw,
+  AlertTriangle, Maximize2, Minimize2, TrendingUp,
+  Zap, Ghost, Settings2, RotateCcw,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
