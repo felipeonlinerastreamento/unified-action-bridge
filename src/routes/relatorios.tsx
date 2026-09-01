@@ -36,6 +36,7 @@ import { PerdidosReportTab } from "@/components/relatorios/perdidos-tab";
 import { ErrorsReportTab } from "@/components/relatorios/errors-report-tab";
 import { PurchaseReportTab } from "@/components/relatorios/purchase-report-tab";
 import { JourneyIdleTab } from "@/components/relatorios/journey-idle-tab";
+import { PresenceSessionsTab } from "@/components/relatorios/presence-sessions-tab";
 import { AiSummaryTab } from "@/components/relatorios/ai-summary-tab";
 import { TicketsReportTab } from "@/components/relatorios/tickets-report-tab";
 
