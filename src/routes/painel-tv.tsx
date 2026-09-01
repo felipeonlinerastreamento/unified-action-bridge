@@ -340,6 +340,21 @@ function PainelTvPage() {
     },
   });
 
+  // Atualização em tempo real da fila
+  useEffect(() => {
+    if (!isAuthenticated || !allowed) return;
+    const channel = supabase
+      .channel("painel-tv-chats")
+      .on("postgres_changes", { event: "*", schema: "public", table: "zapi_chats" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["painel-tv-open-chats"] });
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [isAuthenticated, allowed, queryClient]);
+
+
   // Tickets finalizados hoje
   const { data: closedToday = [] } = useQuery<any[]>({
     queryKey: ["painel-tv-closed-today", todayStartISO],
