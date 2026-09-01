@@ -330,7 +330,7 @@ function PainelTvPage() {
     queryFn: async () => {
       const { data } = await supabase
         .from("zapi_chats")
-        .select("id, status, sector_name, contact_name, phone, assigned_to, created_at, updated_at, last_message_at")
+        .select("id, status, sector_name, contact_name, phone, assigned_to, unread_count, created_at, updated_at, last_message_at")
         .in("status", ["aguardando", "em_atendimento", "bot"])
         .order("created_at", { ascending: true })
         .limit(1000);
