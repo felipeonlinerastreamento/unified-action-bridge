@@ -113,12 +113,15 @@ function useFitScale() {
       if (availW <= 0) return;
       // Altura natural do conteúdo (transform: scale não afeta scrollHeight)
       const naturalH = content.scrollHeight;
-      // Escala para caber por completo na tela (largura E altura): em TVs
-      // grandes o painel amplia até preencher; em telas pequenas reduz.
+      // Preencher SEMPRE a largura da tela (TV): a escala base é a largura.
+      // Se o conteúdo ficar mais alto que a tela, reduzimos um pouco (até 75%
+      // da escala de largura) e o restante rola dentro do painel — assim nunca
+      // sobra espaço morto na lateral direita.
       const byW = availW / DESIGN_WIDTH;
       const byH = naturalH > 0 ? availH / naturalH : byW;
-      const scale = Math.max(0.3, Math.min(3, Math.min(byW, byH)));
+      const scale = Math.max(0.3, Math.min(3, Math.max(byW * 0.75, Math.min(byW, byH))));
       setFit({ scale, height: naturalH * scale, availH });
+
     };
 
 
@@ -548,7 +551,7 @@ function PainelTvPage() {
   const content = (
     <div
       ref={containerRef}
-      className={cn("w-full bg-[#020617] text-slate-100 overflow-hidden", isFs && "h-screen")}
+      className={cn("w-full bg-[#020617] text-slate-100 overflow-x-hidden overflow-y-auto", isFs && "h-screen")}
       style={!isFs && availH ? { height: availH } : undefined}
     >
       <div className="relative w-full" style={{ height: Math.max(fitHeight, availH) || undefined }}>
