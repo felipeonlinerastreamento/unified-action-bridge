@@ -755,9 +755,11 @@ function PainelTvPage() {
                 </div>
                 <p className="text-4xl font-black mt-2">
                   <span className="text-emerald-600 dark:text-emerald-400">{operatorsOnline}</span>
-                  <span className="text-muted-foreground text-2xl"> / {profiles.length}</span>
+                  <span className="text-muted-foreground text-2xl"> / {opsProfiles.length}</span>
                 </p>
-                <p className="text-xs text-muted-foreground mt-1">ativos nos últimos {THRESH.operatorOnlineMin}min</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  setor Atendimento • ativos nos últimos {THRESH.operatorOnlineMin}min
+                </p>
               </CardContent>
             </Card>
           )}
