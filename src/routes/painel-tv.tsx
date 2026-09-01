@@ -641,36 +641,36 @@ function PainelTvPage() {
       {/* Métricas secundárias */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 lg:gap-4">
         {isVisible("tmr") && (
-          <div className={cn("bg-slate-900/50 p-4 rounded-lg border border-slate-800", subKpiClass("tmr"))}>
+          <div className={cn("bg-slate-900/50 p-4 rounded-lg border border-slate-800 min-w-0 overflow-hidden", subKpiClass("tmr"))}>
             <span className="text-slate-500 text-xs font-bold uppercase">TMR (1ª resposta)</span>
-            <div className={cn("text-3xl lg:text-4xl font-bold mt-1 font-mono tabular-nums", tmrAvg > THRESH.tmrTargetMin ? "text-red-400" : "text-white")}>
+            <div className={cn("text-[clamp(1.5rem,2.6vw,2.5rem)] leading-none font-bold mt-1 font-mono tabular-nums whitespace-nowrap", tmrAvg > THRESH.tmrTargetMin ? "text-red-400" : "text-white")}>
               {tmrValues.length ? fmtMinutes(tmrAvg) : "—"}
             </div>
             <p className="text-[11px] text-slate-600 mt-1 uppercase">meta ≤ {THRESH.tmrTargetMin}min</p>
           </div>
         )}
         {isVisible("tma") && (
-          <div className={cn("bg-slate-900/50 p-4 rounded-lg border border-slate-800", subKpiClass("tma"))}>
+          <div className={cn("bg-slate-900/50 p-4 rounded-lg border border-slate-800 min-w-0 overflow-hidden", subKpiClass("tma"))}>
             <span className="text-slate-500 text-xs font-bold uppercase">TMA (Média)</span>
-            <div className={cn("text-3xl lg:text-4xl font-bold mt-1 font-mono tabular-nums", tmaAvg > THRESH.tmaTargetMin ? "text-red-400" : "text-white")}>
+            <div className={cn("text-[clamp(1.5rem,2.6vw,2.5rem)] leading-none font-bold mt-1 font-mono tabular-nums whitespace-nowrap", tmaAvg > THRESH.tmaTargetMin ? "text-red-400" : "text-white")}>
               {tmaValues.length ? fmtMinutes(tmaAvg) : "—"}
             </div>
             <p className="text-[11px] text-slate-600 mt-1 uppercase">meta ≤ {THRESH.tmaTargetMin}min</p>
           </div>
         )}
         {isVisible("tmer") && (
-          <div className={cn("bg-slate-900/50 p-4 rounded-lg border border-slate-800", subKpiClass("tmer"))}>
+          <div className={cn("bg-slate-900/50 p-4 rounded-lg border border-slate-800 min-w-0 overflow-hidden", subKpiClass("tmer"))}>
             <span className="text-slate-500 text-xs font-bold uppercase">TMER</span>
-            <div className={cn("text-3xl lg:text-4xl font-bold mt-1 font-mono tabular-nums", tmerAvg > THRESH.tmerTargetMin ? "text-red-400" : "text-white")}>
+            <div className={cn("text-[clamp(1.5rem,2.6vw,2.5rem)] leading-none font-bold mt-1 font-mono tabular-nums whitespace-nowrap", tmerAvg > THRESH.tmerTargetMin ? "text-red-400" : "text-white")}>
               {tmerValues.length ? fmtMinutes(tmerAvg) : "—"}
             </div>
             <p className="text-[11px] text-slate-600 mt-1 uppercase">meta ≤ {THRESH.tmerTargetMin}min</p>
           </div>
         )}
         {isVisible("engage") && (
-          <div className={cn("bg-slate-900/50 p-4 rounded-lg border border-slate-800", subKpiClass("engage"))}>
+          <div className={cn("bg-slate-900/50 p-4 rounded-lg border border-slate-800 min-w-0 overflow-hidden", subKpiClass("engage"))}>
             <span className="text-slate-500 text-xs font-bold uppercase">Taxa Engajamento</span>
-            <div className={cn("text-3xl lg:text-4xl font-bold mt-1 font-mono tabular-nums",
+            <div className={cn("text-[clamp(1.5rem,2.6vw,2.5rem)] leading-none font-bold mt-1 font-mono tabular-nums whitespace-nowrap",
               engagementRate >= 70 ? "text-emerald-400" : engagementRate >= 40 ? "text-amber-400" : "text-red-400")}>
               {tmrValues.length ? `${Math.round(engagementRate)}%` : "—"}
             </div>
@@ -678,9 +678,9 @@ function PainelTvPage() {
           </div>
         )}
         {isVisible("zombie") && (
-          <div className={cn("bg-slate-900/50 p-4 rounded-lg border", zombies.length > 0 ? "border-purple-500/50" : "border-slate-800", subKpiClass("zombie"))}>
+          <div className={cn("bg-slate-900/50 p-4 rounded-lg border", zombies.length > 0 ? "border-purple-500/50" : "border-slate-800", "min-w-0 overflow-hidden", subKpiClass("zombie"))}>
             <span className="text-slate-500 text-xs font-bold uppercase">Chats Zumbis</span>
-            <div className={cn("text-3xl lg:text-4xl font-bold mt-1 font-mono tabular-nums", zombies.length > 0 ? "text-purple-400" : "text-white")}>
+            <div className={cn("text-[clamp(1.5rem,2.6vw,2.5rem)] leading-none font-bold mt-1 font-mono tabular-nums whitespace-nowrap", zombies.length > 0 ? "text-purple-400" : "text-white")}>
               {String(zombies.length).padStart(2, "0")}
             </div>
             <p className="text-[11px] text-slate-600 mt-1 uppercase">sem resposta &gt; {THRESH.zombieMin}min</p>
