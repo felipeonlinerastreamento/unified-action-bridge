@@ -548,12 +548,11 @@ function PainelTvPage() {
   const content = (
     <div
       ref={containerRef}
-      className={cn(
-        "w-full bg-[#020617] text-slate-100 overflow-hidden",
-        isFs ? "h-screen" : "min-h-screen",
-      )}
+      className={cn("w-full bg-[#020617] text-slate-100 overflow-hidden", isFs && "h-screen")}
+      style={!isFs && availH ? { height: availH } : undefined}
     >
       <div className="relative w-full" style={{ height: Math.max(fitHeight, availH) || undefined }}>
+
         <div
           ref={contentRef}
           style={{
