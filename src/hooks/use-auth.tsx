@@ -109,8 +109,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }).catch(() => {});
       }
     } catch {}
+    try { await (supabase as any).rpc("presence_end_session"); } catch {}
     await supabase.auth.signOut();
   };
+
 
   const hasRole = (role: string) => state.roles.includes(role);
 

@@ -36,6 +36,7 @@ import { PerdidosReportTab } from "@/components/relatorios/perdidos-tab";
 import { ErrorsReportTab } from "@/components/relatorios/errors-report-tab";
 import { PurchaseReportTab } from "@/components/relatorios/purchase-report-tab";
 import { JourneyIdleTab } from "@/components/relatorios/journey-idle-tab";
+import { PresenceSessionsTab } from "@/components/relatorios/presence-sessions-tab";
 import { AiSummaryTab } from "@/components/relatorios/ai-summary-tab";
 import { TicketsReportTab } from "@/components/relatorios/tickets-report-tab";
 
@@ -408,6 +409,10 @@ function RelatoriosPage() {
               <TabsTrigger value="jornada" className="gap-1 text-xs">
                 <Clock className="h-3.5 w-3.5" /> Jornada & Ociosidade
               </TabsTrigger>
+              <TabsTrigger value="sessoes" className="gap-1 text-xs">
+                <Clock className="h-3.5 w-3.5" /> Online / Offline
+              </TabsTrigger>
+
               <TabsTrigger value="horarios" className="gap-1 text-xs">
                 <Clock className="h-3.5 w-3.5" /> Horários
               </TabsTrigger>
@@ -449,6 +454,12 @@ function RelatoriosPage() {
             <TabsContent value="jornada" className="space-y-4">
               <JourneyIdleTab dateFrom={dateFrom} dateTo={dateTo} operatorFilter={operatorFilter} />
             </TabsContent>
+
+            {/* ========== SESSÕES ONLINE / OFFLINE ========== */}
+            <TabsContent value="sessoes" className="space-y-4">
+              <PresenceSessionsTab dateFrom={dateFrom} dateTo={dateTo} operatorFilter={operatorFilter} />
+            </TabsContent>
+
 
             {/* ========== DESEMPENHO ========== */}
             <TabsContent value="desempenho" className="space-y-4">

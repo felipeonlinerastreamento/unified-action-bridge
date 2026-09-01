@@ -5617,6 +5617,30 @@ export type Database = {
           },
         ]
       }
+      user_presence_sessions: {
+        Row: {
+          ended_at: string | null
+          id: string
+          last_ping_at: string
+          started_at: string
+          user_id: string
+        }
+        Insert: {
+          ended_at?: string | null
+          id?: string
+          last_ping_at?: string
+          started_at?: string
+          user_id: string
+        }
+        Update: {
+          ended_at?: string | null
+          id?: string
+          last_ping_at?: string
+          started_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -5999,6 +6023,8 @@ export type Database = {
         Args: { _sector: string }
         Returns: string
       }
+      presence_end_session: { Args: never; Returns: undefined }
+      presence_heartbeat: { Args: never; Returns: undefined }
     }
     Enums: {
       app_role: "admin" | "gestor" | "atendente"
