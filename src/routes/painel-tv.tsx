@@ -496,8 +496,8 @@ function PainelTvPage() {
     <div
       ref={containerRef}
       className={cn(
-        "min-h-screen w-full bg-[#020617] text-slate-100 p-4 md:p-6 lg:p-8 flex flex-col gap-5",
-        isFs && "overflow-auto",
+        "w-full bg-[#020617] text-slate-100 p-4 md:p-6 lg:p-8 flex flex-col gap-5",
+        isFs ? "h-screen overflow-auto" : "min-h-screen",
       )}
     >
       {/* Header */}
@@ -591,46 +591,46 @@ function PainelTvPage() {
       {/* KPIs principais */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 lg:gap-6">
         {isVisible("queue") && (
-          <div className={cn("bg-slate-900 border-l-8 p-5 lg:p-6 rounded-r-xl shadow-2xl", queueAccent, mainKpiClass("queue"))}>
-            <div className="flex items-center justify-between">
-              <span className="text-slate-400 text-xs lg:text-sm font-bold uppercase tracking-widest">Fila Aguardando</span>
-              <Clock className={cn("h-5 w-5", queueText)} />
+          <div className={cn("bg-slate-900 border-l-8 p-5 lg:p-6 rounded-r-xl shadow-2xl min-w-0 overflow-hidden", queueAccent, mainKpiClass("queue"))}>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-slate-400 text-xs lg:text-sm font-bold uppercase tracking-widest truncate">Fila Aguardando</span>
+              <Clock className={cn("h-5 w-5 shrink-0", queueText)} />
             </div>
-            <div className={cn("text-6xl lg:text-7xl xl:text-8xl font-black mt-2 tabular-nums", queueText)}>{waiting.length}</div>
+            <div className={cn("text-[clamp(2.75rem,5.5vw,6rem)] leading-none font-black mt-2 tabular-nums whitespace-nowrap", queueText)}>{waiting.length}</div>
             <p className="text-xs lg:text-sm text-slate-500 mt-2">
               + antigo: <span className={cn("font-bold", queueText)}>{fmtMinutes(oldestWaitingMin)}</span>
             </p>
           </div>
         )}
         {isVisible("inatt") && (
-          <div className={cn("bg-slate-900 border-l-8 border-blue-500 p-5 lg:p-6 rounded-r-xl shadow-2xl", mainKpiClass("inatt"))}>
-            <div className="flex items-center justify-between">
-              <span className="text-slate-400 text-xs lg:text-sm font-bold uppercase tracking-widest">Em Atendimento</span>
-              <MessageSquare className="h-5 w-5 text-blue-400" />
+          <div className={cn("bg-slate-900 border-l-8 border-blue-500 p-5 lg:p-6 rounded-r-xl shadow-2xl min-w-0 overflow-hidden", mainKpiClass("inatt"))}>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-slate-400 text-xs lg:text-sm font-bold uppercase tracking-widest truncate">Em Atendimento</span>
+              <MessageSquare className="h-5 w-5 text-blue-400 shrink-0" />
             </div>
-            <div className="text-6xl lg:text-7xl xl:text-8xl font-black text-blue-400 mt-2 tabular-nums">{inAttendance.length}</div>
+            <div className="text-[clamp(2.75rem,5.5vw,6rem)] leading-none font-black text-blue-400 mt-2 tabular-nums whitespace-nowrap">{inAttendance.length}</div>
             <p className="text-xs lg:text-sm text-slate-500 mt-2">chats ativos</p>
           </div>
         )}
         {isVisible("bot") && (
-          <div className={cn("bg-slate-900 border-l-8 p-5 lg:p-6 rounded-r-xl shadow-2xl", botStuck.length > 0 ? "border-red-600" : "border-slate-700", mainKpiClass("bot"))}>
-            <div className="flex items-center justify-between">
-              <span className="text-slate-400 text-xs lg:text-sm font-bold uppercase tracking-widest">Bot Travado</span>
-              <Bot className={cn("h-5 w-5", botStuck.length > 0 ? "text-red-500" : "text-slate-500")} />
+          <div className={cn("bg-slate-900 border-l-8 p-5 lg:p-6 rounded-r-xl shadow-2xl min-w-0 overflow-hidden", botStuck.length > 0 ? "border-red-600" : "border-slate-700", mainKpiClass("bot"))}>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-slate-400 text-xs lg:text-sm font-bold uppercase tracking-widest truncate">Bot Travado</span>
+              <Bot className={cn("h-5 w-5 shrink-0", botStuck.length > 0 ? "text-red-500" : "text-slate-500")} />
             </div>
-            <div className={cn("text-6xl lg:text-7xl xl:text-8xl font-black mt-2 tabular-nums", botStuck.length > 0 ? "text-red-500" : "text-slate-300")}>
+            <div className={cn("text-[clamp(2.75rem,5.5vw,6rem)] leading-none font-black mt-2 tabular-nums whitespace-nowrap", botStuck.length > 0 ? "text-red-500" : "text-slate-300")}>
               {String(botStuck.length).padStart(2, "0")}
             </div>
             <p className="text-xs lg:text-sm text-slate-500 mt-2">&gt; {THRESH.botIdleMin}min sem resposta</p>
           </div>
         )}
         {isVisible("fin") && (
-          <div className={cn("bg-slate-900 border-l-8 border-emerald-500 p-5 lg:p-6 rounded-r-xl shadow-2xl", mainKpiClass("fin"))}>
-            <div className="flex items-center justify-between">
-              <span className="text-slate-400 text-xs lg:text-sm font-bold uppercase tracking-widest">Finalizados Hoje</span>
-              <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+          <div className={cn("bg-slate-900 border-l-8 border-emerald-500 p-5 lg:p-6 rounded-r-xl shadow-2xl min-w-0 overflow-hidden", mainKpiClass("fin"))}>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-slate-400 text-xs lg:text-sm font-bold uppercase tracking-widest truncate">Finalizados Hoje</span>
+              <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
             </div>
-            <div className="text-6xl lg:text-7xl xl:text-8xl font-black text-emerald-400 mt-2 tabular-nums">{finalizedToday}</div>
+            <div className="text-[clamp(2.75rem,5.5vw,6rem)] leading-none font-black text-emerald-400 mt-2 tabular-nums whitespace-nowrap">{finalizedToday}</div>
             <p className="text-xs lg:text-sm text-slate-500 mt-2">
               meta {THRESH.dailyFinalizedGoal} • <span className="text-emerald-400 font-bold">{Math.round((finalizedToday / THRESH.dailyFinalizedGoal) * 100)}%</span>
             </p>
@@ -641,36 +641,36 @@ function PainelTvPage() {
       {/* Métricas secundárias */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3 lg:gap-4">
         {isVisible("tmr") && (
-          <div className={cn("bg-slate-900/50 p-4 rounded-lg border border-slate-800", subKpiClass("tmr"))}>
+          <div className={cn("bg-slate-900/50 p-4 rounded-lg border border-slate-800 min-w-0 overflow-hidden", subKpiClass("tmr"))}>
             <span className="text-slate-500 text-xs font-bold uppercase">TMR (1ª resposta)</span>
-            <div className={cn("text-3xl lg:text-4xl font-bold mt-1 font-mono tabular-nums", tmrAvg > THRESH.tmrTargetMin ? "text-red-400" : "text-white")}>
+            <div className={cn("text-[clamp(1.5rem,2.6vw,2.5rem)] leading-none font-bold mt-1 font-mono tabular-nums whitespace-nowrap", tmrAvg > THRESH.tmrTargetMin ? "text-red-400" : "text-white")}>
               {tmrValues.length ? fmtMinutes(tmrAvg) : "—"}
             </div>
             <p className="text-[11px] text-slate-600 mt-1 uppercase">meta ≤ {THRESH.tmrTargetMin}min</p>
           </div>
         )}
         {isVisible("tma") && (
-          <div className={cn("bg-slate-900/50 p-4 rounded-lg border border-slate-800", subKpiClass("tma"))}>
+          <div className={cn("bg-slate-900/50 p-4 rounded-lg border border-slate-800 min-w-0 overflow-hidden", subKpiClass("tma"))}>
             <span className="text-slate-500 text-xs font-bold uppercase">TMA (Média)</span>
-            <div className={cn("text-3xl lg:text-4xl font-bold mt-1 font-mono tabular-nums", tmaAvg > THRESH.tmaTargetMin ? "text-red-400" : "text-white")}>
+            <div className={cn("text-[clamp(1.5rem,2.6vw,2.5rem)] leading-none font-bold mt-1 font-mono tabular-nums whitespace-nowrap", tmaAvg > THRESH.tmaTargetMin ? "text-red-400" : "text-white")}>
               {tmaValues.length ? fmtMinutes(tmaAvg) : "—"}
             </div>
             <p className="text-[11px] text-slate-600 mt-1 uppercase">meta ≤ {THRESH.tmaTargetMin}min</p>
           </div>
         )}
         {isVisible("tmer") && (
-          <div className={cn("bg-slate-900/50 p-4 rounded-lg border border-slate-800", subKpiClass("tmer"))}>
+          <div className={cn("bg-slate-900/50 p-4 rounded-lg border border-slate-800 min-w-0 overflow-hidden", subKpiClass("tmer"))}>
             <span className="text-slate-500 text-xs font-bold uppercase">TMER</span>
-            <div className={cn("text-3xl lg:text-4xl font-bold mt-1 font-mono tabular-nums", tmerAvg > THRESH.tmerTargetMin ? "text-red-400" : "text-white")}>
+            <div className={cn("text-[clamp(1.5rem,2.6vw,2.5rem)] leading-none font-bold mt-1 font-mono tabular-nums whitespace-nowrap", tmerAvg > THRESH.tmerTargetMin ? "text-red-400" : "text-white")}>
               {tmerValues.length ? fmtMinutes(tmerAvg) : "—"}
             </div>
             <p className="text-[11px] text-slate-600 mt-1 uppercase">meta ≤ {THRESH.tmerTargetMin}min</p>
           </div>
         )}
         {isVisible("engage") && (
-          <div className={cn("bg-slate-900/50 p-4 rounded-lg border border-slate-800", subKpiClass("engage"))}>
+          <div className={cn("bg-slate-900/50 p-4 rounded-lg border border-slate-800 min-w-0 overflow-hidden", subKpiClass("engage"))}>
             <span className="text-slate-500 text-xs font-bold uppercase">Taxa Engajamento</span>
-            <div className={cn("text-3xl lg:text-4xl font-bold mt-1 font-mono tabular-nums",
+            <div className={cn("text-[clamp(1.5rem,2.6vw,2.5rem)] leading-none font-bold mt-1 font-mono tabular-nums whitespace-nowrap",
               engagementRate >= 70 ? "text-emerald-400" : engagementRate >= 40 ? "text-amber-400" : "text-red-400")}>
               {tmrValues.length ? `${Math.round(engagementRate)}%` : "—"}
             </div>
@@ -678,9 +678,9 @@ function PainelTvPage() {
           </div>
         )}
         {isVisible("zombie") && (
-          <div className={cn("bg-slate-900/50 p-4 rounded-lg border", zombies.length > 0 ? "border-purple-500/50" : "border-slate-800", subKpiClass("zombie"))}>
+          <div className={cn("bg-slate-900/50 p-4 rounded-lg border", zombies.length > 0 ? "border-purple-500/50" : "border-slate-800", "min-w-0 overflow-hidden", subKpiClass("zombie"))}>
             <span className="text-slate-500 text-xs font-bold uppercase">Chats Zumbis</span>
-            <div className={cn("text-3xl lg:text-4xl font-bold mt-1 font-mono tabular-nums", zombies.length > 0 ? "text-purple-400" : "text-white")}>
+            <div className={cn("text-[clamp(1.5rem,2.6vw,2.5rem)] leading-none font-bold mt-1 font-mono tabular-nums whitespace-nowrap", zombies.length > 0 ? "text-purple-400" : "text-white")}>
               {String(zombies.length).padStart(2, "0")}
             </div>
             <p className="text-[11px] text-slate-600 mt-1 uppercase">sem resposta &gt; {THRESH.zombieMin}min</p>
@@ -690,10 +690,10 @@ function PainelTvPage() {
 
       {/* Listas detalhadas */}
       {(isVisible("zombieList") || isVisible("ops") || isVisible("ranking") || isVisible("critical")) && (
-        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 lg:gap-6 grow">
+        <div className="grid grid-cols-1 md:grid-cols-12 gap-4 lg:gap-6 grow items-start">
           {/* Chats Zumbis */}
           {isVisible("zombieList") && (
-            <div className={cn("bg-slate-900/40 border border-slate-800 rounded-xl overflow-hidden flex flex-col", panelClass("zombieList"))}>
+            <div className={cn("bg-slate-900/40 border border-slate-800 rounded-xl overflow-hidden flex flex-col min-w-0", panelClass("zombieList"))}>
               <div className="bg-purple-900/20 px-5 py-3.5 border-b border-purple-500/30 flex items-center justify-between">
                 <h3 className="font-bold uppercase tracking-widest text-purple-400 text-sm flex items-center gap-2">
                   <Ghost className="h-4 w-4" /> Lista de Chats Zumbis
@@ -735,9 +735,9 @@ function PainelTvPage() {
 
           {/* Operadores + Ranking */}
           {(isVisible("ops") || isVisible("ranking")) && (
-            <div className={cn("grid gap-4 lg:gap-6 content-start", isVisible("ops") && isVisible("ranking") ? "grid-rows-2" : "", panelClass("ops"))}>
+            <div className={cn("grid gap-4 lg:gap-6 content-start auto-rows-min min-w-0", panelClass("ops"))}>
               {isVisible("ops") && (
-                <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-5">
+                <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-5 min-w-0 overflow-hidden">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="font-bold uppercase tracking-widest text-blue-400 text-sm flex items-center gap-2">
                       <UserCheck className="h-4 w-4" /> Operadores Online ({operatorsOnline})
@@ -764,7 +764,7 @@ function PainelTvPage() {
                 </div>
               )}
               {isVisible("ranking") && (
-                <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-5">
+                <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-5 min-w-0 overflow-hidden">
                   <h3 className="font-bold uppercase tracking-widest text-emerald-400 text-sm flex items-center gap-2 mb-3">
                     <Users className="h-4 w-4" /> Ranking Performance
                   </h3>
@@ -799,7 +799,7 @@ function PainelTvPage() {
 
           {/* Fila Crítica */}
           {isVisible("critical") && (
-            <div className={cn("rounded-xl p-5 flex flex-col border-2",
+            <div className={cn("rounded-xl p-5 flex flex-col border-2 min-w-0 overflow-hidden",
               waiting.length >= THRESH.queueRedMin
                 ? "bg-red-950/20 border-red-900/50"
                 : "bg-slate-900/40 border-slate-800",
