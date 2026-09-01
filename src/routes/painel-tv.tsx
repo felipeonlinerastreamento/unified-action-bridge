@@ -310,6 +310,26 @@ function PainelTvPage() {
     },
   });
 
+  // Operadores do setor "Atendimento" (para o card Operadores online)
+  const { data: atendimentoUserIds = [] } = useQuery<string[]>({
+    queryKey: ["painel-tv-atendimento-ops"],
+    enabled: isAuthenticated && allowed,
+    refetchInterval: 60000,
+    queryFn: async () => {
+      const { data: sectorRows } = await supabase
+        .from("sectors")
+        .select("id")
+        .ilike("name", "atendimento");
+      const sectorIds = (sectorRows || []).map((s: any) => s.id);
+      if (sectorIds.length === 0) return [];
+      const { data: assigns } = await supabase
+        .from("user_sector_assignments")
+        .select("user_id")
+        .in("sector_id", sectorIds);
+      return Array.from(new Set((assigns || []).map((a: any) => a.user_id).filter(Boolean))) as string[];
+    },
+  });
+
   // ==== Cálculos ====
   const waiting = openChats.filter((c) => c.status === "aguardando");
   const inAttendance = openChats.filter((c) => c.status === "em_atendimento");
