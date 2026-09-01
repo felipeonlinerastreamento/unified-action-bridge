@@ -373,6 +373,37 @@ function PainelTvPage() {
     },
   });
 
+  // Atendimentos abertos (menu Atendimento) — por operador
+  const { data: openTickets = [] } = useQuery<any[]>({
+    queryKey: ["painel-tv-open-tickets"],
+    enabled: isAuthenticated && allowed,
+    refetchInterval: 10000,
+    refetchIntervalInBackground: true,
+    staleTime: 0,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("service_tickets")
+        .select("id, protocol_number, contact_name, plate, sector, status, assigned_to, created_at")
+        .in("status", ["aberto", "em_andamento", "reaberto"])
+        .order("created_at", { ascending: true })
+        .limit(1000);
+      return data || [];
+    },
+  });
+
+  useEffect(() => {
+    if (!isAuthenticated || !allowed) return;
+    const channel = supabase
+      .channel("painel-tv-tickets")
+      .on("postgres_changes", { event: "*", schema: "public", table: "service_tickets" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["painel-tv-open-tickets"] });
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [isAuthenticated, allowed, queryClient]);
+
   // Chats de hoje (para TMR)
   const { data: todayChats = [] } = useQuery<any[]>({
     queryKey: ["painel-tv-today-chats", todayStartISO],
