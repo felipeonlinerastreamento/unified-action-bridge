@@ -239,6 +239,7 @@ function ChatListItem({
   getSlaColor,
   formatServiceTime,
   nowTick,
+  prime,
 }: {
   chat: ChatItem;
   isSelected: boolean;
@@ -246,7 +247,9 @@ function ChatListItem({
   getSlaColor: (chat: ChatItem) => { bg: string; text: string; label: string };
   formatServiceTime: (chat: ChatItem) => string;
   nowTick: number;
+  prime?: boolean;
 }) {
+
   const name = chat.description || chat.contact?.name || chat.contact?.number || `Chat ${chat.attendanceId?.slice(0, 6)}`;
   const initials = name.substring(0, 2).toUpperCase();
   const imgUrl = chat.linkImage || chat.contact?.linkImage;
