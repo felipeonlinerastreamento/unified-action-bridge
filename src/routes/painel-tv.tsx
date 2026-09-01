@@ -1037,7 +1037,7 @@ function PainelTvPage() {
     </div>
   );
 
-  // Em fullscreen: renderiza sem AppLayout para ganhar toda a tela
-  if (isFs) return content;
+  // Em fullscreen ou para usuário "Apenas Painel TV": sem AppLayout (tela toda)
+  if (isFs || isPanelOnly) return content;
   return <AppLayout>{content}</AppLayout>;
 }
