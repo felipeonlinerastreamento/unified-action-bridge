@@ -660,7 +660,7 @@ function PainelTvPage() {
 
       {/* KPIs principais */}
       <div className="grid grid-cols-4 gap-6">
-        {isVisible("queue") && (
+        {isVisible("queue") && wrap("queue", (
           <div className={cn("bg-slate-900 border-l-8 p-6 rounded-r-xl shadow-2xl min-w-0 overflow-hidden", queueAccent, mainKpiClass("queue"))}>
             <div className="flex items-center justify-between gap-2">
               <span className="text-slate-400 text-sm font-bold uppercase tracking-widest truncate">Fila Aguardando</span>
@@ -671,8 +671,8 @@ function PainelTvPage() {
               + antigo: <span className={cn("font-bold", queueText)}>{fmtMinutes(oldestWaitingMin)}</span>
             </p>
           </div>
-        )}
-        {isVisible("inatt") && (
+        ))}
+        {isVisible("inatt") && wrap("inatt", (
           <div className={cn("bg-slate-900 border-l-8 border-blue-500 p-6 rounded-r-xl shadow-2xl min-w-0 overflow-hidden", mainKpiClass("inatt"))}>
             <div className="flex items-center justify-between gap-2">
               <span className="text-slate-400 text-sm font-bold uppercase tracking-widest truncate">Em Atendimento</span>
@@ -681,8 +681,8 @@ function PainelTvPage() {
             <div className="text-[clamp(2.75rem,5.5vw,6rem)] leading-none font-black text-blue-400 mt-2 tabular-nums whitespace-nowrap">{inAttendance.length}</div>
             <p className="text-sm text-slate-500 mt-2">chats ativos</p>
           </div>
-        )}
-        {isVisible("bot") && (
+        ))}
+        {isVisible("bot") && wrap("bot", (
           <div className={cn("bg-slate-900 border-l-8 p-6 rounded-r-xl shadow-2xl min-w-0 overflow-hidden", botStuck.length > 0 ? "border-red-600" : "border-slate-700", mainKpiClass("bot"))}>
             <div className="flex items-center justify-between gap-2">
               <span className="text-slate-400 text-sm font-bold uppercase tracking-widest truncate">Bot Travado</span>
@@ -693,8 +693,8 @@ function PainelTvPage() {
             </div>
             <p className="text-sm text-slate-500 mt-2">&gt; {THRESH.botIdleMin}min sem resposta</p>
           </div>
-        )}
-        {isVisible("fin") && (
+        ))}
+        {isVisible("fin") && wrap("fin", (
           <div className={cn("bg-slate-900 border-l-8 border-emerald-500 p-6 rounded-r-xl shadow-2xl min-w-0 overflow-hidden", mainKpiClass("fin"))}>
             <div className="flex items-center justify-between gap-2">
               <span className="text-slate-400 text-sm font-bold uppercase tracking-widest truncate">Finalizados Hoje</span>
@@ -705,12 +705,12 @@ function PainelTvPage() {
               meta {THRESH.dailyFinalizedGoal} • <span className="text-emerald-400 font-bold">{Math.round((finalizedToday / THRESH.dailyFinalizedGoal) * 100)}%</span>
             </p>
           </div>
-        )}
+        ))}
       </div>
 
       {/* Métricas secundárias */}
       <div className="grid grid-cols-5 gap-4">
-        {isVisible("tmr") && (
+        {isVisible("tmr") && wrap("tmr", (
           <div className={cn("bg-slate-900/50 p-4 rounded-lg border border-slate-800 min-w-0 overflow-hidden", subKpiClass("tmr"))}>
             <span className="text-slate-500 text-xs font-bold uppercase">TMR (1ª resposta)</span>
             <div className={cn("text-[clamp(1.5rem,2.6vw,2.5rem)] leading-none font-bold mt-1 font-mono tabular-nums whitespace-nowrap", tmrAvg > THRESH.tmrTargetMin ? "text-red-400" : "text-white")}>
@@ -718,8 +718,8 @@ function PainelTvPage() {
             </div>
             <p className="text-[11px] text-slate-600 mt-1 uppercase">meta ≤ {THRESH.tmrTargetMin}min</p>
           </div>
-        )}
-        {isVisible("tma") && (
+        ))}
+        {isVisible("tma") && wrap("tma", (
           <div className={cn("bg-slate-900/50 p-4 rounded-lg border border-slate-800 min-w-0 overflow-hidden", subKpiClass("tma"))}>
             <span className="text-slate-500 text-xs font-bold uppercase">TMA (Média)</span>
             <div className={cn("text-[clamp(1.5rem,2.6vw,2.5rem)] leading-none font-bold mt-1 font-mono tabular-nums whitespace-nowrap", tmaAvg > THRESH.tmaTargetMin ? "text-red-400" : "text-white")}>
@@ -727,8 +727,8 @@ function PainelTvPage() {
             </div>
             <p className="text-[11px] text-slate-600 mt-1 uppercase">meta ≤ {THRESH.tmaTargetMin}min</p>
           </div>
-        )}
-        {isVisible("tmer") && (
+        ))}
+        {isVisible("tmer") && wrap("tmer", (
           <div className={cn("bg-slate-900/50 p-4 rounded-lg border border-slate-800 min-w-0 overflow-hidden", subKpiClass("tmer"))}>
             <span className="text-slate-500 text-xs font-bold uppercase">TMER</span>
             <div className={cn("text-[clamp(1.5rem,2.6vw,2.5rem)] leading-none font-bold mt-1 font-mono tabular-nums whitespace-nowrap", tmerAvg > THRESH.tmerTargetMin ? "text-red-400" : "text-white")}>
@@ -736,8 +736,8 @@ function PainelTvPage() {
             </div>
             <p className="text-[11px] text-slate-600 mt-1 uppercase">meta ≤ {THRESH.tmerTargetMin}min</p>
           </div>
-        )}
-        {isVisible("engage") && (
+        ))}
+        {isVisible("engage") && wrap("engage", (
           <div className={cn("bg-slate-900/50 p-4 rounded-lg border border-slate-800 min-w-0 overflow-hidden", subKpiClass("engage"))}>
             <span className="text-slate-500 text-xs font-bold uppercase">Taxa Engajamento</span>
             <div className={cn("text-[clamp(1.5rem,2.6vw,2.5rem)] leading-none font-bold mt-1 font-mono tabular-nums whitespace-nowrap",
@@ -746,8 +746,8 @@ function PainelTvPage() {
             </div>
             <p className="text-[11px] text-slate-600 mt-1 uppercase">≤ {THRESH.engagementTargetMin}min ({engagedCount}/{tmrValues.length})</p>
           </div>
-        )}
-        {isVisible("zombie") && (
+        ))}
+        {isVisible("zombie") && wrap("zombie", (
           <div className={cn("bg-slate-900/50 p-4 rounded-lg border", zombies.length > 0 ? "border-purple-500/50" : "border-slate-800", "min-w-0 overflow-hidden", subKpiClass("zombie"))}>
             <span className="text-slate-500 text-xs font-bold uppercase">Chats Zumbis</span>
             <div className={cn("text-[clamp(1.5rem,2.6vw,2.5rem)] leading-none font-bold mt-1 font-mono tabular-nums whitespace-nowrap", zombies.length > 0 ? "text-purple-400" : "text-white")}>
@@ -755,14 +755,14 @@ function PainelTvPage() {
             </div>
             <p className="text-[11px] text-slate-600 mt-1 uppercase">sem resposta &gt; {THRESH.zombieMin}min</p>
           </div>
-        )}
+        ))}
       </div>
 
       {/* Listas detalhadas */}
       {(isVisible("zombieList") || isVisible("ops") || isVisible("ranking") || isVisible("critical")) && (
         <div className="grid grid-cols-12 gap-6 grow items-start">
           {/* Chats Zumbis */}
-          {isVisible("zombieList") && (
+          {isVisible("zombieList") && wrap("zombieList", (
             <div className={cn("bg-slate-900/40 border border-slate-800 rounded-xl overflow-hidden flex flex-col min-w-0", panelClass("zombieList"))}>
               <div className="bg-purple-900/20 px-5 py-3.5 border-b border-purple-500/30 flex items-center justify-between">
                 <h3 className="font-bold uppercase tracking-widest text-purple-400 text-sm flex items-center gap-2">
@@ -801,12 +801,12 @@ function PainelTvPage() {
                 )}
               </ScrollArea>
             </div>
-          )}
+          ))}
 
           {/* Operadores + Ranking */}
           {(isVisible("ops") || isVisible("ranking")) && (
             <div className={cn("grid gap-6 content-start auto-rows-min min-w-0", panelClass("ops"))}>
-              {isVisible("ops") && (
+              {isVisible("ops") && wrap("ops", (
                 <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-5 min-w-0 overflow-hidden">
                   <div className="flex items-center justify-between mb-3">
                     <h3 className="font-bold uppercase tracking-widest text-blue-400 text-sm flex items-center gap-2">
@@ -832,8 +832,8 @@ function PainelTvPage() {
                   </div>
                   <p className="text-[11px] text-slate-600 mt-3 uppercase">setor Atendimento • online = ativo nos últimos {THRESH.operatorOnlineMin}min</p>
                 </div>
-              )}
-              {isVisible("ranking") && (
+              ))}
+              {isVisible("ranking") && wrap("ranking", (
                 <div className="bg-slate-900/40 border border-slate-800 rounded-xl p-5 min-w-0 overflow-hidden">
                   <h3 className="font-bold uppercase tracking-widest text-emerald-400 text-sm flex items-center gap-2 mb-3">
                     <Users className="h-4 w-4" /> Ranking Performance
@@ -863,12 +863,12 @@ function PainelTvPage() {
                     </ScrollArea>
                   )}
                 </div>
-              )}
+              ))}
             </div>
           )}
 
           {/* Fila Crítica */}
-          {isVisible("critical") && (
+          {isVisible("critical") && wrap("critical", (
             <div className={cn("rounded-xl p-5 flex flex-col border-2 min-w-0 overflow-hidden",
               waiting.length >= THRESH.queueRedMin
                 ? "bg-red-950/20 border-red-900/50"
@@ -907,7 +907,7 @@ function PainelTvPage() {
                 )}
               </ScrollArea>
             </div>
-          )}
+          ))}
         </div>
       )}
 
