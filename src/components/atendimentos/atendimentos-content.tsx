@@ -211,7 +211,7 @@ export function AtendimentosContent({ autoOpenTicketId }: { autoOpenTicketId?: s
         const result = await listAllProfiles();
         return Array.isArray(result) ? result : [];
       } catch {
-        const { data } = await supabase.from("profiles").select("*").eq("is_active", true);
+        const { data } = await supabase.from("profiles").select("*").eq("is_active", true).eq("panel_only", false);
         return Array.isArray(data) ? data : [];
       }
     },

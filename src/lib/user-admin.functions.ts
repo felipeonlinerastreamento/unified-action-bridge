@@ -263,6 +263,7 @@ export const listAllProfiles = createServerFn({ method: "POST" })
       .from("profiles")
       .select("user_id, name, avatar_url, group_id")
       .eq("is_active", true)
+      .eq("panel_only", false)
       .order("name", { ascending: true });
     return (data || []).filter((p: any) => p.user_id);
   });
