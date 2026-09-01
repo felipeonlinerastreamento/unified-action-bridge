@@ -613,24 +613,24 @@ function PainelTvPage() {
           </div>
         )}
         {isVisible("bot") && (
-          <div className={cn("bg-slate-900 border-l-8 p-5 lg:p-6 rounded-r-xl shadow-2xl", botStuck.length > 0 ? "border-red-600" : "border-slate-700", mainKpiClass("bot"))}>
-            <div className="flex items-center justify-between">
-              <span className="text-slate-400 text-xs lg:text-sm font-bold uppercase tracking-widest">Bot Travado</span>
-              <Bot className={cn("h-5 w-5", botStuck.length > 0 ? "text-red-500" : "text-slate-500")} />
+          <div className={cn("bg-slate-900 border-l-8 p-5 lg:p-6 rounded-r-xl shadow-2xl min-w-0 overflow-hidden", botStuck.length > 0 ? "border-red-600" : "border-slate-700", mainKpiClass("bot"))}>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-slate-400 text-xs lg:text-sm font-bold uppercase tracking-widest truncate">Bot Travado</span>
+              <Bot className={cn("h-5 w-5 shrink-0", botStuck.length > 0 ? "text-red-500" : "text-slate-500")} />
             </div>
-            <div className={cn("text-6xl lg:text-7xl xl:text-8xl font-black mt-2 tabular-nums", botStuck.length > 0 ? "text-red-500" : "text-slate-300")}>
+            <div className={cn("text-[clamp(2.75rem,5.5vw,6rem)] leading-none font-black mt-2 tabular-nums whitespace-nowrap", botStuck.length > 0 ? "text-red-500" : "text-slate-300")}>
               {String(botStuck.length).padStart(2, "0")}
             </div>
             <p className="text-xs lg:text-sm text-slate-500 mt-2">&gt; {THRESH.botIdleMin}min sem resposta</p>
           </div>
         )}
         {isVisible("fin") && (
-          <div className={cn("bg-slate-900 border-l-8 border-emerald-500 p-5 lg:p-6 rounded-r-xl shadow-2xl", mainKpiClass("fin"))}>
-            <div className="flex items-center justify-between">
-              <span className="text-slate-400 text-xs lg:text-sm font-bold uppercase tracking-widest">Finalizados Hoje</span>
-              <CheckCircle2 className="h-5 w-5 text-emerald-400" />
+          <div className={cn("bg-slate-900 border-l-8 border-emerald-500 p-5 lg:p-6 rounded-r-xl shadow-2xl min-w-0 overflow-hidden", mainKpiClass("fin"))}>
+            <div className="flex items-center justify-between gap-2">
+              <span className="text-slate-400 text-xs lg:text-sm font-bold uppercase tracking-widest truncate">Finalizados Hoje</span>
+              <CheckCircle2 className="h-5 w-5 text-emerald-400 shrink-0" />
             </div>
-            <div className="text-6xl lg:text-7xl xl:text-8xl font-black text-emerald-400 mt-2 tabular-nums">{finalizedToday}</div>
+            <div className="text-[clamp(2.75rem,5.5vw,6rem)] leading-none font-black text-emerald-400 mt-2 tabular-nums whitespace-nowrap">{finalizedToday}</div>
             <p className="text-xs lg:text-sm text-slate-500 mt-2">
               meta {THRESH.dailyFinalizedGoal} • <span className="text-emerald-400 font-bold">{Math.round((finalizedToday / THRESH.dailyFinalizedGoal) * 100)}%</span>
             </p>
