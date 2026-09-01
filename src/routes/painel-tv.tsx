@@ -106,15 +106,22 @@ function useFitScale() {
 
     const update = () => {
       const availW = container.clientWidth;
-      const availH = container.clientHeight;
+      // Altura realmente visível: da posição do painel até o fim da viewport
+      // (o container usa min-h-screen e cresceria junto com o conteúdo).
+      const top = container.getBoundingClientRect().top + window.scrollY;
+      const availH = Math.max(320, window.innerHeight - Math.max(0, top - window.scrollY));
       if (availW <= 0) return;
       // Altura natural do conteúdo (transform: scale não afeta scrollHeight)
       const naturalH = content.scrollHeight;
-      // Escala para caber na largura real: reduz em telas menores e amplia
-      // em TVs grandes (transform: scale mantém texto vetorial/nítido).
-      const scale = Math.max(0.4, Math.min(2, availW / DESIGN_WIDTH));
+      // Escala para caber por completo na tela (largura E altura): em TVs
+      // grandes o painel amplia até preencher; em telas pequenas reduz.
+      const byW = availW / DESIGN_WIDTH;
+      const byH = naturalH > 0 ? availH / naturalH : byW;
+      const scale = Math.max(0.3, Math.min(3, Math.min(byW, byH)));
       setFit({ scale, height: naturalH * scale, availH });
     };
+
+
 
     update();
     const ro = new ResizeObserver(update);
@@ -541,22 +548,25 @@ function PainelTvPage() {
   const content = (
     <div
       ref={containerRef}
-      className={cn(
-        "w-full bg-[#020617] text-slate-100 overflow-hidden",
-        isFs ? "h-screen" : "min-h-screen",
-      )}
+      className={cn("w-full bg-[#020617] text-slate-100 overflow-hidden", isFs && "h-screen")}
+      style={!isFs && availH ? { height: availH } : undefined}
     >
       <div className="relative w-full" style={{ height: Math.max(fitHeight, availH) || undefined }}>
+
         <div
           ref={contentRef}
           style={{
             width: DESIGN_WIDTH,
-            minHeight: scale > 0 ? Math.max(fitHeight, availH) / scale : undefined,
             transform: `scale(${scale})`,
             transformOrigin: "top left",
+            marginLeft:
+              container && scale > 0
+                ? Math.max(0, (container.clientWidth - DESIGN_WIDTH * scale) / 2) / scale
+                : undefined,
           }}
           className="p-8 flex flex-col gap-5"
         >
+
       {/* Header */}
       <div className="flex flex-wrap items-end justify-between gap-4 border-b-2 border-slate-800 pb-4">
         <div>
