@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useUserPermissions } from "@/hooks/use-user-permissions";
@@ -322,21 +322,38 @@ function PainelTvPage() {
   }, []);
 
   // Chats abertos (aguardando / em_atendimento / bot)
+  const queryClient = useQueryClient();
   const { data: openChats = [] } = useQuery<any[]>({
     queryKey: ["painel-tv-open-chats"],
     enabled: isAuthenticated && allowed,
-    refetchInterval: 15000,
+    refetchInterval: 8000,
     refetchIntervalInBackground: true,
+    staleTime: 0,
     queryFn: async () => {
       const { data } = await supabase
         .from("zapi_chats")
-        .select("id, status, sector_name, contact_name, phone, assigned_to, created_at, updated_at, last_message_at")
+        .select("id, status, sector_name, contact_name, phone, assigned_to, unread_count, created_at, updated_at, last_message_at")
         .in("status", ["aguardando", "em_atendimento", "bot"])
         .order("created_at", { ascending: true })
         .limit(1000);
       return data || [];
     },
   });
+
+  // Atualização em tempo real da fila
+  useEffect(() => {
+    if (!isAuthenticated || !allowed) return;
+    const channel = supabase
+      .channel("painel-tv-chats")
+      .on("postgres_changes", { event: "*", schema: "public", table: "zapi_chats" }, () => {
+        queryClient.invalidateQueries({ queryKey: ["painel-tv-open-chats"] });
+      })
+      .subscribe();
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [isAuthenticated, allowed, queryClient]);
+
 
   // Tickets finalizados hoje
   const { data: closedToday = [] } = useQuery<any[]>({
@@ -484,13 +501,23 @@ function PainelTvPage() {
   });
 
   // ==== Cálculos ====
-  const waiting = openChats.filter((c) => c.status === "aguardando");
+  // Aguardando = chats na fila (sem responsável) OU chats com mensagem do cliente
+  // ainda não respondida (unread_count > 0). O tempo de espera considera a última
+  // mensagem recebida, e não a criação do chat.
+  const waitingRef = (c: any) => c.last_message_at || c.created_at;
+  const waiting = openChats
+    .filter(
+      (c) =>
+        c.status === "aguardando" ||
+        (c.status !== "bot" && Number(c.unread_count || 0) > 0),
+    )
+    .sort((a, b) => new Date(waitingRef(a)).getTime() - new Date(waitingRef(b)).getTime());
   const inAttendance = openChats.filter((c) => c.status === "em_atendimento");
   const botStuck = openChats.filter(
     (c) => c.status === "bot" && minutesAgo(c.last_message_at || c.updated_at) >= THRESH.botIdleMin,
   );
   const oldestWaitingMin = waiting.length
-    ? minutesAgo(waiting[0].created_at)
+    ? minutesAgo(waitingRef(waiting[0]))
     : 0;
 
   // TMR: primeiro from_me por chat criado hoje
@@ -610,13 +637,13 @@ function PainelTvPage() {
       .slice(0, 12);
   }, [closedToday, inAttendance, profiles, atendimentoUserIds]);
 
-  // Fila crítica ordenada
+  // Fila crítica ordenada (espera medida pela última mensagem do cliente)
   const criticalQueue = useMemo(() => {
-    return [...waiting]
-      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+    return waiting
       .slice(0, 15)
-      .map((c) => ({ ...c, waitingMin: minutesAgo(c.created_at) }));
-  }, [waiting]);
+      .map((c) => ({ ...c, waitingMin: minutesAgo(waitingRef(c)) }));
+    // `now` força o recálculo do tempo a cada tick do relógio
+  }, [waiting, now]);
 
   if (!isAuthenticated || permLoading) {
     return <AppLayout><div className="p-4">Carregando...</div></AppLayout>;
