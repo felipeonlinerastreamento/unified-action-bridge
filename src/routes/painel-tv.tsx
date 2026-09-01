@@ -39,7 +39,7 @@ const BLOCK_META: Record<BlockId, { label: string; group: BlockGroup; defaultSpa
   ops:        { label: "Painel • Operadores online", group: "panel",   defaultSpan: 4, defaultVisible: true },
   critical:   { label: "Painel • Fila crítica",      group: "panel",   defaultSpan: 3, defaultVisible: true },
   zombieList: { label: "Painel • Lista de zumbis",   group: "panel",   defaultSpan: 5, defaultVisible: true },
-  ranking:    { label: "Painel • Ranking",           group: "full",    defaultSpan: 1, defaultVisible: true },
+  ranking:    { label: "Painel • Distribuição de chamados", group: "full", defaultSpan: 1, defaultVisible: true },
 };
 
 type LayoutState = {
@@ -606,7 +606,7 @@ function PainelTvPage() {
           tmaAvg: e.tmaCount ? e.tmaSum / e.tmaCount : 0,
         };
       })
-      .sort((a, b) => b.finalized - a.finalized || a.tmaAvg - b.tmaAvg)
+      .sort((a, b) => b.inService - a.inService || b.finalized - a.finalized || a.tmaAvg - b.tmaAvg)
       .slice(0, 12);
   }, [closedToday, inAttendance, profiles, atendimentoUserIds]);
 
