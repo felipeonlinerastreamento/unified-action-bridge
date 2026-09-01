@@ -3760,6 +3760,7 @@ export type Database = {
           is_chat_available: boolean
           last_seen_at: string | null
           name: string
+          panel_only: boolean
           updated_at: string
           user_id: string
         }
@@ -3775,6 +3776,7 @@ export type Database = {
           is_chat_available?: boolean
           last_seen_at?: string | null
           name?: string
+          panel_only?: boolean
           updated_at?: string
           user_id: string
         }
@@ -3790,6 +3792,7 @@ export type Database = {
           is_chat_available?: boolean
           last_seen_at?: string | null
           name?: string
+          panel_only?: boolean
           updated_at?: string
           user_id?: string
         }
