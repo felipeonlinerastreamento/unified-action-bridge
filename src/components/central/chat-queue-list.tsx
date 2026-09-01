@@ -150,13 +150,44 @@ export function ChatQueueList({
 
 
 
+  // Telefones marcados como "Prime" nos contatos das empresas
+  const { data: primePhones = new Set<string>() } = useQuery({
+    queryKey: ["prime-contact-phones"],
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data } = await supabase.from("companies").select("contacts");
+      const set = new Set<string>();
+      for (const row of (data as any[]) || []) {
+        for (const c of (row?.contacts as any[]) || []) {
+          if (!c?.is_prime) continue;
+          const d = String(c.phone || "").replace(/\D/g, "");
+          if (d.length >= 8) set.add(d.slice(-8));
+        }
+      }
+      return set;
+    },
+  });
+
+  const isPrime = useMemo(() => {
+    return (c: ChatItem) => {
+      const d = String(c.contact?.number || "").replace(/\D/g, "");
+      return d.length >= 8 && primePhones.has(d.slice(-8));
+    };
+  }, [primePhones]);
+
   const sortedChats = useMemo(() => {
     const getTs = (c: ChatItem) => {
       const t = c.lastMessage?.utcDhMessage || c.utcDhStartChat;
       return t ? new Date(t).getTime() : 0;
     };
-    return [...chats].sort((a, b) => getTs(b) - getTs(a));
-  }, [chats]);
+    return [...chats].sort((a, b) => {
+      const pa = isPrime(a) ? 1 : 0;
+      const pb = isPrime(b) ? 1 : 0;
+      if (pa !== pb) return pb - pa;
+      return getTs(b) - getTs(a);
+    });
+  }, [chats, isPrime]);
+
 
   if (isLoading && totalChats === 0) {
     return (
