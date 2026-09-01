@@ -620,13 +620,13 @@ function PainelTvPage() {
       .slice(0, 12);
   }, [closedToday, inAttendance, profiles, atendimentoUserIds]);
 
-  // Fila crítica ordenada
+  // Fila crítica ordenada (espera medida pela última mensagem do cliente)
   const criticalQueue = useMemo(() => {
-    return [...waiting]
-      .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+    return waiting
       .slice(0, 15)
-      .map((c) => ({ ...c, waitingMin: minutesAgo(c.created_at) }));
-  }, [waiting]);
+      .map((c) => ({ ...c, waitingMin: minutesAgo(waitingRef(c)) }));
+    // `now` força o recálculo do tempo a cada tick do relógio
+  }, [waiting, now]);
 
   if (!isAuthenticated || permLoading) {
     return <AppLayout><div className="p-4">Carregando...</div></AppLayout>;
