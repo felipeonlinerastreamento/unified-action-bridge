@@ -689,7 +689,7 @@ function PainelTvPage() {
         user_id: uid,
         name: t.assigned_to ? (p?.name || "—") : "Sem operador",
         online: !!(p?.last_seen_at && minutesAgo(p.last_seen_at) <= THRESH.operatorOnlineMin),
-        tickets: [],
+        tickets: [] as any[],
       };
       g.tickets.push(t);
       groups.set(uid, g);
