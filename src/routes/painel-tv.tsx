@@ -373,8 +373,8 @@ function PainelTvPage() {
     },
   });
 
-  // Atendimentos abertos (menu Atendimento) — por operador
-  const { data: openTickets = [] } = useQuery<any[]>({
+  // Atendimentos abertos (menu Atendimento) — por operador, somente setor Atendimento
+  const { data: openTicketsRaw = [] } = useQuery<any[]>({
     queryKey: ["painel-tv-open-tickets"],
     enabled: isAuthenticated && allowed,
     refetchInterval: 10000,
@@ -390,6 +390,10 @@ function PainelTvPage() {
       return data || [];
     },
   });
+  const openTickets = useMemo(
+    () => openTicketsRaw.filter((t) => typeof t.sector === "string" && t.sector.toLowerCase().includes("atendimento")),
+    [openTicketsRaw],
+  );
 
   useEffect(() => {
     if (!isAuthenticated || !allowed) return;
@@ -1106,13 +1110,13 @@ function PainelTvPage() {
             <div className={cn("bg-slate-900/40 border border-slate-800 rounded-xl overflow-hidden flex flex-col min-w-0", panelClass("openTickets"))}>
               <div className="bg-sky-900/20 px-5 py-3.5 border-b border-sky-500/30 flex items-center justify-between">
                 <h3 className="font-bold uppercase tracking-widest text-sky-400 text-sm flex items-center gap-2">
-                  <Users className="h-4 w-4" /> Atendimentos abertos por operador
+                  <Users className="h-4 w-4" /> Atendimentos abertos por operador — setor Atendimento
                 </h3>
                 <span className="font-mono font-bold text-sky-300 bg-sky-950 px-2 py-0.5 rounded text-sm">{openTickets.length}</span>
               </div>
               <ScrollArea className="grow max-h-[300px]">
                 {openTicketsByOp.length === 0 ? (
-                  <div className="p-8 text-center text-slate-500 text-sm">Nenhum atendimento aberto no momento.</div>
+                  <div className="p-8 text-center text-slate-500 text-sm">Nenhum atendimento aberto no setor Atendimento no momento.</div>
                 ) : (
                   <div className="grid grid-cols-4 gap-4 p-4">
                     {openTicketsByOp.map((g) => (
