@@ -105,9 +105,10 @@ function EmpresasPage() {
   const [formServiceTemplates, setFormServiceTemplates] = useState<ServiceTemplate[]>([]);
   const [formPlatformIds, setFormPlatformIds] = useState<string[]>([]);
   const [formPhones, setFormPhones] = useState<string[]>([""]);
-  const [formContacts, setFormContacts] = useState<{ name: string; role: string; phone: string }[]>([
-    { name: "", role: "", phone: "" },
+  const [formContacts, setFormContacts] = useState<{ name: string; role: string; phone: string; is_prime?: boolean }[]>([
+    { name: "", role: "", phone: "", is_prime: false },
   ]);
+
 
   const { data: companies = [], isLoading } = useQuery({
     queryKey: ["companies"],
