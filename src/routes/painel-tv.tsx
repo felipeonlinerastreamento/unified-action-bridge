@@ -114,7 +114,6 @@ function useFitScale() {
       // Escala para caber na largura real: reduz em telas menores e amplia
       // em TVs grandes (transform: scale mantém texto vetorial/nítido).
       const scale = Math.max(0.4, Math.min(2, availW / DESIGN_WIDTH));
-      console.log("[fit]", availW, availH, naturalH, scale);
       setFit({ scale, height: naturalH * scale, availH });
       content.style.transform = "";
     };
