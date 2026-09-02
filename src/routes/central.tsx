@@ -1020,8 +1020,8 @@ function CentralPage() {
 
   const handleSaveContactPhone = async () => {
     if (!selectedChatId) return;
-    const digits = contactPhoneDraft.replace(/\D/g, "");
-    if (digits.length < 10) {
+    const digits = withBrazilianDdi(contactPhoneDraft);
+    if (digits.length < 12) {
       toast.error("Informe um telefone válido (DDD + número)");
       return;
     }
