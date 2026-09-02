@@ -1029,7 +1029,7 @@ function CentralPage() {
     try {
       const { error } = await supabase
         .from("zapi_chats")
-        .update({ phone: digits, phone_normalized: digits } as any)
+        .update({ phone: digits } as any)
         .eq("id", selectedChatId);
       if (error) throw error;
       toast.success("Telefone do contato atualizado");
