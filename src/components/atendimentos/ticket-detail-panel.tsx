@@ -204,6 +204,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   const [forwardSector, setForwardSector] = useState("");
   const [forwardSectorUser, setForwardSectorUser] = useState<string>("__auto__");
   const [forwardUser, setForwardUser] = useState("");
+  const [forwardNote, setForwardNote] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editingContent, setEditingContent] = useState("");
   const [syncing, setSyncing] = useState(false);
@@ -988,6 +989,15 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
     }
     await insertSystemComment(ticket.id, commentMsg, "encaminhamento");
 
+    if (forwardNote.trim()) {
+      await insertSystemComment(
+        ticket.id,
+        `Nota interna da transferência (${getAuthorName(userId)} → ${forwardSector}${assignedAgentName ? ` / ${assignedAgentName}` : ""}):\n${forwardNote.trim()}`,
+        "interno"
+      );
+      setForwardNote("");
+    }
+
     await supabase.from("ticket_assignments").insert({
       ticket_id: ticket.id,
       assigned_by: userId,
@@ -1018,6 +1028,14 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
       return;
     }
     await insertSystemComment(ticket.id, `Encaminhado para usuário: ${profile?.name || forwardUser}`, "encaminhamento");
+    if (forwardNote.trim()) {
+      await insertSystemComment(
+        ticket.id,
+        `Nota interna da transferência (${getAuthorName(userId)} → ${profile?.name || forwardUser}):\n${forwardNote.trim()}`,
+        "interno"
+      );
+      setForwardNote("");
+    }
     await supabase.from("ticket_assignments").insert({
       ticket_id: ticket.id,
       assigned_to: forwardUser,
