@@ -26,7 +26,7 @@ export function SubClientsAdmin() {
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
-  const [form, setForm] = useState({ name: "", phone: "", email: "", notes: "", companyId: "" });
+  const [form, setForm] = useState({ name: "", phone: "", email: "", notes: "", instructions: "", companyId: "" });
   const [companyOpen, setCompanyOpen] = useState(false);
   const [companySearch, setCompanySearch] = useState("");
 
@@ -73,6 +73,7 @@ export function SubClientsAdmin() {
         phone: form.phone ? form.phone.replace(/\D/g, "") : null,
         email: form.email || null,
         notes: form.notes || "",
+        instructions: form.instructions || null,
         company_id: form.companyId,
         created_by: sess.session?.user?.id || null,
       };
@@ -107,7 +108,7 @@ export function SubClientsAdmin() {
   });
 
   const resetForm = () => {
-    setForm({ name: "", phone: "", email: "", notes: "", companyId: "" });
+    setForm({ name: "", phone: "", email: "", notes: "", instructions: "", companyId: "" });
     setEditing(null);
   };
 
@@ -118,6 +119,7 @@ export function SubClientsAdmin() {
       phone: sub.phone,
       email: sub.email || "",
       notes: sub.notes || "",
+      instructions: sub.instructions || "",
       companyId: sub.company_id,
     });
     setDialogOpen(true);
@@ -318,7 +320,16 @@ export function SubClientsAdmin() {
             </div>
             <div>
               <Label>Observações</Label>
-              <Textarea rows={3} value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} />
+              <Textarea rows={2} value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} />
+            </div>
+            <div>
+              <Label>Instruções de Atendimento</Label>
+              <Textarea
+                rows={3}
+                value={form.instructions}
+                onChange={(e) => setForm((f) => ({ ...f, instructions: e.target.value }))}
+                placeholder="Exibidas no painel do chat para contatos vinculados a este sub-cliente"
+              />
             </div>
             <Button
               className="w-full"
