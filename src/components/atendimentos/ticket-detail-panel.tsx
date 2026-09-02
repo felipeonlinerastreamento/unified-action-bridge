@@ -1425,9 +1425,14 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
                       {getCommentIcon(c.comment_type)}
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between gap-2">
-                          <span className="text-xs font-medium text-foreground/80">
+                           <span className="text-xs font-medium text-foreground/80">
                             {getAuthorName(c.user_id)}
                           </span>
+                          {c.comment_type === "interno" && (
+                            <Badge variant="outline" className="text-[10px] gap-1 border-amber-500 text-amber-700 dark:text-amber-400 mr-auto">
+                              <Lock className="h-3 w-3" /> Interno
+                            </Badge>
+                          )}
                           {isEditable && !isEditing && (
                             <Button
                               size="icon"
@@ -1578,6 +1583,22 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
                   <SelectItem value="urgente">Urgente</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+
+            {/* Internal transfer note (operators only) */}
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground flex items-center gap-1">
+                <Lock className="h-3.5 w-3.5" /> Descrição interna da transferência
+              </label>
+              <Textarea
+                placeholder="Motivo da transferência, contexto para o próximo atendente... (não é enviado ao cliente)"
+                value={forwardNote}
+                onChange={(e) => setForwardNote(e.target.value)}
+                className="min-h-[60px] text-sm"
+              />
+              <p className="text-[10px] text-muted-foreground">
+                Visível apenas para operadores. Registrada como nota interna ao encaminhar por setor ou usuário.
+              </p>
             </div>
 
             {/* Forward to sector */}
