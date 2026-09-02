@@ -98,7 +98,7 @@ export function BaseContactsAdmin() {
   const createMutation = useMutation({
     mutationFn: async () => {
       const name = form.name.trim();
-      const phone = form.phone.replace(/\D/g, "");
+      const phone = withBrazilianDdi(form.phone);
       if (!name) throw new Error("Informe o nome");
       if (phone.length < 10) throw new Error("Informe um telefone válido");
       const { error } = await supabase.from("crm_contacts").insert({
@@ -132,7 +132,7 @@ export function BaseContactsAdmin() {
         .from("crm_contacts")
         .update({
           name,
-          phone: form.phone.replace(/\D/g, ""),
+          phone: withBrazilianDdi(form.phone),
           email: form.email.trim() || null,
           contact_role: form.contact_role,
           contact_type: form.contact_type,

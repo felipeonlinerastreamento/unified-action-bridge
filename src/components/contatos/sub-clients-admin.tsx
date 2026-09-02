@@ -70,7 +70,7 @@ export function SubClientsAdmin() {
       const { data: sess } = await supabase.auth.getSession();
       const payload = {
         name: form.name.trim(),
-        phone: form.phone ? form.phone.replace(/\D/g, "") : null,
+        phone: form.phone ? withBrazilianDdi(form.phone) : null,
         email: form.email || null,
         notes: form.notes || "",
         instructions: form.instructions || null,

@@ -194,12 +194,12 @@ export function TechniciansAdmin() {
       const name = form.name.trim();
       if (!name) throw new Error("Nome obrigatório");
       if (name.length > 120) throw new Error("Nome muito longo");
-      const contactDigits = (form.contact_phone || form.phone).replace(/\D/g, "");
+      const contactDigits = withBrazilianDdi(form.contact_phone || form.phone);
       if (!contactDigits) throw new Error("Informe o telefone do contato vinculado");
       const { error } = await supabase.from("chat_technicians" as any).insert({
         contact_phone: contactDigits,
         name,
-        phone: form.phone.trim() || null,
+        phone: form.phone.trim() ? withBrazilianDdi(form.phone) : null,
         address: form.address.trim() || null,
         city_state: form.city_state.trim() || null,
         notes: form.notes.trim() || null,
@@ -230,7 +230,7 @@ export function TechniciansAdmin() {
         .from("chat_technicians" as any)
         .update({
           name,
-          phone: form.phone.trim() || null,
+          phone: form.phone.trim() ? withBrazilianDdi(form.phone) : null,
           address: form.address.trim() || null,
           city_state: form.city_state.trim() || null,
           notes: form.notes.trim() || null,
