@@ -4318,6 +4318,7 @@ export type Database = {
           created_by: string | null
           email: string | null
           id: string
+          instructions: string | null
           name: string
           notes: string | null
           phone: string | null
@@ -4329,6 +4330,7 @@ export type Database = {
           created_by?: string | null
           email?: string | null
           id?: string
+          instructions?: string | null
           name: string
           notes?: string | null
           phone?: string | null
@@ -4340,6 +4342,7 @@ export type Database = {
           created_by?: string | null
           email?: string | null
           id?: string
+          instructions?: string | null
           name?: string
           notes?: string | null
           phone?: string | null

@@ -1,0 +1,1 @@
+ALTER TABLE public.sub_clients ADD COLUMN IF NOT EXISTS instructions text;
