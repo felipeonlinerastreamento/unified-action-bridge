@@ -320,7 +320,16 @@ export function SubClientsAdmin() {
             </div>
             <div>
               <Label>Observações</Label>
-              <Textarea rows={3} value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} />
+              <Textarea rows={2} value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} />
+            </div>
+            <div>
+              <Label>Instruções de Atendimento</Label>
+              <Textarea
+                rows={3}
+                value={form.instructions}
+                onChange={(e) => setForm((f) => ({ ...f, instructions: e.target.value }))}
+                placeholder="Exibidas no painel do chat para contatos vinculados a este sub-cliente"
+              />
             </div>
             <Button
               className="w-full"
