@@ -89,6 +89,11 @@ function zapiRecipientPhone(phone: string): string {
     return `${digits}-group`;
   }
 
+  // Número BR salvo sem DDI (10 ou 11 dígitos: DDD + número) → prefixa 55.
+  if (/^[1-9][0-9]([6-9][0-9]{7}|9[0-9]{8})$/.test(digits)) {
+    digits = "55" + digits;
+  }
+
   // BR mobile: ensure the leading "9" after DDD (canonical 13 digits)
   // 12 digits "55DD[6-9]XXXXXXX" → "55DD9[6-9]XXXXXXX"
   if (/^55[1-9][0-9][6-9][0-9]{7}$/.test(digits)) {
