@@ -105,8 +105,8 @@ function EmpresasPage() {
   const [formServiceTemplates, setFormServiceTemplates] = useState<ServiceTemplate[]>([]);
   const [formPlatformIds, setFormPlatformIds] = useState<string[]>([]);
   const [formPhones, setFormPhones] = useState<string[]>([""]);
-  const [formContacts, setFormContacts] = useState<{ name: string; role: string; phone: string; is_prime?: boolean }[]>([
-    { name: "", role: "", phone: "", is_prime: false },
+  const [formContacts, setFormContacts] = useState<{ name: string; sector: string; phone: string; email: string; is_prime?: boolean }[]>([
+    { name: "", sector: "", phone: "", email: "", is_prime: false },
   ]);
 
 
@@ -161,7 +161,7 @@ function EmpresasPage() {
     setFormPlatformIds([]);
 
     setFormPhones([""]);
-    setFormContacts([{ name: "", role: "", phone: "" }]);
+    setFormContacts([{ name: "", sector: "", phone: "", email: "", is_prime: false }]);
     setEditingCompany(null);
   };
 
@@ -180,10 +180,32 @@ function EmpresasPage() {
     setFormMaintenanceScript(company.maintenance_script || "");
     setFormInstallationScript(company.installation_script || "");
     setFormPhones(phones.length > 0 ? phones : [""]);
-    setFormContacts(
+    const baseContacts =
       company.contacts && company.contacts.length > 0
-        ? company.contacts
-        : [{ name: "", role: "", phone: "" }]
+        ? company.contacts.map((c: any) => ({
+            name: c.name || "",
+            sector: c.sector || c.role || "",
+            phone: c.phone || "",
+            email: c.email || "",
+            is_prime: !!c.is_prime,
+          }))
+        : [];
+    // Merge linked phones into the contacts list so they are editable there
+    const knownPhones = new Set(
+      baseContacts.map((c) => String(c.phone || "").replace(/\D/g, "")).filter(Boolean)
+    );
+    const mergedContacts = [...baseContacts];
+    for (const p of [...phones, company.phone || ""]) {
+      const digits = String(p || "").replace(/\D/g, "");
+      if (digits && !knownPhones.has(digits)) {
+        mergedContacts.push({ name: "", sector: "", phone: p, email: "", is_prime: false });
+        knownPhones.add(digits);
+      }
+    }
+    setFormContacts(
+      mergedContacts.length > 0
+        ? mergedContacts
+        : [{ name: "", sector: "", phone: "", email: "", is_prime: false }]
     );
     setIsDialogOpen(true);
 
@@ -221,7 +243,7 @@ function EmpresasPage() {
         .split(",")
         .map((e) => e.trim())
         .filter(Boolean);
-      const contacts = formContacts.filter((c) => c.name.trim());
+      const contacts = formContacts.filter((c) => c.name.trim() || c.phone.trim());
       const companyData = {
         name: formName.trim(),
         cnpj: formCnpj.trim() || null,
@@ -260,10 +282,15 @@ function EmpresasPage() {
         companyId = data.id;
       }
 
-      // Insert phones
-      const phoneNumbers = formPhones
-        .map((p) => p.trim())
-        .filter(Boolean);
+      // Insert phones (linked phones tab + phones from contacts)
+      const phoneNumbers = Array.from(
+        new Set(
+          [
+            ...formPhones.map((p) => p.trim()),
+            ...contacts.map((c) => String(c.phone || "").trim()),
+          ].filter(Boolean)
+        )
+      );
       if (phoneNumbers.length > 0) {
         const { error } = await supabase.from("company_phones").insert(
           phoneNumbers.map((phone_number) => ({
@@ -463,7 +490,7 @@ function EmpresasPage() {
               <TableRow>
                 <TableHead>Nome</TableHead>
                 <TableHead>CNPJ</TableHead>
-                <TableHead>Telefones</TableHead>
+                
                 <TableHead>E-mails</TableHead>
                 <TableHead className="w-24">Ações</TableHead>
               </TableRow>
@@ -471,22 +498,19 @@ function EmpresasPage() {
             <TableBody>
               {!hasSearch ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
+                  <TableCell colSpan={4} className="text-center py-10 text-muted-foreground">
                     <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
                     Use o campo de busca acima para consultar empresas.
                   </TableCell>
                 </TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                     {isLoading ? "Carregando..." : "Nenhuma empresa encontrada"}
                   </TableCell>
                 </TableRow>
               ) : (
                 filtered.map((company) => {
-                  const phones = companyPhones
-                    .filter((p) => p.company_id === company.id)
-                    .map((p) => p.phone_number);
                   return (
                     <TableRow key={company.id}>
                       <TableCell className="font-medium">
@@ -511,16 +535,6 @@ function EmpresasPage() {
                               {company.plan_tier}
                             </Badge>
                           )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {phones.map((p, i) => (
-                            <Badge key={i} variant="outline" className="text-xs">
-                              {p}
-                            </Badge>
-                          ))}
-                          {phones.length === 0 && <span className="text-muted-foreground">—</span>}
                         </div>
                       </TableCell>
                       <TableCell>
@@ -678,7 +692,7 @@ function EmpresasPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() =>
-                    setFormContacts([...formContacts, { name: "", role: "", phone: "" }])
+                    setFormContacts([...formContacts, { name: "", sector: "", phone: "", email: "", is_prime: false }])
                   }
                 >
                   <Plus className="h-3 w-3 mr-1" /> Adicionar
@@ -697,16 +711,6 @@ function EmpresasPage() {
                     className="flex-1 min-w-[140px]"
                   />
                   <Input
-                    value={contact.role}
-                    onChange={(e) => {
-                      const c = [...formContacts];
-                      c[idx] = { ...c[idx], role: e.target.value };
-                      setFormContacts(c);
-                    }}
-                    placeholder="Cargo"
-                    className="w-32"
-                  />
-                  <Input
                     value={contact.phone}
                     onChange={(e) => {
                       const c = [...formContacts];
@@ -715,6 +719,26 @@ function EmpresasPage() {
                     }}
                     placeholder="Telefone"
                     className="w-40"
+                  />
+                  <Input
+                    value={contact.sector}
+                    onChange={(e) => {
+                      const c = [...formContacts];
+                      c[idx] = { ...c[idx], sector: e.target.value };
+                      setFormContacts(c);
+                    }}
+                    placeholder="Setor"
+                    className="w-32"
+                  />
+                  <Input
+                    value={contact.email}
+                    onChange={(e) => {
+                      const c = [...formContacts];
+                      c[idx] = { ...c[idx], email: e.target.value };
+                      setFormContacts(c);
+                    }}
+                    placeholder="E-mail"
+                    className="flex-1 min-w-[160px]"
                   />
                   <label className="flex items-center gap-1.5 text-xs whitespace-nowrap cursor-pointer">
                     <Checkbox
