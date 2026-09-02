@@ -139,7 +139,7 @@ import { MessageMediaContent } from "@/components/central/message-media";
 import { AudioRecorderButton } from "@/components/central/audio-recorder-button";
 import { EmojiPickerButton } from "@/components/central/emoji-picker-button";
 import { useZapiRealtime } from "@/hooks/use-zapi-realtime";
-import { isGroupChat } from "@/lib/chat-utils";
+import { isGroupChat, withBrazilianDdi } from "@/lib/chat-utils";
 import { resolveGroupTicketStart } from "@/lib/group-ticket-start";
 import {
   useTesteEquipamentoSettings,
