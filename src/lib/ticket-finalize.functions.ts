@@ -139,9 +139,14 @@ export const syncTicketToGsystem = createServerFn({ method: "POST" })
       : notesStr.trim();
     lines.push(cleanedNotes || "(sem observações)");
     lines.push("");
-    if (comments && comments.length > 0) {
+    // Notas internas (transferências) ficam restritas aos operadores e
+    // não são replicadas ao cliente / GSystem.
+    const visibleComments = (comments || []).filter(
+      (c: any) => c.comment_type !== "interno"
+    );
+    if (visibleComments.length > 0) {
       lines.push("HISTÓRICO DE COMENTÁRIOS:");
-      for (const c of comments) {
+      for (const c of visibleComments) {
         const author = c.user_id ? profileMap[c.user_id] || "Usuário" : "Sistema";
         const date = new Date(c.created_at).toLocaleString("pt-BR");
         lines.push(`- [${date}] [${c.comment_type}] ${author}: ${c.content}`);
