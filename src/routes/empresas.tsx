@@ -498,57 +498,21 @@ function EmpresasPage() {
             <TableBody>
               {!hasSearch ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
+                  <TableCell colSpan={4} className="text-center py-10 text-muted-foreground">
                     <Search className="h-8 w-8 mx-auto mb-2 opacity-50" />
                     Use o campo de busca acima para consultar empresas.
                   </TableCell>
                 </TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
                     {isLoading ? "Carregando..." : "Nenhuma empresa encontrada"}
                   </TableCell>
                 </TableRow>
               ) : (
                 filtered.map((company) => {
-                  const phones = companyPhones
-                    .filter((p) => p.company_id === company.id)
-                    .map((p) => p.phone_number);
                   return (
-                    <TableRow key={company.id}>
-                      <TableCell className="font-medium">
-                        <button
-                          type="button"
-                          onClick={() => setObservationsCompany(company)}
-                          className="text-left text-primary hover:underline focus:outline-none focus-visible:underline inline-flex items-center gap-1.5"
-                          title="Ver observações"
-                        >
-                          <MessageSquare className="h-3.5 w-3.5 opacity-60" />
-                          {company.name}
-                        </button>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <span>{company.cnpj || "—"}</span>
-                          {company.plan_tier && (
-                            <Badge
-                              variant={company.plan_tier === "Prime" ? "default" : "secondary"}
-                              className="text-[10px]"
-                            >
-                              {company.plan_tier}
-                            </Badge>
-                          )}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex flex-wrap gap-1">
-                          {phones.map((p, i) => (
-                            <Badge key={i} variant="outline" className="text-xs">
-                              {p}
-                            </Badge>
-                          ))}
-                          {phones.length === 0 && <span className="text-muted-foreground">—</span>}
-                        </div>
+...
                       </TableCell>
                       <TableCell>
                         {(company.emails || []).length > 0
