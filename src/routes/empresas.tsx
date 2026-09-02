@@ -105,8 +105,8 @@ function EmpresasPage() {
   const [formServiceTemplates, setFormServiceTemplates] = useState<ServiceTemplate[]>([]);
   const [formPlatformIds, setFormPlatformIds] = useState<string[]>([]);
   const [formPhones, setFormPhones] = useState<string[]>([""]);
-  const [formContacts, setFormContacts] = useState<{ name: string; role: string; phone: string; is_prime?: boolean }[]>([
-    { name: "", role: "", phone: "", is_prime: false },
+  const [formContacts, setFormContacts] = useState<{ name: string; sector: string; phone: string; email: string; is_prime?: boolean }[]>([
+    { name: "", sector: "", phone: "", email: "", is_prime: false },
   ]);
 
 
@@ -161,7 +161,7 @@ function EmpresasPage() {
     setFormPlatformIds([]);
 
     setFormPhones([""]);
-    setFormContacts([{ name: "", role: "", phone: "" }]);
+    setFormContacts([{ name: "", sector: "", phone: "", email: "", is_prime: false }]);
     setEditingCompany(null);
   };
 
@@ -180,10 +180,32 @@ function EmpresasPage() {
     setFormMaintenanceScript(company.maintenance_script || "");
     setFormInstallationScript(company.installation_script || "");
     setFormPhones(phones.length > 0 ? phones : [""]);
-    setFormContacts(
+    const baseContacts =
       company.contacts && company.contacts.length > 0
-        ? company.contacts
-        : [{ name: "", role: "", phone: "" }]
+        ? company.contacts.map((c: any) => ({
+            name: c.name || "",
+            sector: c.sector || c.role || "",
+            phone: c.phone || "",
+            email: c.email || "",
+            is_prime: !!c.is_prime,
+          }))
+        : [];
+    // Merge linked phones into the contacts list so they are editable there
+    const knownPhones = new Set(
+      baseContacts.map((c) => String(c.phone || "").replace(/\D/g, "")).filter(Boolean)
+    );
+    const mergedContacts = [...baseContacts];
+    for (const p of [...phones, company.phone || ""]) {
+      const digits = String(p || "").replace(/\D/g, "");
+      if (digits && !knownPhones.has(digits)) {
+        mergedContacts.push({ name: "", sector: "", phone: p, email: "", is_prime: false });
+        knownPhones.add(digits);
+      }
+    }
+    setFormContacts(
+      mergedContacts.length > 0
+        ? mergedContacts
+        : [{ name: "", sector: "", phone: "", email: "", is_prime: false }]
     );
     setIsDialogOpen(true);
 
@@ -221,7 +243,7 @@ function EmpresasPage() {
         .split(",")
         .map((e) => e.trim())
         .filter(Boolean);
-      const contacts = formContacts.filter((c) => c.name.trim());
+      const contacts = formContacts.filter((c) => c.name.trim() || c.phone.trim());
       const companyData = {
         name: formName.trim(),
         cnpj: formCnpj.trim() || null,
@@ -260,10 +282,15 @@ function EmpresasPage() {
         companyId = data.id;
       }
 
-      // Insert phones
-      const phoneNumbers = formPhones
-        .map((p) => p.trim())
-        .filter(Boolean);
+      // Insert phones (linked phones tab + phones from contacts)
+      const phoneNumbers = Array.from(
+        new Set(
+          [
+            ...formPhones.map((p) => p.trim()),
+            ...contacts.map((c) => String(c.phone || "").trim()),
+          ].filter(Boolean)
+        )
+      );
       if (phoneNumbers.length > 0) {
         const { error } = await supabase.from("company_phones").insert(
           phoneNumbers.map((phone_number) => ({
