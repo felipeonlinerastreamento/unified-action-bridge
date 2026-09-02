@@ -1013,6 +1013,37 @@ function CentralPage() {
   const [contactNameDraft, setContactNameDraft] = useState("");
   const [savingContactName, setSavingContactName] = useState(false);
 
+  // Inline edit for contact phone
+  const [editingContactPhone, setEditingContactPhone] = useState(false);
+  const [contactPhoneDraft, setContactPhoneDraft] = useState("");
+  const [savingContactPhone, setSavingContactPhone] = useState(false);
+
+  const handleSaveContactPhone = async () => {
+    if (!selectedChatId) return;
+    const digits = contactPhoneDraft.replace(/\D/g, "");
+    if (digits.length < 10) {
+      toast.error("Informe um telefone válido (DDD + número)");
+      return;
+    }
+    setSavingContactPhone(true);
+    try {
+      const { error } = await supabase
+        .from("zapi_chats")
+        .update({ phone: digits, phone_normalized: digits } as any)
+        .eq("id", selectedChatId);
+      if (error) throw error;
+      toast.success("Telefone do contato atualizado");
+      setEditingContactPhone(false);
+      queryClient.invalidateQueries({ queryKey: ["chat-detail", selectedChannelId, selectedChatId] });
+      queryClient.invalidateQueries({ queryKey: ["all-open-chats", selectedChannelId] });
+      queryClient.invalidateQueries({ queryKey: ["zapi-chats", selectedChannelId] });
+    } catch (e: any) {
+      toast.error(e?.message || "Erro ao atualizar telefone");
+    } finally {
+      setSavingContactPhone(false);
+    }
+  };
+
   const handleSaveContactName = async () => {
     if (!selectedChatId) return;
     const newName = contactNameDraft.trim();
