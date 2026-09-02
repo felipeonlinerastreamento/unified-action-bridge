@@ -490,7 +490,7 @@ function EmpresasPage() {
               <TableRow>
                 <TableHead>Nome</TableHead>
                 <TableHead>CNPJ</TableHead>
-                <TableHead>Telefones</TableHead>
+                
                 <TableHead>E-mails</TableHead>
                 <TableHead className="w-24">Ações</TableHead>
               </TableRow>
@@ -705,7 +705,7 @@ function EmpresasPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() =>
-                    setFormContacts([...formContacts, { name: "", role: "", phone: "" }])
+                    setFormContacts([...formContacts, { name: "", sector: "", phone: "", email: "", is_prime: false }])
                   }
                 >
                   <Plus className="h-3 w-3 mr-1" /> Adicionar
@@ -724,16 +724,6 @@ function EmpresasPage() {
                     className="flex-1 min-w-[140px]"
                   />
                   <Input
-                    value={contact.role}
-                    onChange={(e) => {
-                      const c = [...formContacts];
-                      c[idx] = { ...c[idx], role: e.target.value };
-                      setFormContacts(c);
-                    }}
-                    placeholder="Cargo"
-                    className="w-32"
-                  />
-                  <Input
                     value={contact.phone}
                     onChange={(e) => {
                       const c = [...formContacts];
@@ -742,6 +732,26 @@ function EmpresasPage() {
                     }}
                     placeholder="Telefone"
                     className="w-40"
+                  />
+                  <Input
+                    value={contact.sector}
+                    onChange={(e) => {
+                      const c = [...formContacts];
+                      c[idx] = { ...c[idx], sector: e.target.value };
+                      setFormContacts(c);
+                    }}
+                    placeholder="Setor"
+                    className="w-32"
+                  />
+                  <Input
+                    value={contact.email}
+                    onChange={(e) => {
+                      const c = [...formContacts];
+                      c[idx] = { ...c[idx], email: e.target.value };
+                      setFormContacts(c);
+                    }}
+                    placeholder="E-mail"
+                    className="flex-1 min-w-[160px]"
                   />
                   <label className="flex items-center gap-1.5 text-xs whitespace-nowrap cursor-pointer">
                     <Checkbox
