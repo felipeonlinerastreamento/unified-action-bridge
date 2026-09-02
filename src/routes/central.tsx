@@ -1013,6 +1013,37 @@ function CentralPage() {
   const [contactNameDraft, setContactNameDraft] = useState("");
   const [savingContactName, setSavingContactName] = useState(false);
 
+  // Inline edit for contact phone
+  const [editingContactPhone, setEditingContactPhone] = useState(false);
+  const [contactPhoneDraft, setContactPhoneDraft] = useState("");
+  const [savingContactPhone, setSavingContactPhone] = useState(false);
+
+  const handleSaveContactPhone = async () => {
+    if (!selectedChatId) return;
+    const digits = contactPhoneDraft.replace(/\D/g, "");
+    if (digits.length < 10) {
+      toast.error("Informe um telefone válido (DDD + número)");
+      return;
+    }
+    setSavingContactPhone(true);
+    try {
+      const { error } = await supabase
+        .from("zapi_chats")
+        .update({ phone: digits, phone_normalized: digits } as any)
+        .eq("id", selectedChatId);
+      if (error) throw error;
+      toast.success("Telefone do contato atualizado");
+      setEditingContactPhone(false);
+      queryClient.invalidateQueries({ queryKey: ["chat-detail", selectedChannelId, selectedChatId] });
+      queryClient.invalidateQueries({ queryKey: ["all-open-chats", selectedChannelId] });
+      queryClient.invalidateQueries({ queryKey: ["zapi-chats", selectedChannelId] });
+    } catch (e: any) {
+      toast.error(e?.message || "Erro ao atualizar telefone");
+    } finally {
+      setSavingContactPhone(false);
+    }
+  };
+
   const handleSaveContactName = async () => {
     if (!selectedChatId) return;
     const newName = contactNameDraft.trim();
@@ -4335,11 +4366,61 @@ function CentralPage() {
                               </Button>
                             </div>
                           )}
-                          {chatDetail.contact?.number && (
-                            <p className="text-sm text-muted-foreground flex items-center justify-center gap-1 mt-1">
-                              <Phone className="h-3 w-3" />
-                              {chatDetail.contact.secondaryName || chatDetail.contact.number}
-                            </p>
+                          {editingContactPhone ? (
+                            <div className="mt-1 flex items-center gap-1 justify-center">
+                              <Input
+                                value={contactPhoneDraft}
+                                onChange={(e) => setContactPhoneDraft(e.target.value)}
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter") handleSaveContactPhone();
+                                  if (e.key === "Escape") setEditingContactPhone(false);
+                                }}
+                                placeholder="DDD + número"
+                                maxLength={20}
+                                autoFocus
+                                className="h-8 text-sm max-w-[180px]"
+                                disabled={savingContactPhone}
+                              />
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7"
+                                onClick={handleSaveContactPhone}
+                                disabled={savingContactPhone}
+                                title="Salvar"
+                              >
+                                {savingContactPhone ? <Loader2 className="h-3 w-3 animate-spin" /> : <Check className="h-3 w-3" />}
+                              </Button>
+                              <Button
+                                size="icon"
+                                variant="ghost"
+                                className="h-7 w-7"
+                                onClick={() => setEditingContactPhone(false)}
+                                disabled={savingContactPhone}
+                                title="Cancelar"
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ) : (
+                            chatDetail.contact?.number && (
+                              <p className="text-sm text-muted-foreground flex items-center justify-center gap-1 mt-1 group">
+                                <Phone className="h-3 w-3" />
+                                {chatDetail.contact.secondaryName || chatDetail.contact.number}
+                                <Button
+                                  size="icon"
+                                  variant="ghost"
+                                  className="h-5 w-5 opacity-60 hover:opacity-100"
+                                  onClick={() => {
+                                    setContactPhoneDraft(chatDetail.contact?.number || "");
+                                    setEditingContactPhone(true);
+                                  }}
+                                  title="Alterar telefone do contato"
+                                >
+                                  <Pencil className="h-3 w-3" />
+                                </Button>
+                              </p>
+                            )
                           )}
                         </div>
 
