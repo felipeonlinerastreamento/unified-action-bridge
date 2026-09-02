@@ -139,7 +139,7 @@ import { MessageMediaContent } from "@/components/central/message-media";
 import { AudioRecorderButton } from "@/components/central/audio-recorder-button";
 import { EmojiPickerButton } from "@/components/central/emoji-picker-button";
 import { useZapiRealtime } from "@/hooks/use-zapi-realtime";
-import { isGroupChat } from "@/lib/chat-utils";
+import { isGroupChat, withBrazilianDdi } from "@/lib/chat-utils";
 import { resolveGroupTicketStart } from "@/lib/group-ticket-start";
 import {
   useTesteEquipamentoSettings,
@@ -1020,8 +1020,8 @@ function CentralPage() {
 
   const handleSaveContactPhone = async () => {
     if (!selectedChatId) return;
-    const digits = contactPhoneDraft.replace(/\D/g, "");
-    if (digits.length < 10) {
+    const digits = withBrazilianDdi(contactPhoneDraft);
+    if (digits.length < 12) {
       toast.error("Informe um telefone válido (DDD + número)");
       return;
     }
@@ -1131,7 +1131,7 @@ function CentralPage() {
       const payload = {
         contact_phone: techPhoneKey,
         name,
-        phone: technicianForm.phone.trim() || null,
+        phone: technicianForm.phone.trim() ? withBrazilianDdi(technicianForm.phone) : null,
         address: technicianForm.address.trim() || null,
         city_state: technicianForm.city_state.trim() || null,
         notes: technicianForm.notes.trim() || null,
@@ -1176,7 +1176,7 @@ function CentralPage() {
           companyName: selectedCompany.name,
           companyCnpj: selectedCompany.cnpj || undefined,
           name: identForm.name,
-          phone: identForm.phone || contactPhone,
+          phone: withBrazilianDdi(identForm.phone || contactPhone),
           email: identForm.email || undefined,
           notes: identForm.notes || undefined,
           ticketId: currentTicket?.id,
@@ -1266,7 +1266,7 @@ function CentralPage() {
           companyName: selectedCompany?.name || identForm.companyNameInput || undefined,
           companyCnpj: selectedCompany?.cnpj || identForm.cnpj || undefined,
           name: identForm.name,
-          phone: identForm.phone || contactPhone,
+          phone: withBrazilianDdi(identForm.phone || contactPhone),
           email: identForm.email || undefined,
           notes: identForm.notes || undefined,
           ticketId: currentTicket?.id,

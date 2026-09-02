@@ -915,7 +915,8 @@ export const createChat = createServerFn({ method: "POST" })
         .from("zapi_chats")
         .insert({
           channel_id: data.channelId,
-          phone,
+          // Armazena já com DDI 55 (números BR) para evitar falhas de envio
+          phone: phoneNormalized && !phoneNormalized.startsWith("lid:") ? phoneNormalized : phone,
           status: "em_atendimento",
           assigned_to: context.userId,
           last_message_at: new Date().toISOString(),
