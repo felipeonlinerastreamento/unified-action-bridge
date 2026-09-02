@@ -51,6 +51,7 @@ import {
   Bell,
   CheckSquare,
   FileSpreadsheet,
+  Lock,
 } from "lucide-react";
 import { ChatControleTab } from "@/components/central/chat-controle-tab";
 import { CopyProtocolButton } from "./copy-protocol-button";
@@ -94,6 +95,7 @@ function getCommentIcon(type: string) {
   if (type === "status_change") return <RotateCcw className="h-3.5 w-3.5 text-amber-500" />;
   if (type === "sistema") return <Clock className="h-3.5 w-3.5 text-muted-foreground" />;
   if (type === "atividade") return <CheckSquare className="h-3.5 w-3.5 text-emerald-500" />;
+  if (type === "interno") return <Lock className="h-3.5 w-3.5 text-amber-500" />;
   return <MessageSquare className="h-3.5 w-3.5 text-primary" />;
 }
 
