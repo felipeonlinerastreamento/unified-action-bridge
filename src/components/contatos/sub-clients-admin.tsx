@@ -108,7 +108,7 @@ export function SubClientsAdmin() {
   });
 
   const resetForm = () => {
-    setForm({ name: "", phone: "", email: "", notes: "", companyId: "" });
+    setForm({ name: "", phone: "", email: "", notes: "", instructions: "", companyId: "" });
     setEditing(null);
   };
 
@@ -119,6 +119,7 @@ export function SubClientsAdmin() {
       phone: sub.phone,
       email: sub.email || "",
       notes: sub.notes || "",
+      instructions: sub.instructions || "",
       companyId: sub.company_id,
     });
     setDialogOpen(true);
