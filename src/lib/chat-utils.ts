@@ -7,6 +7,18 @@
  * than 15 chars. GSystem also forwards the raw `@g.us` suffix when present,
  * and some channels (`channel.type === 4`) map to group conversations.
  */
+/**
+ * Garante o DDI brasileiro (55) em números BR digitados sem código do país.
+ * Números com 10 dígitos (DDD + fixo) ou 11 dígitos (DDD + 9 + celular)
+ * recebem o prefixo "55". Números já internacionais ficam intactos.
+ */
+export function withBrazilianDdi(phone: string | null | undefined): string {
+  const digits = (phone || "").replace(/\D/g, "");
+  if (!digits) return "";
+  if (/^[1-9][0-9](9[0-9]{8}|[6-9][0-9]{7})$/.test(digits)) return `55${digits}`;
+  return digits;
+}
+
 export interface GroupishChat {
   contact?: { number?: string; secondaryName?: string; name?: string } | null;
   channel?: { type?: number; identifier?: string } | null;
