@@ -4087,6 +4087,19 @@ function CentralPage() {
                               </div>
                             )}
 
+                            {(subClientLookup as any)?.instructions && (
+                              <div>
+                                <p className="text-xs text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                                  <FileText className="h-3 w-3" /> Instruções do Sub-cliente
+                                </p>
+                                <div className="mt-1 p-3 bg-amber-50 border border-amber-200 rounded-md">
+                                  <p className="text-sm text-amber-900 whitespace-pre-wrap">
+                                    {(subClientLookup as any).instructions}
+                                  </p>
+                                </div>
+                              </div>
+                            )}
+
                             {companyPanelData.cnpj && (
                               <DetailRow label="CNPJ" value={companyPanelData.cnpj} />
                             )}
