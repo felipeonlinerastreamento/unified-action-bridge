@@ -512,7 +512,30 @@ function EmpresasPage() {
               ) : (
                 filtered.map((company) => {
                   return (
-...
+                    <TableRow key={company.id}>
+                      <TableCell className="font-medium">
+                        <button
+                          type="button"
+                          onClick={() => setObservationsCompany(company)}
+                          className="text-left text-primary hover:underline focus:outline-none focus-visible:underline inline-flex items-center gap-1.5"
+                          title="Ver observações"
+                        >
+                          <MessageSquare className="h-3.5 w-3.5 opacity-60" />
+                          {company.name}
+                        </button>
+                      </TableCell>
+                      <TableCell>
+                        <div className="flex items-center gap-2">
+                          <span>{company.cnpj || "—"}</span>
+                          {company.plan_tier && (
+                            <Badge
+                              variant={company.plan_tier === "Prime" ? "default" : "secondary"}
+                              className="text-[10px]"
+                            >
+                              {company.plan_tier}
+                            </Badge>
+                          )}
+                        </div>
                       </TableCell>
                       <TableCell>
                         {(company.emails || []).length > 0
