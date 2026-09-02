@@ -4129,21 +4129,6 @@ function CentralPage() {
                               </div>
                             )}
 
-                            {companyPanelData.contacts && (companyPanelData.contacts as any[]).length > 0 && (
-                              <div>
-                                <p className="text-xs text-muted-foreground uppercase tracking-wider">Contatos da Empresa</p>
-                                <div className="mt-1 space-y-2">
-                                  {(companyPanelData.contacts as any[]).map((c: any, i: number) => (
-                                    <div key={i} className="text-sm bg-muted/50 rounded p-2">
-                                      <p className="font-medium text-foreground">{c.name}</p>
-                                      {c.role && <p className="text-xs text-muted-foreground">{c.role}</p>}
-                                      {c.phone && <p className="text-xs text-muted-foreground">{c.phone}</p>}
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
                             {companyPanelData.phone && (
                               <DetailRow label="Telefone principal" value={companyPanelData.phone} />
                             )}
