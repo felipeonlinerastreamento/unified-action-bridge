@@ -26,7 +26,7 @@ export function SubClientsAdmin() {
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<any>(null);
-  const [form, setForm] = useState({ name: "", phone: "", email: "", notes: "", companyId: "" });
+  const [form, setForm] = useState({ name: "", phone: "", email: "", notes: "", instructions: "", companyId: "" });
   const [companyOpen, setCompanyOpen] = useState(false);
   const [companySearch, setCompanySearch] = useState("");
 
@@ -73,6 +73,7 @@ export function SubClientsAdmin() {
         phone: form.phone ? form.phone.replace(/\D/g, "") : null,
         email: form.email || null,
         notes: form.notes || "",
+        instructions: form.instructions || null,
         company_id: form.companyId,
         created_by: sess.session?.user?.id || null,
       };
