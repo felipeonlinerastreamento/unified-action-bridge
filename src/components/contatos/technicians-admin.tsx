@@ -34,7 +34,11 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Search, Loader2, Pencil, Trash2, Wrench, RefreshCw, Plus, MessageSquare } from "lucide-react";
+import { Search, Loader2, Pencil, Trash2, Wrench, RefreshCw, Plus, MessageSquare, Star, History, Send } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { ContactChatActions } from "@/components/contatos/contact-chat-actions";
@@ -46,6 +50,7 @@ type Technician = {
   phone: string | null;
   address: string | null;
   city_state: string | null;
+  is_city_default: boolean | null;
   notes: string | null;
   created_by_name: string | null;
   updated_by_name: string | null;
@@ -58,11 +63,21 @@ type FormState = {
   phone: string;
   address: string;
   city_state: string;
+  is_city_default: boolean;
   notes: string;
   contact_phone: string;
 };
 
-const emptyForm: FormState = { name: "", phone: "", address: "", city_state: "", notes: "", contact_phone: "" };
+const emptyForm: FormState = { name: "", phone: "", address: "", city_state: "", is_city_default: false, notes: "", contact_phone: "" };
+
+type TechnicianNote = {
+  id: string;
+  technician_id: string;
+  note: string;
+  created_by: string | null;
+  created_by_name: string | null;
+  created_at: string;
+};
 
 export function TechniciansAdmin() {
   const { user, profile } = useAuth();
@@ -74,6 +89,18 @@ export function TechniciansAdmin() {
   const [creating, setCreating] = useState(false);
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
+  const [newNote, setNewNote] = useState("");
+
+  const clearCityDefault = async (city: string, isDefault: boolean, ignoreId: string | null) => {
+    const c = city.trim();
+    if (!isDefault || !c) return;
+    let q = supabase
+      .from("chat_technicians" as any)
+      .update({ is_city_default: false } as any)
+      .ilike("city_state", c);
+    if (ignoreId) q = q.neq("id", ignoreId);
+    await q;
+  };
 
   const { data = [], isLoading, refetch, isFetching } = useQuery({
     queryKey: ["technicians-admin"],
@@ -185,6 +212,7 @@ export function TechniciansAdmin() {
       phone: t.phone || "",
       address: t.address || "",
       city_state: t.city_state || "",
+      is_city_default: !!t.is_city_default,
       notes: t.notes || "",
       contact_phone: t.contact_phone || "",
     });
@@ -197,12 +225,14 @@ export function TechniciansAdmin() {
       if (name.length > 120) throw new Error("Nome muito longo");
       const contactDigits = withBrazilianDdi(form.contact_phone || form.phone);
       if (!contactDigits) throw new Error("Informe o telefone do contato vinculado");
+      await clearCityDefault(form.city_state, form.is_city_default, null);
       const { error } = await supabase.from("chat_technicians" as any).insert({
         contact_phone: contactDigits,
         name,
         phone: form.phone.trim() ? withBrazilianDdi(form.phone) : null,
         address: form.address.trim() || null,
         city_state: form.city_state.trim() || null,
+        is_city_default: form.is_city_default && !!form.city_state.trim(),
         notes: form.notes.trim() || null,
         created_by: user?.id || null,
         created_by_name: profile?.name || user?.email || null,
@@ -227,6 +257,7 @@ export function TechniciansAdmin() {
       const name = form.name.trim();
       if (!name) throw new Error("Nome obrigatório");
       if (name.length > 120) throw new Error("Nome muito longo");
+      await clearCityDefault(form.city_state, form.is_city_default, editing.id);
       const { error } = await supabase
         .from("chat_technicians" as any)
         .update({
@@ -234,6 +265,7 @@ export function TechniciansAdmin() {
           phone: form.phone.trim() ? withBrazilianDdi(form.phone) : null,
           address: form.address.trim() || null,
           city_state: form.city_state.trim() || null,
+          is_city_default: form.is_city_default && !!form.city_state.trim(),
           notes: form.notes.trim() || null,
           updated_by: user?.id || null,
           updated_by_name: profile?.name || user?.email || null,
@@ -262,6 +294,49 @@ export function TechniciansAdmin() {
       queryClient.invalidateQueries({ queryKey: ["chat-technicians"] });
     },
     onError: (e: any) => toast.error(e?.message || "Erro ao remover"),
+  });
+
+  const { data: notes = [], isLoading: notesLoading } = useQuery({
+    queryKey: ["technician-notes", editing?.id],
+    enabled: !!editing?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("technician_notes" as any)
+        .select("*")
+        .eq("technician_id", editing!.id)
+        .order("created_at", { ascending: false });
+      if (error) throw error;
+      return (data || []) as unknown as TechnicianNote[];
+    },
+  });
+
+  const addNoteMutation = useMutation({
+    mutationFn: async () => {
+      const text = newNote.trim();
+      if (!text) throw new Error("Escreva uma observação");
+      if (!editing) throw new Error("Sem técnico selecionado");
+      const { error } = await supabase.from("technician_notes" as any).insert({
+        technician_id: editing.id,
+        note: text,
+        created_by: user?.id || null,
+        created_by_name: profile?.name || user?.email || null,
+      } as any);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      setNewNote("");
+      queryClient.invalidateQueries({ queryKey: ["technician-notes", editing?.id] });
+    },
+    onError: (e: any) => toast.error(e?.message || "Erro ao adicionar observação"),
+  });
+
+  const deleteNoteMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from("technician_notes" as any).delete().eq("id", id);
+      if (error) throw error;
+    },
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: ["technician-notes", editing?.id] }),
+    onError: (e: any) => toast.error(e?.message || "Erro ao remover observação"),
   });
 
   const FormFields = (
@@ -299,6 +374,19 @@ export function TechniciansAdmin() {
           maxLength={120}
         />
       </div>
+      <label className="flex items-start gap-2 rounded-md border p-2">
+        <Checkbox
+          checked={form.is_city_default}
+          disabled={!form.city_state.trim()}
+          onCheckedChange={(v) => setForm((f) => ({ ...f, is_city_default: v === true }))}
+        />
+        <span className="text-xs leading-tight">
+          Técnico padrão da cidade
+          <span className="block text-[10px] text-muted-foreground">
+            Somente um técnico pode ser o padrão de cada cidade/estado.
+          </span>
+        </span>
+      </label>
       <div>
         <Label className="text-xs">Observação</Label>
         <Textarea
@@ -343,6 +431,7 @@ export function TechniciansAdmin() {
                 <TableHead>Nome</TableHead>
                 <TableHead>Telefone</TableHead>
                 <TableHead>Cidade/Estado</TableHead>
+                <TableHead>Padrão da cidade</TableHead>
                 <TableHead>Observação</TableHead>
                 <TableHead>Tel. do contato</TableHead>
                 <TableHead className="w-32">Ações</TableHead>
@@ -351,13 +440,13 @@ export function TechniciansAdmin() {
             <TableBody>
               {isLoading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8">
+                  <TableCell colSpan={7} className="text-center py-8">
                     <Loader2 className="h-5 w-5 animate-spin mx-auto" />
                   </TableCell>
                 </TableRow>
               ) : filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-10 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-10 text-muted-foreground">
                     <Wrench className="h-8 w-8 mx-auto mb-2 opacity-50" />
                     Nenhum técnico cadastrado.
                   </TableCell>
@@ -369,6 +458,15 @@ export function TechniciansAdmin() {
                     <TableCell className="font-mono text-sm">{t.phone || "—"}</TableCell>
                     <TableCell className="max-w-[12rem] truncate" title={t.city_state || ""}>
                       {t.city_state || "—"}
+                    </TableCell>
+                    <TableCell>
+                      {t.is_city_default ? (
+                        <Badge className="gap-1 bg-emerald-100 text-emerald-700 hover:bg-emerald-100">
+                          <Star className="h-3 w-3" /> Padrão
+                        </Badge>
+                      ) : (
+                        <span className="text-muted-foreground text-xs">—</span>
+                      )}
                     </TableCell>
                     <TableCell className="max-w-xs truncate" title={t.notes || ""}>
                       {t.notes || "—"}
@@ -456,7 +554,7 @@ export function TechniciansAdmin() {
       </Dialog>
 
       <Dialog open={!!editing} onOpenChange={(o) => !o && setEditing(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Editar técnico</DialogTitle>
           </DialogHeader>
@@ -465,7 +563,76 @@ export function TechniciansAdmin() {
             name={form.name}
             onNavigate={() => setEditing(null)}
           />
-          {FormFields}
+          <Tabs defaultValue="dados">
+            <TabsList className="w-full">
+              <TabsTrigger value="dados" className="flex-1">Dados</TabsTrigger>
+              <TabsTrigger value="historico" className="flex-1 gap-1">
+                <History className="h-4 w-4" /> Histórico
+              </TabsTrigger>
+            </TabsList>
+            <TabsContent value="dados" className="mt-3">{FormFields}</TabsContent>
+            <TabsContent value="historico" className="mt-3 space-y-3">
+              <div className="flex items-start gap-2">
+                <Textarea
+                  rows={2}
+                  placeholder="Adicionar observação sobre o técnico..."
+                  value={newNote}
+                  onChange={(e) => setNewNote(e.target.value)}
+                  maxLength={2000}
+                />
+                <Button
+                  size="icon"
+                  onClick={() => addNoteMutation.mutate()}
+                  disabled={!newNote.trim() || addNoteMutation.isPending}
+                  title="Adicionar"
+                >
+                  {addNoteMutation.isPending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              <ScrollArea className="h-64 pr-2">
+                {notesLoading ? (
+                  <Loader2 className="h-4 w-4 animate-spin mx-auto my-6" />
+                ) : notes.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-8">
+                    Nenhuma observação registrada.
+                  </p>
+                ) : (
+                  <div className="space-y-2">
+                    {notes.map((n) => (
+                      <div key={n.id} className="rounded-md border p-2 text-sm">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-medium">
+                            {n.created_by_name || "Usuário"}
+                          </span>
+                          <div className="flex items-center gap-1">
+                            <span className="text-[10px] text-muted-foreground">
+                              {new Date(n.created_at).toLocaleString("pt-BR")}
+                            </span>
+                            {n.created_by === user?.id && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-6 w-6"
+                                onClick={() => deleteNoteMutation.mutate(n.id)}
+                                title="Remover"
+                              >
+                                <Trash2 className="h-3 w-3" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                        <p className="whitespace-pre-wrap mt-1">{n.note}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+            </TabsContent>
+          </Tabs>
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditing(null)}>
               Cancelar
