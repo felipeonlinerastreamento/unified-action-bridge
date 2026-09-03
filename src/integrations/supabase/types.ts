@@ -1012,6 +1012,7 @@ export type Database = {
           created_by: string | null
           created_by_name: string | null
           id: string
+          is_city_default: boolean
           name: string
           notes: string | null
           phone: string | null
@@ -1027,6 +1028,7 @@ export type Database = {
           created_by?: string | null
           created_by_name?: string | null
           id?: string
+          is_city_default?: boolean
           name: string
           notes?: string | null
           phone?: string | null
@@ -1042,6 +1044,7 @@ export type Database = {
           created_by?: string | null
           created_by_name?: string | null
           id?: string
+          is_city_default?: boolean
           name?: string
           notes?: string | null
           phone?: string | null
@@ -4604,6 +4607,44 @@ export type Database = {
             columns: ["ticket_id"]
             isOneToOne: false
             referencedRelation: "service_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      technician_notes: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          created_by_name: string | null
+          id: string
+          note: string
+          technician_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string | null
+          id?: string
+          note: string
+          technician_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          created_by_name?: string | null
+          id?: string
+          note?: string
+          technician_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "technician_notes_technician_id_fkey"
+            columns: ["technician_id"]
+            isOneToOne: false
+            referencedRelation: "chat_technicians"
             referencedColumns: ["id"]
           },
         ]
