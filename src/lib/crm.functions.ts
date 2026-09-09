@@ -57,9 +57,15 @@ export const completeCrmTask = createServerFn({ method: "POST" })
   });
 
 // ============== OPPORTUNITIES ==============
+const optionalUuid = z
+  .union([z.string().uuid(), z.literal("")])
+  .nullable()
+  .optional()
+  .transform((v) => (v === undefined ? undefined : v ? v : null));
+
 const contractItemSchema = z.object({
-  categoryId: z.string().uuid().nullable().optional(),
-  serviceId: z.string().uuid().nullable().optional(),
+  categoryId: optionalUuid,
+  serviceId: optionalUuid,
   name: z.string().max(200).nullable().optional(),
   description: z.string().max(2000).nullable().optional(),
   unit: z.string().max(40).nullable().optional(),
@@ -73,12 +79,12 @@ const oppInput = z.object({
   id: z.string().uuid().optional(),
   title: z.string().min(1).max(200),
   contact_id: z.string().uuid().nullable().optional(),
-  company_id: z.string().uuid().nullable().optional(),
-  stage_id: z.string().uuid().nullable().optional(),
+  company_id: optionalUuid,
+  stage_id: optionalUuid,
   expected_value: z.number().min(0).default(0),
   probability: z.number().min(0).max(100).default(0),
   expected_close_date: z.string().nullable().optional(),
-  owner_id: z.string().uuid().nullable().optional(),
+  owner_id: optionalUuid,
   source: z.string().max(40).default("manual"),
   opportunity_type: z.enum(["new", "upsell", "renewal", "recovery"]).default("new"),
   notes: z.string().max(4000).default(""),
@@ -87,8 +93,8 @@ const oppInput = z.object({
   contact_phone: z.string().max(40).nullable().optional(),
   contact_email: z.string().max(200).nullable().optional(),
   cnpj: z.string().max(40).nullable().optional(),
-  category_id: z.string().uuid().nullable().optional(),
-  referral_id: z.string().uuid().nullable().optional(),
+  category_id: optionalUuid,
+  referral_id: optionalUuid,
   contract_items: z.array(contractItemSchema).default([]),
 });
 
@@ -99,6 +105,7 @@ export const upsertOpportunity = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const payload: any = { ...data };
     delete payload.id;
+    for (const k of Object.keys(payload)) if (payload[k] === undefined) delete payload[k];
     if (data.id) {
       const { error } = await supabase.from("crm_opportunities").update(payload).eq("id", data.id);
       if (error) throw new Error(error.message);
