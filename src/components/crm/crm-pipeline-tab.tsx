@@ -359,12 +359,68 @@ export function CrmPipelineTab() {
   };
 
   const moveMut = useMutation({
-    mutationFn: async ({ id, stage_id }: { id: string; stage_id: string }) => {
-      await moveOpportunityStage({ data: { id, stage_id } });
+    mutationFn: async ({ id, stage_id, loss_reason }: { id: string; stage_id: string; loss_reason?: string }) => {
+      await moveOpportunityStage({ data: { id, stage_id, loss_reason } });
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["crm-opportunities"] }),
     onError: (e: any) => toast.error(e.message),
   });
+
+  // --- Motivo da perda (obrigatório) ---
+  const [lossTarget, setLossTarget] = useState<{ oppId: string; stageId: string; title: string } | null>(null);
+  const [lossReason, setLossReason] = useState("");
+
+  const requestMove = (opp: any, stageId: string) => {
+    const target = stages.find((s: any) => s.id === stageId);
+    if (target?.is_lost) {
+      setLossReason("");
+      setLossTarget({ oppId: opp.id, stageId, title: opp.title || "Oportunidade" });
+      return;
+    }
+    moveMut.mutate({ id: opp.id, stage_id: stageId });
+  };
+
+  const confirmLoss = () => {
+    if (!lossTarget) return;
+    const reason = lossReason.trim();
+    if (!reason) {
+      toast.error("Informe o motivo da perda");
+      return;
+    }
+    moveMut.mutate(
+      { id: lossTarget.oppId, stage_id: lossTarget.stageId, loss_reason: reason },
+      { onSuccess: () => { setLossTarget(null); setLossReason(""); toast.success("Oportunidade marcada como perdida"); } }
+    );
+  };
+
+  // --- SLA por etapa ---
+  const [slaOpen, setSlaOpen] = useState(false);
+  const [slaDraft, setSlaDraft] = useState<Record<string, string>>({});
+  const saveSlaMut = useMutation({
+    mutationFn: async () => {
+      for (const [id, v] of Object.entries(slaDraft)) {
+        const days = Math.max(0, Number(v) || 0);
+        const { error } = await supabase.from("crm_pipeline_stages").update({ sla_days: days } as any).eq("id", id);
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => { setSlaOpen(false); qc.invalidateQueries({ queryKey: ["crm-stages"] }); toast.success("SLA das etapas atualizado"); },
+    onError: (e: any) => toast.error(e.message),
+  });
+
+  const daysInStage = (o: any) => {
+    const ref = o.stage_entered_at || o.updated_at || o.created_at;
+    if (!ref) return 0;
+    return Math.floor((Date.now() - new Date(ref).getTime()) / 86400000);
+  };
+  const isStuck = (o: any, stage: any) =>
+    o.status === "open" && Number(stage?.sla_days || 0) > 0 && daysInStage(o) > Number(stage.sla_days);
+
+  const stuckCount = useMemo(
+    () => filteredOpps.filter((o: any) => isStuck(o, stages.find((s: any) => s.id === o.stage_id))).length,
+    [filteredOpps, stages]
+  );
+
 
   // --- Orçamentos (quotes) por oportunidade ---
   const [expandedQuote, setExpandedQuote] = useState<string | null>(null);
