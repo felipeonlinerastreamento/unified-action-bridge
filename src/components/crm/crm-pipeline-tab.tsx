@@ -82,6 +82,26 @@ export function CrmPipelineTab() {
       ],
     }));
 
+  const defaultItems = (): ContractItem[] =>
+    catalogServices
+      .filter((s: CatalogService) => s.is_active && (s as any).is_default)
+      .map((svc: CatalogService) => ({
+        categoryId: "",
+        serviceId: svc.id,
+        name: svc.name,
+        description: svc.description || "",
+        unit: svc.unit || "Serviço",
+        quantity: 1,
+        activationValue: Number(svc.default_activation) || 0,
+        monthlyValue: Number(svc.default_monthly) || 0,
+      }));
+
+  const openNewOpportunity = () => {
+    setEditingId(null);
+    setForm({ ...emptyForm, items: defaultItems() });
+    setOpen(true);
+  };
+
   // Filters
   const [ownerFilter, setOwnerFilter] = useState<string>("mine"); // mine | all | <userId>
   const [searchTerm, setSearchTerm] = useState("");
@@ -437,7 +457,7 @@ export function CrmPipelineTab() {
 
       <div className="flex justify-between items-center">
         <h3 className="text-sm font-semibold flex items-center gap-1"><TrendingUp className="h-4 w-4" /> Pipeline</h3>
-        <Button size="sm" onClick={() => { setEditingId(null); setForm(emptyForm); setOpen(true); }}><Plus className="h-4 w-4 mr-1" /> Nova oportunidade</Button>
+        <Button size="sm" onClick={openNewOpportunity}><Plus className="h-4 w-4 mr-1" /> Nova oportunidade</Button>
       </div>
 
       {/* Filters */}
@@ -901,8 +921,10 @@ export function CrmPipelineTab() {
                   </p>
                 ) : (
                   <div className="space-y-1.5">
-                    {quotes.map((q: any) => {
+                    {quotes.map((q: any, qi: number) => {
                       const isOpen = expandedQuote === q.id;
+                      const prev = quotes[qi + 1];
+                      const changes = prev ? diffQuotes(prev.items, q.items) : [];
                       const dt = new Date(q.created_at);
                       const dtStr = dt.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" });
                       const itemsArr = Array.isArray(q.items) ? q.items : [];
@@ -934,6 +956,17 @@ export function CrmPipelineTab() {
                           </div>
                           {isOpen && (
                             <div className="border-t border-border px-2 py-2 space-y-1">
+                              <div className="pb-1">
+                                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                                  Alterações {prev ? `em relação ao #${prev.quote_number}` : "(versão inicial)"} · por {q.operator_name}
+                                </p>
+                                {prev && changes.length === 0 && (
+                                  <p className="text-[11px] text-muted-foreground italic">Sem alterações nos itens.</p>
+                                )}
+                                {changes.map((c: string, ci: number) => (
+                                  <p key={ci} className="text-[11px] text-amber-600 dark:text-amber-400">• {c}</p>
+                                ))}
+                              </div>
                               {itemsArr.length === 0 ? (
                                 <p className="text-[11px] text-muted-foreground italic">Sem itens.</p>
                               ) : (
@@ -982,3 +1015,30 @@ function KPI({ label, value }: { label: string; value: any }) {
   );
 }
 
+const money = (n: any) => `R$ ${Number(n || 0).toFixed(2)}`;
+
+function diffQuotes(before: any, after: any): string[] {
+  const a: any[] = Array.isArray(before) ? before : [];
+  const b: any[] = Array.isArray(after) ? after : [];
+  const key = (it: any) => String(it.serviceId || it.name || it.categoryId || "");
+  const map = (arr: any[]) => new Map(arr.map((it) => [key(it), it]));
+  const ma = map(a);
+  const mb = map(b);
+  const out: string[] = [];
+  for (const [k, it] of mb) {
+    const old = ma.get(k);
+    const label = it.name || "Item";
+    if (!old) {
+      out.push(`Item adicionado: ${label} (${money(it.activationValue)} ativação · ${money(it.monthlyValue)} mensal)`);
+      continue;
+    }
+    if (Number(old.quantity || 0) !== Number(it.quantity || 0))
+      out.push(`${label}: quantidade ${old.quantity} → ${it.quantity}`);
+    if (Number(old.activationValue || 0) !== Number(it.activationValue || 0))
+      out.push(`${label}: ativação ${money(old.activationValue)} → ${money(it.activationValue)}`);
+    if (Number(old.monthlyValue || 0) !== Number(it.monthlyValue || 0))
+      out.push(`${label}: mensalidade ${money(old.monthlyValue)} → ${money(it.monthlyValue)}`);
+  }
+  for (const [k, it] of ma) if (!mb.has(k)) out.push(`Item removido: ${it.name || "Item"}`);
+  return out;
+}
