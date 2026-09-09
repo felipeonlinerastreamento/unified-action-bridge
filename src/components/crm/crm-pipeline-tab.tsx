@@ -483,21 +483,54 @@ export function CrmPipelineTab() {
       if (!editingId) throw new Error("Salve a proposta antes de gerar um orçamento");
       const items = form.items.filter((i: ContractItem) => i.categoryId || (i.name || "").trim());
       if (items.length === 0) throw new Error("Adicione pelo menos um item para gerar o orçamento");
-      const { error } = await supabase.from("crm_opportunity_quotes").insert({
-        opportunity_id: editingId,
-        items,
-        total_activation: activationTotal,
-        total_monthly: monthlyTotal,
-        created_by: user?.id,
-      } as any);
+
+      // Persiste as alterações atuais na oportunidade para que a proposta
+      // enviada reflita exatamente o que foi orçado.
+      await upsertOpportunity({
+        data: {
+          id: editingId,
+          title: form.title,
+          expected_value: activationTotal + monthlyTotal,
+          probability: Number(form.probability || 0),
+          opportunity_type: form.opportunity_type,
+          notes: form.notes,
+          source: "manual",
+          contact_name: form.contact_name || null,
+          company_id: form.company_id || null,
+          company_name: form.company_name || null,
+          contact_phone: form.contact_phone || null,
+          contact_email: form.contact_email || null,
+          cnpj: form.cnpj || null,
+          category_id: form.category_id || null,
+          referral_id: form.referral_id || null,
+          owner_id: form.owner_id || null,
+          contract_items: items,
+        } as any,
+      });
+
+      const { data: row, error } = await supabase
+        .from("crm_opportunity_quotes")
+        .insert({
+          opportunity_id: editingId,
+          items,
+          total_activation: activationTotal,
+          total_monthly: monthlyTotal,
+          created_by: user?.id,
+        } as any)
+        .select("*")
+        .single();
       if (error) throw error;
+      return row;
     },
-    onSuccess: () => {
+    onSuccess: async (row: any) => {
       toast.success("Orçamento gerado");
       qc.invalidateQueries({ queryKey: ["crm-opportunity-quotes", editingId] });
+      qc.invalidateQueries({ queryKey: ["crm-opportunities"] });
+      if (row) await downloadProposal(row);
     },
     onError: (e: any) => toast.error(e.message),
   });
+
 
   if (isLoading) return <Loader2 className="h-5 w-5 animate-spin" />;
 
