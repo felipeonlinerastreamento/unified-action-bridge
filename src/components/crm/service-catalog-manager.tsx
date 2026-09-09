@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Plus, Pencil, Trash2, Loader2, Package } from "lucide-react";
 import { toast } from "sonner";
 
@@ -18,6 +19,7 @@ export type CatalogService = {
   default_activation: number;
   default_monthly: number;
   is_active: boolean;
+  is_default: boolean;
   position: number;
 };
 
@@ -36,7 +38,7 @@ export function useServiceCatalog() {
   });
 }
 
-const empty = { name: "", description: "", unit: "Serviço", default_activation: 0, default_monthly: 0 };
+const empty = { name: "", description: "", unit: "Serviço", default_activation: 0, default_monthly: 0, is_default: false };
 
 export function ServiceCatalogManager({ open, onOpenChange }: { open: boolean; onOpenChange: (v: boolean) => void }) {
   const qc = useQueryClient();
@@ -56,6 +58,7 @@ export function ServiceCatalogManager({ open, onOpenChange }: { open: boolean; o
         unit: draft.unit || "Serviço",
         default_activation: Number(draft.default_activation) || 0,
         default_monthly: Number(draft.default_monthly) || 0,
+        is_default: !!draft.is_default,
       };
       if (editingId) {
         const { error } = await supabase.from("crm_service_catalog" as any).update(payload).eq("id", editingId);
@@ -107,6 +110,10 @@ export function ServiceCatalogManager({ open, onOpenChange }: { open: boolean; o
               <Input type="number" min={0} step="0.01" className="h-8 text-xs" value={draft.default_monthly || ""}
                 onChange={(e) => setDraft({ ...draft, default_monthly: e.target.value === "" ? 0 : Number(e.target.value) })} />
             </div>
+            <div className="col-span-12 flex items-center gap-2">
+              <Checkbox id="svc-default" checked={!!draft.is_default} onCheckedChange={(v) => setDraft({ ...draft, is_default: !!v })} />
+              <Label htmlFor="svc-default" className="text-[11px] cursor-pointer">Incluir automaticamente em novas propostas</Label>
+            </div>
             <div className="col-span-12">
               <Label className="text-[11px]">Descrição (sai no PDF da proposta)</Label>
               <Textarea rows={2} className="text-xs" value={draft.description} onChange={(e) => setDraft({ ...draft, description: e.target.value })} />
@@ -136,10 +143,11 @@ export function ServiceCatalogManager({ open, onOpenChange }: { open: boolean; o
                     <Badge variant="secondary" className="text-[10px]">{s.unit}</Badge>
                     <Badge variant="outline" className="text-[10px]">Ativação R$ {Number(s.default_activation).toFixed(2)}</Badge>
                     <Badge variant="outline" className="text-[10px]">Mensal R$ {Number(s.default_monthly).toFixed(2)}</Badge>
+                    {s.is_default && <Badge className="text-[10px]">Padrão da proposta</Badge>}
                   </div>
                 </div>
                 <div className="flex gap-1 shrink-0">
-                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setEditingId(s.id); setDraft({ name: s.name, description: s.description, unit: s.unit, default_activation: Number(s.default_activation), default_monthly: Number(s.default_monthly) }); }}>
+                  <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => { setEditingId(s.id); setDraft({ name: s.name, description: s.description, unit: s.unit, default_activation: Number(s.default_activation), default_monthly: Number(s.default_monthly), is_default: !!s.is_default }); }}>
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
                   <Button size="icon" variant="ghost" className="h-7 w-7" disabled={deleteMut.isPending}
