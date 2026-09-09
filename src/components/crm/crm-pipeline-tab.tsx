@@ -292,7 +292,7 @@ export function CrmPipelineTab() {
   const createMut = useMutation({
     mutationFn: async () => {
       const stage = stages[0];
-      const items = form.items.filter((i: ContractItem) => i.categoryId);
+      const items = form.items.filter((i: ContractItem) => i.categoryId || (i.name || "").trim());
       await upsertOpportunity({
         data: {
           id: editingId || undefined,
@@ -425,7 +425,7 @@ export function CrmPipelineTab() {
   const createQuoteMut = useMutation({
     mutationFn: async () => {
       if (!editingId) throw new Error("Salve a proposta antes de gerar um orçamento");
-      const items = form.items.filter((i: ContractItem) => i.categoryId);
+      const items = form.items.filter((i: ContractItem) => i.categoryId || (i.name || "").trim());
       if (items.length === 0) throw new Error("Adicione pelo menos um item para gerar o orçamento");
       const { error } = await supabase.from("crm_opportunity_quotes").insert({
         opportunity_id: editingId,
@@ -907,7 +907,7 @@ export function CrmPipelineTab() {
                     size="sm"
                     variant="outline"
                     className="h-7 text-xs"
-                    disabled={createQuoteMut.isPending || form.items.filter((i: ContractItem) => i.categoryId).length === 0}
+                    disabled={createQuoteMut.isPending || form.items.filter((i: ContractItem) => i.categoryId || (i.name || "").trim()).length === 0}
                     onClick={() => createQuoteMut.mutate()}
                   >
                     {createQuoteMut.isPending ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Plus className="h-3 w-3 mr-1" />}
