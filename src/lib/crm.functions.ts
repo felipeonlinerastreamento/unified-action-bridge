@@ -61,7 +61,7 @@ const optionalUuid = z
   .union([z.string().uuid(), z.literal("")])
   .nullable()
   .optional()
-  .transform((v) => (v ? v : null));
+  .transform((v) => (v === undefined ? undefined : v ? v : null));
 
 const contractItemSchema = z.object({
   categoryId: optionalUuid,
@@ -105,6 +105,7 @@ export const upsertOpportunity = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const payload: any = { ...data };
     delete payload.id;
+    for (const k of Object.keys(payload)) if (payload[k] === undefined) delete payload[k];
     if (data.id) {
       const { error } = await supabase.from("crm_opportunities").update(payload).eq("id", data.id);
       if (error) throw new Error(error.message);
