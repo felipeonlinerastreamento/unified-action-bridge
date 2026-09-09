@@ -598,18 +598,29 @@ export function CrmPipelineTab() {
         {stages.map((s: any) => {
           const stageOpps = filteredOpps.filter((o: any) => o.stage_id === s.id);
           const stageVal = stageOpps.reduce((sum: number, o: any) => sum + Number(o.expected_value || 0), 0);
+          const stageStuck = stageOpps.filter((o: any) => isStuck(o, s)).length;
           return (
             <Card key={s.id} className="bg-muted/30">
               <CardHeader className="pb-2">
                 <CardTitle className="text-xs flex items-center justify-between">
                   <span style={{ color: s.color }}>{s.name}</span>
-                  <Badge variant="secondary" className="text-[10px]">{stageOpps.length}</Badge>
+                  <div className="flex items-center gap-1">
+                    {stageStuck > 0 && (
+                      <Badge variant="destructive" className="text-[10px]">{stageStuck} fora do prazo</Badge>
+                    )}
+                    <Badge variant="secondary" className="text-[10px]">{stageOpps.length}</Badge>
+                  </div>
                 </CardTitle>
-                <p className="text-xs text-muted-foreground">R$ {stageVal.toLocaleString("pt-BR")}</p>
+                <p className="text-xs text-muted-foreground">
+                  R$ {stageVal.toLocaleString("pt-BR")}
+                  {Number(s.sla_days || 0) > 0 && <> · SLA {s.sla_days}d</>}
+                </p>
               </CardHeader>
               <CardContent className="p-2 space-y-2 max-h-[480px] overflow-y-auto">
-                {stageOpps.map((o: any) => (
-                  <div key={o.id} className="border rounded-md p-2 bg-card text-xs space-y-1">
+                {stageOpps.map((o: any) => {
+                  const stuck = isStuck(o, s);
+                  return (
+                  <div key={o.id} className={`border rounded-md p-2 bg-card text-xs space-y-1 ${stuck ? "border-destructive/60 ring-1 ring-destructive/30" : ""}`}>
                     <div className="font-medium">{o.title}</div>
                     {(o.company_name || o.contact_name || o.companies?.name || o.crm_contacts?.name) && (
                       <div className="text-muted-foreground">
@@ -620,7 +631,17 @@ export function CrmPipelineTab() {
                       <span className="text-emerald-600 font-medium">R$ {Number(o.expected_value || 0).toLocaleString("pt-BR")}</span>
                       <Badge variant="outline" className="text-[9px]">{o.probability}%</Badge>
                     </div>
-                    <Select value={o.stage_id || ""} onValueChange={(v) => moveMut.mutate({ id: o.id, stage_id: v })}>
+                    <div className="flex items-center gap-1 flex-wrap">
+                      <Badge variant={stuck ? "destructive" : "outline"} className="text-[9px] flex items-center gap-1">
+                        <Clock className="h-2.5 w-2.5" /> {daysInStage(o)}d na etapa
+                      </Badge>
+                      {o.status === "lost" && o.loss_reason && (
+                        <Badge variant="outline" className="text-[9px] truncate max-w-[150px]" title={o.loss_reason}>
+                          Perda: {o.loss_reason}
+                        </Badge>
+                      )}
+                    </div>
+                    <Select value={o.stage_id || ""} onValueChange={(v) => requestMove(o, v)}>
                       <SelectTrigger className="h-7 text-[10px]"><SelectValue /></SelectTrigger>
                       <SelectContent>
                         {stages.map((st: any) => (
@@ -637,13 +658,70 @@ export function CrmPipelineTab() {
                       </Button>
                     </div>
                   </div>
-                ))}
+                  );
+                })}
                 {stageOpps.length === 0 && <p className="text-[11px] text-muted-foreground p-2">Vazio</p>}
               </CardContent>
             </Card>
           );
         })}
       </div>
+
+      {/* Motivo da perda */}
+      <Dialog open={!!lossTarget} onOpenChange={(o) => { if (!o) { setLossTarget(null); setLossReason(""); } }}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Motivo da perda</DialogTitle></DialogHeader>
+          <div className="space-y-3">
+            <p className="text-xs text-muted-foreground">{lossTarget?.title}</p>
+            <div>
+              <Label>Por que a oportunidade foi perdida? *</Label>
+              <Textarea
+                value={lossReason}
+                onChange={(e) => setLossReason(e.target.value)}
+                placeholder="Ex.: preço acima do concorrente, cliente adiou o projeto..."
+                rows={4}
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" size="sm" onClick={() => { setLossTarget(null); setLossReason(""); }}>Cancelar</Button>
+              <Button size="sm" onClick={confirmLoss} disabled={!lossReason.trim() || moveMut.isPending}>
+                {moveMut.isPending && <Loader2 className="h-3 w-3 mr-1 animate-spin" />} Confirmar perda
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Prazos (SLA) por etapa */}
+      <Dialog open={slaOpen} onOpenChange={setSlaOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader><DialogTitle>Prazo por etapa (SLA)</DialogTitle></DialogHeader>
+          <div className="space-y-2">
+            <p className="text-xs text-muted-foreground">
+              Defina em quantos dias uma oportunidade pode ficar parada em cada etapa. Use 0 para não alertar.
+            </p>
+            {stages.map((s: any) => (
+              <div key={s.id} className="flex items-center gap-2">
+                <span className="flex-1 text-sm" style={{ color: s.color }}>{s.name}</span>
+                <Input
+                  type="number"
+                  min={0}
+                  className="h-8 w-24 text-xs"
+                  value={slaDraft[s.id] ?? ""}
+                  onChange={(e) => setSlaDraft((d) => ({ ...d, [s.id]: e.target.value }))}
+                />
+                <span className="text-xs text-muted-foreground">dias</span>
+              </div>
+            ))}
+            <div className="flex justify-end pt-2">
+              <Button size="sm" onClick={() => saveSlaMut.mutate()} disabled={saveSlaMut.isPending}>
+                {saveSlaMut.isPending && <Loader2 className="h-3 w-3 mr-1 animate-spin" />} Salvar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
 
       <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setEditingId(null); setForm(emptyForm); } }}>
         <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
