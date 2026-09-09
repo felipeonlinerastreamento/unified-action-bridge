@@ -993,18 +993,7 @@ export function CrmPipelineTab() {
                         <Input className="h-8 text-xs" placeholder="Descrição do serviço" value={it.name || ""}
                           onChange={(e) => { const v = e.target.value; setForm((f: any) => ({ ...f, items: f.items.map((x: ContractItem, i: number) => i === idx ? { ...x, name: v } : x) })); }} />
                       </div>
-                      <div className="col-span-12 sm:col-span-4">
-                        <Label className="text-[10px] text-muted-foreground">Categoria</Label>
-                        <Select value={it.categoryId} onValueChange={(v) => setForm((f: any) => ({
-                          ...f, items: f.items.map((x: ContractItem, i: number) => i === idx ? { ...x, categoryId: v } : x)
-                        }))}>
-                          <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecionar" /></SelectTrigger>
-                          <SelectContent>
-                            {categories.map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="col-span-4 sm:col-span-2">
+                      <div className="col-span-4 sm:col-span-4">
                         <Label className="text-[10px] text-muted-foreground">Qtd.</Label>
                         <Input type="number" min={1} className="h-8 text-xs" value={it.quantity || ""}
                           onChange={(e) => { const r = e.target.value; const n = r === "" ? 0 : Number(r); setForm((f: any) => ({ ...f, items: f.items.map((x: ContractItem, i: number) => i === idx ? { ...x, quantity: n } : x) })); }} />
