@@ -135,15 +135,18 @@ export const moveOpportunityStage = createServerFn({ method: "POST" })
       update.probability = 100;
       update.closed_at = new Date().toISOString();
     } else if (stage?.is_lost) {
+      const reason = (data.loss_reason ?? "").trim();
+      if (!reason) throw new Error("Informe o motivo da perda para mover a oportunidade para perdida");
       update.status = "lost";
       update.probability = 0;
       update.closed_at = new Date().toISOString();
-      update.loss_reason = data.loss_reason ?? null;
+      update.loss_reason = reason;
     } else {
       update.status = "open";
       update.probability = stage?.default_probability ?? 0;
       update.closed_at = null;
     }
+
     const { error } = await supabase.from("crm_opportunities").update(update).eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };

@@ -1556,6 +1556,7 @@ export type Database = {
           probability: number
           referral_id: string | null
           source: string | null
+          stage_entered_at: string
           stage_id: string | null
           status: string
           title: string
@@ -1584,6 +1585,7 @@ export type Database = {
           probability?: number
           referral_id?: string | null
           source?: string | null
+          stage_entered_at?: string
           stage_id?: string | null
           status?: string
           title: string
@@ -1612,6 +1614,7 @@ export type Database = {
           probability?: number
           referral_id?: string | null
           source?: string | null
+          stage_entered_at?: string
           stage_id?: string | null
           status?: string
           title?: string
@@ -1737,6 +1740,7 @@ export type Database = {
           is_won: boolean
           name: string
           position: number
+          sla_days: number
           updated_at: string
         }
         Insert: {
@@ -1749,6 +1753,7 @@ export type Database = {
           is_won?: boolean
           name: string
           position?: number
+          sla_days?: number
           updated_at?: string
         }
         Update: {
@@ -1761,6 +1766,7 @@ export type Database = {
           is_won?: boolean
           name?: string
           position?: number
+          sla_days?: number
           updated_at?: string
         }
         Relationships: []
