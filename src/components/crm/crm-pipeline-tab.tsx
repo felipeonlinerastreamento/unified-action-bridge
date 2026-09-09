@@ -504,17 +504,33 @@ export function CrmPipelineTab() {
 
   return (
     <div className="space-y-4">
-      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
         <KPI label="Oportunidades abertas" value={totals.count} />
         <KPI label="Valor em pipeline" value={`R$ ${totals.valOpen.toLocaleString("pt-BR")}`} />
         <KPI label="Previsão ponderada" value={`R$ ${Math.round(totals.weighted).toLocaleString("pt-BR")}`} />
         <KPI label="Ganho acumulado" value={`R$ ${totals.valWon.toLocaleString("pt-BR")}`} />
+        <KPI label="Fora do prazo (SLA)" value={stuckCount} />
       </div>
 
       <div className="flex justify-between items-center">
         <h3 className="text-sm font-semibold flex items-center gap-1"><TrendingUp className="h-4 w-4" /> Pipeline</h3>
-        <Button size="sm" onClick={openNewOpportunity}><Plus className="h-4 w-4 mr-1" /> Nova oportunidade</Button>
+        <div className="flex gap-2">
+          {isPrivileged && (
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => {
+                setSlaDraft(Object.fromEntries(stages.map((s: any) => [s.id, String(s.sla_days ?? 0)])));
+                setSlaOpen(true);
+              }}
+            >
+              <Clock className="h-4 w-4 mr-1" /> Prazos por etapa
+            </Button>
+          )}
+          <Button size="sm" onClick={openNewOpportunity}><Plus className="h-4 w-4 mr-1" /> Nova oportunidade</Button>
+        </div>
       </div>
+
 
       {/* Filters */}
       <div className="flex flex-wrap items-end gap-2 p-3 rounded-lg border bg-card">
