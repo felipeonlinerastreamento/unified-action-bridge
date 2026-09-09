@@ -2100,6 +2100,7 @@ export type Database = {
           description: string
           id: string
           is_active: boolean
+          is_default: boolean
           name: string
           position: number
           unit: string
@@ -2113,6 +2114,7 @@ export type Database = {
           description?: string
           id?: string
           is_active?: boolean
+          is_default?: boolean
           name: string
           position?: number
           unit?: string
@@ -2126,6 +2128,7 @@ export type Database = {
           description?: string
           id?: string
           is_active?: boolean
+          is_default?: boolean
           name?: string
           position?: number
           unit?: string
