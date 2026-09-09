@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Plus, Loader2, DollarSign, TrendingUp, X, Pencil, Check, Trash2, Tag, Search, FileText, ChevronDown, ChevronRight, Building2, Package } from "lucide-react";
+import { Plus, Loader2, DollarSign, TrendingUp, X, Pencil, Check, Trash2, Tag, Search, FileText, ChevronDown, ChevronRight, Building2, Package, Clock } from "lucide-react";
 import { toast } from "sonner";
 import { upsertOpportunity, moveOpportunityStage, deleteOpportunity } from "@/lib/crm.functions";
 import { ReferralPicker } from "@/components/crm/referral-picker";
