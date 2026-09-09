@@ -299,8 +299,8 @@ function CentralPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [ticketPlate, setTicketPlate] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("all");
-  const [sectorFilter, setSectorFilter] = useState<string>("all");
-  const [agentFilter, setAgentFilter] = useState<string>("all");
+  const [sectorFilter, setSectorFilter] = useState<string[]>([]);
+  const [agentFilter, setAgentFilter] = useState<string[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [showNewChatModal, setShowNewChatModal] = useState(false);
   const [newChatPhone, setNewChatPhone] = useState("");
@@ -719,13 +719,17 @@ function CentralPage() {
       const statusNum = parseInt(statusFilter);
       if (chat.status !== statusNum) return false;
     }
-    // Sector filter
-    if (sectorFilter !== "all") {
-      if (chat.currentSector?.id !== sectorFilter && chat.currentSector?.description !== sectorFilter) return false;
+    // Sector filter (multi-select)
+    if (sectorFilter.length > 0) {
+      const sId = chat.currentSector?.id;
+      const sDesc = chat.currentSector?.description;
+      if (!sectorFilter.includes(sId) && !sectorFilter.includes(sDesc)) return false;
     }
-    // Agent filter
-    if (agentFilter !== "all") {
-      if (chat.currentUser?.id !== agentFilter && chat._agentName !== agentFilter) return false;
+    // Agent filter (multi-select)
+    if (agentFilter.length > 0) {
+      const aId = chat.currentUser?.id;
+      const aName = chat._agentName;
+      if (!agentFilter.includes(aId) && !agentFilter.includes(aName)) return false;
     }
     return true;
   });
@@ -3050,41 +3054,26 @@ function CentralPage() {
                         <SelectItem value="2">Em atendimento</SelectItem>
                       </SelectContent>
                     </Select>
-                    <Select value={sectorFilter} onValueChange={setSectorFilter}>
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="Setor" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos os setores</SelectItem>
-                        {sectors.map((s: any) => (
-                          <SelectItem key={s.id} value={s.id}>{s.name || s.description}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Select value={agentFilter} onValueChange={setAgentFilter}>
-                      <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="Agente" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos os agentes</SelectItem>
-                        {[...gsystemUsersList]
-                          .sort((a: any, b: any) => (b.status === "ONLINE" ? 1 : 0) - (a.status === "ONLINE" ? 1 : 0))
-                          .map((u: any) => (
-                            <SelectItem key={u.id} value={u.id}>
-                              <span className="flex items-center gap-2">
-                                <span
-                                  className={`inline-block h-2 w-2 rounded-full ${
-                                    u.status === "ONLINE" ? "bg-emerald-500" : "bg-muted-foreground/30"
-                                  }`}
-                                />
-                                {u.name}
-                              </span>
-                            </SelectItem>
-                          ))}
-                      </SelectContent>
-                    </Select>
-                    {(statusFilter !== "all" || sectorFilter !== "all" || agentFilter !== "all") && (
-                      <Button variant="ghost" size="sm" className="w-full text-xs h-7" onClick={() => { setStatusFilter("all"); setSectorFilter("all"); setAgentFilter("all"); }}>
+                    <MultiSelectFilter
+                      placeholder="Todos os setores"
+                      selected={sectorFilter}
+                      onChange={setSectorFilter}
+                      options={sectors.map((s: any) => ({ value: s.id, label: s.name || s.description }))}
+                    />
+                    <MultiSelectFilter
+                      placeholder="Todos os agentes"
+                      selected={agentFilter}
+                      onChange={setAgentFilter}
+                      options={[...gsystemUsersList]
+                        .sort((a: any, b: any) => (b.status === "ONLINE" ? 1 : 0) - (a.status === "ONLINE" ? 1 : 0))
+                        .map((u: any) => ({
+                          value: u.id,
+                          label: u.name,
+                          online: u.status === "ONLINE",
+                        }))}
+                    />
+                    {(statusFilter !== "all" || sectorFilter.length > 0 || agentFilter.length > 0) && (
+                      <Button variant="ghost" size="sm" className="w-full text-xs h-7" onClick={() => { setStatusFilter("all"); setSectorFilter([]); setAgentFilter([]); }}>
                         <X className="h-3 w-3 mr-1" /> Limpar filtros
                       </Button>
                     )}
