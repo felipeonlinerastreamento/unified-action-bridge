@@ -1086,11 +1086,11 @@ export function CrmPipelineTab() {
                     size="sm"
                     variant="outline"
                     className="h-7 text-xs"
-                    disabled={createQuoteMut.isPending || form.items.filter((i: ContractItem) => i.categoryId || (i.name || "").trim()).length === 0}
+                    disabled={createQuoteMut.isPending || form.items.length === 0}
                     onClick={() => createQuoteMut.mutate()}
                   >
                     {createQuoteMut.isPending ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Plus className="h-3 w-3 mr-1" />}
-                    Gerar novo orçamento
+                    Gerar nova proposta (nova versão)
                   </Button>
                   </div>
                 </div>
