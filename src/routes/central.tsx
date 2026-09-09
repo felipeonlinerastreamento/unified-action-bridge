@@ -277,6 +277,84 @@ function detectPlates(messages: GMessage[]): string[] {
   return Array.from(plates);
 }
 
+type MultiSelectOption = { value: string; label: string; online?: boolean };
+
+function MultiSelectFilter({
+  placeholder,
+  selected,
+  onChange,
+  options,
+}: {
+  placeholder: string;
+  selected: string[];
+  onChange: (values: string[]) => void;
+  options: MultiSelectOption[];
+}) {
+  const toggle = (value: string) => {
+    onChange(
+      selected.includes(value)
+        ? selected.filter((v) => v !== value)
+        : [...selected, value]
+    );
+  };
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant="outline"
+          className="h-8 w-full justify-between text-xs font-normal"
+        >
+          <span className="truncate">
+            {selected.length === 0
+              ? placeholder
+              : `${selected.length} selecionado(s)`}
+          </span>
+          <ChevronDown className="h-3.5 w-3.5 shrink-0 opacity-50" />
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-[240px] p-2" align="start">
+        <div className="max-h-64 overflow-y-auto space-y-1">
+          {options.map((opt) => (
+            <label
+              key={opt.value}
+              className="flex items-center gap-2 px-1 py-1.5 rounded hover:bg-accent cursor-pointer text-xs"
+            >
+              <Checkbox
+                checked={selected.includes(opt.value)}
+                onCheckedChange={() => toggle(opt.value)}
+              />
+              {opt.online !== undefined && (
+                <span
+                  className={`inline-block h-2 w-2 rounded-full ${
+                    opt.online ? "bg-emerald-500" : "bg-muted-foreground/30"
+                  }`}
+                />
+              )}
+              <span className="truncate">{opt.label}</span>
+            </label>
+          ))}
+          {options.length === 0 && (
+            <p className="text-xs text-muted-foreground text-center py-3">
+              Nenhuma opção.
+            </p>
+          )}
+        </div>
+        {selected.length > 0 && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full text-xs h-7 mt-1"
+            onClick={() => onChange([])}
+          >
+            Limpar seleção
+          </Button>
+        )}
+      </PopoverContent>
+    </Popover>
+  );
+}
+
 function CentralPage() {
   const { isAuthenticated, isLoading: authLoading, session, user, hasRole, profile } = useAuth();
   const isAdmin = hasRole("admin");
