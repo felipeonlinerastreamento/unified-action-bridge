@@ -83,6 +83,9 @@ const drawCenteredLines = (
 };
 
 const drawInvestmentTable = async (pdf: PDFDocument, items: ProposalItem[]) => {
+  if (items.length > 9) {
+    throw new Error("O modelo comporta no máximo 9 itens na tabela de investimento.");
+  }
   const page = pdf.getPages()[INVESTMENT_PAGE_INDEX];
   if (!page) throw new Error("O modelo da proposta não contém a página de investimento esperada.");
 
@@ -95,7 +98,7 @@ const drawInvestmentTable = async (pdf: PDFDocument, items: ProposalItem[]) => {
   // Remove apenas a tabela original; todo o restante do modelo permanece intacto.
   page.drawRectangle({ x: TABLE.x - 2, y: bottom - 2, width: TABLE.width + 4, height: TABLE.height + 4, color: background });
 
-  const safeItems = items.slice(0, 9);
+  const safeItems = items;
   const bodyHeight = TABLE.height - TABLE.headerHeight;
   const rowHeight = safeItems.length <= 4 ? 66 : bodyHeight / safeItems.length;
   const tableBottom = TABLE.top - TABLE.headerHeight - rowHeight * safeItems.length;
