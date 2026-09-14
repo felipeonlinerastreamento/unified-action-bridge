@@ -4,6 +4,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
+import { Label } from "@/components/ui/label";
 import { Send, Lock, X, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 
@@ -17,6 +19,7 @@ export function OperatorChatPanel({ chatId, className }: Props) {
   const [me, setMe] = useState<{ id: string; name: string } | null>(null);
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
+  const [lockOnSend, setLockOnSend] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -132,6 +135,25 @@ export function OperatorChatPanel({ chatId, className }: Props) {
         body: body.trim(),
       });
       if (error) throw error;
+
+      if (lockOnSend) {
+        const other = me.id === chat.created_by ? chat.recipient_user_id : chat.created_by;
+        const { error: lockErr } = await supabase
+          .from("operator_chats")
+          .update({
+            created_by: me.id,
+            created_by_name: me.name,
+            recipient_user_id: other,
+            lock_until_reply: true,
+            is_locked: true,
+          })
+          .eq("id", chatId);
+        if (lockErr) toast.error("Mensagem enviada, mas não foi possível bloquear a tela.");
+        else toast.success("Tela do destinatário bloqueada até a resposta.");
+        setLockOnSend(false);
+        qc.invalidateQueries({ queryKey: ["operator-chat", chatId] });
+      }
+
       setBody("");
       qc.invalidateQueries({ queryKey: ["operator-chat-messages", chatId] });
     } catch (err: any) {
@@ -223,23 +245,31 @@ export function OperatorChatPanel({ chatId, className }: Props) {
       </div>
 
       {!isClosed && (
-        <div className="border-t p-3 flex gap-2 items-end bg-background">
-          <Textarea
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            placeholder="Digite sua mensagem... (Enter para enviar, Shift+Enter para nova linha)"
-            rows={2}
-            className="flex-1 resize-none"
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                send();
-              }
-            }}
-          />
-          <Button onClick={send} disabled={sending || !body.trim()} className="gap-1">
-            <Send className="h-4 w-4" /> Enviar
-          </Button>
+        <div className="border-t p-3 space-y-2 bg-background">
+          <div className="flex gap-2 items-end">
+            <Textarea
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              placeholder="Digite sua mensagem... (Enter para enviar, Shift+Enter para nova linha)"
+              rows={2}
+              className="flex-1 resize-none"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  send();
+                }
+              }}
+            />
+            <Button onClick={send} disabled={sending || !body.trim()} className="gap-1">
+              <Send className="h-4 w-4" /> Enviar
+            </Button>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch id="lock-on-send" checked={lockOnSend} onCheckedChange={setLockOnSend} />
+            <Label htmlFor="lock-on-send" className="text-xs flex items-center gap-1 cursor-pointer">
+              <Lock className="h-3.5 w-3.5" /> Bloquear tela do destinatário até a resposta
+            </Label>
+          </div>
         </div>
       )}
     </div>
