@@ -31,6 +31,7 @@ type Rule = {
   transfer_sector_name: string | null;
   transfer_note: string;
   sound_enabled: boolean;
+  block_screen: boolean;
   cooldown_minutes: number;
   priority: number;
   create_ticket: boolean;
@@ -54,6 +55,7 @@ const EMPTY: Omit<Rule, "id"> = {
   transfer_sector_name: null,
   transfer_note: "",
   sound_enabled: false,
+  block_screen: false,
   cooldown_minutes: 5,
   priority: 100,
   create_ticket: false,
