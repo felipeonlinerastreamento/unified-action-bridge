@@ -17,6 +17,7 @@ export function OperatorChatPanel({ chatId, className }: Props) {
   const [me, setMe] = useState<{ id: string; name: string } | null>(null);
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
+  const [lockOnSend, setLockOnSend] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
