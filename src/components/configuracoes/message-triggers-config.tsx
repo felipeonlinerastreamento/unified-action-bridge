@@ -376,6 +376,10 @@ export function MessageTriggersConfig() {
                   <Switch checked={draft.sound_enabled} onCheckedChange={(v) => setDraft({ ...draft, sound_enabled: v })} />
                   <Label>Tocar som ao disparar</Label>
                 </div>
+                <div className="flex items-center gap-2">
+                  <Switch checked={!!draft.block_screen} onCheckedChange={(v) => setDraft({ ...draft, block_screen: v })} />
+                  <Label>Travar tela até confirmação</Label>
+                </div>
               </div>
             )}
 

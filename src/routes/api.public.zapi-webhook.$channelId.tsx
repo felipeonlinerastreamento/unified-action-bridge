@@ -1201,12 +1201,29 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                   .select("assigned_to")
                   .eq("id", chatId)
                   .maybeSingle();
+                // Menções (@) do WhatsApp vêm em campos separados do texto em
+                // alguns payloads; anexamos ao texto avaliado para que gatilhos
+                // por número marcado funcionem mesmo quando o app exibe o nome.
+                const rawMentions =
+                  (p as any).mentioned ??
+                  (p as any).mentions ??
+                  (p as any).mentionedList ??
+                  (p as any).text?.mentioned ??
+                  null;
+                const mentionText = Array.isArray(rawMentions)
+                  ? rawMentions
+                      .map((m: any) => String(typeof m === "string" ? m : m?.phone || m?.id || ""))
+                      .map((s: string) => s.replace(/@.*$/, "").replace(/\D/g, ""))
+                      .filter(Boolean)
+                      .map((d: string) => `@${d}`)
+                      .join(" ")
+                  : "";
                 await evaluateMessageTriggers(supabaseAdmin, {
                   channelId,
                   chatId,
                   phone,
                   contactName: incomingContactName,
-                  text,
+                  text: mentionText ? `${text} ${mentionText}` : text,
                   assignedTo: (chatRow as any)?.assigned_to ?? null,
                   messageId: p.messageId || null,
                 });
