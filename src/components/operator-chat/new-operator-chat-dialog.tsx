@@ -98,8 +98,7 @@ export function NewOperatorChatDialog({ onCreated, triggerLabel }: Props) {
   };
 
   const handleStart = async () => {
-    if (!subject.trim()) return toast.error("Informe o assunto");
-    if (!firstMessage.trim()) return toast.error("Informe a mensagem inicial");
+    if (!firstMessage.trim()) return toast.error("Informe a mensagem");
     if (targetType !== "all" && !targetId) return toast.error("Selecione o destino");
 
     setSending(true);
@@ -116,23 +115,51 @@ export function NewOperatorChatDialog({ onCreated, triggerLabel }: Props) {
         .from("profiles").select("name").eq("user_id", user.id).maybeSingle();
       const senderName = prof?.name || user.email || "Atendimento";
 
-      const campaignId = crypto.randomUUID();
-      const chatRows = others.map((uid) => ({
-        campaign_id: campaignId,
-        created_by: user.id,
-        created_by_name: senderName,
-        recipient_user_id: uid,
-        subject: subject.trim(),
-        lock_until_reply: lockUntilReply,
-        is_locked: lockUntilReply,
-      }));
+      // Uma única conversa (histórico contínuo) por par de operadores
+      const chatIds: string[] = [];
+      for (const uid of others) {
+        const { data: existing } = await supabase
+          .from("operator_chats")
+          .select("id, recipient_user_id")
+          .or(
+            `and(created_by.eq.${user.id},recipient_user_id.eq.${uid}),and(created_by.eq.${uid},recipient_user_id.eq.${user.id})`
+          )
+          .order("last_message_at", { ascending: false, nullsFirst: false })
+          .limit(1)
+          .maybeSingle();
 
-      const { data: createdChats, error: cErr } = await supabase
-        .from("operator_chats").insert(chatRows).select("id");
-      if (cErr) throw cErr;
+        if (existing) {
+          const upd: any = { closed_at: null };
+          if (lockUntilReply) {
+            upd.created_by = user.id;
+            upd.created_by_name = senderName;
+            upd.recipient_user_id = uid;
+            upd.lock_until_reply = true;
+            upd.is_locked = true;
+          }
+          await supabase.from("operator_chats").update(upd).eq("id", (existing as any).id);
+          chatIds.push((existing as any).id);
+        } else {
+          const { data: created, error: cErr } = await supabase
+            .from("operator_chats")
+            .insert({
+              campaign_id: crypto.randomUUID(),
+              created_by: user.id,
+              created_by_name: senderName,
+              recipient_user_id: uid,
+              subject: subject.trim() || "Conversa",
+              lock_until_reply: lockUntilReply,
+              is_locked: lockUntilReply,
+            })
+            .select("id")
+            .single();
+          if (cErr) throw cErr;
+          chatIds.push((created as any).id);
+        }
+      }
 
-      const msgRows = (createdChats || []).map((c: any) => ({
-        chat_id: c.id,
+      const msgRows = chatIds.map((id) => ({
+        chat_id: id,
         sender_user_id: user.id,
         sender_name: senderName,
         body: firstMessage.trim(),
@@ -141,8 +168,9 @@ export function NewOperatorChatDialog({ onCreated, triggerLabel }: Props) {
         const { error: mErr } = await supabase.from("operator_chat_messages").insert(msgRows);
         if (mErr) throw mErr;
       }
+      const createdChats = chatIds.map((id) => ({ id }));
 
-      toast.success(`Chat iniciado com ${others.length} operador(es)`);
+      toast.success(`Mensagem enviada para ${others.length} operador(es)`);
       qc.invalidateQueries({ queryKey: ["operator-chats-list"] });
       const firstId = (createdChats || [])[0]?.id;
       reset();
