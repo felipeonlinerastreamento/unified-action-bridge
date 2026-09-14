@@ -117,7 +117,7 @@ function SendNotificationCard() {
   const { data: users = [] } = useQuery({
     queryKey: ["all-users-min"],
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("user_id, name").order("name");
+      const { data } = await supabase.from("profiles").select("user_id, name").eq("is_active", true).eq("panel_only", false).order("name");
       return data || [];
     },
   });
@@ -404,7 +404,7 @@ function StartOperatorChatCard() {
   const { data: users = [] } = useQuery({
     queryKey: ["all-users-min"],
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("user_id, name").order("name");
+      const { data } = await supabase.from("profiles").select("user_id, name").eq("is_active", true).eq("panel_only", false).order("name");
       return data || [];
     },
   });
