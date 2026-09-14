@@ -243,23 +243,31 @@ export function OperatorChatPanel({ chatId, className }: Props) {
       </div>
 
       {!isClosed && (
-        <div className="border-t p-3 flex gap-2 items-end bg-background">
-          <Textarea
-            value={body}
-            onChange={(e) => setBody(e.target.value)}
-            placeholder="Digite sua mensagem... (Enter para enviar, Shift+Enter para nova linha)"
-            rows={2}
-            className="flex-1 resize-none"
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                send();
-              }
-            }}
-          />
-          <Button onClick={send} disabled={sending || !body.trim()} className="gap-1">
-            <Send className="h-4 w-4" /> Enviar
-          </Button>
+        <div className="border-t p-3 space-y-2 bg-background">
+          <div className="flex gap-2 items-end">
+            <Textarea
+              value={body}
+              onChange={(e) => setBody(e.target.value)}
+              placeholder="Digite sua mensagem... (Enter para enviar, Shift+Enter para nova linha)"
+              rows={2}
+              className="flex-1 resize-none"
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && !e.shiftKey) {
+                  e.preventDefault();
+                  send();
+                }
+              }}
+            />
+            <Button onClick={send} disabled={sending || !body.trim()} className="gap-1">
+              <Send className="h-4 w-4" /> Enviar
+            </Button>
+          </div>
+          <div className="flex items-center gap-2">
+            <Switch id="lock-on-send" checked={lockOnSend} onCheckedChange={setLockOnSend} />
+            <Label htmlFor="lock-on-send" className="text-xs flex items-center gap-1 cursor-pointer">
+              <Lock className="h-3.5 w-3.5" /> Bloquear tela do destinatário até a resposta
+            </Label>
+          </div>
         </div>
       )}
     </div>
