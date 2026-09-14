@@ -138,7 +138,11 @@ export function MessageTriggerAlert() {
         <div className="min-w-0 flex-1">
           <div className="text-sm font-semibold text-foreground">{visible.rule_name}</div>
           <div className="text-xs text-muted-foreground">
-            Palavra detectada: <span className="font-medium">{visible.matched_keyword}</span>
+            {/^@?\d{13,}$/.test(visible.matched_keyword || "") ? (
+              <>Número marcado na conversa</>
+            ) : (
+              <>Palavra detectada: <span className="font-medium">{visible.matched_keyword}</span></>
+            )}
           </div>
         </div>
         {!blocking && (
