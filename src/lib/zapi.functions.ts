@@ -816,6 +816,26 @@ export const transferChat = createServerFn({ method: "POST" })
         throw new Error("O operador selecionado está inativo e não pode receber conversas");
       }
       update.assigned_to = data.userId;
+    } else if (update.sector_name) {
+      // Setor selecionado sem operador: direciona automaticamente para a
+      // pessoa do setor com menor número de atendimentos (preferindo online).
+      try {
+        const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+        let picked: string | null = null;
+        const { data: onlinePick } = await supabaseAdmin.rpc("pick_least_loaded_agent", {
+          _sector: update.sector_name,
+        });
+        picked = (onlinePick as string | null) || null;
+        if (!picked) {
+          const { data: anyPick } = await supabaseAdmin.rpc("pick_least_loaded_agent_any", {
+            _sector: update.sector_name,
+          });
+          picked = (anyPick as string | null) || null;
+        }
+        if (picked) update.assigned_to = picked;
+      } catch (err) {
+        console.warn("[transferChat] auto-assign failed", err);
+      }
     }
     update.status = "em_atendimento";
 
