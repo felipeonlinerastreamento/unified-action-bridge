@@ -132,6 +132,25 @@ export function OperatorChatPanel({ chatId, className }: Props) {
         body: body.trim(),
       });
       if (error) throw error;
+
+      if (lockOnSend) {
+        const other = me.id === chat.created_by ? chat.recipient_user_id : chat.created_by;
+        const { error: lockErr } = await supabase
+          .from("operator_chats")
+          .update({
+            created_by: me.id,
+            created_by_name: me.name,
+            recipient_user_id: other,
+            lock_until_reply: true,
+            is_locked: true,
+          })
+          .eq("id", chatId);
+        if (lockErr) toast.error("Mensagem enviada, mas não foi possível bloquear a tela.");
+        else toast.success("Tela do destinatário bloqueada até a resposta.");
+        setLockOnSend(false);
+        qc.invalidateQueries({ queryKey: ["operator-chat", chatId] });
+      }
+
       setBody("");
       qc.invalidateQueries({ queryKey: ["operator-chat-messages", chatId] });
     } catch (err: any) {
