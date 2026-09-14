@@ -229,6 +229,11 @@ export function AppSidebar() {
                     <Link to={item.url}>
                       <item.icon className="h-4 w-4" />
                       <span>{item.title}</span>
+                      {item.url === "/central" && unansweredChats > 0 && (
+                        <Badge className="ml-auto h-5 min-w-[20px] px-1 bg-red-600 text-white text-[11px] font-bold animate-pulse">
+                          {unansweredChats > 99 ? "99+" : unansweredChats}
+                        </Badge>
+                      )}
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
