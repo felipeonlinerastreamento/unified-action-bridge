@@ -1225,7 +1225,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                     resolvedMentions.add(d);
                     continue;
                   }
-                  resolvedMentions.add(d);
+                  let resolved = false;
                   try {
                     const { data: lidChat } = await supabaseAdmin
                       .from("zapi_chats")
@@ -1234,8 +1234,14 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                       .limit(1)
                       .maybeSingle();
                     const realPhone = String((lidChat as any)?.phone || "").replace(/\D/g, "");
-                    if (realPhone && realPhone !== d) resolvedMentions.add(realPhone);
+                    if (realPhone && realPhone !== d) {
+                      resolvedMentions.add(realPhone);
+                      resolved = true;
+                    }
                   } catch { /* ignore */ }
+                  // Mantém o código interno apenas como fallback (quando não foi
+                  // possível resolver o telefone), para o gatilho ainda disparar.
+                  if (!resolved) resolvedMentions.add(d);
                 }
                 const mentionText = Array.from(resolvedMentions)
                   .map((d: string) => `@${d}`)
