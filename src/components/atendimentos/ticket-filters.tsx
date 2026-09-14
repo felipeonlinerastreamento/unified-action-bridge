@@ -375,11 +375,16 @@ export function applyTicketFilters(tickets: any[], filters: TicketFilters): any[
     // Sector
     if (filters.sector !== "todos" && t.sector !== filters.sector) return false;
 
-    // Assigned to (responsável principal OU agente adicional)
+    // Responsável: principal, agente adicional OU quem finalizou o chamado
     if (filters.assignedTo !== "todos") {
       const agentIds: string[] = Array.isArray(t.agent_user_ids) ? t.agent_user_ids : [];
-      if (t.assigned_to !== filters.assignedTo && !agentIds.includes(filters.assignedTo)) return false;
+      const match =
+        t.assigned_to === filters.assignedTo ||
+        agentIds.includes(filters.assignedTo) ||
+        t.closed_by === filters.assignedTo;
+      if (!match) return false;
     }
+
 
     // Contact phone
     if (filters.contactPhone) {
