@@ -156,7 +156,7 @@ export function CrmPipelineTab() {
   const { data: allProfiles = [] } = useQuery({
     queryKey: ["crm-all-profiles"],
     queryFn: async () => {
-      const { data } = await supabase.from("profiles").select("user_id, name").order("name");
+      const { data } = await supabase.from("profiles").select("user_id, name").eq("is_active", true).eq("panel_only", false).order("name");
       return (data as any[]) || [];
     },
   });

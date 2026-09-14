@@ -75,7 +75,7 @@ export function useAllProfiles() {
         const list = (await listAllProfiles(headers)) || [];
         return list.map((p: any) => ({ user_id: p.user_id, name: p.name || "Sem nome" })) as ProfileLite[];
       } catch {
-        const { data } = await supabase.from("profiles").select("user_id, name");
+        const { data } = await supabase.from("profiles").select("user_id, name").eq("is_active", true);
         return (data || []).map((p: any) => ({ user_id: p.user_id, name: p.name || "Sem nome" })) as ProfileLite[];
       }
     },

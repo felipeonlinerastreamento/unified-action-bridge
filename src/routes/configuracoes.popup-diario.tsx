@@ -414,7 +414,7 @@ function RecurringReminderSection() {
       const [cfgRes, secRes, userRes] = await Promise.all([
         supabase.from("pending_reminder_settings" as any).select("*").limit(1).maybeSingle(),
         supabase.from("sectors").select("id, name").eq("is_active", true).order("name"),
-        supabase.from("profiles").select("user_id, name").order("name"),
+        supabase.from("profiles").select("user_id, name").eq("is_active", true).eq("panel_only", false).order("name"),
       ]);
       if (cfgRes.data) setS({ ...RECURRING_DEFAULTS, ...(cfgRes.data as any) });
       setSectors((secRes.data as any) || []);
@@ -731,7 +731,7 @@ function ChatInactivityAlertSection() {
       const [cfgRes, secRes, userRes] = await Promise.all([
         supabase.from("chat_inactivity_alert_settings" as any).select("*").limit(1).maybeSingle(),
         supabase.from("sectors").select("id, name").eq("is_active", true).order("name"),
-        supabase.from("profiles").select("user_id, name").order("name"),
+        supabase.from("profiles").select("user_id, name").eq("is_active", true).eq("panel_only", false).order("name"),
       ]);
       if (cfgRes.data) setS({ ...INACTIVITY_DEFAULTS, ...(cfgRes.data as any) });
       setSectors((secRes.data as any) || []);

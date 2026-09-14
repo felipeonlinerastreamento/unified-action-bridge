@@ -39,6 +39,7 @@ export function CrmBirthdaysTab() {
       const { data } = await supabase
         .from("profiles")
         .select("user_id, name, birth_date")
+        .eq("is_active", true)
         .not("birth_date", "is", null);
       return (data || []).map((p: any) => ({
         id: p.user_id,

@@ -115,6 +115,7 @@ export function PendingReminderPopup() {
       const { data: secs } = await supabase
         .from("sectors")
         .select("id, name")
+        .eq("is_active", true)
         .in("id", sectorIds);
       return {
         ids: sectorIds,
