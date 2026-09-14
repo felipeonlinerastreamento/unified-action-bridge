@@ -152,6 +152,31 @@ export function AppSidebar() {
     },
   });
 
+  // Mensagens internas (chat entre operadores) não lidas para mim — selo no
+  // item "Chat com Operadores".
+  const { data: unreadOperatorMsgs = 0 } = useQuery({
+    queryKey: ["sidebar-unread-operator-chats", userId],
+    enabled: !!userId,
+    refetchInterval: 15000,
+    queryFn: async () => {
+      if (!userId) return 0;
+      const { data: chats } = await supabase
+        .from("operator_chats")
+        .select("id")
+        .or(`created_by.eq.${userId},recipient_user_id.eq.${userId}`)
+        .is("closed_at", null);
+      const ids = (chats || []).map((c) => c.id);
+      if (ids.length === 0) return 0;
+      const { count } = await supabase
+        .from("operator_chat_messages")
+        .select("id", { count: "exact", head: true })
+        .in("chat_id", ids)
+        .is("read_at", null)
+        .neq("sender_user_id", userId);
+      return count || 0;
+    },
+  });
+
   const isConfigActive = location.pathname.startsWith("/configuracoes");
   const isAtendimentosActive = location.pathname.startsWith("/atendimentos");
 
@@ -232,6 +257,11 @@ export function AppSidebar() {
                       {item.url === "/central" && unansweredChats > 0 && (
                         <Badge className="ml-auto h-5 min-w-[20px] px-1 bg-red-600 text-white text-[11px] font-bold animate-pulse">
                           {unansweredChats > 99 ? "99+" : unansweredChats}
+                        </Badge>
+                      )}
+                      {item.url === "/chat-operadores" && unreadOperatorMsgs > 0 && (
+                        <Badge className="ml-auto h-5 min-w-[20px] px-1 bg-red-600 text-white text-[11px] font-bold animate-pulse">
+                          {unreadOperatorMsgs > 99 ? "99+" : unreadOperatorMsgs}
                         </Badge>
                       )}
                     </Link>
