@@ -142,7 +142,7 @@ function SendNotificationCard() {
 
   const resolveRecipients = async (): Promise<{ ids: string[]; label: string }> => {
     if (targetType === "all") {
-      const { data } = await supabase.from("profiles").select("user_id");
+      const { data } = await supabase.from("profiles").select("user_id").eq("is_active", true).eq("panel_only", false);
       return { ids: (data || []).map((p) => p.user_id), label: "Todos os usuários" };
     }
     if (targetType === "user") {
@@ -429,7 +429,7 @@ function StartOperatorChatCard() {
 
   const resolveRecipients = async (): Promise<string[]> => {
     if (targetType === "all") {
-      const { data } = await supabase.from("profiles").select("user_id");
+      const { data } = await supabase.from("profiles").select("user_id").eq("is_active", true).eq("panel_only", false);
       return (data || []).map((p) => p.user_id);
     }
     if (targetType === "user") return targetId ? [targetId] : [];
