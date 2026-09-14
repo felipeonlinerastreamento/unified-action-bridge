@@ -81,8 +81,13 @@ export function MessageTriggerAlert() {
     return () => { supabase.removeChannel(ch); };
   }, [user?.id, qc]);
 
+  const isBlocking = (l: Log) => !!(l.action_taken && (l.action_taken as any).block);
+
   const visible = useMemo(() => {
     const now = Date.now();
+    // Alertas bloqueantes têm prioridade e só saem com confirmação explícita.
+    const blocking = logs.find((l) => isBlocking(l) && !dismissedIds.has(l.id));
+    if (blocking) return blocking;
     return logs.find((l) => {
       if (dismissedIds.has(l.id)) return false;
       try {
