@@ -193,16 +193,16 @@ export function NewOperatorChatDialog({ onCreated, triggerLabel }: Props) {
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <MessageCircle className="h-4 w-4" /> Iniciar nova conversa
+            <MessageCircle className="h-4 w-4" /> Enviar mensagem
           </DialogTitle>
           <DialogDescription>
-            Envie uma mensagem para um operador, setor ou grupo.
+            A mensagem entra no histórico já existente com cada operador.
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div className="space-y-1.5">
-            <Label>Assunto</Label>
-            <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Ex: Dúvida sobre processo X" />
+            <Label>Assunto (opcional)</Label>
+            <Input value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Usado apenas em conversas novas" />
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-1.5">
