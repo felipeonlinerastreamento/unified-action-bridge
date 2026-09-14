@@ -1210,14 +1210,36 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                   (p as any).mentionedList ??
                   (p as any).text?.mentioned ??
                   null;
-                const mentionText = Array.isArray(rawMentions)
+                const mentionDigits: string[] = Array.isArray(rawMentions)
                   ? rawMentions
                       .map((m: any) => String(typeof m === "string" ? m : m?.phone || m?.id || ""))
                       .map((s: string) => s.replace(/@.*$/, "").replace(/\D/g, ""))
                       .filter(Boolean)
-                      .map((d: string) => `@${d}`)
-                      .join(" ")
-                  : "";
+                  : [];
+                // Menções longas (LID interno do WhatsApp) são resolvidas para o
+                // telefone real via zapi_chats (coluna phone / lid_aliases), para
+                // que o aviso exiba o número e não o código interno.
+                const resolvedMentions = new Set<string>();
+                for (const d of mentionDigits) {
+                  if (d.length <= 12) {
+                    resolvedMentions.add(d);
+                    continue;
+                  }
+                  resolvedMentions.add(d);
+                  try {
+                    const { data: lidChat } = await supabaseAdmin
+                      .from("zapi_chats")
+                      .select("phone")
+                      .or(`lid.eq.${d},lid_aliases.cs.{${d}}`)
+                      .limit(1)
+                      .maybeSingle();
+                    const realPhone = String((lidChat as any)?.phone || "").replace(/\D/g, "");
+                    if (realPhone && realPhone !== d) resolvedMentions.add(realPhone);
+                  } catch { /* ignore */ }
+                }
+                const mentionText = Array.from(resolvedMentions)
+                  .map((d: string) => `@${d}`)
+                  .join(" ");
                 await evaluateMessageTriggers(supabaseAdmin, {
                   channelId,
                   chatId,
