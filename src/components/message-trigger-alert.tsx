@@ -81,8 +81,13 @@ export function MessageTriggerAlert() {
     return () => { supabase.removeChannel(ch); };
   }, [user?.id, qc]);
 
+  const isBlocking = (l: Log) => !!(l.action_taken && (l.action_taken as any).block);
+
   const visible = useMemo(() => {
     const now = Date.now();
+    // Alertas bloqueantes têm prioridade e só saem com confirmação explícita.
+    const blocking = logs.find((l) => isBlocking(l) && !dismissedIds.has(l.id));
+    if (blocking) return blocking;
     return logs.find((l) => {
       if (dismissedIds.has(l.id)) return false;
       try {
@@ -114,14 +119,19 @@ export function MessageTriggerAlert() {
     qc.invalidateQueries({ queryKey: ["message-trigger-logs", user?.id] });
   };
 
-  return (
+  const blocking = isBlocking(visible);
+
+  const card = (
     <div
       className={cn(
-        "fixed bottom-5 left-5 z-[100] w-[360px] rounded-lg border-2 border-destructive bg-card shadow-2xl",
-        "animate-in fade-in slide-in-from-bottom-4 duration-300",
+        "rounded-lg border-2 border-destructive bg-card shadow-2xl",
+        blocking
+          ? "w-[460px] max-w-[92vw] animate-in fade-in zoom-in-95 duration-200"
+          : "fixed bottom-5 left-5 z-[100] w-[360px] animate-in fade-in slide-in-from-bottom-4 duration-300",
       )}
       role="alertdialog"
       aria-live="assertive"
+      aria-modal={blocking || undefined}
     >
       <div className="flex items-start gap-3 border-b border-destructive/30 bg-destructive/10 p-3">
         <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-destructive animate-pulse" />
@@ -131,13 +141,15 @@ export function MessageTriggerAlert() {
             Palavra detectada: <span className="font-medium">{visible.matched_keyword}</span>
           </div>
         </div>
-        <button
-          onClick={() => setDismissedIds((p) => new Set(p).add(visible.id))}
-          className="rounded p-1 text-muted-foreground hover:bg-muted"
-          aria-label="Fechar"
-        >
-          <X className="h-4 w-4" />
-        </button>
+        {!blocking && (
+          <button
+            onClick={() => setDismissedIds((p) => new Set(p).add(visible.id))}
+            className="rounded p-1 text-muted-foreground hover:bg-muted"
+            aria-label="Fechar"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
       </div>
 
       <div className="space-y-2 p-3">
@@ -152,6 +164,11 @@ export function MessageTriggerAlert() {
             "{visible.message_excerpt}"
           </div>
         )}
+        {blocking && (
+          <div className="text-xs font-medium text-destructive">
+            Confirme o aviso para voltar a usar o sistema.
+          </div>
+        )}
         <div className="flex gap-2 pt-1">
           {visible.chat_id && (
             <Button asChild size="sm" variant="outline" className="flex-1">
@@ -162,10 +179,18 @@ export function MessageTriggerAlert() {
           )}
           <Button size="sm" onClick={acknowledge} className="gap-1">
             <Check className="h-4 w-4" />
-            Visto
+            {blocking ? "Estou ciente" : "Visto"}
           </Button>
         </div>
       </div>
+    </div>
+  );
+
+  if (!blocking) return card;
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm">
+      {card}
     </div>
   );
 }

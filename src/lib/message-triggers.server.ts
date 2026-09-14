@@ -21,6 +21,7 @@ type Rule = {
   transfer_sector_name: string | null;
   transfer_note: string;
   sound_enabled: boolean;
+  block_screen: boolean;
   cooldown_minutes: number;
   priority: number;
   create_ticket: boolean;
@@ -234,7 +235,7 @@ export async function evaluateMessageTriggers(
           contact_name: args.contactName,
           matched_keyword: matched,
           message_excerpt: excerpt,
-          action_taken: { ...actionTaken, sound: rule.sound_enabled },
+          action_taken: { ...actionTaken, sound: rule.sound_enabled, block: !!rule.block_screen },
           recipient_user_id: r.id,
           recipient_name: r.name,
         }));
