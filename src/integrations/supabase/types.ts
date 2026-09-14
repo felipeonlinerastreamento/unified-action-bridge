@@ -2947,6 +2947,7 @@ export type Database = {
           alert_target_sector_ids: Json
           alert_target_type: string
           alert_target_user_ids: Json
+          block_screen: boolean
           case_sensitive: boolean
           cooldown_minutes: number
           create_ticket: boolean
@@ -2973,6 +2974,7 @@ export type Database = {
           alert_target_sector_ids?: Json
           alert_target_type?: string
           alert_target_user_ids?: Json
+          block_screen?: boolean
           case_sensitive?: boolean
           cooldown_minutes?: number
           create_ticket?: boolean
@@ -2999,6 +3001,7 @@ export type Database = {
           alert_target_sector_ids?: Json
           alert_target_type?: string
           alert_target_user_ids?: Json
+          block_screen?: boolean
           case_sensitive?: boolean
           cooldown_minutes?: number
           create_ticket?: boolean
