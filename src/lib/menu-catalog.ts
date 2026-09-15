@@ -21,6 +21,7 @@ export const MENU_CATALOG: MenuEntry[] = [
   { slug: "atendimentos", label: "Atendimentos", category: "main" },
   { slug: "chat-operadores", label: "Chat com Operadores", category: "main" },
   { slug: "painel-tv", label: "Painel TV (Monitoramento)", category: "main" },
+  { slug: "top-gamific", label: "Top Gamific", category: "main" },
 
   // Configurações
   { slug: "config.integracoes", label: "Integrações", category: "config" },
