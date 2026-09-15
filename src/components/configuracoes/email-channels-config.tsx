@@ -165,15 +165,15 @@ export function EmailChannelsConfig() {
                         variant="outline"
                         size="sm"
                         className="h-7 text-xs gap-1"
-                        onClick={() => copyToClipboard("LOVABLE_API_KEY")}
+                        onClick={() => copyToClipboard("CUSTOM_LOVABLE_API_KEY")}
                       >
-                        {copiedKey === "LOVABLE_API_KEY" ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
+                        {copiedKey === "CUSTOM_LOVABLE_API_KEY" ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
                         Copiar Nome
                       </Button>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-muted-foreground font-semibold w-16">Nome:</span>
-                      <code className="bg-muted px-2 py-1 rounded text-xs font-mono font-bold text-primary">LOVABLE_API_KEY</code>
+                      <code className="bg-muted px-2 py-1 rounded text-xs font-mono font-bold text-primary">CUSTOM_LOVABLE_API_KEY</code>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="text-xs text-muted-foreground font-semibold w-16">Valor:</span>

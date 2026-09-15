@@ -3,10 +3,10 @@
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/microsoft_outlook";
 
 function getAuthHeaders() {
-  const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY?.trim();
+  const LOVABLE_API_KEY = process.env.CUSTOM_LOVABLE_API_KEY?.trim();
   if (!LOVABLE_API_KEY) {
     throw new Error(
-      "LOVABLE_API_KEY ausente ou vazia. Defina o valor real como secret do ambiente do projeto (não deixe em branco no .env).",
+      "CUSTOM_LOVABLE_API_KEY ausente ou vazia. Defina o valor real como secret do ambiente do projeto (não deixe em branco no .env).",
     );
   }
   const OUTLOOK_API_KEY = process.env.MICROSOFT_OUTLOOK_API_KEY?.trim();
