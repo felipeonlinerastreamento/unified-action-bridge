@@ -9,6 +9,8 @@ export interface TopGamificAiMessage {
   role: "user" | "assistant";
   content: string;
   createdAt: string;
+  rating: -1 | 1 | null;
+  ratingComment: string | null;
 }
 
 export interface TopGamificAiSendResult {
@@ -23,15 +25,42 @@ function mapRows(rows: any[]): TopGamificAiMessage[] {
     role: r.role === "assistant" ? "assistant" : "user",
     content: String(r.content ?? ""),
     createdAt: String(r.created_at ?? ""),
+    rating: r.rating === 1 ? 1 : r.rating === -1 ? -1 : null,
+    ratingComment: r.rating_comment ? String(r.rating_comment) : null,
   }));
 }
+
+export const rateTopGamificAiMessage = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string; rating: -1 | 1 | null; comment?: string }) => ({
+    id: String(input?.id ?? ""),
+    rating: input?.rating === 1 ? 1 : input?.rating === -1 ? -1 : null,
+    comment: String(input?.comment ?? "").trim().slice(0, 1000) || null,
+  }))
+  .handler(async ({ data, context }): Promise<{ ok: boolean }> => {
+    if (!data.id) return { ok: false };
+    const { error } = await context.supabase
+      .from("topgamific_ai_messages")
+      .update({
+        rating: data.rating,
+        rating_comment: data.rating === null ? null : data.comment,
+        rated_at: data.rating === null ? null : new Date().toISOString(),
+      })
+      .eq("id", data.id)
+      .eq("user_id", context.userId);
+    if (error) {
+      console.error("Erro ao avaliar resposta:", error);
+      return { ok: false };
+    }
+    return { ok: true };
+  });
 
 export const getTopGamificAiHistory = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }): Promise<TopGamificAiMessage[]> => {
     const { data } = await context.supabase
       .from("topgamific_ai_messages")
-      .select("id, role, content, created_at")
+      .select("id, role, content, created_at, rating, rating_comment")
       .eq("user_id", context.userId)
       .order("created_at", { ascending: true })
       .limit(200);
@@ -158,7 +187,7 @@ export const sendTopGamificAiMessage = createServerFn({ method: "POST" })
           created_at: new Date(now + 1).toISOString(),
         },
       ])
-      .select("id, role, content, created_at");
+      .select("id, role, content, created_at, rating, rating_comment");
 
     return { ok: true, error: null, messages: mapRows(inserted ?? []) };
   });
