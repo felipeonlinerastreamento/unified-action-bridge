@@ -142,7 +142,7 @@ export function OperatorChatPanel({ chatId, className }: Props) {
   }, [messages.length, chatId]);
 
   useEffect(() => {
-    if (!me || !chatId) return;
+    if (!me || !chatId || !isMember) return;
     const unread = messages.filter((m: any) => !m.read_at && m.sender_user_id !== me.id);
     if (unread.length === 0) return;
     const ids = unread.map((m: any) => m.id);
@@ -153,7 +153,7 @@ export function OperatorChatPanel({ chatId, className }: Props) {
       .then(() => {
         qc.invalidateQueries({ queryKey: ["operator-chats-list"] });
       });
-  }, [messages, me, chatId, qc]);
+  }, [messages, me, chatId, qc, isMember]);
 
   const send = async () => {
     if (!body.trim() || !me || !chat || !chatId) return;
@@ -286,7 +286,14 @@ export function OperatorChatPanel({ chatId, className }: Props) {
         )}
       </div>
 
-      {!isClosed && (
+      {!isClosed && !isMember && (
+        <div className="border-t p-3 text-xs text-muted-foreground bg-background">
+          Visualização de administrador — você não participa desta conversa.
+        </div>
+      )}
+
+      {!isClosed && isMember && (
+
         <div className="border-t p-3 space-y-2 bg-background">
           <div className="flex gap-2 items-end">
             <Textarea
