@@ -187,7 +187,7 @@ export const sendTopGamificAiMessage = createServerFn({ method: "POST" })
           created_at: new Date(now + 1).toISOString(),
         },
       ])
-      .select("id, role, content, created_at");
+      .select("id, role, content, created_at, rating, rating_comment");
 
     return { ok: true, error: null, messages: mapRows(inserted ?? []) };
   });
