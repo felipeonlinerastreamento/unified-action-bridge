@@ -35,6 +35,7 @@ import { Route as ConfiguracoesFluxoAtendimentoRouteImport } from './routes/conf
 import { Route as ConfiguracoesEstoqueRouteImport } from './routes/configuracoes.estoque'
 import { Route as ConfiguracoesEncaminhamentoRouteImport } from './routes/configuracoes.encaminhamento'
 import { Route as ConfiguracoesCentralAtendimentoRouteImport } from './routes/configuracoes.central-atendimento'
+import { Route as ConfiguracoesCanaisEmailRouteImport } from './routes/configuracoes.canais-email'
 import { Route as ConfiguracoesAutomacaoSemComunicacaoRouteImport } from './routes/configuracoes.automacao-sem-comunicacao'
 import { Route as ConfiguracoesAuditoriaRouteImport } from './routes/configuracoes.auditoria'
 import { Route as ConfiguracoesAssistenteIaRouteImport } from './routes/configuracoes.assistente-ia'
@@ -182,6 +183,12 @@ const ConfiguracoesCentralAtendimentoRoute =
     path: '/central-atendimento',
     getParentRoute: () => ConfiguracoesRoute,
   } as any)
+const ConfiguracoesCanaisEmailRoute =
+  ConfiguracoesCanaisEmailRouteImport.update({
+    id: '/canais-email',
+    path: '/canais-email',
+    getParentRoute: () => ConfiguracoesRoute,
+  } as any)
 const ConfiguracoesAutomacaoSemComunicacaoRoute =
   ConfiguracoesAutomacaoSemComunicacaoRouteImport.update({
     id: '/automacao-sem-comunicacao',
@@ -259,6 +266,7 @@ export interface FileRoutesByFullPath {
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
   '/configuracoes/auditoria': typeof ConfiguracoesAuditoriaRoute
   '/configuracoes/automacao-sem-comunicacao': typeof ConfiguracoesAutomacaoSemComunicacaoRoute
+  '/configuracoes/canais-email': typeof ConfiguracoesCanaisEmailRoute
   '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
   '/configuracoes/encaminhamento': typeof ConfiguracoesEncaminhamentoRoute
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
@@ -296,6 +304,7 @@ export interface FileRoutesByTo {
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
   '/configuracoes/auditoria': typeof ConfiguracoesAuditoriaRoute
   '/configuracoes/automacao-sem-comunicacao': typeof ConfiguracoesAutomacaoSemComunicacaoRoute
+  '/configuracoes/canais-email': typeof ConfiguracoesCanaisEmailRoute
   '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
   '/configuracoes/encaminhamento': typeof ConfiguracoesEncaminhamentoRoute
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
@@ -335,6 +344,7 @@ export interface FileRoutesById {
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
   '/configuracoes/auditoria': typeof ConfiguracoesAuditoriaRoute
   '/configuracoes/automacao-sem-comunicacao': typeof ConfiguracoesAutomacaoSemComunicacaoRoute
+  '/configuracoes/canais-email': typeof ConfiguracoesCanaisEmailRoute
   '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
   '/configuracoes/encaminhamento': typeof ConfiguracoesEncaminhamentoRoute
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
@@ -375,6 +385,7 @@ export interface FileRouteTypes {
     | '/configuracoes/assistente-ia'
     | '/configuracoes/auditoria'
     | '/configuracoes/automacao-sem-comunicacao'
+    | '/configuracoes/canais-email'
     | '/configuracoes/central-atendimento'
     | '/configuracoes/encaminhamento'
     | '/configuracoes/estoque'
@@ -412,6 +423,7 @@ export interface FileRouteTypes {
     | '/configuracoes/assistente-ia'
     | '/configuracoes/auditoria'
     | '/configuracoes/automacao-sem-comunicacao'
+    | '/configuracoes/canais-email'
     | '/configuracoes/central-atendimento'
     | '/configuracoes/encaminhamento'
     | '/configuracoes/estoque'
@@ -450,6 +462,7 @@ export interface FileRouteTypes {
     | '/configuracoes/assistente-ia'
     | '/configuracoes/auditoria'
     | '/configuracoes/automacao-sem-comunicacao'
+    | '/configuracoes/canais-email'
     | '/configuracoes/central-atendimento'
     | '/configuracoes/encaminhamento'
     | '/configuracoes/estoque'
@@ -679,6 +692,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConfiguracoesCentralAtendimentoRouteImport
       parentRoute: typeof ConfiguracoesRoute
     }
+    '/configuracoes/canais-email': {
+      id: '/configuracoes/canais-email'
+      path: '/canais-email'
+      fullPath: '/configuracoes/canais-email'
+      preLoaderRoute: typeof ConfiguracoesCanaisEmailRouteImport
+      parentRoute: typeof ConfiguracoesRoute
+    }
     '/configuracoes/automacao-sem-comunicacao': {
       id: '/configuracoes/automacao-sem-comunicacao'
       path: '/automacao-sem-comunicacao'
@@ -756,6 +776,7 @@ interface ConfiguracoesRouteChildren {
   ConfiguracoesAssistenteIaRoute: typeof ConfiguracoesAssistenteIaRoute
   ConfiguracoesAuditoriaRoute: typeof ConfiguracoesAuditoriaRoute
   ConfiguracoesAutomacaoSemComunicacaoRoute: typeof ConfiguracoesAutomacaoSemComunicacaoRoute
+  ConfiguracoesCanaisEmailRoute: typeof ConfiguracoesCanaisEmailRoute
   ConfiguracoesCentralAtendimentoRoute: typeof ConfiguracoesCentralAtendimentoRoute
   ConfiguracoesEncaminhamentoRoute: typeof ConfiguracoesEncaminhamentoRoute
   ConfiguracoesEstoqueRoute: typeof ConfiguracoesEstoqueRoute
@@ -773,6 +794,7 @@ const ConfiguracoesRouteChildren: ConfiguracoesRouteChildren = {
   ConfiguracoesAuditoriaRoute: ConfiguracoesAuditoriaRoute,
   ConfiguracoesAutomacaoSemComunicacaoRoute:
     ConfiguracoesAutomacaoSemComunicacaoRoute,
+  ConfiguracoesCanaisEmailRoute: ConfiguracoesCanaisEmailRoute,
   ConfiguracoesCentralAtendimentoRoute: ConfiguracoesCentralAtendimentoRoute,
   ConfiguracoesEncaminhamentoRoute: ConfiguracoesEncaminhamentoRoute,
   ConfiguracoesEstoqueRoute: ConfiguracoesEstoqueRoute,
