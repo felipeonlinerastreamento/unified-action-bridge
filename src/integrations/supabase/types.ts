@@ -5526,6 +5526,9 @@ export type Database = {
           content: string
           created_at: string
           id: string
+          rated_at: string | null
+          rating: number | null
+          rating_comment: string | null
           role: string
           user_id: string
         }
@@ -5533,6 +5536,9 @@ export type Database = {
           content: string
           created_at?: string
           id?: string
+          rated_at?: string | null
+          rating?: number | null
+          rating_comment?: string | null
           role: string
           user_id: string
         }
@@ -5540,6 +5546,9 @@ export type Database = {
           content?: string
           created_at?: string
           id?: string
+          rated_at?: string | null
+          rating?: number | null
+          rating_comment?: string | null
           role?: string
           user_id?: string
         }
