@@ -64,6 +64,7 @@ export const URL_TO_MENU_SLUG: Record<string, string> = {
   "/atendimentos": "atendimentos",
   "/chat-operadores": "chat-operadores",
   "/painel-tv": "painel-tv",
+  "/top-gamific": "top-gamific",
   "/configuracoes": "config.integracoes",
   "/configuracoes/central-atendimento": "config.central-atendimento",
   "/configuracoes/fluxo-atendimento": "config.fluxo-atendimento",
