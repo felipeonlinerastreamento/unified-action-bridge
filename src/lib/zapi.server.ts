@@ -149,7 +149,10 @@ export async function zapiSendText(
       messagePreview: message.slice(0, 60),
     });
   }
-  return zapiFetch(channel, "/send-text", "POST", payload);
+  return zapiFetch(channel, "/send-text", "POST", payload, {
+    timeoutMs: TEXT_SEND_TIMEOUT_MS,
+    retryOnNetworkError: true,
+  });
 }
 
 /**
@@ -178,27 +181,28 @@ export async function zapiSendMedia(
   dataUrl: string,
   opts?: { fileName?: string; caption?: string; extension?: string }
 ) {
+  const mediaOpts = { timeoutMs: MEDIA_SEND_TIMEOUT_MS };
   if (kind === "audio") {
     return zapiFetch(channel, "/send-audio", "POST", {
       phone: zapiRecipientPhone(phone),
       audio: normalizeAudioDataUrl(dataUrl),
       viewOnce: false,
       waveform: true,
-    });
+    }, mediaOpts);
   }
   if (kind === "image") {
     return zapiFetch(channel, "/send-image", "POST", {
       phone: zapiRecipientPhone(phone),
       image: dataUrl,
       caption: opts?.caption || "",
-    });
+    }, mediaOpts);
   }
   if (kind === "video") {
     return zapiFetch(channel, "/send-video", "POST", {
       phone: zapiRecipientPhone(phone),
       video: dataUrl,
       caption: opts?.caption || "",
-    });
+    }, mediaOpts);
   }
   // document — Z-API requires extension in path
   const ext = (opts?.extension || (opts?.fileName?.split(".").pop() ?? "pdf")).toLowerCase();
@@ -206,7 +210,7 @@ export async function zapiSendMedia(
     phone: zapiRecipientPhone(phone),
     document: dataUrl,
     fileName: opts?.fileName || `arquivo.${ext}`,
-  });
+  }, mediaOpts);
 }
 
 export async function zapiGetStatus(channel: ZapiChannelCreds) {
