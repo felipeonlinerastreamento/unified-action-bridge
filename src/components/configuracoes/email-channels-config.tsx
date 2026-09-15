@@ -120,15 +120,17 @@ export function EmailChannelsConfig() {
       </CardHeader>
       <CardContent className="space-y-6">
         {/* Status conexão Outlook */}
-        <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30">
+        <div className="flex items-start gap-3 p-3 rounded-lg border bg-muted/30">
           {conn.isLoading ? (
-            <><Loader2 className="h-4 w-4 animate-spin" /> Verificando conexão...</>
+            <div className="flex items-center gap-2 mt-1">
+              <Loader2 className="h-4 w-4 animate-spin" /> Verificando conexão...
+            </div>
           ) : conn.data?.connected ? (
             <>
-              <CheckCircle2 className="h-5 w-5 text-green-600" />
+              <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5" />
               <div className="flex-1">
                 <div className="text-sm font-medium">Outlook conectado</div>
-                <div className="text-xs text-muted-foreground">
+                <div className="text-xs text-muted-foreground mt-1">
                   {conn.data.name || conn.data.email
                     ? `${conn.data.name ? `${conn.data.name} • ` : ""}${conn.data.email || ""}`.replace(/ • $/, "")
                     : "Conta conectada, mas o nome/e-mail não foi retornado pela Microsoft."}
@@ -137,18 +139,34 @@ export function EmailChannelsConfig() {
             </>
           ) : (
             <>
-              <AlertCircle className="h-5 w-5 text-destructive" />
-              <div className="flex-1">
-                <div className="text-sm font-medium">Outlook não conectado</div>
-                <div className="text-xs text-muted-foreground">
-                  {/API key não configurada|não conectado/i.test(conn.data?.error || "")
-                    ? "O conector Microsoft Outlook ainda não está conectado. Conecte-o nas integrações do Lovable (ele usa OAuth/token, não usuário e senha) para habilitar a leitura dos e-mails."
-                    : (conn.data?.error || "Configure o conector Microsoft Outlook nas integrações Lovable.")}
+              <AlertCircle className="h-5 w-5 text-destructive mt-0.5" />
+              <div className="flex-1 space-y-3">
+                <div className="text-sm font-bold text-destructive">Outlook não conectado ou chaves ausentes</div>
+                
+                <div className="text-sm text-foreground">
+                  O sistema precisa da sua autorização prévia pelo painel de controle da plataforma (Lovable). Como as chaves não foram detectadas no ambiente, siga o passo a passo abaixo:
                 </div>
+
+                <div className="bg-background rounded-md p-4 border text-sm space-y-2 max-w-2xl shadow-sm">
+                  <p className="font-semibold text-primary">📋 Instruções para ativar a integração:</p>
+                  <ol className="list-decimal list-inside space-y-2 text-muted-foreground">
+                    <li>Abra o menu principal do painel do seu projeto no Lovable e acesse a guia de <strong>Integrações (ícone de tomada)</strong>.</li>
+                    <li>Encontre o card do <strong>Microsoft Outlook</strong> e clique nele.</li>
+                    <li>Clique em "Connect" e você será redirecionado para a Microsoft, precisando apenas fazer <strong>login e autorizar</strong> a sua conta real de e-mails, como no O365 ou Outlook.</li>
+                    <li>Após conectar, acesse o menu de <strong>Environment Variables (ou Secrets)</strong> na configuração do projeto e certifique-se de que as chaves <code className="bg-muted px-1 py-0.5 rounded text-[11px] font-mono text-foreground">LOVABLE_API_KEY</code> e <code className="bg-muted px-1 py-0.5 rounded text-[11px] font-mono text-foreground">MICROSOFT_OUTLOOK_API_KEY</code> agora possuem valores.</li>
+                    <li>Com isso pronto, retorne a esta tela no app e clique no botão circular azul de atualização ao lado.</li>
+                  </ol>
+                </div>
+                
+                {conn.data?.error && (
+                  <div className="text-[11px] text-muted-foreground bg-muted-foreground/10 p-2 rounded max-w-2xl font-mono">
+                    Status do sistema: {conn.data.error}
+                  </div>
+                )}
               </div>
             </>
           )}
-          <Button variant="outline" size="sm" onClick={() => conn.refetch()}>
+          <Button variant="outline" size="sm" onClick={() => conn.refetch()} title="Refazer validação de conexão">
             <RefreshCw className="h-4 w-4" />
           </Button>
         </div>
