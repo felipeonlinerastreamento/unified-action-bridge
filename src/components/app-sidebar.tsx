@@ -72,6 +72,7 @@ const mainItems = [
   { title: "Chat com Operadores", url: "/chat-operadores", icon: MessageCircle },
   { title: "Painel TV", url: "/painel-tv", icon: Monitor },
   { title: "Top Gamific", url: "/top-gamific", icon: Trophy },
+  { title: "Assistente IA", url: "/assistente-ia", icon: Bot },
 ];
 
 const atendimentosSubItems: { title: string; url: string; icon: typeof List }[] = [

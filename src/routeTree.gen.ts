@@ -22,6 +22,7 @@ import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as ChatOperadoresRouteImport } from './routes/chat-operadores'
 import { Route as CentralRouteImport } from './routes/central'
 import { Route as AtendimentosRouteImport } from './routes/atendimentos'
+import { Route as AssistenteIaRouteImport } from './routes/assistente-ia'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ConfiguracoesIndexRouteImport } from './routes/configuracoes.index'
 import { Route as HooksRefreshTrackingRouteImport } from './routes/hooks/refresh-tracking'
@@ -108,6 +109,11 @@ const CentralRoute = CentralRouteImport.update({
 const AtendimentosRoute = AtendimentosRouteImport.update({
   id: '/atendimentos',
   path: '/atendimentos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AssistenteIaRoute = AssistenteIaRouteImport.update({
+  id: '/assistente-ia',
+  path: '/assistente-ia',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -235,6 +241,7 @@ const ApiPublicHooksSyncGsystemEquipamentosRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/assistente-ia': typeof AssistenteIaRoute
   '/atendimentos': typeof AtendimentosRoute
   '/central': typeof CentralRoute
   '/chat-operadores': typeof ChatOperadoresRoute
@@ -272,6 +279,7 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/assistente-ia': typeof AssistenteIaRoute
   '/atendimentos': typeof AtendimentosRoute
   '/central': typeof CentralRoute
   '/chat-operadores': typeof ChatOperadoresRoute
@@ -309,6 +317,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/assistente-ia': typeof AssistenteIaRoute
   '/atendimentos': typeof AtendimentosRoute
   '/central': typeof CentralRoute
   '/chat-operadores': typeof ChatOperadoresRoute
@@ -348,6 +357,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/assistente-ia'
     | '/atendimentos'
     | '/central'
     | '/chat-operadores'
@@ -385,6 +395,7 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/assistente-ia'
     | '/atendimentos'
     | '/central'
     | '/chat-operadores'
@@ -421,6 +432,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/assistente-ia'
     | '/atendimentos'
     | '/central'
     | '/chat-operadores'
@@ -459,6 +471,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AssistenteIaRoute: typeof AssistenteIaRoute
   AtendimentosRoute: typeof AtendimentosRoute
   CentralRoute: typeof CentralRoute
   ChatOperadoresRoute: typeof ChatOperadoresRoute
@@ -573,6 +586,13 @@ declare module '@tanstack/react-router' {
       path: '/atendimentos'
       fullPath: '/atendimentos'
       preLoaderRoute: typeof AtendimentosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/assistente-ia': {
+      id: '/assistente-ia'
+      path: '/assistente-ia'
+      fullPath: '/assistente-ia'
+      preLoaderRoute: typeof AssistenteIaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -771,6 +791,7 @@ const ConfiguracoesRouteWithChildren = ConfiguracoesRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AssistenteIaRoute: AssistenteIaRoute,
   AtendimentosRoute: AtendimentosRoute,
   CentralRoute: CentralRoute,
   ChatOperadoresRoute: ChatOperadoresRoute,
