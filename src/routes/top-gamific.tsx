@@ -7,23 +7,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trophy, Coins, Target, RefreshCw, AlertTriangle } from "lucide-react";
+import { Trophy, Coins, Target, RefreshCw, AlertTriangle, Info, Sparkles, TrendingUp, Award, ArrowUpRight } from "lucide-react";
 import { getTopGamificOverview } from "@/lib/topgamific.functions";
 
 export const Route = createFileRoute("/top-gamific")({
   head: () => ({
     meta: [
-      { title: "Top Gamific | Lançamentos e desafios do operador" },
+      { title: "Top Gamific | Resumo de engajamento" },
       {
         name: "description",
         content:
-          "Acompanhe seus últimos lançamentos de pontos e moedas e os desafios em aberto da plataforma de gamificação.",
+          "Resumo de engajamento, últimos lançamentos e desafios em aberto da plataforma de gamificação.",
       },
-      { property: "og:title", content: "Top Gamific | Lançamentos e desafios" },
+      { property: "og:title", content: "Top Gamific | Resumo de engajamento" },
       {
         property: "og:description",
         content:
-          "Seus três últimos lançamentos e os desafios ativos da gamificação, em um só lugar.",
+          "Acompanhe seu engajamento, últimos lançamentos e desafios ativos da gamificação em um só lugar.",
       },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
@@ -68,7 +68,7 @@ function TopGamificContent() {
             Top Gamific
           </h1>
           <p className="text-sm text-muted-foreground">
-            Seus últimos lançamentos e os desafios em aberto.
+            Resumo do seu engajamento, lançamentos e desafios em aberto.
           </p>
         </div>
         <Button variant="outline" size="sm" onClick={() => refetch()} disabled={isFetching}>
@@ -76,6 +76,53 @@ function TopGamificContent() {
           Atualizar
         </Button>
       </div>
+
+      <Card className="bg-primary/5 border-primary/20">
+        <CardContent className="flex items-start gap-3 p-4 text-sm">
+          <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+          <div className="space-y-1">
+            <p className="font-medium">Esta página é um resumo da sua participação</p>
+            <p className="text-muted-foreground">
+              Aqui você vê seus últimos lançamentos, saldo de moedas e desafios em aberto. O acesso
+              completo — com ranking, histórico detalhado e configurações — fica no{" "}
+              <span className="font-medium text-foreground">portal Top Gamific</span>.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Sparkles className="h-4 w-4 text-amber-500" />
+            Engajamento e progresso
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <p className="text-sm text-muted-foreground">
+            O Top Gamific transforma suas conquistas diárias em reconhecimento. O objetivo é
+            motivar, acompanhar o progresso e recompensar quem entrega cada vez melhor.
+          </p>
+          <ul className="grid gap-2 sm:grid-cols-2 text-sm">
+            <li className="flex items-start gap-2">
+              <TrendingUp className="h-4 w-4 text-emerald-600 shrink-0 mt-0.5" />
+              <span>Visualize sua evolução de desempenho de forma transparente</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <Target className="h-4 w-4 text-blue-500 shrink-0 mt-0.5" />
+              <span>Complete desafios e metas para acelerar seus resultados</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <Award className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
+              <span>Troque conquistas por moedas e reconhecimento no time</span>
+            </li>
+            <li className="flex items-start gap-2">
+              <ArrowUpRight className="h-4 w-4 text-purple-500 shrink-0 mt-0.5" />
+              <span>Entenda quais ações mais contribuem para o seu progresso</span>
+            </li>
+          </ul>
+        </CardContent>
+      </Card>
 
       {data?.error && (
         <Card className="border-destructive/40">
@@ -94,7 +141,7 @@ function TopGamificContent() {
         </div>
       ) : (
         <>
-          <div className="grid gap-4 md:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <Card>
               <CardHeader className="pb-2">
                 <CardTitle className="text-sm text-muted-foreground">Moedas (90 dias)</CardTitle>
@@ -103,18 +150,6 @@ function TopGamificContent() {
                 <Coins className="h-5 w-5 text-amber-500" />
                 {data?.totalCoins ?? 0}
               </CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm text-muted-foreground">Pontos (90 dias)</CardTitle>
-              </CardHeader>
-              <CardContent className="text-2xl font-semibold">{data?.totalPoints ?? 0}</CardContent>
-            </Card>
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm text-muted-foreground">Lançamentos</CardTitle>
-              </CardHeader>
-              <CardContent className="text-2xl font-semibold">{data?.totalEntries ?? 0}</CardContent>
             </Card>
           </div>
 
