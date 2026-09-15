@@ -13,6 +13,83 @@ export interface TopGamificAiMessage {
   ratingComment: string | null;
 }
 
+export interface TopGamificAiFeedbackItem {
+  id: string;
+  userName: string;
+  rating: -1 | 1;
+  comment: string | null;
+  answer: string;
+  question: string | null;
+  ratedAt: string | null;
+}
+
+export interface TopGamificAiFeedbackResult {
+  allowed: boolean;
+  positive: number;
+  negative: number;
+  items: TopGamificAiFeedbackItem[];
+}
+
+export const getTopGamificAiFeedback = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<TopGamificAiFeedbackResult> => {
+    const [{ data: isAdmin }, { data: isGestor }] = await Promise.all([
+      context.supabase.rpc("has_role", { _user_id: context.userId, _role: "admin" }),
+      context.supabase.rpc("has_role", { _user_id: context.userId, _role: "gestor" }),
+    ]);
+    if (!isAdmin && !isGestor) {
+      return { allowed: false, positive: 0, negative: 0, items: [] };
+    }
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: rated } = await supabaseAdmin
+      .from("topgamific_ai_messages")
+      .select("id, user_id, content, rating, rating_comment, rated_at, created_at")
+      .not("rating", "is", null)
+      .order("rated_at", { ascending: false })
+      .limit(100);
+
+    const rows = rated ?? [];
+    const userIds = Array.from(new Set(rows.map((r: any) => r.user_id).filter(Boolean)));
+    const nameById = new Map<string, string>();
+    if (userIds.length > 0) {
+      const { data: profs } = await supabaseAdmin
+        .from("profiles")
+        .select("id, name")
+        .in("id", userIds);
+      for (const p of profs ?? []) nameById.set(String((p as any).id), String((p as any).name ?? ""));
+    }
+
+    // Pergunta correspondente = última mensagem do usuário antes da resposta avaliada
+    const items: TopGamificAiFeedbackItem[] = [];
+    for (const r of rows as any[]) {
+      const { data: prev } = await supabaseAdmin
+        .from("topgamific_ai_messages")
+        .select("content")
+        .eq("user_id", r.user_id)
+        .eq("role", "user")
+        .lt("created_at", r.created_at)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      items.push({
+        id: String(r.id),
+        userName: nameById.get(String(r.user_id)) || "Usuário",
+        rating: r.rating === 1 ? 1 : -1,
+        comment: r.rating_comment ? String(r.rating_comment) : null,
+        answer: String(r.content ?? ""),
+        question: prev && prev[0] ? String((prev[0] as any).content ?? "") : null,
+        ratedAt: r.rated_at ? String(r.rated_at) : null,
+      });
+    }
+
+    return {
+      allowed: true,
+      positive: items.filter((i) => i.rating === 1).length,
+      negative: items.filter((i) => i.rating === -1).length,
+      items,
+    };
+  });
+
 export interface TopGamificAiSendResult {
   ok: boolean;
   error: string | null;
