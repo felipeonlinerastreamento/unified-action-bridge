@@ -141,7 +141,9 @@ export function EmailChannelsConfig() {
               <div className="flex-1">
                 <div className="text-sm font-medium">Outlook não conectado</div>
                 <div className="text-xs text-muted-foreground">
-                  {conn.data?.error || "Configure o conector Microsoft Outlook nas integrações Lovable."}
+                  {/API key não configurada|não conectado/i.test(conn.data?.error || "")
+                    ? "O conector Microsoft Outlook ainda não está conectado. Conecte-o nas integrações do Lovable (ele usa OAuth/token, não usuário e senha) para habilitar a leitura dos e-mails."
+                    : (conn.data?.error || "Configure o conector Microsoft Outlook nas integrações Lovable.")}
                 </div>
               </div>
             </>
