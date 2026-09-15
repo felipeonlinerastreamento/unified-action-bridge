@@ -139,7 +139,9 @@ export const getTopGamificAiHistory = createServerFn({ method: "POST" })
   .handler(async ({ context }): Promise<TopGamificAiMessage[]> => {
     const { data } = await context.supabase
       .from("topgamific_ai_messages")
-      .select("id, role, content, created_at, rating, rating_comment")
+      .select(
+        "id, role, content, created_at, rating, rating_comment, remote_conversation_id, remote_message_id",
+      )
       .eq("user_id", context.userId)
       .order("created_at", { ascending: true })
       .limit(200);
