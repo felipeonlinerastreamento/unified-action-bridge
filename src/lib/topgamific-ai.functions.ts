@@ -271,12 +271,21 @@ export const sendTopGamificAiMessage = createServerFn({ method: "POST" })
         }),
       });
       if (!res.ok) {
+        const detail = await res.text().catch(() => "");
+        let msg = "";
+        try {
+          msg = String(JSON.parse(detail)?.error ?? "");
+        } catch {
+          msg = "";
+        }
+        console.error("[TopGamific] erro ai-chat:", res.status, detail);
         return {
           ok: false,
-          error: `A plataforma de gamificação respondeu com erro (${res.status}).`,
+          error: msg || `A plataforma de gamificação respondeu com erro (${res.status}).`,
           messages: [],
         };
       }
+
       const json: any = await res.json();
       reply = String(json?.reply ?? json?.message ?? json?.content ?? "").trim();
       remoteConversationId = json?.conversation_id ? String(json.conversation_id) : null;
