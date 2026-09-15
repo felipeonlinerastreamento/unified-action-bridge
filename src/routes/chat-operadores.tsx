@@ -11,6 +11,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { MessageCircle, Lock, Search, ChevronDown, ChevronRight } from "lucide-react";
 import { OperatorChatPanel } from "@/components/operator-chat/operator-chat-panel";
 import { NewOperatorChatDialog } from "@/components/operator-chat/new-operator-chat-dialog";
+import { fetchMyGroupChatIds, myChatsOrFilter } from "@/components/operator-chat/chat-access";
 
 type ChatSearch = { chat?: string };
 
@@ -50,10 +51,11 @@ function ChatOperadoresContent() {
     refetchInterval: 15000,
     queryFn: async () => {
       if (!userId) return [];
+      const groupIds = await fetchMyGroupChatIds(userId);
       let q = supabase
         .from("operator_chats")
-        .select("id, subject, created_by, created_by_name, recipient_user_id, is_locked, last_message_at, closed_at")
-        .or(`created_by.eq.${userId},recipient_user_id.eq.${userId}`)
+        .select("id, subject, created_by, created_by_name, recipient_user_id, is_group, is_locked, last_message_at, closed_at")
+        .or(myChatsOrFilter(userId, groupIds))
         .order("last_message_at", { ascending: false })
         .limit(100);
       if (!showClosed) q = q.is("closed_at", null);
