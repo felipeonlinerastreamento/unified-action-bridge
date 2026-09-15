@@ -76,7 +76,28 @@ export function OperatorChatPanel({ chatId, className }: Props) {
     },
   });
 
+  const { data: myParticipation } = useQuery({
+    queryKey: ["operator-chat-my-participation", chatId, me?.id],
+    enabled: !!chatId && !!me?.id && !!(chat as any)?.is_group,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("operator_chat_participants")
+        .select("user_id")
+        .eq("chat_id", chatId!)
+        .eq("user_id", me!.id)
+        .maybeSingle();
+      return !!data;
+    },
+  });
+
+  const isMember = !chat
+    ? false
+    : (chat as any).is_group
+      ? !!myParticipation || chat.created_by === me?.id
+      : chat.created_by === me?.id || chat.recipient_user_id === me?.id;
+
   const { data: messages = [] } = useQuery({
+
     queryKey: ["operator-chat-messages", chatId],
     enabled: !!chatId,
     queryFn: async () => {
