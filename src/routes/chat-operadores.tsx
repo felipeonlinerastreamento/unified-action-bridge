@@ -186,6 +186,27 @@ function ChatOperadoresContent() {
         <div className="border rounded-lg bg-card flex flex-col min-h-0">
           <div className="p-3 border-b space-y-2">
             <NewOperatorChatDialog onCreated={(id) => selectChat(id)} />
+            {isAdmin && (
+              <div className="grid grid-cols-2 gap-1">
+                <Button
+                  size="sm"
+                  variant={viewAll ? "outline" : "default"}
+                  className="h-8 text-xs"
+                  onClick={() => setViewAll(false)}
+                >
+                  Minhas conversas
+                </Button>
+                <Button
+                  size="sm"
+                  variant={viewAll ? "default" : "outline"}
+                  className="h-8 text-xs"
+                  onClick={() => setViewAll(true)}
+                >
+                  Todas
+                </Button>
+              </div>
+            )}
+
             <div className="relative">
               <Search className="h-3.5 w-3.5 absolute left-2.5 top-2.5 text-muted-foreground" />
               <Input
