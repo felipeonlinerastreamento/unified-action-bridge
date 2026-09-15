@@ -35,7 +35,7 @@ export const createCliente = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
     z.object({
-      body: z.record(z.unknown()),
+      body: z.record(z.string(), z.unknown()),
     }).parse
   )
   .handler(async ({ data }) => {
@@ -48,7 +48,7 @@ export const updateCliente = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       key: z.string().min(1).max(255),
-      body: z.record(z.unknown()),
+      body: z.record(z.string(), z.unknown()),
     }).parse
   )
   .handler(async ({ data }) => {
@@ -72,7 +72,7 @@ export const createClienteContato = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       clientKey: z.string().min(1).max(255),
-      body: z.record(z.unknown()),
+      body: z.record(z.string(), z.unknown()),
     }).parse
   )
   .handler(async ({ data }) => {
@@ -90,7 +90,7 @@ export const updateClienteContato = createServerFn({ method: "POST" })
     z.object({
       clientKey: z.string().min(1).max(255),
       key: z.string().min(1).max(255),
-      body: z.record(z.unknown()),
+      body: z.record(z.string(), z.unknown()),
     }).parse
   )
   .handler(async ({ data }) => {
@@ -134,7 +134,7 @@ export const createClienteEndereco = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       clientKey: z.string().min(1).max(255),
-      body: z.record(z.unknown()),
+      body: z.record(z.string(), z.unknown()),
     }).parse
   )
   .handler(async ({ data }) => {
@@ -152,7 +152,7 @@ export const updateClienteEndereco = createServerFn({ method: "POST" })
     z.object({
       clientKey: z.string().min(1).max(255),
       key: z.string().min(1).max(255),
-      body: z.record(z.unknown()),
+      body: z.record(z.string(), z.unknown()),
     }).parse
   )
   .handler(async ({ data }) => {
@@ -188,7 +188,7 @@ export const getVeiculo = createServerFn({ method: "POST" })
 export const createVeiculo = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
-    z.object({ body: z.record(z.unknown()) }).parse
+    z.object({ body: z.record(z.string(), z.unknown()) }).parse
   )
   .handler(async ({ data }) => {
     const { gsystemApiFetch } = await import("@/lib/gsystem-api.server");
@@ -200,7 +200,7 @@ export const updateVeiculo = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       key: z.string().min(1).max(255),
-      body: z.record(z.unknown()),
+      body: z.record(z.string(), z.unknown()),
     }).parse
   )
   .handler(async ({ data }) => {
@@ -241,7 +241,7 @@ export const createAgendamento = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       key: z.string().min(1).max(255),
-      body: z.record(z.unknown()),
+      body: z.record(z.string(), z.unknown()),
     }).parse
   )
   .handler(async ({ data }) => {
@@ -254,7 +254,7 @@ export const updateAgendamento = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       key: z.string().min(1).max(255),
-      body: z.record(z.unknown()),
+      body: z.record(z.string(), z.unknown()),
     }).parse
   )
   .handler(async ({ data }) => {
@@ -325,7 +325,7 @@ export const getPendencia = createServerFn({ method: "POST" })
 export const createPendencia = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
-    z.object({ body: z.record(z.unknown()) }).parse
+    z.object({ body: z.record(z.string(), z.unknown()) }).parse
   )
   .handler(async ({ data }) => {
     const { gsystemApiFetch } = await import("@/lib/gsystem-api.server");
@@ -337,7 +337,7 @@ export const updatePendencia = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       key: z.string().min(1).max(255),
-      body: z.record(z.unknown()),
+      body: z.record(z.string(), z.unknown()),
     }).parse
   )
   .handler(async ({ data }) => {
@@ -442,7 +442,7 @@ export const getAnexo = createServerFn({ method: "POST" })
 export const createAnexo = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(
-    z.object({ body: z.record(z.unknown()) }).parse
+    z.object({ body: z.record(z.string(), z.unknown()) }).parse
   )
   .handler(async ({ data }) => {
     const { gsystemApiFetch } = await import("@/lib/gsystem-api.server");
@@ -454,7 +454,7 @@ export const updateAnexo = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       key: z.string().min(1).max(255),
-      body: z.record(z.unknown()),
+      body: z.record(z.string(), z.unknown()),
     }).parse
   )
   .handler(async ({ data }) => {
@@ -498,7 +498,7 @@ export const createCadastro = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       key: z.string().min(1).max(255),
-      body: z.record(z.unknown()),
+      body: z.record(z.string(), z.unknown()),
     }).parse
   )
   .handler(async ({ data }) => {
@@ -511,7 +511,7 @@ export const updateCadastro = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       key: z.string().min(1).max(255),
-      body: z.record(z.unknown()),
+      body: z.record(z.string(), z.unknown()),
     }).parse
   )
   .handler(async ({ data }) => {
