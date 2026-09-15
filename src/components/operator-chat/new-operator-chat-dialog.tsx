@@ -271,11 +271,12 @@ export function NewOperatorChatDialog({ onCreated, triggerLabel }: Props) {
                   <SelectItem value="user"><span className="flex items-center gap-2"><User className="h-3.5 w-3.5" /> Pessoa</span></SelectItem>
                   <SelectItem value="sector"><span className="flex items-center gap-2"><Building2 className="h-3.5 w-3.5" /> Setor</span></SelectItem>
                   <SelectItem value="group"><span className="flex items-center gap-2"><Users className="h-3.5 w-3.5" /> Grupo</span></SelectItem>
+                  <SelectItem value="multi"><span className="flex items-center gap-2"><UsersRound className="h-3.5 w-3.5" /> Vários operadores (conversa em grupo)</span></SelectItem>
                   <SelectItem value="all"><span className="flex items-center gap-2"><Globe className="h-3.5 w-3.5" /> Todos</span></SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            {targetType !== "all" && (
+            {targetType !== "all" && targetType !== "multi" && (
               <div className="space-y-1.5">
                 <Label>{targetType === "user" ? "Usuário" : targetType === "sector" ? "Setor" : "Grupo"}</Label>
                 <Select value={targetId} onValueChange={setTargetId}>
