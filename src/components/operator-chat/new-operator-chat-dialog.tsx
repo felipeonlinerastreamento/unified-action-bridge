@@ -124,6 +124,55 @@ export function NewOperatorChatDialog({ onCreated, triggerLabel }: Props) {
         .from("profiles").select("name").eq("user_id", user.id).maybeSingle();
       const senderName = prof?.name || user.email || "Atendimento";
 
+      // Conversa em grupo: todos no mesmo histórico
+      if (targetType === "multi") {
+        const { data: createdGroup, error: gErr } = await supabase
+          .from("operator_chats")
+          .insert({
+            campaign_id: crypto.randomUUID(),
+            created_by: user.id,
+            created_by_name: senderName,
+            recipient_user_id: user.id,
+            subject: subject.trim() || "Conversa em grupo",
+            is_group: true,
+            lock_until_reply: lockUntilReply,
+            is_locked: false,
+          })
+          .select("id")
+          .single();
+        if (gErr) throw gErr;
+        const groupId = (createdGroup as any).id as string;
+
+        const nameById = new Map(users.map((u: any) => [u.user_id, u.name]));
+        const rows = [
+          { chat_id: groupId, user_id: user.id, user_name: senderName, is_locked: false },
+          ...others.map((uid) => ({
+            chat_id: groupId,
+            user_id: uid,
+            user_name: nameById.get(uid) || null,
+            is_locked: lockUntilReply,
+          })),
+        ];
+        const { error: pErr } = await supabase.from("operator_chat_participants").insert(rows);
+        if (pErr) throw pErr;
+
+        const { error: gmErr } = await supabase.from("operator_chat_messages").insert({
+          chat_id: groupId,
+          sender_user_id: user.id,
+          sender_name: senderName,
+          body: firstMessage.trim(),
+        });
+        if (gmErr) throw gmErr;
+
+        toast.success(`Conversa em grupo criada com ${others.length} operador(es)`);
+        qc.invalidateQueries({ queryKey: ["operator-chats-list"] });
+        reset();
+        setOpen(false);
+        if (onCreated) onCreated(groupId);
+        return;
+      }
+
+
       // Uma única conversa (histórico contínuo) por par de operadores
       const chatIds: string[] = [];
       for (const uid of others) {
