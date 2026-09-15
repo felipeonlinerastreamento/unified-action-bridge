@@ -3002,23 +3002,23 @@ function CentralPage() {
     <AppLayout>
       <div className="space-y-4">
         {/* Header */}
-        <div className="flex items-start sm:items-center justify-between gap-3 flex-wrap">
-          <div className="min-w-0 flex items-center gap-4 flex-wrap">
+        <div className="flex items-start sm:items-center justify-between gap-2 flex-wrap">
+          <div className="min-w-0 flex items-center gap-2 flex-wrap">
             <div className="min-w-0">
-              <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate">Central de Atendimento</h1>
-              <p className="text-xs sm:text-sm text-muted-foreground">
+              <h1 className="text-lg sm:text-xl font-bold text-foreground truncate">Central de Atendimento</h1>
+              <p className="text-[11px] sm:text-xs text-muted-foreground leading-none">
                 {allChats.length} atendimento(s) ativo(s) • {onlineAgents} agente(s) online
               </p>
             </div>
             <MyAttendanceKpis />
             {myZombieCount > 0 && (
-              <Badge variant="destructive" className="gap-1 animate-pulse text-xs h-7 px-2">
-                <AlertTriangle className="h-3.5 w-3.5" />
+              <Badge variant="destructive" className="gap-1 animate-pulse text-[10px] h-5 px-1.5">
+                <AlertTriangle className="h-3 w-3" />
                 {myZombieCount} chat{myZombieCount > 1 ? "s" : ""} zumbi{myZombieCount > 1 ? "s" : ""} (&gt;5min)
               </Badge>
             )}
           </div>
-          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
             {isConnected ? (
               <Badge variant="outline" className="gap-1 border-emerald-300 text-emerald-700">
                 <Wifi className="h-3 w-3" /> Conectado
