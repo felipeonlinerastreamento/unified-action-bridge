@@ -112,46 +112,44 @@ export function AppSidebar() {
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
   }, []);
 
-  // Conversas sem resposta (com mensagens não lidas) atribuídas a mim ou sem
-  // responsável nos meus setores — exibidas como selo no item "Chat".
-  const { data: unansweredChats = 0 } = useQuery({
-    queryKey: ["sidebar-unanswered-chats", userId],
+  // Chats atribuídos a mim (não finalizados) — selo vermelho no item "Chat".
+  const { data: assignedChats = 0 } = useQuery({
+    queryKey: ["sidebar-assigned-chats", userId],
     enabled: !!userId,
     refetchInterval: 15000,
     queryFn: async () => {
       if (!userId) return 0;
-      const { data: links } = await supabase
-        .from("user_sector_assignments")
-        .select("sector_id")
-        .eq("user_id", userId);
-      const sectorIds = (links || []).map((l) => l.sector_id);
-      let sectorNames: string[] = [];
-      if (sectorIds.length > 0) {
-        const { data: secs } = await supabase
-          .from("sectors")
-          .select("name")
-          .in("id", sectorIds);
-        sectorNames = (secs || []).map((s) => s.name);
-      }
-      let total = 0;
-      const { count: mine } = await supabase
+      const { count } = await supabase
         .from("zapi_chats")
         .select("id", { count: "exact", head: true })
         .eq("assigned_to", userId)
-        .gt("unread_count", 0)
         .neq("status", "finalizado");
-      total += mine || 0;
-      if (sectorNames.length > 0) {
-        const { count: sectorOpen } = await supabase
-          .from("zapi_chats")
-          .select("id", { count: "exact", head: true })
-          .is("assigned_to", null)
-          .gt("unread_count", 0)
-          .neq("status", "finalizado")
-          .in("sector_name", sectorNames);
-        total += sectorOpen || 0;
-      }
-      return total;
+      return count || 0;
+    },
+  });
+
+  // Atendimentos (chamados) em aberto atrelados a mim — selo vermelho no item
+  // "Atendimentos". Considera responsável principal ou agente vinculado.
+  const { data: openTickets = 0 } = useQuery({
+    queryKey: ["sidebar-open-tickets", userId],
+    enabled: !!userId,
+    refetchInterval: 15000,
+    queryFn: async () => {
+      if (!userId) return 0;
+      const { data } = await supabase
+        .from("service_tickets")
+        .select("id, assigned_to, agent_user_ids")
+        .neq("status", "finalizado");
+      const rows = (data || []) as Array<{
+        id: string;
+        assigned_to: string | null;
+        agent_user_ids: string[] | null;
+      }>;
+      return rows.filter(
+        (r) =>
+          r.assigned_to === userId ||
+          (Array.isArray(r.agent_user_ids) && r.agent_user_ids.includes(userId)),
+      ).length;
     },
   });
 
