@@ -13,6 +13,7 @@ import { Route as TratativasRouteImport } from './routes/tratativas'
 import { Route as TopGamificRouteImport } from './routes/top-gamific'
 import { Route as RelatoriosRouteImport } from './routes/relatorios'
 import { Route as PainelTvRouteImport } from './routes/painel-tv'
+import { Route as McpRouteImport } from './routes/mcp'
 import { Route as EstoqueRouteImport } from './routes/estoque'
 import { Route as EmpresasRouteImport } from './routes/empresas'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -40,6 +41,7 @@ import { Route as ConfiguracoesAutomacaoSemComunicacaoRouteImport } from './rout
 import { Route as ConfiguracoesAuditoriaRouteImport } from './routes/configuracoes.auditoria'
 import { Route as ConfiguracoesAssistenteIaRouteImport } from './routes/configuracoes.assistente-ia'
 import { Route as AtendimentosTarefasRouteImport } from './routes/atendimentos_.tarefas'
+import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as ApiPublicEmailPollRouteImport } from './routes/api.public.email-poll'
 import { Route as ApiPublicCrmDailyRouteImport } from './routes/api.public.crm-daily'
 import { Route as ApiPublicChatIdleScannerRouteImport } from './routes/api.public.chat-idle-scanner'
@@ -65,6 +67,11 @@ const RelatoriosRoute = RelatoriosRouteImport.update({
 const PainelTvRoute = PainelTvRouteImport.update({
   id: '/painel-tv',
   path: '/painel-tv',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EstoqueRoute = EstoqueRouteImport.update({
@@ -211,6 +218,12 @@ const AtendimentosTarefasRoute = AtendimentosTarefasRouteImport.update({
   path: '/atendimentos/tarefas',
   getParentRoute: () => rootRouteImport,
 } as any)
+const Char91DotwellKnownChar93OauthProtectedResourceRoute =
+  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicEmailPollRoute = ApiPublicEmailPollRouteImport.update({
   id: '/api/public/email-poll',
   path: '/api/public/email-poll',
@@ -258,10 +271,12 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
+  '/mcp': typeof McpRoute
   '/painel-tv': typeof PainelTvRoute
   '/relatorios': typeof RelatoriosRoute
   '/top-gamific': typeof TopGamificRoute
   '/tratativas': typeof TratativasRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/atendimentos/tarefas': typeof AtendimentosTarefasRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
   '/configuracoes/auditoria': typeof ConfiguracoesAuditoriaRoute
@@ -296,10 +311,12 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
+  '/mcp': typeof McpRoute
   '/painel-tv': typeof PainelTvRoute
   '/relatorios': typeof RelatoriosRoute
   '/top-gamific': typeof TopGamificRoute
   '/tratativas': typeof TratativasRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/atendimentos/tarefas': typeof AtendimentosTarefasRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
   '/configuracoes/auditoria': typeof ConfiguracoesAuditoriaRoute
@@ -336,10 +353,12 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
+  '/mcp': typeof McpRoute
   '/painel-tv': typeof PainelTvRoute
   '/relatorios': typeof RelatoriosRoute
   '/top-gamific': typeof TopGamificRoute
   '/tratativas': typeof TratativasRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/atendimentos_/tarefas': typeof AtendimentosTarefasRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
   '/configuracoes/auditoria': typeof ConfiguracoesAuditoriaRoute
@@ -377,10 +396,12 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/empresas'
     | '/estoque'
+    | '/mcp'
     | '/painel-tv'
     | '/relatorios'
     | '/top-gamific'
     | '/tratativas'
+    | '/.well-known/oauth-protected-resource'
     | '/atendimentos/tarefas'
     | '/configuracoes/assistente-ia'
     | '/configuracoes/auditoria'
@@ -415,10 +436,12 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/empresas'
     | '/estoque'
+    | '/mcp'
     | '/painel-tv'
     | '/relatorios'
     | '/top-gamific'
     | '/tratativas'
+    | '/.well-known/oauth-protected-resource'
     | '/atendimentos/tarefas'
     | '/configuracoes/assistente-ia'
     | '/configuracoes/auditoria'
@@ -454,10 +477,12 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/empresas'
     | '/estoque'
+    | '/mcp'
     | '/painel-tv'
     | '/relatorios'
     | '/top-gamific'
     | '/tratativas'
+    | '/.well-known/oauth-protected-resource'
     | '/atendimentos_/tarefas'
     | '/configuracoes/assistente-ia'
     | '/configuracoes/auditoria'
@@ -494,10 +519,12 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   EmpresasRoute: typeof EmpresasRoute
   EstoqueRoute: typeof EstoqueRoute
+  McpRoute: typeof McpRoute
   PainelTvRoute: typeof PainelTvRoute
   RelatoriosRoute: typeof RelatoriosRoute
   TopGamificRoute: typeof TopGamificRoute
   TratativasRoute: typeof TratativasRoute
+  Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   AtendimentosTarefasRoute: typeof AtendimentosTarefasRoute
   HooksRefreshTrackingRoute: typeof HooksRefreshTrackingRoute
   ApiPublicAutoRouteAguardandoRoute: typeof ApiPublicAutoRouteAguardandoRoute
@@ -536,6 +563,13 @@ declare module '@tanstack/react-router' {
       path: '/painel-tv'
       fullPath: '/painel-tv'
       preLoaderRoute: typeof PainelTvRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/estoque': {
@@ -727,6 +761,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AtendimentosTarefasRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/.well-known/oauth-protected-resource': {
+      id: '/.well-known/oauth-protected-resource'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource'
+      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/email-poll': {
       id: '/api/public/email-poll'
       path: '/api/public/email-poll'
@@ -823,10 +864,13 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   EmpresasRoute: EmpresasRoute,
   EstoqueRoute: EstoqueRoute,
+  McpRoute: McpRoute,
   PainelTvRoute: PainelTvRoute,
   RelatoriosRoute: RelatoriosRoute,
   TopGamificRoute: TopGamificRoute,
   TratativasRoute: TratativasRoute,
+  Char91DotwellKnownChar93OauthProtectedResourceRoute:
+    Char91DotwellKnownChar93OauthProtectedResourceRoute,
   AtendimentosTarefasRoute: AtendimentosTarefasRoute,
   HooksRefreshTrackingRoute: HooksRefreshTrackingRoute,
   ApiPublicAutoRouteAguardandoRoute: ApiPublicAutoRouteAguardandoRoute,
