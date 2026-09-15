@@ -13,6 +13,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Plus, Wifi, WifiOff, Loader2, CheckCircle2, XCircle, RefreshCw, Clock, AlertTriangle } from "lucide-react";
 import { forceSyncGsystemClientes, testGsystemAuth } from "@/lib/gsystem-api.functions";
+import { EmailChannelsConfig } from "@/components/configuracoes/email-channels-config";
 
 export const Route = createFileRoute("/configuracoes/")({
   component: ConfiguracoesIndexPage,
@@ -32,6 +33,7 @@ function ConfiguracoesIndexPage() {
         <GsystemConnectionTest />
         <GsystemForceSync />
         <ChannelsConfig />
+        <EmailChannelsConfig />
       </div>
     </AppLayout>
   );
