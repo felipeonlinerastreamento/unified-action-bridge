@@ -5,6 +5,18 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
+import { lovable } from "@/integrations/lovable/index";
+
+function MicrosoftIcon() {
+  return (
+    <svg viewBox="0 0 23 23" className="h-4 w-4" aria-hidden="true">
+      <rect x="1" y="1" width="10" height="10" fill="#f35325" />
+      <rect x="12" y="1" width="10" height="10" fill="#81bc06" />
+      <rect x="1" y="12" width="10" height="10" fill="#05a6f0" />
+      <rect x="12" y="12" width="10" height="10" fill="#ffba08" />
+    </svg>
+  );
+}
 
 export function AuthForm() {
   const { signIn } = useAuth();
