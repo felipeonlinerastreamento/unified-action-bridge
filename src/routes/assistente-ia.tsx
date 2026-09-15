@@ -173,6 +173,8 @@ function AssistenteIaContent() {
                     role: "user",
                     content: pending,
                     createdAt: new Date().toISOString(),
+                    rating: null,
+                    ratingComment: null,
                   }}
                 />
               )}
