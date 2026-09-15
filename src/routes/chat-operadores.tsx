@@ -35,29 +35,35 @@ function ChatOperadoresPage() {
 
 function ChatOperadoresContent() {
   const qc = useQueryClient();
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole("admin");
   const navigate = useNavigate({ from: "/chat-operadores" });
   const { chat: selectedChatId } = useSearch({ from: "/chat-operadores" });
   const [userId, setUserId] = useState<string | null>(null);
   const [query, setQuery] = useState("");
   const [showClosed, setShowClosed] = useState(false);
+  const [viewAll, setViewAll] = useState(false);
+  const adminAll = isAdmin && viewAll;
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
   }, []);
 
   const { data: chats = [] } = useQuery({
-    queryKey: ["operator-chats-list", userId, showClosed ? "all" : "open"],
+    queryKey: ["operator-chats-list", userId, showClosed ? "all" : "open", adminAll ? "todas" : "minhas"],
     enabled: !!userId,
     refetchInterval: 15000,
     queryFn: async () => {
       if (!userId) return [];
-      const groupIds = await fetchMyGroupChatIds(userId);
       let q = supabase
         .from("operator_chats")
         .select("id, subject, created_by, created_by_name, recipient_user_id, is_group, is_locked, last_message_at, closed_at")
-        .or(myChatsOrFilter(userId, groupIds))
         .order("last_message_at", { ascending: false })
         .limit(100);
+      if (!adminAll) {
+        const groupIds = await fetchMyGroupChatIds(userId);
+        q = q.or(myChatsOrFilter(userId, groupIds));
+      }
       if (!showClosed) q = q.is("closed_at", null);
       const { data: rows } = await q;
       const list = rows || [];
@@ -79,7 +85,7 @@ function ChatOperadoresContent() {
       const otherIds = Array.from(
         new Set(
           list
-            .filter((c) => c.created_by === userId)
+            .filter((c) => !c.is_group && c.recipient_user_id)
             .map((c) => c.recipient_user_id)
         )
       );
@@ -102,24 +108,30 @@ function ChatOperadoresContent() {
           .select("chat_id, user_id, user_name")
           .in("chat_id", groupChatIds);
         (parts || []).forEach((p: any) => {
-          if (p.user_id === userId) return;
+          if (!adminAll && p.user_id === userId) return;
           groupNames[p.chat_id] = groupNames[p.chat_id]
             ? `${groupNames[p.chat_id]}, ${p.user_name || "Operador"}`
             : p.user_name || "Operador";
         });
       }
 
-      return list.map((c: any) => ({
-        ...c,
-        unread: unreadMap[c.id] || 0,
-        otherName: c.is_group
-          ? `Grupo · ${groupNames[c.id] || "participantes"}`
-          : c.created_by === userId
-            ? nameMap[c.recipient_user_id] || "Operador"
-            : c.created_by_name || "Atendimento",
-      }));
+      return list.map((c: any) => {
+        const mine = c.created_by === userId || c.recipient_user_id === userId;
+        let otherName: string;
+        if (c.is_group) {
+          otherName = `Grupo · ${groupNames[c.id] || "participantes"}`;
+        } else if (!mine) {
+          otherName = `${c.created_by_name || "Operador"} → ${nameMap[c.recipient_user_id] || "Operador"}`;
+        } else if (c.created_by === userId) {
+          otherName = nameMap[c.recipient_user_id] || "Operador";
+        } else {
+          otherName = c.created_by_name || "Atendimento";
+        }
+        return { ...c, unread: unreadMap[c.id] || 0, otherName };
+      });
     },
   });
+
 
   useEffect(() => {
     if (!userId) return;
