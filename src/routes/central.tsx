@@ -3000,7 +3000,7 @@ function CentralPage() {
 
   return (
     <AppLayout>
-      <div className="space-y-4">
+      <div className="space-y-2">
         {/* Header */}
         <div className="flex items-start sm:items-center justify-between gap-2 flex-wrap">
           <div className="min-w-0 flex items-center gap-2 flex-wrap">
