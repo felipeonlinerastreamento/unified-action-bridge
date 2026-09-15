@@ -13,6 +13,7 @@ import { Route as TratativasRouteImport } from './routes/tratativas'
 import { Route as TopGamificRouteImport } from './routes/top-gamific'
 import { Route as RelatoriosRouteImport } from './routes/relatorios'
 import { Route as PainelTvRouteImport } from './routes/painel-tv'
+import { Route as McpRouteImport } from './routes/mcp'
 import { Route as EstoqueRouteImport } from './routes/estoque'
 import { Route as EmpresasRouteImport } from './routes/empresas'
 import { Route as DashboardRouteImport } from './routes/dashboard'
@@ -35,14 +36,17 @@ import { Route as ConfiguracoesFluxoAtendimentoRouteImport } from './routes/conf
 import { Route as ConfiguracoesEstoqueRouteImport } from './routes/configuracoes.estoque'
 import { Route as ConfiguracoesEncaminhamentoRouteImport } from './routes/configuracoes.encaminhamento'
 import { Route as ConfiguracoesCentralAtendimentoRouteImport } from './routes/configuracoes.central-atendimento'
+import { Route as ConfiguracoesCanaisEmailRouteImport } from './routes/configuracoes.canais-email'
 import { Route as ConfiguracoesAutomacaoSemComunicacaoRouteImport } from './routes/configuracoes.automacao-sem-comunicacao'
 import { Route as ConfiguracoesAuditoriaRouteImport } from './routes/configuracoes.auditoria'
 import { Route as ConfiguracoesAssistenteIaRouteImport } from './routes/configuracoes.assistente-ia'
 import { Route as AtendimentosTarefasRouteImport } from './routes/atendimentos_.tarefas'
+import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as ApiPublicEmailPollRouteImport } from './routes/api.public.email-poll'
 import { Route as ApiPublicCrmDailyRouteImport } from './routes/api.public.crm-daily'
 import { Route as ApiPublicChatIdleScannerRouteImport } from './routes/api.public.chat-idle-scanner'
 import { Route as ApiPublicAutoRouteAguardandoRouteImport } from './routes/api.public.auto-route-aguardando'
+import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as ApiPublicZapiWebhookChannelIdRouteImport } from './routes/api.public.zapi-webhook.$channelId'
 import { Route as ApiPublicHooksSyncGsystemEquipamentosRouteImport } from './routes/api.public.hooks.sync-gsystem-equipamentos'
 
@@ -64,6 +68,11 @@ const RelatoriosRoute = RelatoriosRouteImport.update({
 const PainelTvRoute = PainelTvRouteImport.update({
   id: '/painel-tv',
   path: '/painel-tv',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
   getParentRoute: () => rootRouteImport,
 } as any)
 const EstoqueRoute = EstoqueRouteImport.update({
@@ -182,6 +191,12 @@ const ConfiguracoesCentralAtendimentoRoute =
     path: '/central-atendimento',
     getParentRoute: () => ConfiguracoesRoute,
   } as any)
+const ConfiguracoesCanaisEmailRoute =
+  ConfiguracoesCanaisEmailRouteImport.update({
+    id: '/canais-email',
+    path: '/canais-email',
+    getParentRoute: () => ConfiguracoesRoute,
+  } as any)
 const ConfiguracoesAutomacaoSemComunicacaoRoute =
   ConfiguracoesAutomacaoSemComunicacaoRouteImport.update({
     id: '/automacao-sem-comunicacao',
@@ -204,6 +219,12 @@ const AtendimentosTarefasRoute = AtendimentosTarefasRouteImport.update({
   path: '/atendimentos/tarefas',
   getParentRoute: () => rootRouteImport,
 } as any)
+const Char91DotwellKnownChar93OauthProtectedResourceRoute =
+  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicEmailPollRoute = ApiPublicEmailPollRouteImport.update({
   id: '/api/public/email-poll',
   path: '/api/public/email-poll',
@@ -226,6 +247,11 @@ const ApiPublicAutoRouteAguardandoRoute =
     path: '/api/public/auto-route-aguardando',
     getParentRoute: () => rootRouteImport,
   } as any)
+const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
+  id: '/.lovable/oauth/consent',
+  path: '/.lovable/oauth/consent',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicZapiWebhookChannelIdRoute =
   ApiPublicZapiWebhookChannelIdRouteImport.update({
     id: '/api/public/zapi-webhook/$channelId',
@@ -251,14 +277,17 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
+  '/mcp': typeof McpRoute
   '/painel-tv': typeof PainelTvRoute
   '/relatorios': typeof RelatoriosRoute
   '/top-gamific': typeof TopGamificRoute
   '/tratativas': typeof TratativasRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/atendimentos/tarefas': typeof AtendimentosTarefasRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
   '/configuracoes/auditoria': typeof ConfiguracoesAuditoriaRoute
   '/configuracoes/automacao-sem-comunicacao': typeof ConfiguracoesAutomacaoSemComunicacaoRoute
+  '/configuracoes/canais-email': typeof ConfiguracoesCanaisEmailRoute
   '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
   '/configuracoes/encaminhamento': typeof ConfiguracoesEncaminhamentoRoute
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
@@ -270,6 +299,7 @@ export interface FileRoutesByFullPath {
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
   '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
   '/configuracoes/': typeof ConfiguracoesIndexRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/api/public/auto-route-aguardando': typeof ApiPublicAutoRouteAguardandoRoute
   '/api/public/chat-idle-scanner': typeof ApiPublicChatIdleScannerRoute
   '/api/public/crm-daily': typeof ApiPublicCrmDailyRoute
@@ -288,14 +318,17 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
+  '/mcp': typeof McpRoute
   '/painel-tv': typeof PainelTvRoute
   '/relatorios': typeof RelatoriosRoute
   '/top-gamific': typeof TopGamificRoute
   '/tratativas': typeof TratativasRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/atendimentos/tarefas': typeof AtendimentosTarefasRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
   '/configuracoes/auditoria': typeof ConfiguracoesAuditoriaRoute
   '/configuracoes/automacao-sem-comunicacao': typeof ConfiguracoesAutomacaoSemComunicacaoRoute
+  '/configuracoes/canais-email': typeof ConfiguracoesCanaisEmailRoute
   '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
   '/configuracoes/encaminhamento': typeof ConfiguracoesEncaminhamentoRoute
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
@@ -307,6 +340,7 @@ export interface FileRoutesByTo {
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
   '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
   '/configuracoes': typeof ConfiguracoesIndexRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/api/public/auto-route-aguardando': typeof ApiPublicAutoRouteAguardandoRoute
   '/api/public/chat-idle-scanner': typeof ApiPublicChatIdleScannerRoute
   '/api/public/crm-daily': typeof ApiPublicCrmDailyRoute
@@ -327,14 +361,17 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
+  '/mcp': typeof McpRoute
   '/painel-tv': typeof PainelTvRoute
   '/relatorios': typeof RelatoriosRoute
   '/top-gamific': typeof TopGamificRoute
   '/tratativas': typeof TratativasRoute
+  '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/atendimentos_/tarefas': typeof AtendimentosTarefasRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
   '/configuracoes/auditoria': typeof ConfiguracoesAuditoriaRoute
   '/configuracoes/automacao-sem-comunicacao': typeof ConfiguracoesAutomacaoSemComunicacaoRoute
+  '/configuracoes/canais-email': typeof ConfiguracoesCanaisEmailRoute
   '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
   '/configuracoes/encaminhamento': typeof ConfiguracoesEncaminhamentoRoute
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
@@ -346,6 +383,7 @@ export interface FileRoutesById {
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
   '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
   '/configuracoes/': typeof ConfiguracoesIndexRoute
+  '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/api/public/auto-route-aguardando': typeof ApiPublicAutoRouteAguardandoRoute
   '/api/public/chat-idle-scanner': typeof ApiPublicChatIdleScannerRoute
   '/api/public/crm-daily': typeof ApiPublicCrmDailyRoute
@@ -367,14 +405,17 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/empresas'
     | '/estoque'
+    | '/mcp'
     | '/painel-tv'
     | '/relatorios'
     | '/top-gamific'
     | '/tratativas'
+    | '/.well-known/oauth-protected-resource'
     | '/atendimentos/tarefas'
     | '/configuracoes/assistente-ia'
     | '/configuracoes/auditoria'
     | '/configuracoes/automacao-sem-comunicacao'
+    | '/configuracoes/canais-email'
     | '/configuracoes/central-atendimento'
     | '/configuracoes/encaminhamento'
     | '/configuracoes/estoque'
@@ -386,6 +427,7 @@ export interface FileRouteTypes {
     | '/configuracoes/zapi'
     | '/hooks/refresh-tracking'
     | '/configuracoes/'
+    | '/.lovable/oauth/consent'
     | '/api/public/auto-route-aguardando'
     | '/api/public/chat-idle-scanner'
     | '/api/public/crm-daily'
@@ -404,14 +446,17 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/empresas'
     | '/estoque'
+    | '/mcp'
     | '/painel-tv'
     | '/relatorios'
     | '/top-gamific'
     | '/tratativas'
+    | '/.well-known/oauth-protected-resource'
     | '/atendimentos/tarefas'
     | '/configuracoes/assistente-ia'
     | '/configuracoes/auditoria'
     | '/configuracoes/automacao-sem-comunicacao'
+    | '/configuracoes/canais-email'
     | '/configuracoes/central-atendimento'
     | '/configuracoes/encaminhamento'
     | '/configuracoes/estoque'
@@ -423,6 +468,7 @@ export interface FileRouteTypes {
     | '/configuracoes/zapi'
     | '/hooks/refresh-tracking'
     | '/configuracoes'
+    | '/.lovable/oauth/consent'
     | '/api/public/auto-route-aguardando'
     | '/api/public/chat-idle-scanner'
     | '/api/public/crm-daily'
@@ -442,14 +488,17 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/empresas'
     | '/estoque'
+    | '/mcp'
     | '/painel-tv'
     | '/relatorios'
     | '/top-gamific'
     | '/tratativas'
+    | '/.well-known/oauth-protected-resource'
     | '/atendimentos_/tarefas'
     | '/configuracoes/assistente-ia'
     | '/configuracoes/auditoria'
     | '/configuracoes/automacao-sem-comunicacao'
+    | '/configuracoes/canais-email'
     | '/configuracoes/central-atendimento'
     | '/configuracoes/encaminhamento'
     | '/configuracoes/estoque'
@@ -461,6 +510,7 @@ export interface FileRouteTypes {
     | '/configuracoes/zapi'
     | '/hooks/refresh-tracking'
     | '/configuracoes/'
+    | '/.lovable/oauth/consent'
     | '/api/public/auto-route-aguardando'
     | '/api/public/chat-idle-scanner'
     | '/api/public/crm-daily'
@@ -481,12 +531,15 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   EmpresasRoute: typeof EmpresasRoute
   EstoqueRoute: typeof EstoqueRoute
+  McpRoute: typeof McpRoute
   PainelTvRoute: typeof PainelTvRoute
   RelatoriosRoute: typeof RelatoriosRoute
   TopGamificRoute: typeof TopGamificRoute
   TratativasRoute: typeof TratativasRoute
+  Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   AtendimentosTarefasRoute: typeof AtendimentosTarefasRoute
   HooksRefreshTrackingRoute: typeof HooksRefreshTrackingRoute
+  DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   ApiPublicAutoRouteAguardandoRoute: typeof ApiPublicAutoRouteAguardandoRoute
   ApiPublicChatIdleScannerRoute: typeof ApiPublicChatIdleScannerRoute
   ApiPublicCrmDailyRoute: typeof ApiPublicCrmDailyRoute
@@ -523,6 +576,13 @@ declare module '@tanstack/react-router' {
       path: '/painel-tv'
       fullPath: '/painel-tv'
       preLoaderRoute: typeof PainelTvRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/estoque': {
@@ -679,6 +739,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConfiguracoesCentralAtendimentoRouteImport
       parentRoute: typeof ConfiguracoesRoute
     }
+    '/configuracoes/canais-email': {
+      id: '/configuracoes/canais-email'
+      path: '/canais-email'
+      fullPath: '/configuracoes/canais-email'
+      preLoaderRoute: typeof ConfiguracoesCanaisEmailRouteImport
+      parentRoute: typeof ConfiguracoesRoute
+    }
     '/configuracoes/automacao-sem-comunicacao': {
       id: '/configuracoes/automacao-sem-comunicacao'
       path: '/automacao-sem-comunicacao'
@@ -705,6 +772,13 @@ declare module '@tanstack/react-router' {
       path: '/atendimentos/tarefas'
       fullPath: '/atendimentos/tarefas'
       preLoaderRoute: typeof AtendimentosTarefasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.well-known/oauth-protected-resource': {
+      id: '/.well-known/oauth-protected-resource'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource'
+      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/email-poll': {
@@ -735,6 +809,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicAutoRouteAguardandoRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/.lovable/oauth/consent': {
+      id: '/.lovable/oauth/consent'
+      path: '/.lovable/oauth/consent'
+      fullPath: '/.lovable/oauth/consent'
+      preLoaderRoute: typeof DotlovableOauthConsentRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/zapi-webhook/$channelId': {
       id: '/api/public/zapi-webhook/$channelId'
       path: '/api/public/zapi-webhook/$channelId'
@@ -756,6 +837,7 @@ interface ConfiguracoesRouteChildren {
   ConfiguracoesAssistenteIaRoute: typeof ConfiguracoesAssistenteIaRoute
   ConfiguracoesAuditoriaRoute: typeof ConfiguracoesAuditoriaRoute
   ConfiguracoesAutomacaoSemComunicacaoRoute: typeof ConfiguracoesAutomacaoSemComunicacaoRoute
+  ConfiguracoesCanaisEmailRoute: typeof ConfiguracoesCanaisEmailRoute
   ConfiguracoesCentralAtendimentoRoute: typeof ConfiguracoesCentralAtendimentoRoute
   ConfiguracoesEncaminhamentoRoute: typeof ConfiguracoesEncaminhamentoRoute
   ConfiguracoesEstoqueRoute: typeof ConfiguracoesEstoqueRoute
@@ -773,6 +855,7 @@ const ConfiguracoesRouteChildren: ConfiguracoesRouteChildren = {
   ConfiguracoesAuditoriaRoute: ConfiguracoesAuditoriaRoute,
   ConfiguracoesAutomacaoSemComunicacaoRoute:
     ConfiguracoesAutomacaoSemComunicacaoRoute,
+  ConfiguracoesCanaisEmailRoute: ConfiguracoesCanaisEmailRoute,
   ConfiguracoesCentralAtendimentoRoute: ConfiguracoesCentralAtendimentoRoute,
   ConfiguracoesEncaminhamentoRoute: ConfiguracoesEncaminhamentoRoute,
   ConfiguracoesEstoqueRoute: ConfiguracoesEstoqueRoute,
@@ -801,12 +884,16 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   EmpresasRoute: EmpresasRoute,
   EstoqueRoute: EstoqueRoute,
+  McpRoute: McpRoute,
   PainelTvRoute: PainelTvRoute,
   RelatoriosRoute: RelatoriosRoute,
   TopGamificRoute: TopGamificRoute,
   TratativasRoute: TratativasRoute,
+  Char91DotwellKnownChar93OauthProtectedResourceRoute:
+    Char91DotwellKnownChar93OauthProtectedResourceRoute,
   AtendimentosTarefasRoute: AtendimentosTarefasRoute,
   HooksRefreshTrackingRoute: HooksRefreshTrackingRoute,
+  DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   ApiPublicAutoRouteAguardandoRoute: ApiPublicAutoRouteAguardandoRoute,
   ApiPublicChatIdleScannerRoute: ApiPublicChatIdleScannerRoute,
   ApiPublicCrmDailyRoute: ApiPublicCrmDailyRoute,

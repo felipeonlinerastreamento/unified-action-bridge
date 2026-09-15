@@ -1,0 +1,150 @@
+{
+  "version": 1,
+  "sdk_version": "2.1.0",
+  "path": "/mcp",
+  "auth": {
+    "type": "oauth",
+    "issuer": "https://xcdrekokfvzxnfefajlw.supabase.co/auth/v1",
+    "accepted_audiences": [
+      "authenticated"
+    ]
+  },
+  "mcp": {
+    "server": {
+      "name": "gs-hub",
+      "version": "0.1.0",
+      "title": "GS Hub"
+    },
+    "tools": [
+      {
+        "name": "whoami",
+        "title": "Quem sou eu",
+        "description": "Retorna o perfil do usuário conectado (nome, e-mail, cargo e setores).",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_tickets",
+        "title": "Listar atendimentos",
+        "description": "Lista atendimentos (chamados) com filtros opcionais de status, setor, placa, telefone e período de criação.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "status": {
+              "description": "Status do chamado, ex.: aberto, fechado.",
+              "type": "string"
+            },
+            "sector": {
+              "description": "Nome do setor (busca parcial).",
+              "type": "string"
+            },
+            "plate": {
+              "description": "Placa do veículo (busca parcial).",
+              "type": "string"
+            },
+            "phone": {
+              "description": "Telefone do contato (busca parcial).",
+              "type": "string"
+            },
+            "created_from": {
+              "description": "Data inicial ISO (ex.: 2026-09-01).",
+              "type": "string"
+            },
+            "created_to": {
+              "description": "Data final ISO (ex.: 2026-09-30).",
+              "type": "string"
+            },
+            "limit": {
+              "default": 25,
+              "description": "Máximo de registros (1-100).",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "get_ticket",
+        "title": "Detalhes do atendimento",
+        "description": "Retorna os detalhes de um atendimento pelo número de protocolo ou pelo id.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "protocol_number": {
+              "description": "Número do protocolo do chamado.",
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            },
+            "ticket_id": {
+              "description": "Identificador do chamado.",
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "list_chats",
+        "title": "Listar conversas do WhatsApp",
+        "description": "Lista as conversas da Central de Atendimento com filtros de status, setor e telefone.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "status": {
+              "description": "Status da conversa, ex.: open, closed, waiting.",
+              "type": "string"
+            },
+            "sector": {
+              "description": "Nome do setor (busca parcial).",
+              "type": "string"
+            },
+            "phone": {
+              "description": "Telefone do contato (busca parcial).",
+              "type": "string"
+            },
+            "limit": {
+              "default": 25,
+              "description": "Máximo de registros (1-100).",
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            }
+          }
+        },
+        "outputSchema": null
+      }
+    ]
+  }
+}
