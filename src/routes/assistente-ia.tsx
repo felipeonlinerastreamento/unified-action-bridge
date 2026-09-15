@@ -8,12 +8,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Bot, Send, Trash2, AlertTriangle, User } from "lucide-react";
+import { Bot, Send, Trash2, AlertTriangle, User, ThumbsUp, ThumbsDown } from "lucide-react";
 import { toast } from "sonner";
 import {
   getTopGamificAiHistory,
   sendTopGamificAiMessage,
   clearTopGamificAiHistory,
+  rateTopGamificAiMessage,
   type TopGamificAiMessage,
 } from "@/lib/topgamific-ai.functions";
 
