@@ -232,21 +232,27 @@ export const sendTopGamificAiMessage = createServerFn({ method: "POST" })
       console.error("Falha ao consultar o Google Drive:", e);
     }
 
+    // A plataforma aceita apenas mensagens com role "user"/"assistant".
+    // O contexto (nome + documentos internos) vai junto da pergunta atual.
+    const contextBlocks = [
+      userName
+        ? `[Contexto] Você está conversando com ${userName}. Responda em português do Brasil, de forma objetiva.`
+        : "",
+      driveContext ? `[Contexto]\n${driveContext}` : "",
+    ].filter(Boolean);
+
     const payloadMessages = [
-      ...(userName
-        ? [
-            {
-              role: "system",
-              content: `Você está conversando com ${userName}. Responda em português do Brasil, de forma objetiva, considerando os dados desse colaborador na plataforma Top Gamific.`,
-            },
-          ]
-        : []),
-      ...(driveContext
-        ? [{ role: "system", content: driveContext }]
-        : []),
-      ...history.map((m) => ({ role: m.role, content: m.content })),
-      { role: "user", content: data.message },
+      ...history
+        .filter((m) => m.role === "user" || m.role === "assistant")
+        .map((m) => ({ role: m.role, content: m.content })),
+      {
+        role: "user",
+        content: contextBlocks.length
+          ? `${contextBlocks.join("\n\n")}\n\n[Pergunta]\n${data.message}`
+          : data.message,
+      },
     ];
+
 
     let reply = "";
     let remoteConversationId: string | null = null;
