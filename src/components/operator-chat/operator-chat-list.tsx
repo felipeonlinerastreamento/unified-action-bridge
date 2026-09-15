@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { MessageCircle, Lock } from "lucide-react";
 import { OperatorChatDialog } from "./operator-chat-dialog";
 import { Badge } from "@/components/ui/badge";
-import { fetchMyGroupChatIds, myChatsOrFilter } from "./chat-access";
+import { fetchMyGroupChatIds, fetchMyLockedGroupChatIds, myChatsOrFilter } from "./chat-access";
 
 interface Props {
   onUnreadChange?: (count: number) => void;
@@ -70,6 +70,9 @@ export function OperatorChatList({ onUnreadChange }: Props) {
       }
       return list.map((c: any) => ({
         ...c,
+        myLock: c.is_group
+          ? lockedGroupIds.has(c.id)
+          : !!c.is_locked && c.recipient_user_id === userId,
         unread: unreadMap[c.id] || 0,
         otherName: c.is_group
           ? "Conversa em grupo"
