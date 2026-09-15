@@ -3067,7 +3067,7 @@ function CentralPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="flex gap-2 sm:gap-3 h-[calc(100vh-12rem)] relative">
+          <div className="flex gap-2 sm:gap-3 h-[calc(100vh-10rem)] relative">
             {/* Toggle left panel button (when collapsed) */}
             {!showLeftPanel && (
               <Button
@@ -3092,31 +3092,31 @@ function CentralPage() {
             {/* Chat list */}
             {showLeftPanel && (
             <div className="w-[85vw] max-w-sm md:w-72 lg:w-80 shrink-0 border rounded-lg flex flex-col bg-card overflow-hidden relative max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-40 max-md:shadow-xl max-md:rounded-none">
-              <div className="p-3 border-b space-y-2">
-                <div className="flex items-center gap-2">
+              <div className="p-2 border-b space-y-1.5">
+                <div className="flex items-center gap-1.5">
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="shrink-0 h-7 w-7"
+                    className="shrink-0 h-6 w-6"
                     onClick={() => setShowLeftPanel(false)}
                     title="Ocultar lista de conversas"
                   >
-                    <PanelLeftClose className="h-4 w-4" />
+                    <PanelLeftClose className="h-3.5 w-3.5" />
                   </Button>
                   <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                     <Input
                       placeholder="Buscar nome ou telefone..."
-                      className="pl-9"
+                      className="pl-8 h-8 text-xs"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                     />
                   </div>
-                  <Button variant="outline" size="icon" onClick={() => setShowFilters(!showFilters)} className={showFilters ? "bg-accent" : ""}>
-                    <Filter className="h-4 w-4" />
+                  <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => setShowFilters(!showFilters)} className={showFilters ? "bg-accent" : ""}>
+                    <Filter className="h-3.5 w-3.5" />
                   </Button>
-                  <Button size="icon" onClick={() => setShowNewChatModal(true)} title="Nova conversa">
-                    <Plus className="h-4 w-4" />
+                  <Button size="icon" className="h-7 w-7" onClick={() => setShowNewChatModal(true)} title="Nova conversa">
+                    <Plus className="h-3.5 w-3.5" />
                   </Button>
                 </div>
                 {showFilters && (
