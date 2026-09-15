@@ -27,24 +27,51 @@ function zapiUrl(channel: ZapiChannelCreds, path: string): string {
   return `${ZAPI_BASE}/instances/${channel.zapi_instance_id}/token/${channel.token}${path}`;
 }
 
+function isTimeoutError(err: unknown): boolean {
+  const name = (err as any)?.name;
+  return name === "TimeoutError" || name === "AbortError";
+}
+
 export async function zapiFetch(
   channel: ZapiChannelCreds,
   path: string,
   method: "GET" | "POST" | "PUT" | "DELETE" = "GET",
-  body?: unknown
+  body?: unknown,
+  opts?: { timeoutMs?: number; retryOnNetworkError?: boolean }
 ): Promise<any> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (channel.zapi_client_token) headers["Client-Token"] = channel.zapi_client_token;
 
-  // Hard timeout para evitar que o webhook fique pendurado quando a Z-API
-  // demora a responder (causava timeout do worker e Z-API parava de entregar
-  // eventos). 8s é suficiente para chamadas normais.
-  const res = await fetch(zapiUrl(channel, path), {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-    signal: AbortSignal.timeout(8000),
-  });
+  // Timeout padrão curto (8s) para rotinas automáticas/webhook, que precisam
+  // responder rápido. Envios feitos pelo operador passam um limite maior.
+  const timeoutMs = opts?.timeoutMs ?? 8000;
+  const payload = body ? JSON.stringify(body) : undefined;
+  const maxAttempts = opts?.retryOnNetworkError ? 2 : 1;
+
+  let res: Response | undefined;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      res = await fetch(zapiUrl(channel, path), {
+        method,
+        headers,
+        body: payload,
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+      break;
+    } catch (err) {
+      if (isTimeoutError(err)) {
+        // Nunca repetir após timeout: a mensagem pode ter sido entregue.
+        throw new Error(
+          "O WhatsApp demorou demais para responder. A mensagem pode não ter sido entregue — confira a conversa antes de reenviar."
+        );
+      }
+      if (attempt >= maxAttempts) {
+        throw new Error("Falha de conexão com o WhatsApp. Tente novamente em instantes.");
+      }
+      await new Promise((r) => setTimeout(r, 800));
+    }
+  }
+  if (!res) throw new Error("Falha de conexão com o WhatsApp. Tente novamente em instantes.");
 
   const text = await res.text();
   let parsed: any = null;
