@@ -21,6 +21,27 @@ function MicrosoftIcon() {
 export function AuthForm() {
   const { signIn } = useAuth();
   const [loading, setLoading] = useState(false);
+  const [msLoading, setMsLoading] = useState(false);
+
+  const handleMicrosoft = async () => {
+    setMsLoading(true);
+    try {
+      const result = await lovable.auth.signInWithOAuth("microsoft", {
+        redirect_uri: window.location.origin,
+      });
+      if (result.error) {
+        toast.error("Erro ao entrar com Microsoft");
+        setMsLoading(false);
+        return;
+      }
+      if (result.redirected) return;
+      toast.success("Login realizado com sucesso!");
+    } catch {
+      toast.error("Erro ao entrar com Microsoft");
+    } finally {
+      setMsLoading(false);
+    }
+  };
 
   const handleLogin = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
