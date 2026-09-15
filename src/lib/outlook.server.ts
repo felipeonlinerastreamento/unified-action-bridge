@@ -3,10 +3,18 @@
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/microsoft_outlook";
 
 function getAuthHeaders() {
-  const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY;
-  if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY não configurada");
-  const OUTLOOK_API_KEY = process.env.MICROSOFT_OUTLOOK_API_KEY;
-  if (!OUTLOOK_API_KEY) throw new Error("MICROSOFT_OUTLOOK_API_KEY não configurada (conector Outlook não conectado)");
+  const LOVABLE_API_KEY = process.env.LOVABLE_API_KEY?.trim();
+  if (!LOVABLE_API_KEY) {
+    throw new Error(
+      "LOVABLE_API_KEY ausente ou vazia. Defina o valor real como secret do ambiente do projeto (não deixe em branco no .env).",
+    );
+  }
+  const OUTLOOK_API_KEY = process.env.MICROSOFT_OUTLOOK_API_KEY?.trim();
+  if (!OUTLOOK_API_KEY) {
+    throw new Error(
+      "MICROSOFT_OUTLOOK_API_KEY ausente ou vazia (conector Outlook não conectado). Conecte o conector Microsoft Outlook nas integrações do Lovable e cadastre a chave como secret do ambiente — string em branco não conecta.",
+    );
+  }
   return {
     Authorization: `Bearer ${LOVABLE_API_KEY}`,
     "X-Connection-Api-Key": OUTLOOK_API_KEY,
