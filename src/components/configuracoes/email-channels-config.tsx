@@ -150,11 +150,11 @@ export function EmailChannelsConfig() {
                 <div className="bg-background rounded-md p-4 border text-sm space-y-2 max-w-2xl shadow-sm">
                   <p className="font-semibold text-primary">📋 Instruções para ativar a integração:</p>
                   <ol className="list-decimal list-inside space-y-2 text-muted-foreground">
-                    <li>Abra o menu principal do painel do seu projeto no Lovable e acesse a guia de <strong>Integrações (ícone de tomada)</strong>.</li>
-                    <li>Encontre o card do <strong>Microsoft Outlook</strong> e clique nele.</li>
-                    <li>Clique em "Connect" e você será redirecionado para a Microsoft, precisando apenas fazer <strong>login e autorizar</strong> a sua conta real de e-mails, como no O365 ou Outlook.</li>
-                    <li>Após conectar, acesse o menu de <strong>Environment Variables (ou Secrets)</strong> na configuração do projeto e certifique-se de que as chaves <code className="bg-muted px-1 py-0.5 rounded text-[11px] font-mono text-foreground">LOVABLE_API_KEY</code> e <code className="bg-muted px-1 py-0.5 rounded text-[11px] font-mono text-foreground">MICROSOFT_OUTLOOK_API_KEY</code> agora possuem valores.</li>
-                    <li>Com isso pronto, retorne a esta tela no app e clique no botão circular azul de atualização ao lado.</li>
+                    <li>Abra o menu de <strong>Integrações</strong> no Lovable e certifique-se de que o Microsoft Outlook está conectado.</li>
+                    <li><strong className="text-primary">PASSO CRÍTICO:</strong> Role a tela de configuração dessa conexão do Outlook até o final, na seção <strong>"Projetos interligados"</strong>.</li>
+                    <li>Enquanto estiver constando <em>"Nenhum projeto relacionado"</em>, este sistema não terá permissão para usar o e-mail. Clique para <strong>vincular este projeto</strong> à sua conexão.</li>
+                    <li>Após vincular, o Lovable injetará as chaves <code className="bg-muted px-1 py-0.5 rounded text-[11px] font-mono text-foreground">LOVABLE_API_KEY</code> e <code className="bg-muted px-1 py-0.5 rounded text-[11px] font-mono text-foreground">MICROSOFT_OUTLOOK_API_KEY</code> automaticamente para nós.</li>
+                    <li>Retorne a esta tela e clique no botão circular azul de atualização para testar.</li>
                   </ol>
                 </div>
                 
