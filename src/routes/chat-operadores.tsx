@@ -11,6 +11,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { MessageCircle, Lock, Search, ChevronDown, ChevronRight } from "lucide-react";
 import { OperatorChatPanel } from "@/components/operator-chat/operator-chat-panel";
 import { NewOperatorChatDialog } from "@/components/operator-chat/new-operator-chat-dialog";
+import { fetchMyGroupChatIds, myChatsOrFilter } from "@/components/operator-chat/chat-access";
 
 type ChatSearch = { chat?: string };
 
@@ -50,10 +51,11 @@ function ChatOperadoresContent() {
     refetchInterval: 15000,
     queryFn: async () => {
       if (!userId) return [];
+      const groupIds = await fetchMyGroupChatIds(userId);
       let q = supabase
         .from("operator_chats")
-        .select("id, subject, created_by, created_by_name, recipient_user_id, is_locked, last_message_at, closed_at")
-        .or(`created_by.eq.${userId},recipient_user_id.eq.${userId}`)
+        .select("id, subject, created_by, created_by_name, recipient_user_id, is_group, is_locked, last_message_at, closed_at")
+        .or(myChatsOrFilter(userId, groupIds))
         .order("last_message_at", { ascending: false })
         .limit(100);
       if (!showClosed) q = q.is("closed_at", null);
@@ -91,11 +93,28 @@ function ChatOperadoresContent() {
           nameMap[p.user_id] = p.name;
         });
       }
-      return list.map((c) => ({
+      // Nomes dos participantes das conversas em grupo
+      const groupChatIds = list.filter((c: any) => c.is_group).map((c) => c.id);
+      const groupNames: Record<string, string> = {};
+      if (groupChatIds.length > 0) {
+        const { data: parts } = await supabase
+          .from("operator_chat_participants")
+          .select("chat_id, user_id, user_name")
+          .in("chat_id", groupChatIds);
+        (parts || []).forEach((p: any) => {
+          if (p.user_id === userId) return;
+          groupNames[p.chat_id] = groupNames[p.chat_id]
+            ? `${groupNames[p.chat_id]}, ${p.user_name || "Operador"}`
+            : p.user_name || "Operador";
+        });
+      }
+
+      return list.map((c: any) => ({
         ...c,
         unread: unreadMap[c.id] || 0,
-        otherName:
-          c.created_by === userId
+        otherName: c.is_group
+          ? `Grupo · ${groupNames[c.id] || "participantes"}`
+          : c.created_by === userId
             ? nameMap[c.recipient_user_id] || "Operador"
             : c.created_by_name || "Atendimento",
       }));

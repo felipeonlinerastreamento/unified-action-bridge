@@ -54,6 +54,16 @@ export function OperatorChatPanel({ chatId, className }: Props) {
     enabled: !!chat && !!me,
     queryFn: async () => {
       if (!chat || !me) return "";
+      if ((chat as any).is_group) {
+        const { data } = await supabase
+          .from("operator_chat_participants")
+          .select("user_id, user_name")
+          .eq("chat_id", chat.id);
+        const names = (data || [])
+          .filter((p: any) => p.user_id !== me.id)
+          .map((p: any) => p.user_name || "Operador");
+        return `Grupo · ${names.length ? names.join(", ") : "sem participantes"}`;
+      }
       if (me.id === chat.created_by) {
         const { data } = await supabase
           .from("profiles")
@@ -137,17 +147,28 @@ export function OperatorChatPanel({ chatId, className }: Props) {
       if (error) throw error;
 
       if (lockOnSend) {
-        const other = me.id === chat.created_by ? chat.recipient_user_id : chat.created_by;
-        const { error: lockErr } = await supabase
-          .from("operator_chats")
-          .update({
-            created_by: me.id,
-            created_by_name: me.name,
-            recipient_user_id: other,
-            lock_until_reply: true,
-            is_locked: true,
-          })
-          .eq("id", chatId);
+        let lockErr: any = null;
+        if ((chat as any).is_group) {
+          const res = await supabase
+            .from("operator_chat_participants")
+            .update({ is_locked: true })
+            .eq("chat_id", chatId)
+            .neq("user_id", me.id);
+          lockErr = res.error;
+        } else {
+          const other = me.id === chat.created_by ? chat.recipient_user_id : chat.created_by;
+          const res = await supabase
+            .from("operator_chats")
+            .update({
+              created_by: me.id,
+              created_by_name: me.name,
+              recipient_user_id: other,
+              lock_until_reply: true,
+              is_locked: true,
+            })
+            .eq("id", chatId);
+          lockErr = res.error;
+        }
         if (lockErr) toast.error("Mensagem enviada, mas não foi possível bloquear a tela.");
         else toast.success("Tela do destinatário bloqueada até a resposta.");
         setLockOnSend(false);

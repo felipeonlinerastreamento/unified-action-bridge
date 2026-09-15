@@ -16,10 +16,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MessageCircle, Plus, Lock, User, Building2, Users, Globe } from "lucide-react";
+import { MessageCircle, Plus, Lock, User, Building2, Users, Globe, UsersRound } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 
-type TargetType = "all" | "user" | "sector" | "group";
+type TargetType = "all" | "user" | "sector" | "group" | "multi";
 
 interface Props {
   onCreated?: (firstChatId: string) => void;
@@ -34,6 +36,7 @@ export function NewOperatorChatDialog({ onCreated, triggerLabel }: Props) {
   const [lockUntilReply, setLockUntilReply] = useState(false);
   const [targetType, setTargetType] = useState<TargetType>("user");
   const [targetId, setTargetId] = useState<string>("");
+  const [multiIds, setMultiIds] = useState<string[]>([]);
   const [sending, setSending] = useState(false);
 
   const { data: users = [] } = useQuery({
@@ -65,6 +68,7 @@ export function NewOperatorChatDialog({ onCreated, triggerLabel }: Props) {
 
   useEffect(() => {
     setTargetId("");
+    setMultiIds([]);
   }, [targetType]);
 
   const resolveRecipients = async (): Promise<string[]> => {
@@ -73,6 +77,7 @@ export function NewOperatorChatDialog({ onCreated, triggerLabel }: Props) {
       return (data || []).map((p) => p.user_id);
     }
     if (targetType === "user") return targetId ? [targetId] : [];
+    if (targetType === "multi") return multiIds;
     if (targetType === "sector") {
       const { data } = await supabase
         .from("user_sector_assignments").select("user_id").eq("sector_id", targetId);
@@ -94,12 +99,16 @@ export function NewOperatorChatDialog({ onCreated, triggerLabel }: Props) {
     setFirstMessage("");
     setTargetType("user");
     setTargetId("");
+    setMultiIds([]);
     setLockUntilReply(false);
   };
 
   const handleStart = async () => {
     if (!firstMessage.trim()) return toast.error("Informe a mensagem");
-    if (targetType !== "all" && !targetId) return toast.error("Selecione o destino");
+    if (targetType === "multi" && multiIds.length < 2)
+      return toast.error("Selecione pelo menos 2 operadores");
+    if (targetType !== "all" && targetType !== "multi" && !targetId)
+      return toast.error("Selecione o destino");
 
     setSending(true);
     try {
@@ -114,6 +123,55 @@ export function NewOperatorChatDialog({ onCreated, triggerLabel }: Props) {
       const { data: prof } = await supabase
         .from("profiles").select("name").eq("user_id", user.id).maybeSingle();
       const senderName = prof?.name || user.email || "Atendimento";
+
+      // Conversa em grupo: todos no mesmo histórico
+      if (targetType === "multi") {
+        const { data: createdGroup, error: gErr } = await supabase
+          .from("operator_chats")
+          .insert({
+            campaign_id: crypto.randomUUID(),
+            created_by: user.id,
+            created_by_name: senderName,
+            recipient_user_id: user.id,
+            subject: subject.trim() || "Conversa em grupo",
+            is_group: true,
+            lock_until_reply: lockUntilReply,
+            is_locked: false,
+          })
+          .select("id")
+          .single();
+        if (gErr) throw gErr;
+        const groupId = (createdGroup as any).id as string;
+
+        const nameById = new Map(users.map((u: any) => [u.user_id, u.name]));
+        const rows = [
+          { chat_id: groupId, user_id: user.id, user_name: senderName, is_locked: false },
+          ...others.map((uid) => ({
+            chat_id: groupId,
+            user_id: uid,
+            user_name: nameById.get(uid) || null,
+            is_locked: lockUntilReply,
+          })),
+        ];
+        const { error: pErr } = await supabase.from("operator_chat_participants").insert(rows);
+        if (pErr) throw pErr;
+
+        const { error: gmErr } = await supabase.from("operator_chat_messages").insert({
+          chat_id: groupId,
+          sender_user_id: user.id,
+          sender_name: senderName,
+          body: firstMessage.trim(),
+        });
+        if (gmErr) throw gmErr;
+
+        toast.success(`Conversa em grupo criada com ${others.length} operador(es)`);
+        qc.invalidateQueries({ queryKey: ["operator-chats-list"] });
+        reset();
+        setOpen(false);
+        if (onCreated) onCreated(groupId);
+        return;
+      }
+
 
       // Uma única conversa (histórico contínuo) por par de operadores
       const chatIds: string[] = [];
@@ -213,11 +271,12 @@ export function NewOperatorChatDialog({ onCreated, triggerLabel }: Props) {
                   <SelectItem value="user"><span className="flex items-center gap-2"><User className="h-3.5 w-3.5" /> Pessoa</span></SelectItem>
                   <SelectItem value="sector"><span className="flex items-center gap-2"><Building2 className="h-3.5 w-3.5" /> Setor</span></SelectItem>
                   <SelectItem value="group"><span className="flex items-center gap-2"><Users className="h-3.5 w-3.5" /> Grupo</span></SelectItem>
+                  <SelectItem value="multi"><span className="flex items-center gap-2"><UsersRound className="h-3.5 w-3.5" /> Vários operadores (conversa em grupo)</span></SelectItem>
                   <SelectItem value="all"><span className="flex items-center gap-2"><Globe className="h-3.5 w-3.5" /> Todos</span></SelectItem>
                 </SelectContent>
               </Select>
             </div>
-            {targetType !== "all" && (
+            {targetType !== "all" && targetType !== "multi" && (
               <div className="space-y-1.5">
                 <Label>{targetType === "user" ? "Usuário" : targetType === "sector" ? "Setor" : "Grupo"}</Label>
                 <Select value={targetId} onValueChange={setTargetId}>
@@ -237,6 +296,34 @@ export function NewOperatorChatDialog({ onCreated, triggerLabel }: Props) {
               </div>
             )}
           </div>
+          {targetType === "multi" && (
+            <div className="space-y-1.5">
+              <Label>Participantes ({multiIds.length} selecionados)</Label>
+              <ScrollArea className="h-44 rounded-md border p-2">
+                <div className="space-y-1">
+                  {users.map((u: any) => (
+                    <label
+                      key={u.user_id}
+                      className="flex items-center gap-2 rounded px-1.5 py-1 text-sm hover:bg-accent cursor-pointer"
+                    >
+                      <Checkbox
+                        checked={multiIds.includes(u.user_id)}
+                        onCheckedChange={(c) =>
+                          setMultiIds((prev) =>
+                            c ? [...prev, u.user_id] : prev.filter((id) => id !== u.user_id)
+                          )
+                        }
+                      />
+                      <span className="truncate">{u.name || u.user_id.slice(0, 8)}</span>
+                    </label>
+                  ))}
+                </div>
+              </ScrollArea>
+              <p className="text-xs text-muted-foreground">
+                Todos os selecionados participam da mesma conversa e veem as respostas uns dos outros.
+              </p>
+            </div>
+          )}
           <div className="space-y-1.5">
             <Label>Mensagem inicial</Label>
             <Textarea value={firstMessage} onChange={(e) => setFirstMessage(e.target.value)} rows={3} placeholder="Escreva sua mensagem..." />

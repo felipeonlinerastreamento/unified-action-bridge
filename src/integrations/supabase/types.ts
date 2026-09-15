@@ -3513,6 +3513,41 @@ export type Database = {
           },
         ]
       }
+      operator_chat_participants: {
+        Row: {
+          chat_id: string
+          created_at: string
+          id: string
+          is_locked: boolean
+          user_id: string
+          user_name: string | null
+        }
+        Insert: {
+          chat_id: string
+          created_at?: string
+          id?: string
+          is_locked?: boolean
+          user_id: string
+          user_name?: string | null
+        }
+        Update: {
+          chat_id?: string
+          created_at?: string
+          id?: string
+          is_locked?: boolean
+          user_id?: string
+          user_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "operator_chat_participants_chat_id_fkey"
+            columns: ["chat_id"]
+            isOneToOne: false
+            referencedRelation: "operator_chats"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       operator_chats: {
         Row: {
           campaign_id: string | null
@@ -3521,6 +3556,7 @@ export type Database = {
           created_by: string
           created_by_name: string | null
           id: string
+          is_group: boolean
           is_locked: boolean
           last_message_at: string
           lock_until_reply: boolean
@@ -3535,6 +3571,7 @@ export type Database = {
           created_by: string
           created_by_name?: string | null
           id?: string
+          is_group?: boolean
           is_locked?: boolean
           last_message_at?: string
           lock_until_reply?: boolean
@@ -3549,6 +3586,7 @@ export type Database = {
           created_by?: string
           created_by_name?: string | null
           id?: string
+          is_group?: boolean
           is_locked?: boolean
           last_message_at?: string
           lock_until_reply?: boolean
@@ -6083,6 +6121,10 @@ export type Database = {
           _role: Database["public"]["Enums"]["app_role"]
           _user_id: string
         }
+        Returns: boolean
+      }
+      is_operator_chat_creator: {
+        Args: { _chat_id: string; _user_id: string }
         Returns: boolean
       }
       is_operator_chat_participant: {
