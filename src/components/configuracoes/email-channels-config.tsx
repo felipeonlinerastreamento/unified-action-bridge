@@ -151,9 +151,9 @@ export function EmailChannelsConfig() {
                   <p className="font-semibold text-primary">📋 Instruções para ativar a integração:</p>
                   <ol className="list-decimal list-inside space-y-2 text-muted-foreground">
                     <li>Abra o menu de <strong>Integrações</strong> no Lovable e certifique-se de que o Microsoft Outlook está conectado.</li>
-                    <li><strong className="text-primary">PASSO CRÍTICO:</strong> Role a tela de configuração dessa conexão do Outlook até o final, na seção <strong>"Projetos interligados"</strong>.</li>
-                    <li>Enquanto estiver constando <em>"Nenhum projeto relacionado"</em>, este sistema não terá permissão para usar o e-mail. Clique para <strong>vincular este projeto</strong> à sua conexão.</li>
-                    <li>Após vincular, o Lovable injetará as chaves <code className="bg-muted px-1 py-0.5 rounded text-[11px] font-mono text-foreground">LOVABLE_API_KEY</code> e <code className="bg-muted px-1 py-0.5 rounded text-[11px] font-mono text-foreground">MICROSOFT_OUTLOOK_API_KEY</code> automaticamente para nós.</li>
+                    <li><strong className="text-primary">PASSO CRÍTICO:</strong> Como a opção de vincular projeto não está aparecendo no seu painel, você deve configurar as chaves manualmente nos <strong>Secrets</strong> do ambiente (ícone de cadeado no menu lateral ou superior do editor).</li>
+                    <li>Adicione um secret chamado <code className="bg-muted px-1 py-0.5 rounded text-[11px] font-mono text-foreground">LOVABLE_API_KEY</code> preenchido com uma chave de API que você possa gerar nas configurações da sua conta (Workspace) do Lovable.</li>
+                    <li>Adicione outro secret chamado <code className="bg-muted px-1 py-0.5 rounded text-[11px] font-mono text-foreground">MICROSOFT_OUTLOOK_API_KEY</code>. Use o campo 'Connection Key' encontrado na página onde a integração com a Microsoft foi autenticada.</li>
                     <li>Retorne a esta tela e clique no botão circular azul de atualização para testar.</li>
                   </ol>
                 </div>
