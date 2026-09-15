@@ -10,6 +10,7 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as TratativasRouteImport } from './routes/tratativas'
+import { Route as TopGamificRouteImport } from './routes/top-gamific'
 import { Route as RelatoriosRouteImport } from './routes/relatorios'
 import { Route as PainelTvRouteImport } from './routes/painel-tv'
 import { Route as EstoqueRouteImport } from './routes/estoque'
@@ -47,6 +48,11 @@ import { Route as ApiPublicHooksSyncGsystemEquipamentosRouteImport } from './rou
 const TratativasRoute = TratativasRouteImport.update({
   id: '/tratativas',
   path: '/tratativas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TopGamificRoute = TopGamificRouteImport.update({
+  id: '/top-gamific',
+  path: '/top-gamific',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RelatoriosRoute = RelatoriosRouteImport.update({
@@ -240,6 +246,7 @@ export interface FileRoutesByFullPath {
   '/estoque': typeof EstoqueRoute
   '/painel-tv': typeof PainelTvRoute
   '/relatorios': typeof RelatoriosRoute
+  '/top-gamific': typeof TopGamificRoute
   '/tratativas': typeof TratativasRoute
   '/atendimentos/tarefas': typeof AtendimentosTarefasRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
@@ -275,6 +282,7 @@ export interface FileRoutesByTo {
   '/estoque': typeof EstoqueRoute
   '/painel-tv': typeof PainelTvRoute
   '/relatorios': typeof RelatoriosRoute
+  '/top-gamific': typeof TopGamificRoute
   '/tratativas': typeof TratativasRoute
   '/atendimentos/tarefas': typeof AtendimentosTarefasRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
@@ -312,6 +320,7 @@ export interface FileRoutesById {
   '/estoque': typeof EstoqueRoute
   '/painel-tv': typeof PainelTvRoute
   '/relatorios': typeof RelatoriosRoute
+  '/top-gamific': typeof TopGamificRoute
   '/tratativas': typeof TratativasRoute
   '/atendimentos_/tarefas': typeof AtendimentosTarefasRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
@@ -350,6 +359,7 @@ export interface FileRouteTypes {
     | '/estoque'
     | '/painel-tv'
     | '/relatorios'
+    | '/top-gamific'
     | '/tratativas'
     | '/atendimentos/tarefas'
     | '/configuracoes/assistente-ia'
@@ -385,6 +395,7 @@ export interface FileRouteTypes {
     | '/estoque'
     | '/painel-tv'
     | '/relatorios'
+    | '/top-gamific'
     | '/tratativas'
     | '/atendimentos/tarefas'
     | '/configuracoes/assistente-ia'
@@ -421,6 +432,7 @@ export interface FileRouteTypes {
     | '/estoque'
     | '/painel-tv'
     | '/relatorios'
+    | '/top-gamific'
     | '/tratativas'
     | '/atendimentos_/tarefas'
     | '/configuracoes/assistente-ia'
@@ -458,6 +470,7 @@ export interface RootRouteChildren {
   EstoqueRoute: typeof EstoqueRoute
   PainelTvRoute: typeof PainelTvRoute
   RelatoriosRoute: typeof RelatoriosRoute
+  TopGamificRoute: typeof TopGamificRoute
   TratativasRoute: typeof TratativasRoute
   AtendimentosTarefasRoute: typeof AtendimentosTarefasRoute
   HooksRefreshTrackingRoute: typeof HooksRefreshTrackingRoute
@@ -476,6 +489,13 @@ declare module '@tanstack/react-router' {
       path: '/tratativas'
       fullPath: '/tratativas'
       preLoaderRoute: typeof TratativasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/top-gamific': {
+      id: '/top-gamific'
+      path: '/top-gamific'
+      fullPath: '/top-gamific'
+      preLoaderRoute: typeof TopGamificRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/relatorios': {
@@ -762,6 +782,7 @@ const rootRouteChildren: RootRouteChildren = {
   EstoqueRoute: EstoqueRoute,
   PainelTvRoute: PainelTvRoute,
   RelatoriosRoute: RelatoriosRoute,
+  TopGamificRoute: TopGamificRoute,
   TratativasRoute: TratativasRoute,
   AtendimentosTarefasRoute: AtendimentosTarefasRoute,
   HooksRefreshTrackingRoute: HooksRefreshTrackingRoute,
