@@ -5521,6 +5521,30 @@ export type Database = {
           },
         ]
       }
+      topgamific_ai_messages: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          role: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          role: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       tracking_settings: {
         Row: {
           auto_close_ticket_on_delivery: boolean
