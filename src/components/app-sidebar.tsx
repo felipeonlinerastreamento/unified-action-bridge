@@ -131,32 +131,49 @@ export function AppSidebar() {
   });
 
   // Atendimentos (chamados) em aberto atrelados a mim — selo vermelho no item
-  // "Atendimentos". Considera responsável principal ou agente vinculado.
+  // "Atendimentos". Considera responsável principal ou agente vinculado e
+  // respeita os setores do usuário (mesma visão padrão da tela Atendimentos).
   const { data: openTickets = 0 } = useQuery({
     queryKey: ["sidebar-open-tickets", userId],
     enabled: !!userId,
     refetchInterval: 15000,
     queryFn: async () => {
       if (!userId) return 0;
+      const { data: sectorRows } = await supabase
+        .from("user_sector_assignments" as any)
+        .select("sectors(name)")
+        .eq("user_id", userId);
+      const sectorNames = ((sectorRows as any[]) || [])
+        .map((r) => r?.sectors?.name)
+        .filter(Boolean) as string[];
+
       const { data: agentRows } = await supabase
         .from("ticket_agents")
         .select("ticket_id")
         .eq("user_id", userId);
       const agentTicketIds = (agentRows || []).map((r) => r.ticket_id);
+
+      const withSector = (q: any) =>
+        sectorNames.length > 0 ? q.in("sector", sectorNames) : q;
+
       let total = 0;
-      const { count: mine } = await supabase
-        .from("service_tickets")
-        .select("id", { count: "exact", head: true })
-        .eq("assigned_to", userId)
-        .neq("status", "finalizado");
-      total += mine || 0;
-      if (agentTicketIds.length > 0) {
-        const { count: asAgent } = await supabase
+      const { count: mine } = await withSector(
+        supabase
           .from("service_tickets")
           .select("id", { count: "exact", head: true })
-          .in("id", agentTicketIds)
-          .neq("status", "finalizado")
-          .neq("assigned_to", userId);
+          .eq("assigned_to", userId)
+          .neq("status", "finalizado"),
+      );
+      total += mine || 0;
+      if (agentTicketIds.length > 0) {
+        const { count: asAgent } = await withSector(
+          supabase
+            .from("service_tickets")
+            .select("id", { count: "exact", head: true })
+            .in("id", agentTicketIds)
+            .neq("status", "finalizado")
+            .neq("assigned_to", userId),
+        );
         total += asAgent || 0;
       }
       return total;
