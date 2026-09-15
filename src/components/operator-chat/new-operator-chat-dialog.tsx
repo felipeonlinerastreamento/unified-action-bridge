@@ -36,6 +36,7 @@ export function NewOperatorChatDialog({ onCreated, triggerLabel }: Props) {
   const [lockUntilReply, setLockUntilReply] = useState(false);
   const [targetType, setTargetType] = useState<TargetType>("user");
   const [targetId, setTargetId] = useState<string>("");
+  const [multiIds, setMultiIds] = useState<string[]>([]);
   const [sending, setSending] = useState(false);
 
   const { data: users = [] } = useQuery({
@@ -67,6 +68,7 @@ export function NewOperatorChatDialog({ onCreated, triggerLabel }: Props) {
 
   useEffect(() => {
     setTargetId("");
+    setMultiIds([]);
   }, [targetType]);
 
   const resolveRecipients = async (): Promise<string[]> => {
@@ -75,6 +77,7 @@ export function NewOperatorChatDialog({ onCreated, triggerLabel }: Props) {
       return (data || []).map((p) => p.user_id);
     }
     if (targetType === "user") return targetId ? [targetId] : [];
+    if (targetType === "multi") return multiIds;
     if (targetType === "sector") {
       const { data } = await supabase
         .from("user_sector_assignments").select("user_id").eq("sector_id", targetId);
@@ -96,12 +99,16 @@ export function NewOperatorChatDialog({ onCreated, triggerLabel }: Props) {
     setFirstMessage("");
     setTargetType("user");
     setTargetId("");
+    setMultiIds([]);
     setLockUntilReply(false);
   };
 
   const handleStart = async () => {
     if (!firstMessage.trim()) return toast.error("Informe a mensagem");
-    if (targetType !== "all" && !targetId) return toast.error("Selecione o destino");
+    if (targetType === "multi" && multiIds.length < 2)
+      return toast.error("Selecione pelo menos 2 operadores");
+    if (targetType !== "all" && targetType !== "multi" && !targetId)
+      return toast.error("Selecione o destino");
 
     setSending(true);
     try {
