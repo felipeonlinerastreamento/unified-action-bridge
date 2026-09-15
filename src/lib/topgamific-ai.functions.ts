@@ -214,6 +214,8 @@ export const sendTopGamificAiMessage = createServerFn({ method: "POST" })
     ];
 
     let reply = "";
+    let remoteConversationId: string | null = null;
+    let remoteMessageId: string | null = null;
     try {
       const res = await fetch(AI_CHAT_URL, {
         method: "POST",
@@ -222,7 +224,10 @@ export const sendTopGamificAiMessage = createServerFn({ method: "POST" })
           "Content-Type": "application/json",
           Accept: "application/json",
         },
-        body: JSON.stringify({ messages: payloadMessages }),
+        body: JSON.stringify({
+          messages: payloadMessages,
+          ...(userEmail ? { user_email: userEmail } : {}),
+        }),
       });
       if (!res.ok) {
         return {
@@ -233,6 +238,11 @@ export const sendTopGamificAiMessage = createServerFn({ method: "POST" })
       }
       const json: any = await res.json();
       reply = String(json?.reply ?? json?.message ?? json?.content ?? "").trim();
+      remoteConversationId = json?.conversation_id ? String(json.conversation_id) : null;
+      remoteMessageId = json?.message_id ? String(json.message_id) : null;
+      if (json?.saved === false) {
+        console.error("[TopGamific] resposta não salva na plataforma. request_id:", json?.request_id);
+      }
     } catch {
       return {
         ok: false,
