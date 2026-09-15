@@ -26,6 +26,7 @@ export function OperatorChatList({ onUnreadChange }: Props) {
     queryFn: async () => {
       if (!userId) return [];
       const groupIds = await fetchMyGroupChatIds(userId);
+      const lockedGroupIds = await fetchMyLockedGroupChatIds(userId);
       const { data: rows } = await supabase
         .from("operator_chats")
         .select("id, subject, created_by, created_by_name, recipient_user_id, is_group, is_locked, last_message_at, closed_at")

@@ -143,6 +143,8 @@ export function OperatorChatDialog({ chatId, open, onOpenChange, locked }: Props
       if (error) throw error;
       setBody("");
       qc.invalidateQueries({ queryKey: ["operator-chat-messages", chatId] });
+      qc.invalidateQueries({ queryKey: ["operator-chat-locked"] });
+      qc.invalidateQueries({ queryKey: ["operator-chats-list"] });
     } catch (err: any) {
       toast.error(err?.message || "Falha ao enviar");
     } finally {
