@@ -190,7 +190,13 @@ export function OperatorChatDialog({ chatId, open, onOpenChange, locked }: Props
           </DialogTitle>
           <DialogDescription className="text-xs">
             {locked
-              ? "Esta tela ficará bloqueada até você enviar uma resposta."
+              ? `Esta tela ficará bloqueada até você enviar uma resposta.${
+                  (chat as any)?.is_group && participants.length > 0
+                    ? ` Grupo de ${chat?.created_by_name || "Atendimento"} · ${participants
+                        .map((p: any) => p.user_name || "Operador")
+                        .join(", ")}`
+                    : ""
+                }`
               : `Conversa com ${otherName}`}
           </DialogDescription>
         </DialogHeader>

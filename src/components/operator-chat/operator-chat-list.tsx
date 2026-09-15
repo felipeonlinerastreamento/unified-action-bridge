@@ -133,7 +133,7 @@ export function OperatorChatList({ onUnreadChange }: Props) {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1">
                   <p className="text-sm font-medium truncate flex-1">{c.subject}</p>
-                  {c.is_locked && c.recipient_user_id === userId && (
+                  {c.myLock && (
                     <Lock className="h-3 w-3 text-amber-500" />
                   )}
                 </div>
