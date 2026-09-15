@@ -81,6 +81,14 @@ export const sendTopGamificAiMessage = createServerFn({ method: "POST" })
 
     const history = mapRows(historyRows ?? []);
 
+    let driveContext: string | null = null;
+    try {
+      const { getDriveContext } = await import("@/lib/google-drive.server");
+      driveContext = await getDriveContext(data.message);
+    } catch (e) {
+      console.error("Falha ao consultar o Google Drive:", e);
+    }
+
     const payloadMessages = [
       ...(userName
         ? [
@@ -89,6 +97,9 @@ export const sendTopGamificAiMessage = createServerFn({ method: "POST" })
               content: `Você está conversando com ${userName}. Responda em português do Brasil, de forma objetiva, considerando os dados desse colaborador na plataforma Top Gamific.`,
             },
           ]
+        : []),
+      ...(driveContext
+        ? [{ role: "system", content: driveContext }]
         : []),
       ...history.map((m) => ({ role: m.role, content: m.content })),
       { role: "user", content: data.message },
