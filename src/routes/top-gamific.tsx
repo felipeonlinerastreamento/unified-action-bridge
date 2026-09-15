@@ -141,17 +141,15 @@ function TopGamificContent() {
         </div>
       ) : (
         <>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card>
-              <CardHeader className="pb-2">
-                <CardTitle className="text-sm text-muted-foreground">Moedas (90 dias)</CardTitle>
-              </CardHeader>
-              <CardContent className="flex items-center gap-2 text-2xl font-semibold">
-                <Coins className="h-5 w-5 text-amber-500" />
-                {data?.totalCoins ?? 0}
-              </CardContent>
-            </Card>
-          </div>
+          <Card className="max-w-xs">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-sm text-muted-foreground">Moedas (90 dias)</CardTitle>
+            </CardHeader>
+            <CardContent className="flex items-center gap-2 text-2xl font-semibold">
+              <Coins className="h-5 w-5 text-amber-500" />
+              {data?.totalCoins ?? 0}
+            </CardContent>
+          </Card>
 
           <Card>
             <CardHeader>
