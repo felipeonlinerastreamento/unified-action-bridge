@@ -30,7 +30,26 @@ export function OperatorChatLockOverlay() {
         .eq("is_locked", true)
         .is("closed_at", null)
         .order("created_at", { ascending: true });
-      return data || [];
+
+      // Conversas em grupo: trava individual por participante
+      const { data: parts } = await supabase
+        .from("operator_chat_participants")
+        .select("chat_id")
+        .eq("user_id", userId)
+        .eq("is_locked", true);
+      const groupIds = (parts || []).map((p: any) => p.chat_id);
+      let groupChats: any[] = [];
+      if (groupIds.length > 0) {
+        const { data: gc } = await supabase
+          .from("operator_chats")
+          .select("id, subject")
+          .in("id", groupIds)
+          .is("closed_at", null)
+          .order("created_at", { ascending: true });
+        groupChats = gc || [];
+      }
+      const all = [...(data || []), ...groupChats];
+      return all.filter((c, i) => all.findIndex((o) => o.id === c.id) === i);
     },
   });
 
