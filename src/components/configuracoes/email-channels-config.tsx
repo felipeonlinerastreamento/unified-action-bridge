@@ -14,6 +14,7 @@ import {
   upsertEmailChannel,
   deleteEmailChannel,
   checkOutlookConnection,
+  triggerEmailPoll,
 } from "@/lib/email-channels.functions";
 
 interface ChannelForm {
@@ -92,14 +93,13 @@ export function EmailChannelsConfig() {
   async function pollNow(channelId: string) {
     setPolling(channelId);
     try {
-      const res = await fetch(`/api/public/email-poll?channelId=${channelId}`, { method: "POST" });
-      const data = await res.json();
+      const data = await triggerEmailPoll({ data: { channelId } });
       if (data?.success) {
         const r = data.results?.[0];
         toast.success(`Verificação concluída: ${r?.created_tickets ?? 0} novo(s) atendimento(s)`);
         qc.invalidateQueries({ queryKey: ["email-channels"] });
       } else {
-        toast.error(data?.error || "Falha ao verificar");
+        toast.error("Falha ao verificar");
       }
     } catch (e: any) {
       toast.error(e?.message || "Falha ao verificar");

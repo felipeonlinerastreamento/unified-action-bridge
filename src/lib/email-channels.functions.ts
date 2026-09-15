@@ -3,6 +3,7 @@ import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { getOutlookProfile } from "./outlook.server";
+import { pollEmailChannel, pollAllActiveEmailChannels } from "./email-poll.server";
 
 async function assertAdminOrGestor(context: any): Promise<void> {
   const { data: roleRow, error } = await context.supabase
@@ -84,4 +85,17 @@ export const checkOutlookConnection = createServerFn({ method: "GET" })
     } catch (e: any) {
       return { connected: false, error: e?.message || "Falha ao conectar" };
     }
+  });
+
+export const triggerEmailPoll = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z.object({ channelId: z.string().uuid().optional() }).parse(input ?? {}),
+  )
+  .handler(async ({ data, context }) => {
+    await assertAdminOrGestor(context);
+    const results = data.channelId
+      ? [await pollEmailChannel(data.channelId)]
+      : await pollAllActiveEmailChannels();
+    return { success: true, results };
   });
