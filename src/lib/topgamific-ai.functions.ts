@@ -118,7 +118,7 @@ export const rateTopGamificAiMessage = createServerFn({ method: "POST" })
   }))
   .handler(async ({ data, context }): Promise<{ ok: boolean }> => {
     if (!data.id) return { ok: false };
-    const { error } = await context.supabase
+    const { data: updated, error } = await context.supabase
       .from("topgamific_ai_messages")
       .update({
         rating: data.rating,
@@ -126,11 +126,43 @@ export const rateTopGamificAiMessage = createServerFn({ method: "POST" })
         rated_at: data.rating === null ? null : new Date().toISOString(),
       })
       .eq("id", data.id)
-      .eq("user_id", context.userId);
+      .eq("user_id", context.userId)
+      .select("remote_conversation_id, remote_message_id")
+      .maybeSingle();
     if (error) {
       console.error("Erro ao avaliar resposta:", error);
       return { ok: false };
     }
+
+    // Repassa a avaliação para a plataforma Top Gamific (quando houver vínculo).
+    const apiKey = process.env["TOPGAMIFIC_API_KEY"];
+    const conversationId = (updated as any)?.remote_conversation_id as string | null;
+    const userEmail = String((context.claims as any)?.email ?? "").trim();
+    if (apiKey && conversationId && data.rating !== null) {
+      try {
+        const res = await fetch(AI_FEEDBACK_URL, {
+          method: "POST",
+          headers: {
+            "x-api-key": apiKey,
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({
+            conversation_id: conversationId,
+            message_id: (updated as any)?.remote_message_id ?? undefined,
+            vote: data.rating === 1 ? "up" : "down",
+            ...(userEmail ? { user_email: userEmail } : {}),
+            ...(data.comment ? { comment: data.comment } : {}),
+          }),
+        });
+        if (!res.ok) {
+          console.error("[TopGamific] falha ao enviar avaliação:", res.status);
+        }
+      } catch (e) {
+        console.error("[TopGamific] erro ao enviar avaliação:", e);
+      }
+    }
+
     return { ok: true };
   });
 
