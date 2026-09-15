@@ -74,10 +74,12 @@ export const checkOutlookConnection = createServerFn({ method: "GET" })
   .handler(async () => {
     try {
       const profile = await getOutlookProfile();
+      const email = profile.mail || profile.userPrincipalName || null;
+      const name = profile.displayName || profile.mail || profile.userPrincipalName || null;
       return {
         connected: true,
-        email: profile.mail || profile.userPrincipalName || null,
-        name: profile.displayName || null,
+        email,
+        name,
       };
     } catch (e: any) {
       return { connected: false, error: e?.message || "Falha ao conectar" };

@@ -129,7 +129,9 @@ export function EmailChannelsConfig() {
               <div className="flex-1">
                 <div className="text-sm font-medium">Outlook conectado</div>
                 <div className="text-xs text-muted-foreground">
-                  {conn.data.name ? `${conn.data.name} • ` : ""}{conn.data.email}
+                  {conn.data.name || conn.data.email
+                    ? `${conn.data.name ? `${conn.data.name} • ` : ""}${conn.data.email || ""}`.replace(/ • $/, "")
+                    : "Conta conectada, mas o nome/e-mail não foi retornado pela Microsoft."}
                 </div>
               </div>
             </>

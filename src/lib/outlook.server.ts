@@ -35,7 +35,7 @@ export interface OutlookProfile {
 }
 
 export async function getOutlookProfile(): Promise<OutlookProfile> {
-  const res = await fetch(`${GATEWAY_URL}/me?$select=displayName,mail,userPrincipalName`, {
+  const res = await fetch(`${GATEWAY_URL}/me?$select=id,displayName,mail,userPrincipalName`, {
     headers: getAuthHeaders(),
   });
   const data = await res.json().catch(() => ({}));
