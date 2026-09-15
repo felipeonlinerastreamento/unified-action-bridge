@@ -98,6 +98,9 @@ export const sendTopGamificAiMessage = createServerFn({ method: "POST" })
             },
           ]
         : []),
+      ...(driveContext
+        ? [{ role: "system", content: driveContext }]
+        : []),
       ...history.map((m) => ({ role: m.role, content: m.content })),
       { role: "user", content: data.message },
     ];
