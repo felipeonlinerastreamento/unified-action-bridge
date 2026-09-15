@@ -212,52 +212,52 @@ export function MyAttendanceKpis() {
   }, [avgMinutes, meta]);
 
   return (
-    <div className="flex items-center gap-2 flex-wrap">
+    <div className="flex items-center gap-1.5 flex-wrap">
       {/* Atendimentos do meu setor */}
-      <Card className="px-3 py-2 flex items-center gap-2">
-        <Briefcase className="h-4 w-4 text-blue-600" />
-        <div className="leading-tight">
+      <Card className="px-2 py-1 flex items-center gap-1.5">
+        <Briefcase className="h-3 w-3 text-blue-600" />
+        <div className="leading-none">
           <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Meu setor</p>
-          <p className="text-sm font-semibold">{sectorOpenCount} aberto(s)</p>
+          <p className="text-xs font-semibold">{sectorOpenCount} aberto(s)</p>
         </div>
       </Card>
 
       {/* Minha média de tempo */}
-      <Card className="px-3 py-2 flex items-center gap-2">
-        <Timer className="h-4 w-4 text-purple-600" />
-        <div className="leading-tight">
+      <Card className="px-2 py-1 flex items-center gap-1.5">
+        <Timer className="h-3 w-3 text-purple-600" />
+        <div className="leading-none">
           <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Minha média</p>
-          <p className={`text-sm font-semibold ${avgVsTarget}`}>{formatMinutes(avgMinutes)}</p>
+          <p className={`text-xs font-semibold ${avgVsTarget}`}>{formatMinutes(avgMinutes)}</p>
         </div>
         <Select value={period} onValueChange={(v) => setPeriod(v as Period)}>
-          <SelectTrigger className="h-7 w-[88px] text-xs">
+          <SelectTrigger className="h-5 w-[68px] text-[10px] px-1.5 py-0">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="day">Dia</SelectItem>
-            <SelectItem value="week">Semana</SelectItem>
-            <SelectItem value="month">Mês</SelectItem>
+            <SelectItem value="day" className="text-xs">Dia</SelectItem>
+            <SelectItem value="week" className="text-xs">Semana</SelectItem>
+            <SelectItem value="month" className="text-xs">Mês</SelectItem>
           </SelectContent>
         </Select>
       </Card>
 
       {/* Minha meta */}
-      <Card className="px-3 py-2 flex items-center gap-2">
-        <Target className="h-4 w-4 text-emerald-600" />
-        <div className="leading-tight">
+      <Card className="px-2 py-1 flex items-center gap-1.5">
+        <Target className="h-3 w-3 text-emerald-600" />
+        <div className="leading-none">
           <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Minha meta</p>
-          <p className="text-sm font-semibold">
+          <p className="text-xs font-semibold">
             {meta != null ? formatMinutes(meta) : "Não definida"}
           </p>
         </div>
       </Card>
 
       {/* Meu ranking */}
-      <Card className="px-3 py-2 flex items-center gap-2">
-        <Trophy className="h-4 w-4 text-amber-500" />
-        <div className="leading-tight">
+      <Card className="px-2 py-1 flex items-center gap-1.5">
+        <Trophy className="h-3 w-3 text-amber-500" />
+        <div className="leading-none">
           <p className="text-[10px] uppercase tracking-wide text-muted-foreground">Meu ranking (hoje)</p>
-          <p className="text-sm font-semibold">
+          <p className="text-xs font-semibold">
             {ranking && ranking.total > 0
               ? `#${ranking.position} de ${ranking.total} • ${ranking.finalized} finalizado${ranking.finalized === 1 ? "" : "s"}`
               : "—"}

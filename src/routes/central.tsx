@@ -3000,25 +3000,25 @@ function CentralPage() {
 
   return (
     <AppLayout>
-      <div className="space-y-4">
+      <div className="space-y-2">
         {/* Header */}
-        <div className="flex items-start sm:items-center justify-between gap-3 flex-wrap">
-          <div className="min-w-0 flex items-center gap-4 flex-wrap">
+        <div className="flex items-start sm:items-center justify-between gap-2 flex-wrap">
+          <div className="min-w-0 flex items-center gap-2 flex-wrap">
             <div className="min-w-0">
-              <h1 className="text-xl sm:text-2xl font-bold text-foreground truncate">Central de Atendimento</h1>
-              <p className="text-xs sm:text-sm text-muted-foreground">
+              <h1 className="text-lg sm:text-xl font-bold text-foreground truncate">Central de Atendimento</h1>
+              <p className="text-[11px] sm:text-xs text-muted-foreground leading-none">
                 {allChats.length} atendimento(s) ativo(s) • {onlineAgents} agente(s) online
               </p>
             </div>
             <MyAttendanceKpis />
             {myZombieCount > 0 && (
-              <Badge variant="destructive" className="gap-1 animate-pulse text-xs h-7 px-2">
-                <AlertTriangle className="h-3.5 w-3.5" />
+              <Badge variant="destructive" className="gap-1 animate-pulse text-[10px] h-5 px-1.5">
+                <AlertTriangle className="h-3 w-3" />
                 {myZombieCount} chat{myZombieCount > 1 ? "s" : ""} zumbi{myZombieCount > 1 ? "s" : ""} (&gt;5min)
               </Badge>
             )}
           </div>
-          <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
+          <div className="flex items-center gap-1.5 sm:gap-2 flex-wrap">
             {isConnected ? (
               <Badge variant="outline" className="gap-1 border-emerald-300 text-emerald-700">
                 <Wifi className="h-3 w-3" /> Conectado
@@ -3067,7 +3067,7 @@ function CentralPage() {
             </CardContent>
           </Card>
         ) : (
-          <div className="flex gap-2 sm:gap-3 h-[calc(100vh-12rem)] relative">
+          <div className="flex gap-2 sm:gap-3 h-[calc(100vh-10rem)] relative">
             {/* Toggle left panel button (when collapsed) */}
             {!showLeftPanel && (
               <Button
@@ -3092,31 +3092,31 @@ function CentralPage() {
             {/* Chat list */}
             {showLeftPanel && (
             <div className="w-[85vw] max-w-sm md:w-72 lg:w-80 shrink-0 border rounded-lg flex flex-col bg-card overflow-hidden relative max-md:fixed max-md:inset-y-0 max-md:left-0 max-md:z-40 max-md:shadow-xl max-md:rounded-none">
-              <div className="p-3 border-b space-y-2">
-                <div className="flex items-center gap-2">
+              <div className="p-2 border-b space-y-1.5">
+                <div className="flex items-center gap-1.5">
                   <Button
                     variant="ghost"
                     size="icon"
-                    className="shrink-0 h-7 w-7"
+                    className="shrink-0 h-6 w-6"
                     onClick={() => setShowLeftPanel(false)}
                     title="Ocultar lista de conversas"
                   >
-                    <PanelLeftClose className="h-4 w-4" />
+                    <PanelLeftClose className="h-3.5 w-3.5" />
                   </Button>
                   <div className="relative flex-1">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                     <Input
                       placeholder="Buscar nome ou telefone..."
-                      className="pl-9"
+                      className="pl-8 h-8 text-xs"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
                     />
                   </div>
-                  <Button variant="outline" size="icon" onClick={() => setShowFilters(!showFilters)} className={showFilters ? "bg-accent" : ""}>
-                    <Filter className="h-4 w-4" />
+                  <Button variant="outline" size="icon" className={`h-7 w-7 ${showFilters ? "bg-accent" : ""}`} onClick={() => setShowFilters(!showFilters)}>
+                    <Filter className="h-3.5 w-3.5" />
                   </Button>
-                  <Button size="icon" onClick={() => setShowNewChatModal(true)} title="Nova conversa">
-                    <Plus className="h-4 w-4" />
+                  <Button size="icon" className="h-7 w-7" onClick={() => setShowNewChatModal(true)} title="Nova conversa">
+                    <Plus className="h-3.5 w-3.5" />
                   </Button>
                 </div>
                 {showFilters && (
