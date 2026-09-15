@@ -9,6 +9,8 @@ export interface TopGamificAiMessage {
   role: "user" | "assistant";
   content: string;
   createdAt: string;
+  rating: -1 | 1 | null;
+  ratingComment: string | null;
 }
 
 export interface TopGamificAiSendResult {
