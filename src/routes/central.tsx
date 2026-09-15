@@ -1874,7 +1874,12 @@ function CentralPage() {
       queryClient.invalidateQueries({ queryKey: ["chat-detail", selectedChannelId, selectedChatId] });
       queryClient.invalidateQueries({ queryKey: ["zapi-messages"] });
     },
-    onError: (err: any) => toast.error(err?.message || "Erro ao enviar mensagem"),
+    onError: (err: any) => {
+      toast.error(err?.message || "Erro ao enviar mensagem");
+      // A mensagem pode ter sido entregue mesmo com erro/timeout: recarrega a conversa.
+      queryClient.invalidateQueries({ queryKey: ["chat-detail", selectedChannelId, selectedChatId] });
+      queryClient.invalidateQueries({ queryKey: ["zapi-messages"] });
+    },
   });
 
   // Delete a sent message for everyone (Z-API)
