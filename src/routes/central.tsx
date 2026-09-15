@@ -3112,7 +3112,7 @@ function CentralPage() {
                       onChange={(e) => setSearchTerm(e.target.value)}
                     />
                   </div>
-                  <Button variant="outline" size="icon" className="h-7 w-7" onClick={() => setShowFilters(!showFilters)} className={showFilters ? "bg-accent" : ""}>
+                  <Button variant="outline" size="icon" className={`h-7 w-7 ${showFilters ? "bg-accent" : ""}`} onClick={() => setShowFilters(!showFilters)}>
                     <Filter className="h-3.5 w-3.5" />
                   </Button>
                   <Button size="icon" className="h-7 w-7" onClick={() => setShowNewChatModal(true)} title="Nova conversa">
