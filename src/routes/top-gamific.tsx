@@ -82,11 +82,19 @@ function TopGamificContent() {
           <Info className="h-5 w-5 text-primary shrink-0 mt-0.5" />
           <div className="space-y-1">
             <p className="font-medium">Esta página é um resumo da sua participação</p>
-            <p className="text-muted-foreground">
-              Aqui você vê seus últimos lançamentos, saldo de moedas e desafios em aberto. O acesso
-              completo — com ranking, histórico detalhado e configurações — fica no{" "}
-              <span className="font-medium text-foreground">portal Top Gamific</span>.
-            </p>
+          <p className="text-muted-foreground">
+            Aqui você vê seus últimos lançamentos, saldo de moedas e desafios em aberto. O acesso
+            completo — com ranking, histórico detalhado e configurações — fica no{" "}
+            <a
+              href="https://gamify-support-heroes.lovable.app"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="font-medium text-foreground underline hover:text-primary"
+            >
+              portal Top Gamific
+            </a>
+            .
+          </p>
           </div>
         </CardContent>
       </Card>
