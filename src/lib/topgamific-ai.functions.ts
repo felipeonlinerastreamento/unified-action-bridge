@@ -1,8 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-const AI_CHAT_URL =
-  "https://jyukercrhruslahpqlqi.supabase.co/functions/v1/public-api/ai-chat";
+const AI_API_BASE =
+  "https://jyukercrhruslahpqlqi.supabase.co/functions/v1/public-api";
+const AI_CHAT_URL = `${AI_API_BASE}/ai-chat`;
+const AI_FEEDBACK_URL = `${AI_API_BASE}/ai-feedback`;
 
 export interface TopGamificAiMessage {
   id: string;
@@ -116,7 +118,7 @@ export const rateTopGamificAiMessage = createServerFn({ method: "POST" })
   }))
   .handler(async ({ data, context }): Promise<{ ok: boolean }> => {
     if (!data.id) return { ok: false };
-    const { error } = await context.supabase
+    const { data: updated, error } = await context.supabase
       .from("topgamific_ai_messages")
       .update({
         rating: data.rating,
@@ -124,11 +126,43 @@ export const rateTopGamificAiMessage = createServerFn({ method: "POST" })
         rated_at: data.rating === null ? null : new Date().toISOString(),
       })
       .eq("id", data.id)
-      .eq("user_id", context.userId);
+      .eq("user_id", context.userId)
+      .select("remote_conversation_id, remote_message_id")
+      .maybeSingle();
     if (error) {
       console.error("Erro ao avaliar resposta:", error);
       return { ok: false };
     }
+
+    // Repassa a avaliação para a plataforma Top Gamific (quando houver vínculo).
+    const apiKey = process.env["TOPGAMIFIC_API_KEY"];
+    const conversationId = (updated as any)?.remote_conversation_id as string | null;
+    const userEmail = String((context.claims as any)?.email ?? "").trim();
+    if (apiKey && conversationId && data.rating !== null) {
+      try {
+        const res = await fetch(AI_FEEDBACK_URL, {
+          method: "POST",
+          headers: {
+            "x-api-key": apiKey,
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify({
+            conversation_id: conversationId,
+            message_id: (updated as any)?.remote_message_id ?? undefined,
+            vote: data.rating === 1 ? "up" : "down",
+            ...(userEmail ? { user_email: userEmail } : {}),
+            ...(data.comment ? { comment: data.comment } : {}),
+          }),
+        });
+        if (!res.ok) {
+          console.error("[TopGamific] falha ao enviar avaliação:", res.status);
+        }
+      } catch (e) {
+        console.error("[TopGamific] erro ao enviar avaliação:", e);
+      }
+    }
+
     return { ok: true };
   });
 
@@ -137,7 +171,9 @@ export const getTopGamificAiHistory = createServerFn({ method: "POST" })
   .handler(async ({ context }): Promise<TopGamificAiMessage[]> => {
     const { data } = await context.supabase
       .from("topgamific_ai_messages")
-      .select("id, role, content, created_at, rating, rating_comment")
+      .select(
+        "id, role, content, created_at, rating, rating_comment, remote_conversation_id, remote_message_id",
+      )
       .eq("user_id", context.userId)
       .order("created_at", { ascending: true })
       .limit(200);
@@ -177,6 +213,7 @@ export const sendTopGamificAiMessage = createServerFn({ method: "POST" })
       .eq("user_id", context.userId)
       .maybeSingle();
     const userName = profile?.name?.trim() ?? "";
+    const userEmail = String((context.claims as any)?.email ?? "").trim();
 
     const { data: historyRows } = await context.supabase
       .from("topgamific_ai_messages")
@@ -212,6 +249,8 @@ export const sendTopGamificAiMessage = createServerFn({ method: "POST" })
     ];
 
     let reply = "";
+    let remoteConversationId: string | null = null;
+    let remoteMessageId: string | null = null;
     try {
       const res = await fetch(AI_CHAT_URL, {
         method: "POST",
@@ -220,7 +259,10 @@ export const sendTopGamificAiMessage = createServerFn({ method: "POST" })
           "Content-Type": "application/json",
           Accept: "application/json",
         },
-        body: JSON.stringify({ messages: payloadMessages }),
+        body: JSON.stringify({
+          messages: payloadMessages,
+          ...(userEmail ? { user_email: userEmail } : {}),
+        }),
       });
       if (!res.ok) {
         return {
@@ -231,6 +273,11 @@ export const sendTopGamificAiMessage = createServerFn({ method: "POST" })
       }
       const json: any = await res.json();
       reply = String(json?.reply ?? json?.message ?? json?.content ?? "").trim();
+      remoteConversationId = json?.conversation_id ? String(json.conversation_id) : null;
+      remoteMessageId = json?.message_id ? String(json.message_id) : null;
+      if (json?.saved === false) {
+        console.error("[TopGamific] resposta não salva na plataforma. request_id:", json?.request_id);
+      }
     } catch {
       return {
         ok: false,
@@ -262,9 +309,13 @@ export const sendTopGamificAiMessage = createServerFn({ method: "POST" })
           role: "assistant",
           content: reply,
           created_at: new Date(now + 1).toISOString(),
+          remote_conversation_id: remoteConversationId,
+          remote_message_id: remoteMessageId,
         },
       ])
-      .select("id, role, content, created_at, rating, rating_comment");
+      .select(
+        "id, role, content, created_at, rating, rating_comment, remote_conversation_id, remote_message_id",
+      );
 
     return { ok: true, error: null, messages: mapRows(inserted ?? []) };
   });

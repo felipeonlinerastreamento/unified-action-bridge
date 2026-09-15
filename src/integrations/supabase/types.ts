@@ -5529,6 +5529,8 @@ export type Database = {
           rated_at: string | null
           rating: number | null
           rating_comment: string | null
+          remote_conversation_id: string | null
+          remote_message_id: string | null
           role: string
           user_id: string
         }
@@ -5539,6 +5541,8 @@ export type Database = {
           rated_at?: string | null
           rating?: number | null
           rating_comment?: string | null
+          remote_conversation_id?: string | null
+          remote_message_id?: string | null
           role: string
           user_id: string
         }
@@ -5549,6 +5553,8 @@ export type Database = {
           rated_at?: string | null
           rating?: number | null
           rating_comment?: string | null
+          remote_conversation_id?: string | null
+          remote_message_id?: string | null
           role?: string
           user_id?: string
         }
