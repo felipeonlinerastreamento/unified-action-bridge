@@ -296,6 +296,34 @@ export function NewOperatorChatDialog({ onCreated, triggerLabel }: Props) {
               </div>
             )}
           </div>
+          {targetType === "multi" && (
+            <div className="space-y-1.5">
+              <Label>Participantes ({multiIds.length} selecionados)</Label>
+              <ScrollArea className="h-44 rounded-md border p-2">
+                <div className="space-y-1">
+                  {users.map((u: any) => (
+                    <label
+                      key={u.user_id}
+                      className="flex items-center gap-2 rounded px-1.5 py-1 text-sm hover:bg-accent cursor-pointer"
+                    >
+                      <Checkbox
+                        checked={multiIds.includes(u.user_id)}
+                        onCheckedChange={(c) =>
+                          setMultiIds((prev) =>
+                            c ? [...prev, u.user_id] : prev.filter((id) => id !== u.user_id)
+                          )
+                        }
+                      />
+                      <span className="truncate">{u.name || u.user_id.slice(0, 8)}</span>
+                    </label>
+                  ))}
+                </div>
+              </ScrollArea>
+              <p className="text-xs text-muted-foreground">
+                Todos os selecionados participam da mesma conversa e veem as respostas uns dos outros.
+              </p>
+            </div>
+          )}
           <div className="space-y-1.5">
             <Label>Mensagem inicial</Label>
             <Textarea value={firstMessage} onChange={(e) => setFirstMessage(e.target.value)} rows={3} placeholder="Escreva sua mensagem..." />
