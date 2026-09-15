@@ -1925,7 +1925,11 @@ function CentralPage() {
       queryClient.invalidateQueries({ queryKey: ["chat-detail", selectedChannelId, selectedChatId] });
       queryClient.invalidateQueries({ queryKey: ["zapi-messages"] });
     },
-    onError: (err: any) => toast.error(err?.message || "Erro ao enviar mídia"),
+    onError: (err: any) => {
+      toast.error(err?.message || "Erro ao enviar mídia");
+      queryClient.invalidateQueries({ queryKey: ["chat-detail", selectedChannelId, selectedChatId] });
+      queryClient.invalidateQueries({ queryKey: ["zapi-messages"] });
+    },
   });
 
   // File picker handler (attach button) — adds to preview queue instead of sending directly
