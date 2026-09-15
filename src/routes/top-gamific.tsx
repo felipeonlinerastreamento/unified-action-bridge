@@ -235,6 +235,79 @@ function TopGamificContent() {
           </Card>
         </>
       )}
+
+      <AiFeedbackPanel />
     </div>
+  );
+}
+
+function AiFeedbackPanel() {
+  const fetchFeedback = useServerFn(getTopGamificAiFeedback);
+  const { data, isLoading } = useQuery({
+    queryKey: ["topgamific-ai-feedback"],
+    queryFn: () => fetchFeedback({ data: undefined }),
+    refetchInterval: 120000,
+    staleTime: 60000,
+  });
+
+  if (isLoading) return <Skeleton className="h-32 w-full" />;
+  if (!data?.allowed) return null;
+
+  return (
+    <Card>
+      <CardHeader className="pb-2">
+        <CardTitle className="text-base flex items-center gap-2">
+          <MessageSquare className="h-4 w-4 text-primary" />
+          Avaliações das respostas do Assistente IA
+        </CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <div className="flex items-center gap-4 text-sm">
+          <span className="flex items-center gap-1 text-emerald-600 font-medium">
+            <ThumbsUp className="h-4 w-4" /> {data.positive} úteis
+          </span>
+          <span className="flex items-center gap-1 text-destructive font-medium">
+            <ThumbsDown className="h-4 w-4" /> {data.negative} não úteis
+          </span>
+        </div>
+
+        {data.items.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            Nenhuma avaliação registrada até o momento.
+          </p>
+        ) : (
+          <div className="space-y-3 max-h-[480px] overflow-y-auto pr-1">
+            {data.items.map((item) => (
+              <div key={item.id} className="rounded-lg border p-3 space-y-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  {item.rating === 1 ? (
+                    <Badge className="bg-emerald-600 text-white hover:bg-emerald-600">Útil</Badge>
+                  ) : (
+                    <Badge variant="destructive">Não útil</Badge>
+                  )}
+                  <span className="font-medium text-sm">{item.userName}</span>
+                  {item.ratedAt && (
+                    <span className="text-xs text-muted-foreground">{formatDate(item.ratedAt)}</span>
+                  )}
+                </div>
+                {item.question && (
+                  <p className="text-sm">
+                    <span className="text-muted-foreground">Pergunta: </span>
+                    {item.question}
+                  </p>
+                )}
+                <p className="text-sm text-muted-foreground line-clamp-4 whitespace-pre-line">
+                  <span className="font-medium text-foreground">Resposta: </span>
+                  {item.answer}
+                </p>
+                {item.comment && (
+                  <p className="text-sm italic">Comentário: "{item.comment}"</p>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
 }
