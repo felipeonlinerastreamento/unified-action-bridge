@@ -188,10 +188,11 @@ export function AppSidebar() {
     refetchInterval: 15000,
     queryFn: async () => {
       if (!userId) return 0;
+      const groupIds = await fetchMyGroupChatIds(userId);
       const { data: chats } = await supabase
         .from("operator_chats")
         .select("id")
-        .or(`created_by.eq.${userId},recipient_user_id.eq.${userId}`)
+        .or(myChatsOrFilter(userId, groupIds))
         .is("closed_at", null);
       const ids = (chats || []).map((c) => c.id);
       if (ids.length === 0) return 0;
