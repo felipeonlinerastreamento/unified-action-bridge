@@ -28,6 +28,7 @@ import {
   Megaphone,
   FileText,
   Monitor,
+  Trophy,
 } from "lucide-react";
 
 
