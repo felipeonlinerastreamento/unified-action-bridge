@@ -329,6 +329,7 @@ function MessageRow({ message }: { message: TopGamificAiMessage }) {
         <div className="text-[11px] text-muted-foreground">
           {formatTime(message.createdAt)}
         </div>
+        {!isUser && message.id !== "pending" && <RatingBar message={message} />}
       </div>
       {isUser && (
         <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center shrink-0">
