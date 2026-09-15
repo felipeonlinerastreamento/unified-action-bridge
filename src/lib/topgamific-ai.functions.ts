@@ -1,8 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
-const AI_CHAT_URL =
-  "https://jyukercrhruslahpqlqi.supabase.co/functions/v1/public-api/ai-chat";
+const AI_API_BASE =
+  "https://jyukercrhruslahpqlqi.supabase.co/functions/v1/public-api";
+const AI_CHAT_URL = `${AI_API_BASE}/ai-chat`;
+const AI_FEEDBACK_URL = `${AI_API_BASE}/ai-feedback`;
 
 export interface TopGamificAiMessage {
   id: string;
