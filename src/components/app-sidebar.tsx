@@ -136,20 +136,28 @@ export function AppSidebar() {
     refetchInterval: 15000,
     queryFn: async () => {
       if (!userId) return 0;
-      const { data } = await supabase
+      const { data: agentRows } = await supabase
+        .from("ticket_agents")
+        .select("ticket_id")
+        .eq("user_id", userId);
+      const agentTicketIds = (agentRows || []).map((r) => r.ticket_id);
+      let total = 0;
+      const { count: mine } = await supabase
         .from("service_tickets")
-        .select("id, assigned_to, agent_user_ids")
+        .select("id", { count: "exact", head: true })
+        .eq("assigned_to", userId)
         .neq("status", "finalizado");
-      const rows = (data || []) as Array<{
-        id: string;
-        assigned_to: string | null;
-        agent_user_ids: string[] | null;
-      }>;
-      return rows.filter(
-        (r) =>
-          r.assigned_to === userId ||
-          (Array.isArray(r.agent_user_ids) && r.agent_user_ids.includes(userId)),
-      ).length;
+      total += mine || 0;
+      if (agentTicketIds.length > 0) {
+        const { count: asAgent } = await supabase
+          .from("service_tickets")
+          .select("id", { count: "exact", head: true })
+          .in("id", agentTicketIds)
+          .neq("status", "finalizado")
+          .neq("assigned_to", userId);
+        total += asAgent || 0;
+      }
+      return total;
     },
   });
 
