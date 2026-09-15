@@ -3,6 +3,11 @@
 
 const ZAPI_BASE = "https://api.z-api.io";
 
+// Envios feitos pelo operador podem demorar mais que o limite curto usado
+// pelas rotinas automáticas (webhook).
+const TEXT_SEND_TIMEOUT_MS = 30000;
+const MEDIA_SEND_TIMEOUT_MS = 60000;
+
 export interface ZapiChannelCreds {
   id: string;
   zapi_instance_id: string | null;
