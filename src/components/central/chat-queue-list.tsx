@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Users, MessageSquare, ArrowUp, ArrowDown, AlertTriangle, Star } from "lucide-react";
+import { Loader2, Users, MessageSquare, ArrowUp, ArrowDown, AlertTriangle, Star, Clock } from "lucide-react";
 import { useFloatingChats } from "./floating-chats-context";
 import { isGroupChat } from "@/lib/chat-utils";
 
@@ -393,6 +393,11 @@ function ChatListItem({
           {/* Operator row: same hierarchy as client name */}
           {agentName && (
             <div className="flex items-center gap-1.5 mt-0.5">
+              <Clock
+                className="h-3 w-3 shrink-0"
+                style={{ color: getAgentColor(agentName) }}
+                aria-hidden
+              />
               <span
                 className="inline-block h-2.5 w-2.5 rounded-full shrink-0"
                 style={{ backgroundColor: getAgentColor(agentName) }}
@@ -413,7 +418,7 @@ function ChatListItem({
               className="text-[10px] font-semibold px-1.5 py-0 rounded-full text-white leading-4"
               style={{ backgroundColor: sla.bg }}
             >
-              ⏱ {time}
+              {time}
             </span>
             {wc && (
               <span
