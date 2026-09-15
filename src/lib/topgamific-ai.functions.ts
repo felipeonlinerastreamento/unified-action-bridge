@@ -81,6 +81,14 @@ export const sendTopGamificAiMessage = createServerFn({ method: "POST" })
 
     const history = mapRows(historyRows ?? []);
 
+    let driveContext: string | null = null;
+    try {
+      const { getDriveContext } = await import("@/lib/google-drive.server");
+      driveContext = await getDriveContext(data.message);
+    } catch (e) {
+      console.error("Falha ao consultar o Google Drive:", e);
+    }
+
     const payloadMessages = [
       ...(userName
         ? [
