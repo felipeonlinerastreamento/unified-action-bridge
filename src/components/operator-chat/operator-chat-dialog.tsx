@@ -70,6 +70,18 @@ export function OperatorChatDialog({ chatId, open, onOpenChange, locked }: Props
     refetchInterval: 5000,
   });
 
+  const { data: participants = [] } = useQuery({
+    queryKey: ["operator-chat-participants", chatId],
+    enabled: !!chatId && open && !!(chat as any)?.is_group,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("operator_chat_participants")
+        .select("user_id, user_name")
+        .eq("chat_id", chatId);
+      return data || [];
+    },
+  });
+
   // Realtime subscription
   useEffect(() => {
     if (!chatId || !open) return;
