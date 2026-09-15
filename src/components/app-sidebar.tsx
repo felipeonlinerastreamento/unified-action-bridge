@@ -40,6 +40,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { useUserPermissions } from "@/hooks/use-user-permissions";
 import { URL_TO_MENU_SLUG } from "@/lib/menu-catalog";
+import { fetchMyGroupChatIds, myChatsOrFilter } from "@/components/operator-chat/chat-access";
 import { useTheme } from "@/hooks/use-theme";
 import {
   Sidebar,
