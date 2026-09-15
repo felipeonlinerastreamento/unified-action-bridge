@@ -274,9 +274,13 @@ export const sendTopGamificAiMessage = createServerFn({ method: "POST" })
           role: "assistant",
           content: reply,
           created_at: new Date(now + 1).toISOString(),
+          remote_conversation_id: remoteConversationId,
+          remote_message_id: remoteMessageId,
         },
       ])
-      .select("id, role, content, created_at, rating, rating_comment");
+      .select(
+        "id, role, content, created_at, rating, rating_comment, remote_conversation_id, remote_message_id",
+      );
 
     return { ok: true, error: null, messages: mapRows(inserted ?? []) };
   });
