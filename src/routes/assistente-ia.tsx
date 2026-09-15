@@ -214,6 +214,99 @@ function AssistenteIaContent() {
   );
 }
 
+function RatingBar({ message }: { message: TopGamificAiMessage }) {
+  const rate = useServerFn(rateTopGamificAiMessage);
+  const queryClient = useQueryClient();
+  const [showComment, setShowComment] = useState(false);
+  const [comment, setComment] = useState(message.ratingComment ?? "");
+
+  const apply = (rating: -1 | 1 | null, text?: string) => {
+    queryClient.setQueryData<TopGamificAiMessage[]>(
+      ["topgamific-ai-history"],
+      (old) =>
+        (old ?? []).map((m) =>
+          m.id === message.id
+            ? { ...m, rating, ratingComment: rating === null ? null : (text ?? m.ratingComment) }
+            : m,
+        ),
+    );
+    rate({ data: { id: message.id, rating, comment: text ?? comment } })
+      .then((r) => {
+        if (!r?.ok) toast.error("Não foi possível salvar sua avaliação.");
+      })
+      .catch(() => toast.error("Não foi possível salvar sua avaliação."));
+  };
+
+  const handle = (value: -1 | 1) => {
+    if (message.rating === value) {
+      setShowComment(false);
+      apply(null);
+      return;
+    }
+    apply(value);
+    if (value === -1) setShowComment(true);
+  };
+
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-1">
+        <span className="text-[11px] text-muted-foreground mr-1">Esta resposta ajudou?</span>
+        <Button
+          variant="ghost"
+          size="icon"
+          className={`h-7 w-7 ${message.rating === 1 ? "text-primary bg-primary/10" : "text-muted-foreground"}`}
+          onClick={() => handle(1)}
+          aria-label="Avaliar como útil"
+        >
+          <ThumbsUp className="h-3.5 w-3.5" />
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className={`h-7 w-7 ${message.rating === -1 ? "text-destructive bg-destructive/10" : "text-muted-foreground"}`}
+          onClick={() => handle(-1)}
+          aria-label="Avaliar como não útil"
+        >
+          <ThumbsDown className="h-3.5 w-3.5" />
+        </Button>
+        {message.rating !== null && !showComment && (
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-7 text-[11px] text-muted-foreground"
+            onClick={() => setShowComment(true)}
+          >
+            {message.ratingComment ? "Editar comentário" : "Comentar"}
+          </Button>
+        )}
+      </div>
+      {showComment && (
+        <div className="flex items-end gap-2">
+          <Textarea
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            placeholder="Conte o que faltou ou o que funcionou bem (opcional)"
+            className="min-h-[40px] max-h-28 resize-none text-xs"
+          />
+          <Button
+            size="sm"
+            onClick={() => {
+              apply(message.rating ?? 1, comment.trim());
+              setShowComment(false);
+              toast.success("Avaliação registrada.");
+            }}
+          >
+            Salvar
+          </Button>
+        </div>
+      )}
+      {!showComment && message.ratingComment && (
+        <p className="text-[11px] text-muted-foreground italic">"{message.ratingComment}"</p>
+      )}
+    </div>
+  );
+}
+
 function MessageRow({ message }: { message: TopGamificAiMessage }) {
   const isUser = message.role === "user";
   return (
