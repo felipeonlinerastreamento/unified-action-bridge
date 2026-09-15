@@ -16,10 +16,12 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MessageCircle, Plus, Lock, User, Building2, Users, Globe } from "lucide-react";
+import { MessageCircle, Plus, Lock, User, Building2, Users, Globe, UsersRound } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 
-type TargetType = "all" | "user" | "sector" | "group";
+type TargetType = "all" | "user" | "sector" | "group" | "multi";
 
 interface Props {
   onCreated?: (firstChatId: string) => void;
