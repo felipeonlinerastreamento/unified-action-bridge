@@ -93,11 +93,28 @@ function ChatOperadoresContent() {
           nameMap[p.user_id] = p.name;
         });
       }
-      return list.map((c) => ({
+      // Nomes dos participantes das conversas em grupo
+      const groupChatIds = list.filter((c: any) => c.is_group).map((c) => c.id);
+      const groupNames: Record<string, string> = {};
+      if (groupChatIds.length > 0) {
+        const { data: parts } = await supabase
+          .from("operator_chat_participants")
+          .select("chat_id, user_id, user_name")
+          .in("chat_id", groupChatIds);
+        (parts || []).forEach((p: any) => {
+          if (p.user_id === userId) return;
+          groupNames[p.chat_id] = groupNames[p.chat_id]
+            ? `${groupNames[p.chat_id]}, ${p.user_name || "Operador"}`
+            : p.user_name || "Operador";
+        });
+      }
+
+      return list.map((c: any) => ({
         ...c,
         unread: unreadMap[c.id] || 0,
-        otherName:
-          c.created_by === userId
+        otherName: c.is_group
+          ? `Grupo · ${groupNames[c.id] || "participantes"}`
+          : c.created_by === userId
             ? nameMap[c.recipient_user_id] || "Operador"
             : c.created_by_name || "Atendimento",
       }));
