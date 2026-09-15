@@ -70,6 +70,18 @@ export function OperatorChatDialog({ chatId, open, onOpenChange, locked }: Props
     refetchInterval: 5000,
   });
 
+  const { data: participants = [] } = useQuery({
+    queryKey: ["operator-chat-participants", chatId],
+    enabled: !!chatId && open && !!(chat as any)?.is_group,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("operator_chat_participants")
+        .select("user_id, user_name")
+        .eq("chat_id", chatId);
+      return data || [];
+    },
+  });
+
   // Realtime subscription
   useEffect(() => {
     if (!chatId || !open) return;
@@ -131,6 +143,8 @@ export function OperatorChatDialog({ chatId, open, onOpenChange, locked }: Props
       if (error) throw error;
       setBody("");
       qc.invalidateQueries({ queryKey: ["operator-chat-messages", chatId] });
+      qc.invalidateQueries({ queryKey: ["operator-chat-locked"] });
+      qc.invalidateQueries({ queryKey: ["operator-chats-list"] });
     } catch (err: any) {
       toast.error(err?.message || "Falha ao enviar");
     } finally {
@@ -176,7 +190,13 @@ export function OperatorChatDialog({ chatId, open, onOpenChange, locked }: Props
           </DialogTitle>
           <DialogDescription className="text-xs">
             {locked
-              ? "Esta tela ficará bloqueada até você enviar uma resposta."
+              ? `Esta tela ficará bloqueada até você enviar uma resposta.${
+                  (chat as any)?.is_group && participants.length > 0
+                    ? ` Grupo de ${chat?.created_by_name || "Atendimento"} · ${participants
+                        .map((p: any) => p.user_name || "Operador")
+                        .join(", ")}`
+                    : ""
+                }`
               : `Conversa com ${otherName}`}
           </DialogDescription>
         </DialogHeader>

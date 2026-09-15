@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { MessageCircle, Lock } from "lucide-react";
 import { OperatorChatDialog } from "./operator-chat-dialog";
 import { Badge } from "@/components/ui/badge";
-import { fetchMyGroupChatIds, myChatsOrFilter } from "./chat-access";
+import { fetchMyGroupChatIds, fetchMyLockedGroupChatIds, myChatsOrFilter } from "./chat-access";
 
 interface Props {
   onUnreadChange?: (count: number) => void;
@@ -26,6 +26,7 @@ export function OperatorChatList({ onUnreadChange }: Props) {
     queryFn: async () => {
       if (!userId) return [];
       const groupIds = await fetchMyGroupChatIds(userId);
+      const lockedGroupIds = await fetchMyLockedGroupChatIds(userId);
       const { data: rows } = await supabase
         .from("operator_chats")
         .select("id, subject, created_by, created_by_name, recipient_user_id, is_group, is_locked, last_message_at, closed_at")
@@ -69,6 +70,9 @@ export function OperatorChatList({ onUnreadChange }: Props) {
       }
       return list.map((c: any) => ({
         ...c,
+        myLock: c.is_group
+          ? lockedGroupIds.has(c.id)
+          : !!c.is_locked && c.recipient_user_id === userId,
         unread: unreadMap[c.id] || 0,
         otherName: c.is_group
           ? "Conversa em grupo"
@@ -129,7 +133,7 @@ export function OperatorChatList({ onUnreadChange }: Props) {
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1">
                   <p className="text-sm font-medium truncate flex-1">{c.subject}</p>
-                  {c.is_locked && c.recipient_user_id === userId && (
+                  {c.myLock && (
                     <Lock className="h-3 w-3 text-amber-500" />
                   )}
                 </div>
