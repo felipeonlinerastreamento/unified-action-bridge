@@ -109,7 +109,8 @@ async function readFile(
     file.mimeType.startsWith("text/") ||
     file.mimeType.includes("json") ||
     file.mimeType.includes("csv") ||
-    file.mimeType.includes("xml")
+    file.mimeType === "application/xml" ||
+    file.mimeType === "text/xml"
   ) {
     url = `${GATEWAY}/drive/v3/files/${file.id}?alt=media&supportsAllDrives=true`;
   } else {
