@@ -112,7 +112,9 @@ export function AppSidebar() {
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
   }, []);
 
-  // Chats atribuídos a mim (não finalizados) — selo vermelho no item "Chat".
+  // Chats atribuídos a mim e realmente abertos na fila — selo vermelho no item
+  // "Chat". Mesma regra da lista de conversas: ignora "finalizado" e
+  // "aguardando_retorno" (chats já encerrados aguardando retorno do cliente).
   const { data: assignedChats = 0 } = useQuery({
     queryKey: ["sidebar-assigned-chats", userId],
     enabled: !!userId,
@@ -123,7 +125,7 @@ export function AppSidebar() {
         .from("zapi_chats")
         .select("id", { count: "exact", head: true })
         .eq("assigned_to", userId)
-        .neq("status", "finalizado");
+        .not("status", "in", "(finalizado,aguardando_retorno)");
       return count || 0;
     },
   });
