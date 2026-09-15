@@ -390,9 +390,16 @@ function ChatListItem({
             )}
           </div>
 
-          {/* Operator row: same hierarchy as client name */}
+          {/* Operator row: SLA time (red clock) in front of operator name */}
           {agentName && (
-            <div className="flex items-center gap-1.5 mt-0.5">
+            <div className="flex items-center gap-1.5 mt-0.5 flex-wrap">
+              <span
+                className="text-[10px] font-semibold px-1.5 py-0 rounded-full text-white leading-4"
+                style={{ backgroundColor: sla.bg }}
+                title={sla.label}
+              >
+                {time}
+              </span>
               <Clock
                 className="h-3 w-3 shrink-0"
                 style={{ color: getAgentColor(agentName) }}
@@ -412,14 +419,17 @@ function ChatListItem({
               </p>
             </div>
           )}
-          {/* Row 3: SLA + wait timer badges */}
+          {/* Row 3: wait timer badge (keeps SLA time when no operator is assigned) */}
           <div className="flex items-center gap-1.5 mt-1 flex-wrap">
-            <span
-              className="text-[10px] font-semibold px-1.5 py-0 rounded-full text-white leading-4"
-              style={{ backgroundColor: sla.bg }}
-            >
-              {time}
-            </span>
+            {!agentName && (
+              <span
+                className="text-[10px] font-semibold px-1.5 py-0 rounded-full text-white leading-4"
+                style={{ backgroundColor: sla.bg }}
+                title={sla.label}
+              >
+                {time}
+              </span>
+            )}
             {wc && (
               <span
                 className={`text-[10px] font-semibold px-1.5 py-0 rounded-full text-white leading-4 inline-flex items-center gap-1 ${isZombie ? "animate-pulse" : ""}`}
