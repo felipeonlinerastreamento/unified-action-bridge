@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Mail, RefreshCw, Trash2, Plus, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
+import { Mail, RefreshCw, Trash2, Plus, CheckCircle2, AlertCircle, Loader2, Copy, Check } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -46,6 +46,7 @@ export function EmailChannelsConfig() {
   const qc = useQueryClient();
   const [editing, setEditing] = useState<ChannelForm | null>(null);
   const [polling, setPolling] = useState<string | null>(null);
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
 
   const conn = useQuery({
     queryKey: ["outlook-connection"],
@@ -90,6 +91,13 @@ export function EmailChannelsConfig() {
     onError: (e: any) => toast.error(e?.message || "Erro ao remover"),
   });
 
+  function copyToClipboard(text: string) {
+    navigator.clipboard.writeText(text);
+    setCopiedKey(text);
+    toast.success(`Copiado: ${text}`);
+    setTimeout(() => setCopiedKey(null), 2000);
+  }
+
   async function pollNow(channelId: string) {
     setPolling(channelId);
     try {
@@ -129,38 +137,81 @@ export function EmailChannelsConfig() {
             <>
               <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5" />
               <div className="flex-1">
-                <div className="text-sm font-medium">Outlook conectado</div>
+                <div className="text-sm font-medium text-green-700 dark:text-green-400">Outlook conectado com sucesso!</div>
                 <div className="text-xs text-muted-foreground mt-1">
                   {conn.data.name || conn.data.email
                     ? `${conn.data.name ? `${conn.data.name} • ` : ""}${conn.data.email || ""}`.replace(/ • $/, "")
-                    : "Conta conectada, mas o nome/e-mail não foi retornado pela Microsoft."}
+                    : "Conta conectada e pronta para receber e-mails."}
                 </div>
               </div>
             </>
           ) : (
             <>
-              <AlertCircle className="h-5 w-5 text-destructive mt-0.5" />
+              <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5" />
               <div className="flex-1 space-y-3">
-                <div className="text-sm font-bold text-destructive">Outlook não conectado ou chaves ausentes</div>
+                <div className="text-sm font-bold text-amber-700 dark:text-amber-400">
+                  Como cadastrar as chaves no menu Segredos (cadeado)
+                </div>
                 
                 <div className="text-sm text-foreground">
-                  O sistema precisa da sua autorização prévia pelo painel de controle da plataforma (Lovable). Como as chaves não foram detectadas no ambiente, siga o passo a passo abaixo:
+                  No menu de Segredos que você abriu, adicione <strong>2 variáveis</strong> preenchendo o <strong>Nome (Key)</strong> e o <strong>Valor (Value)</strong>:
                 </div>
 
-                <div className="bg-background rounded-md p-4 border text-sm space-y-2 max-w-2xl shadow-sm">
-                  <p className="font-semibold text-primary">📋 Instruções para ativar a integração:</p>
-                  <ol className="list-decimal list-inside space-y-2 text-muted-foreground">
-                    <li>Abra o menu de <strong>Integrações</strong> no Lovable e certifique-se de que o Microsoft Outlook está conectado.</li>
-                    <li><strong className="text-primary">PASSO CRÍTICO:</strong> Como a opção de vincular projeto não está aparecendo no seu painel, você deve configurar as chaves manualmente nos <strong>Secrets</strong> do ambiente (ícone de cadeado no menu lateral ou superior do editor).</li>
-                    <li>Adicione um secret chamado <code className="bg-muted px-1 py-0.5 rounded text-[11px] font-mono text-foreground">LOVABLE_API_KEY</code> preenchido com uma chave de API que você possa gerar nas configurações da sua conta (Workspace) do Lovable.</li>
-                    <li>Adicione outro secret chamado <code className="bg-muted px-1 py-0.5 rounded text-[11px] font-mono text-foreground">MICROSOFT_OUTLOOK_API_KEY</code>. Use o campo 'Connection Key' encontrado na página onde a integração com a Microsoft foi autenticada.</li>
-                    <li>Retorne a esta tela e clique no botão circular azul de atualização para testar.</li>
-                  </ol>
+                <div className="bg-background rounded-md p-4 border text-sm space-y-4 max-w-2xl shadow-sm">
+                  <div className="space-y-2 border-b pb-3">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-foreground text-xs uppercase tracking-wider">1º Segredo</span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs gap-1"
+                        onClick={() => copyToClipboard("LOVABLE_API_KEY")}
+                      >
+                        {copiedKey === "LOVABLE_API_KEY" ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
+                        Copiar Nome
+                      </Button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground font-semibold w-16">Nome:</span>
+                      <code className="bg-muted px-2 py-1 rounded text-xs font-mono font-bold text-primary">LOVABLE_API_KEY</code>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground font-semibold w-16">Valor:</span>
+                      <span className="text-xs text-muted-foreground">Sua chave de API do Workspace no Lovable</span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="font-medium text-foreground text-xs uppercase tracking-wider">2º Segredo</span>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="h-7 text-xs gap-1"
+                        onClick={() => copyToClipboard("MICROSOFT_OUTLOOK_API_KEY")}
+                      >
+                        {copiedKey === "MICROSOFT_OUTLOOK_API_KEY" ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
+                        Copiar Nome
+                      </Button>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground font-semibold w-16">Nome:</span>
+                      <code className="bg-muted px-2 py-1 rounded text-xs font-mono font-bold text-primary">MICROSOFT_OUTLOOK_API_KEY</code>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-muted-foreground font-semibold w-16">Valor:</span>
+                      <span className="text-xs text-muted-foreground">A &apos;Connection Key&apos; exibida na integração do Outlook</span>
+                    </div>
+                  </div>
                 </div>
                 
+                <div className="text-xs text-muted-foreground">
+                  Após adicionar ambas no menu de segredos, clique no botão circular de atualizar acima para testar a conexão.
+                </div>
+
                 {conn.data?.error && (
-                  <div className="text-[11px] text-muted-foreground bg-muted-foreground/10 p-2 rounded max-w-2xl font-mono">
-                    Status do sistema: {conn.data.error}
+                  <div className="text-[11px] text-muted-foreground bg-muted-foreground/10 p-2 rounded max-w-2xl font-mono truncate">
+                    Status atual: {conn.data.error}
                   </div>
                 )}
               </div>
