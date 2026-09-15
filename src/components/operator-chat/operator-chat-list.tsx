@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { MessageCircle, Lock } from "lucide-react";
 import { OperatorChatDialog } from "./operator-chat-dialog";
 import { Badge } from "@/components/ui/badge";
+import { fetchMyGroupChatIds, myChatsOrFilter } from "./chat-access";
 
 interface Props {
   onUnreadChange?: (count: number) => void;
@@ -24,10 +25,11 @@ export function OperatorChatList({ onUnreadChange }: Props) {
     refetchInterval: 15000,
     queryFn: async () => {
       if (!userId) return [];
+      const groupIds = await fetchMyGroupChatIds(userId);
       const { data: rows } = await supabase
         .from("operator_chats")
-        .select("id, subject, created_by, created_by_name, recipient_user_id, is_locked, last_message_at, closed_at")
-        .or(`created_by.eq.${userId},recipient_user_id.eq.${userId}`)
+        .select("id, subject, created_by, created_by_name, recipient_user_id, is_group, is_locked, last_message_at, closed_at")
+        .or(myChatsOrFilter(userId, groupIds))
         .is("closed_at", null)
         .order("last_message_at", { ascending: false })
         .limit(30);
@@ -65,11 +67,12 @@ export function OperatorChatList({ onUnreadChange }: Props) {
           nameMap[p.user_id] = p.name;
         });
       }
-      return list.map((c) => ({
+      return list.map((c: any) => ({
         ...c,
         unread: unreadMap[c.id] || 0,
-        otherName:
-          c.created_by === userId
+        otherName: c.is_group
+          ? "Conversa em grupo"
+          : c.created_by === userId
             ? nameMap[c.recipient_user_id] || "Operador"
             : c.created_by_name || "Atendimento",
       }));
