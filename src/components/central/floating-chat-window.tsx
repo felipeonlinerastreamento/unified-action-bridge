@@ -263,7 +263,11 @@ export function FloatingChatWindow({ state, onOpenInPanel }: Props) {
       queryClient.invalidateQueries({ queryKey: ["zapi-messages"] });
       if (vars.whisper) toast.success("Sussurro registrado");
     },
-    onError: (err: any) => toast.error(err?.message || "Erro ao enviar mensagem"),
+    onError: (err: any) => {
+      toast.error(err?.message || "Erro ao enviar mensagem");
+      queryClient.invalidateQueries({ queryKey: ["floating-chat-messages", channelId, chatId] });
+      queryClient.invalidateQueries({ queryKey: ["zapi-messages"] });
+    },
   });
 
   const handleSend = () => {

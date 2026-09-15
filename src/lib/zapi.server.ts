@@ -3,6 +3,11 @@
 
 const ZAPI_BASE = "https://api.z-api.io";
 
+// Envios feitos pelo operador podem demorar mais que o limite curto usado
+// pelas rotinas automáticas (webhook).
+const TEXT_SEND_TIMEOUT_MS = 30000;
+const MEDIA_SEND_TIMEOUT_MS = 60000;
+
 export interface ZapiChannelCreds {
   id: string;
   zapi_instance_id: string | null;
@@ -27,24 +32,51 @@ function zapiUrl(channel: ZapiChannelCreds, path: string): string {
   return `${ZAPI_BASE}/instances/${channel.zapi_instance_id}/token/${channel.token}${path}`;
 }
 
+function isTimeoutError(err: unknown): boolean {
+  const name = (err as any)?.name;
+  return name === "TimeoutError" || name === "AbortError";
+}
+
 export async function zapiFetch(
   channel: ZapiChannelCreds,
   path: string,
   method: "GET" | "POST" | "PUT" | "DELETE" = "GET",
-  body?: unknown
+  body?: unknown,
+  opts?: { timeoutMs?: number; retryOnNetworkError?: boolean }
 ): Promise<any> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (channel.zapi_client_token) headers["Client-Token"] = channel.zapi_client_token;
 
-  // Hard timeout para evitar que o webhook fique pendurado quando a Z-API
-  // demora a responder (causava timeout do worker e Z-API parava de entregar
-  // eventos). 8s é suficiente para chamadas normais.
-  const res = await fetch(zapiUrl(channel, path), {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-    signal: AbortSignal.timeout(8000),
-  });
+  // Timeout padrão curto (8s) para rotinas automáticas/webhook, que precisam
+  // responder rápido. Envios feitos pelo operador passam um limite maior.
+  const timeoutMs = opts?.timeoutMs ?? 8000;
+  const payload = body ? JSON.stringify(body) : undefined;
+  const maxAttempts = opts?.retryOnNetworkError ? 2 : 1;
+
+  let res: Response | undefined;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      res = await fetch(zapiUrl(channel, path), {
+        method,
+        headers,
+        body: payload,
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+      break;
+    } catch (err) {
+      if (isTimeoutError(err)) {
+        // Nunca repetir após timeout: a mensagem pode ter sido entregue.
+        throw new Error(
+          "O WhatsApp demorou demais para responder. A mensagem pode não ter sido entregue — confira a conversa antes de reenviar."
+        );
+      }
+      if (attempt >= maxAttempts) {
+        throw new Error("Falha de conexão com o WhatsApp. Tente novamente em instantes.");
+      }
+      await new Promise((r) => setTimeout(r, 800));
+    }
+  }
+  if (!res) throw new Error("Falha de conexão com o WhatsApp. Tente novamente em instantes.");
 
   const text = await res.text();
   let parsed: any = null;
@@ -122,7 +154,10 @@ export async function zapiSendText(
       messagePreview: message.slice(0, 60),
     });
   }
-  return zapiFetch(channel, "/send-text", "POST", payload);
+  return zapiFetch(channel, "/send-text", "POST", payload, {
+    timeoutMs: TEXT_SEND_TIMEOUT_MS,
+    retryOnNetworkError: true,
+  });
 }
 
 /**
@@ -151,27 +186,28 @@ export async function zapiSendMedia(
   dataUrl: string,
   opts?: { fileName?: string; caption?: string; extension?: string }
 ) {
+  const mediaOpts = { timeoutMs: MEDIA_SEND_TIMEOUT_MS };
   if (kind === "audio") {
     return zapiFetch(channel, "/send-audio", "POST", {
       phone: zapiRecipientPhone(phone),
       audio: normalizeAudioDataUrl(dataUrl),
       viewOnce: false,
       waveform: true,
-    });
+    }, mediaOpts);
   }
   if (kind === "image") {
     return zapiFetch(channel, "/send-image", "POST", {
       phone: zapiRecipientPhone(phone),
       image: dataUrl,
       caption: opts?.caption || "",
-    });
+    }, mediaOpts);
   }
   if (kind === "video") {
     return zapiFetch(channel, "/send-video", "POST", {
       phone: zapiRecipientPhone(phone),
       video: dataUrl,
       caption: opts?.caption || "",
-    });
+    }, mediaOpts);
   }
   // document — Z-API requires extension in path
   const ext = (opts?.extension || (opts?.fileName?.split(".").pop() ?? "pdf")).toLowerCase();
@@ -179,7 +215,7 @@ export async function zapiSendMedia(
     phone: zapiRecipientPhone(phone),
     document: dataUrl,
     fileName: opts?.fileName || `arquivo.${ext}`,
-  });
+  }, mediaOpts);
 }
 
 export async function zapiGetStatus(channel: ZapiChannelCreds) {
