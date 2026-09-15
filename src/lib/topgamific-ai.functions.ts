@@ -179,6 +179,7 @@ export const sendTopGamificAiMessage = createServerFn({ method: "POST" })
       .eq("user_id", context.userId)
       .maybeSingle();
     const userName = profile?.name?.trim() ?? "";
+    const userEmail = String((context.claims as any)?.email ?? "").trim();
 
     const { data: historyRows } = await context.supabase
       .from("topgamific_ai_messages")
