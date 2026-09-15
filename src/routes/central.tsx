@@ -56,6 +56,7 @@ import { ContactHistoryPanel } from "@/components/central/contact-history-panel"
 import { ChatControleTab } from "@/components/central/chat-controle-tab";
 import { FullConversationHistoryDialog } from "@/components/central/full-conversation-history-dialog";
 import { CompanySharedNote } from "@/components/central/company-shared-note";
+import { DetectedPlatesCard } from "@/components/central/detected-plates-card";
 import {
   createCrmContactWithCompany,
   createSubClientWithParentCompany,
