@@ -393,15 +393,25 @@ export async function evaluateInboundForAutoReply(params: InboundParams): Promis
 
     const alreadySent = await repliesSentToChat(chatId);
     if (alreadySent >= settings.max_replies_per_chat) {
-      await supabaseAdmin.from("bot_auto_reply_log").insert({
-        chat_id: chatId,
-        channel_id: channelId,
-        rule_id: rule.id,
-        rule_name: rule.name,
-        incoming_text: incomingText,
-        outcome: "skipped_limit",
-      });
-      return false;
+      // Assunto novo (outra automação) ainda merece uma resposta.
+      const { data: sentRules } = await supabaseAdmin
+        .from("bot_auto_reply_log")
+        .select("rule_id")
+        .eq("chat_id", chatId)
+        .eq("outcome", "sent")
+        .limit(50);
+      const usedRules = new Set((sentRules || []).map((r: any) => r.rule_id));
+      if (usedRules.has(rule.id)) {
+        await supabaseAdmin.from("bot_auto_reply_log").insert({
+          chat_id: chatId,
+          channel_id: channelId,
+          rule_id: rule.id,
+          rule_name: rule.name,
+          incoming_text: incomingText,
+          outcome: "skipped_limit",
+        });
+        return false;
+      }
     }
 
     await assignIfNeeded(chatId, rule.target_sector);
