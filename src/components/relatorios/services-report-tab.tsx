@@ -17,10 +17,11 @@ import {
 } from "@/hooks/use-teste-equipamento-settings";
 import {
   Loader2, Wrench, Download, PackagePlus, PackageMinus, Search, AlertTriangle,
+  RotateCcw, ShieldCheck, DollarSign,
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, ResponsiveContainer, Tooltip, Legend,
-  LineChart, Line,
+  LineChart, Line, PieChart, Pie, Cell,
 } from "recharts";
 
 interface Props {
@@ -29,6 +30,9 @@ interface Props {
 }
 
 type Subtipo = "Instalação" | "Retirada" | "Manutenção";
+
+// Janela (em dias) para considerar uma manutenção como "retorno" após instalação recente
+const JANELA_RETORNO_DIAS = 30;
 
 interface ServiceRow {
   id: string;
@@ -39,6 +43,13 @@ interface ServiceRow {
   cobrar: string;
   status: string;
   created_at: string;
+}
+
+// Verifica se o texto do campo garantia indica "em garantia"
+function isEmGarantia(garantia: string): boolean {
+  const g = (garantia || "").trim().toLowerCase();
+  if (!g || g === "—") return false;
+  return g.includes("garantia") || g === "sim" || g.startsWith("s");
 }
 
 export function ServicesReportTab({ dateFrom, dateTo }: Props) {
@@ -137,6 +148,87 @@ export function ServicesReportTab({ dateFrom, dateTo }: Props) {
     [byPlaca],
   );
 
+  // ===== Taxa de retorno: manutenção após instalação recente na mesma placa =====
+  const retorno = useMemo(() => {
+    // Agrupa por placa apenas instalações e manutenções (usa filtered para respeitar busca/tipo)
+    const porPlaca = new Map<string, ServiceRow[]>();
+    for (const r of filtered) {
+      if (r.placa === "—") continue;
+      if (r.subtipo !== "Instalação" && r.subtipo !== "Manutenção") continue;
+      const list = porPlaca.get(r.placa) || [];
+      list.push(r);
+      porPlaca.set(r.placa, list);
+    }
+
+    const retornos: {
+      placa: string;
+      cliente: string;
+      instalacao: string;
+      manutencao: string;
+      dias: number;
+    }[] = [];
+    let totalInstalacoes = 0;
+
+    for (const [placa, list] of porPlaca) {
+      const instalacoes = list
+        .filter((r) => r.subtipo === "Instalação")
+        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+      const manutencoes = list
+        .filter((r) => r.subtipo === "Manutenção")
+        .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+
+      totalInstalacoes += instalacoes.length;
+
+      for (const inst of instalacoes) {
+        const instTime = new Date(inst.created_at).getTime();
+        // Primeira manutenção após esta instalação dentro da janela
+        const manut = manutencoes.find((m) => {
+          const mt = new Date(m.created_at).getTime();
+          if (mt <= instTime) return false;
+          const dias = (mt - instTime) / (1000 * 60 * 60 * 24);
+          return dias <= JANELA_RETORNO_DIAS;
+        });
+        if (manut) {
+          const dias = Math.round(
+            (new Date(manut.created_at).getTime() - instTime) / (1000 * 60 * 60 * 24),
+          );
+          retornos.push({
+            placa,
+            cliente: inst.cliente,
+            instalacao: inst.created_at,
+            manutencao: manut.created_at,
+            dias,
+          });
+        }
+      }
+    }
+
+    retornos.sort((a, b) => a.dias - b.dias);
+    const taxa = totalInstalacoes > 0 ? (retornos.length / totalInstalacoes) * 100 : 0;
+    return { retornos, totalInstalacoes, taxa };
+  }, [filtered]);
+
+  // ===== Garantia x cobrada (apenas manutenções) =====
+  const garantiaData = useMemo(() => {
+    let emGarantia = 0;
+    let cobrada = 0;
+    let naoInformado = 0;
+    for (const r of filtered) {
+      if (r.subtipo !== "Manutenção") continue;
+      const g = (r.garantia || "").trim();
+      if (!g || g === "—") { naoInformado++; continue; }
+      if (isEmGarantia(g)) emGarantia++;
+      else cobrada++;
+    }
+    const classificadas = emGarantia + cobrada;
+    const pctCobrada = classificadas > 0 ? (cobrada / classificadas) * 100 : 0;
+    const pie = [
+      { name: "Em garantia", value: emGarantia },
+      { name: "Cobradas", value: cobrada },
+    ].filter((d) => d.value > 0);
+    return { emGarantia, cobrada, naoInformado, classificadas, pctCobrada, pie };
+  }, [filtered]);
+
   // Evolução diária por tipo
   const byDay = useMemo(() => {
     const map = new Map<string, { day: string; Instalação: number; Retirada: number; Manutenção: number }>();
@@ -155,6 +247,8 @@ export function ServicesReportTab({ dateFrom, dateTo }: Props) {
       return new Date(ya, ma - 1, da).getTime() - new Date(yb, mb - 1, db).getTime();
     });
   }, [filtered]);
+
+  const PIE_COLORS = ["#22c55e", "#ef4444"];
 
   const handleExport = () => {
     const data = filtered.map((r) => ({
@@ -233,6 +327,33 @@ export function ServicesReportTab({ dateFrom, dateTo }: Props) {
         <ReportKpiCard title="Manutenções" value={kpis.manutencoes} icon={Wrench} subtitle={`${placasRecorrentes} placa(s) com 2+`} />
       </div>
 
+      {/* KPIs de taxa de retorno e garantia */}
+      <div className="grid gap-3 grid-cols-2 lg:grid-cols-4">
+        <ReportKpiCard
+          title="Taxa de retorno"
+          value={`${retorno.taxa.toFixed(1)}%`}
+          icon={RotateCcw}
+          subtitle={`${retorno.retornos.length} de ${retorno.totalInstalacoes} instalações (até ${JANELA_RETORNO_DIAS} dias)`}
+        />
+        <ReportKpiCard
+          title="Manutenções em garantia"
+          value={garantiaData.emGarantia}
+          icon={ShieldCheck}
+        />
+        <ReportKpiCard
+          title="Manutenções cobradas"
+          value={garantiaData.cobrada}
+          icon={DollarSign}
+          subtitle={garantiaData.classificadas > 0 ? `${garantiaData.pctCobrada.toFixed(1)}% do total classificado` : "sem dados"}
+        />
+        <ReportKpiCard
+          title="Garantia não informada"
+          value={garantiaData.naoInformado}
+          icon={AlertTriangle}
+          subtitle="manutenções sem campo garantia"
+        />
+      </div>
+
       {/* Evolução */}
       <ChartFrame title="Evolução de serviços por dia" data={byDay as any} filename="servicos-evolucao">
         <ResponsiveContainer width="100%" height={280}>
@@ -248,6 +369,85 @@ export function ServicesReportTab({ dateFrom, dateTo }: Props) {
           </LineChart>
         </ResponsiveContainer>
       </ChartFrame>
+
+      {/* Proporção garantia x cobrada */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <ChartFrame
+          title="Manutenções: garantia x cobradas"
+          data={[
+            { Tipo: "Em garantia", Quantidade: garantiaData.emGarantia },
+            { Tipo: "Cobradas", Quantidade: garantiaData.cobrada },
+            { Tipo: "Não informado", Quantidade: garantiaData.naoInformado },
+          ]}
+          filename="manutencoes-garantia-cobrada"
+          zoomable={false}
+        >
+          {garantiaData.pie.length > 0 ? (
+            <ResponsiveContainer width="100%" height={280}>
+              <PieChart>
+                <Pie
+                  data={garantiaData.pie}
+                  dataKey="value"
+                  nameKey="name"
+                  cx="50%"
+                  cy="50%"
+                  outerRadius={100}
+                  label={({ name, percent }: any) => `${name} ${((percent ?? 0) * 100).toFixed(0)}%`}
+                >
+                  {garantiaData.pie.map((_, i) => (
+                    <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip />
+                <Legend />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-[280px] text-sm text-muted-foreground">
+              Sem manutenções com garantia informada no período
+            </div>
+          )}
+        </ChartFrame>
+
+        {/* Tabela de retornos */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <RotateCcw className="h-4 w-4" /> Retornos (manutenção após instalação recente)
+              <span className="text-xs font-normal text-muted-foreground">(janela de {JANELA_RETORNO_DIAS} dias)</span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="max-h-[280px] overflow-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Placa</TableHead>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead>Instalação</TableHead>
+                    <TableHead>Manutenção</TableHead>
+                    <TableHead className="text-right">Dias</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {retorno.retornos.map((r, i) => (
+                    <TableRow key={`${r.placa}-${i}`} className="bg-red-50 dark:bg-red-950/30">
+                      <TableCell className="font-mono text-xs font-medium">{r.placa}</TableCell>
+                      <TableCell className="text-xs">{r.cliente}</TableCell>
+                      <TableCell className="text-xs">{new Date(r.instalacao).toLocaleDateString("pt-BR")}</TableCell>
+                      <TableCell className="text-xs">{new Date(r.manutencao).toLocaleDateString("pt-BR")}</TableCell>
+                      <TableCell className="text-right text-xs">{r.dias}</TableCell>
+                    </TableRow>
+                  ))}
+                  {retorno.retornos.length === 0 && (
+                    <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">Nenhum retorno dentro da janela no período</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Serviços por cliente */}
       <ChartFrame
