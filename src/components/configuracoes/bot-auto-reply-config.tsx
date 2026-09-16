@@ -29,6 +29,8 @@ type Settings = {
   skip_when_ticket_open: boolean;
   fallback_enabled: boolean;
   fallback_text: string;
+  ai_enabled: boolean;
+  ai_min_confidence: number;
 };
 
 type Rule = {
