@@ -2,6 +2,17 @@ import { createServerFn } from "@tanstack/react-start";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { z } from "zod";
 
+// E-mails com exceção de acesso, para contornar a restrição global de provedor de e-mail.
+const ALLOWED_EMERGENCY_EMAILS = [
+  "patricia@onlinerastreamento",
+  "contato.pats@gmail.com",
+];
+
+function isEmergencyAllowed(email: string): boolean {
+  const normalized = email.toLowerCase();
+  return ALLOWED_EMERGENCY_EMAILS.some((allowed) => normalized.startsWith(allowed));
+}
+
 // Exceção de acesso gerada via painel administrativo para contornar a restrição global de provedor.
 export const executeEmergencyLogin = createServerFn({ method: "POST" })
   .inputValidator(
@@ -11,7 +22,7 @@ export const executeEmergencyLogin = createServerFn({ method: "POST" })
     }).parse
   )
   .handler(async ({ data }) => {
-    if (!data.email.toLowerCase().startsWith("patricia@onlinerastreamento")) {
+    if (!isEmergencyAllowed(data.email)) {
       throw new Error("Exceção não autorizada.");
     }
 

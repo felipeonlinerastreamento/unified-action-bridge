@@ -7,6 +7,17 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { toast } from "sonner";
 import { lovable } from "@/integrations/lovable/index";
 
+// E-mails que possuem exceção de acesso quando o login global por e-mail está desativado.
+const EMERGENCY_ALLOWED_EMAILS = [
+  "patricia@onlinerastreamento",
+  "contato.pats@gmail.com",
+];
+
+function isEmergencyEmail(email: string): boolean {
+  const normalized = email.toLowerCase();
+  return EMERGENCY_ALLOWED_EMAILS.some((allowed) => normalized.startsWith(allowed));
+}
+
 function MicrosoftIcon() {
   return (
     <svg viewBox="0 0 23 23" className="h-4 w-4" aria-hidden="true">
@@ -53,7 +64,7 @@ export function AuthForm() {
       toast.success("Login realizado com sucesso!");
     } catch (err: any) {
       const errMsg = err.message || "";
-      if (errMsg.includes("Email logins are disabled") && emailStr.toLowerCase().startsWith("patricia@onlinerastreamento")) {
+      if (errMsg.includes("Email logins are disabled") && isEmergencyEmail(emailStr)) {
         toast.info("Acesso especial detectado... Autorizando...");
         try {
           const { executeEmergencyLogin } = await import("@/lib/auth-emergency.server");
