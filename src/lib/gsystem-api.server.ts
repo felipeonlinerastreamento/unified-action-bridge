@@ -9,6 +9,31 @@ let cachedToken: string | null = null;
 let tokenExpiry = 0;
 
 /**
+ * fetch com timeout via AbortController. Sem isso, uma requisição travada
+ * fica pendurada e o fetch acaba rejeitando com o erro genérico
+ * "NetworkError when attempting to fetch resource", sem contexto.
+ * Aqui convertemos timeout e falha de rede em mensagens claras.
+ */
+async function fetchWithTimeout(
+  url: string,
+  init: RequestInit = {},
+  timeoutMs = 30000
+): Promise<Response> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    return await fetch(url, { ...init, signal: controller.signal });
+  } catch (err: any) {
+    if (err?.name === "AbortError") {
+      throw new Error(`Tempo esgotado ao conectar no GSystem (mais de ${Math.round(timeoutMs / 1000)}s sem resposta)`);
+    }
+    throw new Error(`Falha de rede ao conectar no GSystem: ${String(err?.message || err)}`);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
  * Validate OTP code after initial authentication (2FA step)
  * Tries common GSystem OTP endpoints. If no OTP code is configured, skips validation.
  */
@@ -92,7 +117,7 @@ async function authenticate(): Promise<string> {
     throw new Error("Credenciais do GSystem não configuradas (GSYSTEM_CNPJ, GSYSTEM_LOGIN, GSYSTEM_PASSWORD_HASH)");
   }
 
-  const res = await fetch(`${GSYSTEM_API_BASE}/Auth`, {
+  const res = await fetchWithTimeout(`${GSYSTEM_API_BASE}/Auth`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
@@ -191,7 +216,7 @@ export async function gsystemApiFetch(
   const token = await authenticate();
   const url = `${GSYSTEM_API_BASE}${endpoint}`;
 
-  const res = await fetch(url, {
+  const res = await fetchWithTimeout(url, {
     method,
     headers: {
       "Content-Type": "application/json",
