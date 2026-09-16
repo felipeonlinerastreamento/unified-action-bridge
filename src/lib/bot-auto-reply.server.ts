@@ -271,7 +271,10 @@ export async function classifyWithAI(
             content:
               "Você classifica mensagens de clientes de uma empresa de rastreamento veicular. " +
               "Escolha, entre os assuntos do catálogo, o único que responde a mensagem. " +
-              "Se a mensagem for genérica (só cumprimento, pedido vago de ajuda) ou tiver vários pedidos distintos, responda id null. " +
+              "Cumprimentos e pedidos vagos de ajuda (ex.: 'oi', 'pode me ajudar?', 'preciso de suporte') " +
+              "devem ir para o assunto de saudação/abertura de atendimento do catálogo. " +
+              "Só responda id null quando a mensagem tiver vários pedidos distintos ao mesmo tempo " +
+              "ou não couber em nenhum assunto. " +
               'Responda SOMENTE JSON: {"id":"<id ou null>","confidence":0.0}\n\nCATÁLOGO:\n' +
               catalog,
           },
