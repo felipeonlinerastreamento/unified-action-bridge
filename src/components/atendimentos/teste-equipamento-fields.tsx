@@ -12,6 +12,7 @@ import {
   TesteEquipamentoData,
   TesteEquipamentoSettings,
 } from "@/hooks/use-teste-equipamento-settings";
+import { useLiberacaoCatalog } from "@/hooks/use-liberacao-equipamento";
 
 interface Props {
   value: TesteEquipamentoData;
@@ -23,6 +24,12 @@ export function TesteEquipamentoFields({ value, onChange, settings }: Props) {
   const reqSub = settings?.require_subtipo ?? true;
   const reqMotivo = settings?.require_motivo_when_cobrar ?? true;
   const reqGar = settings?.require_garantia ?? true;
+
+  // Catálogo de itens de Liberação de Equipamento (mesma fonte da configuração).
+  // Só carrega quando o subtipo é Manutenção, para não buscar à toa.
+  const { data: equipCatalog = [], isLoading: equipLoading } = useLiberacaoCatalog(
+    value.subtipo === "Manutenção",
+  );
 
   const set = (patch: Partial<TesteEquipamentoData>) => onChange({ ...value, ...patch });
 
@@ -43,7 +50,7 @@ export function TesteEquipamentoFields({ value, onChange, settings }: Props) {
             set({
               subtipo: v as TesteEquipamentoData["subtipo"],
               ...(v !== "Manutenção"
-                ? { necessario_cobrar: "", motivo: "", garantia: "" }
+                ? { necessario_cobrar: "", motivo: "", garantia: "", equipamento: "" }
                 : {}),
             })
           }
@@ -61,6 +68,33 @@ export function TesteEquipamentoFields({ value, onChange, settings }: Props) {
 
       {value.subtipo === "Manutenção" && (
         <>
+          <div className="space-y-1">
+            <Label className="text-xs">Equipamento</Label>
+            <Select
+              value={value.equipamento || ""}
+              onValueChange={(v) => set({ equipamento: v })}
+            >
+              <SelectTrigger className="h-9">
+                <SelectValue
+                  placeholder={equipLoading ? "Carregando..." : "Selecione o equipamento..."}
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {equipCatalog.length === 0 ? (
+                  <div className="px-2 py-1.5 text-xs text-muted-foreground">
+                    Nenhum item cadastrado em Configurações → Liberação de Equipamento.
+                  </div>
+                ) : (
+                  equipCatalog.map((c) => (
+                    <SelectItem key={c.id} value={c.name}>
+                      {c.name}
+                    </SelectItem>
+                  ))
+                )}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label className="text-xs">

@@ -45,6 +45,7 @@ interface ServiceRow {
   subtipo: Subtipo | "—";
   garantia: string;
   cobrar: string;
+  equipamento: string;
   status: string;
   created_at: string;
 }
@@ -93,6 +94,7 @@ export function ServicesReportTab({ dateFrom, dateTo }: Props) {
           subtipo: (parsed.subtipo || "—") as Subtipo | "—",
           garantia: parsed.garantia || "—",
           cobrar: parsed.necessario_cobrar || "—",
+          equipamento: parsed.equipamento || "—",
           status: t.status,
           created_at: t.created_at,
         };
@@ -234,6 +236,32 @@ export function ServicesReportTab({ dateFrom, dateTo }: Props) {
     retornos.sort((a, b) => a.dias - b.dias);
     const taxa = totalInstalacoes > 0 ? (retornos.length / totalInstalacoes) * 100 : 0;
     return { retornos, totalInstalacoes, taxa };
+  }, [filtered]);
+
+  // ===== Proporção de manutenção por item (equipamento) =====
+  const manutencaoPorItem = useMemo(() => {
+    const map = new Map<string, number>();
+    let semItem = 0;
+    let totalManutencoes = 0;
+    for (const r of filtered) {
+      if (r.subtipo !== "Manutenção") continue;
+      totalManutencoes++;
+      const item = (r.equipamento || "").trim();
+      if (!item || item === "—") {
+        semItem++;
+        continue;
+      }
+      map.set(item, (map.get(item) || 0) + 1);
+    }
+    const totalComItem = totalManutencoes - semItem;
+    const linhas = Array.from(map.entries())
+      .map(([item, qtd]) => ({
+        item,
+        qtd,
+        pct: totalComItem > 0 ? (qtd / totalComItem) * 100 : 0,
+      }))
+      .sort((a, b) => b.qtd - a.qtd);
+    return { linhas, semItem, totalManutencoes, totalComItem };
   }, [filtered]);
 
   // ===== Garantia x cobrada (apenas manutenções) =====
@@ -469,6 +497,73 @@ export function ServicesReportTab({ dateFrom, dateTo }: Props) {
                   ))}
                   {retorno.retornos.length === 0 && (
                     <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-6">Nenhum retorno dentro da janela no período</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Proporção de manutenção por item (equipamento) */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <ChartFrame
+          title="Manutenções por item"
+          data={manutencaoPorItem.linhas.map((l) => ({
+            Item: l.item,
+            Manutenções: l.qtd,
+            "% do total": Number(l.pct.toFixed(1)),
+          }))}
+          filename="manutencoes-por-item"
+        >
+          {manutencaoPorItem.linhas.length > 0 ? (
+            <ResponsiveContainer width="100%" height={320}>
+              <BarChart data={manutencaoPorItem.linhas.slice(0, 12)} layout="vertical" margin={{ left: 24 }}>
+                <CartesianGrid strokeDasharray="3 3" opacity={0.3} />
+                <XAxis type="number" tick={{ fontSize: 11 }} />
+                <YAxis type="category" dataKey="item" width={150} tick={{ fontSize: 10 }} />
+                <Tooltip />
+                <Bar dataKey="qtd" name="Manutenções" fill="#ef4444" />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-[320px] text-sm text-muted-foreground">
+              Nenhuma manutenção com equipamento informado no período
+            </div>
+          )}
+        </ChartFrame>
+
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Wrench className="h-4 w-4" /> Proporção de manutenção por item
+              {manutencaoPorItem.semItem > 0 && (
+                <span className="text-xs font-normal text-muted-foreground">
+                  ({manutencaoPorItem.semItem} sem item informado)
+                </span>
+              )}
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="max-h-[320px] overflow-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Item</TableHead>
+                    <TableHead className="text-right">Manutenções</TableHead>
+                    <TableHead className="text-right">% do total</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {manutencaoPorItem.linhas.map((l) => (
+                    <TableRow key={l.item}>
+                      <TableCell className="text-xs">{l.item}</TableCell>
+                      <TableCell className="text-right text-xs">{l.qtd}</TableCell>
+                      <TableCell className="text-right text-xs">{l.pct.toFixed(1)}%</TableCell>
+                    </TableRow>
+                  ))}
+                  {manutencaoPorItem.linhas.length === 0 && (
+                    <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-6">Nenhuma manutenção com equipamento informado no período</TableCell></TableRow>
                   )}
                 </TableBody>
               </Table>

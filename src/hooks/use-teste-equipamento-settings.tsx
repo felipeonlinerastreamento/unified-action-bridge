@@ -63,6 +63,7 @@ export interface TesteEquipamentoData {
   necessario_cobrar: "" | "Sim" | "Não";
   motivo: string;
   garantia: "" | "Sim" | "Não";
+  equipamento: string;
 }
 
 export const EMPTY_TESTE_EQUIPAMENTO: TesteEquipamentoData = {
@@ -70,6 +71,7 @@ export const EMPTY_TESTE_EQUIPAMENTO: TesteEquipamentoData = {
   necessario_cobrar: "",
   motivo: "",
   garantia: "",
+  equipamento: "",
 };
 
 const BLOCK_START = "[Teste de Equipamento]";
@@ -79,6 +81,7 @@ export function buildTesteEquipamentoNotes(data: TesteEquipamentoData, baseNotes
   const lines = [BLOCK_START];
   if (data.subtipo) lines.push(`Subtipo: ${data.subtipo}`);
   if (data.subtipo === "Manutenção") {
+    if (data.equipamento) lines.push(`Equipamento: ${data.equipamento}`);
     if (data.necessario_cobrar) lines.push(`Necessário cobrar: ${data.necessario_cobrar}`);
     if (data.necessario_cobrar === "Sim" && data.motivo)
       lines.push(`Motivo: ${data.motivo}`);
@@ -116,6 +119,7 @@ export function parseTesteEquipamentoNotes(notes: string | null | undefined): Te
   out.motivo = grab("Motivo");
   const gar = grab("Garantia");
   if (["Sim", "Não"].includes(gar)) out.garantia = gar as any;
+  out.equipamento = grab("Equipamento");
   return out;
 }
 
