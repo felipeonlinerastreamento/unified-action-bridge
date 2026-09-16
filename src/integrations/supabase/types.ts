@@ -669,6 +669,7 @@ export type Database = {
           name: string
           priority: number
           reply_text: string
+          reply_text_complete: string | null
           required_fields: string[]
           target_sector: string | null
           ticket_priority: string
@@ -688,6 +689,7 @@ export type Database = {
           name: string
           priority?: number
           reply_text?: string
+          reply_text_complete?: string | null
           required_fields?: string[]
           target_sector?: string | null
           ticket_priority?: string
@@ -707,6 +709,7 @@ export type Database = {
           name?: string
           priority?: number
           reply_text?: string
+          reply_text_complete?: string | null
           required_fields?: string[]
           target_sector?: string | null
           ticket_priority?: string

@@ -23,6 +23,7 @@ export type BotRule = {
   is_enabled: boolean;
   keywords: string[];
   reply_text: string;
+  reply_text_complete?: string | null;
   required_fields: string[];
   target_sector: string | null;
   priority: number;
@@ -63,6 +64,93 @@ export function extractPeriod(text: string): string | null {
   const rel = String(text || "").match(/\b(hoje|ontem|últimos?\s+\d+\s+dias?|ultimos?\s+\d+\s+dias?|essa semana|este m[eê]s)\b/i);
   return rel ? rel[0] : null;
 }
+
+function isValidCpf(d: string): boolean {
+  if (!/^\d{11}$/.test(d) || /^(\d)\1{10}$/.test(d)) return false;
+  const calc = (len: number) => {
+    let sum = 0;
+    for (let i = 0; i < len; i++) sum += Number(d[i]) * (len + 1 - i);
+    const r = (sum * 10) % 11;
+    return r === 10 ? 0 : r;
+  };
+  return calc(9) === Number(d[9]) && calc(10) === Number(d[10]);
+}
+
+function isValidCnpj(d: string): boolean {
+  if (!/^\d{14}$/.test(d) || /^(\d)\1{13}$/.test(d)) return false;
+  const calc = (len: number) => {
+    const weights = len === 12 ? [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2] : [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2];
+    let sum = 0;
+    for (let i = 0; i < len; i++) sum += Number(d[i]) * (weights[i] as number);
+    const r = sum % 11;
+    return r < 2 ? 0 : 11 - r;
+  };
+  return calc(12) === Number(d[12]) && calc(13) === Number(d[13]);
+}
+
+/** Reconhece CPF (11) ou CNPJ (14) na mensagem, com ou sem pontuação. */
+export function extractDocument(text: string): string | null {
+  const candidates = String(text || "").match(/\d[\d.\-/\s]{9,20}\d/g) || [];
+  for (const raw of candidates) {
+    const digits = raw.replace(/\D/g, "");
+    for (const len of [14, 11]) {
+      for (let i = 0; i + len <= digits.length; i++) {
+        const slice = digits.slice(i, i + len);
+        if (len === 11 && isValidCpf(slice)) return slice;
+        if (len === 14 && isValidCnpj(slice)) return slice;
+      }
+    }
+  }
+  return null;
+}
+
+export const FIELD_LABELS: Record<string, string> = {
+  cpf_cnpj: "CPF/CNPJ",
+  placa: "placa",
+  periodo: "período",
+  cidade: "cidade",
+  email: "e-mail ou usuário",
+};
+
+/** Normaliza rótulos livres para as chaves canônicas de dados exigidos. */
+export function canonicalField(field: string): string | null {
+  const f = normalizeText(field);
+  if (!f) return null;
+  if (f.includes("cpf") || f.includes("cnpj") || f.includes("documento")) return "cpf_cnpj";
+  if (f.includes("placa")) return "placa";
+  if (f.includes("periodo") || f.includes("data")) return "periodo";
+  if (f.includes("cidade")) return "cidade";
+  if (f.includes("mail") || f.includes("usuario")) return "email";
+  return null;
+}
+
+/** Extrai da mensagem os dados que o robô sabe reconhecer. */
+export function collectFields(text: string): Record<string, string> {
+  const collected: Record<string, string> = {};
+  const plate = extractPlate(text);
+  if (plate) collected.placa = plate;
+  const period = extractPeriod(text);
+  if (period) collected.periodo = period;
+  const doc = extractDocument(text);
+  if (doc) collected.cpf_cnpj = doc;
+  const email = String(text || "").match(/[\w.+-]+@[\w-]+\.[\w.]+/);
+  if (email) collected.email = email[0];
+  return collected;
+}
+
+/** Quais dados exigidos pela automação ainda não vieram na mensagem. */
+export function missingRequiredFields(
+  rule: Pick<BotRule, "required_fields">,
+  collected: Record<string, string>,
+): string[] {
+  const keys = (rule.required_fields || [])
+    .map(canonicalField)
+    .filter((k): k is string => !!k);
+  const unique = [...new Set(keys)];
+  // Campos que o robô não sabe reconhecer (ex.: cidade) são sempre tratados como faltantes.
+  return unique.filter((k) => !collected[k]);
+}
+
 
 const MEDIA_MARKER_RE = /^\[(audio|áudio|imagem|image|video|vídeo|documento|document|arquivo|sticker|figurinha|localizacao|localização|contato)\]$/i;
 
@@ -143,11 +231,17 @@ export async function loadBotRules(): Promise<BotRule[]> {
 
 export function renderReply(
   template: string,
-  vars: { operatorName?: string | null; contactName?: string | null },
+  vars: {
+    operatorName?: string | null;
+    contactName?: string | null;
+    collected?: Record<string, string>;
+  },
 ): string {
+  const collected = vars.collected || {};
   return String(template || "").replace(/\{\{(\w+)\}\}/g, (_, key: string) => {
     if (key === "operatorName") return vars.operatorName || "nossa equipe";
     if (key === "contactName") return vars.contactName || "";
+    if (collected[key]) return collected[key];
     return "";
   });
 }
@@ -210,6 +304,8 @@ type PendingState = {
   due_at: number;
   kind: "greeting" | "follow_up";
   incoming_text: string;
+  use_complete?: boolean;
+  template?: string;
 };
 
 export type InboundParams = {
@@ -290,11 +386,19 @@ export async function evaluateInboundForAutoReply(params: InboundParams): Promis
 
     await assignIfNeeded(chatId, rule.target_sector);
 
-    const collected: Record<string, string> = {};
-    const plate = extractPlate(incomingText);
-    if (plate) collected.placa = plate;
-    const period = extractPeriod(incomingText);
-    if (period) collected.periodo = period;
+    const collected = collectFields(incomingText);
+    const missing = missingRequiredFields(rule, collected);
+    const dataComplete = (rule.required_fields || []).length > 0 && missing.length === 0;
+    let template = dataComplete ? (rule.reply_text_complete || "") : rule.reply_text;
+    if (!dataComplete && missing.length > 0) {
+      // Já veio parte dos dados: confirma o que chegou e pede só o que falta.
+      const got = Object.keys(collected).filter((k) => !missing.includes(k) && FIELD_LABELS[k]);
+      if (got.length > 0) {
+        const gotText = got.map((k) => `${FIELD_LABELS[k]} ${collected[k]}`).join(", ");
+        const missText = missing.map((k) => FIELD_LABELS[k] || k).join(" e ");
+        template = `Já anotei ${gotText}. Para seguir, me informe também ${missText}, por favor.`;
+      }
+    }
 
     if (settings.observe_only) {
       const operatorName = await operatorNameFor(chatId);
@@ -306,27 +410,52 @@ export async function evaluateInboundForAutoReply(params: InboundParams): Promis
         incoming_text: incomingText,
         detected_intent: rule.name,
         collected_data: collected,
-        reply_text: renderReply(rule.reply_text, {
+        reply_text: renderReply(template, {
           operatorName,
           contactName: params.contactName,
+          collected,
         }),
         outcome: "simulated",
       });
       return false;
     }
 
-    // Agenda o envio: o scanner despacha depois da espera configurada.
+    // Guarda o que já foi coletado, mesmo quando não há resposta a enviar.
     const { data: chatRow } = await supabaseAdmin
       .from("zapi_chats")
       .select("bot_state")
       .eq("id", chatId)
       .maybeSingle();
     const state = ((chatRow as any)?.bot_state || {}) as Record<string, unknown>;
+
+    if (dataComplete && !template.trim()) {
+      // Cliente já mandou tudo e não há texto de confirmação: não repete o pedido.
+      await supabaseAdmin
+        .from("zapi_chats")
+        .update({ bot_state: { ...state, auto_reply_collected: collected } })
+        .eq("id", chatId);
+      await supabaseAdmin.from("bot_auto_reply_log").insert({
+        chat_id: chatId,
+        channel_id: channelId,
+        rule_id: rule.id,
+        rule_name: rule.name,
+        incoming_text: incomingText,
+        detected_intent: rule.name,
+        collected_data: collected,
+        outcome: "skipped_data_complete",
+      });
+      return false;
+    }
+
+    // Agenda o envio: o scanner despacha depois da espera configurada.
     const pending: PendingState = {
       rule_id: rule.id,
       due_at: Date.now() + Math.max(0, settings.greeting_seconds) * 1000,
       kind: "greeting",
       incoming_text: incomingText,
+      use_complete: dataComplete,
+      template,
+
     };
     await supabaseAdmin
       .from("zapi_chats")
@@ -389,9 +518,14 @@ export async function dispatchDueAutoReplies(): Promise<{ sent: number; skipped:
       }
 
       const operatorName = await operatorNameFor(chat.id);
-      const text = renderReply(rule.reply_text, {
+      const collected = (state.auto_reply_collected || {}) as Record<string, string>;
+      const template =
+        pending.template ||
+        (pending.use_complete ? rule.reply_text_complete || "" : rule.reply_text);
+      const text = renderReply(template, {
         operatorName,
         contactName: chat.contact_name,
+        collected,
       });
       if (!text.trim()) {
         await clearPending();

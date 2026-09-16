@@ -35,6 +35,7 @@ type Rule = {
   is_enabled: boolean;
   keywords: string[];
   reply_text: string;
+  reply_text_complete: string | null;
   required_fields: string[];
   target_sector: string | null;
   priority: number;
@@ -125,12 +126,44 @@ const CATALOG: CatalogEntry[] = [
   },
 ];
 
+const FIELD_OPTIONS: Array<{ key: string; label: string; auto: boolean }> = [
+  { key: "cpf_cnpj", label: "CPF/CNPJ", auto: true },
+  { key: "placa", label: "Placa", auto: true },
+  { key: "periodo", label: "Período", auto: true },
+  { key: "email", label: "E-mail / usuário", auto: true },
+  { key: "cidade", label: "Cidade", auto: false },
+];
+
+const FIELD_LABEL: Record<string, string> = Object.fromEntries(
+  FIELD_OPTIONS.map((f) => [f.key, f.label]),
+);
+
+const canonicalField = (field: string): string | null => {
+  const f = (field || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+  if (!f) return null;
+  if (f.includes("cpf") || f.includes("cnpj") || f.includes("documento")) return "cpf_cnpj";
+  if (f.includes("placa")) return "placa";
+  if (f.includes("periodo") || f.includes("data")) return "periodo";
+  if (f.includes("cidade")) return "cidade";
+  if (f.includes("mail") || f.includes("usuario")) return "email";
+  return null;
+};
+
+const toCanonicalList = (fields: string[]): string[] => [
+  ...new Set((fields || []).map(canonicalField).filter((f): f is string => !!f)),
+];
+
 type RuleForm = {
   name: string;
   is_enabled: boolean;
   keywords: string;
   reply_text: string;
-  required_fields: string;
+  reply_text_complete: string;
+  required_fields: string[];
   target_sector: string;
   priority: number;
   is_greeting: boolean;
@@ -143,7 +176,8 @@ const EMPTY_FORM: RuleForm = {
   is_enabled: true,
   keywords: "",
   reply_text: "",
-  required_fields: "",
+  reply_text_complete: "",
+  required_fields: [],
   target_sector: "Atendimento",
   priority: 100,
   is_greeting: false,
@@ -226,7 +260,7 @@ export function BotAutoReplyConfig() {
       name: entry.name,
       keywords: entry.keywords,
       reply_text: entry.reply_text,
-      required_fields: entry.required_fields,
+      required_fields: toCanonicalList(entry.required_fields),
       target_sector: entry.target_sector,
       from_catalog: true,
       catalog_key: entry.catalog_key,
@@ -247,7 +281,8 @@ export function BotAutoReplyConfig() {
       is_enabled: r.is_enabled,
       keywords: (r.keywords || []).join(", "),
       reply_text: r.reply_text,
-      required_fields: (r.required_fields || []).join(", "),
+      reply_text_complete: r.reply_text_complete || "",
+      required_fields: toCanonicalList(r.required_fields || []),
       target_sector: r.target_sector || "Atendimento",
       priority: r.priority,
       is_greeting: r.is_greeting,
@@ -256,6 +291,14 @@ export function BotAutoReplyConfig() {
     });
     setDialogOpen(true);
   };
+
+  const toggleField = (key: string) =>
+    setForm((f) => ({
+      ...f,
+      required_fields: f.required_fields.includes(key)
+        ? f.required_fields.filter((k) => k !== key)
+        : [...f.required_fields, key],
+    }));
 
   const saveRule = async () => {
     if (!form.name.trim() || !form.reply_text.trim()) {
@@ -267,7 +310,8 @@ export function BotAutoReplyConfig() {
       is_enabled: form.is_enabled,
       keywords: splitList(form.keywords),
       reply_text: form.reply_text,
-      required_fields: splitList(form.required_fields),
+      reply_text_complete: form.reply_text_complete.trim() || null,
+      required_fields: form.required_fields,
       target_sector: form.target_sector,
       priority: form.priority,
       is_greeting: form.is_greeting,
@@ -326,7 +370,7 @@ export function BotAutoReplyConfig() {
       name: s.name,
       keywords: s.keywords,
       reply_text: s.reply_text,
-      required_fields: s.required_fields,
+      required_fields: toCanonicalList(s.required_fields || []),
       target_sector: "Atendimento",
     } as any);
     if (error) { toast.error(error.message); return; }
@@ -461,12 +505,36 @@ export function BotAutoReplyConfig() {
                   <p className="whitespace-pre-line text-muted-foreground">{testResult.replyPreview}</p>
                   {!!testResult.requiredFields?.length && (
                     <p className="text-xs text-muted-foreground">
-                      Dados pedidos: {testResult.requiredFields.join(", ")}
+                      Dados pedidos:{" "}
+                      {testResult.requiredFields
+                        .map((f: string) => FIELD_LABEL[canonicalField(f) || ""] || f)
+                        .join(", ")}
                     </p>
                   )}
                   <p className="text-xs text-muted-foreground">
-                    Placa detectada: {testResult.detectedPlate || "—"} · Período detectado: {testResult.detectedPeriod || "—"}
+                    Reconhecido na mensagem:{" "}
+                    {Object.keys(testResult.collected || {}).length
+                      ? Object.entries(testResult.collected as Record<string, string>)
+                          .map(([k, v]) => `${FIELD_LABEL[k] || k}: ${v}`)
+                          .join(" · ")
+                      : "—"}
                   </p>
+                  {!!testResult.missingFields?.length && (
+                    <p className="text-xs text-muted-foreground">
+                      Ainda falta:{" "}
+                      {testResult.missingFields
+                        .map((f: string) => FIELD_LABEL[f] || f)
+                        .join(", ")}
+                    </p>
+                  )}
+                  {testResult.dataComplete && (
+                    <p className="text-xs text-muted-foreground">
+                      {testResult.willReply
+                        ? "O cliente já enviou tudo — o robô usaria a resposta de confirmação."
+                        : "O cliente já enviou tudo e não há resposta de confirmação — o robô ficaria calado e passaria ao operador."}
+                    </p>
+                  )}
+
                 </>
               ) : (
                 <p className="text-muted-foreground">
@@ -659,24 +727,53 @@ export function BotAutoReplyConfig() {
               <Input value={form.keywords} onChange={(e) => setForm({ ...form, keywords: e.target.value })} />
             </div>
             <div className="space-y-2">
-              <Label>Texto de resposta</Label>
+              <Label>Texto de resposta (quando falta o dado)</Label>
               <Textarea
                 rows={4}
                 value={form.reply_text}
                 onChange={(e) => setForm({ ...form, reply_text: e.target.value })}
               />
               <p className="text-xs text-muted-foreground">
-                Variáveis disponíveis: <code>{"{{operatorName}}"}</code> (nome do operador responsável) e{" "}
-                <code>{"{{contactName}}"}</code> (nome do cliente).
+                Variáveis disponíveis: <code>{"{{operatorName}}"}</code> (nome do operador responsável),{" "}
+                <code>{"{{contactName}}"}</code> (nome do cliente) e os dados reconhecidos:{" "}
+                <code>{"{{cpf_cnpj}}"}</code>, <code>{"{{placa}}"}</code>, <code>{"{{periodo}}"}</code>.
               </p>
             </div>
             <div className="space-y-2">
-              <Label>Dados obrigatórios (separados por vírgula)</Label>
-              <Input
-                value={form.required_fields}
-                onChange={(e) => setForm({ ...form, required_fields: e.target.value })}
+              <Label>Resposta quando o dado já veio (opcional)</Label>
+              <Textarea
+                rows={3}
+                value={form.reply_text_complete}
+                onChange={(e) => setForm({ ...form, reply_text_complete: e.target.value })}
+                placeholder="Ex.: Perfeito! Já recebi o CPF/CNPJ {{cpf_cnpj}}. Vou verificar e já te retorno."
               />
+              <p className="text-xs text-muted-foreground">
+                Em branco: o robô não responde nada quando o cliente já enviou tudo — a conversa segue direto para o operador.
+              </p>
             </div>
+            <div className="space-y-2">
+              <Label>Dados obrigatórios</Label>
+              <div className="flex flex-wrap gap-2">
+                {FIELD_OPTIONS.map((f) => {
+                  const active = form.required_fields.includes(f.key);
+                  return (
+                    <Button
+                      key={f.key}
+                      type="button"
+                      size="sm"
+                      variant={active ? "default" : "outline"}
+                      onClick={() => toggleField(f.key)}
+                    >
+                      {f.label}
+                    </Button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-muted-foreground">
+                O robô reconhece sozinho CPF/CNPJ, placa, período e e-mail. Cidade sempre é pedida.
+              </p>
+            </div>
+
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label>Fila de destino</Label>
