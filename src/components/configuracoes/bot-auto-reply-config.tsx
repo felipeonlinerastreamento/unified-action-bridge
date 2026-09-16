@@ -555,8 +555,15 @@ export function BotAutoReplyConfig() {
               {testResult.matched ? (
                 <>
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge>{testResult.ruleName}</Badge>
+                    <Badge variant={testResult.isFallback ? "secondary" : "default"}>
+                      {testResult.ruleName}
+                    </Badge>
                     {testResult.sector && <Badge variant="outline">{testResult.sector}</Badge>}
+                    {testResult.isFallback && (
+                      <span className="text-xs text-muted-foreground">
+                        Tratado como dúvida: o robô só avisa que está verificando.
+                      </span>
+                    )}
                   </div>
                   <p className="whitespace-pre-line text-muted-foreground">{testResult.replyPreview}</p>
                   {!!testResult.requiredFields?.length && (
