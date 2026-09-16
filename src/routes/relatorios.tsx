@@ -40,6 +40,7 @@ import { PresenceSessionsTab } from "@/components/relatorios/presence-sessions-t
 import { AiSummaryTab } from "@/components/relatorios/ai-summary-tab";
 import { TicketsReportTab } from "@/components/relatorios/tickets-report-tab";
 import { ServicesReportTab } from "@/components/relatorios/services-report-tab";
+import { CustomerRetentionTab } from "@/components/relatorios/customer-retention-tab";
 
 export const Route = createFileRoute("/relatorios")({
   component: RelatoriosPage,
@@ -404,6 +405,9 @@ function RelatoriosPage() {
               <TabsTrigger value="servicos" className="gap-1 text-xs">
                 <Wrench className="h-3.5 w-3.5" /> Serviços Técnicos
               </TabsTrigger>
+              <TabsTrigger value="retencao" className="gap-1 text-xs">
+                <Users className="h-3.5 w-3.5" /> Retenção de Clientes
+              </TabsTrigger>
               <TabsTrigger value="atendimentos" className="gap-1 text-xs">
                 <MessageSquare className="h-3.5 w-3.5" /> Atendimentos
               </TabsTrigger>
@@ -478,6 +482,11 @@ function RelatoriosPage() {
             {/* ========== SERVIÇOS TÉCNICOS ========== */}
             <TabsContent value="servicos" className="space-y-4">
               <ServicesReportTab dateFrom={dateFrom} dateTo={dateTo} />
+            </TabsContent>
+
+            {/* ========== RETENÇÃO DE CLIENTES ========== */}
+            <TabsContent value="retencao" className="space-y-4">
+              <CustomerRetentionTab dateFrom={dateFrom} dateTo={dateTo} />
             </TabsContent>
 
             {/* ========== ATENDIMENTOS ========== */}
