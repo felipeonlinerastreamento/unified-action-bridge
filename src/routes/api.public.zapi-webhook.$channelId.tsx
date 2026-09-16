@@ -826,8 +826,26 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
             (rawHasLidMarker(rawPhone) || phone.length >= 14);
 
           if (isLidIdentifier) {
+            // 1) Resolver pelo mapeamento LID → chat real já conhecido.
+            //    Mensagens enviadas pelo CELULAR do operador chegam com
+            //    fromMe=true e `phone` = LID do contato, e sem senderName do
+            //    contato — sem esta busca elas eram descartadas e nunca
+            //    apareciam na conversa.
+            const { data: byLid } = await supabaseAdmin
+              .from("zapi_chats")
+              .select("id, contact_name, status, unread_count, closed_at, assigned_to, sector_name")
+              .eq("channel_id", channelId)
+              .or(`lid.eq.${phone},lid_aliases.cs.{${phone}}`)
+              .not("phone_normalized", "like", "lid:%")
+              .order("last_message_at", { ascending: false })
+              .limit(5);
+            existing =
+              byLid?.find((chat: any) => chat.status !== "finalizado") ||
+              byLid?.[0] ||
+              null;
+
             const candidateName = (incomingContactName || "").trim();
-            if (candidateName) {
+            if (!existing && candidateName) {
               const { data: byName } = await supabaseAdmin
                 .from("zapi_chats")
                 .select("id, contact_name, status, unread_count, closed_at, assigned_to, sector_name")
