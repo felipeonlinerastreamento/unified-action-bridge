@@ -1,71 +1,70 @@
-# Robô de primeiro atendimento
+# Robô de Atendimento — análise FMEA e melhorias
 
-Um robô que recebe a conversa antes do operador, garante que ela já entre em uma fila com responsável, responde saudações vazias e coleta as informações que faltam (placa, período etc.) para o técnico receber o chamado pronto.
+## Situação encontrada hoje
 
-## Como vai funcionar
+A tela Configurações → Robô de Atendimento já existe, mas ela **não está ligada ao robô de verdade**:
 
-1. **Toda conversa nova entra na fila "Atendimento"** e recebe na hora o operador daquela fila com menos atendimentos (preferindo quem está online). Hoje isso já acontece na reabertura de conversas; passa a valer também para o primeiro contato.
-2. **Mensagem sem conteúdo útil** ("oi", "bom dia", "preciso de ajuda"): o robô espera 10 segundos e responde:
+- Tudo que você configura ali (robô ligado/desligado, espera de 10s, segunda cobrança, horário, catálogo e automações) é salvo **apenas no navegador de quem configurou**. Outro usuário, outro computador ou o modo anônimo não enxergam nada, e o servidor nunca lê essas regras.
+- O robô que realmente responde no WhatsApp é outro: o fluxo de nós (menu, perguntas, boleto, agente de IA) do editor de fluxo. Ele ignora completamente as automações do catálogo.
+- O texto de ajuda das variáveis na janela de edição está quebrado, mostrando `{{operatorName}*` e um aviso de "temporariamente sem chave dupla".
+- Não existe espera de 10 segundos, nem segunda cobrança, nem coleta de placa/período, nem painel de perguntas frequentes — são só campos de tela.
 
-```text
-Olá,
-Fala com {nome do operador responsável pelo chamado},
+Ou seja: hoje o menu passa a impressão de estar ativo, mas nenhuma resposta automática dele chega ao cliente.
 
-Em que posso ajudar?
-```
+## Análise FMEA do menu do robô
 
-3. **Mensagem com assunto identificado**: o robô responde a automação configurada para aquele assunto e pergunta os dados que faltam. Ex.: cliente pede relatório sem informar placa → o robô pede placa e período.
-4. **Se o cliente não responder o dado pedido**, o robô aguarda 10 minutos e pergunta uma única vez de novo. Depois disso libera para o operador com o que já tem.
-5. **Tudo que o robô coletar** (assunto detectado, placa, período, respostas) fica registrado no chamado, visível para o operador e para o técnico.
-6. O robô nunca responde depois que o operador já enviou uma mensagem na conversa, nem em grupos, nem fora do horário de atendimento configurado.
+| # | Falha possível | Efeito para a operação | Gravidade | Como corrigir |
+|---|---|---|---|---|
+| 1 | Configuração salva só no navegador | Gestor configura e nada acontece; ninguém mais vê as regras | Crítica | Guardar no banco (tabelas próprias) e ler pelo servidor |
+| 2 | Catálogo desconectado do robô real | Automações "habilitadas" nunca respondem | Crítica | Motor do robô passa a consultar as automações antes do fluxo de nós |
+| 3 | Sem registro do que o robô fez | Impossível auditar ou melhorar | Alta | Registro por conversa: regra aplicada, dados coletados, resultado |
+| 4 | Sem trava contra resposta duplicada | Cliente recebe duas mensagens iguais | Alta | Controle de última resposta por conversa + tempo mínimo |
+| 5 | Robô pode responder depois do operador | Conflito e cliente confuso | Alta | Antes de enviar, conferir se houve mensagem do operador |
+| 6 | Horário configurado não é respeitado | Resposta de madrugada | Média | Usar o horário da tela e o horário de atendimento já existente |
+| 7 | Nome do operador pode vir vazio ou inativo | Mensagem "Fala com ," | Média | Só operadores ativos; se não houver, usa texto alternativo |
+| 8 | Fila de destino é campo livre de texto | Erro de digitação manda para setor inexistente | Média | Trocar por seleção dos setores cadastrados |
+| 9 | Palavras-chave sem acento/variação | Robô não reconhece o assunto | Média | Comparar sem acento, sem maiúsculas e por trecho |
+| 10 | IA indisponível ou sem crédito | Robô trava a conversa | Média | Falhar em silêncio e liberar para o operador |
+| 11 | Grupos e conversas já em andamento | Ruído e resposta indevida | Média | Robô só em conversas individuais e novas |
+| 12 | Dado coletado em formato errado (placa) | Técnico recebe lixo | Baixa | Validar formato e pedir uma única vez de novo |
+| 13 | Texto de variáveis quebrado na tela | Gestor escreve a variável errada e ela não é trocada | Baixa | Corrigir a legenda e listar as variáveis válidas |
 
-## Como o robô entende a mensagem
+## Melhorias no menu
 
-Primeiro passam as **regras de palavra-chave** que você cadastra. Se nenhuma casar, a **IA** classifica a intenção entre as automações habilitadas e escolhe a resposta; se a IA também não tiver certeza, o chat segue sem resposta automática para o operador atender.
+1. **Persistência real no banco**, com as regras valendo para toda a empresa e histórico de quem alterou.
+2. **Ligar o catálogo ao robô**: primeiro as palavras-chave, depois a IA classifica; se nada casar, segue para o operador.
+3. **Seleção de setor por lista** em vez de texto livre, usando os setores ativos.
+4. **Testador de mensagem**: campo para digitar uma frase e ver qual automação responderia e o que o robô pediria — sem enviar nada ao cliente.
+5. **Modo observação**: robô classifica e registra, mas não envia, para você conferir o acerto antes de ligar de vez.
+6. **Painel de perguntas frequentes**: assuntos mais detectados no período, quantos o robô resolveu sozinho e quais mensagens ele não entendeu.
+7. **Legenda de variáveis corrigida** com a lista do que pode ser usado no texto.
+8. **Prévia da mensagem** já com o nome do operador e do cliente preenchidos.
 
-## Tela de configuração (novo menu: Configurações → Robô de Atendimento)
+## Novas possibilidades de configuração
 
-- Liga/desliga geral, tempo de espera da saudação (padrão 10s), tempo da segunda cobrança (padrão 10min), horário em que o robô atua.
-- **Catálogo de sugestões prontas** para habilitar com um clique, cada uma já com texto e dados exigidos:
-  - Relatório de posições → exige placa e período
-  - Rastreamento / localização do veículo → exige placa
-  - Equipamento sem comunicação → exige placa
-  - Instalação / agendamento → exige cidade e período desejado
-  - Financeiro / 2ª via de boleto → exige CNPJ ou razão social
-  - Suporte ao app / senha → exige e-mail ou usuário
-  - Bloqueio / desbloqueio de veículo → exige placa
-  - Saudação sem assunto → resposta padrão acima
-- Cada automação pode ser editada: nome, palavras-chave, texto de resposta, dados obrigatórios, fila de destino e se está ativa.
-- Botão "Criar automação" para casos fora do catálogo.
-- **Painel de perguntas mais frequentes**: lista as intenções mais detectadas no período, quantas o robô resolveu sozinho, quantas viraram chamado e quais mensagens a IA não conseguiu classificar — com botão para transformar essas em uma nova automação.
+- Ativar o robô por canal de WhatsApp, e não só globalmente.
+- Limite de respostas automáticas por conversa (ex.: no máximo 2).
+- Silenciar o robô para contatos marcados como VIP ou para clientes já com chamado aberto.
+- Mensagem diferente dentro e fora do horário de atendimento.
+- Prioridade entre automações, quando a mensagem casa com mais de uma.
+- Encerrar sozinho a conversa se o cliente não responder em X horas.
+- Definir por automação se ela abre chamado automaticamente e com qual prioridade.
 
-## Análise FMEA (riscos e proteções)
+## Sistema sugerir respostas
 
-| Falha possível | Efeito | Proteção no projeto |
-|---|---|---|
-| Robô responde depois do operador | Cliente recebe duas respostas | Antes de enviar, confere se houve mensagem do operador nos últimos segundos; se houve, cancela |
-| Robô responde duas vezes a mesma mensagem | Spam ao cliente | Registro de envio por conversa/mensagem e tempo mínimo entre respostas |
-| Operador atribuído está inativo/offline | Nome errado no texto e chamado parado | Só escolhe operadores ativos e não "somente painel"; prefere online, e se ninguém estiver, usa o de menor carga |
-| IA classifica errado | Resposta sem sentido | Palavra-chave tem prioridade; IA só age com confiança alta; tudo fica registrado e revisável no painel |
-| IA indisponível ou sem créditos | Robô trava | Falha silenciosa: cai para o operador normalmente, sem mensagem de erro ao cliente |
-| Cliente em grupo ou conversa já em andamento | Ruído | Robô limitado a conversas individuais e novas |
-| Cliente responde fora do padrão (placa errada) | Dado inútil no chamado | Validação de formato de placa; se não bater, pede uma vez de forma explicada |
-| WhatsApp lento no envio | Mensagem duplicada | Reaproveita a proteção de tempo limite já existente no envio |
-| Cliente escreve fora do horário | Resposta fora de hora | Respeita o horário de atendimento já configurado |
+Duas camadas, ambas configuráveis:
 
-## Sugestões de evolução
+1. **Sugestão para o gestor (na tela do robô)**: a partir das mensagens reais recebidas, o sistema agrupa as perguntas que mais se repetem e ainda não têm automação, propõe nome, palavras-chave e um texto de resposta pronto. Você revisa e clica em "Criar automação".
+2. **Sugestão para o operador (na conversa)**: quando o operador abre um chat, aparece um texto sugerido com base no assunto detectado e no histórico do cliente. O operador pode enviar como está, editar antes de enviar ou ignorar. Nada é enviado sozinho nesse modo.
 
-- **Transferência automática por assunto**: depois de alguns dias de uso, o painel mostra quais assuntos sempre acabam em determinada fila e permite ativar o roteamento direto.
-- **Resumo do atendimento para o técnico**: cartão no topo do chamado com assunto, placa, período e histórico do cliente.
-- **Reaproveitamento de dados**: se o cliente tem uma só placa cadastrada, o robô confirma em vez de perguntar.
-- **Teste de mensagem**: campo na configuração para digitar uma frase e ver qual automação responderia, sem enviar nada ao cliente.
-- **Relatório mensal do robô**: quanto tempo de operador foi economizado e quais perguntas mais se repetem.
+Ambas usam a IA já disponível no sistema e continuam funcionando sem ela (caem nas palavras-chave).
 
 ## Detalhes técnicos
 
-- Novas tabelas: `bot_auto_reply_settings` (singleton com tempos e horários), `bot_auto_reply_rules` (nome, palavras-chave, texto, campos exigidos, fila, ativo, origem catálogo), `bot_auto_reply_log` (chat, mensagem, regra, intenção IA, confiança, dados coletados, resultado) — todas com RLS e GRANT; leitura para autenticados, escrita para admin/gestor.
-- Enfileiramento: ao receber inbound em `api.public.zapi-webhook.$channelId.tsx`, grava a intenção pendente e o horário-alvo; um scanner público (`api.public.bot-auto-reply-scanner.tsx`, no mesmo padrão do `chat-idle-scanner`) roda a cada ~10s e dispara os envios vencidos (saudação de 10s e cobrança de 10min). Isso evita segurar o webhook.
-- Atribuição inicial: reutiliza `pick_least_loaded_agent` (online) com fallback `pick_least_loaded_agent_any`; nome do operador vem de `profiles.name`.
-- Classificação por IA: server function com Lovable AI (`openai/gpt-6-astra`, saída estruturada com intenção + confiança), lista de intenções montada a partir das regras ativas. Erros 402/403/429 apenas registram e liberam para o operador.
-- Envio usa `zapiSendText` (`src/lib/zapi.server.ts`) e grava em `zapi_messages` como as demais automações.
-- UI: `src/components/configuracoes/bot-auto-reply-config.tsx` + rota `src/routes/configuracoes.robo-atendimento.tsx`, entrada em `menu-catalog.ts` e na barra lateral.
+- Tabelas novas: `bot_auto_reply_settings` (singleton: ativo, espera da saudação, segunda cobrança, janela de horário, canal, modo observação, limite por conversa), `bot_auto_reply_rules` (nome, palavras-chave, texto, campos exigidos, setor, prioridade, ativa, origem catálogo, abre chamado), `bot_auto_reply_log` (chat_id, message_id, regra, intenção IA, confiança, dados coletados, enviado/simulado). RLS + GRANT: leitura para autenticados, escrita para admin/gestor.
+- `bot-auto-reply-config.tsx` migra de `localStorage` para TanStack Query + Supabase; setor vira `Select` alimentado por `sectors` ativos; legenda de variáveis corrigida (`{{operatorName}}`, `{{contactName}}`).
+- Motor: nova etapa em `src/lib/zapi-bot.server.ts` (ou módulo `bot-auto-reply.server.ts`) chamada pelo webhook `api.public.zapi-webhook.$channelId.tsx` antes de `findActiveFlow`; sai sem agir quando há mensagem do operador, quando é grupo, fora da janela, ou quando o log já registrou resposta recente.
+- Agendamento dos 10s e da segunda cobrança: rota pública `api.public.bot-auto-reply-scanner.tsx` no padrão de `api.public.chat-idle-scanner.tsx`, disparando o que venceu — o webhook nunca segura a resposta.
+- Classificação e sugestões por IA: Lovable AI Gateway com saída estruturada (intenção + confiança); erros 402/429 apenas registram no log e liberam para o operador.
+- Envio por `zapiSendText` e persistência em `zapi_messages`, como as demais automações.
+- Sugestão ao operador: server function que recebe `chat_id` e devolve o texto proposto; a Central mostra em um cartão acima do campo de mensagem.
