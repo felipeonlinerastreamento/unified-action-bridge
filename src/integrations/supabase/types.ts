@@ -6159,6 +6159,7 @@ export type Database = {
           created_at: string
           from_me: boolean
           id: string
+          is_bot_message: boolean
           is_typing: boolean
           is_whisper: boolean
           media_type: string | null
@@ -6179,6 +6180,7 @@ export type Database = {
           created_at?: string
           from_me: boolean
           id?: string
+          is_bot_message?: boolean
           is_typing?: boolean
           is_whisper?: boolean
           media_type?: string | null
@@ -6199,6 +6201,7 @@ export type Database = {
           created_at?: string
           from_me?: boolean
           id?: string
+          is_bot_message?: boolean
           is_typing?: boolean
           is_whisper?: boolean
           media_type?: string | null
