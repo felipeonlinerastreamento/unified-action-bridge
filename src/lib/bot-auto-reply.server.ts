@@ -290,12 +290,32 @@ async function assignIfNeeded(chatId: string, sector: string | null): Promise<vo
     .eq("id", chatId);
 }
 
+/**
+ * Conta as respostas automáticas já enviadas na "rodada" atual da conversa.
+ * A contagem reinicia sempre que um operador humano responde, para que o
+ * cliente não fique sem retorno em uma nova dúvida depois do atendimento.
+ */
 async function repliesSentToChat(chatId: string): Promise<number> {
-  const { count } = await supabaseAdmin
+  const { data: lastHuman } = await supabaseAdmin
+    .from("zapi_messages")
+    .select("created_at")
+    .eq("chat_id", chatId)
+    .eq("from_me", true)
+    .not("sent_by_user_id", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  let query = supabaseAdmin
     .from("bot_auto_reply_log")
     .select("id", { count: "exact", head: true })
     .eq("chat_id", chatId)
     .eq("outcome", "sent");
+
+  const since = (lastHuman as any)?.created_at as string | undefined;
+  if (since) query = query.gt("created_at", since);
+
+  const { count } = await query;
   return count || 0;
 }
 
