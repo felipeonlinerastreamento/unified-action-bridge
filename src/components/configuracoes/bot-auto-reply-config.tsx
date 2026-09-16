@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -11,11 +11,6 @@ import {
 } from "@/components/ui/dialog";
 import { Bot, Plus, Pencil, Info } from "lucide-react";
 import { toast } from "sonner";
-
-// PARTE 1: tela do Robô de Atendimento apenas com estado local.
-// A persistência (tabelas bot_auto_reply_settings/rules/log com RLS e GRANT)
-// entra numa próxima etapa, depois que o banco puder ser lido — assim não
-// escrevemos consultas com nomes de coluna adivinhados.
 
 type Rule = {
   id: string;
@@ -121,6 +116,43 @@ export function BotAutoReplyConfig() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editing, setEditing] = useState<Rule | null>(null);
   const [form, setForm] = useState<Omit<Rule, "id">>(EMPTY_RULE);
+  const [loaded, setLoaded] = useState(false);
+
+  // Carrega configurações guardadas no LocalStorage ao montar o componente
+  useEffect(() => {
+    try {
+      const savedRules = localStorage.getItem("@app:bot-rules");
+      if (savedRules) {
+        setRules(JSON.parse(savedRules));
+      }
+      const savedSettings = localStorage.getItem("@app:bot-settings");
+      if (savedSettings) {
+        const parsed = JSON.parse(savedSettings);
+        setEnabled(parsed.enabled ?? true);
+        setGreetingSeconds(parsed.greetingSeconds ?? 10);
+        setFollowUpMinutes(parsed.followUpMinutes ?? 10);
+        setStartHour(parsed.startHour ?? "08:00");
+        setEndHour(parsed.endHour ?? "18:00");
+      }
+    } catch (e) {
+      console.error("Erro ao carregar configurações do robô", e);
+    }
+    setLoaded(true);
+  }, []);
+
+  // Salva no LocalStorage assim que algo mudar
+  useEffect(() => {
+    if (loaded) {
+      localStorage.setItem("@app:bot-rules", JSON.stringify(rules));
+      localStorage.setItem("@app:bot-settings", JSON.stringify({
+        enabled,
+        greetingSeconds,
+        followUpMinutes,
+        startHour,
+        endHour,
+      }));
+    }
+  }, [rules, enabled, greetingSeconds, followUpMinutes, startHour, endHour, loaded]);
 
   const catalogEnabledNames = new Set(rules.filter((r) => r.from_catalog).map((r) => r.name));
 
@@ -169,12 +201,12 @@ export function BotAutoReplyConfig() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start gap-3 rounded-lg border border-amber-300/60 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-500/30 dark:bg-amber-950/30 dark:text-amber-200">
+      <div className="flex items-start gap-3 rounded-lg border border-blue-300/60 bg-blue-50 p-4 text-sm text-blue-900 dark:border-blue-500/30 dark:bg-blue-950/30 dark:text-blue-200">
         <Info className="mt-0.5 h-4 w-4 shrink-0" />
         <p>
-          Esta é a primeira parte do Robô de Atendimento. Por enquanto as configurações ficam apenas
-          nesta tela (ainda não são salvas), porque as tabelas do banco serão criadas numa próxima
-          etapa. Depois disso a tela passa a persistir tudo.
+          As configurações agora estão sendo <strong>salvas no seu navegador</strong> para que você não perca
+          o trabalho ao recarregar a página ou navegar. A persistência definitiva no banco de dados
+          será conectada na próxima etapa.
         </p>
       </div>
 
@@ -349,7 +381,7 @@ export function BotAutoReplyConfig() {
                 onChange={(e) => setForm({ ...form, reply_text: e.target.value })}
               />
               <p className="text-xs text-muted-foreground">
-                Variáveis: <code>{"{{operatorName}}"}</code>, <code>{"{{contactName}}"}</code>.
+                Variáveis: <code>{"{{"}operatorName{"}*"}</code> (temporariamente sem chave dupla para visual), <code>{"{{"}contactName{"}*"}</code>.
               </p>
             </div>
             <div className="space-y-2">
