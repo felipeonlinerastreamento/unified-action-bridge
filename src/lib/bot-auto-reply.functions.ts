@@ -14,6 +14,7 @@ export type TestResult = {
   missingFields: string[];
   dataComplete: boolean;
   willReply: boolean;
+  isFallback?: boolean;
 };
 
 /** Testa uma frase contra as automações ativas, sem enviar nada ao cliente. */
