@@ -473,7 +473,8 @@ export async function evaluateInboundForAutoReply(params: InboundParams): Promis
     if (!isWithinBotWindow(settings)) return false;
 
     const rules = await loadBotRules();
-    const matches = matchRules(incomingText, rules);
+    const isMedia = isMediaMarker(incomingText);
+    const matches = isMedia ? [] : matchRules(incomingText, rules);
     const matched = matches[0] || null;
     const fallbackEnabled = settings.fallback_enabled !== false;
     const fallbackText = (settings.fallback_text || DEFAULT_FALLBACK_TEXT).trim();
@@ -492,7 +493,7 @@ export async function evaluateInboundForAutoReply(params: InboundParams): Promis
     const needsAI =
       settings.ai_enabled !== false &&
       (!matched || isGreetingMatch || ambiguous) &&
-      !isMediaMarker(incomingText);
+      !isMedia;
     if (needsAI) {
       const ai = await classifyWithAI(incomingText, rules);
       const minConf = Number(settings.ai_min_confidence ?? 0.6);
@@ -502,8 +503,13 @@ export async function evaluateInboundForAutoReply(params: InboundParams): Promis
       }
     }
 
+    // Foto, vídeo, áudio ou anexo: o robô só avisa que está verificando.
     const useFallback =
-      !aiPicked && fallbackEnabled && !!fallbackText && (ambiguous || unmatchedButAsking);
+      !aiPicked &&
+      fallbackEnabled &&
+      !!fallbackText &&
+      (isMedia || ambiguous || unmatchedButAsking);
+
 
     if (!matched && !aiPicked && !useFallback) {
       await supabaseAdmin.from("bot_auto_reply_log").insert({
