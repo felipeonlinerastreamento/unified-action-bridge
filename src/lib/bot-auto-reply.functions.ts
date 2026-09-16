@@ -36,6 +36,8 @@ export const testBotAutoReply = createServerFn({ method: "POST" })
       collectFields,
       missingRequiredFields,
       FIELD_LABELS,
+      classifyWithAI,
+      isMediaMarker,
     } = await import("@/lib/bot-auto-reply.server");
     const { data: rules } = await context.supabase.from("bot_auto_reply_rules").select("*");
     const list = ((rules as any[]) || []).map((r) => ({
