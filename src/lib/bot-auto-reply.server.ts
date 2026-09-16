@@ -249,7 +249,7 @@ export async function classifyWithAI(
   rules: BotRule[],
 ): Promise<AiClassification> {
   const apiKey = process.env["LOVABLE_API_KEY"];
-  const candidates = rules.filter((r) => r.is_enabled && !r.is_greeting);
+  const candidates = rules.filter((r) => r.is_enabled);
   if (!apiKey || candidates.length === 0 || !String(text || "").trim()) {
     return { ruleId: null, ruleName: null, confidence: 0, note: "sem_ia" };
   }
