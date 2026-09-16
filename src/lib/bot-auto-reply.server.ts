@@ -460,7 +460,7 @@ export async function evaluateInboundForAutoReply(params: InboundParams): Promis
           await supabaseAdmin.from("bot_auto_reply_log").insert({
             chat_id: chatId,
             channel_id: channelId,
-            rule_id: rule.id,
+            rule_id: logRuleId,
             rule_name: rule.name,
             incoming_text: incomingText,
             outcome: "skipped_ticket_open",
@@ -475,16 +475,18 @@ export async function evaluateInboundForAutoReply(params: InboundParams): Promis
       // Assunto novo (outra automação) ainda merece uma resposta.
       const { data: sentRules } = await supabaseAdmin
         .from("bot_auto_reply_log")
-        .select("rule_id")
+        .select("rule_id, rule_name")
         .eq("chat_id", chatId)
         .eq("outcome", "sent")
         .limit(50);
-      const usedRules = new Set((sentRules || []).map((r: any) => r.rule_id));
-      if (usedRules.has(rule.id)) {
+      const usedRules = new Set(
+        (sentRules || []).map((r: any) => r.rule_id || r.rule_name),
+      );
+      if (usedRules.has(useFallback ? rule.name : rule.id)) {
         await supabaseAdmin.from("bot_auto_reply_log").insert({
           chat_id: chatId,
           channel_id: channelId,
-          rule_id: rule.id,
+          rule_id: logRuleId,
           rule_name: rule.name,
           incoming_text: incomingText,
           outcome: "skipped_limit",
@@ -514,7 +516,7 @@ export async function evaluateInboundForAutoReply(params: InboundParams): Promis
       await supabaseAdmin.from("bot_auto_reply_log").insert({
         chat_id: chatId,
         channel_id: channelId,
-        rule_id: rule.id,
+        rule_id: logRuleId,
         rule_name: rule.name,
         incoming_text: incomingText,
         detected_intent: rule.name,
@@ -546,7 +548,7 @@ export async function evaluateInboundForAutoReply(params: InboundParams): Promis
       await supabaseAdmin.from("bot_auto_reply_log").insert({
         chat_id: chatId,
         channel_id: channelId,
-        rule_id: rule.id,
+        rule_id: logRuleId,
         rule_name: rule.name,
         incoming_text: incomingText,
         detected_intent: rule.name,
