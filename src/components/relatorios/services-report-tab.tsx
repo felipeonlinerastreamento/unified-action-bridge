@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +8,10 @@ import { Label } from "@/components/ui/label";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
+import {
+  Pagination, PaginationContent, PaginationItem, PaginationLink,
+  PaginationNext, PaginationPrevious,
+} from "@/components/ui/pagination";
 import { ReportKpiCard } from "./report-kpi-card";
 import { ChartFrame } from "./chart-frame";
 import { exportToCSV } from "./export-utils";
@@ -52,9 +56,12 @@ function isEmGarantia(garantia: string): boolean {
   return g.includes("garantia") || g === "sim" || g.startsWith("s");
 }
 
+const PAGE_SIZE = 20;
+
 export function ServicesReportTab({ dateFrom, dateTo }: Props) {
   const [search, setSearch] = useState("");
   const [tipo, setTipo] = useState<"todos" | Subtipo>("todos");
+  const [page, setPage] = useState(1);
 
   const { data: tickets = [], isLoading } = useQuery({
     queryKey: ["report-services", dateFrom, dateTo],
@@ -103,6 +110,27 @@ export function ServicesReportTab({ dateFrom, dateTo }: Props) {
       return true;
     });
   }, [rows, tipo, search]);
+
+  // Volta para a primeira página sempre que o filtro muda
+  useEffect(() => {
+    setPage(1);
+  }, [tipo, search, dateFrom, dateTo]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const paged = useMemo(
+    () => filtered.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE),
+    [filtered, currentPage],
+  );
+
+  // Números de página a exibir (janela ao redor da página atual)
+  const pageNumbers = useMemo(() => {
+    const nums: number[] = [];
+    const start = Math.max(1, currentPage - 2);
+    const end = Math.min(totalPages, start + 4);
+    for (let i = start; i <= end; i++) nums.push(i);
+    return nums;
+  }, [currentPage, totalPages]);
 
   const kpis = useMemo(() => {
     const count = (s: Subtipo) => filtered.filter((r) => r.subtipo === s).length;
@@ -519,7 +547,7 @@ export function ServicesReportTab({ dateFrom, dateTo }: Props) {
       {/* Detalhamento */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Detalhamento ({filtered.length} serviços — exibindo até 200)</CardTitle>
+          <CardTitle className="text-sm">Detalhamento ({filtered.length} serviços — página {currentPage} de {totalPages})</CardTitle>
         </CardHeader>
         <CardContent className="p-0 overflow-x-auto">
           <Table>
@@ -535,7 +563,7 @@ export function ServicesReportTab({ dateFrom, dateTo }: Props) {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.slice(0, 200).map((r) => (
+              {paged.map((r) => (
                 <TableRow key={r.id}>
                   <TableCell className="text-xs">{r.cliente}</TableCell>
                   <TableCell className="font-mono text-xs">{r.placa}</TableCell>
@@ -566,6 +594,42 @@ export function ServicesReportTab({ dateFrom, dateTo }: Props) {
             </TableBody>
           </Table>
         </CardContent>
+        {totalPages > 1 && (
+          <div className="flex items-center justify-between gap-2 border-t px-4 py-3">
+            <span className="text-xs text-muted-foreground">
+              Exibindo {(currentPage - 1) * PAGE_SIZE + 1}–{Math.min(currentPage * PAGE_SIZE, filtered.length)} de {filtered.length}
+            </span>
+            <Pagination className="mx-0 w-auto justify-end">
+              <PaginationContent>
+                <PaginationItem>
+                  <PaginationPrevious
+                    href="#"
+                    onClick={(e) => { e.preventDefault(); setPage((p) => Math.max(1, p - 1)); }}
+                    className={currentPage <= 1 ? "pointer-events-none opacity-50" : ""}
+                  />
+                </PaginationItem>
+                {pageNumbers.map((n) => (
+                  <PaginationItem key={n}>
+                    <PaginationLink
+                      href="#"
+                      isActive={n === currentPage}
+                      onClick={(e) => { e.preventDefault(); setPage(n); }}
+                    >
+                      {n}
+                    </PaginationLink>
+                  </PaginationItem>
+                ))}
+                <PaginationItem>
+                  <PaginationNext
+                    href="#"
+                    onClick={(e) => { e.preventDefault(); setPage((p) => Math.min(totalPages, p + 1)); }}
+                    className={currentPage >= totalPages ? "pointer-events-none opacity-50" : ""}
+                  />
+                </PaginationItem>
+              </PaginationContent>
+            </Pagination>
+          </div>
+        )}
       </Card>
     </div>
   );
