@@ -64,9 +64,22 @@ export function extractPeriod(text: string): string | null {
   return rel ? rel[0] : null;
 }
 
+const MEDIA_MARKER_RE = /^\[(audio|áudio|imagem|image|video|vídeo|documento|document|arquivo|sticker|figurinha|localizacao|localização|contato)\]$/i;
+
+/** Mensagens de mídia (áudio, imagem, etc.) não têm texto: tratamos como saudação. */
+export function isMediaMarker(text: string): boolean {
+  return MEDIA_MARKER_RE.test(String(text || "").trim());
+}
+
 export function matchRule(text: string, rules: BotRule[]): BotRule | null {
   const norm = normalizeText(text);
   if (!norm) return null;
+  if (isMediaMarker(text)) {
+    const greeting = rules
+      .filter((r) => r.is_enabled && r.is_greeting)
+      .sort((a, b) => a.priority - b.priority)[0];
+    return greeting || null;
+  }
   const active = rules
     .filter((r) => r.is_enabled)
     .sort((a, b) => a.priority - b.priority || (a.is_greeting ? 1 : 0) - (b.is_greeting ? 1 : 0));
