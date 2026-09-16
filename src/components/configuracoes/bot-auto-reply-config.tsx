@@ -370,7 +370,7 @@ export function BotAutoReplyConfig() {
       name: s.name,
       keywords: s.keywords,
       reply_text: s.reply_text,
-      required_fields: s.required_fields,
+      required_fields: toCanonicalList(s.required_fields || []),
       target_sector: "Atendimento",
     } as any);
     if (error) { toast.error(error.message); return; }
