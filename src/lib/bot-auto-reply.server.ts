@@ -406,16 +406,12 @@ export async function evaluateInboundForAutoReply(params: InboundParams): Promis
 
     // Dúvida: texto longo/multi-assunto, ou vários assuntos casados, ou nada
     // casou mas o cliente claramente pediu algo.
-    const ambiguous =
-      !isGreetingMatch &&
-      (matches.length > 1 || (looksLikeOpenQuestion(incomingText) && !!matched));
-    const unmatchedButAsking =
-      !matched && looksLikeOpenQuestion(incomingText) === false
-        ? seemsToNeedHelp(incomingText)
-        : !matched;
+    const openQuestion = looksLikeOpenQuestion(incomingText);
+    const ambiguous = !isGreetingMatch && !!matched && (matches.length > 1 || openQuestion);
+    const unmatchedButAsking = !matched && (openQuestion || seemsToNeedHelp(incomingText));
 
     const useFallback =
-      fallbackEnabled && !!fallbackText && (ambiguous || (!matched && unmatchedButAsking));
+      fallbackEnabled && !!fallbackText && (ambiguous || unmatchedButAsking);
 
     if (!matched && !useFallback) {
       await supabaseAdmin.from("bot_auto_reply_log").insert({
