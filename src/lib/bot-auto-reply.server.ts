@@ -623,18 +623,24 @@ export async function dispatchDueAutoReplies(): Promise<{ sent: number; skipped:
         continue;
       }
 
-      const rule = rules.find((r) => r.id === pending.rule_id);
-      if (!rule || !rule.is_enabled) {
+      const isFallback = pending.rule_id === FALLBACK_RULE_ID;
+      const rule = isFallback ? null : rules.find((r) => r.id === pending.rule_id);
+      if (!isFallback && (!rule || !rule.is_enabled)) {
         await clearPending();
         skipped++;
         continue;
       }
+      const ruleName = isFallback ? "Dúvida (resposta padrão)" : rule!.name;
 
       const operatorName = await operatorNameFor(chat.id);
       const collected = (state.auto_reply_collected || {}) as Record<string, string>;
       const template =
         pending.template ||
-        (pending.use_complete ? rule.reply_text_complete || "" : rule.reply_text);
+        (isFallback
+          ? settings.fallback_text || DEFAULT_FALLBACK_TEXT
+          : pending.use_complete
+            ? rule!.reply_text_complete || ""
+            : rule!.reply_text);
       const text = renderReply(template, {
         operatorName,
         contactName: chat.contact_name,
