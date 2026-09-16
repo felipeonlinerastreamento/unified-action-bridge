@@ -379,6 +379,38 @@ export function BotAutoReplyConfig() {
     qc.invalidateQueries({ queryKey: ["bot-auto-reply-rules"] });
   };
 
+  /** Cria uma automação já preenchida com a pergunta que o robô não entendeu. */
+  const createFromQuestion = (sample: { text: string; suggestedKeywords: string[] }) => {
+    const words = sample.suggestedKeywords.length ? sample.suggestedKeywords : [sample.text.trim()];
+    setEditing(null);
+    setForm({
+      ...EMPTY_FORM,
+      name: sample.text.trim().slice(0, 60),
+      keywords: words.join(", "),
+      reply_text: "",
+    });
+    setDialogOpen(true);
+  };
+
+  /** Adiciona as palavras da pergunta a uma automação existente. */
+  const addQuestionToRule = async (
+    ruleId: string,
+    sample: { text: string; suggestedKeywords: string[] },
+  ) => {
+    const rule = rules.find((r) => r.id === ruleId);
+    if (!rule) return;
+    const words = sample.suggestedKeywords.length ? sample.suggestedKeywords : [sample.text.trim()];
+    const merged = [...new Set([...(rule.keywords || []), ...words])];
+    const { error } = await supabase
+      .from("bot_auto_reply_rules" as any)
+      .update({ keywords: merged })
+      .eq("id", ruleId);
+    if (error) { toast.error(error.message); return; }
+    toast.success(`Pergunta adicionada à automação "${rule.name}"`);
+    qc.invalidateQueries({ queryKey: ["bot-auto-reply-rules"] });
+    qc.invalidateQueries({ queryKey: ["bot-auto-reply-insights"] });
+  };
+
   return (
     <div className="space-y-6">
       <Card>
