@@ -515,9 +515,14 @@ export async function dispatchDueAutoReplies(): Promise<{ sent: number; skipped:
       }
 
       const operatorName = await operatorNameFor(chat.id);
-      const text = renderReply(rule.reply_text, {
+      const collected = (state.auto_reply_collected || {}) as Record<string, string>;
+      const template =
+        pending.template ||
+        (pending.use_complete ? rule.reply_text_complete || "" : rule.reply_text);
+      const text = renderReply(template, {
         operatorName,
         contactName: chat.contact_name,
+        collected,
       });
       if (!text.trim()) {
         await clearPending();
