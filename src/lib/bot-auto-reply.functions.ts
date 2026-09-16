@@ -23,7 +23,10 @@ export const testBotAutoReply = createServerFn({ method: "POST" })
   .inputValidator((input: { text: string; operatorName?: string; contactName?: string }) => input)
   .handler(async ({ data, context }): Promise<TestResult> => {
     const {
-      matchRule,
+      matchRules,
+      looksLikeOpenQuestion,
+      seemsToNeedHelp,
+      DEFAULT_FALLBACK_TEXT,
       renderReply,
       extractPlate,
       extractPeriod,
