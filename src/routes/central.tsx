@@ -196,6 +196,7 @@ interface GMessage {
   senderFullName?: string;
   responsibleFirstName?: string;
   isCoAgent?: boolean;
+  isBotMessage?: boolean;
   dhMessage?: string;
   utcDhMessage?: string;
   unixTimeMessage?: number;

@@ -33,6 +33,7 @@ interface GMessage {
   senderFullName?: string;
   responsibleFirstName?: string;
   isCoAgent?: boolean;
+  isBotMessage?: boolean;
   dhMessage?: string;
   text?: string;
   isSentByMe?: boolean;

@@ -568,6 +568,7 @@ export async function dispatchDueAutoReplies(): Promise<{ sent: number; skipped:
       await supabaseAdmin.from("zapi_messages").insert({
         chat_id: chat.id,
         from_me: true,
+        is_bot_message: true,
         text,
         status: "sent",
       });
