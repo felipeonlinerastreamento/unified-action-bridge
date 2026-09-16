@@ -454,6 +454,8 @@ export async function evaluateInboundForAutoReply(params: InboundParams): Promis
       kind: "greeting",
       incoming_text: incomingText,
       use_complete: dataComplete,
+      template,
+
     };
     await supabaseAdmin
       .from("zapi_chats")
