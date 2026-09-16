@@ -59,9 +59,15 @@ function isEmGarantia(garantia: string): boolean {
 
 const PAGE_SIZE = 20;
 
+type StatusFiltro = "todos" | "aberto" | "em_andamento" | "finalizado";
+type CobrancaFiltro = "todas" | "garantia" | "cobradas";
+
 export function ServicesReportTab({ dateFrom, dateTo }: Props) {
   const [search, setSearch] = useState("");
   const [tipo, setTipo] = useState<"todos" | Subtipo>("todos");
+  const [status, setStatus] = useState<StatusFiltro>("todos");
+  const [cliente, setCliente] = useState<string>("todos");
+  const [cobranca, setCobranca] = useState<CobrancaFiltro>("todas");
   const [page, setPage] = useState(1);
 
   const { data: tickets = [], isLoading } = useQuery({
@@ -101,22 +107,47 @@ export function ServicesReportTab({ dateFrom, dateTo }: Props) {
       });
   }, [tickets]);
 
+  // Lista de clientes disponíveis no período (para o seletor de cliente)
+  const clientesDisponiveis = useMemo(() => {
+    const set = new Set<string>();
+    for (const r of rows) if (r.cliente && r.cliente !== "—") set.add(r.cliente);
+    return Array.from(set).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [rows]);
+
   const filtered = useMemo(() => {
     const term = search.trim().toLowerCase();
     return rows.filter((r) => {
       if (tipo !== "todos" && r.subtipo !== tipo) return false;
+      if (status !== "todos" && r.status !== status) return false;
+      if (cliente !== "todos" && r.cliente !== cliente) return false;
+      if (cobranca !== "todas") {
+        // Filtro de cobrança só faz sentido em manutenções com garantia informada
+        if (r.subtipo !== "Manutenção") return false;
+        const g = (r.garantia || "").trim();
+        if (!g || g === "—") return false;
+        if (cobranca === "garantia" && !isEmGarantia(g)) return false;
+        if (cobranca === "cobradas" && isEmGarantia(g)) return false;
+      }
       if (term) {
-        const hay = [r.cliente, r.placa, r.subtipo].join(" ").toLowerCase();
+        const hay = [r.cliente, r.placa, r.subtipo, r.equipamento].join(" ").toLowerCase();
         if (!hay.includes(term)) return false;
       }
       return true;
     });
-  }, [rows, tipo, search]);
+  }, [rows, tipo, status, cliente, cobranca, search]);
 
   // Volta para a primeira página sempre que o filtro muda
   useEffect(() => {
     setPage(1);
-  }, [tipo, search, dateFrom, dateTo]);
+  }, [tipo, status, cliente, cobranca, search, dateFrom, dateTo]);
+
+  const clearFilters = () => {
+    setSearch("");
+    setTipo("todos");
+    setStatus("todos");
+    setCliente("todos");
+    setCobranca("todas");
+  };
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, totalPages);
@@ -353,6 +384,53 @@ export function ServicesReportTab({ dateFrom, dateTo }: Props) {
               ))}
             </div>
           </div>
+          <div>
+            <Label className="text-xs">Status</Label>
+            <div className="flex gap-1">
+              {(["todos", "aberto", "em_andamento", "finalizado"] as const).map((s) => (
+                <button
+                  key={s}
+                  type="button"
+                  onClick={() => setStatus(s)}
+                  className={`h-8 rounded-md border px-3 text-xs transition-colors ${
+                    status === s ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted"
+                  }`}
+                >
+                  {s === "todos" ? "Todos" : s === "em_andamento" ? "Em andamento" : s === "aberto" ? "Aberto" : "Finalizado"}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div>
+            <Label className="text-xs">Cobrança (manutenções)</Label>
+            <div className="flex gap-1">
+              {(["todas", "garantia", "cobradas"] as const).map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  onClick={() => setCobranca(c)}
+                  className={`h-8 rounded-md border px-3 text-xs transition-colors ${
+                    cobranca === c ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted"
+                  }`}
+                >
+                  {c === "todas" ? "Todas" : c === "garantia" ? "Em garantia" : "Cobradas"}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="min-w-[180px]">
+            <Label className="text-xs">Cliente</Label>
+            <select
+              value={cliente}
+              onChange={(e) => setCliente(e.target.value)}
+              className="h-8 w-full rounded-md border bg-background px-2 text-xs"
+            >
+              <option value="todos">Todos os clientes</option>
+              {clientesDisponiveis.map((c) => (
+                <option key={c} value={c}>{c}</option>
+              ))}
+            </select>
+          </div>
           <div className="flex-1 min-w-[180px]">
             <Label className="text-xs">Busca</Label>
             <div className="relative">
@@ -360,11 +438,18 @@ export function ServicesReportTab({ dateFrom, dateTo }: Props) {
               <Input
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                placeholder="Cliente, placa..."
+                placeholder="Cliente, placa, equipamento..."
                 className="h-8 text-xs pl-7"
               />
             </div>
           </div>
+          <button
+            type="button"
+            onClick={clearFilters}
+            className="h-8 inline-flex items-center gap-1.5 rounded-md border px-3 text-xs hover:bg-muted transition-colors"
+          >
+            Limpar filtros
+          </button>
           <button
             type="button"
             onClick={handleExport}
