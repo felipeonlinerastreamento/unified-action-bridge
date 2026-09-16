@@ -80,7 +80,13 @@ export const testBotAutoReply = createServerFn({ method: "POST" })
 export type BotInsights = {
   totals: { sent: number; simulated: number; unmatched: number; skipped: number };
   topIntents: Array<{ name: string; count: number }>;
-  unmatchedSamples: Array<{ id: string; text: string; created_at: string }>;
+  unmatchedSamples: Array<{
+    id: string;
+    text: string;
+    created_at: string;
+    count: number;
+    suggestedKeywords: string[];
+  }>;
 };
 
 /** Painel: assuntos mais detectados e mensagens que o robô não entendeu. */
