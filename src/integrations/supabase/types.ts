@@ -723,6 +723,8 @@ export type Database = {
           channel_id: string | null
           created_at: string
           end_hour: string
+          fallback_enabled: boolean
+          fallback_text: string
           follow_up_minutes: number
           greeting_seconds: number
           id: string
@@ -738,6 +740,8 @@ export type Database = {
           channel_id?: string | null
           created_at?: string
           end_hour?: string
+          fallback_enabled?: boolean
+          fallback_text?: string
           follow_up_minutes?: number
           greeting_seconds?: number
           id?: string
@@ -753,6 +757,8 @@ export type Database = {
           channel_id?: string | null
           created_at?: string
           end_hour?: string
+          fallback_enabled?: boolean
+          fallback_text?: string
           follow_up_minutes?: number
           greeting_seconds?: number
           id?: string
