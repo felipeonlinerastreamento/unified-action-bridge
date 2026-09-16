@@ -80,7 +80,13 @@ export const testBotAutoReply = createServerFn({ method: "POST" })
 export type BotInsights = {
   totals: { sent: number; simulated: number; unmatched: number; skipped: number };
   topIntents: Array<{ name: string; count: number }>;
-  unmatchedSamples: Array<{ id: string; text: string; created_at: string }>;
+  unmatchedSamples: Array<{
+    id: string;
+    text: string;
+    created_at: string;
+    count: number;
+    suggestedKeywords: string[];
+  }>;
 };
 
 /** Painel: assuntos mais detectados e mensagens que o robô não entendeu. */
@@ -97,10 +103,30 @@ export const getBotAutoReplyInsights = createServerFn({ method: "POST" })
       .order("created_at", { ascending: false })
       .limit(2000);
 
+    const { normalizeText } = await import("@/lib/bot-auto-reply.server");
+    const STOPWORDS = new Set([
+      "para","com","que","uma","uns","meu","minha","dos","das","por","não","nao","sim","por favor","favor",
+      "bom","boa","dia","tarde","noite","você","voce","voces","vocês","preciso","quero","gostaria","pode",
+      "poderia","estou","esta","está","tem","the","obrigado","obrigada","tudo","bem","aqui","isso","esse",
+      "essa","como","qual","quais","onde","quando","mais","mas","porque","pra","sobre","fazer","favor",
+    ]);
+    const keywordsFrom = (text: string): string[] =>
+      [
+        ...new Set(
+          normalizeText(text)
+            .replace(/[^\p{L}\p{N}\s]/gu, " ")
+            .split(/\s+/)
+            .filter((w) => w.length > 3 && !STOPWORDS.has(w) && !/^\d+$/.test(w)),
+        ),
+      ].slice(0, 5);
+
     const list = (rows as any[]) || [];
     const totals = { sent: 0, simulated: 0, unmatched: 0, skipped: 0 };
     const intents = new Map<string, number>();
-    const unmatchedSamples: BotInsights["unmatchedSamples"] = [];
+    const unmatched = new Map<
+      string,
+      { id: string; text: string; created_at: string; count: number }
+    >();
 
     for (const r of list) {
       if (r.outcome === "sent") totals.sent++;
@@ -109,10 +135,25 @@ export const getBotAutoReplyInsights = createServerFn({ method: "POST" })
       else totals.skipped++;
 
       if (r.rule_name) intents.set(r.rule_name, (intents.get(r.rule_name) || 0) + 1);
-      if (r.outcome === "unmatched" && r.incoming_text && unmatchedSamples.length < 50) {
-        unmatchedSamples.push({ id: r.id, text: r.incoming_text, created_at: r.created_at });
+      if (r.outcome === "unmatched" && r.incoming_text) {
+        const key = normalizeText(r.incoming_text).slice(0, 120);
+        if (!key) continue;
+        const prev = unmatched.get(key);
+        if (prev) prev.count++;
+        else
+          unmatched.set(key, {
+            id: r.id,
+            text: r.incoming_text,
+            created_at: r.created_at,
+            count: 1,
+          });
       }
     }
+
+    const unmatchedSamples = [...unmatched.values()]
+      .sort((a, b) => b.count - a.count || (a.created_at < b.created_at ? 1 : -1))
+      .slice(0, 50)
+      .map((s) => ({ ...s, suggestedKeywords: keywordsFrom(s.text) }));
 
     return {
       totals,
