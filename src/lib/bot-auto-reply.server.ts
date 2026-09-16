@@ -232,6 +232,75 @@ export function seemsToNeedHelp(text: string): boolean {
   );
 }
 
+export type AiClassification = {
+  ruleId: string | null;
+  ruleName: string | null;
+  confidence: number;
+  note?: string;
+};
+
+/**
+ * Usa a IA para escolher qual automação do catálogo responde melhor a mensagem.
+ * Só é chamada quando as palavras-chave não resolveram (nada casou ou casou
+ * mais de um assunto). Falha em silêncio: sem IA, o robô segue no fallback.
+ */
+export async function classifyWithAI(
+  text: string,
+  rules: BotRule[],
+): Promise<AiClassification> {
+  const apiKey = process.env["LOVABLE_API_KEY"];
+  const candidates = rules.filter((r) => r.is_enabled && !r.is_greeting);
+  if (!apiKey || candidates.length === 0 || !String(text || "").trim()) {
+    return { ruleId: null, ruleName: null, confidence: 0, note: "sem_ia" };
+  }
+  try {
+    const catalog = candidates
+      .map(
+        (r, i) =>
+          `${i + 1}. id=${r.id} | assunto="${r.name}" | exemplos: ${(r.keywords || []).join(", ")}`,
+      )
+      .join("\n");
+    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          {
+            role: "system",
+            content:
+              "Você classifica mensagens de clientes de uma empresa de rastreamento veicular. " +
+              "Escolha, entre os assuntos do catálogo, o único que responde a mensagem. " +
+              "Se a mensagem for genérica (só cumprimento, pedido vago de ajuda) ou tiver vários pedidos distintos, responda id null. " +
+              'Responda SOMENTE JSON: {"id":"<id ou null>","confidence":0.0}\n\nCATÁLOGO:\n' +
+              catalog,
+          },
+          { role: "user", content: String(text).slice(0, 2000) },
+        ],
+      }),
+    });
+    if (!res.ok) {
+      return { ruleId: null, ruleName: null, confidence: 0, note: `ia_${res.status}` };
+    }
+    const json: any = await res.json();
+    const content = String(json?.choices?.[0]?.message?.content || "");
+    const m = content.match(/\{[\s\S]*\}/);
+    if (!m) return { ruleId: null, ruleName: null, confidence: 0, note: "ia_sem_json" };
+    const parsed = JSON.parse(m[0]);
+    const id = parsed?.id && parsed.id !== "null" ? String(parsed.id) : null;
+    const confidence = Math.max(0, Math.min(1, Number(parsed?.confidence) || 0));
+    const rule = id ? candidates.find((r) => r.id === id) || null : null;
+    return {
+      ruleId: rule?.id ?? null,
+      ruleName: rule?.name ?? null,
+      confidence: rule ? confidence : 0,
+    };
+  } catch (err) {
+    console.error("[bot-auto-reply] classifyWithAI failed", err);
+    return { ruleId: null, ruleName: null, confidence: 0, note: "ia_erro" };
+  }
+}
+
 function hhmmToMinutes(hhmm: string): number {
   const [h, m] = String(hhmm || "0:0").split(":").map(Number);
   return (h || 0) * 60 + (m || 0);
