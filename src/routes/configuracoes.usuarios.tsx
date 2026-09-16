@@ -25,7 +25,7 @@ import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { listGSystemUsers, listSectors, listAllOpenChats } from "@/lib/gsystem.functions";
 import { getGSystemColaboradores } from "@/lib/gsystem-api.functions";
-import { createUser, updateUserRole, updateUserName, deleteUser, resetUserPassword, updateUserGroup, setUserActive } from "@/lib/user-admin.functions";
+import { createUser, updateUserRole, updateUserName, deleteUser, resetUserPassword, updateUserGroup, setUserActive, getUserEmail } from "@/lib/user-admin.functions";
 import { toast } from "sonner";
 import {
   Users, Link as LinkIcon, Unlink, Loader2, Bot, Clock, Headphones,
@@ -70,6 +70,7 @@ function UsuariosConfigPage() {
   const [editDialogOpen, setEditDialogOpen] = useState(false);
   const [editUserId, setEditUserId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
+  const [editEmail, setEditEmail] = useState("");
   const [editRole, setEditRole] = useState<"admin" | "gestor" | "atendente">("atendente");
   const [editTargetMinutes, setEditTargetMinutes] = useState<string>("");
   const [editCanAccessAiManager, setEditCanAccessAiManager] = useState<boolean>(true);
@@ -403,6 +404,10 @@ function UsuariosConfigPage() {
   const handleOpenEdit = (profile: { user_id: string; name: string; attendance_target_minutes?: number | null; can_access_ai_manager?: boolean | null; panel_only?: boolean | null }) => {
     setEditUserId(profile.user_id);
     setEditName(profile.name || "");
+    setEditEmail("");
+    getUserEmail({ data: { targetUserId: profile.user_id } })
+      .then((r) => setEditEmail(r?.email || ""))
+      .catch(() => setEditEmail(""));
     const roles = getRolesForUser(profile.user_id);
     setEditRole((roles[0] as any) || "atendente");
     setEditTargetMinutes(
@@ -767,6 +772,11 @@ function UsuariosConfigPage() {
             <DialogDescription>Altere o nome e o papel do usuário no sistema.</DialogDescription>
           </DialogHeader>
           <div className="space-y-4 pt-2">
+            <div className="space-y-2">
+              <Label>E-mail de acesso</Label>
+              <Input value={editEmail} disabled readOnly placeholder={editEmail ? undefined : "Carregando..."} />
+              <p className="text-xs text-muted-foreground">E-mail usado para login. Não editável por aqui.</p>
+            </div>
             <div className="space-y-2">
               <Label>Nome</Label>
               <Input value={editName} onChange={(e) => setEditName(e.target.value)} />

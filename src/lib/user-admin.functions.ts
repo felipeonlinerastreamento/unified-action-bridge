@@ -61,6 +61,22 @@ export const createUser = createServerFn({ method: "POST" })
     return { userId: newUser.user.id };
   });
 
+// Get user email (from Auth) — admin only
+export const getUserEmail = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    z.object({
+      targetUserId: z.string().uuid(),
+    }).parse
+  )
+  .handler(async ({ data, context }): Promise<{ email: string | null }> => {
+    await requireAdmin(context.supabase, context.userId);
+
+    const { data: result, error } = await supabaseAdmin.auth.admin.getUserById(data.targetUserId);
+    if (error) throw new Error(`Erro ao buscar e-mail: ${error.message}`);
+    return { email: result?.user?.email ?? null };
+  });
+
 // Update user role
 export const updateUserRole = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
