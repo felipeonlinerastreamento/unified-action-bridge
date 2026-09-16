@@ -653,9 +653,12 @@ export async function dispatchDueAutoReplies(): Promise<{ sent: number; skipped:
       }
 
       const creds = await loadZapiChannel(supabaseAdmin, chat.channel_id);
-      await zapiSendText(creds, chat.phone, text);
+      const sendRes: any = await zapiSendText(creds, chat.phone, text);
+      // Guarda o id da Z-API para que o eco do webhook não duplique a mensagem.
+      const sentId = sendRes?.messageId || sendRes?.id || sendRes?.zaapId || null;
       await supabaseAdmin.from("zapi_messages").insert({
         chat_id: chat.id,
+        zapi_message_id: sentId,
         from_me: true,
         is_bot_message: true,
         text,
@@ -664,10 +667,10 @@ export async function dispatchDueAutoReplies(): Promise<{ sent: number; skipped:
       await supabaseAdmin.from("bot_auto_reply_log").insert({
         chat_id: chat.id,
         channel_id: chat.channel_id,
-        rule_id: rule.id,
-        rule_name: rule.name,
+        rule_id: isFallback ? null : rule!.id,
+        rule_name: ruleName,
         incoming_text: pending.incoming_text,
-        detected_intent: rule.name,
+        detected_intent: ruleName,
         collected_data: state.auto_reply_collected || {},
         reply_text: text,
         outcome: "sent",
