@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -47,6 +47,7 @@ const PIE_COLORS = ["#22c55e", "#0ea5e9", "#ef4444"];
 const ABC_COLORS: Record<string, string> = { A: "#22c55e", B: "#f59e0b", C: "#94a3b8" };
 
 export function CustomerRetentionTab({ dateFrom, dateTo }: Props) {
+  const [classeAberta, setClasseAberta] = useState<"A" | "B" | "C" | null>(null);
   const { data: tickets = [], isLoading } = useQuery({
     queryKey: ["report-customer-retention", dateFrom, dateTo],
     queryFn: async () => {
@@ -337,10 +338,63 @@ export function CustomerRetentionTab({ dateFrom, dateTo }: Props) {
 
       {/* Curva ABC */}
       <div className="grid gap-3 grid-cols-3">
-        <ReportKpiCard title="Clientes A" value={abc.contagem.A} icon={Award} subtitle="até 80% do volume" />
-        <ReportKpiCard title="Clientes B" value={abc.contagem.B} icon={Award} subtitle="80% a 95%" />
-        <ReportKpiCard title="Clientes C" value={abc.contagem.C} icon={Award} subtitle="cauda longa" />
+        {([
+          { classe: "A" as const, valor: abc.contagem.A, subtitle: "até 80% do volume" },
+          { classe: "B" as const, valor: abc.contagem.B, subtitle: "80% a 95%" },
+          { classe: "C" as const, valor: abc.contagem.C, subtitle: "cauda longa" },
+        ]).map((k) => (
+          <button
+            key={k.classe}
+            type="button"
+            onClick={() => setClasseAberta((atual) => (atual === k.classe ? null : k.classe))}
+            className={`text-left rounded-lg transition-all ${
+              classeAberta === k.classe ? "ring-2 ring-primary" : "hover:opacity-90"
+            }`}
+            aria-pressed={classeAberta === k.classe}
+            title="Clique para ver os nomes dos clientes desta classe"
+          >
+            <ReportKpiCard title={`Clientes ${k.classe}`} value={k.valor} icon={Award} subtitle={k.subtitle} />
+          </button>
+        ))}
       </div>
+
+      {classeAberta && (
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2">
+              <Award className="h-4 w-4" /> Clientes classe {classeAberta}
+              <span className="text-xs font-normal text-muted-foreground">
+                (clique no card novamente para fechar)
+              </span>
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <div className="max-h-[320px] overflow-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Cliente</TableHead>
+                    <TableHead className="text-right">Atend.</TableHead>
+                    <TableHead className="text-right">% do total</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {abc.linhas.filter((l) => l.classe === classeAberta).map((l) => (
+                    <TableRow key={l.cliente}>
+                      <TableCell className="text-xs font-medium">{l.cliente}</TableCell>
+                      <TableCell className="text-right text-xs">{l.total}</TableCell>
+                      <TableCell className="text-right text-xs">{l.pct.toFixed(1)}%</TableCell>
+                    </TableRow>
+                  ))}
+                  {abc.linhas.filter((l) => l.classe === classeAberta).length === 0 && (
+                    <TableRow><TableCell colSpan={3} className="text-center text-muted-foreground py-6">Nenhum cliente nesta classe</TableCell></TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-4 lg:grid-cols-2">
         <ChartFrame
