@@ -386,10 +386,10 @@ export async function evaluateInboundForAutoReply(params: InboundParams): Promis
     await assignIfNeeded(chatId, rule.target_sector);
 
     const collected: Record<string, string> = {};
-    const plate = extractPlate(incomingText);
-    if (plate) collected.placa = plate;
-    const period = extractPeriod(incomingText);
-    if (period) collected.periodo = period;
+    const collected = collectFields(incomingText);
+    const missing = missingRequiredFields(rule, collected);
+    const dataComplete = (rule.required_fields || []).length > 0 && missing.length === 0;
+    const template = dataComplete ? (rule.reply_text_complete || "") : rule.reply_text;
 
     if (settings.observe_only) {
       const operatorName = await operatorNameFor(chatId);
@@ -401,27 +401,50 @@ export async function evaluateInboundForAutoReply(params: InboundParams): Promis
         incoming_text: incomingText,
         detected_intent: rule.name,
         collected_data: collected,
-        reply_text: renderReply(rule.reply_text, {
+        reply_text: renderReply(template, {
           operatorName,
           contactName: params.contactName,
+          collected,
         }),
         outcome: "simulated",
       });
       return false;
     }
 
-    // Agenda o envio: o scanner despacha depois da espera configurada.
+    // Guarda o que já foi coletado, mesmo quando não há resposta a enviar.
     const { data: chatRow } = await supabaseAdmin
       .from("zapi_chats")
       .select("bot_state")
       .eq("id", chatId)
       .maybeSingle();
     const state = ((chatRow as any)?.bot_state || {}) as Record<string, unknown>;
+
+    if (dataComplete && !template.trim()) {
+      // Cliente já mandou tudo e não há texto de confirmação: não repete o pedido.
+      await supabaseAdmin
+        .from("zapi_chats")
+        .update({ bot_state: { ...state, auto_reply_collected: collected } })
+        .eq("id", chatId);
+      await supabaseAdmin.from("bot_auto_reply_log").insert({
+        chat_id: chatId,
+        channel_id: channelId,
+        rule_id: rule.id,
+        rule_name: rule.name,
+        incoming_text: incomingText,
+        detected_intent: rule.name,
+        collected_data: collected,
+        outcome: "skipped_data_complete",
+      });
+      return false;
+    }
+
+    // Agenda o envio: o scanner despacha depois da espera configurada.
     const pending: PendingState = {
       rule_id: rule.id,
       due_at: Date.now() + Math.max(0, settings.greeting_seconds) * 1000,
       kind: "greeting",
       incoming_text: incomingText,
+      use_complete: dataComplete,
     };
     await supabaseAdmin
       .from("zapi_chats")
