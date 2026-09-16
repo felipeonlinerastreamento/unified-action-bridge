@@ -305,6 +305,7 @@ type PendingState = {
   kind: "greeting" | "follow_up";
   incoming_text: string;
   use_complete?: boolean;
+  template?: string;
 };
 
 export type InboundParams = {
