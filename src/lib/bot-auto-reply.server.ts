@@ -481,10 +481,27 @@ export async function evaluateInboundForAutoReply(params: InboundParams): Promis
     const ambiguous = !isGreetingMatch && !!matched && (matches.length > 1 || openQuestion);
     const unmatchedButAsking = !matched && (openQuestion || seemsToNeedHelp(incomingText));
 
-    const useFallback =
-      fallbackEnabled && !!fallbackText && (ambiguous || unmatchedButAsking);
+    // A IA entra quando as palavras-chave não resolveram: nada casou, casou só
+    // a saudação genérica, ou casou mais de um assunto.
+    let aiPicked: BotRule | null = null;
+    let aiConfidence = 0;
+    const needsAI =
+      settings.ai_enabled !== false &&
+      (!matched || isGreetingMatch || ambiguous) &&
+      !isMediaMarker(incomingText);
+    if (needsAI) {
+      const ai = await classifyWithAI(incomingText, rules);
+      const minConf = Number(settings.ai_min_confidence ?? 0.6);
+      if (ai.ruleId && ai.confidence >= minConf) {
+        aiPicked = rules.find((r) => r.id === ai.ruleId) || null;
+        aiConfidence = ai.confidence;
+      }
+    }
 
-    if (!matched && !useFallback) {
+    const useFallback =
+      !aiPicked && fallbackEnabled && !!fallbackText && (ambiguous || unmatchedButAsking);
+
+    if (!matched && !aiPicked && !useFallback) {
       await supabaseAdmin.from("bot_auto_reply_log").insert({
         chat_id: chatId,
         channel_id: channelId,
