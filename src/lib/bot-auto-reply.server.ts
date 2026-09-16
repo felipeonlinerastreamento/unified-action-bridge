@@ -166,6 +166,14 @@ export function isMediaMarker(text: string): boolean {
   return MEDIA_MARKER_RE.test(String(text || "").trim());
 }
 
+const ACK_RE = /^\s*(ok|okay|ok!+|sim|certo|blz|beleza?|t[áa]|joia|fechado|entendido|perfeito|show|vlw|valeu|otimo|ótimo)\s*[!.,]*\s*$/i;
+
+/** "Ok", "sim", "certo" etc., sozinhos, não precisam de resposta automática. */
+export function isShortAcknowledgment(text: string): boolean {
+  return ACK_RE.test(String(text || "").trim());
+}
+
+
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
