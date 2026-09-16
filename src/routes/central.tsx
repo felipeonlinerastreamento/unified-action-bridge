@@ -3850,6 +3850,9 @@ function CentralPage() {
                               {isMe && (msg.senderFirstName || !isPrivate) && (
                                 <p className="text-xs mb-1">
                                   <strong className="font-bold">{msg.senderFirstName || "Você"}</strong>
+                                  {msg.isBotMessage && (
+                                    <span className="opacity-80 font-normal"> (Mensagem automática)</span>
+                                  )}
                                   {msg.isCoAgent && msg.responsibleFirstName && (
                                     <span className="opacity-80 font-normal"> · via co-atendimento (responsável: {msg.responsibleFirstName})</span>
                                   )}

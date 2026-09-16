@@ -437,6 +437,9 @@ export function FloatingChatWindow({ state, onOpenInPanel }: Props) {
                     {mine && opName && (
                       <p className={`text-[10px] mb-0.5 ${mine ? "text-primary-foreground/90" : "opacity-70"}`}>
                         <strong className="font-bold">{opName}</strong>
+                        {msg.isBotMessage && (
+                          <span className="opacity-80"> (Mensagem automática)</span>
+                        )}
                         {msg.isCoAgent && msg.responsibleFirstName && (
                           <span className="opacity-80"> · via co-atendimento (responsável: {msg.responsibleFirstName})</span>
                         )}
