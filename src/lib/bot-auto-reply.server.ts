@@ -290,12 +290,32 @@ async function assignIfNeeded(chatId: string, sector: string | null): Promise<vo
     .eq("id", chatId);
 }
 
+/**
+ * Conta as respostas automáticas já enviadas na "rodada" atual da conversa.
+ * A contagem reinicia sempre que um operador humano responde, para que o
+ * cliente não fique sem retorno em uma nova dúvida depois do atendimento.
+ */
 async function repliesSentToChat(chatId: string): Promise<number> {
-  const { count } = await supabaseAdmin
+  const { data: lastHuman } = await supabaseAdmin
+    .from("zapi_messages")
+    .select("created_at")
+    .eq("chat_id", chatId)
+    .eq("from_me", true)
+    .not("sent_by_user_id", "is", null)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  let query = supabaseAdmin
     .from("bot_auto_reply_log")
     .select("id", { count: "exact", head: true })
     .eq("chat_id", chatId)
     .eq("outcome", "sent");
+
+  const since = (lastHuman as any)?.created_at as string | undefined;
+  if (since) query = query.gt("created_at", since);
+
+  const { count } = await query;
   return count || 0;
 }
 
@@ -373,15 +393,25 @@ export async function evaluateInboundForAutoReply(params: InboundParams): Promis
 
     const alreadySent = await repliesSentToChat(chatId);
     if (alreadySent >= settings.max_replies_per_chat) {
-      await supabaseAdmin.from("bot_auto_reply_log").insert({
-        chat_id: chatId,
-        channel_id: channelId,
-        rule_id: rule.id,
-        rule_name: rule.name,
-        incoming_text: incomingText,
-        outcome: "skipped_limit",
-      });
-      return false;
+      // Assunto novo (outra automação) ainda merece uma resposta.
+      const { data: sentRules } = await supabaseAdmin
+        .from("bot_auto_reply_log")
+        .select("rule_id")
+        .eq("chat_id", chatId)
+        .eq("outcome", "sent")
+        .limit(50);
+      const usedRules = new Set((sentRules || []).map((r: any) => r.rule_id));
+      if (usedRules.has(rule.id)) {
+        await supabaseAdmin.from("bot_auto_reply_log").insert({
+          chat_id: chatId,
+          channel_id: channelId,
+          rule_id: rule.id,
+          rule_name: rule.name,
+          incoming_text: incomingText,
+          outcome: "skipped_limit",
+        });
+        return false;
+      }
     }
 
     await assignIfNeeded(chatId, rule.target_sector);
