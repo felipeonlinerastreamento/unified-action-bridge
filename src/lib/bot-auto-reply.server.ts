@@ -529,9 +529,9 @@ export async function evaluateInboundForAutoReply(params: InboundParams): Promis
       ticket_priority: "media",
     };
 
-    const rule: BotRule = useFallback ? fallbackRule : (matched as BotRule);
+    const rule: BotRule = aiPicked || (useFallback ? fallbackRule : (matched as BotRule));
     // rule_id é uuid no log: a resposta de dúvida não tem automação.
-    const logRuleId: string | null = useFallback ? null : rule.id;
+    const logRuleId: string | null = rule.id === FALLBACK_RULE_ID ? null : rule.id;
 
     if (settings.skip_when_ticket_open) {
       const { data: chat } = await supabaseAdmin
