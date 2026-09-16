@@ -385,11 +385,19 @@ export async function evaluateInboundForAutoReply(params: InboundParams): Promis
 
     await assignIfNeeded(chatId, rule.target_sector);
 
-    const collected: Record<string, string> = {};
     const collected = collectFields(incomingText);
     const missing = missingRequiredFields(rule, collected);
     const dataComplete = (rule.required_fields || []).length > 0 && missing.length === 0;
-    const template = dataComplete ? (rule.reply_text_complete || "") : rule.reply_text;
+    let template = dataComplete ? (rule.reply_text_complete || "") : rule.reply_text;
+    if (!dataComplete && missing.length > 0) {
+      // Já veio parte dos dados: confirma o que chegou e pede só o que falta.
+      const got = Object.keys(collected).filter((k) => !missing.includes(k) && FIELD_LABELS[k]);
+      if (got.length > 0) {
+        const gotText = got.map((k) => `${FIELD_LABELS[k]} ${collected[k]}`).join(", ");
+        const missText = missing.map((k) => FIELD_LABELS[k] || k).join(" e ");
+        template = `Já anotei ${gotText}. Para seguir, me informe também ${missText}, por favor.`;
+      }
+    }
 
     if (settings.observe_only) {
       const operatorName = await operatorNameFor(chatId);
