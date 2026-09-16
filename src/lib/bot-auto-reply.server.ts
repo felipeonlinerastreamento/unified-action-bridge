@@ -481,8 +481,26 @@ export async function evaluateInboundForAutoReply(params: InboundParams): Promis
     if (!isWithinBotWindow(settings)) return false;
 
     const rules = await loadBotRules();
+
+    // "Ok", "certo" etc. sozinhos cancelam uma resposta agendada e não geram nova.
+    if (isShortAcknowledgment(incomingText)) {
+      const { data: chatRow } = await supabaseAdmin
+        .from("zapi_chats")
+        .select("bot_state")
+        .eq("id", chatId)
+        .maybeSingle();
+      const state = ((chatRow as any)?.bot_state || {}) as Record<string, any>;
+      if (state?.auto_reply_pending) {
+        const next = { ...state };
+        delete next.auto_reply_pending;
+        await supabaseAdmin.from("zapi_chats").update({ bot_state: next }).eq("id", chatId);
+      }
+      return false;
+    }
+
     const isMedia = isMediaMarker(incomingText);
     const matches = isMedia ? [] : matchRules(incomingText, rules);
+
     const matched = matches[0] || null;
     const fallbackEnabled = settings.fallback_enabled !== false;
     const fallbackText = (settings.fallback_text || DEFAULT_FALLBACK_TEXT).trim();
