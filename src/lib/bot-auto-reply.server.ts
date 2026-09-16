@@ -658,7 +658,7 @@ export async function evaluateInboundForAutoReply(params: InboundParams): Promis
       incoming_text: incomingText,
       use_complete: dataComplete,
       template,
-
+      confidence: aiConfidence || undefined,
     };
     await supabaseAdmin
       .from("zapi_chats")
