@@ -46,6 +46,7 @@ import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } fr
 import { Route as ApiPublicEmailPollRouteImport } from './routes/api.public.email-poll'
 import { Route as ApiPublicCrmDailyRouteImport } from './routes/api.public.crm-daily'
 import { Route as ApiPublicChatIdleScannerRouteImport } from './routes/api.public.chat-idle-scanner'
+import { Route as ApiPublicBotAutoReplyScannerRouteImport } from './routes/api.public.bot-auto-reply-scanner'
 import { Route as ApiPublicAutoRouteAguardandoRouteImport } from './routes/api.public.auto-route-aguardando'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
@@ -250,6 +251,12 @@ const ApiPublicChatIdleScannerRoute =
     path: '/api/public/chat-idle-scanner',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicBotAutoReplyScannerRoute =
+  ApiPublicBotAutoReplyScannerRouteImport.update({
+    id: '/api/public/bot-auto-reply-scanner',
+    path: '/api/public/bot-auto-reply-scanner',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicAutoRouteAguardandoRoute =
   ApiPublicAutoRouteAguardandoRouteImport.update({
     id: '/api/public/auto-route-aguardando',
@@ -321,6 +328,7 @@ export interface FileRoutesByFullPath {
   '/configuracoes/': typeof ConfiguracoesIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/api/public/auto-route-aguardando': typeof ApiPublicAutoRouteAguardandoRoute
+  '/api/public/bot-auto-reply-scanner': typeof ApiPublicBotAutoReplyScannerRoute
   '/api/public/chat-idle-scanner': typeof ApiPublicChatIdleScannerRoute
   '/api/public/crm-daily': typeof ApiPublicCrmDailyRoute
   '/api/public/email-poll': typeof ApiPublicEmailPollRoute
@@ -365,6 +373,7 @@ export interface FileRoutesByTo {
   '/configuracoes': typeof ConfiguracoesIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/api/public/auto-route-aguardando': typeof ApiPublicAutoRouteAguardandoRoute
+  '/api/public/bot-auto-reply-scanner': typeof ApiPublicBotAutoReplyScannerRoute
   '/api/public/chat-idle-scanner': typeof ApiPublicChatIdleScannerRoute
   '/api/public/crm-daily': typeof ApiPublicCrmDailyRoute
   '/api/public/email-poll': typeof ApiPublicEmailPollRoute
@@ -411,6 +420,7 @@ export interface FileRoutesById {
   '/configuracoes/': typeof ConfiguracoesIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/api/public/auto-route-aguardando': typeof ApiPublicAutoRouteAguardandoRoute
+  '/api/public/bot-auto-reply-scanner': typeof ApiPublicBotAutoReplyScannerRoute
   '/api/public/chat-idle-scanner': typeof ApiPublicChatIdleScannerRoute
   '/api/public/crm-daily': typeof ApiPublicCrmDailyRoute
   '/api/public/email-poll': typeof ApiPublicEmailPollRoute
@@ -458,6 +468,7 @@ export interface FileRouteTypes {
     | '/configuracoes/'
     | '/.lovable/oauth/consent'
     | '/api/public/auto-route-aguardando'
+    | '/api/public/bot-auto-reply-scanner'
     | '/api/public/chat-idle-scanner'
     | '/api/public/crm-daily'
     | '/api/public/email-poll'
@@ -502,6 +513,7 @@ export interface FileRouteTypes {
     | '/configuracoes'
     | '/.lovable/oauth/consent'
     | '/api/public/auto-route-aguardando'
+    | '/api/public/bot-auto-reply-scanner'
     | '/api/public/chat-idle-scanner'
     | '/api/public/crm-daily'
     | '/api/public/email-poll'
@@ -547,6 +559,7 @@ export interface FileRouteTypes {
     | '/configuracoes/'
     | '/.lovable/oauth/consent'
     | '/api/public/auto-route-aguardando'
+    | '/api/public/bot-auto-reply-scanner'
     | '/api/public/chat-idle-scanner'
     | '/api/public/crm-daily'
     | '/api/public/email-poll'
@@ -578,6 +591,7 @@ export interface RootRouteChildren {
   HooksRefreshTrackingRoute: typeof HooksRefreshTrackingRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   ApiPublicAutoRouteAguardandoRoute: typeof ApiPublicAutoRouteAguardandoRoute
+  ApiPublicBotAutoReplyScannerRoute: typeof ApiPublicBotAutoReplyScannerRoute
   ApiPublicChatIdleScannerRoute: typeof ApiPublicChatIdleScannerRoute
   ApiPublicCrmDailyRoute: typeof ApiPublicCrmDailyRoute
   ApiPublicEmailPollRoute: typeof ApiPublicEmailPollRoute
@@ -848,6 +862,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicChatIdleScannerRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/bot-auto-reply-scanner': {
+      id: '/api/public/bot-auto-reply-scanner'
+      path: '/api/public/bot-auto-reply-scanner'
+      fullPath: '/api/public/bot-auto-reply-scanner'
+      preLoaderRoute: typeof ApiPublicBotAutoReplyScannerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/auto-route-aguardando': {
       id: '/api/public/auto-route-aguardando'
       path: '/api/public/auto-route-aguardando'
@@ -957,6 +978,7 @@ const rootRouteChildren: RootRouteChildren = {
   HooksRefreshTrackingRoute: HooksRefreshTrackingRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   ApiPublicAutoRouteAguardandoRoute: ApiPublicAutoRouteAguardandoRoute,
+  ApiPublicBotAutoReplyScannerRoute: ApiPublicBotAutoReplyScannerRoute,
   ApiPublicChatIdleScannerRoute: ApiPublicChatIdleScannerRoute,
   ApiPublicCrmDailyRoute: ApiPublicCrmDailyRoute,
   ApiPublicEmailPollRoute: ApiPublicEmailPollRoute,
