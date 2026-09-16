@@ -15,7 +15,12 @@ export type BotSettings = {
   max_replies_per_chat: number;
   channel_id: string | null;
   skip_when_ticket_open: boolean;
+  fallback_enabled?: boolean;
+  fallback_text?: string;
 };
+
+export const FALLBACK_RULE_ID = "__fallback__";
+export const DEFAULT_FALLBACK_TEXT = "Um momento, por favor, que estou verificando.";
 
 export type BotRule = {
   id: string;
@@ -159,29 +164,70 @@ export function isMediaMarker(text: string): boolean {
   return MEDIA_MARKER_RE.test(String(text || "").trim());
 }
 
-export function matchRule(text: string, rules: BotRule[]): BotRule | null {
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Casa a palavra-chave por palavra inteira, evitando disparos em textos longos. */
+function keywordHits(norm: string, keyword: string): boolean {
+  const nk = normalizeText(keyword);
+  if (!nk) return false;
+  const re = new RegExp(`(^|[^a-z0-9])${escapeRegExp(nk)}([^a-z0-9]|$)`, "i");
+  return re.test(norm);
+}
+
+/** Todas as automações que casaram com o texto, em ordem de prioridade. */
+export function matchRules(text: string, rules: BotRule[]): BotRule[] {
   const norm = normalizeText(text);
-  if (!norm) return null;
+  if (!norm) return [];
   if (isMediaMarker(text)) {
     const greeting = rules
       .filter((r) => r.is_enabled && r.is_greeting)
       .sort((a, b) => a.priority - b.priority)[0];
-    return greeting || null;
+    return greeting ? [greeting] : [];
   }
   const active = rules
     .filter((r) => r.is_enabled)
     .sort((a, b) => a.priority - b.priority || (a.is_greeting ? 1 : 0) - (b.is_greeting ? 1 : 0));
-  // Regras específicas antes da saudação genérica
   const specific = active.filter((r) => !r.is_greeting);
   const greetings = active.filter((r) => r.is_greeting);
+  const hits: BotRule[] = [];
   for (const r of [...specific, ...greetings]) {
-    const hit = (r.keywords || []).some((k) => {
-      const nk = normalizeText(k);
-      return nk.length > 0 && norm.includes(nk);
-    });
-    if (hit) return r;
+    if ((r.keywords || []).some((k) => keywordHits(norm, k))) hits.push(r);
   }
-  return null;
+  return hits;
+}
+
+export function matchRule(text: string, rules: BotRule[]): BotRule | null {
+  return matchRules(text, rules)[0] || null;
+}
+
+/**
+ * Detecta mensagens que são "dúvida": textos longos, com vários pedidos,
+ * listas ou mais de uma pergunta. Nesses casos o robô não deve disparar o
+ * texto de uma automação específica.
+ */
+export function looksLikeOpenQuestion(text: string): boolean {
+  const raw = String(text || "").trim();
+  if (!raw || isMediaMarker(raw)) return false;
+  if (raw.length > 180) return true;
+  const lines = raw.split(/\r?\n/).filter((l) => l.trim().length > 0);
+  if (lines.length >= 3) return true;
+  const bulletItems = raw.match(/(^|\n|\s)([a-e]\)|[-*•]|\d[\).])\s*\S/gi) || [];
+  if (bulletItems.length >= 2) return true;
+  if ((raw.match(/\?/g) || []).length >= 2) return true;
+  return false;
+}
+
+/** Mensagem que pede algo/pergunta, mesmo sem casar com automação. */
+export function seemsToNeedHelp(text: string): boolean {
+  const norm = normalizeText(text);
+  if (!norm || isMediaMarker(text)) return false;
+  if (norm.length < 4) return false;
+  if (/\?/.test(String(text))) return true;
+  return /\b(preciso|pode|poderia|consegue|gostaria|quero|como|quando|onde|qual|quais|porque|por que|duvida|ajuda|verificar|confirmar|solicito|informar|atualiza|atualizar|me manda|me envia)\b/.test(
+    norm,
+  );
 }
 
 function hhmmToMinutes(hhmm: string): number {
