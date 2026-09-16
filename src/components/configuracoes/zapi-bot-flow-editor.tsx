@@ -10,14 +10,15 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, Trash2, ArrowUp, ArrowDown, MessageSquare, ListOrdered, ArrowRight, Hash, Square, Loader2, Eye, Receipt, Lightbulb, ChevronDown, ChevronUp } from "lucide-react";
+import { Plus, Trash2, ArrowUp, ArrowDown, MessageSquare, ListOrdered, ArrowRight, Hash, Square, Loader2, Eye, Receipt, Lightbulb, ChevronDown, ChevronUp, Bot } from "lucide-react";
 
-type NodeType = "message" | "menu" | "route_to_sector" | "route_to_least_loaded" | "end" | "gsystem_boleto" | "gsystem_boleto_by_doc" | "ask_input";
+type NodeType = "message" | "menu" | "route_to_sector" | "route_to_least_loaded" | "end" | "gsystem_boleto" | "gsystem_boleto_by_doc" | "ask_input" | "ai_agent";
 
 interface FlowNode {
   id: string;
   type: NodeType;
   text?: string;
+  system_prompt?: string;
   options?: Array<{ key: string; label: string; next: string }>;
   next?: string;
   target_sector?: string;
@@ -37,6 +38,7 @@ const TYPE_META: Record<NodeType, { label: string; icon: any; color: string }> =
   gsystem_boleto: { label: "Consultar boletos (GSystem)", icon: Receipt, color: "text-cyan-600" },
   gsystem_boleto_by_doc: { label: "Consultar boletos por CPF/CNPJ", icon: Receipt, color: "text-cyan-700" },
   ask_input: { label: "Solicitar entrada do usuário", icon: MessageSquare, color: "text-indigo-600" },
+  ai_agent: { label: "Assistente com IA", icon: Bot, color: "text-violet-600" },
 };
 
 const FALLBACK_META = { label: "Tipo desconhecido", icon: Square, color: "text-muted-foreground" };
@@ -139,6 +141,7 @@ export function ZapiBotFlowEditor() {
       ...(type === "message" ? { text: "Sua mensagem aqui", next: "" } : {}),
       ...(type === "route_to_sector" || type === "route_to_least_loaded" ? { target_sector: "Atendimento" } : {}),
       ...(type === "end" ? { text: "Atendimento finalizado, obrigado!" } : {}),
+      ...(type === "ai_agent" ? { system_prompt: "Você é um assistente virtual de inteligência artificial.", fallback_sector: "Atendimento" } : {}),
       ...(type === "gsystem_boleto"
         ? {
             fallback_sector: "Financeiro",
@@ -160,6 +163,7 @@ export function ZapiBotFlowEditor() {
         type,
         ...(type === "menu" ? { text: "Escolha uma opção:", options: [{ key: "1", label: "Opção 1", next: "" }] } : {}),
         ...(type === "message" ? { text: "Sua mensagem aqui", next: "" } : {}),
+        ...(type === "ai_agent" ? { system_prompt: "Você é um assistente virtual de inteligência artificial.", fallback_sector: "Atendimento" } : {}),
         ...(type === "gsystem_boleto"
           ? {
               fallback_sector: "Financeiro",
@@ -401,6 +405,10 @@ export function ZapiBotFlowEditor() {
                                         onClick={() => addNodeAndLinkToOption(node.id, oi, "gsystem_boleto")}>
                                         <Plus className="h-3 w-3 mr-1" /> Boletos GSystem
                                       </Button>
+                                      <Button size="sm" variant="ghost" className="h-6 px-2 text-[11px]"
+                                        onClick={() => addNodeAndLinkToOption(node.id, oi, "ai_agent")}>
+                                        <Plus className="h-3 w-3 mr-1" /> Assistente IA
+                                      </Button>
                                     </>
                                   )}
                                 </div>
@@ -441,6 +449,30 @@ export function ZapiBotFlowEditor() {
                               ))}
                             </SelectContent>
                           </Select>
+                        </div>
+                      )}
+
+                      {node.type === "ai_agent" && (
+                        <div className="space-y-2">
+                          <p className="text-[11px] text-muted-foreground">
+                            O bot usará IA (Gemini) para conversar usando o histórico. Se o cliente pedir humano, ele transfere para o setor de fallback.
+                          </p>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Instruções da IA (Prompt)</Label>
+                            <Textarea rows={3} value={node.system_prompt || ""}
+                              onChange={(e) => updateNode(node.id, { system_prompt: e.target.value })} />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Setor de Transferência (Fallback)</Label>
+                            <Select value={node.fallback_sector || ""} onValueChange={(v) => updateNode(node.id, { fallback_sector: v })}>
+                              <SelectTrigger><SelectValue placeholder="Selecione um setor" /></SelectTrigger>
+                              <SelectContent>
+                                {sectors.map((s) => (
+                                  <SelectItem key={s.name} value={s.name}>{s.name}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
                         </div>
                       )}
 

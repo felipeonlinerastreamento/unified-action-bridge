@@ -14,8 +14,10 @@ export interface FlowNode {
     | "end"
     | "gsystem_boleto"
     | "ask_input"
-    | "gsystem_boleto_by_doc";
+    | "gsystem_boleto_by_doc"
+    | "ai_agent";
   text?: string;
+  system_prompt?: string;
   options?: Array<{ key: string; label: string; next: string }>;
   next?: string;
   target_sector?: string;
@@ -328,6 +330,83 @@ export async function processIncomingForBot(params: ProcessParams): Promise<bool
         .from("zapi_chats")
         .update({ bot_state: { ...botState, current_node: node.id }, status: "bot" })
         .eq("id", chatId);
+      return true;
+    }
+
+    if (node.type === "ai_agent") {
+      const fallbackSector = node.fallback_sector || "Atendimento";
+      // Collect last messages of this chat for context
+      const { data: historyMsgs } = await supabaseAdmin
+        .from("zapi_messages")
+        .select("text, from_me")
+        .eq("chat_id", chatId)
+        .order("created_at", { ascending: false })
+        .limit(10);
+      
+      const conversation = (historyMsgs || []).reverse().map((m: any) => ({
+        role: m.from_me ? "assistant" : "user",
+        content: m.text || ""
+      }));
+      conversation.push({ role: "user", content: incomingText });
+
+      let aiResponseText = "";
+      let transferToHuman = false;
+      
+      try {
+        const apiKey = process.env.LOVABLE_API_KEY;
+        const systemMsg = node.system_prompt || "Você é um assistente útil.";
+        
+        const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${apiKey}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-pro", 
+            messages: [
+              { role: "system", content: `${systemMsg}\n\nREGRA ABSOLUTA: Se o cliente pedir para falar com um humano, atendente, ou você não souber responder, responda MENCIONANDO A PALAVRA: TRANSFERIR_HUMANO` },
+              ...conversation
+            ]
+          })
+        });
+        
+        if (res.ok) {
+          const data = await res.json();
+          aiResponseText = data.choices?.[0]?.message?.content || "Desculpe, não entendi.";
+          if (aiResponseText.includes("TRANSFERIR_HUMANO")) {
+             transferToHuman = true;
+             aiResponseText = aiResponseText.replace("TRANSFERIR_HUMANO", "").trim() || "Certo, vou te transferir para um de nossos especialistas.";
+          }
+        } else {
+           transferToHuman = true;
+           aiResponseText = "Vou te transferir para um atendente.";
+        }
+      } catch (err) {
+        transferToHuman = true;
+        aiResponseText = "Vou te transferir para um atendente.";
+      }
+      
+      if (aiResponseText) {
+        await sendAndPersist(creds, phone, chatId, renderText(aiResponseText, vars));
+      }
+      
+      if (transferToHuman) {
+        let assignedTo: string | null = null;
+        try { assignedTo = await keepOrPickAssignee(chatId, fallbackSector); } catch {}
+        await supabaseAdmin.from("zapi_chats").update({
+          status: "em_atendimento",
+          sector_name: fallbackSector,
+          assigned_to: assignedTo,
+          bot_state: {}
+        }).eq("id", chatId);
+      } else {
+        await supabaseAdmin.from("zapi_chats").update({
+          status: "bot",
+          bot_state: { ...botState, current_node: node.id }
+        }).eq("id", chatId);
+      }
+      
       return true;
     }
 
