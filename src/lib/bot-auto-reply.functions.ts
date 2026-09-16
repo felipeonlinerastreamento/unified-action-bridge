@@ -15,6 +15,8 @@ export type TestResult = {
   dataComplete: boolean;
   willReply: boolean;
   isFallback?: boolean;
+  aiUsed?: boolean;
+  aiConfidence?: number;
 };
 
 /** Testa uma frase contra as automações ativas, sem enviar nada ao cliente. */
