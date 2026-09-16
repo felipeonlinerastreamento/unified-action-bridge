@@ -398,8 +398,26 @@ export async function evaluateInboundForAutoReply(params: InboundParams): Promis
     if (!isWithinBotWindow(settings)) return false;
 
     const rules = await loadBotRules();
-    const rule = matchRule(incomingText, rules);
-    if (!rule) {
+    const matches = matchRules(incomingText, rules);
+    const matched = matches[0] || null;
+    const fallbackEnabled = settings.fallback_enabled !== false;
+    const fallbackText = (settings.fallback_text || DEFAULT_FALLBACK_TEXT).trim();
+    const isGreetingMatch = !!matched?.is_greeting;
+
+    // Dúvida: texto longo/multi-assunto, ou vários assuntos casados, ou nada
+    // casou mas o cliente claramente pediu algo.
+    const ambiguous =
+      !isGreetingMatch &&
+      (matches.length > 1 || (looksLikeOpenQuestion(incomingText) && !!matched));
+    const unmatchedButAsking =
+      !matched && looksLikeOpenQuestion(incomingText) === false
+        ? seemsToNeedHelp(incomingText)
+        : !matched;
+
+    const useFallback =
+      fallbackEnabled && !!fallbackText && (ambiguous || (!matched && unmatchedButAsking));
+
+    if (!matched && !useFallback) {
       await supabaseAdmin.from("bot_auto_reply_log").insert({
         chat_id: chatId,
         channel_id: channelId,
@@ -409,6 +427,25 @@ export async function evaluateInboundForAutoReply(params: InboundParams): Promis
       });
       return false;
     }
+
+    const fallbackRule: BotRule = {
+      id: FALLBACK_RULE_ID,
+      name: "Dúvida (resposta padrão)",
+      is_enabled: true,
+      keywords: [],
+      reply_text: fallbackText,
+      reply_text_complete: null,
+      required_fields: [],
+      target_sector: matched?.target_sector || null,
+      priority: 999,
+      from_catalog: false,
+      catalog_key: null,
+      is_greeting: false,
+      create_ticket: false,
+      ticket_priority: "media",
+    };
+
+    const rule: BotRule = useFallback ? fallbackRule : (matched as BotRule);
 
     if (settings.skip_when_ticket_open) {
       const { data: chat } = await supabaseAdmin
