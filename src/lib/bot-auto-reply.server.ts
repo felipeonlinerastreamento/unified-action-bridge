@@ -443,6 +443,7 @@ type PendingState = {
   incoming_text: string;
   use_complete?: boolean;
   template?: string;
+  confidence?: number;
 };
 
 export type InboundParams = {
