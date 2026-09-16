@@ -28,6 +28,7 @@ export const testBotAutoReply = createServerFn({ method: "POST" })
       matchRules,
       looksLikeOpenQuestion,
       seemsToNeedHelp,
+      isShortAcknowledgment,
       DEFAULT_FALLBACK_TEXT,
       renderReply,
       extractPlate,
@@ -39,7 +40,27 @@ export const testBotAutoReply = createServerFn({ method: "POST" })
       classifyWithAI,
       isMediaMarker,
     } = await import("@/lib/bot-auto-reply.server");
+    if (isShortAcknowledgment(data.text)) {
+      return {
+        matched: false,
+        ruleName: null,
+        sector: null,
+        replyPreview: null,
+        requiredFields: [],
+        detectedPlate: null,
+        detectedPeriod: null,
+        detectedDocument: null,
+        collected: {},
+        missingFields: [],
+        dataComplete: false,
+        willReply: false,
+        isFallback: false,
+        aiUsed: false,
+        aiConfidence: 0,
+      };
+    }
     const { data: rules } = await context.supabase.from("bot_auto_reply_rules").select("*");
+
     const list = ((rules as any[]) || []).map((r) => ({
       ...r,
       keywords: r.keywords || [],
