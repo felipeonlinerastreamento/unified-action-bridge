@@ -30,6 +30,7 @@ import { Route as HooksRefreshTrackingRouteImport } from './routes/hooks/refresh
 import { Route as ConfiguracoesZapiRouteImport } from './routes/configuracoes.zapi'
 import { Route as ConfiguracoesUsuariosRouteImport } from './routes/configuracoes.usuarios'
 import { Route as ConfiguracoesStatusUsuariosRouteImport } from './routes/configuracoes.status-usuarios'
+import { Route as ConfiguracoesRoboAtendimentoRouteImport } from './routes/configuracoes.robo-atendimento'
 import { Route as ConfiguracoesPopupDiarioRouteImport } from './routes/configuracoes.popup-diario'
 import { Route as ConfiguracoesNotificacoesRouteImport } from './routes/configuracoes.notificacoes'
 import { Route as ConfiguracoesFluxoAtendimentoRouteImport } from './routes/configuracoes.fluxo-atendimento'
@@ -156,6 +157,12 @@ const ConfiguracoesStatusUsuariosRoute =
   ConfiguracoesStatusUsuariosRouteImport.update({
     id: '/status-usuarios',
     path: '/status-usuarios',
+    getParentRoute: () => ConfiguracoesRoute,
+  } as any)
+const ConfiguracoesRoboAtendimentoRoute =
+  ConfiguracoesRoboAtendimentoRouteImport.update({
+    id: '/robo-atendimento',
+    path: '/robo-atendimento',
     getParentRoute: () => ConfiguracoesRoute,
   } as any)
 const ConfiguracoesPopupDiarioRoute =
@@ -306,6 +313,7 @@ export interface FileRoutesByFullPath {
   '/configuracoes/fluxo-atendimento': typeof ConfiguracoesFluxoAtendimentoRoute
   '/configuracoes/notificacoes': typeof ConfiguracoesNotificacoesRoute
   '/configuracoes/popup-diario': typeof ConfiguracoesPopupDiarioRoute
+  '/configuracoes/robo-atendimento': typeof ConfiguracoesRoboAtendimentoRoute
   '/configuracoes/status-usuarios': typeof ConfiguracoesStatusUsuariosRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
@@ -349,6 +357,7 @@ export interface FileRoutesByTo {
   '/configuracoes/fluxo-atendimento': typeof ConfiguracoesFluxoAtendimentoRoute
   '/configuracoes/notificacoes': typeof ConfiguracoesNotificacoesRoute
   '/configuracoes/popup-diario': typeof ConfiguracoesPopupDiarioRoute
+  '/configuracoes/robo-atendimento': typeof ConfiguracoesRoboAtendimentoRoute
   '/configuracoes/status-usuarios': typeof ConfiguracoesStatusUsuariosRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
@@ -394,6 +403,7 @@ export interface FileRoutesById {
   '/configuracoes/fluxo-atendimento': typeof ConfiguracoesFluxoAtendimentoRoute
   '/configuracoes/notificacoes': typeof ConfiguracoesNotificacoesRoute
   '/configuracoes/popup-diario': typeof ConfiguracoesPopupDiarioRoute
+  '/configuracoes/robo-atendimento': typeof ConfiguracoesRoboAtendimentoRoute
   '/configuracoes/status-usuarios': typeof ConfiguracoesStatusUsuariosRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
@@ -440,6 +450,7 @@ export interface FileRouteTypes {
     | '/configuracoes/fluxo-atendimento'
     | '/configuracoes/notificacoes'
     | '/configuracoes/popup-diario'
+    | '/configuracoes/robo-atendimento'
     | '/configuracoes/status-usuarios'
     | '/configuracoes/usuarios'
     | '/configuracoes/zapi'
@@ -483,6 +494,7 @@ export interface FileRouteTypes {
     | '/configuracoes/fluxo-atendimento'
     | '/configuracoes/notificacoes'
     | '/configuracoes/popup-diario'
+    | '/configuracoes/robo-atendimento'
     | '/configuracoes/status-usuarios'
     | '/configuracoes/usuarios'
     | '/configuracoes/zapi'
@@ -527,6 +539,7 @@ export interface FileRouteTypes {
     | '/configuracoes/fluxo-atendimento'
     | '/configuracoes/notificacoes'
     | '/configuracoes/popup-diario'
+    | '/configuracoes/robo-atendimento'
     | '/configuracoes/status-usuarios'
     | '/configuracoes/usuarios'
     | '/configuracoes/zapi'
@@ -723,6 +736,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConfiguracoesStatusUsuariosRouteImport
       parentRoute: typeof ConfiguracoesRoute
     }
+    '/configuracoes/robo-atendimento': {
+      id: '/configuracoes/robo-atendimento'
+      path: '/robo-atendimento'
+      fullPath: '/configuracoes/robo-atendimento'
+      preLoaderRoute: typeof ConfiguracoesRoboAtendimentoRouteImport
+      parentRoute: typeof ConfiguracoesRoute
+    }
     '/configuracoes/popup-diario': {
       id: '/configuracoes/popup-diario'
       path: '/popup-diario'
@@ -884,6 +904,7 @@ interface ConfiguracoesRouteChildren {
   ConfiguracoesFluxoAtendimentoRoute: typeof ConfiguracoesFluxoAtendimentoRoute
   ConfiguracoesNotificacoesRoute: typeof ConfiguracoesNotificacoesRoute
   ConfiguracoesPopupDiarioRoute: typeof ConfiguracoesPopupDiarioRoute
+  ConfiguracoesRoboAtendimentoRoute: typeof ConfiguracoesRoboAtendimentoRoute
   ConfiguracoesStatusUsuariosRoute: typeof ConfiguracoesStatusUsuariosRoute
   ConfiguracoesUsuariosRoute: typeof ConfiguracoesUsuariosRoute
   ConfiguracoesZapiRoute: typeof ConfiguracoesZapiRoute
@@ -902,6 +923,7 @@ const ConfiguracoesRouteChildren: ConfiguracoesRouteChildren = {
   ConfiguracoesFluxoAtendimentoRoute: ConfiguracoesFluxoAtendimentoRoute,
   ConfiguracoesNotificacoesRoute: ConfiguracoesNotificacoesRoute,
   ConfiguracoesPopupDiarioRoute: ConfiguracoesPopupDiarioRoute,
+  ConfiguracoesRoboAtendimentoRoute: ConfiguracoesRoboAtendimentoRoute,
   ConfiguracoesStatusUsuariosRoute: ConfiguracoesStatusUsuariosRoute,
   ConfiguracoesUsuariosRoute: ConfiguracoesUsuariosRoute,
   ConfiguracoesZapiRoute: ConfiguracoesZapiRoute,
