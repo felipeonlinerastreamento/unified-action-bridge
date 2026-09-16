@@ -12,6 +12,7 @@ import {
 } from "@/lib/business-hours.server";
 import { evaluateMessageTriggers } from "@/lib/message-triggers.server";
 import { processNoCommAutomation } from "@/lib/no-comm-automation.server";
+import { evaluateInboundForAutoReply } from "@/lib/bot-auto-reply.server";
 
 // Z-API webhook payload (loose schema — Z-API sends many event shapes)
 const PayloadSchema = z.object({
@@ -1327,14 +1328,31 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                     }
                   }
                 } else {
-                  // Dentro do horário (ou checagem desabilitada): segue para o fluxo do bot
-                  await processIncomingForBot({
-                    channelId,
-                    chatId,
-                    phone,
-                    contactName: p.senderName || existing?.contact_name || null,
-                    incomingText: text,
-                  });
+                  // Robô de Atendimento (automações por assunto) antes do fluxo de nós
+                  let handledByAutoReply = false;
+                  try {
+                    handledByAutoReply = await evaluateInboundForAutoReply({
+                      channelId,
+                      chatId,
+                      phone,
+                      contactName: p.senderName || existing?.contact_name || null,
+                      incomingText: text,
+                      messageId: p.messageId || null,
+                    });
+                  } catch (arErr) {
+                    console.warn("[zapi-webhook] bot auto-reply error:", arErr);
+                  }
+
+                  if (!handledByAutoReply) {
+                    // Dentro do horário (ou checagem desabilitada): segue para o fluxo do bot
+                    await processIncomingForBot({
+                      channelId,
+                      chatId,
+                      phone,
+                      contactName: p.senderName || existing?.contact_name || null,
+                      incomingText: text,
+                    });
+                  }
                 }
               } catch (e) {
                 console.error("[zapi-webhook] bot/business-hours error:", e);

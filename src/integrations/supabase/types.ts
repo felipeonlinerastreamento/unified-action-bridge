@@ -599,6 +599,178 @@ export type Database = {
           },
         ]
       }
+      bot_auto_reply_log: {
+        Row: {
+          channel_id: string | null
+          chat_id: string | null
+          collected_data: Json
+          confidence: number | null
+          created_at: string
+          detected_intent: string | null
+          id: string
+          incoming_text: string | null
+          message_id: string | null
+          outcome: string
+          reply_text: string | null
+          rule_id: string | null
+          rule_name: string | null
+        }
+        Insert: {
+          channel_id?: string | null
+          chat_id?: string | null
+          collected_data?: Json
+          confidence?: number | null
+          created_at?: string
+          detected_intent?: string | null
+          id?: string
+          incoming_text?: string | null
+          message_id?: string | null
+          outcome?: string
+          reply_text?: string | null
+          rule_id?: string | null
+          rule_name?: string | null
+        }
+        Update: {
+          channel_id?: string | null
+          chat_id?: string | null
+          collected_data?: Json
+          confidence?: number | null
+          created_at?: string
+          detected_intent?: string | null
+          id?: string
+          incoming_text?: string | null
+          message_id?: string | null
+          outcome?: string
+          reply_text?: string | null
+          rule_id?: string | null
+          rule_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bot_auto_reply_log_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "bot_auto_reply_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      bot_auto_reply_rules: {
+        Row: {
+          catalog_key: string | null
+          create_ticket: boolean
+          created_at: string
+          created_by: string | null
+          from_catalog: boolean
+          id: string
+          is_enabled: boolean
+          is_greeting: boolean
+          keywords: string[]
+          name: string
+          priority: number
+          reply_text: string
+          required_fields: string[]
+          target_sector: string | null
+          ticket_priority: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          catalog_key?: string | null
+          create_ticket?: boolean
+          created_at?: string
+          created_by?: string | null
+          from_catalog?: boolean
+          id?: string
+          is_enabled?: boolean
+          is_greeting?: boolean
+          keywords?: string[]
+          name: string
+          priority?: number
+          reply_text?: string
+          required_fields?: string[]
+          target_sector?: string | null
+          ticket_priority?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          catalog_key?: string | null
+          create_ticket?: boolean
+          created_at?: string
+          created_by?: string | null
+          from_catalog?: boolean
+          id?: string
+          is_enabled?: boolean
+          is_greeting?: boolean
+          keywords?: string[]
+          name?: string
+          priority?: number
+          reply_text?: string
+          required_fields?: string[]
+          target_sector?: string | null
+          ticket_priority?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      bot_auto_reply_settings: {
+        Row: {
+          channel_id: string | null
+          created_at: string
+          end_hour: string
+          follow_up_minutes: number
+          greeting_seconds: number
+          id: string
+          is_enabled: boolean
+          max_replies_per_chat: number
+          observe_only: boolean
+          skip_when_ticket_open: boolean
+          start_hour: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          channel_id?: string | null
+          created_at?: string
+          end_hour?: string
+          follow_up_minutes?: number
+          greeting_seconds?: number
+          id?: string
+          is_enabled?: boolean
+          max_replies_per_chat?: number
+          observe_only?: boolean
+          skip_when_ticket_open?: boolean
+          start_hour?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          channel_id?: string | null
+          created_at?: string
+          end_hour?: string
+          follow_up_minutes?: number
+          greeting_seconds?: number
+          id?: string
+          is_enabled?: boolean
+          max_replies_per_chat?: number
+          observe_only?: boolean
+          skip_when_ticket_open?: boolean
+          start_hour?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "bot_auto_reply_settings_channel_id_fkey"
+            columns: ["channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       business_hours_settings: {
         Row: {
           cooldown_minutes: number
