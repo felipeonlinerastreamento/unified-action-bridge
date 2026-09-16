@@ -761,6 +761,7 @@ export async function dispatchDueAutoReplies(): Promise<{ sent: number; skipped:
         rule_name: ruleName,
         incoming_text: pending.incoming_text,
         detected_intent: ruleName,
+        confidence: pending.confidence ?? null,
         collected_data: state.auto_reply_collected || {},
         reply_text: text,
         outcome: "sent",
