@@ -11,9 +11,81 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Wifi, WifiOff, Loader2, CheckCircle2, XCircle, RefreshCw, Clock, AlertTriangle } from "lucide-react";
+import { Plus, Wifi, WifiOff, Loader2, CheckCircle2, XCircle, RefreshCw, Clock, AlertTriangle, DatabaseZap, AlertCircle } from "lucide-react";
 import { forceSyncGsystemClientes, testGsystemAuth } from "@/lib/gsystem-api.functions";
 import { EmailChannelsConfig } from "@/components/configuracoes/email-channels-config";
+import { useQuery } from "@tanstack/react-query";
+import { formatDistanceToNow } from "date-fns";
+import { ptBR } from "date-fns/locale";
+
+type GsystemSyncStatusRow = {
+  id: string;
+  last_started_at: string | null;
+  last_finished_at: string | null;
+  last_success_at: string | null;
+  items_count: number | null;
+  last_error: string | null;
+};
+
+function GsystemRealStatusBanner() {
+  const { data: status } = useQuery({
+    queryKey: ["gsystem-sync-status", "equipamentos", "integracoes-card"],
+    queryFn: async (): Promise<GsystemSyncStatusRow | null> => {
+      const { data } = await supabase
+        .from("gsystem_sync_status" as any)
+        .select("*")
+        .eq("id", "equipamentos")
+        .maybeSingle();
+      return (data as any) ?? null;
+    },
+    refetchInterval: 30_000,
+  });
+
+  const lastSuccess = status?.last_success_at ? new Date(status.last_success_at) : null;
+  const running = status?.last_started_at && status?.last_finished_at
+    ? new Date(status.last_started_at) > new Date(status.last_finished_at)
+    : !!status?.last_started_at && !status?.last_finished_at;
+
+  return (
+    <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+      <div className="flex items-center gap-2 text-sm font-medium text-foreground">
+        <DatabaseZap className="h-4 w-4 text-primary" />
+        Status real da integração (banco)
+      </div>
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
+        {running ? (
+          <span className="flex items-center gap-1 text-muted-foreground">
+            <Loader2 className="h-3.5 w-3.5 animate-spin" /> Sincronizando agora...
+          </span>
+        ) : status?.last_error ? (
+          <span className="flex items-center gap-1 text-destructive">
+            <AlertCircle className="h-3.5 w-3.5" /> Falha na última sincronização
+          </span>
+        ) : lastSuccess ? (
+          <span className="flex items-center gap-1 text-emerald-600 dark:text-emerald-400">
+            <CheckCircle2 className="h-3.5 w-3.5" /> Concluída com sucesso
+          </span>
+        ) : (
+          <span className="flex items-center gap-1 text-muted-foreground">
+            <Clock className="h-3.5 w-3.5" /> Nunca sincronizado
+          </span>
+        )}
+        {lastSuccess && (
+          <span className="text-muted-foreground">
+            Última sincronização {formatDistanceToNow(lastSuccess, { addSuffix: true, locale: ptBR })}
+            {typeof status?.items_count === "number" && ` — ${status.items_count} itens`}
+          </span>
+        )}
+      </div>
+      {status?.last_error && (
+        <div className="flex items-start gap-2 rounded border border-destructive/30 bg-destructive/10 p-2 text-xs text-destructive">
+          <XCircle className="h-3.5 w-3.5 mt-0.5 shrink-0" />
+          <span>{status.last_error}</span>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export const Route = createFileRoute("/configuracoes/")({
   component: ConfiguracoesIndexPage,
@@ -255,6 +327,7 @@ function GsystemForceSync() {
         </Button>
       </CardHeader>
       <CardContent className="space-y-3">
+        <GsystemRealStatusBanner />
         <div className="grid gap-2 text-xs sm:grid-cols-2">
           <div className="flex items-center gap-2 text-muted-foreground">
             <Clock className="h-3.5 w-3.5" />
