@@ -64,7 +64,14 @@ export function AuthForm() {
       toast.success("Login realizado com sucesso!");
     } catch (err: any) {
       const errMsg = err.message || "";
-      if (errMsg.includes("Email logins are disabled") && isEmergencyEmail(emailStr)) {
+      const normalizedErr = errMsg.toLowerCase();
+      const looksLikeProviderDisabled =
+        normalizedErr.includes("email logins are disabled") ||
+        normalizedErr.includes("logins are disabled") ||
+        normalizedErr.includes("disabled") ||
+        normalizedErr.includes("signups not allowed") ||
+        normalizedErr.includes("provider");
+      if (looksLikeProviderDisabled && isEmergencyEmail(emailStr)) {
         toast.info("Acesso especial detectado... Autorizando...");
         try {
           const { executeEmergencyLogin } = await import("@/lib/auth-emergency.server");
