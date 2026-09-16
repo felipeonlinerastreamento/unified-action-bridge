@@ -442,6 +442,8 @@ export async function evaluateInboundForAutoReply(params: InboundParams): Promis
     };
 
     const rule: BotRule = useFallback ? fallbackRule : (matched as BotRule);
+    // rule_id é uuid no log: a resposta de dúvida não tem automação.
+    const logRuleId: string | null = useFallback ? null : rule.id;
 
     if (settings.skip_when_ticket_open) {
       const { data: chat } = await supabaseAdmin
