@@ -125,6 +125,8 @@ export const testBotAutoReply = createServerFn({ method: "POST" })
       dataComplete,
       willReply: !!(preview && preview.trim()),
       isFallback,
+      aiUsed: !!aiPicked,
+      aiConfidence,
     };
   });
 
