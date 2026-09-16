@@ -17,6 +17,8 @@ export type BotSettings = {
   skip_when_ticket_open: boolean;
   fallback_enabled?: boolean;
   fallback_text?: string;
+  ai_enabled?: boolean;
+  ai_min_confidence?: number;
 };
 
 export const FALLBACK_RULE_ID = "__fallback__";
@@ -230,6 +232,78 @@ export function seemsToNeedHelp(text: string): boolean {
   );
 }
 
+export type AiClassification = {
+  ruleId: string | null;
+  ruleName: string | null;
+  confidence: number;
+  note?: string;
+};
+
+/**
+ * Usa a IA para escolher qual automação do catálogo responde melhor a mensagem.
+ * Só é chamada quando as palavras-chave não resolveram (nada casou ou casou
+ * mais de um assunto). Falha em silêncio: sem IA, o robô segue no fallback.
+ */
+export async function classifyWithAI(
+  text: string,
+  rules: BotRule[],
+): Promise<AiClassification> {
+  const apiKey = process.env["LOVABLE_API_KEY"];
+  const candidates = rules.filter((r) => r.is_enabled);
+  if (!apiKey || candidates.length === 0 || !String(text || "").trim()) {
+    return { ruleId: null, ruleName: null, confidence: 0, note: "sem_ia" };
+  }
+  try {
+    const catalog = candidates
+      .map(
+        (r, i) =>
+          `${i + 1}. id=${r.id} | assunto="${r.name}" | exemplos: ${(r.keywords || []).join(", ")}`,
+      )
+      .join("\n");
+    const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          {
+            role: "system",
+            content:
+              "Você classifica mensagens de clientes de uma empresa de rastreamento veicular. " +
+              "Escolha, entre os assuntos do catálogo, o único que responde a mensagem. " +
+              "Cumprimentos e pedidos vagos de ajuda (ex.: 'oi', 'pode me ajudar?', 'preciso de suporte') " +
+              "devem ir para o assunto de saudação/abertura de atendimento do catálogo. " +
+              "Só responda id null quando a mensagem tiver vários pedidos distintos ao mesmo tempo " +
+              "ou não couber em nenhum assunto. " +
+              'Responda SOMENTE JSON: {"id":"<id ou null>","confidence":0.0}\n\nCATÁLOGO:\n' +
+              catalog,
+          },
+          { role: "user", content: String(text).slice(0, 2000) },
+        ],
+      }),
+    });
+    if (!res.ok) {
+      return { ruleId: null, ruleName: null, confidence: 0, note: `ia_${res.status}` };
+    }
+    const json: any = await res.json();
+    const content = String(json?.choices?.[0]?.message?.content || "");
+    const m = content.match(/\{[\s\S]*\}/);
+    if (!m) return { ruleId: null, ruleName: null, confidence: 0, note: "ia_sem_json" };
+    const parsed = JSON.parse(m[0]);
+    const id = parsed?.id && parsed.id !== "null" ? String(parsed.id) : null;
+    const confidence = Math.max(0, Math.min(1, Number(parsed?.confidence) || 0));
+    const rule = id ? candidates.find((r) => r.id === id) || null : null;
+    return {
+      ruleId: rule?.id ?? null,
+      ruleName: rule?.name ?? null,
+      confidence: rule ? confidence : 0,
+    };
+  } catch (err) {
+    console.error("[bot-auto-reply] classifyWithAI failed", err);
+    return { ruleId: null, ruleName: null, confidence: 0, note: "ia_erro" };
+  }
+}
+
 function hhmmToMinutes(hhmm: string): number {
   const [h, m] = String(hhmm || "0:0").split(":").map(Number);
   return (h || 0) * 60 + (m || 0);
@@ -372,6 +446,7 @@ type PendingState = {
   incoming_text: string;
   use_complete?: boolean;
   template?: string;
+  confidence?: number;
 };
 
 export type InboundParams = {
@@ -410,10 +485,27 @@ export async function evaluateInboundForAutoReply(params: InboundParams): Promis
     const ambiguous = !isGreetingMatch && !!matched && (matches.length > 1 || openQuestion);
     const unmatchedButAsking = !matched && (openQuestion || seemsToNeedHelp(incomingText));
 
-    const useFallback =
-      fallbackEnabled && !!fallbackText && (ambiguous || unmatchedButAsking);
+    // A IA entra quando as palavras-chave não resolveram: nada casou, casou só
+    // a saudação genérica, ou casou mais de um assunto.
+    let aiPicked: BotRule | null = null;
+    let aiConfidence = 0;
+    const needsAI =
+      settings.ai_enabled !== false &&
+      (!matched || isGreetingMatch || ambiguous) &&
+      !isMediaMarker(incomingText);
+    if (needsAI) {
+      const ai = await classifyWithAI(incomingText, rules);
+      const minConf = Number(settings.ai_min_confidence ?? 0.6);
+      if (ai.ruleId && ai.confidence >= minConf) {
+        aiPicked = rules.find((r) => r.id === ai.ruleId) || null;
+        aiConfidence = ai.confidence;
+      }
+    }
 
-    if (!matched && !useFallback) {
+    const useFallback =
+      !aiPicked && fallbackEnabled && !!fallbackText && (ambiguous || unmatchedButAsking);
+
+    if (!matched && !aiPicked && !useFallback) {
       await supabaseAdmin.from("bot_auto_reply_log").insert({
         chat_id: chatId,
         channel_id: channelId,
@@ -441,9 +533,9 @@ export async function evaluateInboundForAutoReply(params: InboundParams): Promis
       ticket_priority: "media",
     };
 
-    const rule: BotRule = useFallback ? fallbackRule : (matched as BotRule);
+    const rule: BotRule = aiPicked || (useFallback ? fallbackRule : (matched as BotRule));
     // rule_id é uuid no log: a resposta de dúvida não tem automação.
-    const logRuleId: string | null = useFallback ? null : rule.id;
+    const logRuleId: string | null = rule.id === FALLBACK_RULE_ID ? null : rule.id;
 
     if (settings.skip_when_ticket_open) {
       const { data: chat } = await supabaseAdmin
@@ -522,6 +614,7 @@ export async function evaluateInboundForAutoReply(params: InboundParams): Promis
         rule_name: rule.name,
         incoming_text: incomingText,
         detected_intent: rule.name,
+        confidence: aiConfidence || null,
         collected_data: collected,
         reply_text: renderReply(template, {
           operatorName,
@@ -568,7 +661,7 @@ export async function evaluateInboundForAutoReply(params: InboundParams): Promis
       incoming_text: incomingText,
       use_complete: dataComplete,
       template,
-
+      confidence: aiConfidence || undefined,
     };
     await supabaseAdmin
       .from("zapi_chats")
@@ -671,6 +764,7 @@ export async function dispatchDueAutoReplies(): Promise<{ sent: number; skipped:
         rule_name: ruleName,
         incoming_text: pending.incoming_text,
         detected_intent: ruleName,
+        confidence: pending.confidence ?? null,
         collected_data: state.auto_reply_collected || {},
         reply_text: text,
         outcome: "sent",

@@ -15,6 +15,8 @@ export type TestResult = {
   dataComplete: boolean;
   willReply: boolean;
   isFallback?: boolean;
+  aiUsed?: boolean;
+  aiConfidence?: number;
 };
 
 /** Testa uma frase contra as automações ativas, sem enviar nada ao cliente. */
@@ -34,6 +36,8 @@ export const testBotAutoReply = createServerFn({ method: "POST" })
       collectFields,
       missingRequiredFields,
       FIELD_LABELS,
+      classifyWithAI,
+      isMediaMarker,
     } = await import("@/lib/bot-auto-reply.server");
     const { data: rules } = await context.supabase.from("bot_auto_reply_rules").select("*");
     const list = ((rules as any[]) || []).map((r) => ({
@@ -45,7 +49,7 @@ export const testBotAutoReply = createServerFn({ method: "POST" })
     const matched = matches[0] || null;
     const { data: settingsRow } = await context.supabase
       .from("bot_auto_reply_settings")
-      .select("fallback_enabled, fallback_text")
+      .select("fallback_enabled, fallback_text, ai_enabled, ai_min_confidence")
       .limit(1)
       .maybeSingle();
     const fallbackEnabled = (settingsRow as any)?.fallback_enabled !== false;
@@ -56,9 +60,25 @@ export const testBotAutoReply = createServerFn({ method: "POST" })
     const ambiguous =
       !matched?.is_greeting && !!matched && (matches.length > 1 || openQuestion);
     const unmatchedButAsking = !matched && (openQuestion || seemsToNeedHelp(data.text));
+
+    let aiPicked: any = null;
+    let aiConfidence = 0;
+    const needsAI =
+      (settingsRow as any)?.ai_enabled !== false &&
+      (!matched || matched.is_greeting || ambiguous) &&
+      !isMediaMarker(data.text);
+    if (needsAI) {
+      const ai = await classifyWithAI(data.text, list as any);
+      const minConf = Number((settingsRow as any)?.ai_min_confidence ?? 0.6);
+      if (ai.ruleId && ai.confidence >= minConf) {
+        aiPicked = list.find((r: any) => r.id === ai.ruleId) || null;
+        aiConfidence = ai.confidence;
+      }
+    }
+
     const isFallback =
-      fallbackEnabled && !!fallbackText && (ambiguous || unmatchedButAsking);
-    const rule = isFallback
+      !aiPicked && fallbackEnabled && !!fallbackText && (ambiguous || unmatchedButAsking);
+    const rule = aiPicked ? aiPicked : isFallback
       ? ({
           name: "Dúvida (resposta padrão)",
           target_sector: matched?.target_sector ?? null,
@@ -105,6 +125,8 @@ export const testBotAutoReply = createServerFn({ method: "POST" })
       dataComplete,
       willReply: !!(preview && preview.trim()),
       isFallback,
+      aiUsed: !!aiPicked,
+      aiConfidence,
     };
   });
 

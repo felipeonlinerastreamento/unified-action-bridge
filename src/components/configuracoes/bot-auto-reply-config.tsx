@@ -29,6 +29,8 @@ type Settings = {
   skip_when_ticket_open: boolean;
   fallback_enabled: boolean;
   fallback_text: string;
+  ai_enabled: boolean;
+  ai_min_confidence: number;
 };
 
 type Rule = {
@@ -482,6 +484,42 @@ export function BotAutoReplyConfig() {
               onChange={(e) => patchSettings({ fallback_text: e.target.value })}
             />
           </div>
+
+          <div className="space-y-3 rounded-lg border p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-base">Entendimento por IA</Label>
+                <p className="text-sm text-muted-foreground">
+                  Quando as palavras-chave não resolverem, a IA lê a mensagem e escolhe o assunto
+                  mais provável do catálogo. Só quando ela também não tiver certeza é que entra a
+                  resposta de dúvida.
+                </p>
+              </div>
+              <Switch
+                checked={settings?.ai_enabled !== false}
+                onCheckedChange={(v) => patchSettings({ ai_enabled: v })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Certeza mínima da IA (%)</Label>
+              <Input
+                type="number"
+                min={10}
+                max={100}
+                value={Math.round((settings?.ai_min_confidence ?? 0.6) * 100)}
+                onChange={(e) =>
+                  patchSettings({
+                    ai_min_confidence:
+                      Math.min(100, Math.max(10, Number(e.target.value) || 60)) / 100,
+                  })
+                }
+              />
+              <p className="text-xs text-muted-foreground">
+                Quanto maior, mais conservador: a IA só responde quando tiver bastante certeza.
+              </p>
+            </div>
+          </div>
+
 
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
