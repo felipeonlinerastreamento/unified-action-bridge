@@ -104,6 +104,7 @@ export const testBotAutoReply = createServerFn({ method: "POST" })
       missingFields: missing,
       dataComplete,
       willReply: !!(preview && preview.trim()),
+      isFallback,
     };
   });
 
