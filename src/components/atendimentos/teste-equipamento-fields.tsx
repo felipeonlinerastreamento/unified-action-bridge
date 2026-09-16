@@ -1,5 +1,6 @@
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -154,6 +155,17 @@ export function TesteEquipamentoFields({ value, onChange, settings }: Props) {
           )}
         </>
       )}
+
+      <div className="flex items-center gap-2 pt-1">
+        <Checkbox
+          id="te-pagar-tecnico"
+          checked={value.pagar_tecnico}
+          onCheckedChange={(checked) => set({ pagar_tecnico: checked === true })}
+        />
+        <Label htmlFor="te-pagar-tecnico" className="text-xs cursor-pointer">
+          Pagar técnico
+        </Label>
+      </div>
     </div>
   );
 }

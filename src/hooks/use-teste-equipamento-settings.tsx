@@ -64,6 +64,7 @@ export interface TesteEquipamentoData {
   motivo: string;
   garantia: "" | "Sim" | "Não";
   equipamento: string;
+  pagar_tecnico: boolean;
 }
 
 export const EMPTY_TESTE_EQUIPAMENTO: TesteEquipamentoData = {
@@ -72,6 +73,7 @@ export const EMPTY_TESTE_EQUIPAMENTO: TesteEquipamentoData = {
   motivo: "",
   garantia: "",
   equipamento: "",
+  pagar_tecnico: false,
 };
 
 const BLOCK_START = "[Teste de Equipamento]";
@@ -87,6 +89,7 @@ export function buildTesteEquipamentoNotes(data: TesteEquipamentoData, baseNotes
       lines.push(`Motivo: ${data.motivo}`);
     if (data.garantia) lines.push(`Garantia: ${data.garantia}`);
   }
+  if (data.pagar_tecnico) lines.push(`Pagar técnico: Sim`);
   lines.push(BLOCK_END);
   const cleanedBase = stripTesteEquipamentoBlock(baseNotes || "").trim();
   return cleanedBase ? `${lines.join("\n")}\n${cleanedBase}` : lines.join("\n");
@@ -120,6 +123,7 @@ export function parseTesteEquipamentoNotes(notes: string | null | undefined): Te
   const gar = grab("Garantia");
   if (["Sim", "Não"].includes(gar)) out.garantia = gar as any;
   out.equipamento = grab("Equipamento");
+  out.pagar_tecnico = grab("Pagar técnico").toLowerCase() === "sim";
   return out;
 }
 
