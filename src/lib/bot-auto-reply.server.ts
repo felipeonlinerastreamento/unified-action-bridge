@@ -231,11 +231,17 @@ export async function loadBotRules(): Promise<BotRule[]> {
 
 export function renderReply(
   template: string,
-  vars: { operatorName?: string | null; contactName?: string | null },
+  vars: {
+    operatorName?: string | null;
+    contactName?: string | null;
+    collected?: Record<string, string>;
+  },
 ): string {
+  const collected = vars.collected || {};
   return String(template || "").replace(/\{\{(\w+)\}\}/g, (_, key: string) => {
     if (key === "operatorName") return vars.operatorName || "nossa equipe";
     if (key === "contactName") return vars.contactName || "";
+    if (collected[key]) return collected[key];
     return "";
   });
 }
