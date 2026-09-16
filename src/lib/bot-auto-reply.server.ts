@@ -17,6 +17,8 @@ export type BotSettings = {
   skip_when_ticket_open: boolean;
   fallback_enabled?: boolean;
   fallback_text?: string;
+  ai_enabled?: boolean;
+  ai_min_confidence?: number;
 };
 
 export const FALLBACK_RULE_ID = "__fallback__";
