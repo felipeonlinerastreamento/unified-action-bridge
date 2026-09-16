@@ -611,6 +611,7 @@ export async function evaluateInboundForAutoReply(params: InboundParams): Promis
         rule_name: rule.name,
         incoming_text: incomingText,
         detected_intent: rule.name,
+        confidence: aiConfidence || null,
         collected_data: collected,
         reply_text: renderReply(template, {
           operatorName,
