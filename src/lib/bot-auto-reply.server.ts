@@ -15,7 +15,12 @@ export type BotSettings = {
   max_replies_per_chat: number;
   channel_id: string | null;
   skip_when_ticket_open: boolean;
+  fallback_enabled?: boolean;
+  fallback_text?: string;
 };
+
+export const FALLBACK_RULE_ID = "__fallback__";
+export const DEFAULT_FALLBACK_TEXT = "Um momento, por favor, que estou verificando.";
 
 export type BotRule = {
   id: string;
@@ -159,29 +164,70 @@ export function isMediaMarker(text: string): boolean {
   return MEDIA_MARKER_RE.test(String(text || "").trim());
 }
 
-export function matchRule(text: string, rules: BotRule[]): BotRule | null {
+function escapeRegExp(s: string): string {
+  return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/** Casa a palavra-chave por palavra inteira, evitando disparos em textos longos. */
+function keywordHits(norm: string, keyword: string): boolean {
+  const nk = normalizeText(keyword);
+  if (!nk) return false;
+  const re = new RegExp(`(^|[^a-z0-9])${escapeRegExp(nk)}([^a-z0-9]|$)`, "i");
+  return re.test(norm);
+}
+
+/** Todas as automações que casaram com o texto, em ordem de prioridade. */
+export function matchRules(text: string, rules: BotRule[]): BotRule[] {
   const norm = normalizeText(text);
-  if (!norm) return null;
+  if (!norm) return [];
   if (isMediaMarker(text)) {
     const greeting = rules
       .filter((r) => r.is_enabled && r.is_greeting)
       .sort((a, b) => a.priority - b.priority)[0];
-    return greeting || null;
+    return greeting ? [greeting] : [];
   }
   const active = rules
     .filter((r) => r.is_enabled)
     .sort((a, b) => a.priority - b.priority || (a.is_greeting ? 1 : 0) - (b.is_greeting ? 1 : 0));
-  // Regras específicas antes da saudação genérica
   const specific = active.filter((r) => !r.is_greeting);
   const greetings = active.filter((r) => r.is_greeting);
+  const hits: BotRule[] = [];
   for (const r of [...specific, ...greetings]) {
-    const hit = (r.keywords || []).some((k) => {
-      const nk = normalizeText(k);
-      return nk.length > 0 && norm.includes(nk);
-    });
-    if (hit) return r;
+    if ((r.keywords || []).some((k) => keywordHits(norm, k))) hits.push(r);
   }
-  return null;
+  return hits;
+}
+
+export function matchRule(text: string, rules: BotRule[]): BotRule | null {
+  return matchRules(text, rules)[0] || null;
+}
+
+/**
+ * Detecta mensagens que são "dúvida": textos longos, com vários pedidos,
+ * listas ou mais de uma pergunta. Nesses casos o robô não deve disparar o
+ * texto de uma automação específica.
+ */
+export function looksLikeOpenQuestion(text: string): boolean {
+  const raw = String(text || "").trim();
+  if (!raw || isMediaMarker(raw)) return false;
+  if (raw.length > 180) return true;
+  const lines = raw.split(/\r?\n/).filter((l) => l.trim().length > 0);
+  if (lines.length >= 3) return true;
+  const bulletItems = raw.match(/(^|\n|\s)([a-e]\)|[-*•]|\d[\).])\s*\S/gi) || [];
+  if (bulletItems.length >= 2) return true;
+  if ((raw.match(/\?/g) || []).length >= 2) return true;
+  return false;
+}
+
+/** Mensagem que pede algo/pergunta, mesmo sem casar com automação. */
+export function seemsToNeedHelp(text: string): boolean {
+  const norm = normalizeText(text);
+  if (!norm || isMediaMarker(text)) return false;
+  if (norm.length < 4) return false;
+  if (/\?/.test(String(text))) return true;
+  return /\b(preciso|pode|poderia|consegue|gostaria|quero|como|quando|onde|qual|quais|porque|por que|duvida|ajuda|verificar|confirmar|solicito|informar|atualiza|atualizar|me manda|me envia)\b/.test(
+    norm,
+  );
 }
 
 function hhmmToMinutes(hhmm: string): number {
@@ -352,8 +398,22 @@ export async function evaluateInboundForAutoReply(params: InboundParams): Promis
     if (!isWithinBotWindow(settings)) return false;
 
     const rules = await loadBotRules();
-    const rule = matchRule(incomingText, rules);
-    if (!rule) {
+    const matches = matchRules(incomingText, rules);
+    const matched = matches[0] || null;
+    const fallbackEnabled = settings.fallback_enabled !== false;
+    const fallbackText = (settings.fallback_text || DEFAULT_FALLBACK_TEXT).trim();
+    const isGreetingMatch = !!matched?.is_greeting;
+
+    // Dúvida: texto longo/multi-assunto, ou vários assuntos casados, ou nada
+    // casou mas o cliente claramente pediu algo.
+    const openQuestion = looksLikeOpenQuestion(incomingText);
+    const ambiguous = !isGreetingMatch && !!matched && (matches.length > 1 || openQuestion);
+    const unmatchedButAsking = !matched && (openQuestion || seemsToNeedHelp(incomingText));
+
+    const useFallback =
+      fallbackEnabled && !!fallbackText && (ambiguous || unmatchedButAsking);
+
+    if (!matched && !useFallback) {
       await supabaseAdmin.from("bot_auto_reply_log").insert({
         chat_id: chatId,
         channel_id: channelId,
@@ -363,6 +423,27 @@ export async function evaluateInboundForAutoReply(params: InboundParams): Promis
       });
       return false;
     }
+
+    const fallbackRule: BotRule = {
+      id: FALLBACK_RULE_ID,
+      name: "Dúvida (resposta padrão)",
+      is_enabled: true,
+      keywords: [],
+      reply_text: fallbackText,
+      reply_text_complete: null,
+      required_fields: [],
+      target_sector: matched?.target_sector || null,
+      priority: 999,
+      from_catalog: false,
+      catalog_key: null,
+      is_greeting: false,
+      create_ticket: false,
+      ticket_priority: "media",
+    };
+
+    const rule: BotRule = useFallback ? fallbackRule : (matched as BotRule);
+    // rule_id é uuid no log: a resposta de dúvida não tem automação.
+    const logRuleId: string | null = useFallback ? null : rule.id;
 
     if (settings.skip_when_ticket_open) {
       const { data: chat } = await supabaseAdmin
@@ -381,7 +462,7 @@ export async function evaluateInboundForAutoReply(params: InboundParams): Promis
           await supabaseAdmin.from("bot_auto_reply_log").insert({
             chat_id: chatId,
             channel_id: channelId,
-            rule_id: rule.id,
+            rule_id: logRuleId,
             rule_name: rule.name,
             incoming_text: incomingText,
             outcome: "skipped_ticket_open",
@@ -396,16 +477,18 @@ export async function evaluateInboundForAutoReply(params: InboundParams): Promis
       // Assunto novo (outra automação) ainda merece uma resposta.
       const { data: sentRules } = await supabaseAdmin
         .from("bot_auto_reply_log")
-        .select("rule_id")
+        .select("rule_id, rule_name")
         .eq("chat_id", chatId)
         .eq("outcome", "sent")
         .limit(50);
-      const usedRules = new Set((sentRules || []).map((r: any) => r.rule_id));
-      if (usedRules.has(rule.id)) {
+      const usedRules = new Set(
+        (sentRules || []).map((r: any) => r.rule_id || r.rule_name),
+      );
+      if (usedRules.has(useFallback ? rule.name : rule.id)) {
         await supabaseAdmin.from("bot_auto_reply_log").insert({
           chat_id: chatId,
           channel_id: channelId,
-          rule_id: rule.id,
+          rule_id: logRuleId,
           rule_name: rule.name,
           incoming_text: incomingText,
           outcome: "skipped_limit",
@@ -435,7 +518,7 @@ export async function evaluateInboundForAutoReply(params: InboundParams): Promis
       await supabaseAdmin.from("bot_auto_reply_log").insert({
         chat_id: chatId,
         channel_id: channelId,
-        rule_id: rule.id,
+        rule_id: logRuleId,
         rule_name: rule.name,
         incoming_text: incomingText,
         detected_intent: rule.name,
@@ -467,7 +550,7 @@ export async function evaluateInboundForAutoReply(params: InboundParams): Promis
       await supabaseAdmin.from("bot_auto_reply_log").insert({
         chat_id: chatId,
         channel_id: channelId,
-        rule_id: rule.id,
+        rule_id: logRuleId,
         rule_name: rule.name,
         incoming_text: incomingText,
         detected_intent: rule.name,
@@ -540,18 +623,24 @@ export async function dispatchDueAutoReplies(): Promise<{ sent: number; skipped:
         continue;
       }
 
-      const rule = rules.find((r) => r.id === pending.rule_id);
-      if (!rule || !rule.is_enabled) {
+      const isFallback = pending.rule_id === FALLBACK_RULE_ID;
+      const rule = isFallback ? null : rules.find((r) => r.id === pending.rule_id);
+      if (!isFallback && (!rule || !rule.is_enabled)) {
         await clearPending();
         skipped++;
         continue;
       }
+      const ruleName = isFallback ? "Dúvida (resposta padrão)" : rule!.name;
 
       const operatorName = await operatorNameFor(chat.id);
       const collected = (state.auto_reply_collected || {}) as Record<string, string>;
       const template =
         pending.template ||
-        (pending.use_complete ? rule.reply_text_complete || "" : rule.reply_text);
+        (isFallback
+          ? settings.fallback_text || DEFAULT_FALLBACK_TEXT
+          : pending.use_complete
+            ? rule!.reply_text_complete || ""
+            : rule!.reply_text);
       const text = renderReply(template, {
         operatorName,
         contactName: chat.contact_name,
@@ -564,9 +653,12 @@ export async function dispatchDueAutoReplies(): Promise<{ sent: number; skipped:
       }
 
       const creds = await loadZapiChannel(supabaseAdmin, chat.channel_id);
-      await zapiSendText(creds, chat.phone, text);
+      const sendRes: any = await zapiSendText(creds, chat.phone, text);
+      // Guarda o id da Z-API para que o eco do webhook não duplique a mensagem.
+      const sentId = sendRes?.messageId || sendRes?.id || sendRes?.zaapId || null;
       await supabaseAdmin.from("zapi_messages").insert({
         chat_id: chat.id,
+        zapi_message_id: sentId,
         from_me: true,
         is_bot_message: true,
         text,
@@ -575,10 +667,10 @@ export async function dispatchDueAutoReplies(): Promise<{ sent: number; skipped:
       await supabaseAdmin.from("bot_auto_reply_log").insert({
         chat_id: chat.id,
         channel_id: chat.channel_id,
-        rule_id: rule.id,
-        rule_name: rule.name,
+        rule_id: isFallback ? null : rule!.id,
+        rule_name: ruleName,
         incoming_text: pending.incoming_text,
-        detected_intent: rule.name,
+        detected_intent: ruleName,
         collected_data: state.auto_reply_collected || {},
         reply_text: text,
         outcome: "sent",

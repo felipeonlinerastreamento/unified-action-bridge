@@ -14,6 +14,7 @@ export type TestResult = {
   missingFields: string[];
   dataComplete: boolean;
   willReply: boolean;
+  isFallback?: boolean;
 };
 
 /** Testa uma frase contra as automações ativas, sem enviar nada ao cliente. */
@@ -22,7 +23,10 @@ export const testBotAutoReply = createServerFn({ method: "POST" })
   .inputValidator((input: { text: string; operatorName?: string; contactName?: string }) => input)
   .handler(async ({ data, context }): Promise<TestResult> => {
     const {
-      matchRule,
+      matchRules,
+      looksLikeOpenQuestion,
+      seemsToNeedHelp,
+      DEFAULT_FALLBACK_TEXT,
       renderReply,
       extractPlate,
       extractPeriod,
@@ -37,7 +41,33 @@ export const testBotAutoReply = createServerFn({ method: "POST" })
       keywords: r.keywords || [],
       required_fields: r.required_fields || [],
     }));
-    const rule = matchRule(data.text, list as any);
+    const matches = matchRules(data.text, list as any);
+    const matched = matches[0] || null;
+    const { data: settingsRow } = await context.supabase
+      .from("bot_auto_reply_settings")
+      .select("fallback_enabled, fallback_text")
+      .limit(1)
+      .maybeSingle();
+    const fallbackEnabled = (settingsRow as any)?.fallback_enabled !== false;
+    const fallbackText = String(
+      (settingsRow as any)?.fallback_text || DEFAULT_FALLBACK_TEXT,
+    ).trim();
+    const openQuestion = looksLikeOpenQuestion(data.text);
+    const ambiguous =
+      !matched?.is_greeting && !!matched && (matches.length > 1 || openQuestion);
+    const unmatchedButAsking = !matched && (openQuestion || seemsToNeedHelp(data.text));
+    const isFallback =
+      fallbackEnabled && !!fallbackText && (ambiguous || unmatchedButAsking);
+    const rule = isFallback
+      ? ({
+          name: "Dúvida (resposta padrão)",
+          target_sector: matched?.target_sector ?? null,
+          reply_text: fallbackText,
+          reply_text_complete: null,
+          required_fields: [] as string[],
+          is_greeting: false,
+        } as any)
+      : matched;
     const collected = collectFields(data.text);
     const missing = rule ? missingRequiredFields(rule as any, collected) : [];
     const dataComplete = !!rule && (rule.required_fields || []).length > 0 && missing.length === 0;
@@ -74,6 +104,7 @@ export const testBotAutoReply = createServerFn({ method: "POST" })
       missingFields: missing,
       dataComplete,
       willReply: !!(preview && preview.trim()),
+      isFallback,
     };
   });
 

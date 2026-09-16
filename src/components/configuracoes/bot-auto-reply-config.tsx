@@ -27,6 +27,8 @@ type Settings = {
   max_replies_per_chat: number;
   channel_id: string | null;
   skip_when_ticket_open: boolean;
+  fallback_enabled: boolean;
+  fallback_text: string;
 };
 
 type Rule = {
@@ -459,6 +461,28 @@ export function BotAutoReplyConfig() {
             />
           </div>
 
+          <div className="space-y-3 rounded-lg border p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <Label className="text-base">Resposta para dúvidas</Label>
+                <p className="text-sm text-muted-foreground">
+                  Quando a mensagem não for claramente um dos assuntos cadastrados (texto longo,
+                  vários pedidos ou pergunta aberta), o robô envia apenas esta resposta.
+                </p>
+              </div>
+              <Switch
+                checked={settings?.fallback_enabled !== false}
+                onCheckedChange={(v) => patchSettings({ fallback_enabled: v })}
+              />
+            </div>
+            <Textarea
+              rows={2}
+              value={settings?.fallback_text ?? ""}
+              placeholder="Um momento, por favor, que estou verificando."
+              onChange={(e) => patchSettings({ fallback_text: e.target.value })}
+            />
+          </div>
+
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Espera da saudação (segundos)</Label>
@@ -531,8 +555,15 @@ export function BotAutoReplyConfig() {
               {testResult.matched ? (
                 <>
                   <div className="flex flex-wrap items-center gap-2">
-                    <Badge>{testResult.ruleName}</Badge>
+                    <Badge variant={testResult.isFallback ? "secondary" : "default"}>
+                      {testResult.ruleName}
+                    </Badge>
                     {testResult.sector && <Badge variant="outline">{testResult.sector}</Badge>}
+                    {testResult.isFallback && (
+                      <span className="text-xs text-muted-foreground">
+                        Tratado como dúvida: o robô só avisa que está verificando.
+                      </span>
+                    )}
                   </div>
                   <p className="whitespace-pre-line text-muted-foreground">{testResult.replyPreview}</p>
                   {!!testResult.requiredFields?.length && (
