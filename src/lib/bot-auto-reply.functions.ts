@@ -9,6 +9,11 @@ export type TestResult = {
   requiredFields: string[];
   detectedPlate: string | null;
   detectedPeriod: string | null;
+  detectedDocument: string | null;
+  collected: Record<string, string>;
+  missingFields: string[];
+  dataComplete: boolean;
+  willReply: boolean;
 };
 
 /** Testa uma frase contra as automações ativas, sem enviar nada ao cliente. */
@@ -16,9 +21,16 @@ export const testBotAutoReply = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: { text: string; operatorName?: string; contactName?: string }) => input)
   .handler(async ({ data, context }): Promise<TestResult> => {
-    const { matchRule, renderReply, extractPlate, extractPeriod } = await import(
-      "@/lib/bot-auto-reply.server"
-    );
+    const {
+      matchRule,
+      renderReply,
+      extractPlate,
+      extractPeriod,
+      extractDocument,
+      collectFields,
+      missingRequiredFields,
+      FIELD_LABELS,
+    } = await import("@/lib/bot-auto-reply.server");
     const { data: rules } = await context.supabase.from("bot_auto_reply_rules").select("*");
     const list = ((rules as any[]) || []).map((r) => ({
       ...r,
@@ -26,19 +38,42 @@ export const testBotAutoReply = createServerFn({ method: "POST" })
       required_fields: r.required_fields || [],
     }));
     const rule = matchRule(data.text, list as any);
+    const collected = collectFields(data.text);
+    const missing = rule ? missingRequiredFields(rule as any, collected) : [];
+    const dataComplete = !!rule && (rule.required_fields || []).length > 0 && missing.length === 0;
+    let template = rule
+      ? dataComplete
+        ? (rule as any).reply_text_complete || ""
+        : rule.reply_text
+      : "";
+    if (rule && !dataComplete && missing.length > 0) {
+      const got = Object.keys(collected).filter((k) => !missing.includes(k) && FIELD_LABELS[k]);
+      if (got.length > 0) {
+        const gotText = got.map((k) => `${FIELD_LABELS[k]} ${collected[k]}`).join(", ");
+        const missText = missing.map((k) => FIELD_LABELS[k] || k).join(" e ");
+        template = `Já anotei ${gotText}. Para seguir, me informe também ${missText}, por favor.`;
+      }
+    }
+    const preview = rule
+      ? renderReply(template, {
+          operatorName: data.operatorName || "Operador",
+          contactName: data.contactName || "Cliente",
+          collected,
+        })
+      : null;
     return {
       matched: !!rule,
       ruleName: rule?.name ?? null,
       sector: rule?.target_sector ?? null,
-      replyPreview: rule
-        ? renderReply(rule.reply_text, {
-            operatorName: data.operatorName || "Operador",
-            contactName: data.contactName || "Cliente",
-          })
-        : null,
+      replyPreview: preview,
       requiredFields: rule?.required_fields || [],
       detectedPlate: extractPlate(data.text),
       detectedPeriod: extractPeriod(data.text),
+      detectedDocument: extractDocument(data.text),
+      collected,
+      missingFields: missing,
+      dataComplete,
+      willReply: !!(preview && preview.trim()),
     };
   });
 
