@@ -305,6 +305,7 @@ export const getChatMessages = createServerFn({ method: "POST" })
         senderFullName: authorFull,
         responsibleFirstName: isCoAgentMsg ? responsibleFirstName : undefined,
         isCoAgent: isCoAgentMsg,
+        isBotMessage: !!m.is_bot_message,
         utcDhMessage: m.created_at,
         text: m.text || "",
         mediaUrl: m.media_url || null,
