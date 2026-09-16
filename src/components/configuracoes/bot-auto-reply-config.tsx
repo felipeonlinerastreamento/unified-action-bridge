@@ -713,13 +713,41 @@ export function BotAutoReplyConfig() {
           )}
 
           {!!insights?.unmatchedSamples.length && (
-            <div className="space-y-1">
-              <Label>Mensagens sem automação</Label>
-              <div className="max-h-48 space-y-1 overflow-y-auto">
+            <div className="space-y-2">
+              <Label>Perguntas mais frequentes sem automação</Label>
+              <p className="text-xs text-muted-foreground">
+                Agrupadas por repetição. Crie uma automação nova ou aplique a pergunta a uma já existente.
+              </p>
+              <div className="max-h-96 space-y-2 overflow-y-auto">
                 {insights.unmatchedSamples.map((m) => (
-                  <p key={m.id} className="truncate rounded border px-3 py-2 text-sm text-muted-foreground">
-                    {m.text}
-                  </p>
+                  <div key={m.id} className="space-y-2 rounded-lg border p-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <p className="text-sm">{m.text}</p>
+                      <Badge variant={m.count > 1 ? "default" : "secondary"}>{m.count}x</Badge>
+                    </div>
+                    {!!m.suggestedKeywords.length && (
+                      <p className="text-xs text-muted-foreground">
+                        Palavras-chave sugeridas: {m.suggestedKeywords.join(", ")}
+                      </p>
+                    )}
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Button size="sm" variant="outline" onClick={() => createFromQuestion(m)}>
+                        <Plus className="mr-1 h-3.5 w-3.5" /> Criar automação
+                      </Button>
+                      <Select onValueChange={(v) => addQuestionToRule(v, m)}>
+                        <SelectTrigger className="h-8 w-[240px]">
+                          <SelectValue placeholder="Aplicar a uma automação..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {rules.map((r) => (
+                            <SelectItem key={r.id} value={r.id}>
+                              {r.name}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
                 ))}
               </div>
             </div>
