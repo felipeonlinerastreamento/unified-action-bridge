@@ -720,6 +720,8 @@ export type Database = {
       }
       bot_auto_reply_settings: {
         Row: {
+          ai_enabled: boolean
+          ai_min_confidence: number
           channel_id: string | null
           created_at: string
           end_hour: string
@@ -737,6 +739,8 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          ai_enabled?: boolean
+          ai_min_confidence?: number
           channel_id?: string | null
           created_at?: string
           end_hour?: string
@@ -754,6 +758,8 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          ai_enabled?: boolean
+          ai_min_confidence?: number
           channel_id?: string | null
           created_at?: string
           end_hour?: string
