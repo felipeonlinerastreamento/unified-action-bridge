@@ -6,7 +6,7 @@ const API_BASE = "https://seuinstalador-com-br.lovable.app/api/public/integratio
 
 type CallOptions = {
   path: string;
-  method?: "GET" | "POST";
+  method?: "GET" | "POST" | "PATCH" | "PUT";
   query?: Record<string, string | number | undefined | null>;
   body?: unknown;
   idempotencyKey?: string;
@@ -84,6 +84,13 @@ async function callApi<T>(opts: CallOptions): Promise<T> {
   if (!response.ok) {
     const apiMessage = payload?.error?.message || payload?.message;
     throw new Error(messageForStatus(response.status, apiMessage, response.headers.get("Retry-After")));
+  }
+
+  // Quando o endpoint não existe, o Seu Instalador devolve a página HTML do site com status 200.
+  if (payload === null && text.trim().startsWith("<")) {
+    throw new Error(
+      "Este recurso ainda não foi liberado pelo Seu Instalador (alteração de OS indisponível na integração).",
+    );
   }
 
   return (payload ?? {}) as T;
