@@ -42,6 +42,7 @@ import { AiSummaryTab } from "@/components/relatorios/ai-summary-tab";
 import { TicketsReportTab } from "@/components/relatorios/tickets-report-tab";
 import { ServicesReportTab } from "@/components/relatorios/services-report-tab";
 import { CustomerRetentionTab } from "@/components/relatorios/customer-retention-tab";
+import { SystemHealthTab } from "@/components/relatorios/system-health-tab";
 
 export const Route = createFileRoute("/relatorios")({
   component: RelatoriosPage,
