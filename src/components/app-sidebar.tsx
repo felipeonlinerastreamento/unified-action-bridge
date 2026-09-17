@@ -81,6 +81,11 @@ const atendimentosSubItems: { title: string; url: string; icon: typeof List }[] 
   // { title: "Tarefas", url: "/atendimentos/tarefas", icon: CheckSquare }, // inativado
 ];
 
+const agendaSubItems = [
+  { title: "Atividades", url: "/agenda/atividades", icon: List },
+  { title: "Timeline", url: "/agenda/timeline", icon: Activity },
+];
+
 const configSubItems = [
   { title: "Integrações", url: "/configuracoes", icon: Plug },
   { title: "Central de Atendimento", url: "/configuracoes/central-atendimento", icon: PhoneCall },
