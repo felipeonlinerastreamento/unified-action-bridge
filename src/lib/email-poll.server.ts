@@ -1,6 +1,14 @@
 // Lógica de polling de e-mails Office 365 e criação automática de atendimentos
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { listUnreadMessages, markMessageAsRead, htmlToPlainText, type OutlookMessage } from "./outlook.server";
+import {
+  listUnreadMessages,
+  markMessageAsRead,
+  htmlToPlainText,
+  getOutlookProfile,
+  DEFAULT_CONNECTION_KEY,
+  type MailboxContext,
+  type OutlookMessage,
+} from "./outlook.server";
 
 interface PollResult {
   channel_id: string;
@@ -45,9 +53,17 @@ export async function pollEmailChannel(channelId: string): Promise<PollResult> {
     return result;
   }
 
+  const connectionKey = (channel as any).connection_key || DEFAULT_CONNECTION_KEY;
+  let ctx: MailboxContext = { connectionKey, mailbox: channel.email_address };
   let messages: OutlookMessage[] = [];
   try {
-    messages = await listUnreadMessages(25);
+    const profile = await getOutlookProfile(connectionKey);
+    ctx = {
+      connectionKey,
+      mailbox: channel.email_address,
+      connectedEmail: profile.mail || profile.userPrincipalName || null,
+    };
+    messages = await listUnreadMessages(ctx, 25);
     result.fetched = messages.length;
   } catch (e: any) {
     const errMsg = e?.message || String(e);
@@ -58,24 +74,42 @@ export async function pollEmailChannel(channelId: string): Promise<PollResult> {
     return result;
   }
 
+  // Evita inundar a fila com e-mails antigos que já estavam na caixa
+  const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+
   for (const msg of messages) {
     try {
-      // Filtros
-      if (shouldIgnore(msg, channel.ignore_domains || [], channel.ignore_emails || [])) {
+      const received = msg.receivedDateTime ? Date.parse(msg.receivedDateTime) : Date.now();
+      if (Number.isFinite(received) && received < cutoff) {
         result.skipped++;
-        if (channel.mark_as_read) await markMessageAsRead(msg.id).catch(() => {});
         continue;
       }
 
-      // Já processado?
-      const { data: exist } = await supabaseAdmin
-        .from("email_processed").select("id")
-        .eq("email_channel_id", channelId).eq("message_id", msg.id).maybeSingle();
-      if (exist) {
+      // Filtros
+      if (shouldIgnore(msg, channel.ignore_domains || [], channel.ignore_emails || [])) {
         result.skipped++;
-        if (channel.mark_as_read) await markMessageAsRead(msg.id).catch(() => {});
+        if (channel.mark_as_read) await markMessageAsRead(ctx, msg.id).catch(() => {});
         continue;
       }
+
+      // Já processado? (por id da mensagem ou pelo identificador global do e-mail)
+      let existing: any = null;
+      const { data: byId } = await supabaseAdmin
+        .from("email_processed").select("id")
+        .eq("email_channel_id", channelId).eq("message_id", msg.id).maybeSingle();
+      existing = byId;
+      if (!existing && msg.internetMessageId) {
+        const { data: byInternet } = await supabaseAdmin
+          .from("email_processed").select("id")
+          .eq("internet_message_id", msg.internetMessageId).maybeSingle();
+        existing = byInternet;
+      }
+      if (existing) {
+        result.skipped++;
+        if (channel.mark_as_read) await markMessageAsRead(ctx, msg.id).catch(() => {});
+        continue;
+      }
+
 
       const fromAddr = msg.from?.emailAddress?.address || "(desconhecido)";
       const fromName = msg.from?.emailAddress?.name || fromAddr;
@@ -122,7 +156,7 @@ export async function pollEmailChannel(channelId: string): Promise<PollResult> {
 
       // Marca como lido no Outlook
       if (channel.mark_as_read) {
-        await markMessageAsRead(msg.id).catch((e) => {
+        await markMessageAsRead(ctx, msg.id).catch((e) => {
           result.errors.push(`Marcar lido (${msg.id}): ${e?.message || e}`);
         });
       }

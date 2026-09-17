@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { getOutlookProfile } from "./outlook.server";
+import { getOutlookProfile, listOutlookConnectionKeys, DEFAULT_CONNECTION_KEY } from "./outlook.server";
 import { pollEmailChannel, pollAllActiveEmailChannels } from "./email-poll.server";
 
 async function assertAdminOrGestor(context: any): Promise<void> {
@@ -39,6 +39,7 @@ const upsertSchema = z.object({
   ignore_domains: z.array(z.string().min(1).max(255)).default([]),
   ignore_emails: z.array(z.string().email()).default([]),
   mark_as_read: z.boolean().default(true),
+  connection_key: z.string().min(1).max(100).default("MICROSOFT_OUTLOOK_API_KEY"),
 });
 
 export const upsertEmailChannel = createServerFn({ method: "POST" })
@@ -73,18 +74,38 @@ export const deleteEmailChannel = createServerFn({ method: "POST" })
 export const checkOutlookConnection = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async () => {
-    try {
-      const profile = await getOutlookProfile();
-      const email = profile.mail || profile.userPrincipalName || null;
-      const name = profile.displayName || profile.mail || profile.userPrincipalName || null;
+    const keys = listOutlookConnectionKeys();
+    if (!keys.length) {
       return {
-        connected: true,
-        email,
-        name,
+        connected: false,
+        accounts: [] as Array<{ key: string; email: string | null; name: string | null; error?: string }>,
+        error: "Nenhuma conta Microsoft vinculada a este projeto.",
       };
-    } catch (e: any) {
-      return { connected: false, error: e?.message || "Falha ao conectar" };
     }
+    const accounts = await Promise.all(
+      keys.map(async (key) => {
+        try {
+          const profile = await getOutlookProfile(key);
+          return {
+            key,
+            email: profile.mail || profile.userPrincipalName || null,
+            name: profile.displayName || null,
+          };
+        } catch (e: any) {
+          return { key, email: null, name: null, error: e?.message || "Falha ao conectar" };
+        }
+      }),
+    );
+    const ok = accounts.filter((a) => !("error" in a && a.error));
+    const first = ok[0];
+    return {
+      connected: ok.length > 0,
+      accounts,
+      email: first?.email ?? null,
+      name: first?.name ?? null,
+      error: ok.length ? undefined : accounts[0]?.error,
+      defaultKey: DEFAULT_CONNECTION_KEY,
+    };
   });
 
 export const triggerEmailPoll = createServerFn({ method: "POST" })
