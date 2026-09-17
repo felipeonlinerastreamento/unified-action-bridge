@@ -303,10 +303,23 @@ function EmpresasPage() {
         )
       );
       if (phoneNumbers.length > 0) {
+        // Keep the contact name attached to each phone so it never shows up blank
+        const nameByDigits = new Map<string, string>();
+        for (const c of contacts) {
+          const digits = String(c.phone || "").replace(/\D/g, "");
+          const nome = String(c.name || "").trim();
+          if (digits && nome && !nameByDigits.has(digits)) nameByDigits.set(digits, nome);
+        }
+        for (const p of companyPhones) {
+          const digits = p.phone_number.replace(/\D/g, "");
+          const nome = String(p.contact_name || "").trim();
+          if (digits && nome && !nameByDigits.has(digits)) nameByDigits.set(digits, nome);
+        }
         const { error } = await supabase.from("company_phones").insert(
           phoneNumbers.map((phone_number) => ({
             company_id: companyId,
             phone_number,
+            contact_name: nameByDigits.get(phone_number.replace(/\D/g, "")) || null,
           }))
         );
         if (error) throw error;
