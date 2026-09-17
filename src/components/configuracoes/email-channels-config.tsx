@@ -136,82 +136,41 @@ export function EmailChannelsConfig() {
           ) : conn.data?.connected ? (
             <>
               <CheckCircle2 className="h-5 w-5 text-green-600 mt-0.5" />
-              <div className="flex-1">
-                <div className="text-sm font-medium text-green-700 dark:text-green-400">Outlook conectado com sucesso!</div>
-                <div className="text-xs text-muted-foreground mt-1">
-                  {conn.data.name || conn.data.email
-                    ? `${conn.data.name ? `${conn.data.name} • ` : ""}${conn.data.email || ""}`.replace(/ • $/, "")
-                    : "Conta conectada e pronta para receber e-mails."}
+              <div className="flex-1 space-y-1">
+                <div className="text-sm font-medium text-green-700 dark:text-green-400">
+                  Contas Microsoft conectadas
+                </div>
+                {(conn.data.accounts || []).map((a: any) => (
+                  <div key={a.key} className="text-xs text-muted-foreground">
+                    {a.error ? (
+                      <span className="text-destructive">⚠ {a.key}: {a.error}</span>
+                    ) : (
+                      <>
+                        {a.name ? `${a.name} • ` : ""}
+                        <span className="font-medium text-foreground">{a.email}</span>
+                      </>
+                    )}
+                  </div>
+                ))}
+                <div className="text-xs text-muted-foreground pt-1">
+                  Cada caixa (suporte@, comercial@…) precisa ter a sua própria conta conectada em Integrações — uma conta
+                  só consegue ler a própria caixa.
                 </div>
               </div>
             </>
           ) : (
             <>
               <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5" />
-              <div className="flex-1 space-y-3">
-                <div className="text-sm font-bold text-amber-700 dark:text-amber-400">
-                  Como cadastrar as chaves no menu Segredos (cadeado)
+              <div className="flex-1 space-y-2">
+                <div className="text-sm font-medium text-amber-700 dark:text-amber-400">
+                  Nenhuma conta Microsoft conectada
                 </div>
-                
-                <div className="text-sm text-foreground">
-                  No menu de Segredos que você abriu, adicione <strong>2 variáveis</strong> preenchendo o <strong>Nome (Key)</strong> e o <strong>Valor (Value)</strong>:
+                <div className="text-xs text-muted-foreground max-w-2xl">
+                  Abra as Integrações do projeto e conecte a conta Microsoft de cada caixa que deve virar atendimento.
                 </div>
-
-                <div className="bg-background rounded-md p-4 border text-sm space-y-4 max-w-2xl shadow-sm">
-                  <div className="space-y-2 border-b pb-3">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-foreground text-xs uppercase tracking-wider">1º Segredo</span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 text-xs gap-1"
-                        onClick={() => copyToClipboard("CUSTOM_LOVABLE_API_KEY")}
-                      >
-                        {copiedKey === "CUSTOM_LOVABLE_API_KEY" ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
-                        Copiar Nome
-                      </Button>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground font-semibold w-16">Nome:</span>
-                      <code className="bg-muted px-2 py-1 rounded text-xs font-mono font-bold text-primary">CUSTOM_LOVABLE_API_KEY</code>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground font-semibold w-16">Valor:</span>
-                      <span className="text-xs text-muted-foreground">Sua chave de API do Workspace no Lovable</span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="font-medium text-foreground text-xs uppercase tracking-wider">2º Segredo</span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 text-xs gap-1"
-                        onClick={() => copyToClipboard("MICROSOFT_OUTLOOK_API_KEY")}
-                      >
-                        {copiedKey === "MICROSOFT_OUTLOOK_API_KEY" ? <Check className="h-3 w-3 text-green-600" /> : <Copy className="h-3 w-3" />}
-                        Copiar Nome
-                      </Button>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground font-semibold w-16">Nome:</span>
-                      <code className="bg-muted px-2 py-1 rounded text-xs font-mono font-bold text-primary">MICROSOFT_OUTLOOK_API_KEY</code>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs text-muted-foreground font-semibold w-16">Valor:</span>
-                      <span className="text-xs text-muted-foreground">A &apos;Connection Key&apos; exibida na integração do Outlook</span>
-                    </div>
-                  </div>
-                </div>
-                
-                <div className="text-xs text-muted-foreground">
-                  Após adicionar ambas no menu de segredos, clique no botão circular de atualizar acima para testar a conexão.
-                </div>
-
                 {conn.data?.error && (
-                  <div className="text-[11px] text-muted-foreground bg-muted-foreground/10 p-2 rounded max-w-2xl font-mono truncate">
-                    Status atual: {conn.data.error}
+                  <div className="text-[11px] text-muted-foreground bg-muted-foreground/10 p-2 rounded max-w-2xl">
+                    {conn.data.error}
                   </div>
                 )}
               </div>
