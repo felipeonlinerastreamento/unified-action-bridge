@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { getOutlookProfile } from "./outlook.server";
+import { getOutlookProfile, listOutlookConnectionKeys, DEFAULT_CONNECTION_KEY } from "./outlook.server";
 import { pollEmailChannel, pollAllActiveEmailChannels } from "./email-poll.server";
 
 async function assertAdminOrGestor(context: any): Promise<void> {
