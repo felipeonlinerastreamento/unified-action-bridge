@@ -53,6 +53,8 @@ function formatDate(value: string) {
 
 function TopGamificContent() {
   const fetchOverview = useServerFn(getTopGamificOverview);
+  const ackEntries = useServerFn(ackTopGamificEntries);
+  const queryClient = useQueryClient();
 
   const { data, isLoading, isFetching, refetch } = useQuery({
     queryKey: ["top-gamific-overview"],
@@ -60,6 +62,29 @@ function TopGamificContent() {
     refetchInterval: 120000,
     staleTime: 60000,
   });
+
+  const unseen = (data?.entries ?? []).filter((e) => !e.acknowledged);
+
+  const markAck = (ids: string[]) => {
+    if (ids.length === 0) return;
+    queryClient.setQueryData(["top-gamific-overview"], (old: any) =>
+      old
+        ? {
+            ...old,
+            entries: old.entries.map((e: any) =>
+              ids.includes(e.id) ? { ...e, acknowledged: true } : e,
+            ),
+            unseenCount: Math.max(0, (old.unseenCount ?? 0) - ids.length),
+          }
+        : old,
+    );
+    ackEntries({ data: { entryIds: ids } })
+      .then(() =>
+        queryClient.invalidateQueries({ queryKey: ["sidebar-topgamific-unseen"] }),
+      )
+      .catch(() => {});
+  };
+
 
   return (
     <div className="p-4 md:p-6 space-y-6">
