@@ -896,6 +896,12 @@ function RelatoriosPage() {
                 <ErrorsReportTab dateFrom={dateFrom} dateTo={dateTo} />
               </TabsContent>
             )}
+
+            {canSeeErrors && (
+              <TabsContent value="sistema" className="space-y-4">
+                <SystemHealthTab isAdmin={hasRole("admin")} />
+              </TabsContent>
+            )}
           </Tabs>
         </div>
       </div>
