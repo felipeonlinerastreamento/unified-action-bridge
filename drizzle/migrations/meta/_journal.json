@@ -22,6 +22,13 @@
       "when": 1789664020163,
       "tag": "0002_sys_can_monitor_service_role",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1789664283183,
+      "tag": "0003_indexes_atendimentos_performance",
+      "breakpoints": true
     }
   ]
 }
