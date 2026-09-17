@@ -26,6 +26,7 @@ import {
 import {
   MessageSquare, Clock, Users, Building2, Package, TrendingUp,
   Loader2, Sparkles, BarChart3, PieChart as PieChartIcon, Activity, Bell, Trophy, PackageX, AlertTriangle, Wrench,
+  ServerCog,
 } from "lucide-react";
 import { OperatorPerformanceTab } from "@/components/relatorios/operator-performance-tab";
 import { RemindersTab } from "@/components/relatorios/reminders-tab";
