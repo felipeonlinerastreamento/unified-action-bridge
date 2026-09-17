@@ -2,22 +2,39 @@
 
 const GATEWAY_URL = "https://connector-gateway.lovable.dev/microsoft_outlook";
 
-function getAuthHeaders() {
-  const LOVABLE_API_KEY = process.env.CUSTOM_LOVABLE_API_KEY?.trim();
-  if (!LOVABLE_API_KEY) {
+export const DEFAULT_CONNECTION_KEY = "MICROSOFT_OUTLOOK_API_KEY";
+
+/** Nomes possíveis de chaves de conexão do Outlook vinculadas ao projeto. */
+const CONNECTION_KEY_NAMES = [
+  "MICROSOFT_OUTLOOK_API_KEY",
+  "MICROSOFT_OUTLOOK_API_KEY_2",
+  "MICROSOFT_OUTLOOK_API_KEY_3",
+  "MICROSOFT_OUTLOOK_API_KEY_4",
+  "MICROSOFT_OUTLOOK_API_KEY_5",
+];
+
+export function listOutlookConnectionKeys(): string[] {
+  return CONNECTION_KEY_NAMES.filter((name) => (process.env[name] || "").trim().length > 0);
+}
+
+function getAuthHeaders(connectionKey: string = DEFAULT_CONNECTION_KEY) {
+  const lovableKey =
+    (process.env["LOVABLE_API_KEY"] || "").trim() ||
+    (process.env["CUSTOM_LOVABLE_API_KEY"] || "").trim();
+  if (!lovableKey) {
     throw new Error(
-      "CUSTOM_LOVABLE_API_KEY ausente ou vazia. Defina o valor real como secret do ambiente do projeto (não deixe em branco no .env).",
+      "Chave da plataforma indisponível no servidor. Publique o app novamente para reativar a integração.",
     );
   }
-  const OUTLOOK_API_KEY = process.env.MICROSOFT_OUTLOOK_API_KEY?.trim();
-  if (!OUTLOOK_API_KEY) {
+  const connKey = (process.env[connectionKey] || "").trim();
+  if (!connKey) {
     throw new Error(
-      "MICROSOFT_OUTLOOK_API_KEY ausente ou vazia (conector Outlook não conectado). Conecte o conector Microsoft Outlook nas integrações do Lovable e cadastre a chave como secret do ambiente — string em branco não conecta.",
+      `Conta Microsoft não vinculada a este projeto (${connectionKey}). Abra Integrações e conecte a conta desta caixa de e-mail.`,
     );
   }
   return {
-    Authorization: `Bearer ${LOVABLE_API_KEY}`,
-    "X-Connection-Api-Key": OUTLOOK_API_KEY,
+    Authorization: `Bearer ${lovableKey}`,
+    "X-Connection-Api-Key": connKey,
     "Content-Type": "application/json",
   };
 }
@@ -42,43 +59,74 @@ export interface OutlookProfile {
   userPrincipalName?: string;
 }
 
-export async function getOutlookProfile(): Promise<OutlookProfile> {
+function friendlyError(prefix: string, status: number, data: any): Error {
+  const code = data?.error?.code || data?.type || "";
+  if (status === 401) {
+    return new Error(
+      `${prefix}: acesso recusado pela Microsoft. A conta desta caixa precisa ser reconectada em Integrações.`,
+    );
+  }
+  if (status === 403 || code === "ErrorAccessDenied") {
+    return new Error(
+      `${prefix}: a conta conectada não tem permissão para ler esta caixa. Conecte a própria conta desta caixa de e-mail.`,
+    );
+  }
+  if (status === 404) {
+    return new Error(`${prefix}: caixa de e-mail não encontrada na conta conectada.`);
+  }
+  const msg = data?.error?.message || data?.message || JSON.stringify(data);
+  return new Error(`${prefix} [${status}]: ${msg}`);
+}
+
+export async function getOutlookProfile(connectionKey: string = DEFAULT_CONNECTION_KEY): Promise<OutlookProfile> {
   const res = await fetch(`${GATEWAY_URL}/me?$select=id,displayName,mail,userPrincipalName`, {
-    headers: getAuthHeaders(),
+    headers: getAuthHeaders(connectionKey),
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(`Outlook profile falhou [${res.status}]: ${JSON.stringify(data)}`);
-  }
+  if (!res.ok) throw friendlyError("Falha ao consultar a conta Microsoft", res.status, data);
   return data;
 }
 
-export async function listUnreadMessages(limit = 25): Promise<OutlookMessage[]> {
+/** Caminho base do Graph para a caixa desejada. */
+function mailboxPath(mailbox: string | null | undefined, connectedEmail: string | null | undefined) {
+  const target = (mailbox || "").trim().toLowerCase();
+  const own = (connectedEmail || "").trim().toLowerCase();
+  if (!target || target === own) return "/me";
+  return `/users/${encodeURIComponent(target)}`;
+}
+
+export interface MailboxContext {
+  connectionKey: string;
+  mailbox?: string | null;
+  connectedEmail?: string | null;
+}
+
+export async function listUnreadMessages(ctx: MailboxContext, limit = 25): Promise<OutlookMessage[]> {
   const params = new URLSearchParams({
     "$filter": "isRead eq false",
     "$orderby": "receivedDateTime asc",
     "$top": String(limit),
     "$select": "id,internetMessageId,subject,bodyPreview,body,from,toRecipients,receivedDateTime,hasAttachments,isRead,conversationId",
   });
-  const res = await fetch(`${GATEWAY_URL}/me/mailFolders/inbox/messages?${params.toString()}`, {
-    headers: getAuthHeaders(),
+  const base = mailboxPath(ctx.mailbox, ctx.connectedEmail);
+  const res = await fetch(`${GATEWAY_URL}${base}/mailFolders/inbox/messages?${params.toString()}`, {
+    headers: getAuthHeaders(ctx.connectionKey),
   });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) {
-    throw new Error(`Listar mensagens falhou [${res.status}]: ${JSON.stringify(data)}`);
-  }
+  if (!res.ok) throw friendlyError("Falha ao ler a caixa de entrada", res.status, data);
   return (data?.value ?? []) as OutlookMessage[];
 }
 
-export async function markMessageAsRead(messageId: string): Promise<void> {
-  const res = await fetch(`${GATEWAY_URL}/me/messages/${encodeURIComponent(messageId)}`, {
+export async function markMessageAsRead(ctx: MailboxContext, messageId: string): Promise<void> {
+  const base = mailboxPath(ctx.mailbox, ctx.connectedEmail);
+  const res = await fetch(`${GATEWAY_URL}${base}/messages/${encodeURIComponent(messageId)}`, {
     method: "PATCH",
-    headers: getAuthHeaders(),
+    headers: getAuthHeaders(ctx.connectionKey),
     body: JSON.stringify({ isRead: true }),
   });
   if (!res.ok) {
     const data = await res.json().catch(() => ({}));
-    throw new Error(`Marcar como lida falhou [${res.status}]: ${JSON.stringify(data)}`);
+    throw friendlyError("Falha ao marcar e-mail como lido", res.status, data);
   }
 }
 
