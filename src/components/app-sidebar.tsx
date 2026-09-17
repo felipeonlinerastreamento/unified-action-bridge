@@ -316,6 +316,11 @@ export function AppSidebar() {
                           {assignedChats > 99 ? "99+" : assignedChats}
                         </Badge>
                       )}
+                      {item.url === "/top-gamific" && gamificUnseen > 0 && (
+                        <Badge className="ml-auto h-5 min-w-[20px] px-1 bg-red-600 text-white text-[11px] font-bold animate-pulse">
+                          {gamificUnseen > 99 ? "99+" : gamificUnseen}
+                        </Badge>
+                      )}
                       {item.url === "/chat-operadores" && unreadOperatorMsgs > 0 && (
                         <Badge className="ml-auto h-5 min-w-[20px] px-1 bg-red-600 text-white text-[11px] font-bold animate-pulse">
                           {unreadOperatorMsgs > 99 ? "99+" : unreadOperatorMsgs}
