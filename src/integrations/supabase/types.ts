@@ -5899,6 +5899,27 @@ export type Database = {
         }
         Relationships: []
       }
+      topgamific_entry_acks: {
+        Row: {
+          acked_at: string
+          entry_id: string
+          id: string
+          user_id: string
+        }
+        Insert: {
+          acked_at?: string
+          entry_id: string
+          id?: string
+          user_id: string
+        }
+        Update: {
+          acked_at?: string
+          entry_id?: string
+          id?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       tracking_settings: {
         Row: {
           auto_close_ticket_on_delivery: boolean
