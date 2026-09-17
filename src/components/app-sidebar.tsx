@@ -29,6 +29,7 @@ import {
   FileText,
   Monitor,
   Trophy,
+  CalendarDays,
 } from "lucide-react";
 
 
