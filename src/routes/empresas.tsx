@@ -167,9 +167,13 @@ function EmpresasPage() {
   };
 
   const openEdit = async (company: Company) => {
-    const phones = companyPhones
-      .filter((p) => p.company_id === company.id)
-      .map((p) => p.phone_number);
+    const phoneRows = companyPhones.filter((p) => p.company_id === company.id);
+    const phones = phoneRows.map((p) => p.phone_number);
+    const nameByPhone = new Map(
+      phoneRows
+        .filter((p) => (p.contact_name || "").trim())
+        .map((p) => [p.phone_number.replace(/\D/g, ""), (p.contact_name || "").trim()])
+    );
     setEditingCompany(company);
     setFormName(company.name);
     setFormCnpj(company.cnpj || "");
