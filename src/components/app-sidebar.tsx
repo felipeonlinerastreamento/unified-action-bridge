@@ -214,6 +214,7 @@ export function AppSidebar() {
   });
 
   const isConfigActive = location.pathname.startsWith("/configuracoes");
+  const isAgendaActive = location.pathname.startsWith("/agenda");
   const isAtendimentosActive = location.pathname.startsWith("/atendimentos");
 
   const canSeeUrl = (url: string) => {
