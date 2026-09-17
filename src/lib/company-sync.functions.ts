@@ -138,10 +138,12 @@ export const linkPhoneToCompany = createServerFn({ method: "POST" })
     const cleanPhone = cleanDigits(data.phone);
 
     if (cleanPhone) {
+      const contactName = await resolveContactName(supabase, cleanPhone, data.contactName);
+
       // phone_number has a GLOBAL unique constraint — check by phone alone.
       const { data: existingLinks } = await supabase
         .from("company_phones")
-        .select("id, company_id")
+        .select("id, company_id, contact_name")
         .eq("phone_number", cleanPhone)
         .limit(1);
 
@@ -150,15 +152,21 @@ export const linkPhoneToCompany = createServerFn({ method: "POST" })
         const { error: insertError } = await supabase.from("company_phones").insert({
           company_id: companyId,
           phone_number: cleanPhone,
+          contact_name: contactName,
         });
         if (insertError) throw new Error(insertError.message);
-      } else if (existing.company_id !== companyId) {
-        // Re-point the phone link to the new company
-        const { error: updateError } = await supabase
-          .from("company_phones")
-          .update({ company_id: companyId })
-          .eq("id", existing.id);
-        if (updateError) throw new Error(updateError.message);
+      } else {
+        const patch: Record<string, any> = {};
+        if (existing.company_id !== companyId) patch.company_id = companyId;
+        if (contactName && !String(existing.contact_name || "").trim())
+          patch.contact_name = contactName;
+        if (Object.keys(patch).length > 0) {
+          const { error: updateError } = await supabase
+            .from("company_phones")
+            .update(patch)
+            .eq("id", existing.id);
+          if (updateError) throw new Error(updateError.message);
+        }
       }
     }
 
