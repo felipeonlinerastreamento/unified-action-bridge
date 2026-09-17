@@ -72,6 +72,7 @@ interface CompanyPhone {
   id: string;
   company_id: string;
   phone_number: string;
+  contact_name?: string | null;
 }
 
 interface ServiceTemplate {
