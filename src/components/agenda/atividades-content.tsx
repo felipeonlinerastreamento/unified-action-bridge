@@ -1,7 +1,7 @@
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
-import { AlertTriangle, CalendarPlus, ChevronDown, ChevronUp, Eraser, FileDown, FileText, Filter, Loader2, RefreshCw } from "lucide-react";
+import { AlertTriangle, CalendarPlus, ChevronDown, ChevronUp, Eraser, FileText, Filter, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
