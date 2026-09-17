@@ -252,6 +252,28 @@ export function EmailChannelsConfig() {
                 <Label>E-mail</Label>
                 <Input value={editing.email_address} onChange={(e) => setEditing({ ...editing, email_address: e.target.value })} placeholder="atendimento@empresa.com" />
               </div>
+              <div className="md:col-span-2">
+                <Label>Conta Microsoft desta caixa</Label>
+                <Select
+                  value={editing.connection_key}
+                  onValueChange={(v) => setEditing({ ...editing, connection_key: v })}
+                >
+                  <SelectTrigger><SelectValue placeholder="Selecione a conta conectada" /></SelectTrigger>
+                  <SelectContent>
+                    {(conn.data?.accounts?.length
+                      ? conn.data.accounts
+                      : [{ key: "MICROSOFT_OUTLOOK_API_KEY", email: null, name: null }]
+                    ).map((a: any) => (
+                      <SelectItem key={a.key} value={a.key}>
+                        {a.email || a.key}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  A conta escolhida precisa ser a dona desta caixa de e-mail.
+                </p>
+              </div>
               <div>
                 <Label>Setor padrão</Label>
                 <Input value={editing.default_sector} onChange={(e) => setEditing({ ...editing, default_sector: e.target.value })} placeholder="Opcional" />
