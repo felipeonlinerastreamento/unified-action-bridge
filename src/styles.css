@@ -58,6 +58,14 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-status-open: var(--status-open);
+  --color-status-scheduled: var(--status-scheduled);
+  --color-status-moving: var(--status-moving);
+  --color-status-running: var(--status-running);
+  --color-status-done: var(--status-done);
+  --color-status-unproductive: var(--status-unproductive);
+  --color-status-canceled: var(--status-canceled);
+  --color-status-foreground: var(--status-foreground);
 }
 
 :root {
@@ -94,6 +102,14 @@
   --sidebar-accent-foreground: oklch(0.208 0.042 265.755);
   --sidebar-border: oklch(0.929 0.013 255.508);
   --sidebar-ring: oklch(0.704 0.04 256.788);
+  --status-open: oklch(0.82 0.16 85);
+  --status-scheduled: oklch(0.6 0.22 300);
+  --status-moving: oklch(0.62 0.18 250);
+  --status-running: oklch(0.62 0.16 165);
+  --status-done: oklch(0.7 0.18 145);
+  --status-unproductive: oklch(0.62 0.23 27);
+  --status-canceled: oklch(0.6 0.02 260);
+  --status-foreground: oklch(0.98 0.003 248);
 }
 
 .dark {
@@ -129,6 +145,14 @@
   --sidebar-accent-foreground: oklch(0.984 0.003 247.858);
   --sidebar-border: oklch(1 0 0 / 10%);
   --sidebar-ring: oklch(0.551 0.027 264.364);
+  --status-open: oklch(0.8 0.16 85);
+  --status-scheduled: oklch(0.58 0.24 300);
+  --status-moving: oklch(0.6 0.19 250);
+  --status-running: oklch(0.6 0.16 165);
+  --status-done: oklch(0.68 0.18 145);
+  --status-unproductive: oklch(0.6 0.23 27);
+  --status-canceled: oklch(0.55 0.02 260);
+  --status-foreground: oklch(0.99 0.003 248);
 }
 
 @layer base {
