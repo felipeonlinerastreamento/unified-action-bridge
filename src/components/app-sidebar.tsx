@@ -216,6 +216,16 @@ export function AppSidebar() {
     },
   });
 
+  // Lançamentos novos na gamificação — selo no item "Top Gamific".
+  const fetchGamificUnseen = useServerFn(getTopGamificUnseenCount);
+  const { data: gamificUnseen = 0 } = useQuery({
+    queryKey: ["sidebar-topgamific-unseen", userId],
+    enabled: !!userId,
+    refetchInterval: 120000,
+    staleTime: 60000,
+    queryFn: () => fetchGamificUnseen({ data: undefined }),
+  });
+
   const isConfigActive = location.pathname.startsWith("/configuracoes");
   const isAgendaActive = location.pathname.startsWith("/agenda");
   const isAtendimentosActive = location.pathname.startsWith("/atendimentos");
