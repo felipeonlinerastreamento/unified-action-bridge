@@ -280,8 +280,8 @@ export async function collectSystemHealth(force = false): Promise<SystemHealth> 
     const hour = new Date(Date.now() - 3600_000).toISOString();
 
     const [bot, tickets, chats, emails] = await Promise.all([
-      supabaseAdmin.from("bot_auto_reply_log").select("id", { count: "exact", head: true })
-        .eq("status", "scheduled").lte("scheduled_for", nowIso),
+      supabaseAdmin.from("zapi_chats").select("id", { count: "exact", head: true })
+        .not("bot_state->auto_reply_pending", "is", null),
       supabaseAdmin.from("service_tickets").select("id", { count: "exact", head: true })
         .in("status", ["aberto", "em_andamento"]).lt("created_at", day),
       supabaseAdmin.from("zapi_chats").select("id", { count: "exact", head: true })
