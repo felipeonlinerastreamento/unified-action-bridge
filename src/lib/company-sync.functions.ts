@@ -7,6 +7,7 @@ const linkPhoneToCompanySchema = z.object({
   companyName: z.string().min(1).max(255),
   companyCnpj: z.string().max(32).optional(),
   phone: z.string().max(32).optional(),
+  contactName: z.string().max(255).optional(),
   ticketId: z.string().uuid().optional(),
 });
 
