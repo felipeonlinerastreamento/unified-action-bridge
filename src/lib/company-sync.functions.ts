@@ -288,6 +288,15 @@ export const createCrmContactWithCompany = createServerFn({ method: "POST" })
       throw new Error(error?.message || "Não foi possível criar o contato.");
     }
 
+    // Keep the linked phone showing this contact's name
+    if (cleanPhone) {
+      await supabase
+        .from("company_phones")
+        .update({ contact_name: data.name.trim() })
+        .eq("phone_number", cleanPhone)
+        .or("contact_name.is.null,contact_name.eq.");
+    }
+
     await writeAuditLog({
       user_id: userId,
       event_category: "crm",
