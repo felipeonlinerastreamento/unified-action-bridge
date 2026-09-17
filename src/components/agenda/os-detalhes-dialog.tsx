@@ -143,6 +143,20 @@ export function OsDetalhesDialog({ open, onClose, activity, canEdit, onUpdated }
     onError: (e) => toast.error(errorMessage(e)),
   });
 
+  const photos = useMemo(() => osPhotos(activity), [activity]);
+  const [pdfLoading, setPdfLoading] = useState(false);
+
+  async function baixarPdf() {
+    setPdfLoading(true);
+    try {
+      await gerarPdfOsCompleta(activity, history);
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setPdfLoading(false);
+    }
+  }
+
   const info: [string, string][] = activity
     ? [
         ["Identificador", activity.identifier || "—"],
@@ -187,11 +201,45 @@ export function OsDetalhesDialog({ open, onClose, activity, canEdit, onUpdated }
                     <span className="col-span-2 whitespace-pre-wrap">{value}</span>
                   </div>
                 ))}
-                {canEdit && (
-                  <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
-                    <Pencil className="h-4 w-4 mr-2" /> Editar
+
+                <div className="space-y-2 pt-2">
+                  <p className="text-sm font-medium text-foreground">
+                    Fotos da OS{photos.length > 0 ? ` (${photos.length})` : ""}
+                  </p>
+                  {photos.length === 0 ? (
+                    <p className="text-xs text-muted-foreground flex items-center gap-2">
+                      <ImageOff className="h-4 w-4" />
+                      As fotos ainda não são enviadas pelo Seu Instalador nesta integração.
+                    </p>
+                  ) : (
+                    <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+                      {photos.map((p, i) => (
+                        <a
+                          key={`${p.url}-${i}`}
+                          href={p.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="block overflow-hidden rounded-md border border-border"
+                          title={p.caption || "Abrir foto"}
+                        >
+                          <img src={p.url} alt={p.caption || `Foto ${i + 1} da OS`} className="h-24 w-full object-cover" />
+                        </a>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap gap-2 pt-1">
+                  {canEdit && (
+                    <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
+                      <Pencil className="h-4 w-4 mr-2" /> Editar
+                    </Button>
+                  )}
+                  <Button size="sm" onClick={() => void baixarPdf()} disabled={pdfLoading}>
+                    {pdfLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileDown className="h-4 w-4 mr-2" />}
+                    Baixar PDF da OS completa
                   </Button>
-                )}
+                </div>
               </div>
             ) : (
               <div className="space-y-4">
