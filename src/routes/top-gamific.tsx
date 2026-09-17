@@ -183,8 +183,24 @@ function TopGamificContent() {
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Últimos 3 lançamentos</CardTitle>
+            <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                Últimos lançamentos
+                {unseen.length > 0 && (
+                  <Badge className="bg-red-600 text-white hover:bg-red-600">
+                    {unseen.length} novo{unseen.length > 1 ? "s" : ""}
+                  </Badge>
+                )}
+              </CardTitle>
+              {unseen.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => markAck(unseen.map((e) => e.id))}
+                >
+                  Marcar todos como ciente
+                </Button>
+              )}
             </CardHeader>
             <CardContent className="space-y-3">
               {(data?.entries?.length ?? 0) === 0 ? (
@@ -195,12 +211,17 @@ function TopGamificContent() {
                 data!.entries.map((entry) => (
                   <div
                     key={entry.id}
-                    className="flex flex-wrap items-start justify-between gap-3 rounded-lg border p-3"
+                    className={`flex flex-wrap items-start justify-between gap-3 rounded-lg border p-3 ${
+                      entry.acknowledged ? "" : "border-primary/50 bg-primary/5"
+                    }`}
                   >
                     <div className="min-w-0 space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="font-medium">{entry.metricName}</span>
                         {entry.category && <Badge variant="secondary">{entry.category}</Badge>}
+                        {!entry.acknowledged && (
+                          <Badge className="bg-red-600 text-white hover:bg-red-600">Novo</Badge>
+                        )}
                       </div>
                       {entry.notes && (
                         <p className="text-sm text-muted-foreground break-words">{entry.notes}</p>
@@ -216,12 +237,21 @@ function TopGamificContent() {
                         {entry.coins > 0 ? `+${entry.coins}` : entry.coins} moedas
                       </span>
                       {entry.points !== 0 && <span className="font-semibold">{entry.points} pts</span>}
+                      <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+                        <Checkbox
+                          checked={entry.acknowledged}
+                          disabled={entry.acknowledged}
+                          onCheckedChange={(v) => v && markAck([entry.id])}
+                        />
+                        Ciente
+                      </label>
                     </div>
                   </div>
                 ))
               )}
             </CardContent>
           </Card>
+
 
           <Card>
             <CardHeader>
