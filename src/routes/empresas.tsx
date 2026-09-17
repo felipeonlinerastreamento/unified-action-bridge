@@ -72,6 +72,7 @@ interface CompanyPhone {
   id: string;
   company_id: string;
   phone_number: string;
+  contact_name?: string | null;
 }
 
 interface ServiceTemplate {
@@ -166,9 +167,13 @@ function EmpresasPage() {
   };
 
   const openEdit = async (company: Company) => {
-    const phones = companyPhones
-      .filter((p) => p.company_id === company.id)
-      .map((p) => p.phone_number);
+    const phoneRows = companyPhones.filter((p) => p.company_id === company.id);
+    const phones = phoneRows.map((p) => p.phone_number);
+    const nameByPhone = new Map(
+      phoneRows
+        .filter((p) => (p.contact_name || "").trim())
+        .map((p) => [p.phone_number.replace(/\D/g, ""), (p.contact_name || "").trim()])
+    );
     setEditingCompany(company);
     setFormName(company.name);
     setFormCnpj(company.cnpj || "");
@@ -183,7 +188,7 @@ function EmpresasPage() {
     const baseContacts =
       company.contacts && company.contacts.length > 0
         ? company.contacts.map((c: any) => ({
-            name: c.name || "",
+            name: c.name || nameByPhone.get(String(c.phone || "").replace(/\D/g, "")) || "",
             sector: c.sector || c.role || "",
             phone: c.phone || "",
             email: c.email || "",
@@ -198,7 +203,13 @@ function EmpresasPage() {
     for (const p of [...phones, company.phone || ""]) {
       const digits = String(p || "").replace(/\D/g, "");
       if (digits && !knownPhones.has(digits)) {
-        mergedContacts.push({ name: "", sector: "", phone: p, email: "", is_prime: false });
+        mergedContacts.push({
+          name: nameByPhone.get(digits) || "",
+          sector: "",
+          phone: p,
+          email: "",
+          is_prime: false,
+        });
         knownPhones.add(digits);
       }
     }
@@ -292,10 +303,23 @@ function EmpresasPage() {
         )
       );
       if (phoneNumbers.length > 0) {
+        // Keep the contact name attached to each phone so it never shows up blank
+        const nameByDigits = new Map<string, string>();
+        for (const c of contacts) {
+          const digits = String(c.phone || "").replace(/\D/g, "");
+          const nome = String(c.name || "").trim();
+          if (digits && nome && !nameByDigits.has(digits)) nameByDigits.set(digits, nome);
+        }
+        for (const p of companyPhones) {
+          const digits = p.phone_number.replace(/\D/g, "");
+          const nome = String(p.contact_name || "").trim();
+          if (digits && nome && !nameByDigits.has(digits)) nameByDigits.set(digits, nome);
+        }
         const { error } = await supabase.from("company_phones").insert(
           phoneNumbers.map((phone_number) => ({
             company_id: companyId,
             phone_number,
+            contact_name: nameByDigits.get(phone_number.replace(/\D/g, "")) || null,
           }))
         );
         if (error) throw error;

@@ -48,7 +48,7 @@ export function ContactPicker({ selectedId, onSelect }: Props) {
       const [crmRes, subRes, phonesRes, techRes, chatRes] = await Promise.all([
         fetchAll("crm_contacts", "id, name, phone, email, companies(name)", "name"),
         fetchAll("sub_clients", "id, name, phone, email, companies(name)", "name"),
-        fetchAll("company_phones", "id, phone_number, companies(name)", null),
+        fetchAll("company_phones", "id, phone_number, contact_name, companies(name)", null),
         fetchAll("chat_technicians", "id, name, phone, contact_phone, city_state", "name"),
         fetchAll("zapi_chats", "id, contact_name, phone", "last_message_at", false),
       ]).then((r) => r.map((data) => ({ data })));
@@ -86,7 +86,7 @@ export function ContactPicker({ selectedId, onSelect }: Props) {
         const company = (r.companies as any)?.name;
         addIfNew({
           id: `cph-${r.id}`,
-          name: company || "Empresa",
+          name: (r as any).contact_name || company || "Empresa",
           phone: (r.phone_number || "").replace(/\D/g, ""),
           company,
           source: "company_phone",

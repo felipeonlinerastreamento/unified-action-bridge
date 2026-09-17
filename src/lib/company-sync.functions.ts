@@ -7,6 +7,7 @@ const linkPhoneToCompanySchema = z.object({
   companyName: z.string().min(1).max(255),
   companyCnpj: z.string().max(32).optional(),
   phone: z.string().max(32).optional(),
+  contactName: z.string().max(255).optional(),
   ticketId: z.string().uuid().optional(),
 });
 
@@ -90,6 +91,36 @@ async function ensureLocalCompany(
   return created.id;
 }
 
+// Always try to fill a contact name for a linked phone: use the provided one,
+// otherwise look it up in CRM, sub-clients, technicians or WhatsApp chats.
+async function resolveContactName(
+  supabase: any,
+  cleanPhone: string,
+  provided?: string
+): Promise<string | null> {
+  const given = provided?.trim();
+  if (given) return given.slice(0, 255);
+  if (!cleanPhone) return null;
+
+  const lookups: Array<[string, string, string]> = [
+    ["crm_contacts", "name", "phone"],
+    ["sub_clients", "name", "phone"],
+    ["chat_technicians", "name", "phone"],
+    ["zapi_chats", "contact_name", "phone"],
+  ];
+
+  for (const [table, nameCol, phoneCol] of lookups) {
+    const { data } = await supabase
+      .from(table)
+      .select(nameCol)
+      .eq(phoneCol, cleanPhone)
+      .limit(1);
+    const found = data?.[0]?.[nameCol];
+    if (found && String(found).trim()) return String(found).trim().slice(0, 255);
+  }
+  return null;
+}
+
 async function updateTicketCompany(supabase: any, ticketId: string | undefined, companyId: string) {
   if (!ticketId) return;
   await supabase
@@ -107,10 +138,12 @@ export const linkPhoneToCompany = createServerFn({ method: "POST" })
     const cleanPhone = cleanDigits(data.phone);
 
     if (cleanPhone) {
+      const contactName = await resolveContactName(supabase, cleanPhone, data.contactName);
+
       // phone_number has a GLOBAL unique constraint — check by phone alone.
       const { data: existingLinks } = await supabase
         .from("company_phones")
-        .select("id, company_id")
+        .select("id, company_id, contact_name")
         .eq("phone_number", cleanPhone)
         .limit(1);
 
@@ -119,15 +152,21 @@ export const linkPhoneToCompany = createServerFn({ method: "POST" })
         const { error: insertError } = await supabase.from("company_phones").insert({
           company_id: companyId,
           phone_number: cleanPhone,
+          contact_name: contactName,
         });
         if (insertError) throw new Error(insertError.message);
-      } else if (existing.company_id !== companyId) {
-        // Re-point the phone link to the new company
-        const { error: updateError } = await supabase
-          .from("company_phones")
-          .update({ company_id: companyId })
-          .eq("id", existing.id);
-        if (updateError) throw new Error(updateError.message);
+      } else {
+        const patch: { company_id?: string; contact_name?: string } = {};
+        if (existing.company_id !== companyId) patch.company_id = companyId;
+        if (contactName && !String(existing.contact_name || "").trim())
+          patch.contact_name = contactName;
+        if (Object.keys(patch).length > 0) {
+          const { error: updateError } = await supabase
+            .from("company_phones")
+            .update(patch)
+            .eq("id", existing.id);
+          if (updateError) throw new Error(updateError.message);
+        }
       }
     }
 
@@ -180,6 +219,15 @@ export const createSubClientWithParentCompany = createServerFn({ method: "POST" 
         throw new Error(createError?.message || "Não foi possível criar o sub-cliente.");
       }
       subClientId = created.id;
+    }
+
+    // Keep the linked phone showing this contact's name
+    if (cleanPhone) {
+      await supabase
+        .from("company_phones")
+        .update({ contact_name: data.name.trim() })
+        .eq("phone_number", cleanPhone)
+        .or("contact_name.is.null,contact_name.eq.");
     }
 
     await updateTicketCompany(supabase, data.ticketId, companyId);
@@ -238,6 +286,15 @@ export const createCrmContactWithCompany = createServerFn({ method: "POST" })
 
     if (error || !created) {
       throw new Error(error?.message || "Não foi possível criar o contato.");
+    }
+
+    // Keep the linked phone showing this contact's name
+    if (cleanPhone) {
+      await supabase
+        .from("company_phones")
+        .update({ contact_name: data.name.trim() })
+        .eq("phone_number", cleanPhone)
+        .or("contact_name.is.null,contact_name.eq.");
     }
 
     await writeAuditLog({

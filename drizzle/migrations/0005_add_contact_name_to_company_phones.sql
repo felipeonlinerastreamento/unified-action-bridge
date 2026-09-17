@@ -1,0 +1,1 @@
+ALTER TABLE public.company_phones ADD COLUMN IF NOT EXISTS contact_name text;
