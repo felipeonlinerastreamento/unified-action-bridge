@@ -48,18 +48,31 @@ export function AtendimentosContent({ autoOpenTicketId }: { autoOpenTicketId?: s
     })();
   }, [user?.id, hasRole]);
 
+  const periodDays = filters.periodDays;
+
   const { data: tickets = [], isLoading, isError, error, refetch, isFetching } = useQuery({
-    queryKey: ["service-tickets"],
+    queryKey: ["service-tickets", periodDays],
+    placeholderData: keepPreviousData,
     queryFn: async () => {
+      const cutoff =
+        periodDays === null
+          ? null
+          : new Date(Date.now() - periodDays * 24 * 60 * 60 * 1000).toISOString();
+
       // Paginar para evitar o teto padrão do PostgREST (1000 linhas)
       const PAGE = 1000;
       let from = 0;
       const list: any[] = [];
       // hard cap defensivo (20k) — evita loop infinito em cenários anômalos
       while (from < 20000) {
-        const { data, error } = await supabase
+        let q = supabase
           .from("service_tickets")
-          .select("*, companies(name), ticket_tracking(last_status, last_status_date, last_location, is_delivered, tracking_code)")
+          .select("*, companies(name), ticket_tracking(last_status, last_status_date, last_location, is_delivered, tracking_code)");
+        if (cutoff) {
+          // Sempre inclui os que continuam abertos, mesmo fora da janela
+          q = q.or(`created_at.gte.${cutoff},status.in.(aberto,em_andamento,reaberto)`);
+        }
+        const { data, error } = await q
           .order("created_at", { ascending: false })
           .range(from, from + PAGE - 1);
         if (error) throw error;
@@ -69,118 +82,79 @@ export function AtendimentosContent({ autoOpenTicketId }: { autoOpenTicketId?: s
         from += PAGE;
       }
 
-      // Buscar último comentário por ticket
       const ids = list.map((t: any) => t.id);
       const lastByTicket: Record<string, string> = {};
       const liberacaoByTicket: Record<string, any[]> = {};
       const suprimentoByTicket: Record<string, any[]> = {};
       const compraEquipByTicket: Record<string, any[]> = {};
-      var purchaseItemsByTicket: Record<string, any[]> = {};
-      var purchaseRequestByTicket: Record<string, any> = {};
-      var agentsByTicket: Record<string, string[]> = {};
-      var recurringSet = new Set<string>();
+      const purchaseItemsByTicket: Record<string, any[]> = {};
+      const purchaseRequestByTicket: Record<string, any> = {};
+      const agentsByTicket: Record<string, string[]> = {};
+      const recurringSet = new Set<string>();
+      const controleTicketSet = new Set<string>();
+
       if (ids.length > 0) {
         const idSet = new Set(ids);
-        // Helper: chunk .in() para evitar URLs gigantes (PostgREST)
-        const CHUNK = 200;
-        const chunkedIn = async <T,>(
-          table: string,
-          select: string,
-          extra?: (q: any) => any,
-        ): Promise<T[]> => {
-          const out: T[] = [];
-          for (let i = 0; i < ids.length; i += CHUNK) {
-            const slice = ids.slice(i, i + CHUNK);
-            let q = supabase.from(table as any).select(select).in("ticket_id", slice);
-            if (extra) q = extra(q);
-            const { data } = await q;
-            if (data) out.push(...(data as any[] as T[]));
-          }
-          return out;
-        };
 
-        const comments = await chunkedIn<any>(
-          "ticket_comments",
-          "ticket_id, created_at",
-          (q) => q.order("created_at", { ascending: false }),
-        );
-        for (const c of comments) {
+        // Uma chamada por tabela auxiliar, todas em paralelo.
+        const [
+          commentsRes,
+          libRes,
+          supRes,
+          ceRes,
+          piRes,
+          prRes,
+          agentsRes,
+          remRes,
+          linksRes,
+        ] = await Promise.all([
+          (() => {
+            let q = supabase.from("ticket_comments").select("ticket_id, created_at");
+            if (cutoff) q = q.gte("created_at", cutoff);
+            return q.order("created_at", { ascending: false }).limit(20000);
+          })(),
+          supabase.from("ticket_liberacao_items" as any).select("ticket_id, status, quantity, item_name, liberado_at"),
+          supabase.from("ticket_suprimento_items" as any).select("ticket_id, status, quantity, item_name, delivered_at"),
+          supabase.from("ticket_compra_equipamento_items" as any).select("ticket_id, status, quantity, item_name, delivered_at"),
+          supabase.from("ticket_purchase_items" as any).select("ticket_id, status, quantity, item_name, delivered_at"),
+          supabase.from("ticket_purchase_requests" as any).select("ticket_id, status, tracking_code, expected_delivery, freight"),
+          supabase.from("ticket_agents" as any).select("ticket_id, user_id"),
+          supabase
+            .from("ticket_reminders" as any)
+            .select("ticket_id, recurrence_type, is_dismissed")
+            .eq("is_dismissed", false)
+            .not("recurrence_type", "is", null)
+            .neq("recurrence_type", "none"),
+          supabase.from("chat_controle_links" as any).select("ticket_id").not("ticket_id", "is", null),
+        ]);
+
+        for (const c of ((commentsRes.data as any[]) || [])) {
+          if (!idSet.has(c.ticket_id)) continue;
           if (!lastByTicket[c.ticket_id]) lastByTicket[c.ticket_id] = c.created_at;
         }
-
-        // Tabelas pequenas: SELECT completo e filtra no cliente (evita URL grande)
-        const { data: libItems } = await supabase
-          .from("ticket_liberacao_items" as any)
-          .select("ticket_id, status, quantity, item_name, liberado_at");
-        for (const it of (libItems as any[]) || []) {
-          if (!idSet.has(it.ticket_id)) continue;
-          if (!liberacaoByTicket[it.ticket_id]) liberacaoByTicket[it.ticket_id] = [];
-          liberacaoByTicket[it.ticket_id].push(it);
+        const push = (map: Record<string, any[]>, rows: any[] | null) => {
+          for (const it of rows || []) {
+            if (!idSet.has(it.ticket_id)) continue;
+            if (!map[it.ticket_id]) map[it.ticket_id] = [];
+            map[it.ticket_id].push(it);
+          }
+        };
+        push(liberacaoByTicket, libRes.data as any[]);
+        push(suprimentoByTicket, supRes.data as any[]);
+        push(compraEquipByTicket, ceRes.data as any[]);
+        push(purchaseItemsByTicket, piRes.data as any[]);
+        for (const r of ((prRes.data as any[]) || [])) {
+          if (idSet.has(r.ticket_id)) purchaseRequestByTicket[r.ticket_id] = r;
         }
-
-        const { data: supItems } = await supabase
-          .from("ticket_suprimento_items" as any)
-          .select("ticket_id, status, quantity, item_name, delivered_at");
-        for (const it of (supItems as any[]) || []) {
-          if (!idSet.has(it.ticket_id)) continue;
-          if (!suprimentoByTicket[it.ticket_id]) suprimentoByTicket[it.ticket_id] = [];
-          suprimentoByTicket[it.ticket_id].push(it);
-        }
-
-        const { data: ceItems } = await supabase
-          .from("ticket_compra_equipamento_items" as any)
-          .select("ticket_id, status, quantity, item_name, delivered_at");
-        for (const it of (ceItems as any[]) || []) {
-          if (!idSet.has(it.ticket_id)) continue;
-          if (!compraEquipByTicket[it.ticket_id]) compraEquipByTicket[it.ticket_id] = [];
-          compraEquipByTicket[it.ticket_id].push(it);
-        }
-
-        // Compras: itens + request (tabelas pequenas)
-        const { data: pItems } = await supabase
-          .from("ticket_purchase_items" as any)
-          .select("ticket_id, status, quantity, item_name, delivered_at");
-        for (const it of (pItems as any[]) || []) {
-          if (!idSet.has(it.ticket_id)) continue;
-          if (!purchaseItemsByTicket[it.ticket_id]) purchaseItemsByTicket[it.ticket_id] = [];
-          purchaseItemsByTicket[it.ticket_id].push(it);
-        }
-        const { data: pReqs } = await supabase
-          .from("ticket_purchase_requests" as any)
-          .select("ticket_id, status, tracking_code, expected_delivery, freight");
-        for (const r of (pReqs as any[]) || []) {
-          if (!idSet.has(r.ticket_id)) continue;
-          purchaseRequestByTicket[r.ticket_id] = r;
-        }
-
-        const agents = await chunkedIn<any>("ticket_agents", "ticket_id, user_id");
-        for (const a of agents) {
+        for (const a of ((agentsRes.data as any[]) || [])) {
+          if (!idSet.has(a.ticket_id)) continue;
           if (!agentsByTicket[a.ticket_id]) agentsByTicket[a.ticket_id] = [];
           agentsByTicket[a.ticket_id].push(a.user_id);
         }
-
-        const recRem = await chunkedIn<any>(
-          "ticket_reminders",
-          "ticket_id, recurrence_type, is_dismissed",
-          (q) =>
-            q
-              .eq("is_dismissed", false)
-              .not("recurrence_type", "is", null)
-              .neq("recurrence_type", "none"),
-        );
-        for (const r of recRem) {
+        for (const r of ((remRes.data as any[]) || [])) {
           if (r.ticket_id) recurringSet.add(r.ticket_id);
         }
-      }
-
-      // Planilhas de controle vinculadas (por ticket_id)
-      const controleTicketSet = new Set<string>();
-      if (ids.length > 0) {
-        const { data: links } = await supabase
-          .from("chat_controle_links" as any)
-          .select("ticket_id")
-          .not("ticket_id", "is", null);
-        for (const l of (links as any[]) || []) {
+        for (const l of ((linksRes.data as any[]) || [])) {
           if (l.ticket_id) controleTicketSet.add(l.ticket_id);
         }
       }
@@ -191,14 +165,15 @@ export function AtendimentosContent({ autoOpenTicketId }: { autoOpenTicketId?: s
         liberacao_items: liberacaoByTicket[t.id] || [],
         suprimento_items: suprimentoByTicket[t.id] || [],
         compra_equipamento_items: compraEquipByTicket[t.id] || [],
-        purchase_items: (typeof purchaseItemsByTicket !== "undefined" ? purchaseItemsByTicket[t.id] : undefined) || [],
-        purchase_request: (typeof purchaseRequestByTicket !== "undefined" ? purchaseRequestByTicket[t.id] : undefined) || null,
-        agent_user_ids: (typeof agentsByTicket !== "undefined" ? agentsByTicket[t.id] : undefined) || [],
-        is_recurring: typeof recurringSet !== "undefined" ? recurringSet.has(t.id) : false,
+        purchase_items: purchaseItemsByTicket[t.id] || [],
+        purchase_request: purchaseRequestByTicket[t.id] || null,
+        agent_user_ids: agentsByTicket[t.id] || [],
+        is_recurring: recurringSet.has(t.id),
         has_controle_sheet: controleTicketSet.has(t.id),
       }));
     },
-    refetchInterval: 30000,
+    refetchInterval: 60000,
+    refetchOnWindowFocus: false,
   });
 
   const { data: profiles = [] } = useQuery({
