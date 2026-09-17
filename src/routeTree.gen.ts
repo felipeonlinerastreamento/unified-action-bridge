@@ -47,6 +47,7 @@ import { Route as AtendimentosTarefasRouteImport } from './routes/atendimentos_.
 import { Route as AgendaTimelineRouteImport } from './routes/agenda.timeline'
 import { Route as AgendaAtividadesRouteImport } from './routes/agenda.atividades'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
+import { Route as ApiPublicSystemHealthScanRouteImport } from './routes/api.public.system-health-scan'
 import { Route as ApiPublicEmailPollRouteImport } from './routes/api.public.email-poll'
 import { Route as ApiPublicCrmDailyRouteImport } from './routes/api.public.crm-daily'
 import { Route as ApiPublicChatIdleScannerRouteImport } from './routes/api.public.chat-idle-scanner'
@@ -259,6 +260,12 @@ const Char91DotwellKnownChar93OauthProtectedResourceRoute =
     path: '/.well-known/oauth-protected-resource',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicSystemHealthScanRoute =
+  ApiPublicSystemHealthScanRouteImport.update({
+    id: '/api/public/system-health-scan',
+    path: '/api/public/system-health-scan',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicEmailPollRoute = ApiPublicEmailPollRouteImport.update({
   id: '/api/public/email-poll',
   path: '/api/public/email-poll',
@@ -360,6 +367,7 @@ export interface FileRoutesByFullPath {
   '/api/public/chat-idle-scanner': typeof ApiPublicChatIdleScannerRoute
   '/api/public/crm-daily': typeof ApiPublicCrmDailyRoute
   '/api/public/email-poll': typeof ApiPublicEmailPollRoute
+  '/api/public/system-health-scan': typeof ApiPublicSystemHealthScanRoute
   '/api/public/hooks/sync-gsystem-equipamentos': typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   '/api/public/zapi-webhook/$channelId': typeof ApiPublicZapiWebhookChannelIdRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
@@ -408,6 +416,7 @@ export interface FileRoutesByTo {
   '/api/public/chat-idle-scanner': typeof ApiPublicChatIdleScannerRoute
   '/api/public/crm-daily': typeof ApiPublicCrmDailyRoute
   '/api/public/email-poll': typeof ApiPublicEmailPollRoute
+  '/api/public/system-health-scan': typeof ApiPublicSystemHealthScanRoute
   '/api/public/hooks/sync-gsystem-equipamentos': typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   '/api/public/zapi-webhook/$channelId': typeof ApiPublicZapiWebhookChannelIdRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
@@ -459,6 +468,7 @@ export interface FileRoutesById {
   '/api/public/chat-idle-scanner': typeof ApiPublicChatIdleScannerRoute
   '/api/public/crm-daily': typeof ApiPublicCrmDailyRoute
   '/api/public/email-poll': typeof ApiPublicEmailPollRoute
+  '/api/public/system-health-scan': typeof ApiPublicSystemHealthScanRoute
   '/api/public/hooks/sync-gsystem-equipamentos': typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   '/api/public/zapi-webhook/$channelId': typeof ApiPublicZapiWebhookChannelIdRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
@@ -511,6 +521,7 @@ export interface FileRouteTypes {
     | '/api/public/chat-idle-scanner'
     | '/api/public/crm-daily'
     | '/api/public/email-poll'
+    | '/api/public/system-health-scan'
     | '/api/public/hooks/sync-gsystem-equipamentos'
     | '/api/public/zapi-webhook/$channelId'
     | '/lovable/email/auth/preview'
@@ -559,6 +570,7 @@ export interface FileRouteTypes {
     | '/api/public/chat-idle-scanner'
     | '/api/public/crm-daily'
     | '/api/public/email-poll'
+    | '/api/public/system-health-scan'
     | '/api/public/hooks/sync-gsystem-equipamentos'
     | '/api/public/zapi-webhook/$channelId'
     | '/lovable/email/auth/preview'
@@ -609,6 +621,7 @@ export interface FileRouteTypes {
     | '/api/public/chat-idle-scanner'
     | '/api/public/crm-daily'
     | '/api/public/email-poll'
+    | '/api/public/system-health-scan'
     | '/api/public/hooks/sync-gsystem-equipamentos'
     | '/api/public/zapi-webhook/$channelId'
     | '/lovable/email/auth/preview'
@@ -642,6 +655,7 @@ export interface RootRouteChildren {
   ApiPublicChatIdleScannerRoute: typeof ApiPublicChatIdleScannerRoute
   ApiPublicCrmDailyRoute: typeof ApiPublicCrmDailyRoute
   ApiPublicEmailPollRoute: typeof ApiPublicEmailPollRoute
+  ApiPublicSystemHealthScanRoute: typeof ApiPublicSystemHealthScanRoute
   ApiPublicHooksSyncGsystemEquipamentosRoute: typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   ApiPublicZapiWebhookChannelIdRoute: typeof ApiPublicZapiWebhookChannelIdRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
@@ -916,6 +930,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/system-health-scan': {
+      id: '/api/public/system-health-scan'
+      path: '/api/public/system-health-scan'
+      fullPath: '/api/public/system-health-scan'
+      preLoaderRoute: typeof ApiPublicSystemHealthScanRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/email-poll': {
       id: '/api/public/email-poll'
       path: '/api/public/email-poll'
@@ -1073,6 +1094,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicChatIdleScannerRoute: ApiPublicChatIdleScannerRoute,
   ApiPublicCrmDailyRoute: ApiPublicCrmDailyRoute,
   ApiPublicEmailPollRoute: ApiPublicEmailPollRoute,
+  ApiPublicSystemHealthScanRoute: ApiPublicSystemHealthScanRoute,
   ApiPublicHooksSyncGsystemEquipamentosRoute:
     ApiPublicHooksSyncGsystemEquipamentosRoute,
   ApiPublicZapiWebhookChannelIdRoute: ApiPublicZapiWebhookChannelIdRoute,
