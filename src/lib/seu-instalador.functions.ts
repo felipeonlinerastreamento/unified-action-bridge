@@ -6,7 +6,7 @@ const API_BASE = "https://seuinstalador-com-br.lovable.app/api/public/integratio
 
 type CallOptions = {
   path: string;
-  method?: "GET" | "POST";
+  method?: "GET" | "POST" | "PATCH" | "PUT";
   query?: Record<string, string | number | undefined | null>;
   body?: unknown;
   idempotencyKey?: string;
@@ -84,6 +84,13 @@ async function callApi<T>(opts: CallOptions): Promise<T> {
   if (!response.ok) {
     const apiMessage = payload?.error?.message || payload?.message;
     throw new Error(messageForStatus(response.status, apiMessage, response.headers.get("Retry-After")));
+  }
+
+  // Quando o endpoint não existe, o Seu Instalador devolve a página HTML do site com status 200.
+  if (payload === null && text.trim().startsWith("<")) {
+    throw new Error(
+      "Este recurso ainda não foi liberado pelo Seu Instalador (alteração de OS indisponível na integração).",
+    );
   }
 
   return (payload ?? {}) as T;
@@ -217,6 +224,55 @@ export const criarAgendamento = createServerFn({ method: "POST" })
       method: "POST",
       body,
       idempotencyKey,
+      userName,
+    });
+  });
+
+export const atualizarAgendamento = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        appointmentId: z.string().min(1),
+        technicianId: z.string().optional(),
+        serviceTypeId: z.string().optional(),
+        scheduledAt: z.string().optional(),
+        durationMinutes: z.number().int().min(15).max(24 * 60).optional(),
+        identifier: z.string().optional(),
+        address: z.string().optional(),
+        noAddress: z.boolean().optional(),
+        description: z.string().optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const userName = await resolveUserName(context);
+    const { appointmentId, ...body } = data;
+    return await callApi<any>({
+      path: `/appointments/${encodeURIComponent(appointmentId)}`,
+      method: "PATCH",
+      body,
+      userName,
+    });
+  });
+
+export const alterarStatusAgendamento = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        appointmentId: z.string().min(1),
+        status: z.string().min(1),
+        reason: z.string().optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const userName = await resolveUserName(context);
+    return await callApi<any>({
+      path: `/appointments/${encodeURIComponent(data.appointmentId)}/status`,
+      method: "PATCH",
+      body: { status: data.status, reason: data.reason },
       userName,
     });
   });

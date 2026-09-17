@@ -56,6 +56,7 @@ export function NovoAgendamentoDialog({ open, onClose, onCreated }: Props) {
   const clientsQuery = useQuery({
     queryKey: ["si-clients", debounced],
     enabled: open && debounced.length >= 3,
+    retry: 1,
     queryFn: () => searchClients({ data: { search: debounced } }),
   });
   const clients = useMemo(() => asList(clientsQuery.data), [clientsQuery.data]);
@@ -143,25 +144,32 @@ export function NovoAgendamentoDialog({ open, onClose, onCreated }: Props) {
             {clientsQuery.isError && (
               <p className="text-xs text-destructive">{errorMessage(clientsQuery.error)}</p>
             )}
+            {!clientsQuery.isFetching && debounced.length >= 3 && clients.length === 0 && !clientsQuery.isError && (
+              <p className="text-xs text-muted-foreground">Nenhum cliente encontrado para "{debounced}".</p>
+            )}
             {clients.length > 0 && (
-              <Select
-                value={clientId}
-                onValueChange={(v) => {
-                  setClientId(v);
-                  setServiceTypeId("");
-                }}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o cliente" />
-                </SelectTrigger>
-                <SelectContent>
-                  {clients.map((c: any) => (
-                    <SelectItem key={c.id} value={String(c.id)}>
-                      {pick(c, ["name", "nome", "companyName", "razaoSocial"], String(c.id))}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="max-h-52 overflow-y-auto rounded-md border border-border divide-y divide-border">
+                {clients.map((c: any) => {
+                  const id = String(c.id);
+                  const label = pick(c, ["name", "nome", "companyName", "razaoSocial"], id);
+                  const selected = clientId === id;
+                  return (
+                    <button
+                      key={id}
+                      type="button"
+                      onClick={() => {
+                        setClientId(id);
+                        setServiceTypeId("");
+                      }}
+                      className={`block w-full px-3 py-2 text-left text-sm hover:bg-muted/60 ${
+                        selected ? "bg-primary/10 text-primary font-medium" : ""
+                      }`}
+                    >
+                      {label}
+                    </button>
+                  );
+                })}
+              </div>
             )}
           </div>
 
