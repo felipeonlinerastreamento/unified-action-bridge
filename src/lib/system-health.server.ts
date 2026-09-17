@@ -275,7 +275,7 @@ export async function collectSystemHealth(force = false): Promise<SystemHealth> 
 
   // Filas
   try {
-    const nowIso = new Date().toISOString();
+    
     const day = new Date(Date.now() - 24 * 3600_000).toISOString();
     const hour = new Date(Date.now() - 3600_000).toISOString();
 
