@@ -14,6 +14,7 @@ export interface TopGamificEntry {
   coins: number;
   points: number;
   notes: string | null;
+  acknowledged: boolean;
 }
 
 export interface TopGamificMission {
@@ -38,6 +39,7 @@ export interface TopGamificResult {
   totalCoins: number;
   totalPoints: number;
   missions: TopGamificMission[];
+  unseenCount: number;
 }
 
 function normalize(value: string): string {
