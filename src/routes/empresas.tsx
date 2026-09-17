@@ -188,7 +188,7 @@ function EmpresasPage() {
     const baseContacts =
       company.contacts && company.contacts.length > 0
         ? company.contacts.map((c: any) => ({
-            name: c.name || "",
+            name: c.name || nameByPhone.get(String(c.phone || "").replace(/\D/g, "")) || "",
             sector: c.sector || c.role || "",
             phone: c.phone || "",
             email: c.email || "",
