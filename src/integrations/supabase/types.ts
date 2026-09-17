@@ -1339,18 +1339,21 @@ export type Database = {
       company_phones: {
         Row: {
           company_id: string
+          contact_name: string | null
           created_at: string
           id: string
           phone_number: string
         }
         Insert: {
           company_id: string
+          contact_name?: string | null
           created_at?: string
           id?: string
           phone_number: string
         }
         Update: {
           company_id?: string
+          contact_name?: string | null
           created_at?: string
           id?: string
           phone_number?: string
