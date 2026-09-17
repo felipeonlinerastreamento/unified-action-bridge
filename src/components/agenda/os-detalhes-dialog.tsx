@@ -66,8 +66,10 @@ export function OsDetalhesDialog({ open, onClose, activity, canEdit, onUpdated }
   const updateAppointment = useServerFn(atualizarAgendamento);
   const updateStatus = useServerFn(alterarStatusAgendamento);
 
-  const id = activity?.id ? String(activity.id) : "";
-  const clientId = activity?.client?.id ? String(activity.client.id) : "";
+  const id = activity?.orderId ?? activity?.id;
+  const orderId = id ? String(id) : "";
+  const rawClientId = activity?.clientId ?? activity?.client?.id;
+  const clientId = rawClientId ? String(rawClientId) : "";
 
   const [editing, setEditing] = useState(false);
   const [technicianId, setTechnicianId] = useState("");
@@ -84,8 +86,10 @@ export function OsDetalhesDialog({ open, onClose, activity, canEdit, onUpdated }
     if (!activity) return;
     const dt = splitDateTime(activity.scheduledAt);
     setEditing(false);
-    setTechnicianId(activity.technician?.id ? String(activity.technician.id) : "");
-    setServiceTypeId(activity.serviceType?.id ? String(activity.serviceType.id) : "");
+    const technicianIdValue = activity.technicianId ?? activity.technician?.id;
+    const serviceTypeIdValue = activity.serviceTypeId ?? activity.serviceType?.id;
+    setTechnicianId(technicianIdValue ? String(technicianIdValue) : "");
+    setServiceTypeId(serviceTypeIdValue ? String(serviceTypeIdValue) : "");
     setDate(dt.date);
     setTime(dt.time);
     setDuration(Number(activity.durationMinutes) || 60);
@@ -96,9 +100,9 @@ export function OsDetalhesDialog({ open, onClose, activity, canEdit, onUpdated }
   }, [activity]);
 
   const historyQuery = useQuery({
-    queryKey: ["si-order-history", id],
-    enabled: open && !!id,
-    queryFn: () => loadHistory({ data: { orderId: id } }),
+    queryKey: ["si-order-history", orderId],
+    enabled: open && !!orderId,
+    queryFn: () => loadHistory({ data: { orderId } }),
   });
   const history = useMemo(() => asList(historyQuery.data), [historyQuery.data]);
 
@@ -120,7 +124,7 @@ export function OsDetalhesDialog({ open, onClose, activity, canEdit, onUpdated }
     mutationFn: async () => {
       await updateAppointment({
         data: {
-          appointmentId: id,
+          appointmentId: orderId,
           technicianId: technicianId || undefined,
           serviceTypeId: serviceTypeId || undefined,
           scheduledAt: date ? `${date}T${time}:00-03:00` : undefined,
@@ -131,7 +135,7 @@ export function OsDetalhesDialog({ open, onClose, activity, canEdit, onUpdated }
         },
       });
       if (status && status !== String(activity?.status || "")) {
-        await updateStatus({ data: { appointmentId: id, status } });
+        await updateStatus({ data: { appointmentId: orderId, status } });
       }
     },
     onSuccess: () => {
@@ -146,9 +150,9 @@ export function OsDetalhesDialog({ open, onClose, activity, canEdit, onUpdated }
   const info: [string, string][] = activity
     ? [
         ["Identificador", activity.identifier || "—"],
-        ["Tipo de OS", pick(activity, ["serviceType", "title"], "—")],
-        ["Cliente", pick(activity, ["client"], "—")],
-        ["Técnico", pick(activity, ["technician"], "Sem técnico")],
+        ["Tipo de OS", pick(activity, ["serviceTypeName", "serviceType", "title"], "—")],
+        ["Cliente", pick(activity, ["clientName", "client", "companyName"], "—")],
+        ["Técnico", pick(activity, ["technicianName", "technician"], "Sem técnico")],
         ["Agendamento", formatDateTime(activity.scheduledAt)],
         ["Duração estimada", `${activity.durationMinutes || 60} min`],
         ["Endereço", activity.address || "—"],

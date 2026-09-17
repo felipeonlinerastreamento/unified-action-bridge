@@ -5,9 +5,10 @@ import { AlertTriangle, CalendarPlus, ChevronLeft, ChevronRight, Loader2, Refres
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { useAuth } from "@/hooks/use-auth";
 import { consultarTimeline, listarTecnicos } from "@/lib/seu-instalador.functions";
 import { NovoAgendamentoDialog } from "./novo-agendamento-dialog";
-import { OsHistoricoDialog } from "./os-historico-dialog";
+import { OsDetalhesDialog } from "./os-detalhes-dialog";
 import { asList, errorMessage, pick, shiftDate, todayISO } from "./shared";
 
 const START_HOUR = 7;
@@ -44,9 +45,11 @@ function minutesOfDay(value?: string | null): number | null {
 export function TimelineContent() {
   const fetchTimeline = useServerFn(consultarTimeline);
   const fetchTecnicos = useServerFn(listarTecnicos);
+  const { hasRole } = useAuth();
+  const canEdit = hasRole("admin") || hasRole("gestor");
   const [date, setDate] = useState(todayISO());
   const [createOpen, setCreateOpen] = useState(false);
-  const [detail, setDetail] = useState<{ orderId?: string; clientId?: string; title?: string } | null>(null);
+  const [detail, setDetail] = useState<any | null>(null);
 
   const query = useQuery({
     queryKey: ["si-timeline", date],
@@ -76,7 +79,8 @@ export function TimelineContent() {
     for (const r of rows) {
       const tech = pick(r, ["technicianName", "technician"], "Sem técnico");
       if (!map.has(tech)) map.set(tech, []);
-      map.get(tech)!.push(r);
+      const entries = map.get(tech);
+      if (entries) entries.push(r);
     }
     return Array.from(map.entries());
   }, [rows, technicians]);
@@ -203,13 +207,7 @@ export function TimelineContent() {
                             className={`absolute top-2 h-10 rounded-md px-2 py-1 text-left text-status-foreground overflow-hidden hover:opacity-90 transition-opacity ${st.bg}`}
                             style={{ left, width }}
                             title={`${title}${client ? ` · ${client}` : ""}`}
-                            onClick={() =>
-                              setDetail({
-                                orderId: r.orderId ?? r.id,
-                                clientId: r.clientId ?? r.client?.id,
-                                title: client || title,
-                              })
-                            }
+                            onClick={() => setDetail(r)}
                           >
                             <span className="block text-[11px] font-semibold leading-tight truncate">{title}</span>
                             <span className="block text-[10px] leading-tight truncate opacity-90">{client || "—"}</span>
@@ -226,12 +224,12 @@ export function TimelineContent() {
       )}
 
       <NovoAgendamentoDialog open={createOpen} onClose={() => setCreateOpen(false)} onCreated={() => query.refetch()} />
-      <OsHistoricoDialog
+      <OsDetalhesDialog
         open={!!detail}
         onClose={() => setDetail(null)}
-        orderId={detail?.orderId ?? null}
-        clientId={detail?.clientId ?? null}
-        title={detail?.title}
+        activity={detail}
+        canEdit={canEdit}
+        onUpdated={() => query.refetch()}
       />
     </div>
   );
