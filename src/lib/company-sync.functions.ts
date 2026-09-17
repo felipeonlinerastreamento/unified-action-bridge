@@ -221,6 +221,15 @@ export const createSubClientWithParentCompany = createServerFn({ method: "POST" 
       subClientId = created.id;
     }
 
+    // Keep the linked phone showing this contact's name
+    if (cleanPhone) {
+      await supabase
+        .from("company_phones")
+        .update({ contact_name: data.name.trim() })
+        .eq("phone_number", cleanPhone)
+        .or("contact_name.is.null,contact_name.eq.");
+    }
+
     await updateTicketCompany(supabase, data.ticketId, companyId);
     await writeAuditLog({
       user_id: userId,
