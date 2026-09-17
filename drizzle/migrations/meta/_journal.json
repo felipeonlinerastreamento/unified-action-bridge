@@ -8,6 +8,13 @@
       "when": 1789663049256,
       "tag": "0000_email_channels_connection_key",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1789663677472,
+      "tag": "0001_system_health_monitoring",
+      "breakpoints": true
     }
   ]
 }

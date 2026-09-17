@@ -4628,6 +4628,117 @@ export type Database = {
         }
         Relationships: []
       }
+      system_health_alert_log: {
+        Row: {
+          alert_key: string
+          id: string
+          is_open: boolean
+          last_seen_at: string
+          message: string
+          metadata: Json
+          opened_at: string
+          resolved_at: string | null
+          severity: string
+          title: string
+        }
+        Insert: {
+          alert_key: string
+          id?: string
+          is_open?: boolean
+          last_seen_at?: string
+          message?: string
+          metadata?: Json
+          opened_at?: string
+          resolved_at?: string | null
+          severity?: string
+          title: string
+        }
+        Update: {
+          alert_key?: string
+          id?: string
+          is_open?: boolean
+          last_seen_at?: string
+          message?: string
+          metadata?: Json
+          opened_at?: string
+          resolved_at?: string | null
+          severity?: string
+          title?: string
+        }
+        Relationships: []
+      }
+      system_health_settings: {
+        Row: {
+          alerts_enabled: boolean
+          cache_hit_min_pct: number
+          connections_pct_warn: number
+          created_at: string
+          cron_stale_minutes: number
+          db_growth_limit_mb: number
+          id: string
+          integration_errors_per_hour: number
+          integration_fail_threshold: number
+          muted_until: string | null
+          updated_at: string
+        }
+        Insert: {
+          alerts_enabled?: boolean
+          cache_hit_min_pct?: number
+          connections_pct_warn?: number
+          created_at?: string
+          cron_stale_minutes?: number
+          db_growth_limit_mb?: number
+          id?: string
+          integration_errors_per_hour?: number
+          integration_fail_threshold?: number
+          muted_until?: string | null
+          updated_at?: string
+        }
+        Update: {
+          alerts_enabled?: boolean
+          cache_hit_min_pct?: number
+          connections_pct_warn?: number
+          created_at?: string
+          cron_stale_minutes?: number
+          db_growth_limit_mb?: number
+          id?: string
+          integration_errors_per_hour?: number
+          integration_fail_threshold?: number
+          muted_until?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      system_health_snapshots: {
+        Row: {
+          cache_hit_pct: number
+          captured_at: string
+          connections: number
+          db_size_bytes: number
+          id: string
+          max_connections: number
+          metrics: Json
+        }
+        Insert: {
+          cache_hit_pct?: number
+          captured_at?: string
+          connections?: number
+          db_size_bytes?: number
+          id?: string
+          max_connections?: number
+          metrics?: Json
+        }
+        Update: {
+          cache_hit_pct?: number
+          captured_at?: string
+          connections?: number
+          db_size_bytes?: number
+          id?: string
+          max_connections?: number
+          metrics?: Json
+        }
+        Relationships: []
+      }
       task_categories: {
         Row: {
           color: string
@@ -6355,6 +6466,11 @@ export type Database = {
       }
       presence_end_session: { Args: never; Returns: undefined }
       presence_heartbeat: { Args: never; Returns: undefined }
+      sys_can_monitor: { Args: never; Returns: boolean }
+      sys_cron_runs: { Args: never; Returns: Json }
+      sys_db_health: { Args: never; Returns: Json }
+      sys_slow_queries: { Args: never; Returns: Json }
+      sys_table_sizes: { Args: never; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "gestor" | "atendente"
