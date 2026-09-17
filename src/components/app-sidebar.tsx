@@ -35,6 +35,8 @@ import {
 
 import { Link, useLocation } from "@tanstack/react-router";
 import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { getTopGamificUnseenCount } from "@/lib/topgamific.functions";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
@@ -214,6 +216,16 @@ export function AppSidebar() {
     },
   });
 
+  // Lançamentos novos na gamificação — selo no item "Top Gamific".
+  const fetchGamificUnseen = useServerFn(getTopGamificUnseenCount);
+  const { data: gamificUnseen = 0 } = useQuery({
+    queryKey: ["sidebar-topgamific-unseen", userId],
+    enabled: !!userId,
+    refetchInterval: 120000,
+    staleTime: 60000,
+    queryFn: () => fetchGamificUnseen({ data: undefined }),
+  });
+
   const isConfigActive = location.pathname.startsWith("/configuracoes");
   const isAgendaActive = location.pathname.startsWith("/agenda");
   const isAtendimentosActive = location.pathname.startsWith("/atendimentos");
@@ -302,6 +314,11 @@ export function AppSidebar() {
                       {item.url === "/central" && assignedChats > 0 && (
                         <Badge className="ml-auto h-5 min-w-[20px] px-1 bg-red-600 text-white text-[11px] font-bold animate-pulse">
                           {assignedChats > 99 ? "99+" : assignedChats}
+                        </Badge>
+                      )}
+                      {item.url === "/top-gamific" && gamificUnseen > 0 && (
+                        <Badge className="ml-auto h-5 min-w-[20px] px-1 bg-red-600 text-white text-[11px] font-bold animate-pulse">
+                          {gamificUnseen > 99 ? "99+" : gamificUnseen}
                         </Badge>
                       )}
                       {item.url === "/chat-operadores" && unreadOperatorMsgs > 0 && (

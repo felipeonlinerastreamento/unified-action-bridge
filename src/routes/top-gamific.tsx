@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { AppLayout } from "@/components/app-layout";
 import { useAuth } from "@/hooks/use-auth";
@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Trophy, Coins, Target, RefreshCw, AlertTriangle, Info, Sparkles, TrendingUp, Award, ArrowUpRight, MessageSquare, ThumbsUp, ThumbsDown } from "lucide-react";
-import { getTopGamificOverview } from "@/lib/topgamific.functions";
+import { Checkbox } from "@/components/ui/checkbox";
+import { getTopGamificOverview, ackTopGamificEntries } from "@/lib/topgamific.functions";
 import { getTopGamificAiFeedback } from "@/lib/topgamific-ai.functions";
 
 export const Route = createFileRoute("/top-gamific")({
@@ -52,6 +53,8 @@ function formatDate(value: string) {
 
 function TopGamificContent() {
   const fetchOverview = useServerFn(getTopGamificOverview);
+  const ackEntries = useServerFn(ackTopGamificEntries);
+  const queryClient = useQueryClient();
 
   const { data, isLoading, isFetching, refetch } = useQuery({
     queryKey: ["top-gamific-overview"],
@@ -59,6 +62,29 @@ function TopGamificContent() {
     refetchInterval: 120000,
     staleTime: 60000,
   });
+
+  const unseen = (data?.entries ?? []).filter((e) => !e.acknowledged);
+
+  const markAck = (ids: string[]) => {
+    if (ids.length === 0) return;
+    queryClient.setQueryData(["top-gamific-overview"], (old: any) =>
+      old
+        ? {
+            ...old,
+            entries: old.entries.map((e: any) =>
+              ids.includes(e.id) ? { ...e, acknowledged: true } : e,
+            ),
+            unseenCount: Math.max(0, (old.unseenCount ?? 0) - ids.length),
+          }
+        : old,
+    );
+    ackEntries({ data: { entryIds: ids } })
+      .then(() =>
+        queryClient.invalidateQueries({ queryKey: ["sidebar-topgamific-unseen"] }),
+      )
+      .catch(() => {});
+  };
+
 
   return (
     <div className="p-4 md:p-6 space-y-6">
@@ -157,8 +183,24 @@ function TopGamificContent() {
           </Card>
 
           <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Últimos 3 lançamentos</CardTitle>
+            <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
+              <CardTitle className="text-base flex items-center gap-2">
+                Últimos lançamentos
+                {unseen.length > 0 && (
+                  <Badge className="bg-red-600 text-white hover:bg-red-600">
+                    {unseen.length} novo{unseen.length > 1 ? "s" : ""}
+                  </Badge>
+                )}
+              </CardTitle>
+              {unseen.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => markAck(unseen.map((e) => e.id))}
+                >
+                  Marcar todos como ciente
+                </Button>
+              )}
             </CardHeader>
             <CardContent className="space-y-3">
               {(data?.entries?.length ?? 0) === 0 ? (
@@ -169,12 +211,17 @@ function TopGamificContent() {
                 data!.entries.map((entry) => (
                   <div
                     key={entry.id}
-                    className="flex flex-wrap items-start justify-between gap-3 rounded-lg border p-3"
+                    className={`flex flex-wrap items-start justify-between gap-3 rounded-lg border p-3 ${
+                      entry.acknowledged ? "" : "border-primary/50 bg-primary/5"
+                    }`}
                   >
                     <div className="min-w-0 space-y-1">
                       <div className="flex flex-wrap items-center gap-2">
                         <span className="font-medium">{entry.metricName}</span>
                         {entry.category && <Badge variant="secondary">{entry.category}</Badge>}
+                        {!entry.acknowledged && (
+                          <Badge className="bg-red-600 text-white hover:bg-red-600">Novo</Badge>
+                        )}
                       </div>
                       {entry.notes && (
                         <p className="text-sm text-muted-foreground break-words">{entry.notes}</p>
@@ -190,12 +237,21 @@ function TopGamificContent() {
                         {entry.coins > 0 ? `+${entry.coins}` : entry.coins} moedas
                       </span>
                       {entry.points !== 0 && <span className="font-semibold">{entry.points} pts</span>}
+                      <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
+                        <Checkbox
+                          checked={entry.acknowledged}
+                          disabled={entry.acknowledged}
+                          onCheckedChange={(v) => v && markAck([entry.id])}
+                        />
+                        Ciente
+                      </label>
                     </div>
                   </div>
                 ))
               )}
             </CardContent>
           </Card>
+
 
           <Card>
             <CardHeader>

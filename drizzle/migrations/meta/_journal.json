@@ -29,6 +29,13 @@
       "when": 1789664283183,
       "tag": "0003_indexes_atendimentos_performance",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1789668418591,
+      "tag": "0004_create_topgamific_entry_acks",
+      "breakpoints": true
     }
   ]
 }
