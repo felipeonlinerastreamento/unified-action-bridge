@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { AppLayout } from "@/components/app-layout";
 import { useAuth } from "@/hooks/use-auth";
@@ -8,7 +8,8 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Trophy, Coins, Target, RefreshCw, AlertTriangle, Info, Sparkles, TrendingUp, Award, ArrowUpRight, MessageSquare, ThumbsUp, ThumbsDown } from "lucide-react";
-import { getTopGamificOverview } from "@/lib/topgamific.functions";
+import { Checkbox } from "@/components/ui/checkbox";
+import { getTopGamificOverview, ackTopGamificEntries } from "@/lib/topgamific.functions";
 import { getTopGamificAiFeedback } from "@/lib/topgamific-ai.functions";
 
 export const Route = createFileRoute("/top-gamific")({
