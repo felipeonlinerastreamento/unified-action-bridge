@@ -192,10 +192,87 @@ export const getTopGamificOverview = createServerFn({ method: "POST" })
       ok: true,
       error: null,
       userName,
-      entries: mine.slice(0, 3),
+      entries: mine.slice(0, 10),
       totalEntries: mine.length,
       totalCoins: mine.reduce((sum, e) => sum + e.coins, 0),
       totalPoints: mine.reduce((sum, e) => sum + e.points, 0),
       missions,
+      unseenCount: mine.filter((e) => !e.acknowledged).length,
     };
+  });
+
+export const getTopGamificUnseenCount = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }): Promise<number> => {
+    const apiKey = process.env["TOPGAMIFIC_API_KEY"];
+    if (!apiKey) return 0;
+
+    const { data: profile } = await context.supabase
+      .from("profiles")
+      .select("name")
+      .eq("user_id", context.userId)
+      .maybeSingle();
+    const userName = profile?.name?.trim() ?? "";
+    if (!userName) return 0;
+
+    const now = new Date();
+    const iso = (d: Date) => d.toISOString().slice(0, 10);
+    const entriesRaw = await fetchJson(
+      `/entries?from=${iso(new Date(now.getTime() - 90 * 24 * 60 * 60 * 1000))}&to=${iso(
+        new Date(now.getTime() + 24 * 60 * 60 * 1000),
+      )}`,
+      apiKey,
+    );
+    if (!entriesRaw) return 0;
+
+    const rawEntries: any[] = Array.isArray(entriesRaw?.entries)
+      ? entriesRaw.entries
+      : Array.isArray(entriesRaw)
+        ? entriesRaw
+        : [];
+    const myIds = rawEntries
+      .filter((e) => sameUser(String(e?.user?.name ?? ""), userName))
+      .map((e) => String(e.id));
+    if (myIds.length === 0) return 0;
+
+    const { data: ackRows } = await context.supabase
+      .from("topgamific_entry_acks")
+      .select("entry_id")
+      .eq("user_id", context.userId);
+    const ackIds = new Set((ackRows ?? []).map((r: any) => String(r.entry_id)));
+
+    // Primeira vez: nada é novidade.
+    if (ackIds.size === 0) {
+      await context.supabase
+        .from("topgamific_entry_acks")
+        .upsert(
+          myIds.map((id) => ({ user_id: context.userId, entry_id: id })),
+          { onConflict: "user_id,entry_id", ignoreDuplicates: true },
+        );
+      return 0;
+    }
+
+    return myIds.filter((id) => !ackIds.has(id)).length;
+  });
+
+export const ackTopGamificEntries = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { entryIds: string[] }) => ({
+    entryIds: Array.from(
+      new Set((input?.entryIds ?? []).map((id) => String(id)).filter(Boolean)),
+    ).slice(0, 200),
+  }))
+  .handler(async ({ data, context }): Promise<{ ok: boolean }> => {
+    if (data.entryIds.length === 0) return { ok: true };
+    const { error } = await context.supabase
+      .from("topgamific_entry_acks")
+      .upsert(
+        data.entryIds.map((id) => ({ user_id: context.userId, entry_id: id })),
+        { onConflict: "user_id,entry_id", ignoreDuplicates: true },
+      );
+    if (error) {
+      console.error("Erro ao marcar ciência do lançamento:", error);
+      return { ok: false };
+    }
+    return { ok: true };
   });
