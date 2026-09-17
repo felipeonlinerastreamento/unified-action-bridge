@@ -24,8 +24,10 @@ import { Route as ChatOperadoresRouteImport } from './routes/chat-operadores'
 import { Route as CentralRouteImport } from './routes/central'
 import { Route as AtendimentosRouteImport } from './routes/atendimentos'
 import { Route as AssistenteIaRouteImport } from './routes/assistente-ia'
+import { Route as AgendaRouteImport } from './routes/agenda'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ConfiguracoesIndexRouteImport } from './routes/configuracoes.index'
+import { Route as AgendaIndexRouteImport } from './routes/agenda.index'
 import { Route as HooksRefreshTrackingRouteImport } from './routes/hooks/refresh-tracking'
 import { Route as ConfiguracoesZapiRouteImport } from './routes/configuracoes.zapi'
 import { Route as ConfiguracoesUsuariosRouteImport } from './routes/configuracoes.usuarios'
@@ -42,6 +44,8 @@ import { Route as ConfiguracoesAutomacaoSemComunicacaoRouteImport } from './rout
 import { Route as ConfiguracoesAuditoriaRouteImport } from './routes/configuracoes.auditoria'
 import { Route as ConfiguracoesAssistenteIaRouteImport } from './routes/configuracoes.assistente-ia'
 import { Route as AtendimentosTarefasRouteImport } from './routes/atendimentos_.tarefas'
+import { Route as AgendaTimelineRouteImport } from './routes/agenda.timeline'
+import { Route as AgendaAtividadesRouteImport } from './routes/agenda.atividades'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as ApiPublicEmailPollRouteImport } from './routes/api.public.email-poll'
 import { Route as ApiPublicCrmDailyRouteImport } from './routes/api.public.crm-daily'
@@ -129,6 +133,11 @@ const AssistenteIaRoute = AssistenteIaRouteImport.update({
   path: '/assistente-ia',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AgendaRoute = AgendaRouteImport.update({
+  id: '/agenda',
+  path: '/agenda',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -138,6 +147,11 @@ const ConfiguracoesIndexRoute = ConfiguracoesIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => ConfiguracoesRoute,
+} as any)
+const AgendaIndexRoute = AgendaIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => AgendaRoute,
 } as any)
 const HooksRefreshTrackingRoute = HooksRefreshTrackingRouteImport.update({
   id: '/hooks/refresh-tracking',
@@ -229,6 +243,16 @@ const AtendimentosTarefasRoute = AtendimentosTarefasRouteImport.update({
   path: '/atendimentos/tarefas',
   getParentRoute: () => rootRouteImport,
 } as any)
+const AgendaTimelineRoute = AgendaTimelineRouteImport.update({
+  id: '/timeline',
+  path: '/timeline',
+  getParentRoute: () => AgendaRoute,
+} as any)
+const AgendaAtividadesRoute = AgendaAtividadesRouteImport.update({
+  id: '/atividades',
+  path: '/atividades',
+  getParentRoute: () => AgendaRoute,
+} as any)
 const Char91DotwellKnownChar93OauthProtectedResourceRoute =
   Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
     id: '/.well-known/oauth-protected-resource',
@@ -293,6 +317,7 @@ const ApiPublicHooksSyncGsystemEquipamentosRoute =
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/agenda': typeof AgendaRouteWithChildren
   '/assistente-ia': typeof AssistenteIaRoute
   '/atendimentos': typeof AtendimentosRoute
   '/central': typeof CentralRoute
@@ -309,6 +334,8 @@ export interface FileRoutesByFullPath {
   '/top-gamific': typeof TopGamificRoute
   '/tratativas': typeof TratativasRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/agenda/atividades': typeof AgendaAtividadesRoute
+  '/agenda/timeline': typeof AgendaTimelineRoute
   '/atendimentos/tarefas': typeof AtendimentosTarefasRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
   '/configuracoes/auditoria': typeof ConfiguracoesAuditoriaRoute
@@ -325,6 +352,7 @@ export interface FileRoutesByFullPath {
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
   '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
+  '/agenda/': typeof AgendaIndexRoute
   '/configuracoes/': typeof ConfiguracoesIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/api/public/auto-route-aguardando': typeof ApiPublicAutoRouteAguardandoRoute
@@ -354,6 +382,8 @@ export interface FileRoutesByTo {
   '/top-gamific': typeof TopGamificRoute
   '/tratativas': typeof TratativasRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/agenda/atividades': typeof AgendaAtividadesRoute
+  '/agenda/timeline': typeof AgendaTimelineRoute
   '/atendimentos/tarefas': typeof AtendimentosTarefasRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
   '/configuracoes/auditoria': typeof ConfiguracoesAuditoriaRoute
@@ -370,6 +400,7 @@ export interface FileRoutesByTo {
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
   '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
+  '/agenda': typeof AgendaIndexRoute
   '/configuracoes': typeof ConfiguracoesIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/api/public/auto-route-aguardando': typeof ApiPublicAutoRouteAguardandoRoute
@@ -385,6 +416,7 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/agenda': typeof AgendaRouteWithChildren
   '/assistente-ia': typeof AssistenteIaRoute
   '/atendimentos': typeof AtendimentosRoute
   '/central': typeof CentralRoute
@@ -401,6 +433,8 @@ export interface FileRoutesById {
   '/top-gamific': typeof TopGamificRoute
   '/tratativas': typeof TratativasRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
+  '/agenda/atividades': typeof AgendaAtividadesRoute
+  '/agenda/timeline': typeof AgendaTimelineRoute
   '/atendimentos_/tarefas': typeof AtendimentosTarefasRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
   '/configuracoes/auditoria': typeof ConfiguracoesAuditoriaRoute
@@ -417,6 +451,7 @@ export interface FileRoutesById {
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
   '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
+  '/agenda/': typeof AgendaIndexRoute
   '/configuracoes/': typeof ConfiguracoesIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/api/public/auto-route-aguardando': typeof ApiPublicAutoRouteAguardandoRoute
@@ -433,6 +468,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/agenda'
     | '/assistente-ia'
     | '/atendimentos'
     | '/central'
@@ -449,6 +485,8 @@ export interface FileRouteTypes {
     | '/top-gamific'
     | '/tratativas'
     | '/.well-known/oauth-protected-resource'
+    | '/agenda/atividades'
+    | '/agenda/timeline'
     | '/atendimentos/tarefas'
     | '/configuracoes/assistente-ia'
     | '/configuracoes/auditoria'
@@ -465,6 +503,7 @@ export interface FileRouteTypes {
     | '/configuracoes/usuarios'
     | '/configuracoes/zapi'
     | '/hooks/refresh-tracking'
+    | '/agenda/'
     | '/configuracoes/'
     | '/.lovable/oauth/consent'
     | '/api/public/auto-route-aguardando'
@@ -494,6 +533,8 @@ export interface FileRouteTypes {
     | '/top-gamific'
     | '/tratativas'
     | '/.well-known/oauth-protected-resource'
+    | '/agenda/atividades'
+    | '/agenda/timeline'
     | '/atendimentos/tarefas'
     | '/configuracoes/assistente-ia'
     | '/configuracoes/auditoria'
@@ -510,6 +551,7 @@ export interface FileRouteTypes {
     | '/configuracoes/usuarios'
     | '/configuracoes/zapi'
     | '/hooks/refresh-tracking'
+    | '/agenda'
     | '/configuracoes'
     | '/.lovable/oauth/consent'
     | '/api/public/auto-route-aguardando'
@@ -524,6 +566,7 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/agenda'
     | '/assistente-ia'
     | '/atendimentos'
     | '/central'
@@ -540,6 +583,8 @@ export interface FileRouteTypes {
     | '/top-gamific'
     | '/tratativas'
     | '/.well-known/oauth-protected-resource'
+    | '/agenda/atividades'
+    | '/agenda/timeline'
     | '/atendimentos_/tarefas'
     | '/configuracoes/assistente-ia'
     | '/configuracoes/auditoria'
@@ -556,6 +601,7 @@ export interface FileRouteTypes {
     | '/configuracoes/usuarios'
     | '/configuracoes/zapi'
     | '/hooks/refresh-tracking'
+    | '/agenda/'
     | '/configuracoes/'
     | '/.lovable/oauth/consent'
     | '/api/public/auto-route-aguardando'
@@ -571,6 +617,7 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AgendaRoute: typeof AgendaRouteWithChildren
   AssistenteIaRoute: typeof AssistenteIaRoute
   AtendimentosRoute: typeof AtendimentosRoute
   CentralRoute: typeof CentralRoute
@@ -708,6 +755,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AssistenteIaRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/agenda': {
+      id: '/agenda'
+      path: '/agenda'
+      fullPath: '/agenda'
+      preLoaderRoute: typeof AgendaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -721,6 +775,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/configuracoes/'
       preLoaderRoute: typeof ConfiguracoesIndexRouteImport
       parentRoute: typeof ConfiguracoesRoute
+    }
+    '/agenda/': {
+      id: '/agenda/'
+      path: '/'
+      fullPath: '/agenda/'
+      preLoaderRoute: typeof AgendaIndexRouteImport
+      parentRoute: typeof AgendaRoute
     }
     '/hooks/refresh-tracking': {
       id: '/hooks/refresh-tracking'
@@ -834,6 +895,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AtendimentosTarefasRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/agenda/timeline': {
+      id: '/agenda/timeline'
+      path: '/timeline'
+      fullPath: '/agenda/timeline'
+      preLoaderRoute: typeof AgendaTimelineRouteImport
+      parentRoute: typeof AgendaRoute
+    }
+    '/agenda/atividades': {
+      id: '/agenda/atividades'
+      path: '/atividades'
+      fullPath: '/agenda/atividades'
+      preLoaderRoute: typeof AgendaAtividadesRouteImport
+      parentRoute: typeof AgendaRoute
+    }
     '/.well-known/oauth-protected-resource': {
       id: '/.well-known/oauth-protected-resource'
       path: '/.well-known/oauth-protected-resource'
@@ -914,6 +989,21 @@ declare module '@tanstack/react-router' {
   }
 }
 
+interface AgendaRouteChildren {
+  AgendaAtividadesRoute: typeof AgendaAtividadesRoute
+  AgendaTimelineRoute: typeof AgendaTimelineRoute
+  AgendaIndexRoute: typeof AgendaIndexRoute
+}
+
+const AgendaRouteChildren: AgendaRouteChildren = {
+  AgendaAtividadesRoute: AgendaAtividadesRoute,
+  AgendaTimelineRoute: AgendaTimelineRoute,
+  AgendaIndexRoute: AgendaIndexRoute,
+}
+
+const AgendaRouteWithChildren =
+  AgendaRoute._addFileChildren(AgendaRouteChildren)
+
 interface ConfiguracoesRouteChildren {
   ConfiguracoesAssistenteIaRoute: typeof ConfiguracoesAssistenteIaRoute
   ConfiguracoesAuditoriaRoute: typeof ConfiguracoesAuditoriaRoute
@@ -957,6 +1047,7 @@ const ConfiguracoesRouteWithChildren = ConfiguracoesRoute._addFileChildren(
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AgendaRoute: AgendaRouteWithChildren,
   AssistenteIaRoute: AssistenteIaRoute,
   AtendimentosRoute: AtendimentosRoute,
   CentralRoute: CentralRoute,

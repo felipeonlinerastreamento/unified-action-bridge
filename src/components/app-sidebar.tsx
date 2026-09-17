@@ -29,6 +29,7 @@ import {
   FileText,
   Monitor,
   Trophy,
+  CalendarDays,
 } from "lucide-react";
 
 
@@ -79,6 +80,11 @@ const mainItems = [
 const atendimentosSubItems: { title: string; url: string; icon: typeof List }[] = [
   { title: "Lista", url: "/atendimentos", icon: List },
   // { title: "Tarefas", url: "/atendimentos/tarefas", icon: CheckSquare }, // inativado
+];
+
+const agendaSubItems = [
+  { title: "Atividades", url: "/agenda/atividades", icon: List },
+  { title: "Timeline", url: "/agenda/timeline", icon: Activity },
 ];
 
 const configSubItems = [
@@ -209,6 +215,7 @@ export function AppSidebar() {
   });
 
   const isConfigActive = location.pathname.startsWith("/configuracoes");
+  const isAgendaActive = location.pathname.startsWith("/agenda");
   const isAtendimentosActive = location.pathname.startsWith("/atendimentos");
 
   const canSeeUrl = (url: string) => {
@@ -219,6 +226,8 @@ export function AppSidebar() {
 
   const visibleConfigItems = configSubItems.filter((sub) => canSeeUrl(sub.url));
   const showConfigMenu = isAdmin || visibleConfigItems.length > 0;
+
+  const visibleAgendaItems = agendaSubItems.filter((sub) => canSeeUrl(sub.url));
 
 
 
@@ -319,6 +328,35 @@ export function AppSidebar() {
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
+              )}
+
+              {/* Agenda com submenus */}
+              {visibleAgendaItems.length > 0 && (
+                <Collapsible defaultOpen={isAgendaActive} className="group/collapsible">
+                  <SidebarMenuItem>
+                    <CollapsibleTrigger asChild>
+                      <SidebarMenuButton isActive={isAgendaActive} tooltip="Agenda">
+                        <CalendarDays className="h-4 w-4" />
+                        <span>Agenda</span>
+                        <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                      </SidebarMenuButton>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <SidebarMenuSub>
+                        {visibleAgendaItems.map((sub) => (
+                          <SidebarMenuSubItem key={sub.title}>
+                            <SidebarMenuSubButton asChild isActive={location.pathname === sub.url}>
+                              <Link to={sub.url}>
+                                <sub.icon className="h-3.5 w-3.5" />
+                                <span>{sub.title}</span>
+                              </Link>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    </CollapsibleContent>
+                  </SidebarMenuItem>
+                </Collapsible>
               )}
 
               {/* Configurações com submenus */}
