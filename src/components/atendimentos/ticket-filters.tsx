@@ -164,6 +164,7 @@ export function TicketFiltersBar({ filters, onChange, tickets, profiles, open, o
     if (filters.trackingStatus !== "todos") c++;
     if (filters.recurring !== "todos") c++;
     if (filters.controleSheet !== "todos") c++;
+    if (filters.periodDays !== defaultFilters.periodDays) c++;
     return c;
   }, [filters]);
 
