@@ -74,6 +74,7 @@ export function EmailChannelsConfig() {
           ignore_domains: form.ignore_domains.split(",").map(s => s.trim()).filter(Boolean),
           ignore_emails: form.ignore_emails.split(",").map(s => s.trim()).filter(Boolean),
           mark_as_read: form.mark_as_read,
+          connection_key: form.connection_key,
         },
       }),
     onSuccess: () => {
@@ -225,6 +226,7 @@ export function EmailChannelsConfig() {
                     ignore_domains: (c.ignore_domains || []).join(", "),
                     ignore_emails: (c.ignore_emails || []).join(", "),
                     mark_as_read: c.mark_as_read,
+                    connection_key: c.connection_key || "MICROSOFT_OUTLOOK_API_KEY",
                   })}>Editar</Button>
                   <Button variant="ghost" size="sm" onClick={() => {
                     if (confirm(`Remover canal "${c.name}"?`)) del.mutate(c.id);
