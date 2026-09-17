@@ -9,8 +9,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { listarAtividades } from "@/lib/seu-instalador.functions";
+import { useAuth } from "@/hooks/use-auth";
 import { NovoAgendamentoDialog } from "./novo-agendamento-dialog";
-import { OsHistoricoDialog } from "./os-historico-dialog";
+import { OsDetalhesDialog } from "./os-detalhes-dialog";
 import { asList, errorMessage, formatDateTime, pick, shiftDate, todayISO } from "./shared";
 
 const STATUS_OPTIONS = [
@@ -28,6 +29,7 @@ const PAGE_SIZE = 50;
 
 function row(r: any) {
   return {
+    raw: r,
     id: String(r.id ?? r.orderId ?? ""),
     orderId: r.orderId ?? r.id,
     clientId: r.clientId ?? r.client?.id,
