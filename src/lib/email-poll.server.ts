@@ -147,7 +147,7 @@ export async function pollEmailChannel(channelId: string): Promise<PollResult> {
 
       // Marca como lido no Outlook
       if (channel.mark_as_read) {
-        await markMessageAsRead(msg.id).catch((e) => {
+        await markMessageAsRead(ctx, msg.id).catch((e) => {
           result.errors.push(`Marcar lido (${msg.id}): ${e?.message || e}`);
         });
       }
