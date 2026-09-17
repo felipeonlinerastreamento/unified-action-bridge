@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Loader2, Pencil } from "lucide-react";
+import { FileDown, ImageOff, Loader2, Pencil } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -18,7 +18,8 @@ import {
   listarTecnicos,
   tiposDeServicoDoCliente,
 } from "@/lib/seu-instalador.functions";
-import { asList, errorMessage, formatDateTime, pick } from "./shared";
+import { asList, errorMessage, formatDateTime, osPhotos, pick, saoPauloParts } from "./shared";
+import { gerarPdfOsCompleta } from "./os-pdf";
 
 const STATUS_VALUES = [
   "em_aberto",
@@ -49,14 +50,9 @@ interface Props {
 }
 
 function splitDateTime(value?: string | null) {
-  if (!value) return { date: "", time: "09:00" };
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return { date: "", time: "09:00" };
-  const pad = (n: number) => String(n).padStart(2, "0");
-  return {
-    date: `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`,
-    time: `${pad(d.getHours())}:${pad(d.getMinutes())}`,
-  };
+  const p = saoPauloParts(value);
+  if (!p) return { date: "", time: "09:00" };
+  return { date: p.date, time: p.time };
 }
 
 export function OsDetalhesDialog({ open, onClose, activity, canEdit, onUpdated }: Props) {
