@@ -156,7 +156,7 @@ export const linkPhoneToCompany = createServerFn({ method: "POST" })
         });
         if (insertError) throw new Error(insertError.message);
       } else {
-        const patch: Record<string, any> = {};
+        const patch: { company_id?: string; contact_name?: string } = {};
         if (existing.company_id !== companyId) patch.company_id = companyId;
         if (contactName && !String(existing.contact_name || "").trim())
           patch.contact_name = contactName;
