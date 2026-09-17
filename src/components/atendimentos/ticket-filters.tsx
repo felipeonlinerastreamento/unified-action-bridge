@@ -205,6 +205,22 @@ export function TicketFiltersBar({ filters, onChange, tickets, profiles, open, o
       <Collapsible open={open}>
         <CollapsibleContent>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3 p-4 rounded-lg border bg-muted/30">
+            {/* Período carregado */}
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Período</label>
+              <Select
+                value={filters.periodDays === null ? "all" : String(filters.periodDays)}
+                onValueChange={(v) => set({ periodDays: v === "all" ? null : Number(v) })}
+              >
+                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  {PERIOD_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Status */}
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground">Status</label>
