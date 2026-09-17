@@ -226,6 +226,8 @@ export function AppSidebar() {
   const visibleConfigItems = configSubItems.filter((sub) => canSeeUrl(sub.url));
   const showConfigMenu = isAdmin || visibleConfigItems.length > 0;
 
+  const visibleAgendaItems = agendaSubItems.filter((sub) => canSeeUrl(sub.url));
+
 
 
   return (
