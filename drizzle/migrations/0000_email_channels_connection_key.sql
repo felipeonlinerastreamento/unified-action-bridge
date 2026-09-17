@@ -1,0 +1,2 @@
+ALTER TABLE public.email_channels
+  ADD COLUMN IF NOT EXISTS connection_key text NOT NULL DEFAULT 'MICROSOFT_OUTLOOK_API_KEY';

@@ -2609,6 +2609,7 @@ export type Database = {
       }
       email_channels: {
         Row: {
+          connection_key: string
           created_at: string
           created_by: string | null
           default_priority: Database["public"]["Enums"]["ticket_priority"]
@@ -2627,6 +2628,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          connection_key?: string
           created_at?: string
           created_by?: string | null
           default_priority?: Database["public"]["Enums"]["ticket_priority"]
@@ -2645,6 +2647,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          connection_key?: string
           created_at?: string
           created_by?: string | null
           default_priority?: Database["public"]["Enums"]["ticket_priority"]
