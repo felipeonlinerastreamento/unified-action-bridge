@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { consultarTimeline, listarTecnicos } from "@/lib/seu-instalador.functions";
 import { NovoAgendamentoDialog } from "./novo-agendamento-dialog";
 import { OsDetalhesDialog } from "./os-detalhes-dialog";
-import { asList, errorMessage, pick, shiftDate, todayISO } from "./shared";
+import { asList, errorMessage, formatTime, minutesOfDaySP, pick, shiftDate, todayISO } from "./shared";
 
 const START_HOUR = 7;
 const END_HOUR = 20;
@@ -35,11 +35,11 @@ function statusStyle(status: string) {
 
 function minutesOfDay(value?: string | null): number | null {
   if (!value) return null;
-  const m = String(value).match(/T(\d{2}):(\d{2})/) ?? String(value).match(/^(\d{2}):(\d{2})/);
-  if (m) return Number(m[1]) * 60 + Number(m[2]);
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return null;
-  return d.getHours() * 60 + d.getMinutes();
+  const raw = String(value);
+  // Apenas hora solta ("09:00") já vem no fuso local.
+  const onlyTime = raw.match(/^(\d{2}):(\d{2})$/);
+  if (onlyTime) return Number(onlyTime[1]) * 60 + Number(onlyTime[2]);
+  return minutesOfDaySP(raw);
 }
 
 export function TimelineContent() {
@@ -191,7 +191,8 @@ export function TimelineContent() {
                       </div>
 
                       {list.map((r: any, i: number) => {
-                        const start = minutesOfDay(r.scheduledAt ?? r.startAt ?? r.scheduledTime);
+                        const when = r.scheduledAt ?? r.startAt ?? r.scheduledTime;
+                        const start = minutesOfDay(when);
                         if (start === null) return null;
                         const duration = Number(r.durationMinutes ?? r.duration ?? 60) || 60;
                         const offset = Math.max(0, start - START_HOUR * 60);
@@ -200,16 +201,19 @@ export function TimelineContent() {
                         const st = statusStyle(pick(r, ["statusName", "status"], ""));
                         const title = pick(r, ["serviceTypeName", "serviceType", "title"], "Atendimento");
                         const client = pick(r, ["clientName", "client"], "");
+                        const hour = formatTime(when);
                         return (
                           <button
                             key={r.id ?? i}
                             type="button"
                             className={`absolute top-2 h-10 rounded-md px-2 py-1 text-left text-status-foreground overflow-hidden hover:opacity-90 transition-opacity ${st.bg}`}
                             style={{ left, width }}
-                            title={`${title}${client ? ` · ${client}` : ""}`}
+                            title={`${hour} · ${title}${client ? ` · ${client}` : ""}`}
                             onClick={() => setDetail(r)}
                           >
-                            <span className="block text-[11px] font-semibold leading-tight truncate">{title}</span>
+                            <span className="block text-[11px] font-semibold leading-tight truncate">
+                              {hour} {title}
+                            </span>
                             <span className="block text-[10px] leading-tight truncate opacity-90">{client || "—"}</span>
                           </button>
                         );

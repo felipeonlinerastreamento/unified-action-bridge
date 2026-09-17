@@ -13,6 +13,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { NovoAgendamentoDialog } from "./novo-agendamento-dialog";
 import { OsDetalhesDialog } from "./os-detalhes-dialog";
 import { asList, errorMessage, formatDateTime, pick, shiftDate, todayISO } from "./shared";
+import { gerarPdfOsCompleta } from "./os-pdf";
 
 const STATUS_OPTIONS = [
   "Em aberto",
@@ -105,47 +106,7 @@ export function AtividadesContent() {
 
   async function baixarPdf(r: ReturnType<typeof row>) {
     try {
-      const { jsPDF } = await import("jspdf");
-      const doc = new jsPDF({ unit: "pt", format: "a4" });
-      const left = 48;
-      let y = 60;
-      doc.setFontSize(16);
-      doc.text("Ordem de Serviço", left, y);
-      y += 10;
-      doc.setDrawColor(200);
-      doc.line(left, y, 547, y);
-      y += 24;
-      doc.setFontSize(11);
-      const lines: [string, string][] = [
-        ["Identificador", r.identifier],
-        ["Título", r.title],
-        ["Status", r.status],
-        ["Empresa", r.company],
-        ["Técnico", r.technician],
-        ["Agendamento", formatDateTime(r.scheduledAt)],
-        ["Endereço", r.address || "—"],
-      ];
-      for (const [label, value] of lines) {
-        doc.setFont("helvetica", "bold");
-        doc.text(`${label}:`, left, y);
-        doc.setFont("helvetica", "normal");
-        doc.text(doc.splitTextToSize(String(value || "—"), 360), left + 110, y);
-        y += 22;
-      }
-      if (r.description) {
-        y += 8;
-        doc.setFont("helvetica", "bold");
-        doc.text("Descrição:", left, y);
-        y += 16;
-        doc.setFont("helvetica", "normal");
-        const body = doc.splitTextToSize(r.description, 470) as string[];
-        doc.text(body, left, y);
-        y += body.length * 14;
-      }
-      doc.setFontSize(9);
-      doc.setTextColor(130);
-      doc.text(`Gerado em ${new Date().toLocaleString("pt-BR")}`, left, 800);
-      doc.save(`OS-${r.identifier !== "—" ? r.identifier : r.id || "detalhe"}.pdf`);
+      await gerarPdfOsCompleta(r.raw);
     } catch (e) {
       toast.error(errorMessage(e));
     }
