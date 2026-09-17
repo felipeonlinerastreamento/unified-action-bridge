@@ -329,6 +329,35 @@ export function AppSidebar() {
                 </SidebarMenuItem>
               )}
 
+              {/* Agenda com submenus */}
+              {visibleAgendaItems.length > 0 && (
+                <Collapsible defaultOpen={isAgendaActive} className="group/collapsible">
+                  <SidebarMenuItem>
+                    <CollapsibleTrigger asChild>
+                      <SidebarMenuButton isActive={isAgendaActive} tooltip="Agenda">
+                        <CalendarDays className="h-4 w-4" />
+                        <span>Agenda</span>
+                        <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                      </SidebarMenuButton>
+                    </CollapsibleTrigger>
+                    <CollapsibleContent>
+                      <SidebarMenuSub>
+                        {visibleAgendaItems.map((sub) => (
+                          <SidebarMenuSubItem key={sub.title}>
+                            <SidebarMenuSubButton asChild isActive={location.pathname === sub.url}>
+                              <Link to={sub.url}>
+                                <sub.icon className="h-3.5 w-3.5" />
+                                <span>{sub.title}</span>
+                              </Link>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        ))}
+                      </SidebarMenuSub>
+                    </CollapsibleContent>
+                  </SidebarMenuItem>
+                </Collapsible>
+              )}
+
               {/* Configurações com submenus */}
               {showConfigMenu && (
                 <Collapsible defaultOpen={isConfigActive} className="group/collapsible">
