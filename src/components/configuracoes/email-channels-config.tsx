@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import { Mail, RefreshCw, Trash2, Plus, CheckCircle2, AlertCircle, Loader2, Copy, Check } from "lucide-react";
+import { Mail, RefreshCw, Trash2, Plus, CheckCircle2, AlertCircle, Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,7 @@ interface ChannelForm {
   ignore_domains: string;
   ignore_emails: string;
   mark_as_read: boolean;
+  connection_key: string;
 }
 
 const emptyForm: ChannelForm = {
@@ -40,13 +41,14 @@ const emptyForm: ChannelForm = {
   ignore_domains: "",
   ignore_emails: "",
   mark_as_read: true,
+  connection_key: "MICROSOFT_OUTLOOK_API_KEY",
 };
 
 export function EmailChannelsConfig() {
   const qc = useQueryClient();
   const [editing, setEditing] = useState<ChannelForm | null>(null);
   const [polling, setPolling] = useState<string | null>(null);
-  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  
 
   const conn = useQuery({
     queryKey: ["outlook-connection"],
