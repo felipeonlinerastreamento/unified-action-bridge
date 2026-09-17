@@ -82,6 +82,7 @@ export const getTopGamificOverview = createServerFn({ method: "POST" })
       totalCoins: 0,
       totalPoints: 0,
       missions: [],
+      unseenCount: 0,
     };
 
     const apiKey = process.env["TOPGAMIFIC_API_KEY"];
@@ -137,8 +138,29 @@ export const getTopGamificOverview = createServerFn({ method: "POST" })
         coins: Number(e?.coins ?? 0),
         points: Number(e?.points ?? 0),
         notes: e?.notes ?? null,
+        acknowledged: false,
       }))
       .sort((a, b) => (a.date < b.date ? 1 : -1));
+
+    // Marca quais lançamentos o usuário já deu ciência.
+    const { data: ackRows } = await context.supabase
+      .from("topgamific_entry_acks")
+      .select("entry_id")
+      .eq("user_id", context.userId);
+    let ackIds = new Set((ackRows ?? []).map((r: any) => String(r.entry_id)));
+
+    // Primeira vez: considera tudo o que já existe como visto.
+    if (ackIds.size === 0 && mine.length > 0) {
+      await context.supabase
+        .from("topgamific_entry_acks")
+        .upsert(
+          mine.map((e) => ({ user_id: context.userId, entry_id: e.id })),
+          { onConflict: "user_id,entry_id", ignoreDuplicates: true },
+        );
+      ackIds = new Set(mine.map((e) => e.id));
+    }
+
+    for (const e of mine) e.acknowledged = ackIds.has(e.id);
 
     const rawMissions: any[] = Array.isArray(missionsRaw?.missions)
       ? missionsRaw.missions
