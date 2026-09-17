@@ -66,6 +66,7 @@ export const defaultFilters: TicketFilters = {
   trackingStatus: "todos",
   recurring: "todos",
   controleSheet: "todos",
+  periodDays: 90,
 };
 
 interface Props {
