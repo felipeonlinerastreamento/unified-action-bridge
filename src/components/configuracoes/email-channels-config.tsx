@@ -94,12 +94,6 @@ export function EmailChannelsConfig() {
     onError: (e: any) => toast.error(e?.message || "Erro ao remover"),
   });
 
-  function copyToClipboard(text: string) {
-    navigator.clipboard.writeText(text);
-    setCopiedKey(text);
-    toast.success(`Copiado: ${text}`);
-    setTimeout(() => setCopiedKey(null), 2000);
-  }
 
   async function pollNow(channelId: string) {
     setPolling(channelId);
