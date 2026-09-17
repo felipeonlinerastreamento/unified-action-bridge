@@ -26,6 +26,7 @@ import {
 import {
   MessageSquare, Clock, Users, Building2, Package, TrendingUp,
   Loader2, Sparkles, BarChart3, PieChart as PieChartIcon, Activity, Bell, Trophy, PackageX, AlertTriangle, Wrench,
+  ServerCog,
 } from "lucide-react";
 import { OperatorPerformanceTab } from "@/components/relatorios/operator-performance-tab";
 import { RemindersTab } from "@/components/relatorios/reminders-tab";
@@ -41,6 +42,7 @@ import { AiSummaryTab } from "@/components/relatorios/ai-summary-tab";
 import { TicketsReportTab } from "@/components/relatorios/tickets-report-tab";
 import { ServicesReportTab } from "@/components/relatorios/services-report-tab";
 import { CustomerRetentionTab } from "@/components/relatorios/customer-retention-tab";
+import { SystemHealthTab } from "@/components/relatorios/system-health-tab";
 
 export const Route = createFileRoute("/relatorios")({
   component: RelatoriosPage,
@@ -454,6 +456,11 @@ function RelatoriosPage() {
               {canSeeErrors && (
                 <TabsTrigger value="erros" className="gap-1 text-xs">
                   <AlertTriangle className="h-3.5 w-3.5" /> Erros & Valores
+                </TabsTrigger>
+              )}
+              {canSeeErrors && (
+                <TabsTrigger value="sistema" className="gap-1 text-xs">
+                  <ServerCog className="h-3.5 w-3.5" /> Sistema
                 </TabsTrigger>
               )}
             </TabsList>
@@ -894,6 +901,12 @@ function RelatoriosPage() {
             {canSeeErrors && (
               <TabsContent value="erros" className="space-y-4">
                 <ErrorsReportTab dateFrom={dateFrom} dateTo={dateTo} />
+              </TabsContent>
+            )}
+
+            {canSeeErrors && (
+              <TabsContent value="sistema" className="space-y-4">
+                <SystemHealthTab isAdmin={hasRole("admin")} />
               </TabsContent>
             )}
           </Tabs>
