@@ -39,6 +39,7 @@ const upsertSchema = z.object({
   ignore_domains: z.array(z.string().min(1).max(255)).default([]),
   ignore_emails: z.array(z.string().email()).default([]),
   mark_as_read: z.boolean().default(true),
+  connection_key: z.string().min(1).max(100).default("MICROSOFT_OUTLOOK_API_KEY"),
 });
 
 export const upsertEmailChannel = createServerFn({ method: "POST" })
