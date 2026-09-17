@@ -1,6 +1,14 @@
 // Lógica de polling de e-mails Office 365 e criação automática de atendimentos
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
-import { listUnreadMessages, markMessageAsRead, htmlToPlainText, type OutlookMessage } from "./outlook.server";
+import {
+  listUnreadMessages,
+  markMessageAsRead,
+  htmlToPlainText,
+  getOutlookProfile,
+  DEFAULT_CONNECTION_KEY,
+  type MailboxContext,
+  type OutlookMessage,
+} from "./outlook.server";
 
 interface PollResult {
   channel_id: string;
