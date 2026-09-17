@@ -74,18 +74,38 @@ export const deleteEmailChannel = createServerFn({ method: "POST" })
 export const checkOutlookConnection = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async () => {
-    try {
-      const profile = await getOutlookProfile();
-      const email = profile.mail || profile.userPrincipalName || null;
-      const name = profile.displayName || profile.mail || profile.userPrincipalName || null;
+    const keys = listOutlookConnectionKeys();
+    if (!keys.length) {
       return {
-        connected: true,
-        email,
-        name,
+        connected: false,
+        accounts: [] as Array<{ key: string; email: string | null; name: string | null; error?: string }>,
+        error: "Nenhuma conta Microsoft vinculada a este projeto.",
       };
-    } catch (e: any) {
-      return { connected: false, error: e?.message || "Falha ao conectar" };
     }
+    const accounts = await Promise.all(
+      keys.map(async (key) => {
+        try {
+          const profile = await getOutlookProfile(key);
+          return {
+            key,
+            email: profile.mail || profile.userPrincipalName || null,
+            name: profile.displayName || null,
+          };
+        } catch (e: any) {
+          return { key, email: null, name: null, error: e?.message || "Falha ao conectar" };
+        }
+      }),
+    );
+    const ok = accounts.filter((a) => !("error" in a && a.error));
+    const first = ok[0];
+    return {
+      connected: ok.length > 0,
+      accounts,
+      email: first?.email ?? null,
+      name: first?.name ?? null,
+      error: ok.length ? undefined : accounts[0]?.error,
+      defaultKey: DEFAULT_CONNECTION_KEY,
+    };
   });
 
 export const triggerEmailPoll = createServerFn({ method: "POST" })
