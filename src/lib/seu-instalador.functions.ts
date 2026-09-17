@@ -227,3 +227,52 @@ export const criarAgendamento = createServerFn({ method: "POST" })
       userName,
     });
   });
+
+export const atualizarAgendamento = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        appointmentId: z.string().min(1),
+        technicianId: z.string().optional(),
+        serviceTypeId: z.string().optional(),
+        scheduledAt: z.string().optional(),
+        durationMinutes: z.number().int().min(15).max(24 * 60).optional(),
+        identifier: z.string().optional(),
+        address: z.string().optional(),
+        noAddress: z.boolean().optional(),
+        description: z.string().optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const userName = await resolveUserName(context);
+    const { appointmentId, ...body } = data;
+    return await callApi<any>({
+      path: `/appointments/${encodeURIComponent(appointmentId)}`,
+      method: "PATCH",
+      body,
+      userName,
+    });
+  });
+
+export const alterarStatusAgendamento = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) =>
+    z
+      .object({
+        appointmentId: z.string().min(1),
+        status: z.string().min(1),
+        reason: z.string().optional(),
+      })
+      .parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const userName = await resolveUserName(context);
+    return await callApi<any>({
+      path: `/appointments/${encodeURIComponent(data.appointmentId)}/status`,
+      method: "PATCH",
+      body: { status: data.status, reason: data.reason },
+      userName,
+    });
+  });
