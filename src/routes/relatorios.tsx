@@ -456,6 +456,11 @@ function RelatoriosPage() {
                   <AlertTriangle className="h-3.5 w-3.5" /> Erros & Valores
                 </TabsTrigger>
               )}
+              {canSeeErrors && (
+                <TabsTrigger value="sistema" className="gap-1 text-xs">
+                  <ServerCog className="h-3.5 w-3.5" /> Sistema
+                </TabsTrigger>
+              )}
             </TabsList>
 
             {/* ========== JORNADA & OCIOSIDADE ========== */}
