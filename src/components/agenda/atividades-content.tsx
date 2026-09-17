@@ -46,6 +46,8 @@ function row(r: any) {
 
 export function AtividadesContent() {
   const fetchAtividades = useServerFn(listarAtividades);
+  const { hasRole } = useAuth();
+  const canEdit = hasRole("admin") || hasRole("gestor");
   const [from, setFrom] = useState(shiftDate(todayISO(), -7));
   const [to, setTo] = useState(shiftDate(todayISO(), 7));
   const [status, setStatus] = useState(ALL);
@@ -55,7 +57,7 @@ export function AtividadesContent() {
   const [page, setPage] = useState(1);
   const [showFilters, setShowFilters] = useState(true);
   const [createOpen, setCreateOpen] = useState(false);
-  const [detail, setDetail] = useState<{ orderId?: string; clientId?: string; title?: string } | null>(null);
+  const [detail, setDetail] = useState<any | null>(null);
 
   const query = useQuery({
     queryKey: ["si-activities", from, to, status, search, page],
@@ -274,7 +276,7 @@ export function AtividadesContent() {
                     <tr
                       key={r.id || i}
                       className="border-b border-border last:border-b-0 hover:bg-muted/30 cursor-pointer"
-                      onClick={() => setDetail({ orderId: r.orderId, clientId: r.clientId, title: r.company })}
+                      onClick={() => setDetail(r.raw)}
                     >
                       <td className="px-4 py-2 font-mono text-xs">{r.identifier}</td>
                       <td className="px-4 py-2 text-primary">{r.title}</td>
@@ -316,12 +318,12 @@ export function AtividadesContent() {
       )}
 
       <NovoAgendamentoDialog open={createOpen} onClose={() => setCreateOpen(false)} onCreated={() => query.refetch()} />
-      <OsHistoricoDialog
+      <OsDetalhesDialog
         open={!!detail}
         onClose={() => setDetail(null)}
-        orderId={detail?.orderId ?? null}
-        clientId={detail?.clientId ?? null}
-        title={detail?.title}
+        activity={detail}
+        canEdit={canEdit}
+        onUpdated={() => query.refetch()}
       />
     </div>
   );
