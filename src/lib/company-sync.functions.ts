@@ -91,6 +91,36 @@ async function ensureLocalCompany(
   return created.id;
 }
 
+// Always try to fill a contact name for a linked phone: use the provided one,
+// otherwise look it up in CRM, sub-clients, technicians or WhatsApp chats.
+async function resolveContactName(
+  supabase: any,
+  cleanPhone: string,
+  provided?: string
+): Promise<string | null> {
+  const given = provided?.trim();
+  if (given) return given.slice(0, 255);
+  if (!cleanPhone) return null;
+
+  const lookups: Array<[string, string, string]> = [
+    ["crm_contacts", "name", "phone"],
+    ["sub_clients", "name", "phone"],
+    ["chat_technicians", "name", "phone"],
+    ["zapi_chats", "contact_name", "phone"],
+  ];
+
+  for (const [table, nameCol, phoneCol] of lookups) {
+    const { data } = await supabase
+      .from(table)
+      .select(nameCol)
+      .eq(phoneCol, cleanPhone)
+      .limit(1);
+    const found = data?.[0]?.[nameCol];
+    if (found && String(found).trim()) return String(found).trim().slice(0, 255);
+  }
+  return null;
+}
+
 async function updateTicketCompany(supabase: any, ticketId: string | undefined, companyId: string) {
   if (!ticketId) return;
   await supabase
