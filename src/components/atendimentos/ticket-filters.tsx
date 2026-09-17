@@ -41,7 +41,17 @@ export interface TicketFilters {
   trackingStatus: string;
   recurring: string;
   controleSheet: string;
+  /** Janela de carregamento (dias). null = todo o histórico */
+  periodDays: number | null;
 }
+
+export const PERIOD_OPTIONS: { value: string; label: string }[] = [
+  { value: "30", label: "Últimos 30 dias" },
+  { value: "90", label: "Últimos 90 dias" },
+  { value: "180", label: "Últimos 6 meses" },
+  { value: "365", label: "Último ano" },
+  { value: "all", label: "Todo o histórico" },
+];
 
 export const defaultFilters: TicketFilters = {
   search: "",
