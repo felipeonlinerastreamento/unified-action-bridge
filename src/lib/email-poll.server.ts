@@ -74,8 +74,17 @@ export async function pollEmailChannel(channelId: string): Promise<PollResult> {
     return result;
   }
 
+  // Evita inundar a fila com e-mails antigos que já estavam na caixa
+  const cutoff = Date.now() - 24 * 60 * 60 * 1000;
+
   for (const msg of messages) {
     try {
+      const received = msg.receivedDateTime ? Date.parse(msg.receivedDateTime) : Date.now();
+      if (Number.isFinite(received) && received < cutoff) {
+        result.skipped++;
+        continue;
+      }
+
       // Filtros
       if (shouldIgnore(msg, channel.ignore_domains || [], channel.ignore_emails || [])) {
         result.skipped++;
