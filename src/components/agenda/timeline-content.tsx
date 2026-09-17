@@ -5,14 +5,45 @@ import { AlertTriangle, CalendarPlus, ChevronLeft, ChevronRight, Loader2, Refres
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { consultarTimeline } from "@/lib/seu-instalador.functions";
+import { consultarTimeline, listarTecnicos } from "@/lib/seu-instalador.functions";
 import { NovoAgendamentoDialog } from "./novo-agendamento-dialog";
 import { OsHistoricoDialog } from "./os-historico-dialog";
-import { asList, errorMessage, formatTime, pick, shiftDate, todayISO } from "./shared";
+import { asList, errorMessage, pick, shiftDate, todayISO } from "./shared";
+
+const START_HOUR = 7;
+const END_HOUR = 20;
+const HOURS = Array.from({ length: END_HOUR - START_HOUR + 1 }, (_, i) => START_HOUR + i);
+const TOTAL_MIN = (END_HOUR - START_HOUR + 1) * 60;
+const HOUR_WIDTH = 92; // px
+const TECH_COL = 200; // px
+
+const STATUS_STYLES: { key: string; label: string; bg: string; match: string[] }[] = [
+  { key: "open", label: "Em aberto", bg: "bg-status-open", match: ["aberto", "open", "pendente"] },
+  { key: "scheduled", label: "Agendado", bg: "bg-status-scheduled", match: ["agendad", "scheduled"] },
+  { key: "moving", label: "Em deslocamento", bg: "bg-status-moving", match: ["desloc", "moving", "a caminho"] },
+  { key: "running", label: "Em execução", bg: "bg-status-running", match: ["execu", "running", "andamento"] },
+  { key: "done", label: "Concluído", bg: "bg-status-done", match: ["conclu", "done", "finaliz"] },
+  { key: "unproductive", label: "Improdutiva", bg: "bg-status-unproductive", match: ["improdut", "unproductive"] },
+  { key: "canceled", label: "Cancelada", bg: "bg-status-canceled", match: ["cancel"] },
+];
+
+function statusStyle(status: string) {
+  const s = (status || "").toLowerCase();
+  return STATUS_STYLES.find((st) => st.match.some((m) => s.includes(m))) ?? STATUS_STYLES[1];
+}
+
+function minutesOfDay(value?: string | null): number | null {
+  if (!value) return null;
+  const m = String(value).match(/T(\d{2}):(\d{2})/) ?? String(value).match(/^(\d{2}):(\d{2})/);
+  if (m) return Number(m[1]) * 60 + Number(m[2]);
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return null;
+  return d.getHours() * 60 + d.getMinutes();
+}
 
 export function TimelineContent() {
   const fetchTimeline = useServerFn(consultarTimeline);
+  const fetchTecnicos = useServerFn(listarTecnicos);
   const [date, setDate] = useState(todayISO());
   const [createOpen, setCreateOpen] = useState(false);
   const [detail, setDetail] = useState<{ orderId?: string; clientId?: string; title?: string } | null>(null);
@@ -22,25 +53,40 @@ export function TimelineContent() {
     queryFn: () => fetchTimeline({ data: { date } }),
   });
 
+  const techQuery = useQuery({
+    queryKey: ["si-technicians-all"],
+    queryFn: () => fetchTecnicos({ data: {} }),
+  });
+
   const rows = useMemo(() => asList(query.data), [query.data]);
+
+  const technicians = useMemo(() => {
+    const names = new Set<string>();
+    for (const t of asList(techQuery.data)) {
+      const n = pick(t, ["name", "nome", "technicianName"], "");
+      if (n) names.add(n);
+    }
+    for (const r of rows) names.add(pick(r, ["technicianName", "technician"], "Sem técnico"));
+    return Array.from(names).sort((a, b) => a.localeCompare(b, "pt-BR"));
+  }, [techQuery.data, rows]);
 
   const byTechnician = useMemo(() => {
     const map = new Map<string, any[]>();
+    for (const name of technicians) map.set(name, []);
     for (const r of rows) {
       const tech = pick(r, ["technicianName", "technician"], "Sem técnico");
       if (!map.has(tech)) map.set(tech, []);
       map.get(tech)!.push(r);
     }
-    for (const list of map.values()) {
-      list.sort((a, b) => String(a.scheduledAt ?? "").localeCompare(String(b.scheduledAt ?? "")));
-    }
-    return Array.from(map.entries()).sort((a, b) => a[0].localeCompare(b[0]));
-  }, [rows]);
+    return Array.from(map.entries());
+  }, [rows, technicians]);
+
+  const gridWidth = TECH_COL + HOURS.length * HOUR_WIDTH;
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between flex-wrap gap-3">
-        <h1 className="text-2xl font-bold text-foreground">Agenda — Timeline</h1>
+        <h1 className="text-2xl font-bold text-foreground">Timeline de Atendimentos</h1>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="icon" onClick={() => setDate((d) => shiftDate(d, -1))} aria-label="Dia anterior">
             <ChevronLeft className="h-4 w-4" />
@@ -54,10 +100,22 @@ export function TimelineContent() {
             Atualizar
           </Button>
           <Button size="sm" onClick={() => setCreateOpen(true)}>
-            <CalendarPlus className="h-4 w-4 mr-2" /> Novo agendamento
+            <CalendarPlus className="h-4 w-4 mr-2" /> Nova OS
           </Button>
         </div>
       </div>
+
+      <Card>
+        <CardContent className="p-3 flex flex-wrap items-center gap-x-4 gap-y-2 text-xs text-muted-foreground">
+          <span className="font-medium text-foreground">Legenda:</span>
+          {STATUS_STYLES.map((s) => (
+            <span key={s.key} className="flex items-center gap-1.5">
+              <span className={`h-2.5 w-2.5 rounded-full ${s.bg}`} />
+              {s.label}
+            </span>
+          ))}
+        </CardContent>
+      </Card>
 
       {query.isLoading ? (
         <Card>
@@ -76,51 +134,95 @@ export function TimelineContent() {
             </Button>
           </CardContent>
         </Card>
-      ) : rows.length === 0 ? (
+      ) : byTechnician.length === 0 ? (
         <Card>
           <CardContent className="p-6 text-center text-sm text-muted-foreground">
             Nenhum agendamento para esta data.
           </CardContent>
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {byTechnician.map(([tech, list]) => (
-            <Card key={tech}>
-              <CardContent className="p-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <span className="font-semibold text-sm">{tech}</span>
-                  <Badge variant="secondary">{list.length}</Badge>
-                </div>
-                <ul className="space-y-2">
-                  {list.map((r: any, i: number) => (
-                    <li
-                      key={r.id ?? i}
-                      className="rounded-md border border-border p-2 cursor-pointer hover:border-primary/50"
-                      onClick={() =>
-                        setDetail({
-                          orderId: r.orderId ?? r.id,
-                          clientId: r.clientId ?? r.client?.id,
-                          title: pick(r, ["clientName", "client"], "Agendamento"),
-                        })
-                      }
+        <Card className="overflow-hidden">
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <div style={{ minWidth: gridWidth }}>
+                {/* Cabeçalho de horários */}
+                <div className="flex border-b border-border bg-muted/40 sticky top-0 z-10">
+                  <div
+                    className="shrink-0 px-3 py-2 text-xs font-semibold text-foreground border-r border-border"
+                    style={{ width: TECH_COL }}
+                  >
+                    Técnico
+                  </div>
+                  {HOURS.map((h) => (
+                    <div
+                      key={h}
+                      className="shrink-0 px-2 py-2 text-xs text-muted-foreground border-r border-border"
+                      style={{ width: HOUR_WIDTH }}
                     >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-sm font-medium truncate">
-                          {pick(r, ["clientName", "client", "title"], "Agendamento")}
-                        </span>
-                        <span className="text-xs text-muted-foreground">{formatTime(r.scheduledAt ?? r.startAt)}</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground truncate">
-                        {pick(r, ["serviceTypeName", "serviceType", "description"], "—")}
-                        {r.identifier ? ` · ${r.identifier}` : ""}
-                      </p>
-                    </li>
+                      {String(h).padStart(2, "0")}:00
+                    </div>
                   ))}
-                </ul>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                </div>
+
+                {byTechnician.map(([tech, list]) => (
+                  <div key={tech} className="flex border-b border-border last:border-b-0">
+                    <div
+                      className="shrink-0 flex items-center gap-2 px-3 py-3 border-r border-border"
+                      style={{ width: TECH_COL }}
+                    >
+                      <span className="h-7 w-7 shrink-0 rounded-full bg-muted text-muted-foreground text-[10px] font-semibold flex items-center justify-center">
+                        {tech.slice(0, 2).toUpperCase()}
+                      </span>
+                      <span className="text-sm truncate" title={tech}>
+                        {tech}
+                      </span>
+                    </div>
+
+                    <div className="relative" style={{ width: HOURS.length * HOUR_WIDTH, minHeight: 56 }}>
+                      {/* grade */}
+                      <div className="absolute inset-0 flex pointer-events-none">
+                        {HOURS.map((h) => (
+                          <div key={h} className="shrink-0 border-r border-border/60" style={{ width: HOUR_WIDTH }} />
+                        ))}
+                      </div>
+
+                      {list.map((r: any, i: number) => {
+                        const start = minutesOfDay(r.scheduledAt ?? r.startAt ?? r.scheduledTime);
+                        if (start === null) return null;
+                        const duration = Number(r.durationMinutes ?? r.duration ?? 60) || 60;
+                        const offset = Math.max(0, start - START_HOUR * 60);
+                        const left = (offset / TOTAL_MIN) * (HOURS.length * HOUR_WIDTH);
+                        const width = Math.max(56, (Math.min(duration, TOTAL_MIN - offset) / TOTAL_MIN) * (HOURS.length * HOUR_WIDTH));
+                        const st = statusStyle(pick(r, ["statusName", "status"], ""));
+                        const title = pick(r, ["serviceTypeName", "serviceType", "title"], "Atendimento");
+                        const client = pick(r, ["clientName", "client"], "");
+                        return (
+                          <button
+                            key={r.id ?? i}
+                            type="button"
+                            className={`absolute top-2 h-10 rounded-md px-2 py-1 text-left text-status-foreground overflow-hidden hover:opacity-90 transition-opacity ${st.bg}`}
+                            style={{ left, width }}
+                            title={`${title}${client ? ` · ${client}` : ""}`}
+                            onClick={() =>
+                              setDetail({
+                                orderId: r.orderId ?? r.id,
+                                clientId: r.clientId ?? r.client?.id,
+                                title: client || title,
+                              })
+                            }
+                          >
+                            <span className="block text-[11px] font-semibold leading-tight truncate">{title}</span>
+                            <span className="block text-[10px] leading-tight truncate opacity-90">{client || "—"}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
       )}
 
       <NovoAgendamentoDialog open={createOpen} onClose={() => setCreateOpen(false)} onCreated={() => query.refetch()} />
