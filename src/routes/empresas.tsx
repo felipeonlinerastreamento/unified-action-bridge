@@ -203,7 +203,13 @@ function EmpresasPage() {
     for (const p of [...phones, company.phone || ""]) {
       const digits = String(p || "").replace(/\D/g, "");
       if (digits && !knownPhones.has(digits)) {
-        mergedContacts.push({ name: "", sector: "", phone: p, email: "", is_prime: false });
+        mergedContacts.push({
+          name: nameByPhone.get(digits) || "",
+          sector: "",
+          phone: p,
+          email: "",
+          is_prime: false,
+        });
         knownPhones.add(digits);
       }
     }
