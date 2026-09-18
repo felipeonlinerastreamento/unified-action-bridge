@@ -30,6 +30,7 @@ import {
   Monitor,
   Trophy,
   CalendarDays,
+  Map,
 } from "lucide-react";
 
 
@@ -87,6 +88,7 @@ const atendimentosSubItems: { title: string; url: string; icon: typeof List }[] 
 const agendaSubItems = [
   { title: "Atividades", url: "/agenda/atividades", icon: List },
   { title: "Timeline", url: "/agenda/timeline", icon: Activity },
+  { title: "Mapa", url: "/agenda/mapa", icon: Map },
 ];
 
 const configSubItems = [
