@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { loadZapiChannel, zapiSendText } from "@/lib/zapi.server";
 import { isAuthorizedCronRequest, unauthorizedCronResponse } from "@/lib/cron-auth.server";
+import { isAutoReplyGloballyEnabled } from "@/lib/bot-auto-reply.server";
 
 type Rule = {
   id: string;
@@ -166,6 +167,12 @@ export const Route = createFileRoute("/api/public/chat-idle-scanner")({
     handlers: {
       POST: async ({ request }) => {
         if (!isAuthorizedCronRequest(request)) return unauthorizedCronResponse();
+        if (!(await isAutoReplyGloballyEnabled())) {
+          return new Response(
+            JSON.stringify({ ok: true, skipped: "bot_disabled", processed: 0 }),
+            { headers: { "Content-Type": "application/json" } },
+          );
+        }
         const { data: rules, error } = await supabaseAdmin
           .from("chat_idle_auto_messages")
           .select("*")

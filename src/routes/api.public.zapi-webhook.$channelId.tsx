@@ -1306,7 +1306,13 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
             // Run bot only on incoming customer messages — skip for groups
             // and skip when we just reopened a finalized chat silently (avoids
             // re-sending welcome menu right after a finalization).
-            if (!p.fromMe && text && !isGroupMessage && !justReopenedSilently) {
+            if (
+              !p.fromMe &&
+              text &&
+              !isGroupMessage &&
+              !justReopenedSilently &&
+              (await isAutoReplyGloballyEnabled())
+            ) {
               try {
                 // Checa horário de funcionamento ANTES do bot
                 const bh = await loadBusinessHoursSettings(supabaseAdmin);
