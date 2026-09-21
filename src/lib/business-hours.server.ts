@@ -109,16 +109,33 @@ export async function shouldSendOutOfHoursMessage(
   phone: string,
   cooldownMinutes: number,
 ): Promise<boolean> {
-  if (cooldownMinutes <= 0) return true;
-  const since = new Date(Date.now() - cooldownMinutes * 60_000).toISOString();
-  const { data } = await supabase
+  // Reserva atômica: grava primeiro e só então confere se já existia outro
+  // envio dentro da janela — evita duas mensagens iguais em poucos segundos.
+  const windowMinutes = cooldownMinutes > 0 ? cooldownMinutes : 1;
+  const since = new Date(Date.now() - windowMinutes * 60_000).toISOString();
+
+  const { data: reserved, error: reserveError } = await supabase
+    .from("out_of_hours_message_log")
+    .insert({ contact_phone: phone, message_sent: "__reserva__" })
+    .select("id")
+    .maybeSingle();
+  if (reserveError || !(reserved as any)?.id) return false;
+  const reservationId = (reserved as any).id;
+
+  const { data: previous } = await supabase
     .from("out_of_hours_message_log")
     .select("id")
     .eq("contact_phone", phone)
     .gte("sent_at", since)
+    .neq("id", reservationId)
     .limit(1)
     .maybeSingle();
-  return !data;
+
+  if (previous) {
+    await supabase.from("out_of_hours_message_log").delete().eq("id", reservationId);
+    return false;
+  }
+  return true;
 }
 
 export async function logOutOfHoursMessage(
