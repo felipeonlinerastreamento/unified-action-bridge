@@ -45,6 +45,7 @@ import { Route as ConfiguracoesAuditoriaRouteImport } from './routes/configuraco
 import { Route as ConfiguracoesAssistenteIaRouteImport } from './routes/configuracoes.assistente-ia'
 import { Route as AtendimentosTarefasRouteImport } from './routes/atendimentos_.tarefas'
 import { Route as AgendaTimelineRouteImport } from './routes/agenda.timeline'
+import { Route as AgendaMapaRouteImport } from './routes/agenda.mapa'
 import { Route as AgendaAtividadesRouteImport } from './routes/agenda.atividades'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as ApiPublicSystemHealthScanRouteImport } from './routes/api.public.system-health-scan'
@@ -249,6 +250,11 @@ const AgendaTimelineRoute = AgendaTimelineRouteImport.update({
   path: '/timeline',
   getParentRoute: () => AgendaRoute,
 } as any)
+const AgendaMapaRoute = AgendaMapaRouteImport.update({
+  id: '/mapa',
+  path: '/mapa',
+  getParentRoute: () => AgendaRoute,
+} as any)
 const AgendaAtividadesRoute = AgendaAtividadesRouteImport.update({
   id: '/atividades',
   path: '/atividades',
@@ -342,6 +348,7 @@ export interface FileRoutesByFullPath {
   '/tratativas': typeof TratativasRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/agenda/atividades': typeof AgendaAtividadesRoute
+  '/agenda/mapa': typeof AgendaMapaRoute
   '/agenda/timeline': typeof AgendaTimelineRoute
   '/atendimentos/tarefas': typeof AtendimentosTarefasRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
@@ -391,6 +398,7 @@ export interface FileRoutesByTo {
   '/tratativas': typeof TratativasRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/agenda/atividades': typeof AgendaAtividadesRoute
+  '/agenda/mapa': typeof AgendaMapaRoute
   '/agenda/timeline': typeof AgendaTimelineRoute
   '/atendimentos/tarefas': typeof AtendimentosTarefasRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
@@ -443,6 +451,7 @@ export interface FileRoutesById {
   '/tratativas': typeof TratativasRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/agenda/atividades': typeof AgendaAtividadesRoute
+  '/agenda/mapa': typeof AgendaMapaRoute
   '/agenda/timeline': typeof AgendaTimelineRoute
   '/atendimentos_/tarefas': typeof AtendimentosTarefasRoute
   '/configuracoes/assistente-ia': typeof ConfiguracoesAssistenteIaRoute
@@ -496,6 +505,7 @@ export interface FileRouteTypes {
     | '/tratativas'
     | '/.well-known/oauth-protected-resource'
     | '/agenda/atividades'
+    | '/agenda/mapa'
     | '/agenda/timeline'
     | '/atendimentos/tarefas'
     | '/configuracoes/assistente-ia'
@@ -545,6 +555,7 @@ export interface FileRouteTypes {
     | '/tratativas'
     | '/.well-known/oauth-protected-resource'
     | '/agenda/atividades'
+    | '/agenda/mapa'
     | '/agenda/timeline'
     | '/atendimentos/tarefas'
     | '/configuracoes/assistente-ia'
@@ -596,6 +607,7 @@ export interface FileRouteTypes {
     | '/tratativas'
     | '/.well-known/oauth-protected-resource'
     | '/agenda/atividades'
+    | '/agenda/mapa'
     | '/agenda/timeline'
     | '/atendimentos_/tarefas'
     | '/configuracoes/assistente-ia'
@@ -916,6 +928,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AgendaTimelineRouteImport
       parentRoute: typeof AgendaRoute
     }
+    '/agenda/mapa': {
+      id: '/agenda/mapa'
+      path: '/mapa'
+      fullPath: '/agenda/mapa'
+      preLoaderRoute: typeof AgendaMapaRouteImport
+      parentRoute: typeof AgendaRoute
+    }
     '/agenda/atividades': {
       id: '/agenda/atividades'
       path: '/atividades'
@@ -1012,12 +1031,14 @@ declare module '@tanstack/react-router' {
 
 interface AgendaRouteChildren {
   AgendaAtividadesRoute: typeof AgendaAtividadesRoute
+  AgendaMapaRoute: typeof AgendaMapaRoute
   AgendaTimelineRoute: typeof AgendaTimelineRoute
   AgendaIndexRoute: typeof AgendaIndexRoute
 }
 
 const AgendaRouteChildren: AgendaRouteChildren = {
   AgendaAtividadesRoute: AgendaAtividadesRoute,
+  AgendaMapaRoute: AgendaMapaRoute,
   AgendaTimelineRoute: AgendaTimelineRoute,
   AgendaIndexRoute: AgendaIndexRoute,
 }
