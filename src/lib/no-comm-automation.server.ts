@@ -109,7 +109,9 @@ export async function processNoCommAutomation(
   const footer = s.footer_template.replace(/\{numero do protocolo\}/g, protocol);
 
   try {
-    const creds = await loadZapiChannel(admin, args.channelId);
+    const { isAutoReplyGloballyEnabled } = await import("@/lib/bot-auto-reply.server");
+    const botOn = await isAutoReplyGloballyEnabled();
+    const creds = botOn ? await loadZapiChannel(admin, args.channelId) : null;
     if (creds && args.contactPhone) {
       const result = await zapiSendText(creds, args.contactPhone, footer);
       await admin.from("zapi_messages").insert({
