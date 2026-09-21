@@ -144,6 +144,24 @@ export async function logOutOfHoursMessage(
   chatId: string | null,
   message: string,
 ) {
+  // Preenche a reserva criada por shouldSendOutOfHoursMessage, se existir.
+  const { data: reservation } = await supabase
+    .from("out_of_hours_message_log")
+    .select("id")
+    .eq("contact_phone", phone)
+    .eq("message_sent", "__reserva__")
+    .order("sent_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if ((reservation as any)?.id) {
+    await supabase
+      .from("out_of_hours_message_log")
+      .update({ chat_id: chatId, message_sent: message })
+      .eq("id", (reservation as any).id);
+    return;
+  }
+
   await supabase.from("out_of_hours_message_log").insert({
     contact_phone: phone,
     chat_id: chatId,
