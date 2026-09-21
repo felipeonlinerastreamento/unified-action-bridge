@@ -12,7 +12,7 @@ import {
 } from "@/lib/business-hours.server";
 import { evaluateMessageTriggers } from "@/lib/message-triggers.server";
 import { processNoCommAutomation } from "@/lib/no-comm-automation.server";
-import { evaluateInboundForAutoReply } from "@/lib/bot-auto-reply.server";
+import { evaluateInboundForAutoReply, isAutoReplyGloballyEnabled } from "@/lib/bot-auto-reply.server";
 
 // Z-API webhook payload (loose schema — Z-API sends many event shapes)
 const PayloadSchema = z.object({
@@ -712,8 +712,9 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                     } as any);
                   }
 
-                  // Send thanks
+                  // Send thanks (silenciado quando o robô está inativo)
                   try {
+                    if (!(await isAutoReplyGloballyEnabled())) return;
                     const { data: cset } = await supabaseAdmin
                       .from("csat_settings" as any)
                       .select("thanks_message")
