@@ -21,6 +21,27 @@ export type BotSettings = {
   ai_min_confidence?: number;
 };
 
+// Chave geral: quando o Robô de Atendimento está inativo, NENHUMA automação
+// de WhatsApp pode enviar mensagem (fora do horário, menu, ociosidade, CSAT).
+let _enabledCache: { value: boolean; at: number } | null = null;
+
+export async function isAutoReplyGloballyEnabled(): Promise<boolean> {
+  if (_enabledCache && Date.now() - _enabledCache.at < 30_000) return _enabledCache.value;
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("bot_auto_reply_settings")
+      .select("is_enabled")
+      .limit(1)
+      .maybeSingle();
+    if (error) return true;
+    const value = (data as any)?.is_enabled !== false;
+    _enabledCache = { value, at: Date.now() };
+    return value;
+  } catch {
+    return true;
+  }
+}
+
 export const FALLBACK_RULE_ID = "__fallback__";
 export const DEFAULT_FALLBACK_TEXT = "Um momento, por favor, que estou verificando.";
 
