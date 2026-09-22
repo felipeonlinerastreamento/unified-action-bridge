@@ -441,14 +441,18 @@ export function BotAutoReplyConfig() {
 
           {settings && !settings.is_enabled && (
             <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-sm text-destructive">
-              <p className="font-medium">Robô inativo — silêncio total no WhatsApp</p>
+              <p className="font-medium">Robô inativo — automações em silêncio</p>
               <p className="mt-1">
-                Com o robô desligado, o sistema não envia nenhuma mensagem automática: nem
-                resposta de fora do horário, nem menu de opções, nem cobrança de inatividade,
-                nem pesquisa de satisfação ao finalizar. Só o operador fala com o cliente.
+                Com o robô desligado, o sistema não envia menu de opções, respostas por
+                assunto/IA, cobrança de inatividade nem pesquisa de satisfação ao finalizar.
+              </p>
+              <p className="mt-1">
+                A mensagem de fora do horário é independente e continua sendo enviada conforme
+                a configuração de Horário de Atendimento.
               </p>
             </div>
           )}
+
 
 
           <div className="flex items-center justify-between rounded-lg border p-4">

@@ -1303,16 +1303,11 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               }
             }
 
-            // Run bot only on incoming customer messages — skip for groups
-            // and skip when we just reopened a finalized chat silently (avoids
-            // re-sending welcome menu right after a finalization).
-            if (
-              !p.fromMe &&
-              text &&
-              !isGroupMessage &&
-              !justReopenedSilently &&
-              (await isAutoReplyGloballyEnabled())
-            ) {
+            // Mensagem de fora de horário é INDEPENDENTE do Robô de Atendimento:
+            // ela obedece apenas à configuração de Horário de Atendimento.
+            // As automações do robô (assunto/IA/fluxo) continuam respeitando o
+            // interruptor global do robô.
+            if (!p.fromMe && text && !isGroupMessage && !justReopenedSilently) {
               try {
                 // Checa horário de funcionamento ANTES do bot
                 const bh = await loadBusinessHoursSettings(supabaseAdmin);
@@ -1341,6 +1336,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                         from_me: true,
                         text: bh.out_of_hours_message,
                         status: "sent",
+                        is_bot_message: true,
                       });
                       await logOutOfHoursMessage(
                         supabaseAdmin,
@@ -1352,7 +1348,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                       console.error("[zapi-webhook] failed to send out-of-hours message:", err);
                     }
                   }
-                } else {
+                } else if (await isAutoReplyGloballyEnabled()) {
                   // Robô de Atendimento (automações por assunto) antes do fluxo de nós
                   let handledByAutoReply = false;
                   try {
@@ -1383,6 +1379,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                 console.error("[zapi-webhook] bot/business-hours error:", e);
               }
             }
+
           }
         }
 
