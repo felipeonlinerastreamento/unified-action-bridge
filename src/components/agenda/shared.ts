@@ -105,6 +105,63 @@ export function osPhotos(activity: any): { url: string; caption?: string }[] {
   return out;
 }
 
+/** Paleta de status compartilhada entre Timeline e Mapa. */
+export const STATUS_STYLES: { key: string; label: string; bg: string; hex: string; match: string[] }[] = [
+  { key: "open", label: "Em aberto", bg: "bg-status-open", hex: "#64748b", match: ["aberto", "open", "pendente"] },
+  { key: "scheduled", label: "Agendado", bg: "bg-status-scheduled", hex: "#2563eb", match: ["agendad", "scheduled"] },
+  { key: "moving", label: "Em deslocamento", bg: "bg-status-moving", hex: "#a855f7", match: ["desloc", "moving", "a caminho"] },
+  { key: "running", label: "Em execução", bg: "bg-status-running", hex: "#f59e0b", match: ["execu", "running", "andamento"] },
+  { key: "done", label: "Concluído", bg: "bg-status-done", hex: "#16a34a", match: ["conclu", "done", "finaliz"] },
+  { key: "unproductive", label: "Improdutiva", bg: "bg-status-unproductive", hex: "#b45309", match: ["improdut", "unproductive"] },
+  { key: "canceled", label: "Cancelada", bg: "bg-status-canceled", hex: "#dc2626", match: ["cancel"] },
+];
+
+export function statusStyle(status: string) {
+  const s = (status || "").toLowerCase();
+  return STATUS_STYLES.find((st) => st.match.some((m) => s.includes(m))) ?? STATUS_STYLES[1]!;
+}
+
+/** Coordenadas da OS, quando o Seu Instalador já as envia. */
+export function osCoords(activity: any): { lat: number; lng: number } | null {
+  const candidates: any[] = [
+    activity,
+    activity?.coordinates,
+    activity?.coords,
+    activity?.location,
+    activity?.geo,
+    activity?.addressData,
+  ];
+  for (const c of candidates) {
+    if (!c || typeof c !== "object") continue;
+    const lat = Number(c.latitude ?? c.lat ?? c.y);
+    const lng = Number(c.longitude ?? c.lng ?? c.lon ?? c.long ?? c.x);
+    if (Number.isFinite(lat) && Number.isFinite(lng) && (lat !== 0 || lng !== 0) && Math.abs(lat) <= 90 && Math.abs(lng) <= 180) {
+      return { lat, lng };
+    }
+  }
+  return null;
+}
+
+/** Endereço legível da OS, montado quando vem em campos separados. */
+export function osAddress(activity: any): string {
+  const direct = pick(activity, ["address", "endereco", "fullAddress", "addressFull"], "");
+  if (direct) return direct;
+  const a = activity?.addressData ?? activity?.location ?? activity;
+  const street = pick(a, ["street", "logradouro", "rua"], "");
+  const number = pick(a, ["number", "numero"], "");
+  const district = pick(a, ["district", "neighborhood", "bairro"], "");
+  const city = pick(a, ["city", "cidade", "municipio"], "");
+  const state = pick(a, ["state", "uf", "estado"], "");
+  const zip = pick(a, ["zipCode", "cep", "postalCode"], "");
+  const parts = [
+    [street, number].filter(Boolean).join(", "),
+    district,
+    [city, state].filter(Boolean).join(" - "),
+    zip,
+  ].filter(Boolean);
+  return parts.join(", ");
+}
+
 export function todayISO(): string {
   const now = new Date();
   const off = now.getTimezoneOffset();
