@@ -31,6 +31,7 @@ import {
   Trophy,
   CalendarDays,
   Map,
+  CalendarClock,
 } from "lucide-react";
 
 
