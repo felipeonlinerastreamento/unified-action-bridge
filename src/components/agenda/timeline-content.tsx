@@ -9,7 +9,17 @@ import { useAuth } from "@/hooks/use-auth";
 import { consultarTimeline, listarTecnicos } from "@/lib/seu-instalador.functions";
 import { NovoAgendamentoDialog } from "./novo-agendamento-dialog";
 import { OsDetalhesDialog } from "./os-detalhes-dialog";
-import { asList, errorMessage, formatTime, minutesOfDaySP, pick, shiftDate, todayISO } from "./shared";
+import {
+  asList,
+  errorMessage,
+  formatTime,
+  minutesOfDaySP,
+  pick,
+  shiftDate,
+  statusStyle,
+  todayISO,
+  STATUS_STYLES,
+} from "./shared";
 
 const START_HOUR = 7;
 const END_HOUR = 20;
@@ -18,20 +28,6 @@ const TOTAL_MIN = (END_HOUR - START_HOUR + 1) * 60;
 const HOUR_WIDTH = 92; // px
 const TECH_COL = 200; // px
 
-const STATUS_STYLES: { key: string; label: string; bg: string; match: string[] }[] = [
-  { key: "open", label: "Em aberto", bg: "bg-status-open", match: ["aberto", "open", "pendente"] },
-  { key: "scheduled", label: "Agendado", bg: "bg-status-scheduled", match: ["agendad", "scheduled"] },
-  { key: "moving", label: "Em deslocamento", bg: "bg-status-moving", match: ["desloc", "moving", "a caminho"] },
-  { key: "running", label: "Em execução", bg: "bg-status-running", match: ["execu", "running", "andamento"] },
-  { key: "done", label: "Concluído", bg: "bg-status-done", match: ["conclu", "done", "finaliz"] },
-  { key: "unproductive", label: "Improdutiva", bg: "bg-status-unproductive", match: ["improdut", "unproductive"] },
-  { key: "canceled", label: "Cancelada", bg: "bg-status-canceled", match: ["cancel"] },
-];
-
-function statusStyle(status: string) {
-  const s = (status || "").toLowerCase();
-  return STATUS_STYLES.find((st) => st.match.some((m) => s.includes(m))) ?? STATUS_STYLES[1];
-}
 
 function minutesOfDay(value?: string | null): number | null {
   if (!value) return null;

@@ -43,6 +43,13 @@
       "when": 1789670276177,
       "tag": "0005_add_contact_name_to_company_phones",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1790163983497,
+      "tag": "0006_create_geocode_cache",
+      "breakpoints": true
     }
   ]
 }

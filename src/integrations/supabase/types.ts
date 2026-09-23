@@ -2795,6 +2795,36 @@ export type Database = {
         }
         Relationships: []
       }
+      geocode_cache: {
+        Row: {
+          address: string
+          address_key: string
+          created_at: string
+          id: string
+          lat: number | null
+          lng: number | null
+          not_found: boolean
+        }
+        Insert: {
+          address: string
+          address_key: string
+          created_at?: string
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          not_found?: boolean
+        }
+        Update: {
+          address?: string
+          address_key?: string
+          created_at?: string
+          id?: string
+          lat?: number | null
+          lng?: number | null
+          not_found?: boolean
+        }
+        Relationships: []
+      }
       gsystem_equipamentos: {
         Row: {
           codigo: number
