@@ -89,6 +89,7 @@ const agendaSubItems = [
   { title: "Atividades", url: "/agenda/atividades", icon: List },
   { title: "Timeline", url: "/agenda/timeline", icon: Activity },
   { title: "Mapa", url: "/agenda/mapa", icon: Map },
+  { title: "Solicitações", url: "/agenda/solicitacoes", icon: CalendarClock },
 ];
 
 const configSubItems = [
