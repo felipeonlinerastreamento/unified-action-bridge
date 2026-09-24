@@ -5354,20 +5354,33 @@ function CentralPage() {
           <div className="space-y-4">
             <div className="space-y-2">
               <Label className="text-xs font-medium">Status da pendência</Label>
-              <Select value={finalizeStatus} onValueChange={setFinalizeStatus}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o status..." />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="A resolver">A resolver</SelectItem>
-                  <SelectItem value="Resolvido">Resolvido</SelectItem>
-                </SelectContent>
-              </Select>
-              {finalizeStatus === "A resolver" && (
-                <p className="text-[11px] text-muted-foreground">
-                  O chat sai da Central, mas o protocolo continua aberto. Quando o cliente responder, o atendimento volta para você no mesmo protocolo, sem disparar o bot.
-                </p>
-              )}
+              {(() => {
+                const teLbl = tiposPendencia.find((t) => t.Key === finalizeTipoPendencia)?.Descricao || "";
+                const isTEFinalize = isTesteEquipamentoCategory(teLbl, teSettings);
+                const effective = isTEFinalize ? "Resolvido" : finalizeStatus;
+                return (
+                  <>
+                    <Select value={effective} onValueChange={setFinalizeStatus} disabled={isTEFinalize}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione o status..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="A resolver">A resolver</SelectItem>
+                        <SelectItem value="Resolvido">Resolvido</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    {isTEFinalize ? (
+                      <p className="text-[11px] text-muted-foreground">
+                        Teste de Equipamento: o atendimento será encaminhado ao setor {teSettings?.target_sector_name || "Administrativo"} com status A resolver.
+                      </p>
+                    ) : effective === "A resolver" && (
+                      <p className="text-[11px] text-muted-foreground">
+                        O chat sai da Central, mas o protocolo continua aberto. Quando o cliente responder, o atendimento volta para você no mesmo protocolo, sem disparar o bot.
+                      </p>
+                    )}
+                  </>
+                );
+              })()}
             </div>
 
             <div className="space-y-2">
@@ -5646,7 +5659,7 @@ function CentralPage() {
                 }
                 finalizeMutation.mutate({
                   notes: notesToSend || undefined,
-                  status: finalizeStatus,
+                  status: isTesteEquipamentoCategory(tipoLabel, teSettings) ? "Resolvido" : finalizeStatus,
                   tipoPendencia: finalizeTipoPendencia,
                   skipClosingMessage: canSkipClosing && skipClosingMessage,
                   escalateGestao: isAdmin && escalateToGestao,
