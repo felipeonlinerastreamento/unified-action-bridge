@@ -1,16 +1,24 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, Zap, Download } from "lucide-react";
 import { exportToCSV } from "./export-utils";
 
 type Props = { dateFrom: string; dateTo: string };
 
+const norm = (s: string) => (s || "").normalize("NFD").replace(/\p{Diacritic}/gu, "").toLowerCase().trim();
+
 export function MessageTriggersTab({ dateFrom, dateTo }: Props) {
+  const [keyword, setKeyword] = useState("all");
+  const [keywordSearch, setKeywordSearch] = useState("");
+
   const { data: logs = [], isLoading } = useQuery({
     queryKey: ["message-trigger-logs-report", dateFrom, dateTo],
     queryFn: async () => {
@@ -27,21 +35,43 @@ export function MessageTriggersTab({ dateFrom, dateTo }: Props) {
     },
   });
 
-  const stats = useMemo(() => {
-    const total = logs.length;
-    const ack = logs.filter((l: any) => !!l.acknowledged_at).length;
-    const pending = total - ack;
-    const byRule: Record<string, number> = {};
+  const keywordOptions = useMemo(() => {
+    const map = new Map<string, { label: string; count: number }>();
     logs.forEach((l: any) => {
+      const label = l.matched_keyword || "—";
+      const k = norm(label);
+      const cur = map.get(k);
+      if (cur) cur.count++;
+      else map.set(k, { label, count: 1 });
+    });
+    return [...map.entries()].sort((a, b) => b[1].count - a[1].count);
+  }, [logs]);
+
+  const filtered = useMemo(() => {
+    const s = norm(keywordSearch);
+    return logs.filter((l: any) => {
+      const k = norm(l.matched_keyword || "—");
+      if (keyword !== "all" && k !== keyword) return false;
+      if (s && !k.includes(s)) return false;
+      return true;
+    });
+  }, [logs, keyword, keywordSearch]);
+
+  const stats = useMemo(() => {
+    const total = filtered.length;
+    const ack = filtered.filter((l: any) => !!l.acknowledged_at).length;
+    const pending = filtered.filter((l: any) => l.recipient_user_id && !l.acknowledged_at).length;
+    const byRule: Record<string, number> = {};
+    filtered.forEach((l: any) => {
       const k = l.rule_name || "—";
       byRule[k] = (byRule[k] || 0) + 1;
     });
     const top = Object.entries(byRule).sort((a, b) => b[1] - a[1])[0];
     return { total, ack, pending, topRule: top ? `${top[0]} (${top[1]})` : "—" };
-  }, [logs]);
+  }, [filtered]);
 
   const exportCsv = () => {
-    const rows = logs.map((l: any) => ({
+    const rows = filtered.map((l: any) => ({
       Data: new Date(l.triggered_at).toLocaleString("pt-BR"),
       Regra: l.rule_name,
       Palavra: l.matched_keyword,
@@ -56,6 +86,35 @@ export function MessageTriggersTab({ dateFrom, dateTo }: Props) {
 
   return (
     <div className="space-y-4">
+      <div className="flex flex-wrap items-end gap-3 p-3 rounded-lg border bg-card">
+        <div>
+          <Label className="text-xs">Palavra</Label>
+          <Select value={keyword} onValueChange={setKeyword}>
+            <SelectTrigger className="w-[220px] h-8 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as palavras</SelectItem>
+              {keywordOptions.map(([k, v]) => (
+                <SelectItem key={k} value={k}>{v.label} ({v.count})</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <Label className="text-xs">Buscar palavra</Label>
+          <Input
+            value={keywordSearch}
+            onChange={(e) => setKeywordSearch(e.target.value)}
+            placeholder="Digite a palavra"
+            className="h-8 text-xs w-[200px]"
+          />
+        </div>
+        {(keyword !== "all" || keywordSearch) && (
+          <Button size="sm" variant="ghost" onClick={() => { setKeyword("all"); setKeywordSearch(""); }}>
+            Limpar
+          </Button>
+        )}
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
         <Kpi label="Total de disparos" value={stats.total} />
         <Kpi label="Visualizados" value={stats.ack} accent="text-emerald-600" />
@@ -82,7 +141,7 @@ export function MessageTriggersTab({ dateFrom, dateTo }: Props) {
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
-          ) : logs.length === 0 ? (
+          ) : filtered.length === 0 ? (
             <p className="text-sm text-muted-foreground py-8 text-center">
               Nenhum gatilho disparado no período.
             </p>
@@ -102,11 +161,12 @@ export function MessageTriggersTab({ dateFrom, dateTo }: Props) {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {logs.map((l: any) => {
+                  {filtered.map((l: any) => {
                     const a = l.action_taken || {};
                     const actionParts: string[] = [];
                     if (a.alert_recipients) actionParts.push(`alerta x${a.alert_recipients}`);
                     if (a.transferred_to) actionParts.push(`→ ${a.transferred_to}`);
+                    if (a.ticket_attendance_id) actionParts.push(`chamado ${a.ticket_attendance_id}`);
                     return (
                       <TableRow key={l.id}>
                         <TableCell className="text-xs">{new Date(l.triggered_at).toLocaleString("pt-BR")}</TableCell>
@@ -116,11 +176,11 @@ export function MessageTriggersTab({ dateFrom, dateTo }: Props) {
                         <TableCell className="text-xs max-w-[280px] truncate" title={l.message_excerpt}>
                           {l.message_excerpt || "—"}
                         </TableCell>
-                        <TableCell className="text-xs">{actionParts.join(" • ") || "—"}</TableCell>
+                        <TableCell className="text-xs">{actionParts.join(" • ") || "Somente registro"}</TableCell>
                         <TableCell className="text-xs">{l.recipient_name || "—"}</TableCell>
                         <TableCell className="text-xs">
                           {!l.recipient_user_id ? (
-                            <Badge variant="outline">—</Badge>
+                            <Badge variant="outline">Registrado</Badge>
                           ) : l.acknowledged_at ? (
                             <Badge variant="outline" className="text-emerald-700 border-emerald-300">Visto</Badge>
                           ) : (
