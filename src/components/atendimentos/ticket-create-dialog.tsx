@@ -535,6 +535,18 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
         return;
       }
 
+      // Roteia para o operador ativo do setor com menos tickets abertos
+      let assigneeId: string | null = creatorId;
+      let assigneeName: string | null = null;
+      if (sectorName) {
+        const { data: picked } = await (supabase as any).rpc("pick_least_loaded_ticket_agent", { _sector: sectorName });
+        assigneeId = (picked as string) || null;
+        if (assigneeId) {
+          const { data: prof } = await supabase.from("profiles").select("name").eq("id", assigneeId).maybeSingle();
+          assigneeName = (prof as any)?.name || null;
+        }
+      }
+
       const { data: created, error } = await supabase.from("service_tickets").insert({
         attendance_id: attendanceId,
         contact_name: contactName,
@@ -558,7 +570,7 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
         closed_at: finalize ? new Date().toISOString() : null,
         tracking_code: trackCodeClean,
         opened_by: creatorId,
-        assigned_to: creatorId,
+        assigned_to: assigneeId,
         ...(isLiberacao && liberacaoDate
           ? { liberacao_date: new Date(liberacaoDate).toISOString() }
           : {}),
@@ -568,6 +580,10 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
       if (error) {
         toast.error("Erro ao criar ticket");
         return;
+      }
+      if (sectorName) {
+        if (assigneeId) toast.info(`Ticket atribuído a ${assigneeName || "operador do setor"} (${sectorName})`);
+        else toast.warning(`Nenhum operador ativo no setor ${sectorName} — ticket ficou na fila do setor`);
       }
 
       // Create tracking row if applicable

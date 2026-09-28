@@ -6518,6 +6518,10 @@ export type Database = {
         Args: { _sector: string }
         Returns: string
       }
+      pick_least_loaded_ticket_agent: {
+        Args: { _sector: string }
+        Returns: string
+      }
       presence_end_session: { Args: never; Returns: undefined }
       presence_heartbeat: { Args: never; Returns: undefined }
       sys_can_monitor: { Args: never; Returns: boolean }
