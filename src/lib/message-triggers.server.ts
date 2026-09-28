@@ -102,6 +102,8 @@ export async function evaluateMessageTriggers(
     text: string;
     assignedTo: string | null;
     messageId?: string | null;
+    /** Mensagens enviadas pela equipe: avaliam só regras de "apenas registrar". */
+    outbound?: boolean;
   },
 ): Promise<void> {
   const { text } = args;
@@ -112,7 +114,9 @@ export async function evaluateMessageTriggers(
     .eq("is_enabled", true)
     .order("priority", { ascending: true });
 
-  const rules = (rulesRaw || []) as unknown as Rule[];
+  const rules = ((rulesRaw || []) as unknown as Rule[]).filter(
+    (r) => !args.outbound || (r.action_type === "none" && !r.create_ticket),
+  );
   if (!rules.length) return;
 
   for (const rule of rules) {

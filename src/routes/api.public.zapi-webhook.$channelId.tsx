@@ -1280,6 +1280,24 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               }
             }
 
+            // Mensagens enviadas pela equipe: registra gatilhos "apenas registrar"
+            if (p.fromMe && text) {
+              try {
+                await evaluateMessageTriggers(supabaseAdmin, {
+                  channelId,
+                  chatId,
+                  phone,
+                  contactName: incomingContactName,
+                  text,
+                  assignedTo: null,
+                  messageId: p.messageId || null,
+                  outbound: true,
+                });
+              } catch (trigErr) {
+                console.warn("[zapi-webhook] outbound triggers error:", trigErr);
+              }
+            }
+
             // Automação "Sem comunicação" — inbound + outbound
             if (text) {
               try {
