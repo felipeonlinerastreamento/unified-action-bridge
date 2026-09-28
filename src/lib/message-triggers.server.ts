@@ -12,7 +12,7 @@ type Rule = {
   keywords: string[];
   match_type: "any" | "all" | "regex";
   case_sensitive: boolean;
-  action_type: "floating_alert" | "transfer_sector" | "both";
+  action_type: "floating_alert" | "transfer_sector" | "both" | "none";
   alert_message: string;
   alert_target_type: "assigned" | "all" | "sector" | "users";
   alert_target_sector_ids: string[];

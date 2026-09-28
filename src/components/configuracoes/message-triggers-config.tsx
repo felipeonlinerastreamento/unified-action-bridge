@@ -22,7 +22,7 @@ type Rule = {
   keywords: string[];
   match_type: "any" | "all" | "regex";
   case_sensitive: boolean;
-  action_type: "floating_alert" | "transfer_sector" | "both";
+  action_type: "floating_alert" | "transfer_sector" | "both" | "none";
   alert_message: string;
   alert_target_type: "assigned" | "all" | "sector" | "users";
   alert_target_sector_ids: string[];
@@ -186,6 +186,7 @@ export function MessageTriggersConfig() {
     floating_alert: "Balão flutuante",
     transfer_sector: "Transferir setor",
     both: "Alerta + transferência",
+    none: "Somente registro",
   }), []);
 
   return (
@@ -219,7 +220,7 @@ export function MessageTriggersConfig() {
                   {r.is_enabled ? "Ativa" : "Inativa"}
                 </Badge>
                 <Badge variant="outline" className="text-xs gap-1">
-                  {r.action_type === "transfer_sector" ? <ArrowRightLeft className="h-3 w-3" /> : <Bell className="h-3 w-3" />}
+                  {r.action_type === "none" ? <Tag className="h-3 w-3" /> : r.action_type === "transfer_sector" ? <ArrowRightLeft className="h-3 w-3" /> : <Bell className="h-3 w-3" />}
                   {actionLabel[r.action_type]}
                 </Badge>
               </div>
@@ -230,7 +231,7 @@ export function MessageTriggersConfig() {
                   </span>
                 ))}
               </div>
-              {(r.action_type !== "floating_alert") && r.transfer_sector_name && (
+              {(r.action_type === "transfer_sector" || r.action_type === "both") && r.transfer_sector_name && (
                 <div className="text-xs text-muted-foreground">
                   Transferir → <strong>{r.transfer_sector_name}</strong>
                 </div>
@@ -313,6 +314,7 @@ export function MessageTriggersConfig() {
                   <SelectItem value="floating_alert">Balão flutuante (alerta visual)</SelectItem>
                   <SelectItem value="transfer_sector">Transferir para setor</SelectItem>
                   <SelectItem value="both">Alerta + transferência</SelectItem>
+                  <SelectItem value="none">Nenhuma (apenas registrar no relatório)</SelectItem>
                 </SelectContent>
               </Select>
             </div>
