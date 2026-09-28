@@ -542,8 +542,8 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
         const { data: picked } = await (supabase as any).rpc("pick_least_loaded_ticket_agent", { _sector: sectorName });
         assigneeId = (picked as string) || null;
         if (assigneeId) {
-          const { data: prof } = await supabase.from("profiles").select("full_name").eq("id", assigneeId).maybeSingle();
-          assigneeName = (prof as any)?.full_name || null;
+          const { data: prof } = await supabase.from("profiles").select("name").eq("id", assigneeId).maybeSingle();
+          assigneeName = (prof as any)?.name || null;
         }
       }
 
