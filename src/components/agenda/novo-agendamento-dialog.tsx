@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Loader2, Search } from "lucide-react";
+import { Loader2, MessageCircle, Search } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,7 +13,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   buscarClientes,
   criarAgendamento,
+  criarAgendamentoTerceiro,
   listarTecnicos,
+  listarTecnicosTerceiros,
   tiposDeServicoDoCliente,
 } from "@/lib/seu-instalador.functions";
 import { asList, errorMessage, pick, todayISO } from "./shared";
@@ -29,6 +31,10 @@ export function NovoAgendamentoDialog({ open, onClose, onCreated }: Props) {
   const loadServiceTypes = useServerFn(tiposDeServicoDoCliente);
   const loadTechnicians = useServerFn(listarTecnicos);
   const createAppointment = useServerFn(criarAgendamento);
+  const createThirdParty = useServerFn(criarAgendamentoTerceiro);
+  const loadThirdParty = useServerFn(listarTecnicosTerceiros);
+  const [kind, setKind] = useState<"equipe" | "terceiro">("equipe");
+  const [thirdResult, setThirdResult] = useState<{ publicLink?: string; whatsappUrl?: string } | null>(null);
 
   const [search, setSearch] = useState("");
   const [debounced, setDebounced] = useState("");
@@ -73,11 +79,34 @@ export function NovoAgendamentoDialog({ open, onClose, onCreated }: Props) {
     enabled: open,
     queryFn: () => loadTechnicians({ data: {} }),
   });
-  const technicians = useMemo(() => asList(techniciansQuery.data), [techniciansQuery.data]);
+  const thirdQuery = useQuery({
+    queryKey: ["si-third-party-technicians"],
+    enabled: open && kind === "terceiro",
+    retry: 0,
+    queryFn: () => loadThirdParty({ data: {} }),
+  });
+  const activeQuery = kind === "terceiro" ? thirdQuery : techniciansQuery;
+  const technicians = useMemo(() => asList(activeQuery.data), [activeQuery.data]);
 
   const mutation = useMutation({
     mutationFn: async () => {
       const scheduledAt = `${date}T${time}:00-03:00`;
+      if (kind === "terceiro") {
+        return await createThirdParty({
+          data: {
+            idempotencyKey: idempotencyKey.current,
+            clientId,
+            thirdPartyTechnicianId: technicianId,
+            serviceTypeId,
+            scheduledAt,
+            durationMinutes: Number(duration) || 60,
+            identifier: identifier || undefined,
+            address: noAddress ? undefined : address || undefined,
+            noAddress,
+            description: description || undefined,
+          },
+        });
+      }
       return await createAppointment({
         data: {
           idempotencyKey: idempotencyKey.current,
@@ -93,9 +122,15 @@ export function NovoAgendamentoDialog({ open, onClose, onCreated }: Props) {
         },
       });
     },
-    onSuccess: () => {
+    onSuccess: (res: any) => {
       toast.success("Agendamento criado no Seu Instalador.");
       onCreated?.();
+      const d = res?.data ?? res;
+      if (kind === "terceiro" && d?.whatsappUrl) {
+        setThirdResult({ publicLink: d.publicLink, whatsappUrl: d.whatsappUrl });
+        reset();
+        return;
+      }
       reset();
       onClose();
     },
@@ -124,6 +159,27 @@ export function NovoAgendamentoDialog({ open, onClose, onCreated }: Props) {
           <DialogTitle>Novo agendamento</DialogTitle>
         </DialogHeader>
 
+        {thirdResult ? (
+          <div className="space-y-3 text-sm">
+            <p>OS criada para o técnico terceiro. Envie o link a ele — a mensagem não é enviada automaticamente.</p>
+            <Button asChild>
+              <a href={thirdResult.whatsappUrl} target="_blank" rel="noreferrer">
+                <MessageCircle className="mr-2 h-4 w-4" /> Enviar pelo WhatsApp
+              </a>
+            </Button>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => { setThirdResult(null); onClose(); }}>Fechar</Button>
+            </DialogFooter>
+          </div>
+        ) : (
+        <>
+        <div className="flex gap-2">
+          {(["equipe", "terceiro"] as const).map((k) => (
+            <Button key={k} type="button" size="sm" variant={kind === k ? "default" : "outline"} onClick={() => { setKind(k); setTechnicianId(""); }}>
+              {k === "equipe" ? "Técnico da equipe" : "Técnico terceiro"}
+            </Button>
+          ))}
+        </div>
         <div className="space-y-4">
           <div className="space-y-2">
             <Label>Cliente</Label>
@@ -194,7 +250,7 @@ export function NovoAgendamentoDialog({ open, onClose, onCreated }: Props) {
             </div>
 
             <div className="space-y-2">
-              <Label>Técnico</Label>
+              <Label>{kind === "terceiro" ? "Técnico terceiro" : "Técnico"}</Label>
               <Select value={technicianId} onValueChange={setTechnicianId}>
                 <SelectTrigger>
                   <SelectValue placeholder="Selecione o técnico" />
@@ -207,8 +263,8 @@ export function NovoAgendamentoDialog({ open, onClose, onCreated }: Props) {
                   ))}
                 </SelectContent>
               </Select>
-              {techniciansQuery.isError && (
-                <p className="text-xs text-destructive">{errorMessage(techniciansQuery.error)}</p>
+              {activeQuery.isError && (
+                <p className="text-xs text-destructive">{errorMessage(activeQuery.error)}</p>
               )}
             </div>
 
@@ -267,6 +323,8 @@ export function NovoAgendamentoDialog({ open, onClose, onCreated }: Props) {
             Agendar
           </Button>
         </DialogFooter>
+        </>
+        )}
       </DialogContent>
     </Dialog>
   );
