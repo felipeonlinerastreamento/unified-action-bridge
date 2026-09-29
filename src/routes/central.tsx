@@ -1001,17 +1001,42 @@ function CentralPage() {
 
 
   const { data: companyLookup, isFetched: companyLookupFetched } = useQuery({
-    queryKey: ["company-lookup", contactPhone],
+    queryKey: ["company-lookup", contactPhone, selectedChatId],
     queryFn: async () => {
       if (!contactPhone) return null;
-      const cleanPhone = normalizePhone(contactPhone);
 
-      // 1. Check company_phones table
+      // Candidate phones: the WhatsApp number plus the phone saved on the chat
+      // (covers internal WhatsApp codes that are not real numbers).
+      const candidates = new Set<string>([contactPhone.replace(/\D/g, "")]);
+      if (selectedChatId) {
+        const { data: chatRow } = await supabase
+          .from("zapi_chats")
+          .select("phone")
+          .eq("id", selectedChatId)
+          .maybeSingle();
+        const p = String((chatRow as any)?.phone || "").replace(/\D/g, "");
+        if (p) candidates.add(p);
+      }
+      const variants = new Set<string>();
+      for (const c of candidates) {
+        if (!c) continue;
+        const local = normalizePhone(c);
+        variants.add(c);
+        variants.add(local);
+        variants.add(`55${local}`);
+        // with/without the mobile 9th digit
+        if (local.length === 11) variants.add(local.slice(0, 2) + local.slice(3));
+        if (local.length === 10) variants.add(local.slice(0, 2) + "9" + local.slice(2));
+      }
+      for (const v of [...variants]) if (v.length === 10 || v.length === 11) variants.add(`55${v}`);
+
+      // 1. Check company_phones table (filtered query, no full-table scan)
       const { data: phoneLinks } = await supabase
         .from("company_phones")
-        .select("company_id, phone_number");
+        .select("company_id, phone_number")
+        .in("phone_number", [...variants].filter(Boolean));
 
-      const phoneMatch = phoneLinks?.find((p) => phonesMatch(p.phone_number, contactPhone));
+      const phoneMatch = phoneLinks?.[0];
 
       // 2. If no phone link, check previous tickets with same contact_phone that have a company_id
       let companyId = phoneMatch?.company_id;
