@@ -12,13 +12,18 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Command, CommandEmpty, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
+  analisarDirecionamento,
   buscarClientes,
-  criarAgendamento,
+  confirmarDirecionamento,
+  criarDirecionamento,
   listarAtividades,
+  listarDirecionamentos,
   tiposDeServicoDoCliente,
 } from "@/lib/seu-instalador.functions";
 import { asList, errorMessage, minutesOfDaySP, pick, todayISO } from "./shared";
 import { regionOf } from "./solicitacoes-regiao";
+import { geocodificarEnderecos } from "@/lib/geocode.functions";
+import { formatDateTime, saoPauloParts } from "./shared";
 
 interface Props {
   technicians: any[];
@@ -131,7 +136,71 @@ function EmpresaCombobox({
 export function SolicitacoesDirecionar({ technicians, defaultDate, onCreated }: Props) {
   const loadServiceTypes = useServerFn(tiposDeServicoDoCliente);
   const fetchAtividades = useServerFn(listarAtividades);
-  const createAppointment = useServerFn(criarAgendamento);
+  const geocode = useServerFn(geocodificarEnderecos);
+  const createRouting = useServerFn(criarDirecionamento);
+  const analyzeRouting = useServerFn(analisarDirecionamento);
+  const confirmRouting = useServerFn(confirmarDirecionamento);
+  const loadRoutings = useServerFn(listarDirecionamentos);
+  const [routing, setRouting] = useState<any | null>(null);
+  const [confTech, setConfTech] = useState("");
+  const [confDate, setConfDate] = useState("");
+  const [confTime, setConfTime] = useState("09:00");
+  const [justification, setJustification] = useState("");
+  const [busy, setBusy] = useState(false);
+  const routingsQuery = useQuery({
+    queryKey: ["si-routings"],
+    queryFn: () => loadRoutings({ data: { page: 1, pageSize: 20 } }),
+    staleTime: 30_000,
+  });
+  const routings = useMemo(() => asList(routingsQuery.data), [routingsQuery.data]);
+
+  function selectRouting(r: any) {
+    setRouting(r);
+    const techRec = r?.recommendedTechnicianId ?? r?.recommendation?.technicianId;
+    setConfTech(techRec ? String(techRec) : "");
+    const at = r?.recommendedScheduledAt ?? r?.recommendedAt ?? null;
+    const parts = at && String(at).length > 10 ? saoPauloParts(at) : null;
+    setConfDate(parts?.date ?? r?.serviceDate ?? date);
+    setConfTime(parts?.time ?? String(r?.windowStart ?? "09:00").slice(0, 5));
+    setJustification("");
+  }
+
+  async function analisar(id: string) {
+    setBusy(true);
+    try {
+      const res: any = await analyzeRouting({ data: { idempotencyKey: crypto.randomUUID(), routingId: id } });
+      selectRouting(res?.data ?? res);
+      routingsQuery.refetch();
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function confirmar() {
+    if (!routing?.id || !confTech || !confDate) return toast.error("Escolha o técnico, a data e o horário.");
+    setBusy(true);
+    try {
+      const res: any = await confirmRouting({
+        data: {
+          idempotencyKey: crypto.randomUUID(),
+          routingId: String(routing.id),
+          technicianId: confTech,
+          scheduledAt: `${confDate}T${confTime}:00-03:00`,
+          justification: justification || undefined,
+        },
+      });
+      toast.success("Direcionamento confirmado e OS criada.");
+      setRouting(null);
+      routingsQuery.refetch();
+      onCreated(res?.data ?? res);
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setBusy(false);
+    }
+  }
 
   const [clientId, setClientId] = useState("");
   const [clientName, setClientName] = useState("");
@@ -236,34 +305,44 @@ export function SolicitacoesDirecionar({ technicians, defaultDate, onCreated }: 
 
   const mutation = useMutation({
     mutationFn: async () => {
-      if (!suggestion) throw new Error("Nenhum técnico disponível para este endereço e horário.");
-      const time = mode === "exato" ? exactTime : toHHMM(suggestion.slot!);
-      return await createAppointment({
+      const [geo] = await geocode({ data: { addresses: [address.trim()] } });
+      if (!geo || geo.lat == null || geo.lng == null) {
+        throw new Error("Não foi possível localizar este endereço no mapa. Ajuste o endereço (rua, número, cidade - UF) e tente novamente.");
+      }
+      const created: any = await createRouting({
         data: {
           idempotencyKey: idempotencyKey.current,
           clientId,
-          technicianId: suggestion.id,
           serviceTypeId,
-          scheduledAt: `${date}T${time}:00-03:00`,
-          durationMinutes: Number(duration) || 60,
           identifier: identifier || undefined,
-          address: address || undefined,
-          noAddress: false,
-          description: extraNotes() || undefined,
+          description: description || undefined,
+          address: address.trim(),
+          lat: geo.lat,
+          lng: geo.lng,
+          serviceDate: date,
+          scheduleType: mode,
+          windowStart: mode === "exato" ? exactTime : windowStart,
+          windowEnd: mode === "exato" ? exactTime : windowEnd,
+          durationMinutes: Number(duration) || 60,
+          priority: (priority === "baixa" ? "normal" : priority) as "normal" | "alta" | "urgente",
+          contactName: contact || undefined,
+          contactPhone: phone || undefined,
         },
       });
-    },
-    onSuccess: (res: any) => {
-      toast.success("Solicitação registrada no Seu Instalador.");
       idempotencyKey.current = crypto.randomUUID();
-      setIdentifier("");
-      setDescription("");
-      onCreated(res?.data ?? res);
+      const r = created?.data ?? created;
+      const analyzed: any = await analyzeRouting({ data: { idempotencyKey: crypto.randomUUID(), routingId: String(r.id) } });
+      return analyzed?.data ?? analyzed ?? r;
+    },
+    onSuccess: (r: any) => {
+      toast.success("Pedido registrado e analisado pelo Seu Instalador.");
+      selectRouting(r);
+      routingsQuery.refetch();
     },
     onError: (e) => toast.error(errorMessage(e)),
   });
 
-  const canSubmit = !!clientId && !!serviceTypeId && !!address.trim() && !!date && !!suggestion;
+  const canSubmit = !!clientId && !!serviceTypeId && !!address.trim() && !!date;
 
   return (
     <div className="space-y-4">
@@ -321,7 +400,6 @@ export function SolicitacoesDirecionar({ technicians, defaultDate, onCreated }: 
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="baixa">Baixa</SelectItem>
               <SelectItem value="normal">Normal</SelectItem>
               <SelectItem value="alta">Alta</SelectItem>
               <SelectItem value="urgente">Urgente</SelectItem>
@@ -431,7 +509,7 @@ export function SolicitacoesDirecionar({ technicians, defaultDate, onCreated }: 
           <p className="flex items-center gap-2 font-medium">
             <Sparkles className="h-4 w-4 text-primary" />
             {suggestion
-              ? `Sugestão: ${suggestion.name} às ${toHHMM(mode === "exato" ? toMinutes(exactTime) : suggestion.slot!)}`
+              ? `Prévia local: ${suggestion.name} às ${toHHMM(mode === "exato" ? toMinutes(exactTime) : suggestion.slot!)}`
               : "Nenhum técnico livre para este endereço e horário."}
           </p>
           <p className="mt-1 text-xs text-muted-foreground">
@@ -445,8 +523,66 @@ export function SolicitacoesDirecionar({ technicians, defaultDate, onCreated }: 
       <div className="flex justify-end">
         <Button onClick={() => mutation.mutate()} disabled={!canSubmit || mutation.isPending}>
           {mutation.isPending && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-          Registrar solicitação
+          Registrar e analisar
         </Button>
+      </div>
+
+      {routing && (
+        <div className="space-y-3 rounded-md border border-primary/40 bg-primary/5 p-3 text-sm">
+          <p className="flex items-center gap-2 font-medium">
+            <Sparkles className="h-4 w-4 text-primary" /> Recomendação do Seu Instalador
+          </p>
+          <p className="text-muted-foreground whitespace-pre-wrap">
+            {typeof routing.recommendation === "string" ? routing.recommendation : "Sem recomendação ainda. Clique em Analisar."}
+          </p>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="space-y-1">
+              <Label>Técnico</Label>
+              <Select value={confTech} onValueChange={setConfTech}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  {technicians.map((t: any) => (
+                    <SelectItem key={t.id} value={String(t.id)}>{pick(t, ["name", "nome"], String(t.id))}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1"><Label>Data</Label><Input type="date" value={confDate} onChange={(e) => setConfDate(e.target.value)} /></div>
+            <div className="space-y-1"><Label>Horário</Label><Input type="time" value={confTime} onChange={(e) => setConfTime(e.target.value)} /></div>
+          </div>
+          <Input placeholder="Justificativa (opcional)" value={justification} maxLength={1000} onChange={(e) => setJustification(e.target.value)} />
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setRouting(null)}>Fechar</Button>
+            <Button variant="outline" size="sm" disabled={busy} onClick={() => void analisar(String(routing.id))}>Analisar novamente</Button>
+            <Button size="sm" disabled={busy} onClick={() => void confirmar()}>
+              {busy && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Confirmar e criar OS
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-2 border-t border-border pt-3">
+        <p className="text-sm font-medium">Direcionamentos recentes</p>
+        {routingsQuery.isError ? (
+          <p className="text-xs text-destructive">{errorMessage(routingsQuery.error)}</p>
+        ) : routings.length === 0 ? (
+          <p className="text-xs text-muted-foreground">Nenhum direcionamento registrado.</p>
+        ) : (
+          <ul className="space-y-1">
+            {routings.map((r: any) => (
+              <li key={r.id}>
+                <button
+                  type="button"
+                  onClick={() => selectRouting(r)}
+                  className="flex w-full items-center justify-between gap-2 rounded-md border border-border px-3 py-2 text-left text-xs hover:bg-muted/40"
+                >
+                  <span className="font-medium">{r?.client?.name ?? "Cliente"} · {r?.serviceType?.name ?? ""}</span>
+                  <span className="text-muted-foreground">{r?.serviceDate ? formatDateTime(`${r.serviceDate}T12:00:00-03:00`).slice(0, 10) : ""} · <span className="capitalize">{r?.status}</span></span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
       </div>
     </div>
   );
