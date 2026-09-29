@@ -308,10 +308,7 @@ export function SolicitacoesRegistrar({
         {created && (
           <div className="flex items-center gap-2 rounded-md border border-status-done/40 bg-status-done/10 p-3 text-sm">
             <CheckCircle2 className="h-4 w-4 text-status-done" />
-            <span>Solicitação registrada.</span>
-            <Button size="sm" variant="outline" onClick={() => onOpenOs(created)}>
-              Ver detalhes da OS
-            </Button>
+            <span>Solicitação registrada — acompanhe em Solicitações › Pendentes.</span>
           </div>
         )}
 
