@@ -12,7 +12,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
   buscarClientes,
-  criarAgendamento,
+  criarSolicitacao,
   tiposDeServicoDoCliente,
 } from "@/lib/seu-instalador.functions";
 import { asList, errorMessage, minutesOfDaySP, pick } from "./shared";
@@ -47,7 +47,11 @@ export function SolicitacoesRegistrar({
 }: Props) {
   const searchClients = useServerFn(buscarClientes);
   const loadServiceTypes = useServerFn(tiposDeServicoDoCliente);
-  const createAppointment = useServerFn(criarAgendamento);
+  const createRequest = useServerFn(criarSolicitacao);
+  const [contactName, setContactName] = useState("");
+  const [contactPhone, setContactPhone] = useState("");
+  const [contactEmail, setContactEmail] = useState("");
+  const [notifyContact, setNotifyContact] = useState(true);
 
   const [search, setSearch] = useState("");
   const [debounced, setDebounced] = useState("");
@@ -110,22 +114,27 @@ export function SolicitacoesRegistrar({
 
   const mutation = useMutation({
     mutationFn: async () =>
-      await createAppointment({
+      await createRequest({
         data: {
           idempotencyKey: idempotencyKey.current,
           clientId,
-          technicianId,
           serviceTypeId,
-          scheduledAt: `${date}T${time}:00-03:00`,
+          desiredAt: `${date}T${time}:00-03:00`,
           durationMinutes: Number(duration) || 60,
+          address: noAddress ? "Sem endereço" : address.trim(),
+          description:
+            [technicianId ? `Técnico sugerido: ${technicians.find((t: any) => String(t.id) === technicianId)?.name ?? technicianId}` : "", description]
+              .filter(Boolean)
+              .join("\n") || undefined,
+          contactName: contactName.trim(),
+          contactPhone: contactPhone.replace(/\D/g, ""),
+          contactEmail: contactEmail.trim() || undefined,
+          notifyContact,
           identifier: identifier || undefined,
-          address: noAddress ? undefined : address || undefined,
-          noAddress,
-          description: description || undefined,
         },
       }),
     onSuccess: (res: any) => {
-      toast.success("Solicitação registrada no Seu Instalador.");
+      toast.success("Solicitação registrada — aguardando aprovação no Seu Instalador.");
       const activity = res?.data ?? res;
       setCreated(activity);
       idempotencyKey.current = crypto.randomUUID();
@@ -136,7 +145,7 @@ export function SolicitacoesRegistrar({
     onError: (e) => toast.error(errorMessage(e)),
   });
 
-  const canSubmit = clientId && serviceTypeId && technicianId && date && time && (noAddress || address.trim());
+  const canSubmit = clientId && serviceTypeId && date && time && (noAddress || address.trim()) && contactName.trim() && contactPhone.replace(/\D/g, "").length >= 8;
 
   return (
     <Card>
@@ -206,7 +215,7 @@ export function SolicitacoesRegistrar({
           </div>
 
           <div className="space-y-2">
-            <Label>Técnico</Label>
+            <Label>Técnico sugerido (opcional)</Label>
             <Select value={technicianId} onValueChange={setTechnicianId}>
               <SelectTrigger>
                 <SelectValue placeholder="Selecione o técnico" />
@@ -274,6 +283,24 @@ export function SolicitacoesRegistrar({
         </div>
 
         <div className="space-y-2">
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div className="space-y-1">
+              <Label>Contato <span className="text-destructive">*</span></Label>
+              <Input value={contactName} maxLength={200} onChange={(e) => setContactName(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label>Telefone <span className="text-destructive">*</span></Label>
+              <Input value={contactPhone} maxLength={30} placeholder="31 99999-9999" onChange={(e) => setContactPhone(e.target.value)} />
+            </div>
+            <div className="space-y-1">
+              <Label>E-mail</Label>
+              <Input type="email" value={contactEmail} maxLength={255} onChange={(e) => setContactEmail(e.target.value)} />
+            </div>
+          </div>
+          <label className="flex items-center gap-2 text-sm">
+            <input type="checkbox" checked={notifyContact} onChange={(e) => setNotifyContact(e.target.checked)} />
+            Avisar o contato sobre a solicitação
+          </label>
           <Label>Observações</Label>
           <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} />
         </div>

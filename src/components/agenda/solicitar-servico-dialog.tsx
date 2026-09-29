@@ -89,6 +89,7 @@ export function SolicitarServicoDialog({
                 />
               </div>
               <SolicitacoesDisponibilidade
+                date={date}
                 activities={activities}
                 technicians={technicians}
                 loading={atividadesQuery.isLoading}
