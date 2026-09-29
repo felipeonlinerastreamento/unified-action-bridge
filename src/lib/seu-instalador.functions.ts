@@ -336,25 +336,34 @@ export const alterarStatusAgendamento = mutation(
 
 // ---------- Técnicos terceiros ----------
 
-export const listarTecnicosTerceiros = query(z.object({ search: z.string().optional() }), (d) => ({
-  path: "/third-party-technicians",
-  query: { search: d.search },
-}));
-export const criarAgendamentoTerceiro = mutation(
-  z.object({
-    idempotencyKey: idem,
-    clientId: idStr,
-    thirdPartyTechnicianId: idStr,
-    serviceTypeId: idStr,
-    scheduledAt: z.string().min(1),
-    durationMinutes: z.number().int().min(15).max(1440),
-    identifier: z.string().max(100).optional(),
-    address: z.string().max(500).optional(),
-    noAddress: z.boolean().optional(),
-    description: z.string().max(5000).optional(),
-  }),
-  ({ idempotencyKey, ...body }) => ({ path: "/third-party-appointments", method: "POST", body }),
-);
+export const listarTecnicosTerceiros = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => z.object({ search: z.string().optional() }).parse(input ?? {}))
+  .handler(async ({ data, context }) => {
+    const userName = await resolveUserName(context);
+    return await callApi<any>({ path: "/third-party-technicians", query: { search: data.search }, userName });
+  });
+
+const thirdPartySchema = z.object({
+  idempotencyKey: z.string().min(8),
+  clientId: z.string().min(1),
+  thirdPartyTechnicianId: z.string().min(1),
+  serviceTypeId: z.string().min(1),
+  scheduledAt: z.string().min(1),
+  durationMinutes: z.number().int().min(15).max(1440),
+  identifier: z.string().max(100).optional(),
+  address: z.string().max(500).optional(),
+  noAddress: z.boolean().optional(),
+  description: z.string().max(5000).optional(),
+});
+export const criarAgendamentoTerceiro = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: unknown) => thirdPartySchema.parse(input))
+  .handler(async ({ data, context }) => {
+    const userName = await resolveUserName(context);
+    const { idempotencyKey, ...body } = data;
+    return await callApi<any>({ path: "/third-party-appointments", method: "POST", body, idempotencyKey, userName });
+  });
 export const renovarLinkTerceiro = mutation(
   z.object({ idempotencyKey: idem, orderId: idStr }),
   (d) => ({ path: `/orders/${enc(d.orderId)}/third-party-link`, method: "POST", body: {} }),
