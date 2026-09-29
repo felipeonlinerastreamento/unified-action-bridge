@@ -10,7 +10,8 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { AppLayout } from "@/components/app-layout";
 import { useAuth } from "@/hooks/use-auth";
-import { listarAtividades, listarTecnicos } from "@/lib/seu-instalador.functions";
+import { listarSolicitacoes, listarTecnicos } from "@/lib/seu-instalador.functions";
+import { SolicitacaoDetalhesDialog } from "@/components/agenda/solicitacao-detalhes-dialog";
 import { OsDetalhesDialog } from "@/components/agenda/os-detalhes-dialog";
 import { SolicitarServicoDialog } from "@/components/agenda/solicitar-servico-dialog";
 import {
@@ -47,10 +48,10 @@ export const Route = createFileRoute("/agenda/solicitacoes")({
 const ALL = "__all__";
 
 const STATUS_CHIPS: { key: string; label: string; match: string[] }[] = [
-  { key: "pendentes", label: "Pendentes", match: ["pendente", "aberto", "open", "agendad", "scheduled"] },
-  { key: "andamento", label: "Em andamento", match: ["desloc", "execu", "andamento", "running", "moving"] },
-  { key: "concluidas", label: "Concluídas", match: ["conclu", "done", "finaliz"] },
-  { key: "canceladas", label: "Canceladas", match: ["cancel", "improdut"] },
+  { key: "pendentes", label: "Pendentes", match: ["pendente"] },
+  { key: "aprovadas", label: "Aprovadas", match: ["aprovad"] },
+  { key: "recusadas", label: "Recusadas", match: ["recusad", "rejeit"] },
+  { key: "canceladas", label: "Canceladas", match: ["cancel"] },
   { key: "todas", label: "Todas", match: [] },
 ];
 
@@ -65,13 +66,13 @@ function AgendaSolicitacoesPage() {
 }
 
 function AgendaSolicitacoes() {
-  const fetchAtividades = useServerFn(listarAtividades);
+  const fetchAtividades = useServerFn(listarSolicitacoes);
   const fetchTecnicos = useServerFn(listarTecnicos);
   const { hasRole } = useAuth();
   const canEdit = hasRole("admin") || hasRole("gestor");
 
-  const [from, setFrom] = useState(shiftDate(todayISO(), -7));
-  const [to, setTo] = useState(shiftDate(todayISO(), 30));
+  const [from, setFrom] = useState(shiftDate(todayISO(), -60));
+  const [to, setTo] = useState(shiftDate(todayISO(), 60));
   const [showFilters, setShowFilters] = useState(false);
   const [search, setSearch] = useState("");
   const [technicianFilter, setTechnicianFilter] = useState(ALL);
@@ -81,7 +82,7 @@ function AgendaSolicitacoes() {
 
   const atividadesQuery = useQuery({
     queryKey: ["si-solicitacoes-lista", from, to],
-    queryFn: () => fetchAtividades({ data: { scheduledFrom: from, scheduledTo: to, page: 1, pageSize: 100 } }),
+    queryFn: () => fetchAtividades({ data: { page: 1, pageSize: 100 } }),
     staleTime: 30_000,
   });
 
@@ -100,10 +101,8 @@ function AgendaSolicitacoes() {
     return activities.filter((a: any) => {
       const status = String(a?.status ?? "").toLowerCase();
       if (chip && chip.match.length > 0 && !chip.match.some((m) => status.includes(m))) return false;
-      if (technicianFilter !== ALL) {
-        const id = a?.technicianId ?? a?.technician?.id;
-        if (!id || String(id) !== technicianFilter) return false;
-      }
+      const ref = String(a?.createdAt ?? a?.desiredAt ?? "").slice(0, 10);
+      if (ref && (ref < from || ref > to)) return false;
       if (term) {
         const haystack = [
           pick(a, ["identifier", "title"], ""),
@@ -117,7 +116,7 @@ function AgendaSolicitacoes() {
       }
       return true;
     });
-  }, [activities, statusChip, technicianFilter, search]);
+  }, [activities, statusChip, from, to, search]);
 
   return (
     <div className="space-y-4 p-4 md:p-6">
@@ -183,7 +182,7 @@ function AgendaSolicitacoes() {
               <Input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
             </div>
             <div className="space-y-1">
-              <span className="text-xs text-muted-foreground">Técnico</span>
+              <span className="text-xs text-muted-foreground">Técnico (aprovação)</span>
               <Select value={technicianFilter} onValueChange={setTechnicianFilter}>
                 <SelectTrigger>
                   <SelectValue placeholder="Todos os técnicos" />
@@ -223,7 +222,8 @@ function AgendaSolicitacoes() {
       ) : (
         <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
           {filtered.map((a: any) => {
-            const st = statusStyle(String(a?.status ?? ""));
+            const raw = String(a?.status ?? "");
+            const st = { ...statusStyle(raw), label: raw ? raw.charAt(0).toUpperCase() + raw.slice(1) : "—" };
             const cliente = pick(a, ["clientName"], "") || pick(a?.client ?? {}, ["name", "nome"], "Cliente");
             const servico =
               pick(a, ["serviceTypeName", "title"], "") || pick(a?.serviceType ?? {}, ["name", "nome"], "");
@@ -250,9 +250,12 @@ function AgendaSolicitacoes() {
                   <MapPin className="h-3 w-3" /> {osAddress(a) || "sem endereço"}
                 </p>
                 <p className="mt-2 text-xs">
-                  <span className="text-muted-foreground">Agendamento: </span>
-                  {formatDateTime(a?.scheduledAt)}
+                  <span className="text-muted-foreground">Data desejada: </span>
+                  {formatDateTime(a?.desiredAt ?? a?.scheduledAt)}
                 </p>
+                {a?.contact?.name && (
+                  <p className="mt-1 text-xs text-muted-foreground">Contato: {a.contact.name} {a.contact.phone || ""}</p>
+                )}
                 {pick(a, ["identifier"], "") && (
                   <p className="mt-1 text-xs text-muted-foreground">{pick(a, ["identifier"], "")}</p>
                 )}
@@ -268,11 +271,18 @@ function AgendaSolicitacoes() {
         technicians={technicians}
         defaultDate={todayISO()}
         onCreated={() => atividadesQuery.refetch()}
-        onOpenOs={(a) => setSelected(a)}
+        onOpenOs={(a) => setSelected({ ...a, __os: true })}
+      />
+
+      <SolicitacaoDetalhesDialog
+        request={selected && !selected.__os ? selected : null}
+        technicians={technicians}
+        onClose={() => setSelected(null)}
+        onChanged={() => atividadesQuery.refetch()}
       />
 
       <OsDetalhesDialog
-        open={!!selected}
+        open={!!selected?.__os}
         onClose={() => setSelected(null)}
         activity={selected}
         canEdit={canEdit}
