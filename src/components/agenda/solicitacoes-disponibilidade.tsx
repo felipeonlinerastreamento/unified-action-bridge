@@ -1,4 +1,8 @@
 import { useMemo } from "react";
+import { useQuery } from "@tanstack/react-query";
+import { useServerFn } from "@tanstack/react-start";
+import { disponibilidadeSolicitacoes } from "@/lib/seu-instalador.functions";
+import { asList } from "./shared";
 import { Loader2 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { minutesOfDaySP, pick, statusStyle } from "./shared";
@@ -26,7 +30,29 @@ function techIdOf(a: any): string {
   return v ? String(v) : "";
 }
 
+/** Converte um item da disponibilidade oficial em bloco ocupado (formato de atividade). */
+function normalizeOfficial(items: any[]): any[] {
+  const out: any[] = [];
+  for (const it of items) {
+    const techId = it?.technicianId ?? it?.technician?.id;
+    const busy = asList(it?.busy ?? it?.occupied ?? it?.appointments ?? it?.slots);
+    if (busy.length > 0) {
+      for (const b of busy) {
+        if (b?.available === true) continue;
+        const start = b?.scheduledAt ?? b?.start ?? b?.startsAt;
+        const end = b?.end ?? b?.endsAt;
+        const dur = b?.durationMinutes ?? (start && end ? (new Date(end).getTime() - new Date(start).getTime()) / 60000 : 60);
+        if (start) out.push({ ...b, technicianId: techId ?? b?.technicianId, scheduledAt: start, durationMinutes: dur });
+      }
+    } else if (it?.scheduledAt || it?.start) {
+      out.push({ ...it, technicianId: techId, scheduledAt: it.scheduledAt ?? it.start });
+    }
+  }
+  return out;
+}
+
 interface Props {
+  date?: string;
   activities: any[];
   technicians: any[];
   loading: boolean;
@@ -38,7 +64,8 @@ interface Props {
 }
 
 export function SolicitacoesDisponibilidade({
-  activities,
+  date,
+  activities: localActivities,
   technicians,
   loading,
   duration,
@@ -47,6 +74,18 @@ export function SolicitacoesDisponibilidade({
   onPickSlot,
   onOpenOs,
 }: Props) {
+  const loadAvailability = useServerFn(disponibilidadeSolicitacoes);
+  const officialQuery = useQuery({
+    queryKey: ["si-availability", date],
+    enabled: !!date,
+    retry: 0,
+    staleTime: 60_000,
+    queryFn: () => loadAvailability({ data: { date: date! } }),
+  });
+  const official = useMemo(() => normalizeOfficial(asList(officialQuery.data)), [officialQuery.data]);
+  const usingOfficial = official.length > 0;
+  const activities = usingOfficial ? official : localActivities;
+
   const rows = useMemo(() => {
     const list = technicians.filter((t: any) => !technicianFilter || String(t.id) === technicianFilter);
     return list.map((t: any) => {
@@ -77,6 +116,11 @@ export function SolicitacoesDisponibilidade({
 
   return (
     <Card>
+      {!usingOfficial && date && !officialQuery.isLoading && (
+        <p className="px-6 pt-4 text-xs text-muted-foreground">
+          A disponibilidade oficial do Seu Instalador não trouxe dados para este dia; exibindo o cálculo pela agenda das OSs.
+        </p>
+      )}
       <CardHeader className="pb-3">
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
