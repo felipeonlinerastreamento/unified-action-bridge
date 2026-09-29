@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { FileDown, ImageOff, Loader2, Pencil } from "lucide-react";
+import { CalendarClock, Copy, FileDown, ImageOff, Link2, Link2Off, Loader2, MessageCircle, Pencil, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import {
   alterarStatusAgendamento,
   atualizarAgendamento,
+  clonarOS,
+  excluirOS,
   historicoOS,
+  reagendarOS,
+  renovarLinkTerceiro,
+  revogarLinkTerceiro,
   listarTecnicos,
   tiposDeServicoDoCliente,
 } from "@/lib/seu-instalador.functions";
@@ -61,6 +66,57 @@ export function OsDetalhesDialog({ open, onClose, activity, canEdit, onUpdated }
   const loadServiceTypes = useServerFn(tiposDeServicoDoCliente);
   const updateAppointment = useServerFn(atualizarAgendamento);
   const updateStatus = useServerFn(alterarStatusAgendamento);
+  const doReschedule = useServerFn(reagendarOS);
+  const doClone = useServerFn(clonarOS);
+  const doDelete = useServerFn(excluirOS);
+  const doRenew = useServerFn(renovarLinkTerceiro);
+  const doRevoke = useServerFn(revogarLinkTerceiro);
+  const [linkInfo, setLinkInfo] = useState<{ publicLink?: string; whatsappUrl?: string } | null>(null);
+  const [busy, setBusy] = useState<string | null>(null);
+
+  async function runAction(name: string, fn: (key: string) => Promise<any>, success: string, close = true) {
+    const key = crypto.randomUUID(); // chave única por ação; o servidor a reaproveita em repetições
+    setBusy(name);
+    try {
+      const res = await fn(key);
+      toast.success(success);
+      onUpdated?.();
+      if (close) onClose();
+      return res;
+    } catch (e) {
+      toast.error(errorMessage(e));
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  function reagendar() {
+    const d = window.prompt("Nova data (AAAA-MM-DD):", date || "");
+    if (!d) return;
+    const t = window.prompt("Novo horário (HH:MM):", time || "09:00");
+    if (!t) return;
+    const reason = window.prompt("Motivo do reagendamento (opcional):") || undefined;
+    void runAction("reschedule", (k) => doReschedule({ data: { idempotencyKey: k, orderId, scheduledAt: `${d}T${t}:00-03:00`, reason } }), "OS reagendada.");
+  }
+  function duplicar() {
+    if (!window.confirm("Duplicar esta OS?")) return;
+    void runAction("clone", (k) => doClone({ data: { idempotencyKey: k, orderId } }), "OS duplicada.");
+  }
+  function excluir() {
+    if (!window.confirm("Excluir esta OS no Seu Instalador? Esta ação não pode ser desfeita.")) return;
+    void runAction("delete", (k) => doDelete({ data: { idempotencyKey: k, orderId } }), "OS excluída.");
+  }
+  async function renovarLink() {
+    if (!window.confirm("Gerar um novo link para o técnico terceiro? O link anterior deixará de funcionar.")) return;
+    const res: any = await runAction("renew", (k) => doRenew({ data: { idempotencyKey: k, orderId } }), "Novo link gerado.", false);
+    const d = res?.data ?? res;
+    if (d) setLinkInfo({ publicLink: d.publicLink, whatsappUrl: d.whatsappUrl });
+  }
+  function revogarLink() {
+    if (!window.confirm("Revogar o link do técnico terceiro?")) return;
+    setLinkInfo(null);
+    void runAction("revoke", (k) => doRevoke({ data: { idempotencyKey: k, orderId } }), "Link revogado.", false);
+  }
 
   const id = activity?.orderId ?? activity?.id;
   const orderId = id ? String(id) : "";
@@ -120,6 +176,7 @@ export function OsDetalhesDialog({ open, onClose, activity, canEdit, onUpdated }
     mutationFn: async () => {
       await updateAppointment({
         data: {
+          idempotencyKey: crypto.randomUUID(),
           appointmentId: orderId,
           technicianId: technicianId || undefined,
           serviceTypeId: serviceTypeId || undefined,
@@ -131,7 +188,7 @@ export function OsDetalhesDialog({ open, onClose, activity, canEdit, onUpdated }
         },
       });
       if (status && status !== String(activity?.status || "")) {
-        await updateStatus({ data: { appointmentId: orderId, status } });
+        await updateStatus({ data: { idempotencyKey: crypto.randomUUID(), appointmentId: orderId, status } });
       }
     },
     onSuccess: () => {
@@ -229,11 +286,40 @@ export function OsDetalhesDialog({ open, onClose, activity, canEdit, onUpdated }
                   )}
                 </div>
 
+                {linkInfo?.whatsappUrl && (
+                  <div className="rounded-md border border-border p-3 text-sm space-y-2">
+                    <p className="text-muted-foreground">Novo link gerado. A mensagem não é enviada automaticamente.</p>
+                    <Button size="sm" asChild>
+                      <a href={linkInfo.whatsappUrl} target="_blank" rel="noreferrer">
+                        <MessageCircle className="h-4 w-4 mr-2" /> Enviar pelo WhatsApp
+                      </a>
+                    </Button>
+                  </div>
+                )}
                 <div className="flex flex-wrap gap-2 pt-1">
                   {canEdit && (
                     <Button variant="outline" size="sm" onClick={() => setEditing(true)}>
                       <Pencil className="h-4 w-4 mr-2" /> Editar
                     </Button>
+                  )}
+                  {canEdit && (
+                    <>
+                      <Button variant="outline" size="sm" disabled={!!busy} onClick={reagendar}>
+                        <CalendarClock className="h-4 w-4 mr-2" /> Reagendar
+                      </Button>
+                      <Button variant="outline" size="sm" disabled={!!busy} onClick={duplicar}>
+                        <Copy className="h-4 w-4 mr-2" /> Duplicar
+                      </Button>
+                      <Button variant="outline" size="sm" disabled={!!busy} onClick={() => void renovarLink()}>
+                        <Link2 className="h-4 w-4 mr-2" /> Renovar link do terceiro
+                      </Button>
+                      <Button variant="outline" size="sm" disabled={!!busy} onClick={revogarLink}>
+                        <Link2Off className="h-4 w-4 mr-2" /> Revogar link
+                      </Button>
+                      <Button variant="destructive" size="sm" disabled={!!busy} onClick={excluir}>
+                        <Trash2 className="h-4 w-4 mr-2" /> Excluir
+                      </Button>
+                    </>
                   )}
                   <Button size="sm" onClick={() => void baixarPdf()} disabled={pdfLoading}>
                     {pdfLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <FileDown className="h-4 w-4 mr-2" />}
