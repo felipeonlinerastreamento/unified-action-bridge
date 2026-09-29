@@ -245,7 +245,7 @@ function mutation<S extends z.ZodTypeAny>(
     .handler(async ({ data, context }) => {
       if (opts.managerOnly) await requireManager(context);
       const userName = await resolveUserName(context);
-      const { path, method, body } = build(data);
+      const { path, method, body } = build(data as any);
       return await callApi<any>({
         path,
         method,
@@ -270,7 +270,7 @@ function query<S extends z.ZodTypeAny>(schema: S, build: (d: z.infer<S>) => { pa
     .inputValidator((input: unknown) => schema.parse(input ?? {}) as z.infer<S>)
     .handler(async ({ data, context }) => {
       const userName = await resolveUserName(context);
-      const { path, query: q } = build(data);
+      const { path, query: q } = build(data as any);
       return await callApi<any>({ path, query: q, userName });
     });
 }
