@@ -171,6 +171,16 @@ import {
   AlertDialogAction,
 } from "@/components/ui/alert-dialog";
 
+/**
+ * Ticket já finalizado no chat pelo fluxo Teste de Equipamento e encaminhado
+ * para o setor administrativo: não deve ser reaproveitado por uma nova
+ * interação no mesmo chat (senão é sobrescrito).
+ */
+function isRoutedTeTicket(t: any): boolean {
+  const notes = String(t?.notes || "");
+  return notes.trimStart().startsWith("[Teste de Equipamento]") && /teste de equipamento/i.test(String(t?.category || ""));
+}
+
 export const Route = createFileRoute("/central")({
   component: CentralPageWithFloating,
   validateSearch: (s: Record<string, unknown>) => ({
