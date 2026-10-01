@@ -1433,14 +1433,15 @@ function CentralPage() {
     queryKey: ["service-ticket", selectedChatId],
     queryFn: async () => {
       if (!selectedChatId) return null;
-      const { data } = await supabase
+      const { data: raw } = await supabase
         .from("service_tickets")
         .select("*")
         .eq("attendance_id", selectedChatId)
         .neq("status", "finalizado")
         .order("created_at", { ascending: false })
-        .limit(1);
-      return data && data.length > 0 ? data[0] : null;
+        .limit(10);
+      const data = (raw || []).filter((t: any) => !isRoutedTeTicket(t));
+      return data.length > 0 ? data[0] : null;
     },
     enabled: !!selectedChatId && isAuthenticated,
   });
@@ -1556,13 +1557,14 @@ function CentralPage() {
   const createTicketMutation = useMutation({
     mutationFn: async () => {
       if (!selectedChatId || !chatDetail) return;
-      const { data: existing } = await supabase
+      const { data: existingRaw } = await supabase
         .from("service_tickets")
-        .select("id")
+        .select("id, category, notes")
         .eq("attendance_id", selectedChatId)
         .neq("status", "finalizado")
-        .limit(1);
-      if (existing && existing.length > 0) return;
+        .limit(10);
+      const existing = (existingRaw || []).filter((t: any) => !isRoutedTeTicket(t));
+      if (existing.length > 0) return;
 
       const { data: sess } = await supabase.auth.getSession();
       const { data: ticket, error } = await supabase.from("service_tickets").insert({
@@ -2141,14 +2143,15 @@ function CentralPage() {
       }
 
       if (!linkedId && !ticketForProtocol && selectedChatId && chatDetail) {
-        const { data: existing } = await supabase
+        const { data: existingRaw } = await supabase
           .from("service_tickets")
           .select("*")
           .eq("attendance_id", selectedChatId)
           .neq("status", "finalizado")
           .order("created_at", { ascending: false })
-          .limit(1);
-        if (existing && existing.length > 0) {
+          .limit(10);
+        const existing = (existingRaw || []).filter((t: any) => !isRoutedTeTicket(t));
+        if (existing.length > 0) {
           ticketForProtocol = existing[0] as any;
         } else {
           // IMPORTANTE: criar o ticket já como finalizado para evitar que conversas
