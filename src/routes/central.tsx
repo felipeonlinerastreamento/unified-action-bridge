@@ -68,6 +68,7 @@ import {
   Phone,
   Search,
   ArrowRightLeft,
+  ArrowDown,
   CheckCircle2,
   MessageSquare,
   User,
@@ -137,6 +138,7 @@ import { ChatTags, type ChatTag } from "@/components/central/chat-tags";
 import { MessageStatusTicks } from "@/components/central/message-status-ticks";
 import { TypingIndicator } from "@/components/central/typing-indicator";
 import { MessageMediaContent } from "@/components/central/message-media";
+import { useChatScroll } from "@/components/central/use-chat-scroll";
 import { AudioRecorderButton } from "@/components/central/audio-recorder-button";
 import { EmojiPickerButton } from "@/components/central/emoji-picker-button";
 import { useZapiRealtime } from "@/hooks/use-zapi-realtime";
@@ -430,7 +432,6 @@ function CentralPage() {
   const [showLeftPanel, setShowLeftPanel] = useState(true);
   const [showRightPanel, setShowRightPanel] = useState(true);
   const [headerExpanded, setHeaderExpanded] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const aiChatEndRef = useRef<HTMLDivElement>(null);
   const lastIdentFormSeedRef = useRef<string>("");
   const queryClient = useQueryClient();
@@ -1839,10 +1840,19 @@ function CentralPage() {
     onError: (err: any) => toast.error(err?.message || "Erro ao vincular empresa"),
   });
 
-  // Auto-scroll
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length, selectedChatId]);
+  // Auto-scroll: abre sempre na última mensagem; botão flutuante para voltar ao fim
+  const lastMessageKey = messages.length > 0 ? (messages[messages.length - 1] as any)?.IdMessage ?? messages.length : null;
+  const {
+    rootRef: chatScrollRef,
+    endRef: chatScrollEndRef,
+    showJump: showJumpToBottom,
+    newCount: newMessagesWhileAway,
+    jumpToBottom,
+  } = useChatScroll({
+    chatKey: selectedChatId,
+    messageCount: messages.length,
+    lastMessageKey,
+  });
 
   // Send message (or whisper)
   const sendMutation = useMutation({
@@ -3753,7 +3763,8 @@ function CentralPage() {
                   </div>
 
                   {/* Messages */}
-                  <ScrollArea className="flex-1 p-4 [&>div>div]:!block">
+                  <div className="relative flex-1 min-h-0 flex flex-col">
+                  <ScrollArea ref={chatScrollRef} className="flex-1 p-4 [&>div>div]:!block">
                     <div className="space-y-2">
                       {messages.length > 0 && hasOlder && (
                         <div className="flex justify-center mb-2">
@@ -3952,9 +3963,25 @@ function CentralPage() {
                       {isContactTyping && (
                         <TypingIndicator name={chatDetail?.contact?.name || chatDetail?.description} />
                       )}
-                      <div ref={messagesEndRef} />
+                      <div ref={chatScrollEndRef} />
                     </div>
                   </ScrollArea>
+                  {showJumpToBottom && (
+                    <button
+                      type="button"
+                      onClick={jumpToBottom}
+                      title="Ir para a última mensagem"
+                      className="absolute bottom-4 right-4 z-10 flex items-center gap-1 rounded-full bg-primary text-primary-foreground shadow-lg px-3 py-2 text-xs font-medium hover:opacity-90 transition-opacity"
+                    >
+                      <ArrowDown className="h-4 w-4" />
+                      {newMessagesWhileAway > 0 && (
+                        <span className="rounded-full bg-destructive text-destructive-foreground text-[10px] px-1.5 py-0.5 leading-none">
+                          {newMessagesWhileAway}
+                        </span>
+                      )}
+                    </button>
+                  )}
+                  </div>
 
                   {/* Input */}
                   <div className="p-3 border-t space-y-2">

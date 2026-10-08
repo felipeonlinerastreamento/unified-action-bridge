@@ -8,7 +8,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Send, Minus, Maximize2, Minimize2, X, GripHorizontal, Loader2, ExternalLink, MessageSquare } from "lucide-react";
+import { Send, Minus, Maximize2, Minimize2, X, GripHorizontal, Loader2, ExternalLink, MessageSquare, ArrowDown } from "lucide-react";
+import { useChatScroll } from "./use-chat-scroll";
 import { getChatDetail, getChatMessages, sendText, joinChatAsCoAgent } from "@/lib/gsystem.functions";
 import { useAuth } from "@/hooks/use-auth";
 import { UserPlus2 } from "lucide-react";
@@ -62,7 +63,6 @@ export function FloatingChatWindow({ state, onOpenInPanel }: Props) {
   const [isDragging, setIsDragging] = useState(false);
   const dragOffset = useRef({ x: 0, y: 0 });
   const windowRef = useRef<HTMLDivElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastMessageCount = useRef(0);
   const isFocused = useRef(false);
   const queryClient = useQueryClient();
@@ -195,12 +195,20 @@ export function FloatingChatWindow({ state, onOpenInPanel }: Props) {
     lastMessageCount.current = count;
   }, [messages, state.minimized, state.unread, setUnread, chatId]);
 
-  // Scroll to bottom on new messages
-  useEffect(() => {
-    if (!state.minimized) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages.length, state.minimized]);
+  // Scroll: abre na última mensagem; botão flutuante para voltar ao fim
+  const lastMessageKey = messages.length > 0 ? messages[messages.length - 1]?.IdMessage ?? messages.length : null;
+  const {
+    rootRef: chatScrollRef,
+    endRef: chatScrollEndRef,
+    showJump: showJumpToBottom,
+    newCount: newMessagesWhileAway,
+    jumpToBottom,
+  } = useChatScroll({
+    chatKey: chatId,
+    messageCount: messages.length,
+    lastMessageKey,
+    enabled: !state.minimized,
+  });
 
   // Drag
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -382,7 +390,8 @@ export function FloatingChatWindow({ state, onOpenInPanel }: Props) {
         </div>
       )}
       {/* Messages */}
-      <ScrollArea className="flex-1 bg-muted/20"
+      <div className="relative flex-1 min-h-0 flex flex-col">
+      <ScrollArea ref={chatScrollRef} className="flex-1 bg-muted/20"
         onFocus={() => { isFocused.current = true; setUnread(chatId, 0); }}
         onClick={() => setUnread(chatId, 0)}
       >
@@ -465,9 +474,25 @@ export function FloatingChatWindow({ state, onOpenInPanel }: Props) {
             })
           )}
           {isContactTyping && <TypingIndicator name={meta.name} className="mt-1" />}
-          <div ref={messagesEndRef} />
+          <div ref={chatScrollEndRef} />
         </div>
       </ScrollArea>
+      {showJumpToBottom && (
+        <button
+          type="button"
+          onClick={jumpToBottom}
+          title="Ir para a última mensagem"
+          className="absolute bottom-3 right-3 z-10 flex items-center gap-1 rounded-full bg-primary text-primary-foreground shadow-lg px-2.5 py-1.5 text-[10px] font-medium hover:opacity-90 transition-opacity"
+        >
+          <ArrowDown className="h-3.5 w-3.5" />
+          {newMessagesWhileAway > 0 && (
+            <span className="rounded-full bg-destructive text-destructive-foreground text-[9px] px-1 py-0.5 leading-none">
+              {newMessagesWhileAway}
+            </span>
+          )}
+        </button>
+      )}
+      </div>
 
       {/* Input */}
       <div className="border-t p-2 bg-background">
