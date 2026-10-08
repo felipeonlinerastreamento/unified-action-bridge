@@ -433,6 +433,7 @@ function CentralPage() {
   const [showRightPanel, setShowRightPanel] = useState(true);
   const [headerExpanded, setHeaderExpanded] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const chatScrollRootRef = useRef<HTMLDivElement>(null);
   const aiChatEndRef = useRef<HTMLDivElement>(null);
   const lastIdentFormSeedRef = useRef<string>("");
   const queryClient = useQueryClient();
@@ -1841,10 +1842,19 @@ function CentralPage() {
     onError: (err: any) => toast.error(err?.message || "Erro ao vincular empresa"),
   });
 
-  // Auto-scroll
-  useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages.length, selectedChatId]);
+  // Auto-scroll: abre sempre na última mensagem; botão flutuante para voltar ao fim
+  const lastMessageKey = messages.length > 0 ? (messages[messages.length - 1] as any)?.IdMessage ?? messages.length : null;
+  const {
+    rootRef: chatScrollRef,
+    endRef: chatScrollEndRef,
+    showJump: showJumpToBottom,
+    newCount: newMessagesWhileAway,
+    jumpToBottom,
+  } = useChatScroll({
+    chatKey: selectedChatId,
+    messageCount: messages.length,
+    lastMessageKey,
+  });
 
   // Send message (or whisper)
   const sendMutation = useMutation({
