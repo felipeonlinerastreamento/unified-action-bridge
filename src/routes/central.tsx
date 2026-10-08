@@ -432,8 +432,6 @@ function CentralPage() {
   const [showLeftPanel, setShowLeftPanel] = useState(true);
   const [showRightPanel, setShowRightPanel] = useState(true);
   const [headerExpanded, setHeaderExpanded] = useState(false);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
-  const chatScrollRootRef = useRef<HTMLDivElement>(null);
   const aiChatEndRef = useRef<HTMLDivElement>(null);
   const lastIdentFormSeedRef = useRef<string>("");
   const queryClient = useQueryClient();
@@ -3765,7 +3763,8 @@ function CentralPage() {
                   </div>
 
                   {/* Messages */}
-                  <ScrollArea className="flex-1 p-4 [&>div>div]:!block">
+                  <div className="relative flex-1 min-h-0 flex flex-col">
+                  <ScrollArea ref={chatScrollRef} className="flex-1 p-4 [&>div>div]:!block">
                     <div className="space-y-2">
                       {messages.length > 0 && hasOlder && (
                         <div className="flex justify-center mb-2">
