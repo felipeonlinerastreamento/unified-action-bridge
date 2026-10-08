@@ -68,6 +68,7 @@ import {
   Phone,
   Search,
   ArrowRightLeft,
+  ArrowDown,
   CheckCircle2,
   MessageSquare,
   User,
@@ -137,6 +138,7 @@ import { ChatTags, type ChatTag } from "@/components/central/chat-tags";
 import { MessageStatusTicks } from "@/components/central/message-status-ticks";
 import { TypingIndicator } from "@/components/central/typing-indicator";
 import { MessageMediaContent } from "@/components/central/message-media";
+import { useChatScroll } from "@/components/central/use-chat-scroll";
 import { AudioRecorderButton } from "@/components/central/audio-recorder-button";
 import { EmojiPickerButton } from "@/components/central/emoji-picker-button";
 import { useZapiRealtime } from "@/hooks/use-zapi-realtime";
