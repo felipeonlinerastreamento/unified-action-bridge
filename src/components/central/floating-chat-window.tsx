@@ -63,7 +63,6 @@ export function FloatingChatWindow({ state, onOpenInPanel }: Props) {
   const [isDragging, setIsDragging] = useState(false);
   const dragOffset = useRef({ x: 0, y: 0 });
   const windowRef = useRef<HTMLDivElement>(null);
-  const messagesEndRef = useRef<HTMLDivElement>(null);
   const lastMessageCount = useRef(0);
   const isFocused = useRef(false);
   const queryClient = useQueryClient();
@@ -391,7 +390,8 @@ export function FloatingChatWindow({ state, onOpenInPanel }: Props) {
         </div>
       )}
       {/* Messages */}
-      <ScrollArea className="flex-1 bg-muted/20"
+      <div className="relative flex-1 min-h-0 flex flex-col">
+      <ScrollArea ref={chatScrollRef} className="flex-1 bg-muted/20"
         onFocus={() => { isFocused.current = true; setUnread(chatId, 0); }}
         onClick={() => setUnread(chatId, 0)}
       >
