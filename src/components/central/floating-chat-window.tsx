@@ -8,7 +8,8 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Send, Minus, Maximize2, Minimize2, X, GripHorizontal, Loader2, ExternalLink, MessageSquare } from "lucide-react";
+import { Send, Minus, Maximize2, Minimize2, X, GripHorizontal, Loader2, ExternalLink, MessageSquare, ArrowDown } from "lucide-react";
+import { useChatScroll } from "./use-chat-scroll";
 import { getChatDetail, getChatMessages, sendText, joinChatAsCoAgent } from "@/lib/gsystem.functions";
 import { useAuth } from "@/hooks/use-auth";
 import { UserPlus2 } from "lucide-react";
@@ -195,12 +196,20 @@ export function FloatingChatWindow({ state, onOpenInPanel }: Props) {
     lastMessageCount.current = count;
   }, [messages, state.minimized, state.unread, setUnread, chatId]);
 
-  // Scroll to bottom on new messages
-  useEffect(() => {
-    if (!state.minimized) {
-      messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
-    }
-  }, [messages.length, state.minimized]);
+  // Scroll: abre na última mensagem; botão flutuante para voltar ao fim
+  const lastMessageKey = messages.length > 0 ? messages[messages.length - 1]?.IdMessage ?? messages.length : null;
+  const {
+    rootRef: chatScrollRef,
+    endRef: chatScrollEndRef,
+    showJump: showJumpToBottom,
+    newCount: newMessagesWhileAway,
+    jumpToBottom,
+  } = useChatScroll({
+    chatKey: chatId,
+    messageCount: messages.length,
+    lastMessageKey,
+    enabled: !state.minimized,
+  });
 
   // Drag
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
