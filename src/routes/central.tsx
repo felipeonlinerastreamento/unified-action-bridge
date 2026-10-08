@@ -3963,9 +3963,25 @@ function CentralPage() {
                       {isContactTyping && (
                         <TypingIndicator name={chatDetail?.contact?.name || chatDetail?.description} />
                       )}
-                      <div ref={messagesEndRef} />
+                      <div ref={chatScrollEndRef} />
                     </div>
                   </ScrollArea>
+                  {showJumpToBottom && (
+                    <button
+                      type="button"
+                      onClick={jumpToBottom}
+                      title="Ir para a última mensagem"
+                      className="absolute bottom-4 right-4 z-10 flex items-center gap-1 rounded-full bg-primary text-primary-foreground shadow-lg px-3 py-2 text-xs font-medium hover:opacity-90 transition-opacity"
+                    >
+                      <ArrowDown className="h-4 w-4" />
+                      {newMessagesWhileAway > 0 && (
+                        <span className="rounded-full bg-destructive text-destructive-foreground text-[10px] px-1.5 py-0.5 leading-none">
+                          {newMessagesWhileAway}
+                        </span>
+                      )}
+                    </button>
+                  )}
+                  </div>
 
                   {/* Input */}
                   <div className="p-3 border-t space-y-2">
