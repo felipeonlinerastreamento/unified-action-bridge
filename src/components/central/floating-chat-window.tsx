@@ -474,9 +474,25 @@ export function FloatingChatWindow({ state, onOpenInPanel }: Props) {
             })
           )}
           {isContactTyping && <TypingIndicator name={meta.name} className="mt-1" />}
-          <div ref={messagesEndRef} />
+          <div ref={chatScrollEndRef} />
         </div>
       </ScrollArea>
+      {showJumpToBottom && (
+        <button
+          type="button"
+          onClick={jumpToBottom}
+          title="Ir para a última mensagem"
+          className="absolute bottom-3 right-3 z-10 flex items-center gap-1 rounded-full bg-primary text-primary-foreground shadow-lg px-2.5 py-1.5 text-[10px] font-medium hover:opacity-90 transition-opacity"
+        >
+          <ArrowDown className="h-3.5 w-3.5" />
+          {newMessagesWhileAway > 0 && (
+            <span className="rounded-full bg-destructive text-destructive-foreground text-[9px] px-1 py-0.5 leading-none">
+              {newMessagesWhileAway}
+            </span>
+          )}
+        </button>
+      )}
+      </div>
 
       {/* Input */}
       <div className="border-t p-2 bg-background">
