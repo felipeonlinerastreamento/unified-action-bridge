@@ -49,7 +49,6 @@ import { Route as AgendaSolicitacoesRouteImport } from './routes/agenda.solicita
 import { Route as AgendaMapaRouteImport } from './routes/agenda.mapa'
 import { Route as AgendaAtividadesRouteImport } from './routes/agenda.atividades'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
-import { Route as ApiPublicZapiDebugRouteImport } from './routes/api.public.zapi-debug'
 import { Route as ApiPublicSystemHealthScanRouteImport } from './routes/api.public.system-health-scan'
 import { Route as ApiPublicEmailPollRouteImport } from './routes/api.public.email-poll'
 import { Route as ApiPublicCrmDailyRouteImport } from './routes/api.public.crm-daily'
@@ -273,11 +272,6 @@ const Char91DotwellKnownChar93OauthProtectedResourceRoute =
     path: '/.well-known/oauth-protected-resource',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiPublicZapiDebugRoute = ApiPublicZapiDebugRouteImport.update({
-  id: '/api/public/zapi-debug',
-  path: '/api/public/zapi-debug',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiPublicSystemHealthScanRoute =
   ApiPublicSystemHealthScanRouteImport.update({
     id: '/api/public/system-health-scan',
@@ -388,7 +382,6 @@ export interface FileRoutesByFullPath {
   '/api/public/crm-daily': typeof ApiPublicCrmDailyRoute
   '/api/public/email-poll': typeof ApiPublicEmailPollRoute
   '/api/public/system-health-scan': typeof ApiPublicSystemHealthScanRoute
-  '/api/public/zapi-debug': typeof ApiPublicZapiDebugRoute
   '/api/public/hooks/sync-gsystem-equipamentos': typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   '/api/public/zapi-webhook/$channelId': typeof ApiPublicZapiWebhookChannelIdRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
@@ -440,7 +433,6 @@ export interface FileRoutesByTo {
   '/api/public/crm-daily': typeof ApiPublicCrmDailyRoute
   '/api/public/email-poll': typeof ApiPublicEmailPollRoute
   '/api/public/system-health-scan': typeof ApiPublicSystemHealthScanRoute
-  '/api/public/zapi-debug': typeof ApiPublicZapiDebugRoute
   '/api/public/hooks/sync-gsystem-equipamentos': typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   '/api/public/zapi-webhook/$channelId': typeof ApiPublicZapiWebhookChannelIdRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
@@ -495,7 +487,6 @@ export interface FileRoutesById {
   '/api/public/crm-daily': typeof ApiPublicCrmDailyRoute
   '/api/public/email-poll': typeof ApiPublicEmailPollRoute
   '/api/public/system-health-scan': typeof ApiPublicSystemHealthScanRoute
-  '/api/public/zapi-debug': typeof ApiPublicZapiDebugRoute
   '/api/public/hooks/sync-gsystem-equipamentos': typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   '/api/public/zapi-webhook/$channelId': typeof ApiPublicZapiWebhookChannelIdRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
@@ -551,7 +542,6 @@ export interface FileRouteTypes {
     | '/api/public/crm-daily'
     | '/api/public/email-poll'
     | '/api/public/system-health-scan'
-    | '/api/public/zapi-debug'
     | '/api/public/hooks/sync-gsystem-equipamentos'
     | '/api/public/zapi-webhook/$channelId'
     | '/lovable/email/auth/preview'
@@ -603,7 +593,6 @@ export interface FileRouteTypes {
     | '/api/public/crm-daily'
     | '/api/public/email-poll'
     | '/api/public/system-health-scan'
-    | '/api/public/zapi-debug'
     | '/api/public/hooks/sync-gsystem-equipamentos'
     | '/api/public/zapi-webhook/$channelId'
     | '/lovable/email/auth/preview'
@@ -657,7 +646,6 @@ export interface FileRouteTypes {
     | '/api/public/crm-daily'
     | '/api/public/email-poll'
     | '/api/public/system-health-scan'
-    | '/api/public/zapi-debug'
     | '/api/public/hooks/sync-gsystem-equipamentos'
     | '/api/public/zapi-webhook/$channelId'
     | '/lovable/email/auth/preview'
@@ -692,7 +680,6 @@ export interface RootRouteChildren {
   ApiPublicCrmDailyRoute: typeof ApiPublicCrmDailyRoute
   ApiPublicEmailPollRoute: typeof ApiPublicEmailPollRoute
   ApiPublicSystemHealthScanRoute: typeof ApiPublicSystemHealthScanRoute
-  ApiPublicZapiDebugRoute: typeof ApiPublicZapiDebugRoute
   ApiPublicHooksSyncGsystemEquipamentosRoute: typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   ApiPublicZapiWebhookChannelIdRoute: typeof ApiPublicZapiWebhookChannelIdRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
@@ -981,13 +968,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/zapi-debug': {
-      id: '/api/public/zapi-debug'
-      path: '/api/public/zapi-debug'
-      fullPath: '/api/public/zapi-debug'
-      preLoaderRoute: typeof ApiPublicZapiDebugRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/public/system-health-scan': {
       id: '/api/public/system-health-scan'
       path: '/api/public/system-health-scan'
@@ -1157,7 +1137,6 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCrmDailyRoute: ApiPublicCrmDailyRoute,
   ApiPublicEmailPollRoute: ApiPublicEmailPollRoute,
   ApiPublicSystemHealthScanRoute: ApiPublicSystemHealthScanRoute,
-  ApiPublicZapiDebugRoute: ApiPublicZapiDebugRoute,
   ApiPublicHooksSyncGsystemEquipamentosRoute:
     ApiPublicHooksSyncGsystemEquipamentosRoute,
   ApiPublicZapiWebhookChannelIdRoute: ApiPublicZapiWebhookChannelIdRoute,
