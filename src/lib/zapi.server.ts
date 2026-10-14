@@ -58,17 +58,38 @@ export async function zapiFetch(
   let lastDetail = "";
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      res = await fetch(zapiUrl(channel, path), {
-        method,
-        headers,
-        body: payload,
-        signal: AbortSignal.timeout(timeoutMs),
-      });
+      // A Z-API às vezes responde com redirecionamento para a mesma URL
+      // definindo um cookie; o fetch padrão entra em loop ("Too many redirects").
+      // Seguimos manualmente, reenviando os cookies recebidos.
+      const signal = AbortSignal.timeout(timeoutMs);
+      let url = zapiUrl(channel, path);
+      let cookie = "";
+      for (let hop = 0; hop < 6; hop++) {
+        const h: Record<string, string> = { ...headers };
+        if (cookie) h["Cookie"] = cookie;
+        const r = await fetch(url, { method, headers: h, body: payload, signal, redirect: "manual" });
+        if (r.status >= 300 && r.status < 400 && r.headers.get("location")) {
+          const setCookie = r.headers.get("set-cookie");
+          if (setCookie) {
+            const pairs = setCookie.split(/,(?=[^;]+=)/).map((c) => c.split(";")[0].trim()).filter(Boolean);
+            cookie = [cookie, ...pairs].filter(Boolean).join("; ");
+          }
+          url = new URL(r.headers.get("location")!, url).toString();
+          await r.body?.cancel();
+          continue;
+        }
+        res = r;
+        break;
+      }
+      if (!res) throw new TypeError("Z-API redirecionou repetidamente");
       break;
     } catch (err: any) {
       lastDetail = [err?.name, err?.message, err?.cause?.message || err?.cause?.code]
         .filter(Boolean)
-        .join(" - ");
+        .join(" - ")
+        .replace(/https?:\/\/\S+/g, "")
+        .replace(/[,\s]+$/g, "")
+        .slice(0, 160);
       console.error(`[zapi] ${method} ${path} tentativa ${attempt}/${maxAttempts} falhou:`, lastDetail);
       if (isTimeoutError(err) && !isRead) {
         // Nunca repetir envio após timeout: a mensagem pode ter sido entregue.
