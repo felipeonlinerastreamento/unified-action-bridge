@@ -122,13 +122,7 @@ export async function zapiFetch(
         if (r.status >= 300 && r.status < 400 && r.headers.get("location")) {
           const setCookie = r.headers.get("set-cookie");
           const loc = r.headers.get("location")!;
-          console.warn(`[zapi] redirect ${r.status} hop ${hop}`, {
-            sameUrl: loc === url,
-            locHost: (() => { try { return new URL(loc, url).host + new URL(loc, url).protocol; } catch { return "?"; } })(),
-            hasCookie: !!setCookie,
-            server: r.headers.get("server"),
-            cfRay: r.headers.get("cf-ray"),
-          });
+          void loc;
           if (setCookie) {
             const pairs = setCookie.split(/,(?=[^;]+=)/).map((c) => c.split(";")[0].trim()).filter(Boolean);
             cookie = [cookie, ...pairs].filter(Boolean).join("; ");
@@ -140,7 +134,11 @@ export async function zapiFetch(
         res = r;
         break;
       }
-      if (!res) throw new TypeError("Z-API redirecionou repetidamente");
+      if (!res) {
+        const e = new TypeError("Z-API redirecionou repetidamente");
+        (e as any).zapiRedirectLoop = true;
+        throw e;
+      }
       break;
     } catch (err: any) {
       lastDetail = [err?.name, err?.message, err?.cause?.message || err?.cause?.code]
@@ -149,13 +147,22 @@ export async function zapiFetch(
         .replace(/https?:\/\/\S+/g, "")
         .replace(/[,\s]+$/g, "")
         .slice(0, 160);
-      console.error(`[zapi] ${method} ${path} tentativa ${attempt}/${maxAttempts} falhou:`, lastDetail);
+      const isLoop = err?.zapiRedirectLoop === true || /redirec/i.test(String(err?.message));
       // Loop de redirecionamento: o pedido nem chegou à Z-API (seguro repetir).
       // Usa a rota alternativa pelo backend, que sai por outra rede.
-      if (/redirect/i.test(String(err?.message)) && method !== "PUT") {
-        res = await zapiFetchViaBackend(zapiUrl(channel, path), method, headers, body, timeoutMs);
+      if (isLoop && method !== "PUT") {
+        try {
+          res = await zapiFetchViaBackend(zapiUrl(channel, path), method, headers, body, timeoutMs);
+          console.log(`[zapi] ${method} ${path} enviado pela rota alternativa (status ${res.status})`);
+        } catch (e: any) {
+          console.error(`[zapi] ${method} ${path} rota alternativa falhou:`, e?.message);
+          throw new Error(
+            `Envio pela rota alternativa falhou. Detalhe: ${String(e?.message || "desconhecido").replace(/https?:\/\/\S+/g, "").slice(0, 160)}`
+          );
+        }
         break;
       }
+      console.error(`[zapi] ${method} ${path} tentativa ${attempt}/${maxAttempts} falhou:`, lastDetail);
       if (isTimeoutError(err) && !isRead) {
         // Nunca repetir envio após timeout: a mensagem pode ter sido entregue.
         throw new Error(
