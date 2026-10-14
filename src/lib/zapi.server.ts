@@ -70,6 +70,14 @@ export async function zapiFetch(
         const r = await fetch(url, { method, headers: h, body: payload, signal, redirect: "manual" });
         if (r.status >= 300 && r.status < 400 && r.headers.get("location")) {
           const setCookie = r.headers.get("set-cookie");
+          const loc = r.headers.get("location")!;
+          console.warn(`[zapi] redirect ${r.status} hop ${hop}`, {
+            sameUrl: loc === url,
+            locHost: (() => { try { return new URL(loc, url).host + new URL(loc, url).protocol; } catch { return "?"; } })(),
+            hasCookie: !!setCookie,
+            server: r.headers.get("server"),
+            cfRay: r.headers.get("cf-ray"),
+          });
           if (setCookie) {
             const pairs = setCookie.split(/,(?=[^;]+=)/).map((c) => c.split(";")[0].trim()).filter(Boolean);
             cookie = [cookie, ...pairs].filter(Boolean).join("; ");
