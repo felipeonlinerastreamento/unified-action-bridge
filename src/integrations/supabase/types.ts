@@ -6529,6 +6529,17 @@ export type Database = {
       sys_db_health: { Args: never; Returns: Json }
       sys_slow_queries: { Args: never; Returns: Json }
       sys_table_sizes: { Args: never; Returns: Json }
+      zapi_net_request: {
+        Args: {
+          _body: Json
+          _headers: Json
+          _method: string
+          _timeout_ms?: number
+          _url: string
+        }
+        Returns: number
+      }
+      zapi_net_result: { Args: { _id: number }; Returns: Json }
     }
     Enums: {
       app_role: "admin" | "gestor" | "atendente"
