@@ -126,8 +126,17 @@ export function ZapiConnectionConfig() {
       });
     },
     onSuccess: (r: any) => {
-      if (r?.status === "CONNECTED") toast.success("Z-API conectada ✓");
-      else toast.error(`Desconectada: ${r?.error || "verifique credenciais"}`);
+      if (r?.status === "CONNECTED") {
+        toast.success("Z-API conectada ✓");
+      } else {
+        const errMsg = String(r?.error || "");
+        const isNetwork = /falha de conexão|demorou demais/i.test(errMsg);
+        toast.error(
+          isNetwork
+            ? "Não foi possível falar com a Z-API agora — pode ser instabilidade momentânea de rede. Clique em \"Testar conexão\" novamente em alguns segundos."
+            : `Desconectada: ${errMsg || "verifique credenciais"}`
+        );
+      }
     },
     onError: (e: any) => toast.error(e?.message || "Erro ao testar"),
   });
