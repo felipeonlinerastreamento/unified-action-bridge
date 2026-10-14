@@ -219,7 +219,8 @@ export async function zapiSendMedia(
 }
 
 export async function zapiGetStatus(channel: ZapiChannelCreds) {
-  return zapiFetch(channel, "/status", "GET");
+  // Leitura de status: tolera oscilação momentânea de rede com 1 retry.
+  return zapiFetch(channel, "/status", "GET", undefined, { retryOnNetworkError: true });
 }
 
 /**
