@@ -42,7 +42,7 @@ export async function zapiFetch(
   path: string,
   method: "GET" | "POST" | "PUT" | "DELETE" = "GET",
   body?: unknown,
-  opts?: { timeoutMs?: number; retryOnNetworkError?: boolean }
+  opts?: { timeoutMs?: number; retryOnNetworkError?: boolean; maxAttempts?: number }
 ): Promise<any> {
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (channel.zapi_client_token) headers["Client-Token"] = channel.zapi_client_token;
@@ -51,9 +51,11 @@ export async function zapiFetch(
   // responder rápido. Envios feitos pelo operador passam um limite maior.
   const timeoutMs = opts?.timeoutMs ?? 8000;
   const payload = body ? JSON.stringify(body) : undefined;
-  const maxAttempts = opts?.retryOnNetworkError ? 2 : 1;
+  const maxAttempts = opts?.retryOnNetworkError ? (opts?.maxAttempts ?? 2) : 1;
+  const isRead = method === "GET";
 
   let res: Response | undefined;
+  let lastDetail = "";
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       res = await fetch(zapiUrl(channel, path), {
@@ -63,20 +65,28 @@ export async function zapiFetch(
         signal: AbortSignal.timeout(timeoutMs),
       });
       break;
-    } catch (err) {
-      if (isTimeoutError(err)) {
-        // Nunca repetir após timeout: a mensagem pode ter sido entregue.
+    } catch (err: any) {
+      lastDetail = [err?.name, err?.message, err?.cause?.message || err?.cause?.code]
+        .filter(Boolean)
+        .join(" - ");
+      console.error(`[zapi] ${method} ${path} tentativa ${attempt}/${maxAttempts} falhou:`, lastDetail);
+      if (isTimeoutError(err) && !isRead) {
+        // Nunca repetir envio após timeout: a mensagem pode ter sido entregue.
         throw new Error(
           "O WhatsApp demorou demais para responder. A mensagem pode não ter sido entregue — confira a conversa antes de reenviar."
         );
       }
       if (attempt >= maxAttempts) {
-        throw new Error("Falha de conexão com o WhatsApp. Tente novamente em instantes.");
+        throw new Error(
+          isTimeoutError(err)
+            ? `O WhatsApp demorou demais para responder (${Math.round(timeoutMs / 1000)}s).`
+            : `Falha de conexão com o WhatsApp. Detalhe: ${lastDetail || "desconhecido"}`
+        );
       }
-      await new Promise((r) => setTimeout(r, 800));
+      await new Promise((r) => setTimeout(r, 1000 * attempt));
     }
   }
-  if (!res) throw new Error("Falha de conexão com o WhatsApp. Tente novamente em instantes.");
+  if (!res) throw new Error(`Falha de conexão com o WhatsApp. Detalhe: ${lastDetail || "desconhecido"}`);
 
   const text = await res.text();
   let parsed: any = null;
@@ -219,8 +229,12 @@ export async function zapiSendMedia(
 }
 
 export async function zapiGetStatus(channel: ZapiChannelCreds) {
-  // Leitura de status: tolera oscilação momentânea de rede com 1 retry.
-  return zapiFetch(channel, "/status", "GET", undefined, { retryOnNetworkError: true });
+  // Leitura de status: tolera oscilação momentânea de rede (até 3 tentativas, 15 s).
+  return zapiFetch(channel, "/status", "GET", undefined, {
+    retryOnNetworkError: true,
+    maxAttempts: 3,
+    timeoutMs: 15000,
+  });
 }
 
 /**

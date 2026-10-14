@@ -133,8 +133,9 @@ export function ZapiConnectionConfig() {
         const isNetwork = /falha de conexão|demorou demais/i.test(errMsg);
         toast.error(
           isNetwork
-            ? "Não foi possível falar com a Z-API agora — pode ser instabilidade momentânea de rede. Clique em \"Testar conexão\" novamente em alguns segundos."
-            : `Desconectada: ${errMsg || "verifique credenciais"}`
+            ? `Não foi possível falar com a Z-API agora — pode ser instabilidade momentânea. Tente novamente em alguns segundos. (${errMsg})`
+            : `Desconectada: ${errMsg || "verifique credenciais"}`,
+          { duration: 10000 }
         );
       }
     },
