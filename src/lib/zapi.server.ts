@@ -44,7 +44,10 @@ export async function zapiFetch(
   body?: unknown,
   opts?: { timeoutMs?: number; retryOnNetworkError?: boolean; maxAttempts?: number }
 ): Promise<any> {
-  const headers: Record<string, string> = { "Content-Type": "application/json" };
+  // Content-Type só quando há corpo: em consultas GET o cabeçalho provocava
+  // redirecionamento em loop na borda da Z-API.
+  const headers: Record<string, string> = {};
+  if (body) headers["Content-Type"] = "application/json";
   if (channel.zapi_client_token) headers["Client-Token"] = channel.zapi_client_token;
 
   // Timeout padrão curto (8s) para rotinas automáticas/webhook, que precisam
