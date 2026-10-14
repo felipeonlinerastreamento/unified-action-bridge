@@ -86,7 +86,10 @@ export async function zapiFetch(
     } catch (err: any) {
       lastDetail = [err?.name, err?.message, err?.cause?.message || err?.cause?.code]
         .filter(Boolean)
-        .join(" - ");
+        .join(" - ")
+        .replace(/https?:\/\/\S+/g, "")
+        .replace(/[,\s]+$/g, "")
+        .slice(0, 160);
       console.error(`[zapi] ${method} ${path} tentativa ${attempt}/${maxAttempts} falhou:`, lastDetail);
       if (isTimeoutError(err) && !isRead) {
         // Nunca repetir envio após timeout: a mensagem pode ter sido entregue.
