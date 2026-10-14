@@ -32,6 +32,54 @@ function zapiUrl(channel: ZapiChannelCreds, path: string): string {
   return `${ZAPI_BASE}/instances/${channel.zapi_instance_id}/token/${channel.token}${path}`;
 }
 
+/**
+ * Rota alternativa: o banco de dados faz a chamada HTTP (pg_net) e o servidor
+ * aguarda o resultado. Usada quando a saída direta entra em loop de
+ * redirecionamento na rede da Z-API.
+ */
+async function zapiFetchViaBackend(
+  url: string,
+  method: "GET" | "POST" | "DELETE",
+  headers: Record<string, string>,
+  body: unknown,
+  timeoutMs: number,
+): Promise<Response> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { data: rid, error } = await (supabaseAdmin as any).rpc("zapi_net_request", {
+    _url: url,
+    _method: method,
+    _headers: headers,
+    _body: body ?? null,
+    _timeout_ms: timeoutMs,
+  });
+  if (error || rid == null) {
+    throw new Error(`Falha de conexão com o WhatsApp (rota alternativa): ${error?.message || "sem id"}`);
+  }
+  const deadline = Date.now() + timeoutMs + 3000;
+  let wait = 250;
+  while (Date.now() < deadline) {
+    await new Promise((r) => setTimeout(r, wait));
+    wait = Math.min(wait + 250, 1000);
+    const { data: out } = await (supabaseAdmin as any).rpc("zapi_net_result", { _id: rid });
+    if (!out) continue;
+    if (out.timed_out) {
+      throw method === "GET"
+        ? new Error(`O WhatsApp demorou demais para responder (${Math.round(timeoutMs / 1000)}s).`)
+        : new Error("O WhatsApp demorou demais para responder. A mensagem pode não ter sido entregue — confira a conversa antes de reenviar.");
+    }
+    if (out.error && !out.status) {
+      throw new Error(`Falha de conexão com o WhatsApp (rota alternativa): ${String(out.error).slice(0, 160)}`);
+    }
+    console.log(`[zapi] rota alternativa ${method} → ${out.status}`);
+    return new Response(out.body ?? "", { status: Number(out.status) || 502 });
+  }
+  throw new Error(
+    method === "GET"
+      ? "O WhatsApp demorou demais para responder."
+      : "O WhatsApp demorou demais para responder. A mensagem pode não ter sido entregue — confira a conversa antes de reenviar."
+  );
+}
+
 function isTimeoutError(err: unknown): boolean {
   const name = (err as any)?.name;
   return name === "TimeoutError" || name === "AbortError";
@@ -102,6 +150,12 @@ export async function zapiFetch(
         .replace(/[,\s]+$/g, "")
         .slice(0, 160);
       console.error(`[zapi] ${method} ${path} tentativa ${attempt}/${maxAttempts} falhou:`, lastDetail);
+      // Loop de redirecionamento: o pedido nem chegou à Z-API (seguro repetir).
+      // Usa a rota alternativa pelo backend, que sai por outra rede.
+      if (/redirect/i.test(String(err?.message)) && method !== "PUT") {
+        res = await zapiFetchViaBackend(zapiUrl(channel, path), method, headers, body, timeoutMs);
+        break;
+      }
       if (isTimeoutError(err) && !isRead) {
         // Nunca repetir envio após timeout: a mensagem pode ter sido entregue.
         throw new Error(
