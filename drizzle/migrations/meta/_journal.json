@@ -57,6 +57,13 @@
       "when": 1790624380771,
       "tag": "0007_pick_least_loaded_ticket_agent",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1791979941067,
+      "tag": "0008_zapi_net_proxy",
+      "breakpoints": true
     }
   ]
 }
