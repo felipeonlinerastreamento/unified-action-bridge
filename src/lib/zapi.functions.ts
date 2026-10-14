@@ -20,7 +20,25 @@ export const getChannelStatus = createServerFn({ method: "POST" })
       const connected = r?.connected === true || r?.session === true;
       return { ...r, status: connected ? "CONNECTED" : "DISCONNECTED" };
     } catch (e: any) {
-      return { status: "DISCONNECTED", error: String(e?.message || e) };
+      const error = String(e?.message || e);
+      // Falha só na consulta de status: se mensagens de clientes chegaram
+      // pelo webhook nos últimos 15 min, o WhatsApp está de fato conectado.
+      try {
+        const since = new Date(Date.now() - 15 * 60 * 1000).toISOString();
+        const { data: recent } = await supabaseAdmin
+          .from("zapi_messages")
+          .select("id, zapi_chats!inner(channel_id)")
+          .eq("zapi_chats.channel_id", data.channelId)
+          .eq("from_me", false)
+          .gte("created_at", since)
+          .limit(1);
+        if (recent && recent.length > 0) {
+          return { status: "CONNECTED", inferred: true, error };
+        }
+      } catch {
+        /* ignora */
+      }
+      return { status: "DISCONNECTED", error };
     }
   });
 

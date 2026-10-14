@@ -549,7 +549,8 @@ function CentralPage() {
           ...await getAuthHeaders(),
         });
       } catch {
-        return null;
+        // Falha momentânea: mantém o último status conhecido.
+        return queryClient.getQueryData(["channel-status", selectedChannelId]) ?? null;
       }
     },
     enabled: !!selectedChannelId && isAuthenticated,
