@@ -9,131 +9,61 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
-import { Route as TratativasRouteImport } from './routes/tratativas'
-import { Route as TopGamificRouteImport } from './routes/top-gamific'
-import { Route as RelatoriosRouteImport } from './routes/relatorios'
-import { Route as PainelTvRouteImport } from './routes/painel-tv'
-import { Route as McpRouteImport } from './routes/mcp'
-import { Route as EstoqueRouteImport } from './routes/estoque'
-import { Route as EmpresasRouteImport } from './routes/empresas'
-import { Route as DashboardRouteImport } from './routes/dashboard'
-import { Route as CrmRouteImport } from './routes/crm'
-import { Route as ContatosRouteImport } from './routes/contatos'
-import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
-import { Route as ChatOperadoresRouteImport } from './routes/chat-operadores'
-import { Route as CentralRouteImport } from './routes/central'
-import { Route as AtendimentosRouteImport } from './routes/atendimentos'
-import { Route as AssistenteIaRouteImport } from './routes/assistente-ia'
-import { Route as AgendaRouteImport } from './routes/agenda'
 import { Route as IndexRouteImport } from './routes/index'
-import { Route as ConfiguracoesIndexRouteImport } from './routes/configuracoes.index'
-import { Route as AgendaIndexRouteImport } from './routes/agenda.index'
-import { Route as HooksRefreshTrackingRouteImport } from './routes/hooks/refresh-tracking'
-import { Route as ConfiguracoesZapiRouteImport } from './routes/configuracoes.zapi'
-import { Route as ConfiguracoesUsuariosRouteImport } from './routes/configuracoes.usuarios'
-import { Route as ConfiguracoesStatusUsuariosRouteImport } from './routes/configuracoes.status-usuarios'
-import { Route as ConfiguracoesRoboAtendimentoRouteImport } from './routes/configuracoes.robo-atendimento'
-import { Route as ConfiguracoesPopupDiarioRouteImport } from './routes/configuracoes.popup-diario'
-import { Route as ConfiguracoesNotificacoesRouteImport } from './routes/configuracoes.notificacoes'
-import { Route as ConfiguracoesFluxoAtendimentoRouteImport } from './routes/configuracoes.fluxo-atendimento'
-import { Route as ConfiguracoesEstoqueRouteImport } from './routes/configuracoes.estoque'
-import { Route as ConfiguracoesEncaminhamentoRouteImport } from './routes/configuracoes.encaminhamento'
-import { Route as ConfiguracoesCentralAtendimentoRouteImport } from './routes/configuracoes.central-atendimento'
-import { Route as ConfiguracoesCanaisEmailRouteImport } from './routes/configuracoes.canais-email'
-import { Route as ConfiguracoesAutomacaoSemComunicacaoRouteImport } from './routes/configuracoes.automacao-sem-comunicacao'
-import { Route as ConfiguracoesAuditoriaRouteImport } from './routes/configuracoes.auditoria'
-import { Route as ConfiguracoesAssistenteIaRouteImport } from './routes/configuracoes.assistente-ia'
-import { Route as AtendimentosTarefasRouteImport } from './routes/atendimentos_.tarefas'
-import { Route as AgendaTimelineRouteImport } from './routes/agenda.timeline'
-import { Route as AgendaSolicitacoesRouteImport } from './routes/agenda.solicitacoes'
-import { Route as AgendaMapaRouteImport } from './routes/agenda.mapa'
-import { Route as AgendaAtividadesRouteImport } from './routes/agenda.atividades'
+import { Route as AgendaRouteImport } from './routes/agenda'
+import { Route as AssistenteIaRouteImport } from './routes/assistente-ia'
+import { Route as AtendimentosRouteImport } from './routes/atendimentos'
+import { Route as CentralRouteImport } from './routes/central'
+import { Route as ChatOperadoresRouteImport } from './routes/chat-operadores'
+import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
+import { Route as ContatosRouteImport } from './routes/contatos'
+import { Route as CrmRouteImport } from './routes/crm'
+import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as EmpresasRouteImport } from './routes/empresas'
+import { Route as EstoqueRouteImport } from './routes/estoque'
+import { Route as McpRouteImport } from './routes/mcp'
+import { Route as PainelTvRouteImport } from './routes/painel-tv'
+import { Route as RelatoriosRouteImport } from './routes/relatorios'
+import { Route as TopGamificRouteImport } from './routes/top-gamific'
+import { Route as TratativasRouteImport } from './routes/tratativas'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
-import { Route as ApiPublicSystemHealthScanRouteImport } from './routes/api.public.system-health-scan'
-import { Route as ApiPublicEmailPollRouteImport } from './routes/api.public.email-poll'
-import { Route as ApiPublicCrmDailyRouteImport } from './routes/api.public.crm-daily'
-import { Route as ApiPublicChatIdleScannerRouteImport } from './routes/api.public.chat-idle-scanner'
-import { Route as ApiPublicBotAutoReplyScannerRouteImport } from './routes/api.public.bot-auto-reply-scanner'
-import { Route as ApiPublicAutoRouteAguardandoRouteImport } from './routes/api.public.auto-route-aguardando'
+import { Route as AgendaIndexRouteImport } from './routes/agenda.index'
+import { Route as AgendaAtividadesRouteImport } from './routes/agenda.atividades'
+import { Route as AgendaMapaRouteImport } from './routes/agenda.mapa'
+import { Route as AgendaSolicitacoesRouteImport } from './routes/agenda.solicitacoes'
+import { Route as AgendaTimelineRouteImport } from './routes/agenda.timeline'
+import { Route as AtendimentosTarefasRouteImport } from './routes/atendimentos_.tarefas'
+import { Route as ConfiguracoesIndexRouteImport } from './routes/configuracoes.index'
+import { Route as ConfiguracoesAssistenteIaRouteImport } from './routes/configuracoes.assistente-ia'
+import { Route as ConfiguracoesAuditoriaRouteImport } from './routes/configuracoes.auditoria'
+import { Route as ConfiguracoesAutomacaoSemComunicacaoRouteImport } from './routes/configuracoes.automacao-sem-comunicacao'
+import { Route as ConfiguracoesCanaisEmailRouteImport } from './routes/configuracoes.canais-email'
+import { Route as ConfiguracoesCentralAtendimentoRouteImport } from './routes/configuracoes.central-atendimento'
+import { Route as ConfiguracoesEncaminhamentoRouteImport } from './routes/configuracoes.encaminhamento'
+import { Route as ConfiguracoesEstoqueRouteImport } from './routes/configuracoes.estoque'
+import { Route as ConfiguracoesFluxoAtendimentoRouteImport } from './routes/configuracoes.fluxo-atendimento'
+import { Route as ConfiguracoesNotificacoesRouteImport } from './routes/configuracoes.notificacoes'
+import { Route as ConfiguracoesPopupDiarioRouteImport } from './routes/configuracoes.popup-diario'
+import { Route as ConfiguracoesRoboAtendimentoRouteImport } from './routes/configuracoes.robo-atendimento'
+import { Route as ConfiguracoesStatusUsuariosRouteImport } from './routes/configuracoes.status-usuarios'
+import { Route as ConfiguracoesUsuariosRouteImport } from './routes/configuracoes.usuarios'
+import { Route as ConfiguracoesZapiRouteImport } from './routes/configuracoes.zapi'
+import { Route as HooksRefreshTrackingRouteImport } from './routes/hooks/refresh-tracking'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
-import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
-import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
-import { Route as ApiPublicZapiWebhookChannelIdRouteImport } from './routes/api.public.zapi-webhook.$channelId'
+import { Route as ApiPublicAutoRouteAguardandoRouteImport } from './routes/api.public.auto-route-aguardando'
+import { Route as ApiPublicBotAutoReplyScannerRouteImport } from './routes/api.public.bot-auto-reply-scanner'
+import { Route as ApiPublicChatIdleScannerRouteImport } from './routes/api.public.chat-idle-scanner'
+import { Route as ApiPublicCrmDailyRouteImport } from './routes/api.public.crm-daily'
+import { Route as ApiPublicEmailPollRouteImport } from './routes/api.public.email-poll'
+import { Route as ApiPublicSystemHealthScanRouteImport } from './routes/api.public.system-health-scan'
 import { Route as ApiPublicHooksSyncGsystemEquipamentosRouteImport } from './routes/api.public.hooks.sync-gsystem-equipamentos'
+import { Route as ApiPublicZapiWebhookChannelIdRouteImport } from './routes/api.public.zapi-webhook.$channelId'
+import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
+import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
 
-const TratativasRoute = TratativasRouteImport.update({
-  id: '/tratativas',
-  path: '/tratativas',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TopGamificRoute = TopGamificRouteImport.update({
-  id: '/top-gamific',
-  path: '/top-gamific',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RelatoriosRoute = RelatoriosRouteImport.update({
-  id: '/relatorios',
-  path: '/relatorios',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const PainelTvRoute = PainelTvRouteImport.update({
-  id: '/painel-tv',
-  path: '/painel-tv',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const McpRoute = McpRouteImport.update({
-  id: '/mcp',
-  path: '/mcp',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EstoqueRoute = EstoqueRouteImport.update({
-  id: '/estoque',
-  path: '/estoque',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const EmpresasRoute = EmpresasRouteImport.update({
-  id: '/empresas',
-  path: '/empresas',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DashboardRoute = DashboardRouteImport.update({
-  id: '/dashboard',
-  path: '/dashboard',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CrmRoute = CrmRouteImport.update({
-  id: '/crm',
-  path: '/crm',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ContatosRoute = ContatosRouteImport.update({
-  id: '/contatos',
-  path: '/contatos',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
-  id: '/configuracoes',
-  path: '/configuracoes',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ChatOperadoresRoute = ChatOperadoresRouteImport.update({
-  id: '/chat-operadores',
-  path: '/chat-operadores',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const CentralRoute = CentralRouteImport.update({
-  id: '/central',
-  path: '/central',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AtendimentosRoute = AtendimentosRouteImport.update({
-  id: '/atendimentos',
-  path: '/atendimentos',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const AssistenteIaRoute = AssistenteIaRouteImport.update({
-  id: '/assistente-ia',
-  path: '/assistente-ia',
+const IndexRoute = IndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
 const AgendaRoute = AgendaRouteImport.update({
@@ -141,98 +71,120 @@ const AgendaRoute = AgendaRouteImport.update({
   path: '/agenda',
   getParentRoute: () => rootRouteImport,
 } as any)
-const IndexRoute = IndexRouteImport.update({
-  id: '/',
-  path: '/',
+const AssistenteIaRoute = AssistenteIaRouteImport.update({
+  id: '/assistente-ia',
+  path: '/assistente-ia',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ConfiguracoesIndexRoute = ConfiguracoesIndexRouteImport.update({
-  id: '/',
-  path: '/',
-  getParentRoute: () => ConfiguracoesRoute,
+const AtendimentosRoute = AtendimentosRouteImport.update({
+  id: '/atendimentos',
+  path: '/atendimentos',
+  getParentRoute: () => rootRouteImport,
 } as any)
+const CentralRoute = CentralRouteImport.update({
+  id: '/central',
+  path: '/central',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ChatOperadoresRoute = ChatOperadoresRouteImport.update({
+  id: '/chat-operadores',
+  path: '/chat-operadores',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
+  id: '/configuracoes',
+  path: '/configuracoes',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContatosRoute = ContatosRouteImport.update({
+  id: '/contatos',
+  path: '/contatos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CrmRoute = CrmRouteImport.update({
+  id: '/crm',
+  path: '/crm',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const DashboardRoute = DashboardRouteImport.update({
+  id: '/dashboard',
+  path: '/dashboard',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EmpresasRoute = EmpresasRouteImport.update({
+  id: '/empresas',
+  path: '/empresas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const EstoqueRoute = EstoqueRouteImport.update({
+  id: '/estoque',
+  path: '/estoque',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const McpRoute = McpRouteImport.update({
+  id: '/mcp',
+  path: '/mcp',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PainelTvRoute = PainelTvRouteImport.update({
+  id: '/painel-tv',
+  path: '/painel-tv',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RelatoriosRoute = RelatoriosRouteImport.update({
+  id: '/relatorios',
+  path: '/relatorios',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TopGamificRoute = TopGamificRouteImport.update({
+  id: '/top-gamific',
+  path: '/top-gamific',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const TratativasRoute = TratativasRouteImport.update({
+  id: '/tratativas',
+  path: '/tratativas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const Char91DotwellKnownChar93OauthProtectedResourceRoute =
+  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
+    id: '/.well-known/oauth-protected-resource',
+    path: '/.well-known/oauth-protected-resource',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const AgendaIndexRoute = AgendaIndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => AgendaRoute,
 } as any)
-const HooksRefreshTrackingRoute = HooksRefreshTrackingRouteImport.update({
-  id: '/hooks/refresh-tracking',
-  path: '/hooks/refresh-tracking',
+const AgendaAtividadesRoute = AgendaAtividadesRouteImport.update({
+  id: '/atividades',
+  path: '/atividades',
+  getParentRoute: () => AgendaRoute,
+} as any)
+const AgendaMapaRoute = AgendaMapaRouteImport.update({
+  id: '/mapa',
+  path: '/mapa',
+  getParentRoute: () => AgendaRoute,
+} as any)
+const AgendaSolicitacoesRoute = AgendaSolicitacoesRouteImport.update({
+  id: '/solicitacoes',
+  path: '/solicitacoes',
+  getParentRoute: () => AgendaRoute,
+} as any)
+const AgendaTimelineRoute = AgendaTimelineRouteImport.update({
+  id: '/timeline',
+  path: '/timeline',
+  getParentRoute: () => AgendaRoute,
+} as any)
+const AtendimentosTarefasRoute = AtendimentosTarefasRouteImport.update({
+  id: '/atendimentos_/tarefas',
+  path: '/atendimentos/tarefas',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ConfiguracoesZapiRoute = ConfiguracoesZapiRouteImport.update({
-  id: '/zapi',
-  path: '/zapi',
-  getParentRoute: () => ConfiguracoesRoute,
-} as any)
-const ConfiguracoesUsuariosRoute = ConfiguracoesUsuariosRouteImport.update({
-  id: '/usuarios',
-  path: '/usuarios',
-  getParentRoute: () => ConfiguracoesRoute,
-} as any)
-const ConfiguracoesStatusUsuariosRoute =
-  ConfiguracoesStatusUsuariosRouteImport.update({
-    id: '/status-usuarios',
-    path: '/status-usuarios',
-    getParentRoute: () => ConfiguracoesRoute,
-  } as any)
-const ConfiguracoesRoboAtendimentoRoute =
-  ConfiguracoesRoboAtendimentoRouteImport.update({
-    id: '/robo-atendimento',
-    path: '/robo-atendimento',
-    getParentRoute: () => ConfiguracoesRoute,
-  } as any)
-const ConfiguracoesPopupDiarioRoute =
-  ConfiguracoesPopupDiarioRouteImport.update({
-    id: '/popup-diario',
-    path: '/popup-diario',
-    getParentRoute: () => ConfiguracoesRoute,
-  } as any)
-const ConfiguracoesNotificacoesRoute =
-  ConfiguracoesNotificacoesRouteImport.update({
-    id: '/notificacoes',
-    path: '/notificacoes',
-    getParentRoute: () => ConfiguracoesRoute,
-  } as any)
-const ConfiguracoesFluxoAtendimentoRoute =
-  ConfiguracoesFluxoAtendimentoRouteImport.update({
-    id: '/fluxo-atendimento',
-    path: '/fluxo-atendimento',
-    getParentRoute: () => ConfiguracoesRoute,
-  } as any)
-const ConfiguracoesEstoqueRoute = ConfiguracoesEstoqueRouteImport.update({
-  id: '/estoque',
-  path: '/estoque',
-  getParentRoute: () => ConfiguracoesRoute,
-} as any)
-const ConfiguracoesEncaminhamentoRoute =
-  ConfiguracoesEncaminhamentoRouteImport.update({
-    id: '/encaminhamento',
-    path: '/encaminhamento',
-    getParentRoute: () => ConfiguracoesRoute,
-  } as any)
-const ConfiguracoesCentralAtendimentoRoute =
-  ConfiguracoesCentralAtendimentoRouteImport.update({
-    id: '/central-atendimento',
-    path: '/central-atendimento',
-    getParentRoute: () => ConfiguracoesRoute,
-  } as any)
-const ConfiguracoesCanaisEmailRoute =
-  ConfiguracoesCanaisEmailRouteImport.update({
-    id: '/canais-email',
-    path: '/canais-email',
-    getParentRoute: () => ConfiguracoesRoute,
-  } as any)
-const ConfiguracoesAutomacaoSemComunicacaoRoute =
-  ConfiguracoesAutomacaoSemComunicacaoRouteImport.update({
-    id: '/automacao-sem-comunicacao',
-    path: '/automacao-sem-comunicacao',
-    getParentRoute: () => ConfiguracoesRoute,
-  } as any)
-const ConfiguracoesAuditoriaRoute = ConfiguracoesAuditoriaRouteImport.update({
-  id: '/auditoria',
-  path: '/auditoria',
+const ConfiguracoesIndexRoute = ConfiguracoesIndexRouteImport.update({
+  id: '/',
+  path: '/',
   getParentRoute: () => ConfiguracoesRoute,
 } as any)
 const ConfiguracoesAssistenteIaRoute =
@@ -241,57 +193,94 @@ const ConfiguracoesAssistenteIaRoute =
     path: '/assistente-ia',
     getParentRoute: () => ConfiguracoesRoute,
   } as any)
-const AtendimentosTarefasRoute = AtendimentosTarefasRouteImport.update({
-  id: '/atendimentos_/tarefas',
-  path: '/atendimentos/tarefas',
-  getParentRoute: () => rootRouteImport,
+const ConfiguracoesAuditoriaRoute = ConfiguracoesAuditoriaRouteImport.update({
+  id: '/auditoria',
+  path: '/auditoria',
+  getParentRoute: () => ConfiguracoesRoute,
 } as any)
-const AgendaTimelineRoute = AgendaTimelineRouteImport.update({
-  id: '/timeline',
-  path: '/timeline',
-  getParentRoute: () => AgendaRoute,
-} as any)
-const AgendaSolicitacoesRoute = AgendaSolicitacoesRouteImport.update({
-  id: '/solicitacoes',
-  path: '/solicitacoes',
-  getParentRoute: () => AgendaRoute,
-} as any)
-const AgendaMapaRoute = AgendaMapaRouteImport.update({
-  id: '/mapa',
-  path: '/mapa',
-  getParentRoute: () => AgendaRoute,
-} as any)
-const AgendaAtividadesRoute = AgendaAtividadesRouteImport.update({
-  id: '/atividades',
-  path: '/atividades',
-  getParentRoute: () => AgendaRoute,
-} as any)
-const Char91DotwellKnownChar93OauthProtectedResourceRoute =
-  Char91DotwellKnownChar93OauthProtectedResourceRouteImport.update({
-    id: '/.well-known/oauth-protected-resource',
-    path: '/.well-known/oauth-protected-resource',
-    getParentRoute: () => rootRouteImport,
+const ConfiguracoesAutomacaoSemComunicacaoRoute =
+  ConfiguracoesAutomacaoSemComunicacaoRouteImport.update({
+    id: '/automacao-sem-comunicacao',
+    path: '/automacao-sem-comunicacao',
+    getParentRoute: () => ConfiguracoesRoute,
   } as any)
-const ApiPublicSystemHealthScanRoute =
-  ApiPublicSystemHealthScanRouteImport.update({
-    id: '/api/public/system-health-scan',
-    path: '/api/public/system-health-scan',
-    getParentRoute: () => rootRouteImport,
+const ConfiguracoesCanaisEmailRoute =
+  ConfiguracoesCanaisEmailRouteImport.update({
+    id: '/canais-email',
+    path: '/canais-email',
+    getParentRoute: () => ConfiguracoesRoute,
   } as any)
-const ApiPublicEmailPollRoute = ApiPublicEmailPollRouteImport.update({
-  id: '/api/public/email-poll',
-  path: '/api/public/email-poll',
+const ConfiguracoesCentralAtendimentoRoute =
+  ConfiguracoesCentralAtendimentoRouteImport.update({
+    id: '/central-atendimento',
+    path: '/central-atendimento',
+    getParentRoute: () => ConfiguracoesRoute,
+  } as any)
+const ConfiguracoesEncaminhamentoRoute =
+  ConfiguracoesEncaminhamentoRouteImport.update({
+    id: '/encaminhamento',
+    path: '/encaminhamento',
+    getParentRoute: () => ConfiguracoesRoute,
+  } as any)
+const ConfiguracoesEstoqueRoute = ConfiguracoesEstoqueRouteImport.update({
+  id: '/estoque',
+  path: '/estoque',
+  getParentRoute: () => ConfiguracoesRoute,
+} as any)
+const ConfiguracoesFluxoAtendimentoRoute =
+  ConfiguracoesFluxoAtendimentoRouteImport.update({
+    id: '/fluxo-atendimento',
+    path: '/fluxo-atendimento',
+    getParentRoute: () => ConfiguracoesRoute,
+  } as any)
+const ConfiguracoesNotificacoesRoute =
+  ConfiguracoesNotificacoesRouteImport.update({
+    id: '/notificacoes',
+    path: '/notificacoes',
+    getParentRoute: () => ConfiguracoesRoute,
+  } as any)
+const ConfiguracoesPopupDiarioRoute =
+  ConfiguracoesPopupDiarioRouteImport.update({
+    id: '/popup-diario',
+    path: '/popup-diario',
+    getParentRoute: () => ConfiguracoesRoute,
+  } as any)
+const ConfiguracoesRoboAtendimentoRoute =
+  ConfiguracoesRoboAtendimentoRouteImport.update({
+    id: '/robo-atendimento',
+    path: '/robo-atendimento',
+    getParentRoute: () => ConfiguracoesRoute,
+  } as any)
+const ConfiguracoesStatusUsuariosRoute =
+  ConfiguracoesStatusUsuariosRouteImport.update({
+    id: '/status-usuarios',
+    path: '/status-usuarios',
+    getParentRoute: () => ConfiguracoesRoute,
+  } as any)
+const ConfiguracoesUsuariosRoute = ConfiguracoesUsuariosRouteImport.update({
+  id: '/usuarios',
+  path: '/usuarios',
+  getParentRoute: () => ConfiguracoesRoute,
+} as any)
+const ConfiguracoesZapiRoute = ConfiguracoesZapiRouteImport.update({
+  id: '/zapi',
+  path: '/zapi',
+  getParentRoute: () => ConfiguracoesRoute,
+} as any)
+const HooksRefreshTrackingRoute = HooksRefreshTrackingRouteImport.update({
+  id: '/hooks/refresh-tracking',
+  path: '/hooks/refresh-tracking',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicCrmDailyRoute = ApiPublicCrmDailyRouteImport.update({
-  id: '/api/public/crm-daily',
-  path: '/api/public/crm-daily',
+const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
+  id: '/.lovable/oauth/consent',
+  path: '/.lovable/oauth/consent',
   getParentRoute: () => rootRouteImport,
 } as any)
-const ApiPublicChatIdleScannerRoute =
-  ApiPublicChatIdleScannerRouteImport.update({
-    id: '/api/public/chat-idle-scanner',
-    path: '/api/public/chat-idle-scanner',
+const ApiPublicAutoRouteAguardandoRoute =
+  ApiPublicAutoRouteAguardandoRouteImport.update({
+    id: '/api/public/auto-route-aguardando',
+    path: '/api/public/auto-route-aguardando',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicBotAutoReplyScannerRoute =
@@ -300,31 +289,26 @@ const ApiPublicBotAutoReplyScannerRoute =
     path: '/api/public/bot-auto-reply-scanner',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiPublicAutoRouteAguardandoRoute =
-  ApiPublicAutoRouteAguardandoRouteImport.update({
-    id: '/api/public/auto-route-aguardando',
-    path: '/api/public/auto-route-aguardando',
+const ApiPublicChatIdleScannerRoute =
+  ApiPublicChatIdleScannerRouteImport.update({
+    id: '/api/public/chat-idle-scanner',
+    path: '/api/public/chat-idle-scanner',
     getParentRoute: () => rootRouteImport,
   } as any)
-const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
-  id: '/.lovable/oauth/consent',
-  path: '/.lovable/oauth/consent',
+const ApiPublicCrmDailyRoute = ApiPublicCrmDailyRouteImport.update({
+  id: '/api/public/crm-daily',
+  path: '/api/public/crm-daily',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LovableEmailAuthWebhookRoute = LovableEmailAuthWebhookRouteImport.update({
-  id: '/lovable/email/auth/webhook',
-  path: '/lovable/email/auth/webhook',
+const ApiPublicEmailPollRoute = ApiPublicEmailPollRouteImport.update({
+  id: '/api/public/email-poll',
+  path: '/api/public/email-poll',
   getParentRoute: () => rootRouteImport,
 } as any)
-const LovableEmailAuthPreviewRoute = LovableEmailAuthPreviewRouteImport.update({
-  id: '/lovable/email/auth/preview',
-  path: '/lovable/email/auth/preview',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const ApiPublicZapiWebhookChannelIdRoute =
-  ApiPublicZapiWebhookChannelIdRouteImport.update({
-    id: '/api/public/zapi-webhook/$channelId',
-    path: '/api/public/zapi-webhook/$channelId',
+const ApiPublicSystemHealthScanRoute =
+  ApiPublicSystemHealthScanRouteImport.update({
+    id: '/api/public/system-health-scan',
+    path: '/api/public/system-health-scan',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicHooksSyncGsystemEquipamentosRoute =
@@ -333,6 +317,22 @@ const ApiPublicHooksSyncGsystemEquipamentosRoute =
     path: '/api/public/hooks/sync-gsystem-equipamentos',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicZapiWebhookChannelIdRoute =
+  ApiPublicZapiWebhookChannelIdRouteImport.update({
+    id: '/api/public/zapi-webhook/$channelId',
+    path: '/api/public/zapi-webhook/$channelId',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const LovableEmailAuthPreviewRoute = LovableEmailAuthPreviewRouteImport.update({
+  id: '/lovable/email/auth/preview',
+  path: '/lovable/email/auth/preview',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LovableEmailAuthWebhookRoute = LovableEmailAuthWebhookRouteImport.update({
+  id: '/lovable/email/auth/webhook',
+  path: '/lovable/email/auth/webhook',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -688,109 +688,11 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
-    '/tratativas': {
-      id: '/tratativas'
-      path: '/tratativas'
-      fullPath: '/tratativas'
-      preLoaderRoute: typeof TratativasRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/top-gamific': {
-      id: '/top-gamific'
-      path: '/top-gamific'
-      fullPath: '/top-gamific'
-      preLoaderRoute: typeof TopGamificRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/relatorios': {
-      id: '/relatorios'
-      path: '/relatorios'
-      fullPath: '/relatorios'
-      preLoaderRoute: typeof RelatoriosRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/painel-tv': {
-      id: '/painel-tv'
-      path: '/painel-tv'
-      fullPath: '/painel-tv'
-      preLoaderRoute: typeof PainelTvRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/mcp': {
-      id: '/mcp'
-      path: '/mcp'
-      fullPath: '/mcp'
-      preLoaderRoute: typeof McpRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/estoque': {
-      id: '/estoque'
-      path: '/estoque'
-      fullPath: '/estoque'
-      preLoaderRoute: typeof EstoqueRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/empresas': {
-      id: '/empresas'
-      path: '/empresas'
-      fullPath: '/empresas'
-      preLoaderRoute: typeof EmpresasRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/dashboard': {
-      id: '/dashboard'
-      path: '/dashboard'
-      fullPath: '/dashboard'
-      preLoaderRoute: typeof DashboardRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/crm': {
-      id: '/crm'
-      path: '/crm'
-      fullPath: '/crm'
-      preLoaderRoute: typeof CrmRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/contatos': {
-      id: '/contatos'
-      path: '/contatos'
-      fullPath: '/contatos'
-      preLoaderRoute: typeof ContatosRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/configuracoes': {
-      id: '/configuracoes'
-      path: '/configuracoes'
-      fullPath: '/configuracoes'
-      preLoaderRoute: typeof ConfiguracoesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/chat-operadores': {
-      id: '/chat-operadores'
-      path: '/chat-operadores'
-      fullPath: '/chat-operadores'
-      preLoaderRoute: typeof ChatOperadoresRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/central': {
-      id: '/central'
-      path: '/central'
-      fullPath: '/central'
-      preLoaderRoute: typeof CentralRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/atendimentos': {
-      id: '/atendimentos'
-      path: '/atendimentos'
-      fullPath: '/atendimentos'
-      preLoaderRoute: typeof AtendimentosRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/assistente-ia': {
-      id: '/assistente-ia'
-      path: '/assistente-ia'
-      fullPath: '/assistente-ia'
-      preLoaderRoute: typeof AssistenteIaRouteImport
+    '/': {
+      id: '/'
+      path: '/'
+      fullPath: '/'
+      preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/agenda': {
@@ -800,158 +702,123 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AgendaRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/': {
-      id: '/'
-      path: '/'
-      fullPath: '/'
-      preLoaderRoute: typeof IndexRouteImport
+    '/assistente-ia': {
+      id: '/assistente-ia'
+      path: '/assistente-ia'
+      fullPath: '/assistente-ia'
+      preLoaderRoute: typeof AssistenteIaRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/configuracoes/': {
-      id: '/configuracoes/'
-      path: '/'
-      fullPath: '/configuracoes/'
-      preLoaderRoute: typeof ConfiguracoesIndexRouteImport
-      parentRoute: typeof ConfiguracoesRoute
+    '/atendimentos': {
+      id: '/atendimentos'
+      path: '/atendimentos'
+      fullPath: '/atendimentos'
+      preLoaderRoute: typeof AtendimentosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/central': {
+      id: '/central'
+      path: '/central'
+      fullPath: '/central'
+      preLoaderRoute: typeof CentralRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/chat-operadores': {
+      id: '/chat-operadores'
+      path: '/chat-operadores'
+      fullPath: '/chat-operadores'
+      preLoaderRoute: typeof ChatOperadoresRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/configuracoes': {
+      id: '/configuracoes'
+      path: '/configuracoes'
+      fullPath: '/configuracoes'
+      preLoaderRoute: typeof ConfiguracoesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contatos': {
+      id: '/contatos'
+      path: '/contatos'
+      fullPath: '/contatos'
+      preLoaderRoute: typeof ContatosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/crm': {
+      id: '/crm'
+      path: '/crm'
+      fullPath: '/crm'
+      preLoaderRoute: typeof CrmRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/dashboard': {
+      id: '/dashboard'
+      path: '/dashboard'
+      fullPath: '/dashboard'
+      preLoaderRoute: typeof DashboardRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/empresas': {
+      id: '/empresas'
+      path: '/empresas'
+      fullPath: '/empresas'
+      preLoaderRoute: typeof EmpresasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/estoque': {
+      id: '/estoque'
+      path: '/estoque'
+      fullPath: '/estoque'
+      preLoaderRoute: typeof EstoqueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/mcp': {
+      id: '/mcp'
+      path: '/mcp'
+      fullPath: '/mcp'
+      preLoaderRoute: typeof McpRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/painel-tv': {
+      id: '/painel-tv'
+      path: '/painel-tv'
+      fullPath: '/painel-tv'
+      preLoaderRoute: typeof PainelTvRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/relatorios': {
+      id: '/relatorios'
+      path: '/relatorios'
+      fullPath: '/relatorios'
+      preLoaderRoute: typeof RelatoriosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/top-gamific': {
+      id: '/top-gamific'
+      path: '/top-gamific'
+      fullPath: '/top-gamific'
+      preLoaderRoute: typeof TopGamificRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/tratativas': {
+      id: '/tratativas'
+      path: '/tratativas'
+      fullPath: '/tratativas'
+      preLoaderRoute: typeof TratativasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/.well-known/oauth-protected-resource': {
+      id: '/.well-known/oauth-protected-resource'
+      path: '/.well-known/oauth-protected-resource'
+      fullPath: '/.well-known/oauth-protected-resource'
+      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/agenda/': {
       id: '/agenda/'
       path: '/'
       fullPath: '/agenda/'
       preLoaderRoute: typeof AgendaIndexRouteImport
-      parentRoute: typeof AgendaRoute
-    }
-    '/hooks/refresh-tracking': {
-      id: '/hooks/refresh-tracking'
-      path: '/hooks/refresh-tracking'
-      fullPath: '/hooks/refresh-tracking'
-      preLoaderRoute: typeof HooksRefreshTrackingRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/configuracoes/zapi': {
-      id: '/configuracoes/zapi'
-      path: '/zapi'
-      fullPath: '/configuracoes/zapi'
-      preLoaderRoute: typeof ConfiguracoesZapiRouteImport
-      parentRoute: typeof ConfiguracoesRoute
-    }
-    '/configuracoes/usuarios': {
-      id: '/configuracoes/usuarios'
-      path: '/usuarios'
-      fullPath: '/configuracoes/usuarios'
-      preLoaderRoute: typeof ConfiguracoesUsuariosRouteImport
-      parentRoute: typeof ConfiguracoesRoute
-    }
-    '/configuracoes/status-usuarios': {
-      id: '/configuracoes/status-usuarios'
-      path: '/status-usuarios'
-      fullPath: '/configuracoes/status-usuarios'
-      preLoaderRoute: typeof ConfiguracoesStatusUsuariosRouteImport
-      parentRoute: typeof ConfiguracoesRoute
-    }
-    '/configuracoes/robo-atendimento': {
-      id: '/configuracoes/robo-atendimento'
-      path: '/robo-atendimento'
-      fullPath: '/configuracoes/robo-atendimento'
-      preLoaderRoute: typeof ConfiguracoesRoboAtendimentoRouteImport
-      parentRoute: typeof ConfiguracoesRoute
-    }
-    '/configuracoes/popup-diario': {
-      id: '/configuracoes/popup-diario'
-      path: '/popup-diario'
-      fullPath: '/configuracoes/popup-diario'
-      preLoaderRoute: typeof ConfiguracoesPopupDiarioRouteImport
-      parentRoute: typeof ConfiguracoesRoute
-    }
-    '/configuracoes/notificacoes': {
-      id: '/configuracoes/notificacoes'
-      path: '/notificacoes'
-      fullPath: '/configuracoes/notificacoes'
-      preLoaderRoute: typeof ConfiguracoesNotificacoesRouteImport
-      parentRoute: typeof ConfiguracoesRoute
-    }
-    '/configuracoes/fluxo-atendimento': {
-      id: '/configuracoes/fluxo-atendimento'
-      path: '/fluxo-atendimento'
-      fullPath: '/configuracoes/fluxo-atendimento'
-      preLoaderRoute: typeof ConfiguracoesFluxoAtendimentoRouteImport
-      parentRoute: typeof ConfiguracoesRoute
-    }
-    '/configuracoes/estoque': {
-      id: '/configuracoes/estoque'
-      path: '/estoque'
-      fullPath: '/configuracoes/estoque'
-      preLoaderRoute: typeof ConfiguracoesEstoqueRouteImport
-      parentRoute: typeof ConfiguracoesRoute
-    }
-    '/configuracoes/encaminhamento': {
-      id: '/configuracoes/encaminhamento'
-      path: '/encaminhamento'
-      fullPath: '/configuracoes/encaminhamento'
-      preLoaderRoute: typeof ConfiguracoesEncaminhamentoRouteImport
-      parentRoute: typeof ConfiguracoesRoute
-    }
-    '/configuracoes/central-atendimento': {
-      id: '/configuracoes/central-atendimento'
-      path: '/central-atendimento'
-      fullPath: '/configuracoes/central-atendimento'
-      preLoaderRoute: typeof ConfiguracoesCentralAtendimentoRouteImport
-      parentRoute: typeof ConfiguracoesRoute
-    }
-    '/configuracoes/canais-email': {
-      id: '/configuracoes/canais-email'
-      path: '/canais-email'
-      fullPath: '/configuracoes/canais-email'
-      preLoaderRoute: typeof ConfiguracoesCanaisEmailRouteImport
-      parentRoute: typeof ConfiguracoesRoute
-    }
-    '/configuracoes/automacao-sem-comunicacao': {
-      id: '/configuracoes/automacao-sem-comunicacao'
-      path: '/automacao-sem-comunicacao'
-      fullPath: '/configuracoes/automacao-sem-comunicacao'
-      preLoaderRoute: typeof ConfiguracoesAutomacaoSemComunicacaoRouteImport
-      parentRoute: typeof ConfiguracoesRoute
-    }
-    '/configuracoes/auditoria': {
-      id: '/configuracoes/auditoria'
-      path: '/auditoria'
-      fullPath: '/configuracoes/auditoria'
-      preLoaderRoute: typeof ConfiguracoesAuditoriaRouteImport
-      parentRoute: typeof ConfiguracoesRoute
-    }
-    '/configuracoes/assistente-ia': {
-      id: '/configuracoes/assistente-ia'
-      path: '/assistente-ia'
-      fullPath: '/configuracoes/assistente-ia'
-      preLoaderRoute: typeof ConfiguracoesAssistenteIaRouteImport
-      parentRoute: typeof ConfiguracoesRoute
-    }
-    '/atendimentos_/tarefas': {
-      id: '/atendimentos_/tarefas'
-      path: '/atendimentos/tarefas'
-      fullPath: '/atendimentos/tarefas'
-      preLoaderRoute: typeof AtendimentosTarefasRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/agenda/timeline': {
-      id: '/agenda/timeline'
-      path: '/timeline'
-      fullPath: '/agenda/timeline'
-      preLoaderRoute: typeof AgendaTimelineRouteImport
-      parentRoute: typeof AgendaRoute
-    }
-    '/agenda/solicitacoes': {
-      id: '/agenda/solicitacoes'
-      path: '/solicitacoes'
-      fullPath: '/agenda/solicitacoes'
-      preLoaderRoute: typeof AgendaSolicitacoesRouteImport
-      parentRoute: typeof AgendaRoute
-    }
-    '/agenda/mapa': {
-      id: '/agenda/mapa'
-      path: '/mapa'
-      fullPath: '/agenda/mapa'
-      preLoaderRoute: typeof AgendaMapaRouteImport
       parentRoute: typeof AgendaRoute
     }
     '/agenda/atividades': {
@@ -961,53 +828,144 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AgendaAtividadesRouteImport
       parentRoute: typeof AgendaRoute
     }
-    '/.well-known/oauth-protected-resource': {
-      id: '/.well-known/oauth-protected-resource'
-      path: '/.well-known/oauth-protected-resource'
-      fullPath: '/.well-known/oauth-protected-resource'
-      preLoaderRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRouteImport
+    '/agenda/mapa': {
+      id: '/agenda/mapa'
+      path: '/mapa'
+      fullPath: '/agenda/mapa'
+      preLoaderRoute: typeof AgendaMapaRouteImport
+      parentRoute: typeof AgendaRoute
+    }
+    '/agenda/solicitacoes': {
+      id: '/agenda/solicitacoes'
+      path: '/solicitacoes'
+      fullPath: '/agenda/solicitacoes'
+      preLoaderRoute: typeof AgendaSolicitacoesRouteImport
+      parentRoute: typeof AgendaRoute
+    }
+    '/agenda/timeline': {
+      id: '/agenda/timeline'
+      path: '/timeline'
+      fullPath: '/agenda/timeline'
+      preLoaderRoute: typeof AgendaTimelineRouteImport
+      parentRoute: typeof AgendaRoute
+    }
+    '/atendimentos_/tarefas': {
+      id: '/atendimentos_/tarefas'
+      path: '/atendimentos/tarefas'
+      fullPath: '/atendimentos/tarefas'
+      preLoaderRoute: typeof AtendimentosTarefasRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/system-health-scan': {
-      id: '/api/public/system-health-scan'
-      path: '/api/public/system-health-scan'
-      fullPath: '/api/public/system-health-scan'
-      preLoaderRoute: typeof ApiPublicSystemHealthScanRouteImport
-      parentRoute: typeof rootRouteImport
+    '/configuracoes/': {
+      id: '/configuracoes/'
+      path: '/'
+      fullPath: '/configuracoes/'
+      preLoaderRoute: typeof ConfiguracoesIndexRouteImport
+      parentRoute: typeof ConfiguracoesRoute
     }
-    '/api/public/email-poll': {
-      id: '/api/public/email-poll'
-      path: '/api/public/email-poll'
-      fullPath: '/api/public/email-poll'
-      preLoaderRoute: typeof ApiPublicEmailPollRouteImport
-      parentRoute: typeof rootRouteImport
+    '/configuracoes/assistente-ia': {
+      id: '/configuracoes/assistente-ia'
+      path: '/assistente-ia'
+      fullPath: '/configuracoes/assistente-ia'
+      preLoaderRoute: typeof ConfiguracoesAssistenteIaRouteImport
+      parentRoute: typeof ConfiguracoesRoute
     }
-    '/api/public/crm-daily': {
-      id: '/api/public/crm-daily'
-      path: '/api/public/crm-daily'
-      fullPath: '/api/public/crm-daily'
-      preLoaderRoute: typeof ApiPublicCrmDailyRouteImport
-      parentRoute: typeof rootRouteImport
+    '/configuracoes/auditoria': {
+      id: '/configuracoes/auditoria'
+      path: '/auditoria'
+      fullPath: '/configuracoes/auditoria'
+      preLoaderRoute: typeof ConfiguracoesAuditoriaRouteImport
+      parentRoute: typeof ConfiguracoesRoute
     }
-    '/api/public/chat-idle-scanner': {
-      id: '/api/public/chat-idle-scanner'
-      path: '/api/public/chat-idle-scanner'
-      fullPath: '/api/public/chat-idle-scanner'
-      preLoaderRoute: typeof ApiPublicChatIdleScannerRouteImport
-      parentRoute: typeof rootRouteImport
+    '/configuracoes/automacao-sem-comunicacao': {
+      id: '/configuracoes/automacao-sem-comunicacao'
+      path: '/automacao-sem-comunicacao'
+      fullPath: '/configuracoes/automacao-sem-comunicacao'
+      preLoaderRoute: typeof ConfiguracoesAutomacaoSemComunicacaoRouteImport
+      parentRoute: typeof ConfiguracoesRoute
     }
-    '/api/public/bot-auto-reply-scanner': {
-      id: '/api/public/bot-auto-reply-scanner'
-      path: '/api/public/bot-auto-reply-scanner'
-      fullPath: '/api/public/bot-auto-reply-scanner'
-      preLoaderRoute: typeof ApiPublicBotAutoReplyScannerRouteImport
-      parentRoute: typeof rootRouteImport
+    '/configuracoes/canais-email': {
+      id: '/configuracoes/canais-email'
+      path: '/canais-email'
+      fullPath: '/configuracoes/canais-email'
+      preLoaderRoute: typeof ConfiguracoesCanaisEmailRouteImport
+      parentRoute: typeof ConfiguracoesRoute
     }
-    '/api/public/auto-route-aguardando': {
-      id: '/api/public/auto-route-aguardando'
-      path: '/api/public/auto-route-aguardando'
-      fullPath: '/api/public/auto-route-aguardando'
-      preLoaderRoute: typeof ApiPublicAutoRouteAguardandoRouteImport
+    '/configuracoes/central-atendimento': {
+      id: '/configuracoes/central-atendimento'
+      path: '/central-atendimento'
+      fullPath: '/configuracoes/central-atendimento'
+      preLoaderRoute: typeof ConfiguracoesCentralAtendimentoRouteImport
+      parentRoute: typeof ConfiguracoesRoute
+    }
+    '/configuracoes/encaminhamento': {
+      id: '/configuracoes/encaminhamento'
+      path: '/encaminhamento'
+      fullPath: '/configuracoes/encaminhamento'
+      preLoaderRoute: typeof ConfiguracoesEncaminhamentoRouteImport
+      parentRoute: typeof ConfiguracoesRoute
+    }
+    '/configuracoes/estoque': {
+      id: '/configuracoes/estoque'
+      path: '/estoque'
+      fullPath: '/configuracoes/estoque'
+      preLoaderRoute: typeof ConfiguracoesEstoqueRouteImport
+      parentRoute: typeof ConfiguracoesRoute
+    }
+    '/configuracoes/fluxo-atendimento': {
+      id: '/configuracoes/fluxo-atendimento'
+      path: '/fluxo-atendimento'
+      fullPath: '/configuracoes/fluxo-atendimento'
+      preLoaderRoute: typeof ConfiguracoesFluxoAtendimentoRouteImport
+      parentRoute: typeof ConfiguracoesRoute
+    }
+    '/configuracoes/notificacoes': {
+      id: '/configuracoes/notificacoes'
+      path: '/notificacoes'
+      fullPath: '/configuracoes/notificacoes'
+      preLoaderRoute: typeof ConfiguracoesNotificacoesRouteImport
+      parentRoute: typeof ConfiguracoesRoute
+    }
+    '/configuracoes/popup-diario': {
+      id: '/configuracoes/popup-diario'
+      path: '/popup-diario'
+      fullPath: '/configuracoes/popup-diario'
+      preLoaderRoute: typeof ConfiguracoesPopupDiarioRouteImport
+      parentRoute: typeof ConfiguracoesRoute
+    }
+    '/configuracoes/robo-atendimento': {
+      id: '/configuracoes/robo-atendimento'
+      path: '/robo-atendimento'
+      fullPath: '/configuracoes/robo-atendimento'
+      preLoaderRoute: typeof ConfiguracoesRoboAtendimentoRouteImport
+      parentRoute: typeof ConfiguracoesRoute
+    }
+    '/configuracoes/status-usuarios': {
+      id: '/configuracoes/status-usuarios'
+      path: '/status-usuarios'
+      fullPath: '/configuracoes/status-usuarios'
+      preLoaderRoute: typeof ConfiguracoesStatusUsuariosRouteImport
+      parentRoute: typeof ConfiguracoesRoute
+    }
+    '/configuracoes/usuarios': {
+      id: '/configuracoes/usuarios'
+      path: '/usuarios'
+      fullPath: '/configuracoes/usuarios'
+      preLoaderRoute: typeof ConfiguracoesUsuariosRouteImport
+      parentRoute: typeof ConfiguracoesRoute
+    }
+    '/configuracoes/zapi': {
+      id: '/configuracoes/zapi'
+      path: '/zapi'
+      fullPath: '/configuracoes/zapi'
+      preLoaderRoute: typeof ConfiguracoesZapiRouteImport
+      parentRoute: typeof ConfiguracoesRoute
+    }
+    '/hooks/refresh-tracking': {
+      id: '/hooks/refresh-tracking'
+      path: '/hooks/refresh-tracking'
+      fullPath: '/hooks/refresh-tracking'
+      preLoaderRoute: typeof HooksRefreshTrackingRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/.lovable/oauth/consent': {
@@ -1017,18 +975,53 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DotlovableOauthConsentRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/lovable/email/auth/webhook': {
-      id: '/lovable/email/auth/webhook'
-      path: '/lovable/email/auth/webhook'
-      fullPath: '/lovable/email/auth/webhook'
-      preLoaderRoute: typeof LovableEmailAuthWebhookRouteImport
+    '/api/public/auto-route-aguardando': {
+      id: '/api/public/auto-route-aguardando'
+      path: '/api/public/auto-route-aguardando'
+      fullPath: '/api/public/auto-route-aguardando'
+      preLoaderRoute: typeof ApiPublicAutoRouteAguardandoRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/lovable/email/auth/preview': {
-      id: '/lovable/email/auth/preview'
-      path: '/lovable/email/auth/preview'
-      fullPath: '/lovable/email/auth/preview'
-      preLoaderRoute: typeof LovableEmailAuthPreviewRouteImport
+    '/api/public/bot-auto-reply-scanner': {
+      id: '/api/public/bot-auto-reply-scanner'
+      path: '/api/public/bot-auto-reply-scanner'
+      fullPath: '/api/public/bot-auto-reply-scanner'
+      preLoaderRoute: typeof ApiPublicBotAutoReplyScannerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/chat-idle-scanner': {
+      id: '/api/public/chat-idle-scanner'
+      path: '/api/public/chat-idle-scanner'
+      fullPath: '/api/public/chat-idle-scanner'
+      preLoaderRoute: typeof ApiPublicChatIdleScannerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/crm-daily': {
+      id: '/api/public/crm-daily'
+      path: '/api/public/crm-daily'
+      fullPath: '/api/public/crm-daily'
+      preLoaderRoute: typeof ApiPublicCrmDailyRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/email-poll': {
+      id: '/api/public/email-poll'
+      path: '/api/public/email-poll'
+      fullPath: '/api/public/email-poll'
+      preLoaderRoute: typeof ApiPublicEmailPollRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/system-health-scan': {
+      id: '/api/public/system-health-scan'
+      path: '/api/public/system-health-scan'
+      fullPath: '/api/public/system-health-scan'
+      preLoaderRoute: typeof ApiPublicSystemHealthScanRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/sync-gsystem-equipamentos': {
+      id: '/api/public/hooks/sync-gsystem-equipamentos'
+      path: '/api/public/hooks/sync-gsystem-equipamentos'
+      fullPath: '/api/public/hooks/sync-gsystem-equipamentos'
+      preLoaderRoute: typeof ApiPublicHooksSyncGsystemEquipamentosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/zapi-webhook/$channelId': {
@@ -1038,11 +1031,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicZapiWebhookChannelIdRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/hooks/sync-gsystem-equipamentos': {
-      id: '/api/public/hooks/sync-gsystem-equipamentos'
-      path: '/api/public/hooks/sync-gsystem-equipamentos'
-      fullPath: '/api/public/hooks/sync-gsystem-equipamentos'
-      preLoaderRoute: typeof ApiPublicHooksSyncGsystemEquipamentosRouteImport
+    '/lovable/email/auth/preview': {
+      id: '/lovable/email/auth/preview'
+      path: '/lovable/email/auth/preview'
+      fullPath: '/lovable/email/auth/preview'
+      preLoaderRoute: typeof LovableEmailAuthPreviewRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/lovable/email/auth/webhook': {
+      id: '/lovable/email/auth/webhook'
+      path: '/lovable/email/auth/webhook'
+      fullPath: '/lovable/email/auth/webhook'
+      preLoaderRoute: typeof LovableEmailAuthWebhookRouteImport
       parentRoute: typeof rootRouteImport
     }
   }

@@ -712,9 +712,8 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                     } as any);
                   }
 
-                  // Send thanks (silenciado quando o robô está inativo)
+                  // Send thanks (pesquisa de satisfação é independente do robô)
                   try {
-                    if (!(await isAutoReplyGloballyEnabled())) return;
                     const { data: cset } = await supabaseAdmin
                       .from("csat_settings" as any)
                       .select("thanks_message")
