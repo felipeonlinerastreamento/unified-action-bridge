@@ -2512,22 +2512,8 @@ function CentralPage() {
         console.warn("[Finalize] Failed to load CSAT settings", e);
       }
 
-      // Chave geral: com o Robô de Atendimento inativo, nenhuma mensagem
-      // automática é enviada ao cliente (inclui CSAT e encerramento).
-      let botGloballyEnabled = true;
-      try {
-        const { data: botCfg } = await supabase
-          .from("bot_auto_reply_settings" as any)
-          .select("is_enabled")
-          .maybeSingle();
-        if (botCfg && (botCfg as any).is_enabled === false) botGloballyEnabled = false;
-      } catch (e) {
-        console.warn("[Finalize] Failed to load bot settings", e);
-      }
-
-      if (!botGloballyEnabled) {
-        console.log("[Finalize] Robô inativo — nenhuma mensagem automática enviada");
-      } else if (pendingResolve) {
+      // Finalização e CSAT são independentes do Robô de Atendimento.
+      if (pendingResolve) {
         console.log("[Finalize] 'A resolver' — protocolo mantido aberto, sem envio de mensagem de encerramento");
       } else if (skipMsg) {
         console.log("[Finalize] Skipping closing message and CSAT (admin opt-out)");
