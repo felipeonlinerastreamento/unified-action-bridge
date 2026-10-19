@@ -444,11 +444,11 @@ export function BotAutoReplyConfig() {
               <p className="font-medium">Robô inativo — automações em silêncio</p>
               <p className="mt-1">
                 Com o robô desligado, o sistema não envia menu de opções, respostas por
-                assunto/IA, cobrança de inatividade nem pesquisa de satisfação ao finalizar.
+                assunto/IA nem cobrança de inatividade.
               </p>
               <p className="mt-1">
-                A mensagem de fora do horário é independente e continua sendo enviada conforme
-                a configuração de Horário de Atendimento.
+                A mensagem de fora do horário, a mensagem de finalização e a pesquisa de
+                satisfação são independentes e continuam sendo enviadas.
               </p>
             </div>
           )}
