@@ -1,16 +1,18 @@
-# Mensagem de fora de horário em grupos de WhatsApp
+# Mensagem de finalização de chamado não enviada (#09135)
 
-## Motivo
-A mensagem de fora de horário é enviada só em conversas individuais. Grupos ficaram de fora de propósito, para o robô não responder a cada mensagem trocada entre os participantes. Por isso o grupo "Via tecnologia ONLINE" não recebeu nada depois das 18:00.
+## Motivo (confirmado)
+- O protocolo #09135 foi finalizado às 10:56. Nenhuma mensagem saiu para o cliente depois disso.
+- O Robô de Atendimento está **inativo**. Hoje, com o robô inativo, o sistema bloqueia todas as mensagens automáticas, inclusive a de finalização e a pesquisa de satisfação.
+- A mensagem de fora de horário já foi separada do robô antes. A de finalização ficou presa à mesma trava.
 
 ## O que muda
-- Nova opção em Z-API & Bot → Horário de Funcionamento: "Enviar mensagem de fora de horário também em grupos" (desligada por padrão).
-- Com a opção ligada, o grupo recebe a mensagem de ausência quando um cliente escreve fora do horário.
-- Limite de repetição (cooldown) por grupo inteiro, não por participante. Assim o grupo recebe a mensagem uma vez por janela, mesmo que várias pessoas escrevam.
-- Mensagens enviadas pela equipe dentro do grupo não disparam o aviso.
+- A mensagem de finalização e a pesquisa de satisfação passam a ser enviadas mesmo com o robô inativo.
+- O robô inativo continua bloqueando só as respostas automáticas da conversa (saudação, automações, "ainda está aí?").
+- Continua igual: quando a pesquisa de satisfação está ativa, só ela é enviada (já avisa o encerramento). "A resolver" e a opção do admin de não enviar mensagem seguem sem envio.
+- O aviso na tela do Robô passa a deixar claro que finalização e pesquisa não dependem dele.
 
 ## Detalhes técnicos
-- Coluna `apply_to_groups boolean default false` em `business_hours_settings`.
-- Webhook (linha ~1328): trocar `!isGroupMessage` por `(!isGroupMessage || bh.apply_to_groups)`; para grupo usar o ID do grupo como chave do cooldown em `out_of_hours_message_log`.
-- `loadBusinessHoursSettings` e `BusinessHoursForm` passam a ler/gravar o novo campo.
+- `src/routes/central.tsx` (~2515-2530): remover a checagem `bot_auto_reply_settings.is_enabled` do fluxo de finalização.
+- Conferir se o webhook bloqueia a captura da resposta da pesquisa (`csat_pending`) quando o robô está inativo. Se bloquear, liberar essa captura também.
+- Ajustar o texto do alerta em Configurações → Robô de Atendimento.
 - Publicar para valer no site.
