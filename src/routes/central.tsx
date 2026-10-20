@@ -386,6 +386,23 @@ function CentralPage() {
     author: string;
   } | null>(null);
   const [nicknameMode, setNicknameMode] = useState(true);
+  const [signAsUserId, setSignAsUserId] = useState<string>("");
+  useEffect(() => { setSignAsUserId(""); }, [selectedChatId]);
+  const { data: signAsOperators = [] } = useQuery({
+    queryKey: ["sign-as-operators"],
+    enabled: isAuthenticated,
+    staleTime: 60000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("profiles")
+        .select("user_id, name")
+        .eq("is_active", true)
+        .eq("panel_only", false)
+        .order("name");
+      return (data || []).filter((p) => p.user_id !== user?.id);
+    },
+  });
+  const signAsName = signAsOperators.find((o) => o.user_id === signAsUserId)?.name || "";
   const [showFullHistory, setShowFullHistory] = useState(false);
   
   const [searchTerm, setSearchTerm] = useState("");
@@ -1862,7 +1879,8 @@ function CentralPage() {
       whisper,
       replyToMessageId,
       includeOperatorName,
-    }: { text: string; whisper: boolean; replyToMessageId?: string | null; includeOperatorName?: boolean }) => {
+      signAsUserId: signAs,
+    }: { text: string; whisper: boolean; replyToMessageId?: string | null; includeOperatorName?: boolean; signAsUserId?: string }) => {
       if (whisper) {
         // Whisper: persist locally only, never sent to client via Z-API
         const { data: chatRow } = await supabase
@@ -1915,6 +1933,7 @@ function CentralPage() {
           message: text,
           replyToMessageId: replyToMessageId || undefined,
           includeOperatorName: includeOperatorName !== false,
+          signAsUserId: signAs || undefined,
         },
         ...await getAuthHeaders(),
       });
@@ -2901,6 +2920,7 @@ function CentralPage() {
       whisper: whisperMode,
       replyToMessageId: replyingTo?.id || null,
       includeOperatorName: nicknameMode && !whisperMode,
+      signAsUserId: !whisperMode && signAsUserId ? signAsUserId : undefined,
     }, {
       onError: () => {
         // Restaura o texto se o envio falhar, para que o operador possa tentar de novo.
@@ -4086,7 +4106,7 @@ function CentralPage() {
                                 onClick={() => {
                                   setWhisperMode((v) => {
                                     const next = !v;
-                                    if (next) setNicknameMode(false);
+                                    if (next) { setNicknameMode(false); setSignAsUserId(""); }
                                     return next;
                                   });
                                 }}
@@ -4103,7 +4123,7 @@ function CentralPage() {
                                 onClick={() => {
                                   setNicknameMode((v) => {
                                     const next = !v;
-                                    if (!next) setWhisperMode(false);
+                                    if (!next) { setWhisperMode(false); setSignAsUserId(""); }
                                     return next;
                                   });
                                 }}
@@ -4114,6 +4134,27 @@ function CentralPage() {
                                   {!nicknameMode ? "ATIVO" : "OFF"}
                                 </span>
                               </button>
+                              <div className={`flex flex-col gap-1.5 px-2.5 py-2 rounded-md border ${signAsUserId ? "bg-primary/10 border-primary/50" : "border-transparent"}`}>
+                                <span className="text-sm flex items-center gap-2.5">
+                                  <Users className="h-4 w-4 shrink-0" /> Assinar com:
+                                </span>
+                                <Select
+                                  value={signAsUserId || "__me__"}
+                                  onValueChange={(v) => {
+                                    const id = v === "__me__" ? "" : v;
+                                    setSignAsUserId(id);
+                                    if (id) { setWhisperMode(false); setNicknameMode(true); }
+                                  }}
+                                >
+                                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                                  <SelectContent>
+                                    <SelectItem value="__me__">Meu nome (padrão)</SelectItem>
+                                    {signAsOperators.map((o) => (
+                                      <SelectItem key={o.user_id} value={o.user_id}>{o.name}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                              </div>
                               {currentTicket?.id && currentTicket?.protocol_number != null && (
                                 <button
                                   type="button"
@@ -4135,7 +4176,7 @@ function CentralPage() {
                         )}
                       </div>
                       <Textarea
-                        placeholder={whisperMode ? "Sussurro interno (não vai para o cliente). Shift+Enter para nova linha." : (!nicknameMode ? "Mensagem será enviada SEM seu nome. Shift+Enter para nova linha." : "Digite uma mensagem... (Shift+Enter para nova linha, Ctrl+V para colar arquivos)")}
+                        placeholder={whisperMode ? "Sussurro interno (não vai para o cliente). Shift+Enter para nova linha." : (signAsName ? `Assinando como ${signAsName}. Shift+Enter para nova linha.` : !nicknameMode ? "Mensagem será enviada SEM seu nome. Shift+Enter para nova linha." : "Digite uma mensagem... (Shift+Enter para nova linha, Ctrl+V para colar arquivos)")}
                         value={messageInput}
                         onChange={(e) => setMessageInput(e.target.value)}
                         onKeyDown={handleKeyDown}
