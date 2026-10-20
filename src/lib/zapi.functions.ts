@@ -309,6 +309,8 @@ export const getChatMessages = createServerFn({ method: "POST" })
 
       let senderName: string | undefined;
       if (m.is_whisper) senderName = authorFirst ? `🤫 Sussurro · ${authorFirst}` : "🤫 Sussurro";
+      else if (m.from_me && m.signed_as_name)
+        senderName = `${firstNameOf(m.signed_as_name) || m.signed_as_name} (enviado por ${authorFirst || "Você"})`;
       else if (m.from_me) senderName = authorFirst || "Você";
       // Incoming group message: show the participant (group member) who sent it
       else if (m.participant_name || m.participant_phone) senderName = m.participant_name || m.participant_phone;
@@ -429,6 +431,7 @@ export const sendText = createServerFn({ method: "POST" })
       whisper: z.boolean().optional(),
       replyToMessageId: z.string().uuid().optional(),
       includeOperatorName: z.boolean().optional(),
+      signAsUserId: z.string().uuid().optional(),
     }).parse
   )
   .handler(async ({ data, context }) => {
@@ -520,14 +523,32 @@ export const sendText = createServerFn({ method: "POST" })
     // (negrito + itálico) numa linha acima do conteúdo da mensagem.
     let outgoingText = text;
     let operatorFirstName: string | undefined;
-    const includeName = data.includeOperatorName !== false;
-    if (includeName && context.userId) {
-      const { data: prof } = await context.supabase
+    let signedAsName: string | null = null;
+    let signedAsUserId: string | null = null;
+    if (data.signAsUserId && data.signAsUserId !== context.userId) {
+      const { data: signProf } = await context.supabase
         .from("profiles")
-        .select("name")
-        .eq("user_id", context.userId)
+        .select("name, is_active, panel_only")
+        .eq("user_id", data.signAsUserId)
         .maybeSingle();
-      operatorFirstName = firstNameOf(prof?.name);
+      if (!signProf || !signProf.is_active || signProf.panel_only) {
+        throw new Error("Operador escolhido para assinar não está ativo.");
+      }
+      signedAsName = signProf.name;
+      signedAsUserId = data.signAsUserId;
+    }
+    const includeName = signedAsName ? true : data.includeOperatorName !== false;
+    if (includeName && context.userId) {
+      let nameToUse = signedAsName;
+      if (!nameToUse) {
+        const { data: prof } = await context.supabase
+          .from("profiles")
+          .select("name")
+          .eq("user_id", context.userId)
+          .maybeSingle();
+        nameToUse = prof?.name ?? null;
+      }
+      operatorFirstName = firstNameOf(nameToUse ?? undefined);
       if (operatorFirstName) {
         const esc = operatorFirstName.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
         // Detecta qualquer prefixo de nome já existente (formato atual, antigo
@@ -572,6 +593,8 @@ export const sendText = createServerFn({ method: "POST" })
       sent_by_user_id: context.userId,
       text: outgoingText,
       status: "sent",
+      signed_as_user_id: signedAsUserId,
+      signed_as_name: signedAsName,
       reply_to_message_id: data.replyToMessageId || null,
       reply_to_text: replyToText,
       reply_to_author: replyToAuthor,
@@ -590,6 +613,8 @@ export const sendText = createServerFn({ method: "POST" })
           .update({
             sent_by_user_id: context.userId,
             text: outgoingText,
+            signed_as_user_id: signedAsUserId,
+            signed_as_name: signedAsName,
             reply_to_message_id: data.replyToMessageId || null,
             reply_to_text: replyToText,
             reply_to_author: replyToAuthor,

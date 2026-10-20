@@ -6350,6 +6350,8 @@ export type Database = {
           reply_to_message_id: string | null
           reply_to_text: string | null
           sent_by_user_id: string | null
+          signed_as_name: string | null
+          signed_as_user_id: string | null
           status: string
           text: string | null
           whisper_author: string | null
@@ -6371,6 +6373,8 @@ export type Database = {
           reply_to_message_id?: string | null
           reply_to_text?: string | null
           sent_by_user_id?: string | null
+          signed_as_name?: string | null
+          signed_as_user_id?: string | null
           status?: string
           text?: string | null
           whisper_author?: string | null
@@ -6392,6 +6396,8 @@ export type Database = {
           reply_to_message_id?: string | null
           reply_to_text?: string | null
           sent_by_user_id?: string | null
+          signed_as_name?: string | null
+          signed_as_user_id?: string | null
           status?: string
           text?: string | null
           whisper_author?: string | null

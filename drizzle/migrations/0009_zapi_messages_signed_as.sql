@@ -1,0 +1,1 @@
+ALTER TABLE public.zapi_messages ADD COLUMN IF NOT EXISTS signed_as_user_id uuid, ADD COLUMN IF NOT EXISTS signed_as_name text;

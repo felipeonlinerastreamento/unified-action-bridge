@@ -64,6 +64,13 @@
       "when": 1791979941067,
       "tag": "0008_zapi_net_proxy",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1792499956174,
+      "tag": "0009_zapi_messages_signed_as",
+      "breakpoints": true
     }
   ]
 }
