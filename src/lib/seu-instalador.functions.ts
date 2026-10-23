@@ -214,6 +214,9 @@ export const criarAgendamento = createServerFn({ method: "POST" })
         address: z.string().optional(),
         noAddress: z.boolean().default(false),
         description: z.string().optional(),
+        contactName: z.string().max(200).optional(),
+        contactPhone: z.string().max(30).optional(),
+        notifyContact: z.boolean().optional(),
       })
       .parse(input),
   )
@@ -355,6 +358,9 @@ const thirdPartySchema = z.object({
   address: z.string().max(500).optional(),
   noAddress: z.boolean().optional(),
   description: z.string().max(5000).optional(),
+  contactName: z.string().max(200).optional(),
+  contactPhone: z.string().max(30).optional(),
+  notifyContact: z.boolean().optional(),
 });
 export const criarAgendamentoTerceiro = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
