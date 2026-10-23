@@ -1,4 +1,5 @@
-import { describe, expect, test } from "bun:test";
+import { describe, it as test } from "node:test";
+import { strict as assert } from "node:assert";
 import { MENU_CATALOG, URL_TO_MENU_SLUG, DEFAULT_OPERATOR_MENUS, canAccessAgendaPath } from "./menu-catalog";
 
 describe("Liberação individual da Agenda", () => {
@@ -6,17 +7,17 @@ describe("Liberação individual da Agenda", () => {
     test(`${submenu} tem permissão própria e só abre quando liberado`, () => {
       const slug = `agenda.${submenu}`;
       const path = `/agenda/${submenu}`;
-      expect(MENU_CATALOG.some((item) => item.slug === slug)).toBe(true);
-      expect(URL_TO_MENU_SLUG[path]).toBe(slug);
-      expect(canAccessAgendaPath(path, (allowed) => allowed === slug)).toBe(true);
-      expect(canAccessAgendaPath(path, () => false)).toBe(false);
-      expect(DEFAULT_OPERATOR_MENUS.includes(slug)).toBe(false);
+      assert.equal(MENU_CATALOG.some((item) => item.slug === slug), true);
+      assert.equal(URL_TO_MENU_SLUG[path], slug);
+      assert.equal(canAccessAgendaPath(path, (allowed) => allowed === slug), true);
+      assert.equal(canAccessAgendaPath(path, () => false), false);
+      assert.equal(DEFAULT_OPERATOR_MENUS.includes(slug), false);
     });
   }
   test("liberar Timeline não libera Mapa nem Solicitações", () => {
     const canSee = (slug: string) => slug === "agenda.timeline";
-    expect(canAccessAgendaPath("/agenda/timeline", canSee)).toBe(true);
-    expect(canAccessAgendaPath("/agenda/mapa", canSee)).toBe(false);
-    expect(canAccessAgendaPath("/agenda/solicitacoes", canSee)).toBe(false);
+    assert.equal(canAccessAgendaPath("/agenda/timeline", canSee), true);
+    assert.equal(canAccessAgendaPath("/agenda/mapa", canSee), false);
+    assert.equal(canAccessAgendaPath("/agenda/solicitacoes", canSee), false);
   });
 });
