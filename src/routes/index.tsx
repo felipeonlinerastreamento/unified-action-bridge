@@ -5,6 +5,14 @@ import { useAuth } from "@/hooks/use-auth";
 import { AuthForm } from "@/components/auth-form";
 
 export const Route = createFileRoute("/")({
+  head: () => ({ meta: [
+    { title: "Entrar | GSystem Hub" },
+    { name: "description", content: "Acesse o GSystem Hub para gerenciar atendimentos, conversas e agenda." },
+    { property: "og:title", content: "Entrar | GSystem Hub" },
+    { property: "og:description", content: "Acesse sua central de atendimentos e operações GSystem Hub." },
+    { property: "og:type", content: "website" },
+    { name: "twitter:card", content: "summary" },
+  ] }),
   component: IndexPage,
 });
 

@@ -21,6 +21,8 @@ export const MENU_CATALOG: MenuEntry[] = [
   { slug: "atendimentos", label: "Atendimentos", category: "main" },
   { slug: "agenda.atividades", label: "Agenda — Atividades", category: "main" },
   { slug: "agenda.timeline", label: "Agenda — Timeline", category: "main" },
+  { slug: "agenda.mapa", label: "Agenda — Mapa", category: "main" },
+  { slug: "agenda.solicitacoes", label: "Agenda — Solicitações", category: "main" },
   { slug: "chat-operadores", label: "Chat com Operadores", category: "main" },
   { slug: "painel-tv", label: "Painel TV (Monitoramento)", category: "main" },
   { slug: "top-gamific", label: "Top Gamific", category: "main" },
@@ -69,6 +71,8 @@ export const URL_TO_MENU_SLUG: Record<string, string> = {
   "/atendimentos": "atendimentos",
   "/agenda/atividades": "agenda.atividades",
   "/agenda/timeline": "agenda.timeline",
+  "/agenda/mapa": "agenda.mapa",
+  "/agenda/solicitacoes": "agenda.solicitacoes",
   "/chat-operadores": "chat-operadores",
   "/painel-tv": "painel-tv",
   "/top-gamific": "top-gamific",
@@ -88,3 +92,9 @@ export const URL_TO_MENU_SLUG: Record<string, string> = {
   "/configuracoes/notificacoes": "config.notificacoes",
   "/configuracoes/auditoria": "config.auditoria",
 };
+
+// A mesma correspondência é usada pelo menu lateral e pela proteção da Agenda.
+export function canAccessAgendaPath(pathname: string, canSeeMenu: (slug: string) => boolean): boolean {
+  const slug = URL_TO_MENU_SLUG[pathname.replace(/\/$/, "")];
+  return Boolean(slug?.startsWith("agenda.") && canSeeMenu(slug));
+}
