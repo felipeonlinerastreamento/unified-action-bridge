@@ -277,7 +277,7 @@ export function SectorGroupsManagement() {
                             checked={g.is_active}
                             onCheckedChange={(checked) => toggleGroupMutation.mutate({ id: g.id, active: checked })}
                           />
-                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); openEdit(g); }}>
+                          <Button variant="ghost" size="icon" className="h-8 w-8" aria-label={`Editar grupo ${g.name}`} onClick={(e) => { e.stopPropagation(); openEdit(g); }}>
                             <Pencil className="h-3.5 w-3.5" />
                           </Button>
                           <Button variant="ghost" size="icon" className="h-8 w-8" onClick={(e) => { e.stopPropagation(); setDeleteId(g.id); }}>
@@ -423,11 +423,12 @@ export function SectorGroupsManagement() {
                   </div>
                 </div>
 
-                {restrictMenus && (
                   <div className="space-y-4">
-                    {(["main", "config"] as const).map((cat) => {
-                      const items = MENU_CATALOG.filter((m) => m.category === cat);
-                      const catLabel = cat === "main" ? "Menu Principal" : "Configurações";
+                    {(["main", "agenda", "config"] as const).map((cat) => {
+                      const items = MENU_CATALOG.filter((m) => cat === "agenda"
+                        ? m.slug.startsWith("agenda.")
+                        : m.category === cat && !m.slug.startsWith("agenda."));
+                      const catLabel = cat === "main" ? "Menu Principal" : cat === "agenda" ? "Agenda" : "Configurações";
                       const catSlugs = items.map((i) => i.slug);
                       const allChecked = catSlugs.every((s) => allowedMenus.includes(s));
                       const toggleAll = () => {
@@ -441,7 +442,7 @@ export function SectorGroupsManagement() {
                         <div key={cat} className="rounded-md border border-border">
                           <div className="flex items-center justify-between bg-muted/20 px-3 py-2">
                             <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{catLabel}</span>
-                            <Button type="button" variant="ghost" size="sm" className="h-6 text-xs" onClick={toggleAll}>
+                            <Button type="button" variant="ghost" size="sm" className="h-6 text-xs" disabled={!restrictMenus} onClick={toggleAll} aria-label={`${allChecked ? "Desmarcar" : "Marcar"} todos de ${catLabel}`}>
                               {allChecked ? "Desmarcar todos" : "Marcar todos"}
                             </Button>
                           </div>
@@ -451,6 +452,7 @@ export function SectorGroupsManagement() {
                               return (
                                 <label key={m.slug} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/40 rounded px-2 py-1">
                                   <Checkbox
+                                    disabled={!restrictMenus}
                                     checked={checked}
                                     onCheckedChange={(c) => {
                                       setAllowedMenus((prev) =>
@@ -458,7 +460,7 @@ export function SectorGroupsManagement() {
                                       );
                                     }}
                                   />
-                                  <span className="truncate">{m.label}</span>
+                                  <span>{cat === "agenda" ? m.label.replace("Agenda — ", "") : m.label}</span>
                                 </label>
                               );
                             })}
@@ -467,7 +469,6 @@ export function SectorGroupsManagement() {
                       );
                     })}
                   </div>
-                )}
               </div>
             </div>
           </div>
