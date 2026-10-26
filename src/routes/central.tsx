@@ -1435,7 +1435,7 @@ function CentralPage() {
       const selectedCompany = getSelectedCompany(selectedValue);
       if (!selectedCompany) throw new Error("Empresa não encontrada");
 
-      await linkPhoneToCompany({
+      const res = await linkPhoneToCompany({
         data: {
           companyName: selectedCompany.name,
           companyCnpj: selectedCompany.cnpj || undefined,
@@ -1834,12 +1834,15 @@ function CentralPage() {
   });
 
   // Link company to ticket
+  // Empresa escolhida no modal de finalização — gravada obrigatoriamente no chamado.
+  const [finalizeCompanyId, setFinalizeCompanyId] = useState<string | null>(null);
+  useEffect(() => { setFinalizeCompanyId(null); }, [selectedChatId]);
   const linkCompanyMutation = useMutation({
     mutationFn: async (selectedValue: string) => {
       const selectedCompany = getSelectedCompany(selectedValue);
       if (!selectedCompany) throw new Error("Empresa não encontrada");
 
-      await linkPhoneToCompany({
+      const res = await linkPhoneToCompany({
         data: {
           companyName: selectedCompany.name,
           companyCnpj: selectedCompany.cnpj || undefined,
@@ -1849,6 +1852,8 @@ function CentralPage() {
         },
         ...await getAuthHeaders(),
       });
+      if (res?.companyId) setFinalizeCompanyId(res.companyId);
+      return res;
     },
     onSuccess: () => {
       refetchTicket();
@@ -2220,7 +2225,7 @@ function CentralPage() {
             .insert({
               attendance_id: selectedChatId,
               channel_id: selectedChannelId || null,
-              company_id: companyLookup?.id || null,
+              company_id: finalizeCompanyId || companyLookup?.id || null,
               contact_phone: contactPhone || null,
               contact_name: chatDetail.contact?.name || chatDetail.description || null,
               plate: ticketPlate || null,
@@ -2267,6 +2272,14 @@ function CentralPage() {
       // clicked "Finalizar" — the chat MUST be closed regardless of side-effects.
       try {
       const activeTicket = currentTicket || ticketForProtocol;
+      if (activeTicket && finalizeCompanyId && activeTicket.company_id !== finalizeCompanyId) {
+        const { error: compErr } = await supabase
+          .from("service_tickets")
+          .update({ company_id: finalizeCompanyId } as any)
+          .eq("id", activeTicket.id);
+        if (compErr) console.error("[Finalize] Failed to save chosen company:", compErr.message);
+        else (activeTicket as any).company_id = finalizeCompanyId;
+      }
       if (!linkedId && activeTicket) {
         let pendenciaKey = activeTicket.pendencia_key;
 
