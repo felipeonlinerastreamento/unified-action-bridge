@@ -147,3 +147,46 @@ export function htmlToPlainText(html: string): string {
     .replace(/\n{3,}/g, "\n\n")
     .trim();
 }
+
+export interface InlineImage { name: string; contentType: string; base64: string; cid: string }
+
+/** Responde (reply) a uma mensagem do Outlook mantendo a conversa. */
+export async function replyToMessage(
+  ctx: MailboxContext,
+  messageId: string,
+  html: string,
+  images: InlineImage[] = [],
+): Promise<void> {
+  const base = mailboxPath(ctx.mailbox, ctx.connectedEmail);
+  const headers = getAuthHeaders(ctx.connectionKey);
+  // 1) cria rascunho de resposta
+  const draftRes = await fetch(`${GATEWAY_URL}${base}/messages/${encodeURIComponent(messageId)}/createReply`, {
+    method: "POST", headers, body: JSON.stringify({}),
+  });
+  const draft = await draftRes.json().catch(() => ({}));
+  if (!draftRes.ok) throw friendlyError("Falha ao criar resposta", draftRes.status, draft);
+  const quoted = draft?.body?.content || "";
+  // 2) define corpo (nova resposta + histórico citado)
+  const patchRes = await fetch(`${GATEWAY_URL}${base}/messages/${encodeURIComponent(draft.id)}`, {
+    method: "PATCH", headers,
+    body: JSON.stringify({ body: { contentType: "HTML", content: `${html}<br/>${quoted}` } }),
+  });
+  if (!patchRes.ok) throw friendlyError("Falha ao montar resposta", patchRes.status, await patchRes.json().catch(() => ({})));
+  // 3) anexa imagens inline (assinatura)
+  for (const img of images) {
+    const aRes = await fetch(`${GATEWAY_URL}${base}/messages/${encodeURIComponent(draft.id)}/attachments`, {
+      method: "POST", headers,
+      body: JSON.stringify({
+        "@odata.type": "#microsoft.graph.fileAttachment",
+        name: img.name, contentType: img.contentType, contentBytes: img.base64,
+        isInline: true, contentId: img.cid,
+      }),
+    });
+    if (!aRes.ok) throw friendlyError("Falha ao anexar assinatura", aRes.status, await aRes.json().catch(() => ({})));
+  }
+  // 4) envia
+  const sendRes = await fetch(`${GATEWAY_URL}${base}/messages/${encodeURIComponent(draft.id)}/send`, {
+    method: "POST", headers,
+  });
+  if (!sendRes.ok) throw friendlyError("Falha ao enviar e-mail", sendRes.status, await sendRes.json().catch(() => ({})));
+}

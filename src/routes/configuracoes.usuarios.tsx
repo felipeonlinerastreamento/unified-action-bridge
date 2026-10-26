@@ -35,6 +35,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox";
 import { Switch } from "@/components/ui/switch";
 import { SectorGroupsManagement } from "@/components/configuracoes/sector-groups-management";
+import { SignatureUpload } from "@/components/configuracoes/signature-upload";
 
 export const Route = createFileRoute("/configuracoes/usuarios")({
   component: UsuariosConfigPage,
@@ -829,6 +830,7 @@ function UsuariosConfigPage() {
                 onCheckedChange={setEditPanelOnly}
               />
             </div>
+            {editUserId && <SignatureUpload userId={editUserId} />}
             <div className="flex justify-end gap-2 pt-2">
               <Button variant="outline" onClick={() => setEditDialogOpen(false)}>Cancelar</Button>
               <Button onClick={() => editMutation.mutate()} disabled={editMutation.isPending || !editName}>

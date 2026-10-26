@@ -4040,6 +4040,7 @@ export type Database = {
           last_seen_at: string | null
           name: string
           panel_only: boolean
+          signature_image_url: string | null
           updated_at: string
           user_id: string
         }
@@ -4056,6 +4057,7 @@ export type Database = {
           last_seen_at?: string | null
           name?: string
           panel_only?: boolean
+          signature_image_url?: string | null
           updated_at?: string
           user_id: string
         }
@@ -4072,6 +4074,7 @@ export type Database = {
           last_seen_at?: string | null
           name?: string
           panel_only?: boolean
+          signature_image_url?: string | null
           updated_at?: string
           user_id?: string
         }

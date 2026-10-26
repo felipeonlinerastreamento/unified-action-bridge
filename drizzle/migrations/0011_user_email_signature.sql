@@ -1,0 +1,5 @@
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS signature_image_url text;
+CREATE POLICY "Signatures public read" ON storage.objects FOR SELECT USING (bucket_id = 'user-signatures');
+CREATE POLICY "Signatures admin or own insert" ON storage.objects FOR INSERT TO authenticated WITH CHECK (bucket_id = 'user-signatures' AND (public.has_role(auth.uid(),'admin') OR (storage.foldername(name))[1] = auth.uid()::text));
+CREATE POLICY "Signatures admin or own update" ON storage.objects FOR UPDATE TO authenticated USING (bucket_id = 'user-signatures' AND (public.has_role(auth.uid(),'admin') OR (storage.foldername(name))[1] = auth.uid()::text));
+CREATE POLICY "Signatures admin or own delete" ON storage.objects FOR DELETE TO authenticated USING (bucket_id = 'user-signatures' AND (public.has_role(auth.uid(),'admin') OR (storage.foldername(name))[1] = auth.uid()::text));

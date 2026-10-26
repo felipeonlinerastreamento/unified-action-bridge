@@ -6,6 +6,8 @@ import { useAuth } from "@/hooks/use-auth";
 import { getTiposPendencia } from "@/lib/gsystem-api.functions";
 import { formatTicketProtocol } from "@/lib/protocol-format";
 import { toast } from "sonner";
+import { useServerFn } from "@tanstack/react-start";
+import { getTicketEmailInfo, sendTicketEmailReply } from "@/lib/email-reply.functions";
 import {
   Sheet,
   SheetContent,
@@ -38,6 +40,7 @@ import {
   CheckCircle,
   RotateCcw,
   Send,
+  Loader2,
   ArrowRight,
   Clock,
   MessageSquare,
@@ -96,6 +99,7 @@ function getCommentIcon(type: string) {
   if (type === "sistema") return <Clock className="h-3.5 w-3.5 text-muted-foreground" />;
   if (type === "atividade") return <CheckSquare className="h-3.5 w-3.5 text-emerald-500" />;
   if (type === "interno") return <Lock className="h-3.5 w-3.5 text-amber-500" />;
+  if (type === "email_sent") return <Send className="h-3.5 w-3.5 text-emerald-500" />;
   return <MessageSquare className="h-3.5 w-3.5 text-primary" />;
 }
 
@@ -200,6 +204,16 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   }, [ticket, navigate, onClose]);
 
   const [comment, setComment] = useState("");
+  const [sendByEmail, setSendByEmail] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
+  const getEmailInfoFn = useServerFn(getTicketEmailInfo);
+  const sendEmailReplyFn = useServerFn(sendTicketEmailReply);
+  const { data: emailInfo } = useQuery({
+    queryKey: ["ticket-email-info", ticket?.id],
+    queryFn: () => getEmailInfoFn({ data: { ticketId: ticket!.id } }),
+    enabled: !!ticket?.id,
+    staleTime: 60_000,
+  });
   const [expanded, setExpanded] = useState(false);
   const [forwardSector, setForwardSector] = useState("");
   const [forwardSectorUser, setForwardSectorUser] = useState<string>("__auto__");
@@ -412,6 +426,21 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
 
   const addComment = async () => {
     if (!comment.trim() || !ticket?.id) return;
+    if (sendByEmail && emailInfo?.isEmail) {
+      setSendingEmail(true);
+      try {
+        const r = await sendEmailReplyFn({ data: { ticketId: ticket.id, text: comment } });
+        setComment("");
+        setSendByEmail(false);
+        refetchComments();
+        toast.success(`Resposta enviada para ${r.to}`);
+      } catch (e: any) {
+        toast.error("Erro ao enviar e-mail: " + (e?.message || e));
+      } finally {
+        setSendingEmail(false);
+      }
+      return;
+    }
     const { error } = await supabase.from("ticket_comments").insert({
       ticket_id: ticket.id,
       user_id: userId,
@@ -1513,15 +1542,26 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
                 })
               )}
             </div>
+            {emailInfo?.isEmail && (
+              <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={sendByEmail}
+                  onChange={(e) => setSendByEmail(e.target.checked)}
+                  className="h-3.5 w-3.5 accent-primary"
+                />
+                Enviar resposta por e-mail para <strong className="text-foreground">{emailInfo.to}</strong>
+              </label>
+            )}
             <div className="flex gap-2">
               <Textarea
-                placeholder="Adicionar comentário..."
+                placeholder={sendByEmail ? "Escreva a resposta ao cliente..." : "Adicionar comentário..."}
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
                 className="min-h-[60px]"
               />
-              <Button size="icon" onClick={addComment} disabled={!comment.trim()}>
-                <Send className="h-4 w-4" />
+              <Button size="icon" onClick={addComment} disabled={!comment.trim() || sendingEmail}>
+                {sendingEmail ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </Button>
             </div>
           </TabsContent>
