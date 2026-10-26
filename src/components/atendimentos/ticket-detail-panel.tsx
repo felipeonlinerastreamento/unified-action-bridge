@@ -40,6 +40,7 @@ import {
   CheckCircle,
   RotateCcw,
   Send,
+  Loader2,
   ArrowRight,
   Clock,
   MessageSquare,
