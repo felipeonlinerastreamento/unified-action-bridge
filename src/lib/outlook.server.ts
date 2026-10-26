@@ -106,7 +106,7 @@ export async function listUnreadMessages(ctx: MailboxContext, limit = 25): Promi
     "$filter": "isRead eq false",
     "$orderby": "receivedDateTime asc",
     "$top": String(limit),
-    "$select": "id,internetMessageId,subject,bodyPreview,body,from,toRecipients,receivedDateTime,hasAttachments,isRead,conversationId",
+    "$select": "id,internetMessageId,subject,bodyPreview,body,from,toRecipients,receivedDateTime,hasAttachments,isRead,conversationId,internetMessageHeaders",
   });
   const base = mailboxPath(ctx.mailbox, ctx.connectedEmail);
   const res = await fetch(`${GATEWAY_URL}${base}/mailFolders/inbox/messages?${params.toString()}`, {
