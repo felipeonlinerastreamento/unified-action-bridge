@@ -75,7 +75,7 @@ import {
 import { syncTicketToGsystem } from "@/lib/ticket-finalize.functions";
 import { finalizeTicketWithFlow, finalizeTicketStandalone } from "@/lib/ticket-finalize-flow";
 import { escalateToGestao as escalateToGestaoHelper } from "@/lib/escalate-gestao";
-import { Cloud, RefreshCcw } from "lucide-react";
+import { Cloud, RefreshCcw, Mail } from "lucide-react";
 
 interface TicketDetailPanelProps {
   ticket: any | null;
@@ -1332,6 +1332,44 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
                 )}
               </div>
             </div>
+
+            {(ticket as any).email_reply_pending && (() => {
+              const last = [...(comments as any[])].reverse().find((c) => c.comment_type === "email_reply");
+              return (
+                <div className="rounded-md border border-primary/40 bg-primary/10 p-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Mail className="h-4 w-4 text-primary" />
+                    <h4 className="text-sm font-semibold text-foreground flex-1">
+                      Nova resposta do cliente por e-mail
+                      {(ticket as any).email_reply_at && (
+                        <span className="ml-2 text-xs font-normal text-muted-foreground">
+                          {new Date((ticket as any).email_reply_at).toLocaleString("pt-BR")}
+                        </span>
+                      )}
+                    </h4>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      className="h-7 text-xs"
+                      onClick={async () => {
+                        await supabase.from("service_tickets").update({ email_reply_pending: false } as any).eq("id", ticket.id);
+                        queryClient.invalidateQueries({ queryKey: ["service-tickets"] });
+                        (ticket as any).email_reply_pending = false;
+                        refetchComments();
+                      }}
+                    >
+                      Ciente
+                    </Button>
+                  </div>
+                  {last && (
+                    <p className="text-xs whitespace-pre-wrap break-words text-foreground/90 max-h-40 overflow-auto">
+                      {String(last.content).slice(0, 800)}
+                    </p>
+                  )}
+                  <p className="text-[11px] text-muted-foreground">A resposta completa está nos comentários abaixo.</p>
+                </div>
+              );
+            })()}
 
             {serviceTemplates.length > 0 && !ticket.hide_service_templates && (
               <div className="rounded-md border border-amber-200 bg-amber-50/60 dark:bg-amber-950/20 dark:border-amber-900 p-3 space-y-2">

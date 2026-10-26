@@ -2672,6 +2672,7 @@ export type Database = {
       }
       email_processed: {
         Row: {
+          conversation_id: string | null
           email_channel_id: string
           from_address: string | null
           id: string
@@ -2683,6 +2684,7 @@ export type Database = {
           ticket_id: string | null
         }
         Insert: {
+          conversation_id?: string | null
           email_channel_id: string
           from_address?: string | null
           id?: string
@@ -2694,6 +2696,7 @@ export type Database = {
           ticket_id?: string | null
         }
         Update: {
+          conversation_id?: string | null
           email_channel_id?: string
           from_address?: string | null
           id?: string
@@ -4465,6 +4468,8 @@ export type Database = {
           contact_name: string | null
           contact_phone: string | null
           created_at: string
+          email_reply_at: string | null
+          email_reply_pending: boolean
           equipment_model_id: string | null
           equipment_model_name: string | null
           escalated_from_ticket_id: string | null
@@ -4499,6 +4504,8 @@ export type Database = {
           contact_name?: string | null
           contact_phone?: string | null
           created_at?: string
+          email_reply_at?: string | null
+          email_reply_pending?: boolean
           equipment_model_id?: string | null
           equipment_model_name?: string | null
           escalated_from_ticket_id?: string | null
@@ -4533,6 +4540,8 @@ export type Database = {
           contact_name?: string | null
           contact_phone?: string | null
           created_at?: string
+          email_reply_at?: string | null
+          email_reply_pending?: boolean
           equipment_model_id?: string | null
           equipment_model_name?: string | null
           escalated_from_ticket_id?: string | null
