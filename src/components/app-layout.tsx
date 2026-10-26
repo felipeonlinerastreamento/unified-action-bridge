@@ -14,6 +14,7 @@ import { ChatAvailabilityToggle } from "@/components/chat-availability-toggle";
 import { usePresence } from "@/hooks/use-presence";
 import { useOperatorSoundNotifications } from "@/hooks/use-operator-sound-notifications";
 import { useUserPermissions } from "@/hooks/use-user-permissions";
+import { useOpenTicketsTitle } from "@/hooks/use-open-tickets-title";
 
 function PresenceTracker() {
   usePresence();
@@ -53,11 +54,17 @@ function PanelOnlyGuard({ children }: { children: React.ReactNode }) {
   return <>{children}</>;
 }
 
+function OpenTicketsTitleTracker() {
+  useOpenTicketsTitle();
+  return null;
+}
+
 export function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <SidebarProvider>
       <PresenceTracker />
       <OperatorSoundTracker />
+      <OpenTicketsTitleTracker />
       <PanelOnlyGuard>
         <div className="min-h-screen flex w-full">
           <AppSidebar />
