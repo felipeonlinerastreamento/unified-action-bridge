@@ -156,11 +156,12 @@ export async function replyToMessage(
   messageId: string,
   html: string,
   images: InlineImage[] = [],
+  replyAll = false,
 ): Promise<void> {
   const base = mailboxPath(ctx.mailbox, ctx.connectedEmail);
   const headers = getAuthHeaders(ctx.connectionKey);
   // 1) cria rascunho de resposta
-  const draftRes = await fetch(`${GATEWAY_URL}${base}/messages/${encodeURIComponent(messageId)}/createReply`, {
+  const draftRes = await fetch(`${GATEWAY_URL}${base}/messages/${encodeURIComponent(messageId)}/${replyAll ? "createReplyAll" : "createReply"}`, {
     method: "POST", headers, body: JSON.stringify({}),
   });
   const draft = await draftRes.json().catch(() => ({}));
@@ -189,4 +190,20 @@ export async function replyToMessage(
     method: "POST", headers,
   });
   if (!sendRes.ok) throw friendlyError("Falha ao enviar e-mail", sendRes.status, await sendRes.json().catch(() => ({})));
+}
+
+export interface Recipient { address: string; name?: string; kind: "to" | "cc" }
+
+/** Lê destinatários (Para e Cópia) de uma mensagem. */
+export async function getMessageRecipients(ctx: MailboxContext, messageId: string): Promise<Recipient[]> {
+  const base = mailboxPath(ctx.mailbox, ctx.connectedEmail);
+  const res = await fetch(`${GATEWAY_URL}${base}/messages/${encodeURIComponent(messageId)}?$select=toRecipients,ccRecipients`, {
+    headers: getAuthHeaders(ctx.connectionKey),
+  });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw friendlyError("Falha ao ler destinatários", res.status, data);
+  const map = (arr: any[], kind: "to" | "cc") => (arr || [])
+    .map((r) => ({ address: String(r?.emailAddress?.address || "").toLowerCase(), name: r?.emailAddress?.name, kind }))
+    .filter((r) => r.address);
+  return [...map(data.toRecipients, "to"), ...map(data.ccRecipients, "cc")];
 }

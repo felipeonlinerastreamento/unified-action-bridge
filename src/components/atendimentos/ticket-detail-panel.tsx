@@ -205,6 +205,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
 
   const [comment, setComment] = useState("");
   const [sendByEmail, setSendByEmail] = useState(false);
+  const [replyAll, setReplyAll] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
   const getEmailInfoFn = useServerFn(getTicketEmailInfo);
   const sendEmailReplyFn = useServerFn(sendTicketEmailReply);
@@ -429,7 +430,8 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
     if (sendByEmail && emailInfo?.isEmail) {
       setSendingEmail(true);
       try {
-        const r = await sendEmailReplyFn({ data: { ticketId: ticket.id, text: comment } });
+        const r = await sendEmailReplyFn({ data: { ticketId: ticket.id, text: comment, replyAll } });
+        setReplyAll(false);
         setComment("");
         setSendByEmail(false);
         refetchComments();
@@ -1552,6 +1554,27 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
                 />
                 Enviar resposta por e-mail para <strong className="text-foreground">{emailInfo.to}</strong>
               </label>
+            )}
+            {emailInfo?.isEmail && sendByEmail && (
+              <div className="ml-6 space-y-1 text-xs text-muted-foreground">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="radio" name="reply-mode" checked={!replyAll} onChange={() => setReplyAll(false)} className="accent-primary" />
+                  Somente para o remetente
+                </label>
+                <label className={`flex items-start gap-2 ${emailInfo.others.length ? "cursor-pointer" : "opacity-50"}`}>
+                  <input
+                    type="radio" name="reply-mode" className="accent-primary mt-0.5"
+                    checked={replyAll} disabled={!emailInfo.others.length}
+                    onChange={() => setReplyAll(true)}
+                  />
+                  <span>
+                    Responder a todos —{" "}
+                    {emailInfo.others.length
+                      ? emailInfo.others.map((o) => `${o.address}${o.kind === "cc" ? " (cópia)" : ""}`).join(", ")
+                      : "sem outros destinatários"}
+                  </span>
+                </label>
+              </div>
             )}
             <div className="flex gap-2">
               <Textarea
