@@ -75,7 +75,7 @@ import {
 import { syncTicketToGsystem } from "@/lib/ticket-finalize.functions";
 import { finalizeTicketWithFlow, finalizeTicketStandalone } from "@/lib/ticket-finalize-flow";
 import { escalateToGestao as escalateToGestaoHelper } from "@/lib/escalate-gestao";
-import { Cloud, RefreshCcw } from "lucide-react";
+import { Cloud, RefreshCcw, Mail } from "lucide-react";
 
 interface TicketDetailPanelProps {
   ticket: any | null;
