@@ -1,2 +1,0 @@
-
-- Operators can reply by email from the ticket Comments tab (checkbox, only for email-origin tickets); reply goes in the same Outlook thread from the suporte@ mailbox, with the operator signature image (set per user in Configurações > Usuários) embedded at the end; logged as comment type email_sent.
