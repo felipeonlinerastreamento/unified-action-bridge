@@ -249,7 +249,10 @@ function UsuariosConfigPage() {
     mutationFn: async () => {
       if (!editUserId) return;
       await updateUserName({ data: { targetUserId: editUserId, name: editName } });
-      await updateUserRole({ data: { targetUserId: editUserId, role: editRole } });
+      // O próprio papel não pode ser alterado; ao editar a si mesmo, mantém o papel atual.
+      if (editUserId !== currentUser?.id) {
+        await updateUserRole({ data: { targetUserId: editUserId, role: editRole } });
+      }
       const parsed = editTargetMinutes.trim() === "" ? null : Math.max(0, Number(editTargetMinutes));
       const { error: profErr } = await supabase
         .from("profiles")
