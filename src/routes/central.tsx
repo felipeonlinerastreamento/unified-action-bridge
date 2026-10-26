@@ -1842,7 +1842,7 @@ function CentralPage() {
       const selectedCompany = getSelectedCompany(selectedValue);
       if (!selectedCompany) throw new Error("Empresa não encontrada");
 
-      await linkPhoneToCompany({
+      const res = await linkPhoneToCompany({
         data: {
           companyName: selectedCompany.name,
           companyCnpj: selectedCompany.cnpj || undefined,
@@ -2280,7 +2280,6 @@ function CentralPage() {
         if (compErr) console.error("[Finalize] Failed to save chosen company:", compErr.message);
         else (activeTicket as any).company_id = finalizeCompanyId;
       }
-      const activeTicket = currentTicket || ticketForProtocol;
       if (!linkedId && activeTicket) {
         let pendenciaKey = activeTicket.pendencia_key;
 
