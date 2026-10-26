@@ -9,12 +9,17 @@ import {
   type MailboxContext,
   type OutlookMessage,
 } from "./outlook.server";
+import { normalizeSubject, isReplySubject, extractProtocol, stripQuotedReply } from "./email-thread";
+
+/** Setor que recebe todo atendimento aberto por e-mail. */
+const EMAIL_SECTOR = "Atendimento";
 
 interface PollResult {
   channel_id: string;
   email: string;
   fetched: number;
   created_tickets: number;
+  replies_added: number;
   skipped: number;
   errors: string[];
 }
@@ -32,6 +37,46 @@ function shouldIgnore(msg: OutlookMessage, ignoreDomains: string[], ignoreEmails
   const domain = addr.split("@")[1] || "";
   if (ignoreDomains.map((d) => d.toLowerCase().replace(/^@/, "")).includes(domain)) return true;
   return false;
+}
+
+/**
+ * Procura o chamado original de uma resposta, nesta ordem:
+ * 1) protocolo no assunto/corpo; 2) mesma conversa do Office 365;
+ * 3) assunto normalizado (sem Re:/RES:) já registrado nos últimos 60 dias.
+ */
+async function findParentTicket(
+  channelId: string, msg: OutlookMessage, subject: string, bodyText: string, fromAddr: string,
+): Promise<string | null> {
+  const proto = extractProtocol(`${subject}\n${bodyText.slice(0, 2000)}`);
+  if (proto.attendanceId) {
+    const { data } = await supabaseAdmin.from("service_tickets").select("id")
+      .eq("attendance_id", proto.attendanceId).maybeSingle();
+    if (data?.id) return data.id;
+  }
+  if (proto.protocol && isReplySubject(subject)) {
+    const { data } = await supabaseAdmin.from("service_tickets").select("id")
+      .eq("protocol_number", proto.protocol).maybeSingle();
+    if (data?.id) return data.id;
+  }
+  if (msg.conversationId) {
+    const { data } = await supabaseAdmin.from("email_processed").select("ticket_id")
+      .eq("email_channel_id", channelId).eq("conversation_id", msg.conversationId)
+      .not("ticket_id", "is", null).order("processed_at", { ascending: true }).limit(1);
+    if (data?.[0]?.ticket_id) return data[0].ticket_id;
+  }
+  const norm = normalizeSubject(subject);
+  if (norm.length >= 6) {
+    const since = new Date(Date.now() - 60 * 86400000).toISOString();
+    const { data } = await supabaseAdmin.from("email_processed").select("ticket_id, subject, from_address")
+      .eq("email_channel_id", channelId).gte("processed_at", since)
+      .not("ticket_id", "is", null).order("processed_at", { ascending: true }).limit(500);
+    const same = (data || []).filter((r) => normalizeSubject(r.subject) === norm);
+    // Prefere o mesmo remetente; se é resposta explícita (RES:), aceita outro participante da conversa
+    const bySender = same.find((r) => (r.from_address || "").toLowerCase() === fromAddr.toLowerCase());
+    if (bySender?.ticket_id) return bySender.ticket_id;
+    if (isReplySubject(subject) && same[0]?.ticket_id) return same[0].ticket_id;
+  }
+  return null;
 }
 
 export async function pollEmailChannel(channelId: string): Promise<PollResult> {
