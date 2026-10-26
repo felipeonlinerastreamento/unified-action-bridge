@@ -55,7 +55,7 @@ async function findParentTicket(
   }
   if (proto.protocol && isReplySubject(subject)) {
     const { data } = await supabaseAdmin.from("service_tickets").select("id")
-      .eq("protocol_number", proto.protocol).maybeSingle();
+      .eq("protocol_number", Number(proto.protocol)).maybeSingle();
     if (data?.id) return data.id;
   }
   if (msg.conversationId) {
@@ -89,6 +89,7 @@ export async function pollEmailChannel(channelId: string): Promise<PollResult> {
     email: channel.email_address,
     fetched: 0,
     created_tickets: 0,
+    replies_added: 0,
     skipped: 0,
     errors: [],
   };
@@ -274,7 +275,7 @@ export async function pollAllActiveEmailChannels(): Promise<PollResult[]> {
       results.push(await pollEmailChannel(ch.id));
     } catch (e: any) {
       results.push({
-        channel_id: ch.id, email: "", fetched: 0, created_tickets: 0, skipped: 0,
+        channel_id: ch.id, email: "", fetched: 0, created_tickets: 0, replies_added: 0, skipped: 0,
         errors: [e?.message || String(e)],
       });
     }
