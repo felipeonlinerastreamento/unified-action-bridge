@@ -5212,6 +5212,84 @@ export type Database = {
           },
         ]
       }
+      ticket_assignment_alert_settings: {
+        Row: {
+          enabled: boolean
+          id: number
+          on_created: boolean
+          on_email: boolean
+          on_reassigned: boolean
+          scope: string
+          sound_enabled: boolean
+          updated_at: string
+          user_ids: string[]
+        }
+        Insert: {
+          enabled?: boolean
+          id?: number
+          on_created?: boolean
+          on_email?: boolean
+          on_reassigned?: boolean
+          scope?: string
+          sound_enabled?: boolean
+          updated_at?: string
+          user_ids?: string[]
+        }
+        Update: {
+          enabled?: boolean
+          id?: number
+          on_created?: boolean
+          on_email?: boolean
+          on_reassigned?: boolean
+          scope?: string
+          sound_enabled?: boolean
+          updated_at?: string
+          user_ids?: string[]
+        }
+        Relationships: []
+      }
+      ticket_assignment_alerts: {
+        Row: {
+          acknowledged_at: string | null
+          client_name: string | null
+          created_at: string
+          event_type: string
+          id: string
+          protocol: string | null
+          subject: string | null
+          target_user_id: string
+          ticket_id: string
+          triggered_by: string | null
+          triggered_by_name: string | null
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          client_name?: string | null
+          created_at?: string
+          event_type: string
+          id?: string
+          protocol?: string | null
+          subject?: string | null
+          target_user_id: string
+          ticket_id: string
+          triggered_by?: string | null
+          triggered_by_name?: string | null
+        }
+        Update: {
+          acknowledged_at?: string | null
+          client_name?: string | null
+          created_at?: string
+          event_type?: string
+          id?: string
+          protocol?: string | null
+          subject?: string | null
+          target_user_id?: string
+          ticket_id?: string
+          triggered_by?: string | null
+          triggered_by_name?: string | null
+        }
+        Relationships: []
+      }
       ticket_assignments: {
         Row: {
           assigned_by: string | null
