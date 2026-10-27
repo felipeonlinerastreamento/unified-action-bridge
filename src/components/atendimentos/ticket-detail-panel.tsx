@@ -29,6 +29,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
   SelectContent,
@@ -207,6 +208,10 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   const [sendByEmail, setSendByEmail] = useState(false);
   const [replyAll, setReplyAll] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
+  useEffect(() => {
+    setSendByEmail(false);
+    setReplyAll(false);
+  }, [ticket?.id]);
   const getEmailInfoFn = useServerFn(getTicketEmailInfo);
   const sendEmailReplyFn = useServerFn(sendTicketEmailReply);
   const { data: emailInfo } = useQuery({
@@ -1545,35 +1550,37 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
               )}
             </div>
             {emailInfo?.isEmail && (
-              <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={sendByEmail}
-                  onChange={(e) => setSendByEmail(e.target.checked)}
-                  className="h-3.5 w-3.5 accent-primary"
-                />
-                Enviar resposta por e-mail para <strong className="text-foreground">{emailInfo.to}</strong>
-              </label>
-            )}
-            {emailInfo?.isEmail && sendByEmail && (
-              <div className="ml-6 space-y-1 text-xs text-muted-foreground">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input type="radio" name="reply-mode" checked={!replyAll} onChange={() => setReplyAll(false)} className="accent-primary" />
-                  Somente para o remetente
-                </label>
-                <label className={`flex items-start gap-2 ${emailInfo.others.length ? "cursor-pointer" : "opacity-50"}`}>
-                  <input
-                    type="radio" name="reply-mode" className="accent-primary mt-0.5"
-                    checked={replyAll} disabled={!emailInfo.others.length}
-                    onChange={() => setReplyAll(true)}
-                  />
-                  <span>
-                    Responder a todos —{" "}
-                    {emailInfo.others.length
-                      ? emailInfo.others.map((o) => `${o.address}${o.kind === "cc" ? " (cópia)" : ""}`).join(", ")
-                      : "sem outros destinatários"}
-                  </span>
-                </label>
+              <div className="space-y-2 text-xs text-muted-foreground">
+                <div className="flex flex-wrap items-center gap-x-5 gap-y-2">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <Checkbox
+                      checked={sendByEmail}
+                      onCheckedChange={(checked) => {
+                        setSendByEmail(checked === true);
+                        if (checked !== true) setReplyAll(false);
+                      }}
+                    />
+                    Enviar resposta por e-mail
+                  </label>
+                  <label className={`flex items-center gap-2 ${emailInfo.others.length ? "cursor-pointer" : "opacity-50"}`}>
+                    <Checkbox
+                      checked={replyAll}
+                      disabled={!emailInfo.others.length}
+                      onCheckedChange={(checked) => {
+                        setReplyAll(checked === true);
+                        if (checked === true) setSendByEmail(true);
+                      }}
+                    />
+                    Responder a todos
+                  </label>
+                </div>
+                <p className="break-words">
+                  Para: <strong className="text-foreground">{emailInfo.to}</strong>
+                  {replyAll && emailInfo.others.length > 0 && (
+                    <span> · {emailInfo.others.map((o) => `${o.address}${o.kind === "cc" ? " (cópia)" : ""}`).join(", ")}</span>
+                  )}
+                  {!emailInfo.others.length && <span> · sem outros destinatários</span>}
+                </p>
               </div>
             )}
             <div className="flex gap-2">
