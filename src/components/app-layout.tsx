@@ -10,6 +10,7 @@ import { NotificationPopup } from "@/components/notification-popup";
 import { OperatorChatLockOverlay } from "@/components/operator-chat/operator-chat-lock-overlay";
 import { ChatInactivityAlert } from "@/components/chat-inactivity-alert";
 import { MessageTriggerAlert } from "@/components/message-trigger-alert";
+import { TicketAssignmentAlert } from "@/components/ticket-assignment-alert";
 import { ChatAvailabilityToggle } from "@/components/chat-availability-toggle";
 import { usePresence } from "@/hooks/use-presence";
 import { useOperatorSoundNotifications } from "@/hooks/use-operator-sound-notifications";
@@ -85,6 +86,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <OperatorChatLockOverlay />
         <ChatInactivityAlert />
         <MessageTriggerAlert />
+        <TicketAssignmentAlert />
       </PanelOnlyGuard>
       <Toaster />
     </SidebarProvider>
