@@ -15,6 +15,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { TicketAssignmentAlertConfig } from "@/components/configuracoes/ticket-assignment-alert-config";
 import { Send, Megaphone, Users, User, Building2, Globe, CheckCheck, MessageCircle, Lock, BellOff } from "lucide-react";
 
 export const REMINDER_NOTIF_PREF_KEY = (uid: string) => `pref:reminder-notifications:${uid}`;
@@ -99,6 +100,7 @@ function NotificacoesConfigPage() {
           </TabsContent>
         </Tabs>
         <ReminderNotificationsPreferenceCard />
+        <TicketAssignmentAlertConfig />
         <CampaignsHistoryCard />
       </div>
     </AppLayout>

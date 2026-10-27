@@ -4,6 +4,7 @@ import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { AppLayout } from "@/components/app-layout";
 import { supabase } from "@/integrations/supabase/client";
+import { TicketAssignmentAlertsReport } from "@/components/relatorios/ticket-assignment-alerts-report";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -884,6 +885,7 @@ function RelatoriosPage() {
 
             <TabsContent value="gatilhos" className="space-y-4">
               <MessageTriggersTab dateFrom={dateFrom} dateTo={dateTo} />
+              <TicketAssignmentAlertsReport dateFrom={dateFrom} dateTo={dateTo} />
             </TabsContent>
 
             <TabsContent value="resumo" className="space-y-4">
