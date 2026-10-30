@@ -238,6 +238,30 @@ function zapiRecipientPhone(phone: string): string {
 }
 
 
+// Cache do número real registrado no WhatsApp (alguns celulares BR antigos
+// continuam registrados sem o 9º dígito; enviar com o 9 fica preso em "sent").
+const recipientCache = new Map<string, { value: string; at: number }>();
+const RECIPIENT_TTL_MS = 6 * 60 * 60 * 1000;
+
+async function resolveRecipient(channel: ZapiChannelCreds, phone: string): Promise<string> {
+  const formatted = zapiRecipientPhone(phone);
+  // Só celulares BR com 13 dígitos (55 DD 9 XXXXXXXX) podem divergir.
+  if (!/^55[1-9][0-9]9[6-9][0-9]{7}$/.test(formatted)) return formatted;
+  const key = `${channel.zapi_instance_id ?? ""}:${formatted}`;
+  const hit = recipientCache.get(key);
+  if (hit && Date.now() - hit.at < RECIPIENT_TTL_MS) return hit.value;
+  try {
+    const res = await zapiFetch(channel, `/phone-exists/${formatted}`, "GET", undefined, { timeoutMs: 8000, maxAttempts: 1 });
+    const real = String(res?.phone ?? "").replace(/\D/g, "");
+    const value = res?.exists !== false && /^55\d{10,11}$/.test(real) ? real : formatted;
+    recipientCache.set(key, { value, at: Date.now() });
+    return value;
+  } catch (e) {
+    console.warn("[resolveRecipient] phone-exists falhou, usando número original", e);
+    return formatted;
+  }
+}
+
 export async function zapiSendText(
   channel: ZapiChannelCreds,
   phone: string,
@@ -245,7 +269,7 @@ export async function zapiSendText(
   opts?: { messageId?: string },
 ) {
   const payload: Record<string, unknown> = {
-    phone: zapiRecipientPhone(phone),
+    phone: await resolveRecipient(channel, phone),
     message,
   };
   // Z-API: passar messageId faz a mensagem ser enviada como resposta/citação
@@ -292,7 +316,7 @@ export async function zapiSendMedia(
   const mediaOpts = { timeoutMs: MEDIA_SEND_TIMEOUT_MS };
   if (kind === "audio") {
     return zapiFetch(channel, "/send-audio", "POST", {
-      phone: zapiRecipientPhone(phone),
+      phone: await resolveRecipient(channel, phone),
       audio: normalizeAudioDataUrl(dataUrl),
       viewOnce: false,
       waveform: true,
@@ -300,14 +324,14 @@ export async function zapiSendMedia(
   }
   if (kind === "image") {
     return zapiFetch(channel, "/send-image", "POST", {
-      phone: zapiRecipientPhone(phone),
+      phone: await resolveRecipient(channel, phone),
       image: dataUrl,
       caption: opts?.caption || "",
     }, mediaOpts);
   }
   if (kind === "video") {
     return zapiFetch(channel, "/send-video", "POST", {
-      phone: zapiRecipientPhone(phone),
+      phone: await resolveRecipient(channel, phone),
       video: dataUrl,
       caption: opts?.caption || "",
     }, mediaOpts);
@@ -315,7 +339,7 @@ export async function zapiSendMedia(
   // document — Z-API requires extension in path
   const ext = (opts?.extension || (opts?.fileName?.split(".").pop() ?? "pdf")).toLowerCase();
   return zapiFetch(channel, `/send-document/${encodeURIComponent(ext)}`, "POST", {
-    phone: zapiRecipientPhone(phone),
+    phone: await resolveRecipient(channel, phone),
     document: dataUrl,
     fileName: opts?.fileName || `arquivo.${ext}`,
   }, mediaOpts);
