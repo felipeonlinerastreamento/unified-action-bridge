@@ -71,6 +71,9 @@ function friendlyError(prefix: string, status: number, data: any): Error {
       `${prefix}: a conta conectada não tem permissão para ler esta caixa. Conecte a própria conta desta caixa de e-mail.`,
     );
   }
+  if (status === 404 && code === "ErrorItemNotFound") {
+    return new Error(`${prefix}: o e-mail original não foi encontrado na caixa (pode ter sido excluído).`);
+  }
   if (status === 404) {
     return new Error(`${prefix}: caixa de e-mail não encontrada na conta conectada.`);
   }
@@ -149,6 +152,30 @@ export function htmlToPlainText(html: string): string {
 }
 
 export interface InlineImage { name: string; contentType: string; base64: string; cid: string }
+
+/**
+ * Garante um ID válido: o Exchange troca o ID quando a mensagem muda de pasta.
+ * Se o ID salvo não existir mais, procura pelo internetMessageId (imutável).
+ */
+export async function resolveMessageId(
+  ctx: MailboxContext,
+  messageId: string,
+  internetMessageId?: string | null,
+): Promise<string> {
+  const base = mailboxPath(ctx.mailbox, ctx.connectedEmail);
+  const headers = getAuthHeaders(ctx.connectionKey);
+  const res = await fetch(`${GATEWAY_URL}${base}/messages/${encodeURIComponent(messageId)}?$select=id`, { headers });
+  if (res.ok) return messageId;
+  const data = await res.json().catch(() => ({}));
+  if (res.status !== 404 || !internetMessageId) throw friendlyError("Falha ao localizar e-mail", res.status, data);
+  const filter = `internetMessageId eq '${internetMessageId.replace(/'/g, "''")}'`;
+  const sRes = await fetch(`${GATEWAY_URL}${base}/messages?$filter=${encodeURIComponent(filter)}&$select=id&$top=1`, { headers });
+  const sData = await sRes.json().catch(() => ({}));
+  if (!sRes.ok) throw friendlyError("Falha ao localizar e-mail", sRes.status, sData);
+  const found = sData?.value?.[0]?.id;
+  if (!found) throw new Error("O e-mail original não foi encontrado em nenhuma pasta da caixa (pode ter sido excluído).");
+  return found;
+}
 
 /** Responde (reply) a uma mensagem do Outlook mantendo a conversa. */
 export async function replyToMessage(
