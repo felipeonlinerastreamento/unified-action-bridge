@@ -172,15 +172,6 @@ function TopGamificContent() {
         <Skeleton className="h-28 max-w-xs" />
       ) : (
         <>
-          <Card className="max-w-xs">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm text-muted-foreground">Moedas (90 dias)</CardTitle>
-            </CardHeader>
-            <CardContent className="flex items-center gap-2 text-2xl font-semibold">
-              <Coins className="h-5 w-5 text-amber-500" />
-              {data?.totalCoins ?? 0}
-            </CardContent>
-          </Card>
 
           <Card>
             <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
@@ -234,9 +225,9 @@ function TopGamificContent() {
                           entry.coins < 0 ? "text-destructive font-semibold" : "text-emerald-600 font-semibold"
                         }
                       >
-                        {entry.coins > 0 ? `+${entry.coins}` : entry.coins} moedas
+                        {entry.coins > 0 ? `+${entry.coins}` : entry.coins} pts
                       </span>
-                      {entry.points !== 0 && <span className="font-semibold">{entry.points} pts</span>}
+                      {entry.points !== 0 && <span className="font-semibold">{entry.points > 0 ? `+${entry.points}` : entry.points} XP</span>}
                       <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
                         <Checkbox
                           checked={entry.acknowledged}

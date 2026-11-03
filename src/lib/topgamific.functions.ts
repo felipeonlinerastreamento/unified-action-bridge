@@ -192,7 +192,7 @@ export const getTopGamificOverview = createServerFn({ method: "POST" })
       ok: true,
       error: null,
       userName,
-      entries: mine.slice(0, 10),
+      entries: mine.slice(0, 60),
       totalEntries: mine.length,
       totalCoins: mine.reduce((sum, e) => sum + e.coins, 0),
       totalPoints: mine.reduce((sum, e) => sum + e.points, 0),
