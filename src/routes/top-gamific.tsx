@@ -176,7 +176,7 @@ function TopGamificContent() {
           <Card>
             <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
               <CardTitle className="text-base flex items-center gap-2">
-                Últimos lançamentos
+                Histórico de lançamentos (90 dias)
                 {unseen.length > 0 && (
                   <Badge className="bg-red-600 text-white hover:bg-red-600">
                     {unseen.length} novo{unseen.length > 1 ? "s" : ""}
