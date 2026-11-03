@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Trophy, Coins, Target, RefreshCw, AlertTriangle, Info, Sparkles, TrendingUp, Award, ArrowUpRight, MessageSquare, ThumbsUp, ThumbsDown } from "lucide-react";
+import { Trophy, Target, RefreshCw, AlertTriangle, Info, Sparkles, TrendingUp, Award, ArrowUpRight, MessageSquare, ThumbsUp, ThumbsDown } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { getTopGamificOverview, ackTopGamificEntries } from "@/lib/topgamific.functions";
 import { getTopGamificAiFeedback } from "@/lib/topgamific-ai.functions";
@@ -110,7 +110,7 @@ function TopGamificContent() {
           <div className="space-y-1">
             <p className="font-medium">Esta página é um resumo da sua participação</p>
           <p className="text-muted-foreground">
-            Aqui você vê seus últimos lançamentos, saldo de moedas e desafios em aberto. O acesso
+            Aqui você vê seus últimos lançamentos e desafios em aberto. O acesso
             completo — com ranking, histórico detalhado e configurações — fica no{" "}
             <a
               href="https://gamify-support-heroes.lovable.app"
@@ -149,7 +149,7 @@ function TopGamificContent() {
             </li>
             <li className="flex items-start gap-2">
               <Award className="h-4 w-4 text-amber-500 shrink-0 mt-0.5" />
-              <span>Troque conquistas por moedas e reconhecimento no time</span>
+              <span>Troque conquistas por reconhecimento no time</span>
             </li>
             <li className="flex items-start gap-2">
               <ArrowUpRight className="h-4 w-4 text-purple-500 shrink-0 mt-0.5" />
@@ -172,20 +172,11 @@ function TopGamificContent() {
         <Skeleton className="h-28 max-w-xs" />
       ) : (
         <>
-          <Card className="max-w-xs">
-            <CardHeader className="pb-2">
-              <CardTitle className="text-sm text-muted-foreground">Moedas (90 dias)</CardTitle>
-            </CardHeader>
-            <CardContent className="flex items-center gap-2 text-2xl font-semibold">
-              <Coins className="h-5 w-5 text-amber-500" />
-              {data?.totalCoins ?? 0}
-            </CardContent>
-          </Card>
 
           <Card>
             <CardHeader className="flex flex-row flex-wrap items-center justify-between gap-2">
               <CardTitle className="text-base flex items-center gap-2">
-                Últimos lançamentos
+                Histórico de lançamentos (90 dias)
                 {unseen.length > 0 && (
                   <Badge className="bg-red-600 text-white hover:bg-red-600">
                     {unseen.length} novo{unseen.length > 1 ? "s" : ""}
@@ -234,9 +225,9 @@ function TopGamificContent() {
                           entry.coins < 0 ? "text-destructive font-semibold" : "text-emerald-600 font-semibold"
                         }
                       >
-                        {entry.coins > 0 ? `+${entry.coins}` : entry.coins} moedas
+                        {entry.coins > 0 ? `+${entry.coins}` : entry.coins} pts
                       </span>
-                      {entry.points !== 0 && <span className="font-semibold">{entry.points} pts</span>}
+                      {entry.points !== 0 && <span className="font-semibold">{entry.points > 0 ? `+${entry.points}` : entry.points} XP</span>}
                       <label className="flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer">
                         <Checkbox
                           checked={entry.acknowledged}
@@ -271,7 +262,7 @@ function TopGamificContent() {
                       {mission.category && <Badge variant="outline">{mission.category}</Badge>}
                       {mission.reward != null && (
                         <Badge className="bg-amber-500 text-white hover:bg-amber-500">
-                          {mission.reward} moedas
+                          {mission.reward} pts
                         </Badge>
                       )}
                     </div>
