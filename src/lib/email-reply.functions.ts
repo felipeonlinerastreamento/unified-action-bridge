@@ -9,9 +9,9 @@ function escapeHtml(s: string) {
 /** Carrega a última mensagem do chamado, o canal e o contexto da caixa. */
 async function loadTicketEmail(ticketId: string) {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-  const { getOutlookProfile, DEFAULT_CONNECTION_KEY } = await import("./outlook.server");
+  const { getOutlookProfile, resolveMessageId, DEFAULT_CONNECTION_KEY } = await import("./outlook.server");
   const { data: rows } = await supabaseAdmin.from("email_processed")
-    .select("message_id, email_channel_id, from_address")
+    .select("id, message_id, internet_message_id, email_channel_id, from_address")
     .eq("ticket_id", ticketId)
     .order("received_at", { ascending: false }).limit(1);
   const last = rows?.[0];
@@ -23,6 +23,12 @@ async function loadTicketEmail(ticketId: string) {
   const me = await getOutlookProfile(connectionKey);
   const connectedEmail = me.mail || me.userPrincipalName || null;
   const ctx = { connectionKey, mailbox: channel.email_address, connectedEmail };
+  // O ID muda quando o e-mail é movido de pasta; atualiza se necessário.
+  const currentId = await resolveMessageId(ctx, last.message_id, last.internet_message_id);
+  if (currentId !== last.message_id) {
+    await supabaseAdmin.from("email_processed").update({ message_id: currentId }).eq("id", last.id);
+    last.message_id = currentId;
+  }
   const own = new Set([channel.email_address, connectedEmail].filter(Boolean).map((e) => String(e).toLowerCase()));
   return { last, ctx, own };
 }
