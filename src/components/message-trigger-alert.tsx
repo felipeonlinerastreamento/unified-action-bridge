@@ -119,12 +119,34 @@ export function MessageTriggerAlert() {
     qc.invalidateQueries({ queryKey: ["message-trigger-logs", user?.id] });
   };
 
+  const pendingNonBlocking = logs.filter((l) => {
+    if (isBlocking(l) || dismissedIds.has(l.id)) return false;
+    try {
+      const seen = Number(localStorage.getItem(`${SEEN_PREFIX}${l.id}`) || 0);
+      if (seen && Date.now() - seen < 30 * 60_000) return false;
+    } catch { /* noop */ }
+    return true;
+  });
+
+  const closeAll = async () => {
+    const ids = pendingNonBlocking.map((l) => l.id);
+    if (!ids.length) return;
+    const now = Date.now();
+    ids.forEach((id) => { try { localStorage.setItem(`${SEEN_PREFIX}${id}`, String(now)); } catch { /* noop */ } });
+    setDismissedIds((prev) => { const n = new Set(prev); ids.forEach((id) => n.add(id)); return n; });
+    await supabase
+      .from("message_trigger_logs" as any)
+      .update({ acknowledged_at: new Date().toISOString() } as any)
+      .in("id", ids);
+    qc.invalidateQueries({ queryKey: ["message-trigger-logs", user?.id] });
+  };
+
   const blocking = isBlocking(visible);
 
   const card = (
     <div
       className={cn(
-        "rounded-lg border-2 border-destructive bg-card shadow-2xl",
+        "pointer-events-auto rounded-lg border-2 border-destructive bg-card shadow-2xl",
         blocking
           ? "w-[460px] max-w-[92vw] animate-in fade-in zoom-in-95 duration-200"
           : "fixed bottom-5 left-5 z-[100] w-[360px] animate-in fade-in slide-in-from-bottom-4 duration-300",
@@ -147,7 +169,7 @@ export function MessageTriggerAlert() {
         </div>
         {!blocking && (
           <button
-            onClick={() => setDismissedIds((p) => new Set(p).add(visible.id))}
+            onClick={acknowledge}
             className="rounded p-1 text-muted-foreground hover:bg-muted"
             aria-label="Fechar"
           >
@@ -186,6 +208,14 @@ export function MessageTriggerAlert() {
             {blocking ? "Estou ciente" : "Visto"}
           </Button>
         </div>
+        {!blocking && pendingNonBlocking.length > 1 && (
+          <div className="flex items-center justify-between pt-1 text-xs text-muted-foreground">
+            <span>1 de {pendingNonBlocking.length}</span>
+            <button type="button" onClick={closeAll} className="font-medium text-primary hover:underline">
+              Fechar todos
+            </button>
+          </div>
+        )}
       </div>
     </div>
   );
@@ -193,7 +223,7 @@ export function MessageTriggerAlert() {
   if (!blocking) return card;
 
   return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm">
+    <div className="pointer-events-auto fixed inset-0 z-[200] flex items-center justify-center bg-background/80 p-4 backdrop-blur-sm">
       {card}
     </div>
   );
