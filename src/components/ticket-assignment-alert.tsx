@@ -3,6 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { BellRing, Mail, UserPlus, Repeat } from "lucide-react";
+import { toast } from "sonner";
 
 type Alert = {
   id: string;
@@ -37,6 +38,7 @@ export function TicketAssignmentAlert() {
   const [queue, setQueue] = useState<Alert[]>([]);
   const [sound, setSound] = useState(true);
   const lastBeep = useRef<string | null>(null);
+  const dismissed = useRef<Set<string>>(new Set());
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -50,7 +52,7 @@ export function TicketAssignmentAlert() {
         .is("acknowledged_at", null).order("created_at", { ascending: true }).limit(20),
       db.from("ticket_assignment_alert_settings").select("sound_enabled").eq("id", 1).maybeSingle(),
     ]);
-    setQueue((data as Alert[]) || []);
+    setQueue(((data as Alert[]) || []).filter((a) => !dismissed.current.has(a.id)));
     setSound(s?.sound_enabled ?? true);
   }, [uid]);
 
@@ -76,12 +78,31 @@ export function TicketAssignmentAlert() {
     }
   }, [current, sound]);
 
+  const persistAck = async (ids: string[]) => {
+    const now = new Date().toISOString();
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const { error } = await db.from("ticket_assignment_alerts")
+        .update({ acknowledged_at: now }).in("id", ids).is("acknowledged_at", null);
+      if (!error) return true;
+      await new Promise((r) => setTimeout(r, 800 * (attempt + 1)));
+    }
+    return false;
+  };
+
   const ack = async (open: boolean) => {
     if (!current) return;
     const c = current;
-    setQueue((q) => q.slice(1));
-    await db.from("ticket_assignment_alerts").update({ acknowledged_at: new Date().toISOString() }).eq("id", c.id);
+    dismissed.current.add(c.id);
+    setQueue((q) => q.filter((a) => a.id !== c.id));
     if (open) navigate({ to: "/atendimentos", search: { ticket: c.ticket_id } as any });
+    if (!(await persistAck([c.id]))) toast.error("Não foi possível registrar a ciência. Verifique sua conexão.");
+  };
+
+  const ackAll = async () => {
+    const ids = queue.map((a) => a.id);
+    ids.forEach((id) => dismissed.current.add(id));
+    setQueue([]);
+    if (!(await persistAck(ids))) toast.error("Não foi possível registrar a ciência. Verifique sua conexão.");
   };
 
   if (!current) return null;
@@ -114,11 +135,20 @@ export function TicketAssignmentAlert() {
           <div><span className="text-muted-foreground">Assunto:</span> {current.subject || "—"}</div>
           <div className="text-xs text-muted-foreground">{new Date(current.created_at).toLocaleString("pt-BR")}</div>
         </div>
-        {queue.length > 1 && <p className="text-xs text-muted-foreground">+{queue.length - 1} outro(s) alerta(s) aguardando</p>}
+        {queue.length > 1 && (
+          <p className="text-sm font-medium text-destructive">Alerta 1 de {queue.length} — há outros chamados aguardando sua ciência</p>
+        )}
         <div className="flex gap-2">
           <Button variant="outline" className="flex-1" onClick={() => ack(true)}>Abrir chamado</Button>
-          <Button className="flex-1" autoFocus onClick={() => ack(false)}>OK, estou ciente</Button>
+          <Button className="flex-1" autoFocus onClick={() => ack(false)}>
+            {queue.length > 1 ? "OK, próximo" : "OK, estou ciente"}
+          </Button>
         </div>
+        {queue.length > 1 && (
+          <Button variant="secondary" className="w-full" onClick={ackAll}>
+            Estou ciente de todos ({queue.length})
+          </Button>
+        )}
       </div>
     </div>
   );
