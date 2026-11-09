@@ -105,6 +105,18 @@ export function TicketAssignmentAlert() {
     if (!(await persistAck(ids))) toast.error("Não foi possível registrar a ciência. Verifique sua conexão.");
   };
 
+  const isOpen = !!current;
+  useEffect(() => {
+    if (typeof document === "undefined") return;
+    if (isOpen) document.body.setAttribute("data-ticket-alert-open", "1");
+    else document.body.removeAttribute("data-ticket-alert-open");
+    window.dispatchEvent(new CustomEvent("ticket-alert-open-change", { detail: isOpen }));
+    return () => {
+      document.body.removeAttribute("data-ticket-alert-open");
+      window.dispatchEvent(new CustomEvent("ticket-alert-open-change", { detail: false }));
+    };
+  }, [isOpen]);
+
   if (!current) return null;
 
   const Icon = current.event_type === "email" ? Mail : current.event_type === "reassigned" ? Repeat : UserPlus;
@@ -116,7 +128,8 @@ export function TicketAssignmentAlert() {
 
   return (
     <div
-      className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-background/70 backdrop-blur-md"
+      className="fixed inset-0 z-[2147483647] flex items-center justify-center bg-background/70 backdrop-blur-md pointer-events-auto"
+      style={{ pointerEvents: "auto" }}
       role="alertdialog"
       aria-modal="true"
       onKeyDown={(e) => e.stopPropagation()}

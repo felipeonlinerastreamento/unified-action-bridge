@@ -46,7 +46,15 @@ export function NotificationPopup() {
     return () => { supabase.removeChannel(channel); };
   }, [userId, qc]);
 
-  const current = popups[0];
+  const [ticketAlertOpen, setTicketAlertOpen] = useState(false);
+  useEffect(() => {
+    setTicketAlertOpen(document.body.hasAttribute("data-ticket-alert-open"));
+    const h = (e: Event) => setTicketAlertOpen(!!(e as CustomEvent).detail);
+    window.addEventListener("ticket-alert-open-change", h);
+    return () => window.removeEventListener("ticket-alert-open-change", h);
+  }, []);
+
+  const current = ticketAlertOpen ? undefined : popups[0];
 
   const handleAck = async () => {
     if (!current) return;
