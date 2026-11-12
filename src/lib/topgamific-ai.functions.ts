@@ -1,5 +1,13 @@
 import { createServerFn } from "@tanstack/react-start";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { matchFiles, asksForFile } from "@/lib/ai-file-match";
+
+export interface AiAttachment {
+  id: string;
+  fileName: string;
+  fileSize: number | null;
+  mimeType: string | null;
+}
 
 const AI_API_BASE =
   "https://jyukercrhruslahpqlqi.supabase.co/functions/v1/public-api";
@@ -13,6 +21,7 @@ export interface TopGamificAiMessage {
   createdAt: string;
   rating: -1 | 1 | null;
   ratingComment: string | null;
+  attachments: AiAttachment[];
 }
 
 export interface TopGamificAiFeedbackItem {
@@ -98,8 +107,34 @@ export interface TopGamificAiSendResult {
   messages: TopGamificAiMessage[];
 }
 
+function toAttachment(f: any): AiAttachment {
+  return {
+    id: String(f.id),
+    fileName: String(f.file_name ?? "arquivo"),
+    fileSize: f.file_size != null ? Number(f.file_size) : null,
+    mimeType: f.mime_type ? String(f.mime_type) : null,
+  };
+}
+
+async function attachFiles(supabase: any, msgs: TopGamificAiMessage[], rows: any[]) {
+  const ids = Array.from(new Set(rows.flatMap((r) => (r.attachment_ids ?? []) as string[])));
+  if (ids.length === 0) return msgs;
+  const { data } = await supabase
+    .from("ai_assistant_files")
+    .select("id, file_name, file_size, mime_type")
+    .in("id", ids);
+  const byId = new Map((data ?? []).map((f: any) => [String(f.id), toAttachment(f)]));
+  return msgs.map((m, i) => ({
+    ...m,
+    attachments: ((rows[i]?.attachment_ids ?? []) as string[])
+      .map((id) => byId.get(String(id)))
+      .filter(Boolean) as AiAttachment[],
+  }));
+}
+
 function mapRows(rows: any[]): TopGamificAiMessage[] {
   return (rows || []).map((r) => ({
+    attachments: [],
     id: String(r.id),
     role: r.role === "assistant" ? "assistant" : "user",
     content: String(r.content ?? ""),
@@ -172,12 +207,12 @@ export const getTopGamificAiHistory = createServerFn({ method: "POST" })
     const { data } = await context.supabase
       .from("topgamific_ai_messages")
       .select(
-        "id, role, content, created_at, rating, rating_comment, remote_conversation_id, remote_message_id",
+        "id, role, content, created_at, rating, rating_comment, remote_conversation_id, remote_message_id, attachment_ids",
       )
       .eq("user_id", context.userId)
       .order("created_at", { ascending: true })
       .limit(200);
-    return mapRows(data ?? []);
+    return attachFiles(context.supabase, mapRows(data ?? []), data ?? []);
   });
 
 export const clearTopGamificAiHistory = createServerFn({ method: "POST" })
@@ -192,10 +227,13 @@ export const clearTopGamificAiHistory = createServerFn({ method: "POST" })
 
 export const sendTopGamificAiMessage = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator((input: { message: string }) => {
-    const message = String(input?.message ?? "").trim();
+  .inputValidator((input: { message: string; fileIds?: string[] }) => {
+    const fileIds = Array.isArray(input?.fileIds)
+      ? input.fileIds.map(String).filter((x) => /^[0-9a-f-]{36}$/i.test(x)).slice(0, 5)
+      : [];
+    const message = String(input?.message ?? "").trim() || (fileIds.length ? "Armazene este arquivo." : "");
     if (!message) throw new Error("Mensagem vazia.");
-    return { message: message.slice(0, 4000) };
+    return { message: message.slice(0, 4000), fileIds };
   })
   .handler(async ({ data, context }): Promise<TopGamificAiSendResult> => {
     const apiKey = process.env["TOPGAMIFIC_API_KEY"];
@@ -232,6 +270,38 @@ export const sendTopGamificAiMessage = createServerFn({ method: "POST" })
       console.error("Falha ao consultar o Google Drive:", e);
     }
 
+    // Arquivos anexados agora + acervo relevante para a pergunta
+    let sentFiles: any[] = [];
+    if (data.fileIds.length) {
+      const { data: rows } = await context.supabase
+        .from("ai_assistant_files")
+        .select("id, file_name, file_size, mime_type, description")
+        .in("id", data.fileIds);
+      sentFiles = rows ?? [];
+      if (sentFiles.length) {
+        await context.supabase
+          .from("ai_assistant_files")
+          .update({ description: data.message.slice(0, 500) })
+          .in("id", sentFiles.map((f) => f.id))
+          .is("description", null);
+      }
+    }
+    let matchedFiles: any[] = [];
+    if (!sentFiles.length) {
+      const { data: catalog } = await context.supabase
+        .from("ai_assistant_files")
+        .select("id, file_name, file_size, mime_type, description")
+        .order("created_at", { ascending: false })
+        .limit(300);
+      const hits = matchFiles(data.message, (catalog ?? []) as any[]);
+      matchedFiles = asksForFile(data.message) || hits.length ? hits : [];
+    }
+    const filesBlock = sentFiles.length
+      ? `[Contexto] O usuário anexou e pediu para armazenar: ${sentFiles.map((f) => f.file_name).join(", ")}. O arquivo já foi salvo no acervo interno e ficará disponível para download em buscas futuras. Confirme o armazenamento.`
+      : matchedFiles.length
+        ? `[Contexto] Arquivos do acervo interno relacionados à pergunta (o sistema exibirá o botão de download abaixo da sua resposta): ${matchedFiles.map((f) => `${f.file_name}${f.description ? ` — ${f.description}` : ""}`).join("; ")}. Mencione que o arquivo está disponível para download.`
+        : "";
+
     // A plataforma aceita apenas mensagens com role "user"/"assistant".
     // O contexto (nome + documentos internos) vai junto da pergunta atual.
     const contextBlocks = [
@@ -239,6 +309,7 @@ export const sendTopGamificAiMessage = createServerFn({ method: "POST" })
         ? `[Contexto] Você está conversando com ${userName}. Responda em português do Brasil, de forma objetiva.`
         : "",
       driveContext ? `[Contexto]\n${driveContext}` : "",
+      filesBlock,
     ].filter(Boolean);
 
     const payloadMessages = [
@@ -318,6 +389,7 @@ export const sendTopGamificAiMessage = createServerFn({ method: "POST" })
           role: "user",
           content: data.message,
           created_at: new Date(now).toISOString(),
+          attachment_ids: sentFiles.map((f) => f.id),
         },
         {
           user_id: context.userId,
@@ -326,11 +398,32 @@ export const sendTopGamificAiMessage = createServerFn({ method: "POST" })
           created_at: new Date(now + 1).toISOString(),
           remote_conversation_id: remoteConversationId,
           remote_message_id: remoteMessageId,
+          attachment_ids: matchedFiles.map((f) => f.id),
         },
       ])
       .select(
-        "id, role, content, created_at, rating, rating_comment, remote_conversation_id, remote_message_id",
+        "id, role, content, created_at, rating, rating_comment, remote_conversation_id, remote_message_id, attachment_ids",
       );
 
-    return { ok: true, error: null, messages: mapRows(inserted ?? []) };
+    return {
+      ok: true,
+      error: null,
+      messages: await attachFiles(context.supabase, mapRows(inserted ?? []), inserted ?? []),
+    };
+  });
+
+export const getAiAttachmentUrl = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((input: { id: string }) => ({ id: String(input?.id ?? "") }))
+  .handler(async ({ data, context }): Promise<{ url: string | null }> => {
+    const { data: f } = await context.supabase
+      .from("ai_assistant_files")
+      .select("file_path, file_name")
+      .eq("id", data.id)
+      .maybeSingle();
+    if (!f) return { url: null };
+    const { data: signed } = await context.supabase.storage
+      .from("ai-attachments")
+      .createSignedUrl(f.file_path, 600, { download: f.file_name });
+    return { url: signed?.signedUrl ?? null };
   });

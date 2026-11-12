@@ -38,6 +38,39 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_assistant_files: {
+        Row: {
+          created_at: string
+          description: string | null
+          file_name: string
+          file_path: string
+          file_size: number | null
+          id: string
+          mime_type: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          file_name: string
+          file_path: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          file_name?: string
+          file_path?: string
+          file_size?: number | null
+          id?: string
+          mime_type?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: []
+      }
       ai_knowledge_docs: {
         Row: {
           created_at: string
@@ -6003,6 +6036,7 @@ export type Database = {
       }
       topgamific_ai_messages: {
         Row: {
+          attachment_ids: string[]
           content: string
           created_at: string
           id: string
@@ -6015,6 +6049,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          attachment_ids?: string[]
           content: string
           created_at?: string
           id?: string
@@ -6027,6 +6062,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          attachment_ids?: string[]
           content?: string
           created_at?: string
           id?: string
