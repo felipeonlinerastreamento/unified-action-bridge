@@ -778,6 +778,18 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
           "sistema"
         );
 
+        if (financial?.notes) {
+          await supabase.from("service_tickets").update({
+            financial_pending: true,
+            financial_notes: financial.notes,
+            financial_requested_by: userId,
+            financial_requested_at: new Date().toISOString(),
+            financial_done_by: null,
+            financial_done_at: null,
+          } as any).eq("id", ticket.id);
+          await insertSystemComment(ticket.id, `💰 Lançar financeiro: ${financial.notes}`, "status_change");
+        }
+
         refetchComments();
         onRefetch();
         queryClient.invalidateQueries({ queryKey: ["ticket-reminders", ticket.id] });
@@ -1882,7 +1894,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
               className="min-h-[80px] text-sm"
             />
           )}
-          {!ticket.is_recurring && (
+          {(
             <div className="space-y-2 rounded-md border p-3">
               <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
                 <Checkbox checked={finalizeFinancial} onCheckedChange={(v) => setFinalizeFinancial(v === true)} />

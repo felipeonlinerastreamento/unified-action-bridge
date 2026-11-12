@@ -124,6 +124,8 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
   const [sectorId, setSectorId] = useState("");
   const [trackingCode, setTrackingCode] = useState("");
   const [loading, setLoading] = useState(false);
+  const [financial, setFinancial] = useState(false);
+  const [financialNotes, setFinancialNotes] = useState("");
   const [expanded, setExpanded] = useState(false);
 
   const isCorreios = (category || "").toLowerCase().includes("correios");
@@ -418,6 +420,11 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
   };
 
   const handleCreate = async (finalize: boolean = false) => {
+    const withFinancial = finalize && financial;
+    if (withFinancial && !financialNotes.trim()) {
+      toast.error("Informe os detalhes do lançamento financeiro");
+      return;
+    }
     if (!selectedCliente) {
       toast.error("Selecione a empresa do cliente");
       return;
@@ -574,7 +581,14 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
         ...(isLiberacao && liberacaoDate
           ? { liberacao_date: new Date(liberacaoDate).toISOString() }
           : {}),
-
+        ...(withFinancial
+          ? {
+              financial_pending: true,
+              financial_notes: financialNotes.trim(),
+              financial_requested_by: creatorId,
+              financial_requested_at: new Date().toISOString(),
+            }
+          : {}),
       } as any).select("id").single();
 
       if (error) {
@@ -720,6 +734,16 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
         }
       }
 
+      if (created?.id && withFinancial) {
+        await supabase.from("ticket_comments").insert({
+          ticket_id: created.id,
+          user_id: creatorId,
+          content: `💰 Lançar financeiro: ${financialNotes.trim()}`,
+          comment_type: "status_change",
+        } as any);
+      }
+      setFinancial(false);
+      setFinancialNotes("");
       toast.success(finalize ? "Ticket criado e finalizado" : "Ticket criado com sucesso");
       resetForm();
       onCreated();
@@ -1059,6 +1083,26 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
               onChange={(e) => setNotes(e.target.value)}
               placeholder="Detalhes do atendimento..."
             />
+          </div>
+
+          <div className="space-y-2 rounded-md border p-3">
+            <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
+              <input
+                type="checkbox"
+                className="h-4 w-4 accent-primary"
+                checked={financial}
+                onChange={(e) => setFinancial(e.target.checked)}
+              />
+              Lançar financeiro (ao usar "Criar e Finalizar")
+            </label>
+            {financial && (
+              <Textarea
+                rows={2}
+                value={financialNotes}
+                onChange={(e) => setFinancialNotes(e.target.value)}
+                placeholder="Detalhes do lançamento financeiro (obrigatório)..."
+              />
+            )}
           </div>
 
           <div className="flex gap-2">
