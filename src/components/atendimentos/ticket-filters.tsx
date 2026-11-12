@@ -41,6 +41,8 @@ export interface TicketFilters {
   trackingStatus: string;
   recurring: string;
   controleSheet: string;
+  /** Lançar financeiro: todos | pendente | lancado */
+  financial: string;
   /** Janela de carregamento (dias). null = todo o histórico */
   periodDays: number | null;
 }
@@ -66,6 +68,7 @@ export const defaultFilters: TicketFilters = {
   trackingStatus: "todos",
   recurring: "todos",
   controleSheet: "todos",
+  financial: "todos",
   periodDays: 90,
 };
 
@@ -164,6 +167,7 @@ export function TicketFiltersBar({ filters, onChange, tickets, profiles, open, o
     if (filters.trackingStatus !== "todos") c++;
     if (filters.recurring !== "todos") c++;
     if (filters.controleSheet !== "todos") c++;
+    if (filters.financial !== "todos") c++;
     if (filters.periodDays !== defaultFilters.periodDays) c++;
     return c;
   }, [filters]);
@@ -315,6 +319,19 @@ export function TicketFiltersBar({ filters, onChange, tickets, profiles, open, o
               </Select>
             </div>
 
+            {/* Lançar financeiro */}
+            <div className="space-y-1">
+              <label className="text-xs font-medium text-muted-foreground">Lançar financeiro</label>
+              <Select value={filters.financial} onValueChange={(v) => set({ financial: v })}>
+                <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="todos">Todos</SelectItem>
+                  <SelectItem value="pendente">💰 Financeiro pendente</SelectItem>
+                  <SelectItem value="lancado">Financeiro já lançado</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             {/* Date from */}
             <div className="space-y-1">
               <label className="text-xs font-medium text-muted-foreground">Data Início</label>
@@ -381,8 +398,15 @@ export function applyTicketFilters(tickets: any[], filters: TicketFilters): any[
 
 
 
+    // Lançar financeiro (ignora o filtro de status: pendências costumam estar finalizadas)
+    const fin = filters.financial ?? "todos";
+    if (fin === "pendente" && !t.financial_pending) return false;
+    if (fin === "lancado" && !t.financial_done_at) return false;
+
     // Status
-    if (filters.status === "abertos_em_andamento") {
+    if (fin !== "todos") {
+      // não filtra por status
+    } else if (filters.status === "abertos_em_andamento") {
       if (t.status !== "aberto" && t.status !== "em_andamento" && t.status !== "reaberto") return false;
     } else if (filters.status !== "todos" && t.status !== filters.status) return false;
 
