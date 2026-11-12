@@ -154,6 +154,9 @@ export function TicketKanbanView({ tickets, onSelect, onRefetch }: TicketKanbanV
                         </div>
                       );
                     })()}
+                    {t.financial_pending && (
+                      <Badge className="text-[10px] bg-amber-500 text-white" title={t.financial_notes || ""}>💰 Lançar financeiro</Badge>
+                    )}
                     <span className="flex items-center gap-1 text-xs text-muted-foreground truncate" title={t.contact_name || ""}>
                       <User className="h-3 w-3 shrink-0" />
                       <span className="truncate">{t.contact_name || t.attendance_id || "Sem cliente"}</span>

@@ -239,6 +239,8 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   const [taskDialogOpen, setTaskDialogOpen] = useState(false);
   const [confirmFinalizeOpen, setConfirmFinalizeOpen] = useState(false);
   const [finalizeObservation, setFinalizeObservation] = useState("");
+  const [finalizeFinancial, setFinalizeFinancial] = useState(false);
+  const [finalizeFinancialNotes, setFinalizeFinancialNotes] = useState("");
   const [editingField, setEditingField] = useState<null | "priority" | "contact_name" | "contact_phone" | "company_id" | "plate">(null);
   const [fieldDraft, setFieldDraft] = useState<string>("");
   const [savingField, setSavingField] = useState(false);
@@ -715,7 +717,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
     }
   };
 
-  const updateStatus = async (newStatus: string, observation?: string) => {
+  const updateStatus = async (newStatus: string, observation?: string, financial?: { notes: string } | null) => {
     if (!ticket?.id) return;
 
     if (newStatus === "finalizado") {
@@ -798,6 +800,21 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
       if (!res.ok) {
         toast.error("Erro ao finalizar: " + (res.error || "desconhecido"));
         return;
+      }
+      if (financial?.notes) {
+        const { error: finErr } = await supabase
+          .from("service_tickets")
+          .update({
+            financial_pending: true,
+            financial_notes: financial.notes,
+            financial_requested_by: userId,
+            financial_requested_at: new Date().toISOString(),
+            financial_done_by: null,
+            financial_done_at: null,
+          } as any)
+          .eq("id", ticket.id);
+        if (finErr) toast.error("Falha ao sinalizar lançamento financeiro: " + finErr.message);
+        else await insertSystemComment(ticket.id, `💰 Lançar financeiro: ${financial.notes}`, "status_change");
       }
       refetchComments();
       onRefetch();
@@ -1369,6 +1386,40 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
               </div>
             </div>
 
+            {(ticket as any).financial_pending && (
+              <div className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium text-amber-700 dark:text-amber-400">
+                  💰 Lançar financeiro — pendente
+                </div>
+                <p className="text-sm whitespace-pre-wrap">{(ticket as any).financial_notes || "(sem detalhes)"}</p>
+                {(ticket as any).financial_requested_at && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Solicitado em {new Date((ticket as any).financial_requested_at).toLocaleString("pt-BR")}
+                  </p>
+                )}
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="h-7 text-xs"
+                  onClick={async () => {
+                    const { error } = await supabase
+                      .from("service_tickets")
+                      .update({ financial_pending: false, financial_done_by: userId, financial_done_at: new Date().toISOString() } as any)
+                      .eq("id", ticket.id);
+                    if (error) { toast.error("Erro: " + error.message); return; }
+                    await insertSystemComment(ticket.id, "💰 Lançamento financeiro efetuado", "status_change");
+                    (ticket as any).financial_pending = false;
+                    queryClient.invalidateQueries({ queryKey: ["service-tickets"] });
+                    refetchComments();
+                    onRefetch();
+                    toast.success("Lançamento financeiro marcado como efetuado");
+                  }}
+                >
+                  Marcar como lançado
+                </Button>
+              </div>
+            )}
+
             {(ticket as any).email_reply_pending && (() => {
               const last = [...(comments as any[])].reverse().find((c) => c.comment_type === "email_reply");
               return (
@@ -1813,7 +1864,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
           </TabsContent>
         </Tabs>
       </SheetContent>
-      <AlertDialog open={confirmFinalizeOpen} onOpenChange={(o) => { setConfirmFinalizeOpen(o); if (!o) setFinalizeObservation(""); }}>
+      <AlertDialog open={confirmFinalizeOpen} onOpenChange={(o) => { setConfirmFinalizeOpen(o); if (!o) { setFinalizeObservation(""); setFinalizeFinancial(false); setFinalizeFinancialNotes(""); } }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>{ticket.is_recurring ? "Concluir ocorrência?" : "Finalizar atendimento?"}</AlertDialogTitle>
@@ -1831,19 +1882,39 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
               className="min-h-[80px] text-sm"
             />
           )}
+          {!ticket.is_recurring && (
+            <div className="space-y-2 rounded-md border p-3">
+              <label className="flex items-center gap-2 text-sm font-medium cursor-pointer">
+                <Checkbox checked={finalizeFinancial} onCheckedChange={(v) => setFinalizeFinancial(v === true)} />
+                Lançar financeiro
+              </label>
+              {finalizeFinancial && (
+                <Textarea
+                  value={finalizeFinancialNotes}
+                  onChange={(e) => setFinalizeFinancialNotes(e.target.value)}
+                  placeholder="Detalhes do lançamento financeiro (obrigatório)..."
+                  className="min-h-[70px] text-sm"
+                />
+              )}
+            </div>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              disabled={ticket.is_recurring && !finalizeObservation.trim()}
+              disabled={(ticket.is_recurring && !finalizeObservation.trim()) || (finalizeFinancial && !finalizeFinancialNotes.trim())}
               onClick={(e) => {
                 if (ticket.is_recurring && !finalizeObservation.trim()) {
                   e.preventDefault();
                   return;
                 }
                 setConfirmFinalizeOpen(false);
+                if (finalizeFinancial && !finalizeFinancialNotes.trim()) { e.preventDefault(); return; }
                 const obs = finalizeObservation;
+                const fin = finalizeFinancial ? { notes: finalizeFinancialNotes.trim() } : null;
                 setFinalizeObservation("");
-                updateStatus("finalizado", obs);
+                setFinalizeFinancial(false);
+                setFinalizeFinancialNotes("");
+                updateStatus("finalizado", obs, fin);
               }}
             >
               {ticket.is_recurring ? "Concluir e reagendar" : "Sim, finalizar"}

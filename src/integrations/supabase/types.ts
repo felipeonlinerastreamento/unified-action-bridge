@@ -4477,6 +4477,12 @@ export type Database = {
           equipment_model_name: string | null
           escalated_from_ticket_id: string | null
           escalated_to_gestao: boolean
+          financial_done_at: string | null
+          financial_done_by: string | null
+          financial_notes: string | null
+          financial_pending: boolean
+          financial_requested_at: string | null
+          financial_requested_by: string | null
           hide_service_templates: boolean
           id: string
           liberacao_date: string | null
@@ -4513,6 +4519,12 @@ export type Database = {
           equipment_model_name?: string | null
           escalated_from_ticket_id?: string | null
           escalated_to_gestao?: boolean
+          financial_done_at?: string | null
+          financial_done_by?: string | null
+          financial_notes?: string | null
+          financial_pending?: boolean
+          financial_requested_at?: string | null
+          financial_requested_by?: string | null
           hide_service_templates?: boolean
           id?: string
           liberacao_date?: string | null
@@ -4549,6 +4561,12 @@ export type Database = {
           equipment_model_name?: string | null
           escalated_from_ticket_id?: string | null
           escalated_to_gestao?: boolean
+          financial_done_at?: string | null
+          financial_done_by?: string | null
+          financial_notes?: string | null
+          financial_pending?: boolean
+          financial_requested_at?: string | null
+          financial_requested_by?: string | null
           hide_service_templates?: boolean
           id?: string
           liberacao_date?: string | null

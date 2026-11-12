@@ -421,6 +421,8 @@ function CentralPage() {
   const [showFinalizeConfirm, setShowFinalizeConfirm] = useState(false);
   const [showFinalizeReview, setShowFinalizeReview] = useState(false);
   const [finalizeNotes, setFinalizeNotes] = useState("");
+  const [finalizeFinancial, setFinalizeFinancial] = useState(false);
+  const [finalizeFinancialNotes, setFinalizeFinancialNotes] = useState("");
   const [skipClosingMessage, setSkipClosingMessage] = useState(false);
   const [escalateToGestao, setEscalateToGestao] = useState(false);
   const [finalizeStatus, setFinalizeStatus] = useState<string>("A resolver");
@@ -2656,6 +2658,23 @@ function CentralPage() {
       return { success: true, ticketId: ticketForProtocol?.id || null, escalateGestao: !!escalateGestao, pendingResolve };
     },
     onSuccess: async (result) => {
+      if (finalizeFinancial && result?.ticketId) {
+        const { data: fs } = await supabase.auth.getSession();
+        const { error: finErr } = await supabase
+          .from("service_tickets")
+          .update({
+            financial_pending: true,
+            financial_notes: finalizeFinancialNotes.trim(),
+            financial_requested_by: fs.session?.user?.id || null,
+            financial_requested_at: new Date().toISOString(),
+            financial_done_by: null,
+            financial_done_at: null,
+          } as any)
+          .eq("id", result.ticketId);
+        if (finErr) toast.error("Falha ao sinalizar lançamento financeiro: " + finErr.message);
+      }
+      setFinalizeFinancial(false);
+      setFinalizeFinancialNotes("");
       // Ensure a local ticket exists (covers groups / race conditions where
       // auto-create didn't finish before the user clicked "Finalizar").
       // IMPORTANT: do NOT filter by status here — the mutationFn just set it
@@ -5560,6 +5579,21 @@ function CentralPage() {
               );
             })()}
 
+            <div className="space-y-2 rounded-md border p-3">
+              <label className="flex items-center gap-2 text-xs font-medium cursor-pointer">
+                <Checkbox checked={finalizeFinancial} onCheckedChange={(v) => setFinalizeFinancial(v === true)} />
+                Lançar financeiro
+              </label>
+              {finalizeFinancial && (
+                <Textarea
+                  rows={2}
+                  placeholder="Detalhes do lançamento financeiro (obrigatório)..."
+                  value={finalizeFinancialNotes}
+                  onChange={(e) => setFinalizeFinancialNotes(e.target.value)}
+                />
+              )}
+            </div>
+
             {/* Vincular a um protocolo aberto da mesma empresa */}
             <div className="space-y-2 rounded-md border p-3 bg-muted/20">
               <Label className="text-xs font-medium">Vincular a um protocolo aberto</Label>
@@ -5664,6 +5698,10 @@ function CentralPage() {
             </Button>
             <Button
               onClick={() => {
+                if (finalizeFinancial && !finalizeFinancialNotes.trim()) {
+                  toast.error("Informe os detalhes do lançamento financeiro.");
+                  return;
+                }
                 if (!linkedTicketId && !finalizeTipoPendencia) {
                   toast.error("Selecione o tipo de pendência antes de finalizar.");
                   return;

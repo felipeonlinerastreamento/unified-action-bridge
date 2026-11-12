@@ -101,6 +101,9 @@ export function TicketListView({ tickets, onSelect, profiles = [] }: TicketListV
                       })}
                     </Badge>
                   )}
+                  {t.financial_pending && (
+                    <Badge className="text-xs bg-amber-500 text-white" title={t.financial_notes || ""}>💰 Lançar financeiro</Badge>
+                  )}
                   <LiberacaoBadge ticket={t} />
                   <SuprimentoBadge ticket={t} />
                   <CompraEquipamentoBadge ticket={t} />
