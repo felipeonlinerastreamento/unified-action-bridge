@@ -17,6 +17,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { GsystemEquipamentosSyncTab } from "@/components/estoque/gsystem-equipamentos-sync-tab";
+import { EquipChipsTab } from "@/components/estoque/equip-chips-tab";
+import { AccessoryCatalogTab } from "@/components/estoque/accessory-catalog-tab";
+import { VinculosHistoricoTab } from "@/components/estoque/vinculos-historico-tab";
+import { History, Boxes } from "lucide-react";
 
 export const Route = createFileRoute("/estoque")({
   component: EstoquePage,
@@ -61,7 +65,7 @@ function EstoquePage() {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<string>("disponivel");
   const [modelFilter, setModelFilter] = useState<string>("all");
-  const [tab, setTab] = useState("equipamentos");
+  const [tab, setTab] = useState("equipchips");
   const [diagOpen, setDiagOpen] = useState(false);
   const [diagLoading, setDiagLoading] = useState(false);
   const [diagResult, setDiagResult] = useState<any>(null);
@@ -371,7 +375,7 @@ function EstoquePage() {
                 </ScrollArea>
               </DialogContent>
             </Dialog>
-            {tab !== "local" && (
+            {["equipamentos","chips","veiculos","sync"].includes(tab) && (
               <Button variant="outline" size="sm" onClick={refreshActive} disabled={isAnyLoading}>
                 <RefreshCw className={`h-4 w-4 ${isAnyLoading ? "animate-spin" : ""}`} />
               </Button>
@@ -395,18 +399,14 @@ function EstoquePage() {
               <KpiCard label="Tipos" value={veiculoTipos.length} />
               <KpiCard label="Filtrados" value={filteredVeiculos.length} accent="muted" />
             </>
-          ) : (
-            <>
-              <KpiCard label="Total" value={filteredLocal.length} />
-              <KpiCard label="Disponíveis" value={filteredLocal.filter((i) => i.status === "disponivel").length} accent="emerald" />
-              <KpiCard label="Vinculados" value={filteredLocal.filter((i) => i.status === "vinculado").length} accent="amber" />
-              <KpiCard label="Modelos" value={localModels.length} />
-            </>
-          )}
+          ) : null}
         </div>
 
         <Tabs value={tab} onValueChange={(v) => { setTab(v); setModelFilter("all"); }}>
-          <TabsList>
+          <TabsList className="flex-wrap h-auto">
+            <TabsTrigger value="equipchips">
+              <Cpu className="h-4 w-4 mr-1" /> Equipamentos e Chips
+            </TabsTrigger>
             <TabsTrigger value="equipamentos">
               <Cpu className="h-4 w-4 mr-1" /> Equipamentos
             </TabsTrigger>
@@ -419,8 +419,11 @@ function EstoquePage() {
             <TabsTrigger value="sync">
               <DatabaseZap className="h-4 w-4 mr-1" /> Sincronizados
             </TabsTrigger>
-            <TabsTrigger value="local">
-              <Package className="h-4 w-4 mr-1" /> Estoque Local
+            <TabsTrigger value="acessorios">
+              <Boxes className="h-4 w-4 mr-1" /> Catálogo de Acessórios
+            </TabsTrigger>
+            <TabsTrigger value="historico">
+              <History className="h-4 w-4 mr-1" /> Histórico
             </TabsTrigger>
           </TabsList>
 
@@ -569,55 +572,9 @@ function EstoquePage() {
             )}
           </TabsContent>
 
-          {/* Local tab */}
-          <TabsContent value="local">
-            <Card>
-              <CardContent className="p-0">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Equipamento</TableHead>
-                      <TableHead>Modelo</TableHead>
-                      <TableHead>Status</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {localLoading ? (
-                      <TableRow>
-                        <TableCell colSpan={3} className="text-center py-8">
-                          <Loader2 className="h-5 w-5 animate-spin mx-auto" />
-                        </TableCell>
-                      </TableRow>
-                    ) : filteredLocal.length === 0 ? (
-                      <TableRow>
-                        <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
-                          <Package className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                          Nenhum equipamento encontrado.
-                        </TableCell>
-                      </TableRow>
-                    ) : (
-                      filteredLocal.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell className="font-medium">{item.name}</TableCell>
-                          <TableCell className="text-sm">{item.model || "—"}</TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={item.status === "disponivel" ? "default" : "secondary"}
-                              className={item.status === "disponivel"
-                                ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
-                                : "bg-amber-100 text-amber-700 hover:bg-amber-100"}
-                            >
-                              {item.status === "disponivel" ? "Disponível" : "Vinculado"}
-                            </Badge>
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
-          </TabsContent>
+          <TabsContent value="equipchips"><EquipChipsTab /></TabsContent>
+          <TabsContent value="acessorios"><AccessoryCatalogTab canEdit={hasRole("admin") || hasRole("gestor")} /></TabsContent>
+          <TabsContent value="historico"><VinculosHistoricoTab /></TabsContent>
         </Tabs>
       </div>
     </AppLayout>

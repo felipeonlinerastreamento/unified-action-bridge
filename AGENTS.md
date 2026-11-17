@@ -5,3 +5,4 @@
 - Ticket auto-assignment RPCs must join `profiles.user_id` (auth id), not `profiles.id`, because `service_tickets.assigned_to` and `user_sector_assignments.user_id` store auth user ids.
 
 - Assistente IA attachments live in the shared `ai_assistant_files` catalog (private bucket `ai-attachments`); messages reference files via `attachment_ids`, and catalog matching rules live in `src/lib/ai-file-match.ts` with tests, so file lookup stays testable.
+- Estoque kits/acessórios and the link/unlink audit live only in our DB (`accessory_catalog`, `equipment_kit_items`, `gsystem_vinculos_historico`); kit changes go through the `set_equipment_kit_item` RPC and plate links through `vincularPlaca` server fn so saldo and history stay consistent. KPI rules live in `src/lib/estoque-kpis.ts` with tests.

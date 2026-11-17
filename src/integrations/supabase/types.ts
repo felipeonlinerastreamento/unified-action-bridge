@@ -14,6 +14,45 @@ export type Database = {
   }
   public: {
     Tables: {
+      accessory_catalog: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          created_by: string | null
+          estoque_minimo: number
+          id: string
+          modelo: string | null
+          name: string
+          saldo: number
+          tipo: string | null
+          updated_at: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          created_by?: string | null
+          estoque_minimo?: number
+          id?: string
+          modelo?: string | null
+          name: string
+          saldo?: number
+          tipo?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          created_by?: string | null
+          estoque_minimo?: number
+          id?: string
+          modelo?: string | null
+          name?: string
+          saldo?: number
+          tipo?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       ai_assistant_config: {
         Row: {
           id: string
@@ -2795,6 +2834,41 @@ export type Database = {
           },
         ]
       }
+      equipment_kit_items: {
+        Row: {
+          accessory_id: string
+          equipamento_codigo: string
+          id: string
+          quantidade: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          accessory_id: string
+          equipamento_codigo: string
+          id?: string
+          quantidade?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          accessory_id?: string
+          equipamento_codigo?: string
+          id?: string
+          quantidade?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "equipment_kit_items_accessory_id_fkey"
+            columns: ["accessory_id"]
+            isOneToOne: false
+            referencedRelation: "accessory_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       escalation_gestao_settings: {
         Row: {
           default_category: string
@@ -2927,6 +3001,57 @@ export type Database = {
           last_started_at?: string | null
           last_success_at?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      gsystem_vinculos_historico: {
+        Row: {
+          acessorios: Json | null
+          chip: string | null
+          created_at: string
+          equipamento_codigo: string | null
+          equipamento_modelo: string | null
+          equipamento_serie: string | null
+          erro: string | null
+          id: string
+          operacao: string
+          placa: string | null
+          sucesso: boolean
+          user_id: string | null
+          user_name: string | null
+          veiculo_codigo: string | null
+        }
+        Insert: {
+          acessorios?: Json | null
+          chip?: string | null
+          created_at?: string
+          equipamento_codigo?: string | null
+          equipamento_modelo?: string | null
+          equipamento_serie?: string | null
+          erro?: string | null
+          id?: string
+          operacao: string
+          placa?: string | null
+          sucesso?: boolean
+          user_id?: string | null
+          user_name?: string | null
+          veiculo_codigo?: string | null
+        }
+        Update: {
+          acessorios?: Json | null
+          chip?: string | null
+          created_at?: string
+          equipamento_codigo?: string | null
+          equipamento_modelo?: string | null
+          equipamento_serie?: string | null
+          erro?: string | null
+          id?: string
+          operacao?: string
+          placa?: string | null
+          sucesso?: boolean
+          user_id?: string | null
+          user_name?: string | null
+          veiculo_codigo?: string | null
         }
         Relationships: []
       }
@@ -6674,6 +6799,10 @@ export type Database = {
       }
       presence_end_session: { Args: never; Returns: undefined }
       presence_heartbeat: { Args: never; Returns: undefined }
+      set_equipment_kit_item: {
+        Args: { _accessory: string; _codigo: string; _qtd: number }
+        Returns: undefined
+      }
       sys_can_monitor: { Args: never; Returns: boolean }
       sys_cron_runs: { Args: never; Returns: Json }
       sys_db_health: { Args: never; Returns: Json }

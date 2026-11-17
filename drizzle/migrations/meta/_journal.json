@@ -113,6 +113,20 @@
       "when": 1794511894275,
       "tag": "0015_ai_assistant_files",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1794944141330,
+      "tag": "0016_estoque_kits_acessorios_historico",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1794944172435,
+      "tag": "0017_fix_kit_item_username",
+      "breakpoints": true
     }
   ]
 }
