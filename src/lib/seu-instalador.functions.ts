@@ -98,6 +98,7 @@ async function callApi<T>(opts: CallOptions): Promise<T> {
 }
 
 async function resolveUserName(context: any): Promise<string> {
+  if (!context?.supabase) throw new Error("Sessão inválida. Faça login novamente.");
   const { data } = await context.supabase
     .from("profiles")
     .select("name")
@@ -237,15 +238,14 @@ export const criarAgendamento = createServerFn({ method: "POST" })
 const idem = z.string().uuid().optional();
 const idStr = z.string().min(1).max(100);
 
-function mutation<S extends z.ZodTypeAny>(
+function mutationDef<S extends z.ZodTypeAny>(
   schema: S,
   build: (d: z.infer<S>) => { path: string; method: "POST" | "PATCH" | "DELETE"; body?: unknown },
   opts: { managerOnly?: boolean } = {},
 ) {
-  return createServerFn({ method: "POST" })
-    .middleware([requireSupabaseAuth])
-    .inputValidator((input: unknown) => schema.parse(input) as z.infer<S>)
-    .handler(async ({ data, context }) => {
+  return {
+    validate: (input: unknown) => schema.parse(input) as z.infer<S>,
+    handle: async ({ data, context }: { data: z.infer<S>; context: any }) => {
       if (opts.managerOnly) await requireManager(context);
       const userName = await resolveUserName(context);
       const { path, method, body } = build(data as any);
@@ -256,7 +256,8 @@ function mutation<S extends z.ZodTypeAny>(
         idempotencyKey: (data as any).idempotencyKey,
         userName,
       });
-    });
+    },
+  };
 }
 
 async function requireManager(context: any) {
@@ -267,20 +268,24 @@ async function requireManager(context: any) {
   }
 }
 
-function query<S extends z.ZodTypeAny>(schema: S, build: (d: z.infer<S>) => { path: string; query?: any }) {
-  return createServerFn({ method: "POST" })
-    .middleware([requireSupabaseAuth])
-    .inputValidator((input: unknown) => schema.parse(input ?? {}) as z.infer<S>)
-    .handler(async ({ data, context }) => {
+function queryDef<S extends z.ZodTypeAny>(schema: S, build: (d: z.infer<S>) => { path: string; query?: any }) {
+  return {
+    validate: (input: unknown) => schema.parse(input ?? {}) as z.infer<S>,
+    handle: async ({ data, context }: { data: z.infer<S>; context: any }) => {
       const userName = await resolveUserName(context);
       const { path, query: q } = build(data as any);
       return await callApi<any>({ path, query: q, userName });
-    });
+    },
+  };
 }
 
 const enc = encodeURIComponent;
 
-export const obterOS = query(z.object({ orderId: idStr }), (d) => ({ path: `/orders/${enc(d.orderId)}` }));
+const _obterOS = queryDef(z.object({ orderId: idStr }), (d) => ({ path: `/orders/${enc(d.orderId)}` }));
+export const obterOS = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(_obterOS.validate)
+  .handler(_obterOS.handle as any);
 
 const orderPatch = z.object({
   idempotencyKey: idem,
@@ -294,17 +299,25 @@ const orderPatch = z.object({
   noAddress: z.boolean().optional(),
   description: z.string().max(5000).optional(),
 });
-export const atualizarOS = mutation(
+const _atualizarOS = mutationDef(
   orderPatch,
   ({ orderId, idempotencyKey, ...body }) => ({ path: `/orders/${enc(orderId)}`, method: "PATCH", body }),
   { managerOnly: true },
 );
-export const excluirOS = mutation(
+export const atualizarOS = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(_atualizarOS.validate)
+  .handler(_atualizarOS.handle as any);
+const _excluirOS = mutationDef(
   z.object({ idempotencyKey: idem, orderId: idStr }),
   (d) => ({ path: `/orders/${enc(d.orderId)}`, method: "DELETE" }),
   { managerOnly: true },
 );
-export const reagendarOS = mutation(
+export const excluirOS = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(_excluirOS.validate)
+  .handler(_excluirOS.handle as any);
+const _reagendarOS = mutationDef(
   z.object({
     idempotencyKey: idem,
     orderId: idStr,
@@ -315,27 +328,47 @@ export const reagendarOS = mutation(
   }),
   ({ orderId, idempotencyKey, ...body }) => ({ path: `/orders/${enc(orderId)}/reschedule`, method: "POST", body }),
 );
-export const clonarOS = mutation(
+export const reagendarOS = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(_reagendarOS.validate)
+  .handler(_reagendarOS.handle as any);
+const _clonarOS = mutationDef(
   z.object({ idempotencyKey: idem, orderId: idStr, scheduledAt: z.string().optional(), technicianId: z.string().optional() }),
   ({ orderId, idempotencyKey, ...body }) => ({ path: `/orders/${enc(orderId)}/clone`, method: "POST", body }),
 );
-export const alterarStatusOS = mutation(
+export const clonarOS = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(_clonarOS.validate)
+  .handler(_clonarOS.handle as any);
+const _alterarStatusOS = mutationDef(
   z.object({ idempotencyKey: idem, orderId: idStr, status: z.string().min(1), reason: z.string().max(1000).optional() }),
   ({ orderId, idempotencyKey, ...body }) => ({ path: `/orders/${enc(orderId)}/status`, method: "POST", body }),
   { managerOnly: true },
 );
+export const alterarStatusOS = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(_alterarStatusOS.validate)
+  .handler(_alterarStatusOS.handle as any);
 
 // Compatibilidade com telas existentes
-export const atualizarAgendamento = mutation(
+const _atualizarAgendamento = mutationDef(
   orderPatch.omit({ orderId: true }).extend({ appointmentId: idStr }),
   ({ appointmentId, idempotencyKey, ...body }) => ({ path: `/orders/${enc(appointmentId)}`, method: "PATCH", body }),
   { managerOnly: true },
 );
-export const alterarStatusAgendamento = mutation(
+export const atualizarAgendamento = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(_atualizarAgendamento.validate)
+  .handler(_atualizarAgendamento.handle as any);
+const _alterarStatusAgendamento = mutationDef(
   z.object({ idempotencyKey: idem, appointmentId: idStr, status: z.string().min(1), reason: z.string().optional() }),
   ({ appointmentId, idempotencyKey, ...body }) => ({ path: `/orders/${enc(appointmentId)}/status`, method: "POST", body }),
   { managerOnly: true },
 );
+export const alterarStatusAgendamento = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(_alterarStatusAgendamento.validate)
+  .handler(_alterarStatusAgendamento.handle as any);
 
 // ---------- Técnicos terceiros ----------
 
@@ -370,19 +403,27 @@ export const criarAgendamentoTerceiro = createServerFn({ method: "POST" })
     const { idempotencyKey, ...body } = data;
     return await callApi<any>({ path: "/third-party-appointments", method: "POST", body, idempotencyKey, userName });
   });
-export const renovarLinkTerceiro = mutation(
+const _renovarLinkTerceiro = mutationDef(
   z.object({ idempotencyKey: idem, orderId: idStr }),
   (d) => ({ path: `/orders/${enc(d.orderId)}/third-party-link`, method: "POST", body: {} }),
 );
-export const revogarLinkTerceiro = mutation(
+export const renovarLinkTerceiro = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(_renovarLinkTerceiro.validate)
+  .handler(_renovarLinkTerceiro.handle as any);
+const _revogarLinkTerceiro = mutationDef(
   z.object({ idempotencyKey: idem, orderId: idStr }),
   (d) => ({ path: `/orders/${enc(d.orderId)}/third-party-link/revoke`, method: "POST", body: {} }),
 );
+export const revogarLinkTerceiro = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(_revogarLinkTerceiro.validate)
+  .handler(_revogarLinkTerceiro.handle as any);
 
 // ---------- Solicitações ----------
 
 const dateOpt = z.string().regex(dateRegex).optional();
-export const listarSolicitacoes = query(
+const _listarSolicitacoes = queryDef(
   z.object({
     status: z.string().optional(),
     clientId: z.string().optional(),
@@ -395,11 +436,23 @@ export const listarSolicitacoes = query(
   }),
   (d) => ({ path: "/requests", query: d }),
 );
-export const obterSolicitacao = query(z.object({ requestId: idStr }), (d) => ({ path: `/requests/${enc(d.requestId)}` }));
-export const disponibilidadeSolicitacoes = query(z.object({ date: z.string().regex(dateRegex) }), (d) => ({
+export const listarSolicitacoes = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(_listarSolicitacoes.validate)
+  .handler(_listarSolicitacoes.handle as any);
+const _obterSolicitacao = queryDef(z.object({ requestId: idStr }), (d) => ({ path: `/requests/${enc(d.requestId)}` }));
+export const obterSolicitacao = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(_obterSolicitacao.validate)
+  .handler(_obterSolicitacao.handle as any);
+const _disponibilidadeSolicitacoes = queryDef(z.object({ date: z.string().regex(dateRegex) }), (d) => ({
   path: "/requests/availability",
   query: { date: d.date },
 }));
+export const disponibilidadeSolicitacoes = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(_disponibilidadeSolicitacoes.validate)
+  .handler(_disponibilidadeSolicitacoes.handle as any);
 
 const requestBody = z.object({
   clientId: idStr,
@@ -414,20 +467,32 @@ const requestBody = z.object({
   notifyContact: z.boolean().optional(),
   identifier: z.string().max(100).optional(),
 });
-export const criarSolicitacao = mutation(requestBody.extend({ idempotencyKey: idem }), ({ idempotencyKey, ...body }) => ({
+const _criarSolicitacao = mutationDef(requestBody.extend({ idempotencyKey: idem }), ({ idempotencyKey, ...body }) => ({
   path: "/requests",
   method: "POST",
   body,
 }));
-export const atualizarSolicitacao = mutation(
+export const criarSolicitacao = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(_criarSolicitacao.validate)
+  .handler(_criarSolicitacao.handle as any);
+const _atualizarSolicitacao = mutationDef(
   requestBody.extend({ idempotencyKey: idem, requestId: idStr }),
   ({ idempotencyKey, requestId, ...body }) => ({ path: `/requests/${enc(requestId)}`, method: "PATCH", body }),
 );
-export const comentarSolicitacao = mutation(
+export const atualizarSolicitacao = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(_atualizarSolicitacao.validate)
+  .handler(_atualizarSolicitacao.handle as any);
+const _comentarSolicitacao = mutationDef(
   z.object({ idempotencyKey: idem, requestId: idStr, content: z.string().trim().min(1).max(2000) }),
   (d) => ({ path: `/requests/${enc(d.requestId)}/comments`, method: "POST", body: { content: d.content } }),
 );
-export const aprovarSolicitacao = mutation(
+export const comentarSolicitacao = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(_comentarSolicitacao.validate)
+  .handler(_comentarSolicitacao.handle as any);
+const _aprovarSolicitacao = mutationDef(
   z.object({ idempotencyKey: idem, requestId: idStr, technicianId: idStr, scheduledAt: z.string().min(1) }),
   (d) => ({
     path: `/requests/${enc(d.requestId)}/approve`,
@@ -435,15 +500,27 @@ export const aprovarSolicitacao = mutation(
     body: { technicianId: d.technicianId, scheduledAt: d.scheduledAt },
   }),
 );
-export const recusarSolicitacao = mutation(
+export const aprovarSolicitacao = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(_aprovarSolicitacao.validate)
+  .handler(_aprovarSolicitacao.handle as any);
+const _recusarSolicitacao = mutationDef(
   z.object({ idempotencyKey: idem, requestId: idStr, reason: z.string().trim().min(1).max(1000) }),
   (d) => ({ path: `/requests/${enc(d.requestId)}/reject`, method: "POST", body: { reason: d.reason } }),
 );
-export const cancelarSolicitacao = mutation(
+export const recusarSolicitacao = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(_recusarSolicitacao.validate)
+  .handler(_recusarSolicitacao.handle as any);
+const _cancelarSolicitacao = mutationDef(
   z.object({ idempotencyKey: idem, requestId: idStr, reason: z.string().max(1000).optional() }),
   (d) => ({ path: `/requests/${enc(d.requestId)}/cancel`, method: "POST", body: { reason: d.reason } }),
 );
-export const recriarSolicitacao = mutation(
+export const cancelarSolicitacao = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(_cancelarSolicitacao.validate)
+  .handler(_cancelarSolicitacao.handle as any);
+const _recriarSolicitacao = mutationDef(
   z.object({ idempotencyKey: idem, requestId: idStr, desiredAt: z.string().min(1), note: z.string().trim().min(1).max(1000) }),
   (d) => ({
     path: `/requests/${enc(d.requestId)}/recreate`,
@@ -451,10 +528,14 @@ export const recriarSolicitacao = mutation(
     body: { desiredAt: d.desiredAt, note: d.note },
   }),
 );
+export const recriarSolicitacao = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(_recriarSolicitacao.validate)
+  .handler(_recriarSolicitacao.handle as any);
 
 // ---------- Direcionamento regional ----------
 
-export const listarDirecionamentos = query(
+const _listarDirecionamentos = queryDef(
   z.object({
     status: z.string().optional(),
     search: z.string().max(200).optional(),
@@ -463,10 +544,18 @@ export const listarDirecionamentos = query(
   }),
   (d) => ({ path: "/routing-requests", query: d }),
 );
-export const obterDirecionamento = query(z.object({ routingId: idStr }), (d) => ({
+export const listarDirecionamentos = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(_listarDirecionamentos.validate)
+  .handler(_listarDirecionamentos.handle as any);
+const _obterDirecionamento = queryDef(z.object({ routingId: idStr }), (d) => ({
   path: `/routing-requests/${enc(d.routingId)}`,
 }));
-export const criarDirecionamento = mutation(
+export const obterDirecionamento = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(_obterDirecionamento.validate)
+  .handler(_obterDirecionamento.handle as any);
+const _criarDirecionamento = mutationDef(
   z.object({
     idempotencyKey: idem,
     clientId: idStr,
@@ -487,11 +576,19 @@ export const criarDirecionamento = mutation(
   }),
   ({ idempotencyKey, ...body }) => ({ path: "/routing-requests", method: "POST", body }),
 );
-export const analisarDirecionamento = mutation(
+export const criarDirecionamento = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(_criarDirecionamento.validate)
+  .handler(_criarDirecionamento.handle as any);
+const _analisarDirecionamento = mutationDef(
   z.object({ idempotencyKey: idem, routingId: idStr }),
   (d) => ({ path: `/routing-requests/${enc(d.routingId)}/analyze`, method: "POST", body: {} }),
 );
-export const confirmarDirecionamento = mutation(
+export const analisarDirecionamento = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(_analisarDirecionamento.validate)
+  .handler(_analisarDirecionamento.handle as any);
+const _confirmarDirecionamento = mutationDef(
   z.object({
     idempotencyKey: idem,
     routingId: idStr,
@@ -505,3 +602,7 @@ export const confirmarDirecionamento = mutation(
     body,
   }),
 );
+export const confirmarDirecionamento = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(_confirmarDirecionamento.validate)
+  .handler(_confirmarDirecionamento.handle as any);
