@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { supabase } from "@/integrations/supabase/client";
@@ -15,6 +15,10 @@ import { Loader2, Link2, Unlink, Package, X } from "lucide-react";
 import { toast } from "sonner";
 import { computeKpis, summaryByModel, isReady, isAwaitingChip, hasTecnico, normStatus } from "@/lib/estoque-kpis";
 import { vincularPlaca } from "@/lib/estoque.functions";
+import type { TableColumn } from "@/lib/table-columns";
+import { useTableColumns } from "@/components/data-table/use-table-columns";
+import { ColumnFilterHeader } from "@/components/data-table/column-filter-header";
+import { TableToolbar } from "@/components/data-table/table-toolbar";
 
 type Row = { codigo: number; serie: string | null; equipamento: string | null; raw: any };
 
@@ -26,6 +30,26 @@ function tecName(t: unknown): string {
   const o = t as any;
   return String(o.DisplayName ?? o.Nome ?? o.Name ?? "");
 }
+
+function paramsText(x: any): string {
+  return x?.Parametros && typeof x.Parametros === "object"
+    ? Object.entries(x.Parametros).map(([k, v]) => `${k}: ${String(v).slice(0, 10)}`).join(" · ") : "";
+}
+
+const COLUMNS: TableColumn<Row>[] = [
+  { id: "codigo", label: "ID", value: (r) => r.codigo },
+  { id: "serie", label: "Série/IMEI", value: (r) => r.equipamento ?? r.serie },
+  { id: "modelo", label: "Modelo", value: (r) => r.raw?.Modelo },
+  { id: "chip", label: "Chip", value: (r) => r.raw?.Chip },
+  { id: "status", label: "Status", value: (r) => r.raw?.Status },
+  { id: "placa", label: "Placa", value: (r) => r.raw?.Placa },
+  { id: "cliente", label: "Cliente", value: (r) => r.raw?.Cliente ?? r.raw?.Empresa },
+  { id: "tecnico", label: "Técnico", value: (r) => tecName(r.raw?.Tecnico) },
+  { id: "plataforma", label: "Plataforma", value: (r) => r.raw?.Plataforma },
+  { id: "fornecedor", label: "Fornecedor", value: (r) => r.raw?.Fornecedor },
+  { id: "params", label: "Parâmetros / Obs.", value: (r) => [paramsText(r.raw), r.raw?.Observacao].filter(Boolean).join(" · ") },
+  { id: "acoes", label: "Ações", value: () => "", data: false },
+];
 
 async function fetchAll(): Promise<Row[]> {
   const out: Row[] = [];
@@ -80,8 +104,12 @@ export function EquipChipsTab() {
     });
   }, [rows, fId, fChip, fSerie, fPlaca, fStatus, fModelo, fTec]);
 
-  const pageRows = filtered.slice(page * PAGE, (page + 1) * PAGE);
-  const pages = Math.max(1, Math.ceil(filtered.length / PAGE));
+  const table = useTableColumns("estoque-equip-chips", COLUMNS, filtered);
+  const finalRows = table.filteredRows;
+  useEffect(() => { setPage(0); }, [table.filters]);
+
+  const pageRows = finalRows.slice(page * PAGE, (page + 1) * PAGE);
+  const pages = Math.max(1, Math.ceil(finalRows.length / PAGE));
   const reset = () => setPage(0);
 
   return (
@@ -143,41 +171,42 @@ export function EquipChipsTab() {
         </CardContent>
       </Card>
 
+      <TableToolbar state={table} fileName="estoque-equipamentos-chips" count={finalRows.length} />
       <Card>
         <CardContent className="p-0 overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>ID</TableHead><TableHead>Série/IMEI</TableHead><TableHead>Modelo</TableHead>
-                <TableHead>Chip</TableHead><TableHead>Status</TableHead><TableHead>Placa</TableHead>
-                <TableHead>Cliente</TableHead><TableHead>Técnico</TableHead><TableHead>Plataforma</TableHead>
-                <TableHead>Fornecedor</TableHead><TableHead>Parâmetros / Obs.</TableHead><TableHead className="text-right">Ações</TableHead>
+                {table.visibleColumns.map((c) => (
+                  <TableHead key={c.id} className={c.id === "acoes" ? "text-right" : undefined}>
+                    <ColumnFilterHeader column={c} state={table} />
+                  </TableHead>
+                ))}
               </TableRow>
             </TableHeader>
             <TableBody>
               {isLoading ? (
-                <TableRow><TableCell colSpan={12} className="text-center py-8"><Loader2 className="h-5 w-5 animate-spin mx-auto" /></TableCell></TableRow>
+                <TableRow><TableCell colSpan={table.visibleColumns.length || 1} className="text-center py-8"><Loader2 className="h-5 w-5 animate-spin mx-auto" /></TableCell></TableRow>
               ) : pageRows.length === 0 ? (
-                <TableRow><TableCell colSpan={12} className="text-center py-8 text-muted-foreground">Nenhum equipamento encontrado.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={table.visibleColumns.length || 1} className="text-center py-8 text-muted-foreground">Nenhum equipamento encontrado.</TableCell></TableRow>
               ) : pageRows.map((r) => {
                 const x = r.raw ?? {};
                 const linked = normStatus(x.Status) === "vinculado";
-                const params = x.Parametros && typeof x.Parametros === "object"
-                  ? Object.entries(x.Parametros).map(([k, v]) => `${k}: ${String(v).slice(0, 10)}`).join(" · ") : "";
-                return (
-                  <TableRow key={r.codigo}>
-                    <TableCell className="font-mono text-xs">{r.codigo}</TableCell>
-                    <TableCell className="font-mono text-xs">{r.equipamento ?? r.serie}</TableCell>
-                    <TableCell className="text-xs">{x.Modelo ?? "—"}</TableCell>
-                    <TableCell className="text-xs max-w-[180px] truncate" title={x.Chip ?? ""}>{x.Chip ?? "—"}</TableCell>
-                    <TableCell><Badge variant={linked ? "secondary" : "outline"}>{x.Status ?? "—"}</Badge></TableCell>
-                    <TableCell className="text-xs font-mono">{x.Placa ?? "—"}</TableCell>
-                    <TableCell className="text-xs max-w-[180px] truncate" title={x.Cliente ?? ""}>{x.Cliente ?? x.Empresa ?? "—"}</TableCell>
-                    <TableCell className="text-xs">{tecName(x.Tecnico) || "—"}</TableCell>
-                    <TableCell className="text-xs">{x.Plataforma ?? "—"}</TableCell>
-                    <TableCell className="text-xs">{x.Fornecedor ?? "—"}</TableCell>
-                    <TableCell className="text-xs max-w-[220px] truncate" title={`${params} ${x.Observacao ?? ""}`}>{[params, x.Observacao].filter(Boolean).join(" · ") || "—"}</TableCell>
-                    <TableCell className="text-right whitespace-nowrap">
+                const params = paramsText(x);
+                const cells: Record<string, React.ReactNode> = {
+                  codigo: <TableCell key="codigo" className="font-mono text-xs">{r.codigo}</TableCell>,
+                  serie: <TableCell key="serie" className="font-mono text-xs">{r.equipamento ?? r.serie}</TableCell>,
+                  modelo: <TableCell key="modelo" className="text-xs">{x.Modelo ?? "—"}</TableCell>,
+                  chip: <TableCell key="chip" className="text-xs max-w-[180px] truncate" title={x.Chip ?? ""}>{x.Chip ?? "—"}</TableCell>,
+                  status: <TableCell key="status"><Badge variant={linked ? "secondary" : "outline"}>{x.Status ?? "—"}</Badge></TableCell>,
+                  placa: <TableCell key="placa" className="text-xs font-mono">{x.Placa ?? "—"}</TableCell>,
+                  cliente: <TableCell key="cliente" className="text-xs max-w-[180px] truncate" title={x.Cliente ?? ""}>{x.Cliente ?? x.Empresa ?? "—"}</TableCell>,
+                  tecnico: <TableCell key="tecnico" className="text-xs">{tecName(x.Tecnico) || "—"}</TableCell>,
+                  plataforma: <TableCell key="plataforma" className="text-xs">{x.Plataforma ?? "—"}</TableCell>,
+                  fornecedor: <TableCell key="fornecedor" className="text-xs">{x.Fornecedor ?? "—"}</TableCell>,
+                  params: <TableCell key="params" className="text-xs max-w-[220px] truncate" title={`${params} ${x.Observacao ?? ""}`}>{[params, x.Observacao].filter(Boolean).join(" · ") || "—"}</TableCell>,
+                  acoes: (
+                    <TableCell key="acoes" className="text-right whitespace-nowrap">
                       {linked ? (
                         <Button size="sm" variant="outline" onClick={() => setLinkRow({ row: r, op: "desvincular" })}><Unlink className="h-3.5 w-3.5 mr-1" />Desvincular</Button>
                       ) : (
@@ -185,15 +214,16 @@ export function EquipChipsTab() {
                       )}
                       <Button size="sm" variant="ghost" className="ml-1" onClick={() => setKitRow(r)} title="Acessórios do kit"><Package className="h-4 w-4" /></Button>
                     </TableCell>
-                  </TableRow>
-                );
+                  ),
+                };
+                return <TableRow key={r.codigo}>{table.visibleColumns.map((c) => cells[c.id])}</TableRow>;
               })}
             </TableBody>
           </Table>
         </CardContent>
       </Card>
       <div className="flex items-center justify-between text-sm text-muted-foreground">
-        <span>{filtered.length} equipamentos</span>
+        <span>{finalRows.length} equipamentos</span>
         <div className="flex items-center gap-2">
           <Button size="sm" variant="outline" disabled={page === 0} onClick={() => setPage(page - 1)}>Anterior</Button>
           <span>{page + 1} / {pages}</span>

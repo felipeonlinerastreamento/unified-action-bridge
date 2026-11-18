@@ -12,6 +12,10 @@ import { RefreshCw, Loader2, Search, DatabaseZap, AlertCircle, CheckCircle2 } fr
 import { toast } from "sonner";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import type { TableColumn } from "@/lib/table-columns";
+import { useTableColumns } from "@/components/data-table/use-table-columns";
+import { ColumnFilterHeader } from "@/components/data-table/column-filter-header";
+import { TableToolbar } from "@/components/data-table/table-toolbar";
 
 interface EquipRow {
   codigo: number;
@@ -32,6 +36,21 @@ interface SyncStatus {
   items_count: number | null;
   last_error: string | null;
 }
+
+function empresaName(e: any): string {
+  return typeof e === "object" && e ? String(e.DisplayName ?? e.Nome ?? "") : "";
+}
+
+const COLUMNS: TableColumn<EquipRow>[] = [
+  { id: "codigo", label: "Código", value: (r) => r.codigo },
+  { id: "nome", label: "Nome", value: (r) => r.display_name },
+  { id: "modelo", label: "Modelo", value: (r) => r.equipamento },
+  { id: "serie", label: "Série", value: (r) => r.serie },
+  { id: "comunicacao", label: "Comunicação", value: (r) => r.comunicacao },
+  { id: "empresa", label: "Empresa", value: (r) => empresaName(r.empresa) },
+  { id: "observacao", label: "Observação", value: (r) => r.observacao, defaultHidden: true },
+  { id: "synced", label: "Sincronizado em", value: (r) => (r.synced_at ? new Date(r.synced_at).toLocaleString("pt-BR") : ""), defaultHidden: true },
+];
 
 export function GsystemEquipamentosSyncTab({ canSync }: { canSync: boolean }) {
   const qc = useQueryClient();
@@ -88,6 +107,9 @@ export function GsystemEquipamentosSyncTab({ canSync }: { canSync: boolean }) {
     );
   }, [rows, search]);
 
+  const table = useTableColumns("estoque-sincronizados", COLUMNS, filtered);
+  const finalRows = table.filteredRows;
+
   const lastSync = status?.last_success_at ? new Date(status.last_success_at) : null;
   const running = status?.last_started_at && status?.last_finished_at
     ? new Date(status.last_started_at) > new Date(status.last_finished_at)
@@ -140,7 +162,8 @@ export function GsystemEquipamentosSyncTab({ canSync }: { canSync: boolean }) {
         </CardContent>
       </Card>
 
-      <div className="relative max-w-sm">
+      <TableToolbar state={table} fileName="estoque-sincronizados" count={finalRows.length}>
+      <div className="relative max-w-sm flex-1 mr-auto">
         <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
         <Input
           placeholder="Buscar por série, nome, modelo, código..."
@@ -149,6 +172,7 @@ export function GsystemEquipamentosSyncTab({ canSync }: { canSync: boolean }) {
           onChange={(e) => setSearch(e.target.value)}
         />
       </div>
+      </TableToolbar>
 
       <Card>
         <CardContent className="p-0">
@@ -156,7 +180,7 @@ export function GsystemEquipamentosSyncTab({ canSync }: { canSync: boolean }) {
             <div className="flex items-center justify-center py-10 text-muted-foreground gap-2">
               <Loader2 className="h-4 w-4 animate-spin" /> Carregando...
             </div>
-          ) : filtered.length === 0 ? (
+          ) : finalRows.length === 0 ? (
             <div className="text-center py-10 text-sm text-muted-foreground">
               Nenhum equipamento encontrado.{" "}
               {rows.length === 0 && canSync && "Clique em \"Sincronizar agora\" para importar."}
@@ -165,37 +189,33 @@ export function GsystemEquipamentosSyncTab({ canSync }: { canSync: boolean }) {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-24">Código</TableHead>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Modelo</TableHead>
-                  <TableHead>Série</TableHead>
-                  <TableHead>Comunicação</TableHead>
-                  <TableHead>Empresa</TableHead>
+                  {table.visibleColumns.map((c) => (
+                    <TableHead key={c.id} className={c.id === "codigo" ? "w-24" : undefined}>
+                      <ColumnFilterHeader column={c} state={table} />
+                    </TableHead>
+                  ))}
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filtered.slice(0, 500).map((r) => (
-                  <TableRow key={r.codigo}>
-                    <TableCell className="font-mono text-xs">{r.codigo}</TableCell>
-                    <TableCell className="font-medium">{r.display_name ?? "—"}</TableCell>
-                    <TableCell>{r.equipamento ?? "—"}</TableCell>
-                    <TableCell className="font-mono text-xs">{r.serie ?? "—"}</TableCell>
-                    <TableCell>
-                      {r.comunicacao ? <Badge variant="outline">{r.comunicacao}</Badge> : "—"}
-                    </TableCell>
-                    <TableCell className="text-xs text-muted-foreground">
-                      {typeof r.empresa === "object" && r.empresa
-                        ? (r.empresa.DisplayName ?? r.empresa.Nome ?? "—")
-                        : "—"}
-                    </TableCell>
-                  </TableRow>
-                ))}
+                {finalRows.slice(0, 500).map((r) => {
+                  const cells: Record<string, React.ReactNode> = {
+                    codigo: <TableCell key="codigo" className="font-mono text-xs">{r.codigo}</TableCell>,
+                    nome: <TableCell key="nome" className="font-medium">{r.display_name ?? "—"}</TableCell>,
+                    modelo: <TableCell key="modelo">{r.equipamento ?? "—"}</TableCell>,
+                    serie: <TableCell key="serie" className="font-mono text-xs">{r.serie ?? "—"}</TableCell>,
+                    comunicacao: <TableCell key="comunicacao">{r.comunicacao ? <Badge variant="outline">{r.comunicacao}</Badge> : "—"}</TableCell>,
+                    empresa: <TableCell key="empresa" className="text-xs text-muted-foreground">{empresaName(r.empresa) || "—"}</TableCell>,
+                    observacao: <TableCell key="observacao" className="text-xs max-w-[220px] truncate" title={r.observacao ?? ""}>{r.observacao ?? "—"}</TableCell>,
+                    synced: <TableCell key="synced" className="text-xs whitespace-nowrap">{r.synced_at ? new Date(r.synced_at).toLocaleString("pt-BR") : "—"}</TableCell>,
+                  };
+                  return <TableRow key={r.codigo}>{table.visibleColumns.map((c) => cells[c.id])}</TableRow>;
+                })}
               </TableBody>
             </Table>
           )}
-          {filtered.length > 500 && (
+          {finalRows.length > 500 && (
             <div className="px-4 py-2 text-xs text-muted-foreground border-t">
-              Exibindo 500 de {filtered.length} resultados — refine a busca.
+              Exibindo 500 de {finalRows.length} resultados na tela — a exportação para Excel inclui todos.
             </div>
           )}
         </CardContent>

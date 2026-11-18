@@ -21,6 +21,10 @@ import { EquipChipsTab } from "@/components/estoque/equip-chips-tab";
 import { AccessoryCatalogTab } from "@/components/estoque/accessory-catalog-tab";
 import { VinculosHistoricoTab } from "@/components/estoque/vinculos-historico-tab";
 import { History, Boxes } from "lucide-react";
+import type { TableColumn } from "@/lib/table-columns";
+import { useTableColumns } from "@/components/data-table/use-table-columns";
+import { ColumnFilterHeader } from "@/components/data-table/column-filter-header";
+import { TableToolbar } from "@/components/data-table/table-toolbar";
 
 export const Route = createFileRoute("/estoque")({
   component: EstoquePage,
@@ -514,61 +518,7 @@ function EstoquePage() {
                 </CardContent>
               </Card>
             ) : (
-              <Card>
-                <CardContent className="p-0">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Placa</TableHead>
-                        <TableHead>Descrição</TableHead>
-                        <TableHead>Modelo/Tipo</TableHead>
-                        <TableHead>Status</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {veiculosLoading ? (
-                        <TableRow>
-                          <TableCell colSpan={4} className="text-center py-8">
-                            <Loader2 className="h-5 w-5 animate-spin mx-auto" />
-                          </TableCell>
-                        </TableRow>
-                      ) : filteredVeiculos.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
-                            <Car className="h-8 w-8 mx-auto mb-2 opacity-50" />
-                            Nenhum veículo encontrado.
-                          </TableCell>
-                        </TableRow>
-                      ) : (
-                        filteredVeiculos.map((v: any, i: number) => {
-                          const placa = v.Placa || v.placa || "—";
-                          const desc = v.Descricao || v.descricao || v.Nome || v.nome || "—";
-                          const modelo = v.Modelo || v.modelo || v.TipoVeiculo || v.tipoVeiculo || "—";
-                          const status = v.Status || v.status;
-                          const isActive = status === "Ativo" || status === 1 || status === "1";
-                          return (
-                            <TableRow key={v.Key || v.key || v.Id || v.id || i}>
-                              <TableCell className="font-mono font-medium">{placa}</TableCell>
-                              <TableCell>{desc}</TableCell>
-                              <TableCell className="text-sm">{modelo}</TableCell>
-                              <TableCell>
-                                <Badge
-                                  variant={isActive ? "default" : "secondary"}
-                                  className={isActive
-                                    ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100"
-                                    : "bg-muted text-muted-foreground"}
-                                >
-                                  {isActive ? "Ativo" : "Inativo"}
-                                </Badge>
-                              </TableCell>
-                            </TableRow>
-                          );
-                        })
-                      )}
-                    </TableBody>
-                  </Table>
-                </CardContent>
-              </Card>
+              <VeiculosTable rows={filteredVeiculos} loading={veiculosLoading} />
             )}
           </TabsContent>
 
@@ -623,6 +573,10 @@ function CadastrosTable({
   source: string | null;
   kind: string;
 }) {
+  const columns = useMemo(() => cadastroColumns(identifierLabel), [identifierLabel]);
+  const table = useTableColumns(`estoque-${kind}`, columns, items);
+  const rows = table.filteredRows;
+
   if (error) {
     return (
       <Card>
@@ -697,54 +651,148 @@ function CadastrosTable({
           </Badge>
         </div>
       )}
-      <CardContent className="p-0">
+      <div className="p-3 border-b">
+        <TableToolbar state={table} fileName={`estoque-${kind}s`} count={rows.length} />
+      </div>
+      <CardContent className="p-0 overflow-x-auto">
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>{identifierLabel}</TableHead>
-              <TableHead>Descrição</TableHead>
-              <TableHead>Modelo</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Vínculo</TableHead>
+              {table.visibleColumns.map((c) => (
+                <TableHead key={c.id}><ColumnFilterHeader column={c} state={table} /></TableHead>
+              ))}
             </TableRow>
           </TableHeader>
           <TableBody>
             {loading ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8">
+                <TableCell colSpan={table.visibleColumns.length || 1} className="text-center py-8">
                   <Loader2 className="h-5 w-5 animate-spin mx-auto" />
                 </TableCell>
               </TableRow>
-            ) : items.length === 0 ? (
+            ) : rows.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                <TableCell colSpan={table.visibleColumns.length || 1} className="text-center py-8 text-muted-foreground">
                   {icon}
                   Nenhum item encontrado com os filtros atuais.
                 </TableCell>
               </TableRow>
             ) : (
-              items.map((it) => {
+              rows.map((it) => {
                 const cls = classifyStatus(it.status);
                 const badgeClass =
                   cls === "disponivel" ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100" :
                   cls === "vinculado" ? "bg-amber-100 text-amber-700 hover:bg-amber-100" :
                   cls === "inativo" ? "bg-muted text-muted-foreground" :
                   "bg-secondary text-secondary-foreground";
-                return (
-                  <TableRow key={it.key}>
-                    <TableCell className="font-mono text-sm">{it.identificador || it.key || "—"}</TableCell>
-                    <TableCell className="font-medium">{it.descricao || "—"}</TableCell>
-                    <TableCell className="text-sm">{it.modelo || "—"}</TableCell>
-                    <TableCell>
-                      <Badge variant="secondary" className={badgeClass}>
-                        {it.status || "—"}
-                      </Badge>
+                const cells: Record<string, React.ReactNode> = {
+                  identificador: <TableCell key="identificador" className="font-mono text-sm">{it.identificador || it.key || "—"}</TableCell>,
+                  descricao: <TableCell key="descricao" className="font-medium">{it.descricao || "—"}</TableCell>,
+                  modelo: <TableCell key="modelo" className="text-sm">{it.modelo || "—"}</TableCell>,
+                  status: (
+                    <TableCell key="status">
+                      <Badge variant="secondary" className={badgeClass}>{it.status || "—"}</Badge>
                     </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {typeof it.vinculo === "string" ? it.vinculo : it.vinculo ? JSON.stringify(it.vinculo) : "—"}
-                    </TableCell>
-                  </TableRow>
-                );
+                  ),
+                  vinculo: <TableCell key="vinculo" className="text-sm text-muted-foreground">{vinculoText(it.vinculo) || "—"}</TableCell>,
+                  key: <TableCell key="key" className="font-mono text-xs">{it.key || "—"}</TableCell>,
+                };
+                return <TableRow key={it.key}>{table.visibleColumns.map((c) => cells[c.id])}</TableRow>;
+              })
+            )}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
+
+function vinculoText(v: unknown): string {
+  return typeof v === "string" ? v : v ? JSON.stringify(v) : "";
+}
+
+function cadastroColumns(identifierLabel: string): TableColumn<CadastroItem>[] {
+  return [
+    { id: "identificador", label: identifierLabel, value: (it) => it.identificador || it.key },
+    { id: "descricao", label: "Descrição", value: (it) => it.descricao },
+    { id: "modelo", label: "Modelo", value: (it) => it.modelo },
+    { id: "status", label: "Status", value: (it) => it.status },
+    { id: "vinculo", label: "Vínculo", value: (it) => vinculoText(it.vinculo) },
+    { id: "key", label: "Código interno", value: (it) => it.key, defaultHidden: true },
+  ];
+}
+
+function veiculoActive(v: any): boolean {
+  const status = v.Status ?? v.status;
+  return status === "Ativo" || status === 1 || status === "1";
+}
+
+const VEICULO_COLUMNS: TableColumn<any>[] = [
+  { id: "placa", label: "Placa", value: (v) => v.Placa || v.placa },
+  { id: "descricao", label: "Descrição", value: (v) => v.Descricao || v.descricao || v.Nome || v.nome },
+  { id: "modelo", label: "Modelo/Tipo", value: (v) => v.Modelo || v.modelo || v.TipoVeiculo || v.tipoVeiculo },
+  { id: "status", label: "Status", value: (v) => (veiculoActive(v) ? "Ativo" : "Inativo") },
+  { id: "chassi", label: "Chassi", value: (v) => v.Chassi || v.chassi, defaultHidden: true },
+  { id: "cliente", label: "Cliente", value: (v) => { const c = v.Cliente ?? v.Empresa ?? v.cliente; return typeof c === "object" && c ? (c.DisplayName ?? c.Nome ?? "") : c; }, defaultHidden: true },
+];
+
+function VeiculosTable({ rows: input, loading }: { rows: any[]; loading: boolean }) {
+  const table = useTableColumns("estoque-veiculos", VEICULO_COLUMNS, input);
+  const rows = table.filteredRows;
+  return (
+    <Card>
+      <div className="p-3 border-b">
+        <TableToolbar state={table} fileName="estoque-veiculos" count={rows.length} />
+      </div>
+      <CardContent className="p-0 overflow-x-auto">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              {table.visibleColumns.map((c) => (
+                <TableHead key={c.id}><ColumnFilterHeader column={c} state={table} /></TableHead>
+              ))}
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {loading ? (
+              <TableRow>
+                <TableCell colSpan={table.visibleColumns.length || 1} className="text-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin mx-auto" />
+                </TableCell>
+              </TableRow>
+            ) : rows.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={table.visibleColumns.length || 1} className="text-center py-8 text-muted-foreground">
+                  <Car className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  Nenhum veículo encontrado.
+                </TableCell>
+              </TableRow>
+            ) : (
+              rows.map((v: any, i: number) => {
+                const isActive = veiculoActive(v);
+                const cells: Record<string, React.ReactNode> = {};
+                for (const c of table.visibleColumns) {
+                  if (c.id === "status") {
+                    cells.status = (
+                      <TableCell key="status">
+                        <Badge
+                          variant={isActive ? "default" : "secondary"}
+                          className={isActive ? "bg-emerald-100 text-emerald-700 hover:bg-emerald-100" : "bg-muted text-muted-foreground"}
+                        >
+                          {isActive ? "Ativo" : "Inativo"}
+                        </Badge>
+                      </TableCell>
+                    );
+                  } else {
+                    const val = c.value(v);
+                    cells[c.id] = (
+                      <TableCell key={c.id} className={c.id === "placa" ? "font-mono font-medium" : "text-sm"}>
+                        {val === null || val === undefined || val === "" ? "—" : String(val)}
+                      </TableCell>
+                    );
+                  }
+                }
+                return <TableRow key={v.Key || v.key || v.Id || v.id || i}>{table.visibleColumns.map((c) => cells[c.id])}</TableRow>;
               })
             )}
           </TableBody>
