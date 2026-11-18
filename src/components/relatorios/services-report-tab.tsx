@@ -78,8 +78,7 @@ export function ServicesReportTab({ dateFrom, dateTo }: Props) {
       const { data, error } = await supabase
         .from("service_tickets")
         .select("id, category, plate, notes, status, created_at, closed_at, contact_name, companies:company_id(name)")
-        .gte("created_at", fromIso)
-        .lte("created_at", toIso)
+        .or(`and(created_at.gte.${fromIso},created_at.lte.${toIso}),and(closed_at.gte.${fromIso},closed_at.lte.${toIso})`)
         .order("created_at", { ascending: false })
         .limit(5000);
       if (error) throw error;
@@ -114,11 +113,10 @@ export function ServicesReportTab({ dateFrom, dateTo }: Props) {
     return Array.from(set).sort((a, b) => a.localeCompare(b, "pt-BR"));
   }, [rows]);
 
-  const filtered = useMemo(() => {
+  const baseFiltered = useMemo(() => {
     const term = search.trim().toLowerCase();
     return rows.filter((r) => {
       if (tipo !== "todos" && r.subtipo !== tipo) return false;
-      if (status !== "todos" && r.status !== status) return false;
       if (cliente !== "todos" && r.cliente !== cliente) return false;
       if (cobranca !== "todas") {
         // Filtro de cobrança só faz sentido em manutenções com garantia informada
@@ -134,7 +132,18 @@ export function ServicesReportTab({ dateFrom, dateTo }: Props) {
       }
       return true;
     });
-  }, [rows, tipo, status, cliente, cobranca, search]);
+  }, [rows, tipo, cliente, cobranca, search]);
+
+  const statusCounts = useMemo(() => {
+    const c = { todos: baseFiltered.length, aberto: 0, em_andamento: 0, finalizado: 0 } as Record<string, number>;
+    for (const r of baseFiltered) if (r.status in c && r.status !== "todos") c[r.status]++;
+    return c;
+  }, [baseFiltered]);
+
+  const filtered = useMemo(
+    () => (status === "todos" ? baseFiltered : baseFiltered.filter((r) => r.status === status)),
+    [baseFiltered, status],
+  );
 
   // Volta para a primeira página sempre que o filtro muda
   useEffect(() => {
@@ -396,7 +405,7 @@ export function ServicesReportTab({ dateFrom, dateTo }: Props) {
                     status === s ? "bg-primary text-primary-foreground border-primary" : "bg-background hover:bg-muted"
                   }`}
                 >
-                  {s === "todos" ? "Todos" : s === "em_andamento" ? "Em andamento" : s === "aberto" ? "Aberto" : "Finalizado"}
+                  {s === "todos" ? "Todos" : s === "em_andamento" ? "Em andamento" : s === "aberto" ? "Aberto" : "Finalizado"} ({statusCounts[s] ?? 0})
                 </button>
               ))}
             </div>
@@ -466,6 +475,13 @@ export function ServicesReportTab({ dateFrom, dateTo }: Props) {
         <ReportKpiCard title="Instalações" value={kpis.instalacoes} icon={PackagePlus} />
         <ReportKpiCard title="Retiradas" value={kpis.retiradas} icon={PackageMinus} />
         <ReportKpiCard title="Manutenções" value={kpis.manutencoes} icon={Wrench} subtitle={`${placasRecorrentes} placa(s) com 2+`} />
+      </div>
+
+      {/* KPIs de status */}
+      <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
+        <ReportKpiCard title="Abertos" value={statusCounts.aberto} icon={AlertTriangle} subtitle="no período" />
+        <ReportKpiCard title="Em andamento" value={statusCounts.em_andamento} icon={RotateCcw} subtitle="no período" />
+        <ReportKpiCard title="Finalizados" value={statusCounts.finalizado} icon={ShieldCheck} subtitle="no período" />
       </div>
 
       {/* KPIs de taxa de retorno e garantia */}
