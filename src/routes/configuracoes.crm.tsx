@@ -18,6 +18,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { listEmailChannels } from "@/lib/email-channels.functions";
 import { PROPOSAL_PLACEHOLDERS } from "@/lib/crm-proposal";
 import defaultLogo from "@/assets/logo-online-rastreamento.png";
+import { TechnicalTermSettings } from "@/components/crm/technical-term-settings";
 
 export const Route = createFileRoute("/configuracoes/crm")({
   head: () => ({
@@ -74,7 +75,7 @@ function CrmConfigPage() {
             Defina como fica o documento da proposta, as mensagens de WhatsApp e e-mail e o que acontece no pipeline quando o cliente aceita ou recusa.
           </p>
         </div>
-        {canManage ? <ProposalSettingsForm /> : (
+        {canManage ? <><ProposalSettingsForm /><TechnicalTermSettings /></> : (
           <Card><CardContent className="p-6 flex items-center gap-2 text-sm text-muted-foreground"><Lock className="h-4 w-4" /> Apenas administradores e gestores podem alterar estes parâmetros.</CardContent></Card>
         )}
       </div>

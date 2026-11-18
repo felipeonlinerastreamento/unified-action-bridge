@@ -4,6 +4,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { CheckCircle2, Loader2, MessageCircle, XCircle } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -45,6 +46,9 @@ function addMinutes(time: string, mins: number) {
 }
 
 export function NovoAgendamentoDialog({ open, onClose, onCreated }: Props) {
+  const { hasRole } = useAuth();
+  // Sem termo aceito, só admin/gestor abre OS direto (contingência). O servidor confere de novo.
+  const blocked = !hasRole("admin") && !hasRole("gestor");
   const searchClients = useServerFn(buscarClientes);
   const loadServiceTypes = useServerFn(tiposDeServicoDoCliente);
   const loadTechnicians = useServerFn(listarTecnicos);
@@ -204,7 +208,15 @@ export function NovoAgendamentoDialog({ open, onClose, onCreated }: Props) {
           <DialogTitle>Nova OS</DialogTitle>
         </DialogHeader>
 
-        {thirdResult ? (
+        {blocked ? (
+          <div className="space-y-3 text-sm">
+            <p>
+              OS de instalação, manutenção ou retirada só pode ser aberta após o aceite do termo pelo responsável da frota.
+              Gere o termo em <strong>CRM &gt; Serviços Técnicos</strong> e, depois do aceite, clique em <strong>Enviar para agendamento</strong>.
+            </p>
+            <DialogFooter><Button variant="outline" onClick={onClose}>Fechar</Button></DialogFooter>
+          </div>
+        ) : thirdResult ? (
           <div className="space-y-3 text-sm">
             <p>OS criada para o técnico terceiro. Envie o link a ele — a mensagem não é enviada automaticamente.</p>
             <Button asChild>

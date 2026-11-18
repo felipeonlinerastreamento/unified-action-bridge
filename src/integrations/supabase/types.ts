@@ -5423,6 +5423,213 @@ export type Database = {
           },
         ]
       }
+      technical_service_terms: {
+        Row: {
+          address: string | null
+          cancelled_at: string | null
+          cancelled_by: string | null
+          checklist: Json
+          client_name: string | null
+          company_id: string | null
+          cpf_verified_at: string | null
+          created_at: string
+          created_by: string
+          description: string | null
+          equipment_id: string | null
+          first_viewed_at: string | null
+          id: string
+          last_viewed_at: string | null
+          plate: string | null
+          responded_at: string | null
+          responder_cpf: string | null
+          responder_ip: string | null
+          responder_name: string | null
+          responder_note: string | null
+          responder_user_agent: string | null
+          responsible_email: string | null
+          responsible_name: string
+          responsible_phone: string | null
+          schedule_kind: string | null
+          schedule_reference: string | null
+          scheduled_at: string | null
+          scheduled_by: string | null
+          send_errors: Json
+          sent_at: string | null
+          sent_channels: string[]
+          seq: number
+          service_type: string
+          status: string
+          term_text: string
+          term_title: string
+          ticket_id: string | null
+          token: string
+          updated_at: string
+          view_count: number
+          viewer_cpf: string | null
+        }
+        Insert: {
+          address?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          checklist?: Json
+          client_name?: string | null
+          company_id?: string | null
+          cpf_verified_at?: string | null
+          created_at?: string
+          created_by: string
+          description?: string | null
+          equipment_id?: string | null
+          first_viewed_at?: string | null
+          id?: string
+          last_viewed_at?: string | null
+          plate?: string | null
+          responded_at?: string | null
+          responder_cpf?: string | null
+          responder_ip?: string | null
+          responder_name?: string | null
+          responder_note?: string | null
+          responder_user_agent?: string | null
+          responsible_email?: string | null
+          responsible_name: string
+          responsible_phone?: string | null
+          schedule_kind?: string | null
+          schedule_reference?: string | null
+          scheduled_at?: string | null
+          scheduled_by?: string | null
+          send_errors?: Json
+          sent_at?: string | null
+          sent_channels?: string[]
+          seq?: never
+          service_type: string
+          status?: string
+          term_text: string
+          term_title: string
+          ticket_id?: string | null
+          token?: string
+          updated_at?: string
+          view_count?: number
+          viewer_cpf?: string | null
+        }
+        Update: {
+          address?: string | null
+          cancelled_at?: string | null
+          cancelled_by?: string | null
+          checklist?: Json
+          client_name?: string | null
+          company_id?: string | null
+          cpf_verified_at?: string | null
+          created_at?: string
+          created_by?: string
+          description?: string | null
+          equipment_id?: string | null
+          first_viewed_at?: string | null
+          id?: string
+          last_viewed_at?: string | null
+          plate?: string | null
+          responded_at?: string | null
+          responder_cpf?: string | null
+          responder_ip?: string | null
+          responder_name?: string | null
+          responder_note?: string | null
+          responder_user_agent?: string | null
+          responsible_email?: string | null
+          responsible_name?: string
+          responsible_phone?: string | null
+          schedule_kind?: string | null
+          schedule_reference?: string | null
+          scheduled_at?: string | null
+          scheduled_by?: string | null
+          send_errors?: Json
+          sent_at?: string | null
+          sent_channels?: string[]
+          seq?: never
+          service_type?: string
+          status?: string
+          term_text?: string
+          term_title?: string
+          ticket_id?: string | null
+          token?: string
+          updated_at?: string
+          view_count?: number
+          viewer_cpf?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "technical_service_terms_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "technical_service_terms_ticket_id_fkey"
+            columns: ["ticket_id"]
+            isOneToOne: false
+            referencedRelation: "service_tickets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      technical_term_settings: {
+        Row: {
+          email_subject: string
+          email_template: string
+          id: string
+          instalacao_checklist: Json
+          instalacao_text: string
+          instalacao_title: string
+          manutencao_checklist: Json
+          manutencao_text: string
+          manutencao_title: string
+          notify_creator: boolean
+          require_reject_reason: boolean
+          retirada_checklist: Json
+          retirada_text: string
+          retirada_title: string
+          updated_at: string
+          updated_by: string | null
+          whatsapp_template: string
+        }
+        Insert: {
+          email_subject?: string
+          email_template?: string
+          id?: string
+          instalacao_checklist?: Json
+          instalacao_text?: string
+          instalacao_title?: string
+          manutencao_checklist?: Json
+          manutencao_text?: string
+          manutencao_title?: string
+          notify_creator?: boolean
+          require_reject_reason?: boolean
+          retirada_checklist?: Json
+          retirada_text?: string
+          retirada_title?: string
+          updated_at?: string
+          updated_by?: string | null
+          whatsapp_template?: string
+        }
+        Update: {
+          email_subject?: string
+          email_template?: string
+          id?: string
+          instalacao_checklist?: Json
+          instalacao_text?: string
+          instalacao_title?: string
+          manutencao_checklist?: Json
+          manutencao_text?: string
+          manutencao_title?: string
+          notify_creator?: boolean
+          require_reject_reason?: boolean
+          retirada_checklist?: Json
+          retirada_text?: string
+          retirada_title?: string
+          updated_at?: string
+          updated_by?: string | null
+          whatsapp_template?: string
+        }
+        Relationships: []
+      }
       technician_notes: {
         Row: {
           created_at: string
@@ -5781,6 +5988,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      ticket_categories: {
+        Row: {
+          created_at: string
+          gsystem_key: string | null
+          id: string
+          is_active: boolean
+          key: string
+          label: string
+          last_synced_at: string | null
+          position: number
+          source: string
+          technical_term_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          gsystem_key?: string | null
+          id?: string
+          is_active?: boolean
+          key: string
+          label: string
+          last_synced_at?: string | null
+          position?: number
+          source?: string
+          technical_term_type?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          gsystem_key?: string | null
+          id?: string
+          is_active?: boolean
+          key?: string
+          label?: string
+          last_synced_at?: string | null
+          position?: number
+          source?: string
+          technical_term_type?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       ticket_comments: {
         Row: {

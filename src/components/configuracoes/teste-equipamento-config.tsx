@@ -16,7 +16,7 @@ import {
 } from "@/hooks/use-teste-equipamento-settings";
 import { toast } from "sonner";
 import { Loader2, Wrench, AlertTriangle } from "lucide-react";
-import { getTiposPendencia } from "@/lib/gsystem-api.functions";
+import { useTicketCategories } from "@/hooks/use-ticket-categories";
 
 export function TesteEquipamentoConfig() {
   const { hasRole, session } = useAuth();
@@ -35,14 +35,7 @@ export function TesteEquipamentoConfig() {
   };
 
   // GSystem categories
-  const { data: tiposPendencia = [] } = useQuery({
-    queryKey: ["tipos-pendencia-teste-equip"],
-    queryFn: async () => {
-      const result = await getTiposPendencia(await getAuthHeaders());
-      return Array.isArray(result) ? result : [];
-    },
-    staleTime: 60_000,
-  });
+  const { data: tiposPendencia = [] } = useTicketCategories();
 
   // Local active sectors
   const { data: localSectors = [] } = useQuery({

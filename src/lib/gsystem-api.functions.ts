@@ -1105,7 +1105,13 @@ export const createPendenciaFromAtendimento = createServerFn({ method: "POST" })
       };
 
       // TipoPendencia is required by GSystem API - default to "186" (Assuntos Diversos) if not provided
-      pendenciaBody.TipoPendencia = data.tipoPendencia || "186";
+      // Categorias locais (ex.: "Serviço Técnico") usam o código GSystem mapeado no nosso catálogo.
+      let tipo = data.tipoPendencia || "";
+      if (tipo && !/^\d+$/.test(tipo)) {
+        const { data: cat } = await supabase.from("ticket_categories").select("gsystem_key").eq("key", tipo).maybeSingle();
+        tipo = cat?.gsystem_key && /^\d+$/.test(cat.gsystem_key) ? cat.gsystem_key : "";
+      }
+      pendenciaBody.TipoPendencia = tipo || "186";
 
       if (data.status) {
         pendenciaBody.Situacao = data.status;

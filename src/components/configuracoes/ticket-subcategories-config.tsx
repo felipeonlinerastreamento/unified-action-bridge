@@ -2,7 +2,7 @@ import { useState, useMemo, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { getTiposPendencia } from "@/lib/gsystem-api.functions";
+import { useTicketCategories } from "@/hooks/use-ticket-categories";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -80,15 +80,7 @@ export function TicketSubcategoriesConfig() {
     return { headers: { authorization: `Bearer ${session?.access_token}` } };
   };
 
-  const { data: tiposPendencia = [] } = useQuery({
-    queryKey: ["tipos-pendencia-subcategories"],
-    queryFn: async () => {
-      const result: any = await getTiposPendencia(await getAuthHeaders());
-      return Array.isArray(result) ? result : [];
-    },
-    enabled: isAuthenticated,
-    staleTime: 5 * 60_000,
-  });
+  const { data: tiposPendencia = [] } = useTicketCategories({ enabled: isAuthenticated });
 
   const categoryByKey = useMemo(() => {
     const map = new Map<string, string>();

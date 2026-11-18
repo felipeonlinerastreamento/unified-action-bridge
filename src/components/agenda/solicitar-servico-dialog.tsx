@@ -6,7 +6,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { listarAtividades } from "@/lib/seu-instalador.functions";
 import { asList } from "./shared";
 import { SolicitacoesDisponibilidade } from "./solicitacoes-disponibilidade";
-import { SolicitacoesRegistrar, type Prefill } from "./solicitacoes-registrar";
+import { SolicitacoesRegistrar, type Prefill, type TermPrefill } from "./solicitacoes-registrar";
+import { useAuth } from "@/hooks/use-auth";
 import { SolicitacoesDirecionar } from "./solicitacoes-direcionar";
 
 type TabKey = "disponibilidade" | "registrar" | "direcionar";
@@ -24,6 +25,8 @@ interface Props {
   defaultDate: string;
   onCreated: () => void;
   onOpenOs: (activity: any) => void;
+  /** Termo aceito que libera e pré-preenche a solicitação. */
+  term?: TermPrefill | null;
 }
 
 export function SolicitarServicoDialog({
@@ -33,9 +36,14 @@ export function SolicitarServicoDialog({
   defaultDate,
   onCreated,
   onOpenOs,
+  term,
 }: Props) {
+  const { hasRole } = useAuth();
+  const isManager = hasRole("admin") || hasRole("gestor");
+  // Direcionamento por região não leva termo: só gestores (contingência).
+  const tabs = TABS.filter((t) => t.key !== "direcionar" || (isManager && !term));
   const fetchAtividades = useServerFn(listarAtividades);
-  const [tab, setTab] = useState<TabKey>("disponibilidade");
+  const [tab, setTab] = useState<TabKey>(term ? "registrar" : "disponibilidade");
   const [date, setDate] = useState(defaultDate);
   const [duration, setDuration] = useState(60);
   const [prefill, setPrefill] = useState<Prefill>(null);
@@ -58,7 +66,7 @@ export function SolicitarServicoDialog({
         </DialogHeader>
 
         <div className="flex flex-wrap gap-1 rounded-lg bg-muted/60 p-1">
-          {TABS.map((t) => {
+          {tabs.map((t) => {
             const Icon = t.icon;
             const active = tab === t.key;
             return (
@@ -115,10 +123,11 @@ export function SolicitarServicoDialog({
               onConsumePrefill={consumePrefill}
               onCreated={onCreated}
               onOpenOs={onOpenOs}
+              term={term}
             />
           )}
 
-          {tab === "direcionar" && (
+          {tab === "direcionar" && isManager && !term && (
             <SolicitacoesDirecionar
               technicians={technicians}
               defaultDate={date}

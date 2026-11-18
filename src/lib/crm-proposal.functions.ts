@@ -23,12 +23,12 @@ import {
 
 type Admin = Awaited<typeof import("@/integrations/supabase/client.server")>["supabaseAdmin"];
 
-function escapeHtml(s: string) {
+export function escapeHtml(s: string) {
   return s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 }
 
 /** Lê os parâmetros da proposta; cria a linha padrão na primeira vez. */
-async function loadSettings(admin: Admin) {
+export async function loadSettings(admin: Admin) {
   const { data } = await admin.from("crm_proposal_settings").select("*").eq("id", "default").maybeSingle();
   if (data) return data;
   await admin.from("crm_proposal_settings").upsert({ id: "default" }, { onConflict: "id", ignoreDuplicates: true });
@@ -37,7 +37,7 @@ async function loadSettings(admin: Admin) {
   return created;
 }
 
-async function loadSignature(admin: Admin, userId: string) {
+export async function loadSignature(admin: Admin, userId: string) {
   const { data: profile } = await admin.from("profiles")
     .select("name, signature_image_url").eq("user_id", userId).maybeSingle();
   const images: { name: string; contentType: string; base64: string; cid: string }[] = [];
@@ -250,7 +250,7 @@ export const cancelProposalLink = createServerFn({ method: "POST" })
 // o visitante informa um CPF válido (registrado no link).
 const tokenInput = (d: unknown) => z.object({ token: z.string().uuid() }).parse(d);
 
-function brandingFrom(s: Awaited<ReturnType<typeof loadSettings>>) {
+export function brandingFrom(s: Awaited<ReturnType<typeof loadSettings>>) {
   return {
     companyName: s.company_name,
     cnpj: s.company_cnpj,

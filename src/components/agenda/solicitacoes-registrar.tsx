@@ -16,8 +16,21 @@ import {
   tiposDeServicoDoCliente,
 } from "@/lib/seu-instalador.functions";
 import { asList, errorMessage, minutesOfDaySP, pick } from "./shared";
+import { useAuth } from "@/hooks/use-auth";
 
 export type Prefill = { technicianId?: string; time?: string; region?: string } | null;
+
+/** Dados do termo técnico aceito que liberam e pré-preenchem a solicitação. */
+export type TermPrefill = {
+  id: string;
+  clientName?: string | null;
+  plate?: string | null;
+  address?: string | null;
+  contactName?: string | null;
+  contactPhone?: string | null;
+  contactEmail?: string | null;
+  description?: string | null;
+};
 
 interface Props {
   date: string;
@@ -28,6 +41,8 @@ interface Props {
   onConsumePrefill: () => void;
   onCreated: () => void;
   onOpenOs: (activity: any) => void;
+  /** Termo aceito (CRM > Serviços Técnicos). Sem ele, só admin/gestor registra. */
+  term?: TermPrefill | null;
 }
 
 function techIdOf(a: any): string {
@@ -44,7 +59,11 @@ export function SolicitacoesRegistrar({
   onConsumePrefill,
   onCreated,
   onOpenOs,
+  term,
 }: Props) {
+  const { hasRole } = useAuth();
+  const isManager = hasRole("admin") || hasRole("gestor");
+  const blocked = !term && !isManager;
   const searchClients = useServerFn(buscarClientes);
   const loadServiceTypes = useServerFn(tiposDeServicoDoCliente);
   const createRequest = useServerFn(criarSolicitacao);
@@ -67,6 +86,18 @@ export function SolicitacoesRegistrar({
   const [description, setDescription] = useState("");
   const [created, setCreated] = useState<any | null>(null);
   const idempotencyKey = useRef<string>(crypto.randomUUID());
+
+  // Pré-preenche com o que o termo já reconheceu; o resto o operador digita.
+  useEffect(() => {
+    if (!term) return;
+    setContactName(term.contactName || "");
+    setContactPhone(term.contactPhone || "");
+    setContactEmail(term.contactEmail || "");
+    setIdentifier(term.plate || "");
+    setAddress(term.address || "");
+    setDescription(term.description || "");
+    if (term.clientName) setSearch(term.clientName);
+  }, [term]);
 
   useEffect(() => {
     const t = setTimeout(() => setDebounced(search.trim()), 400);
@@ -131,6 +162,7 @@ export function SolicitacoesRegistrar({
           contactEmail: contactEmail.trim() || undefined,
           notifyContact,
           identifier: identifier || undefined,
+          technicalTermId: term?.id,
         },
       }),
     onSuccess: (res: any) => {
@@ -145,7 +177,7 @@ export function SolicitacoesRegistrar({
     onError: (e) => toast.error(errorMessage(e)),
   });
 
-  const canSubmit = clientId && serviceTypeId && date && time && (noAddress || address.trim()) && contactName.trim() && contactPhone.replace(/\D/g, "").length >= 8;
+  const canSubmit = !blocked && clientId && serviceTypeId && date && time && (noAddress || address.trim()) && contactName.trim() && contactPhone.replace(/\D/g, "").length >= 8;
 
   const clearClient = () => {
     setClientId("");
@@ -161,6 +193,21 @@ export function SolicitacoesRegistrar({
         <CardDescription>O agendamento é criado direto no Seu Instalador.</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {blocked && (
+          <div className="flex items-start gap-2 rounded-md border border-destructive/40 bg-destructive/10 p-3 text-sm">
+            <AlertTriangle className="mt-0.5 h-4 w-4 text-destructive" />
+            <p>
+              Solicitações de instalação, manutenção ou retirada só podem ser abertas após o aceite do termo pelo responsável da frota.
+              Use <strong>CRM &gt; Serviços Técnicos</strong> e clique em <strong>Enviar para agendamento</strong> no termo aceito.
+            </p>
+          </div>
+        )}
+        {term && (
+          <div className="flex items-start gap-2 rounded-md border bg-muted/40 p-3 text-sm">
+            <CheckCircle2 className="mt-0.5 h-4 w-4 text-primary" />
+            <p>Termo aceito pelo responsável da frota. Confira os dados e selecione o cliente no Seu Instalador.</p>
+          </div>
+        )}
         <div className="space-y-2">
           <Label>Cliente {clientName && <span className="text-primary">· {clientName}</span>}</Label>
           <div className="relative">

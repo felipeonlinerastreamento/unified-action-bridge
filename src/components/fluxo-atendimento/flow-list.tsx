@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import { getTiposPendencia } from "@/lib/gsystem-api.functions";
+import { useTicketCategories } from "@/hooks/use-ticket-categories";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -59,17 +59,7 @@ export function FlowList({ onSelectFlow, selectedFlowId }: Props) {
     },
   });
 
-  const { data: tiposPendencia = [] } = useQuery({
-    queryKey: ["tipos-pendencia-flow"],
-    queryFn: async () => {
-      try {
-        const result = await getTiposPendencia();
-        return Array.isArray(result) ? result : [];
-      } catch {
-        return [];
-      }
-    },
-  });
+  const { data: tiposPendencia = [] } = useTicketCategories();
 
   const saveMutation = useMutation({
     mutationFn: async () => {

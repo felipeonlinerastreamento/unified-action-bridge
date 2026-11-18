@@ -3,7 +3,8 @@ import { useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { getTiposPendencia } from "@/lib/gsystem-api.functions";
+import { useTicketCategories, findCategoryByLabel } from "@/hooks/use-ticket-categories";
+import { TicketTechnicalTermSection } from "@/components/crm/ticket-technical-term-section";
 import { formatTicketProtocol } from "@/lib/protocol-format";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
@@ -283,16 +284,8 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
     return { headers: { authorization: `Bearer ${session?.access_token}` } };
   }, []);
 
-  // GSystem categories (tipos de pendência) — same source used at ticket creation
-  const { data: tiposPendencia = [], isLoading: tiposLoading } = useQuery({
-    queryKey: ["tipos-pendencia-detail-panel"],
-    queryFn: async () => {
-      const result = await getTiposPendencia(await getAuthHeaders());
-      return Array.isArray(result) ? result : [];
-    },
-    enabled: open && editingCategory,
-    staleTime: 60_000,
-  });
+  // Categorias do nosso catálogo (Configurações > Encaminhamento) — mesma fonte da criação
+  const { data: tiposPendencia = [], isLoading: tiposLoading } = useTicketCategories({ enabled: open });
 
   // Sub-items cadastrados para a categoria atualmente selecionada no editor
   const { data: subcategoriesAll = [] } = useQuery({
@@ -467,7 +460,10 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   };
 
   const startEditCategory = () => {
-    setCategoryDraft(ticket?.pendencia_key || "");
+    const byLabel = tiposPendencia.find(
+      (t) => t.Descricao.trim().toLowerCase() === String(ticket?.category || "").trim().toLowerCase(),
+    );
+    setCategoryDraft(byLabel?.Key || ticket?.pendencia_key || "");
     setSubcategoryDraft((ticket as any)?.subcategory_id || "");
     setEquipmentModelDraft((ticket as any)?.equipment_model_id || "");
     setEditingCategory(true);
@@ -516,9 +512,10 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
       ? tiposPendencia.find((t: any) => String(t.Key) === newKey)
       : null;
     const newLabel = tipo?.Descricao || null;
+    const newGsKey = tipo?.gsystemKey || null;
 
     if (
-      (newKey || "") === (ticket.pendencia_key || "") &&
+      (newGsKey || "") === (ticket.pendencia_key || "") &&
       (newLabel || "") === (ticket.category || "") &&
       (subcategoryDraft || "") === ((ticket as any).subcategory_id || "") &&
       (equipmentModelDraft || "") === ((ticket as any).equipment_model_id || "")
@@ -545,7 +542,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
         .from("service_tickets")
         .update({
           category: newLabel,
-          pendencia_key: newKey,
+          pendencia_key: newGsKey,
           subcategory_id: subId,
           subcategory_name: subName,
           equipment_model_id: modelId,
@@ -568,12 +565,12 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
           .eq("entity_type", "pendencia")
           .eq("local_id", String(ticket.id))
           .maybeSingle();
-        if (link?.external_id && newKey) {
+        if (link?.external_id && newGsKey) {
           const { updatePendencia } = await import("@/lib/gsystem-api.functions");
           await updatePendencia({
             data: {
               key: String(link.external_id),
-              body: { TipoPendencia: newKey, Tipo: newKey },
+              body: { TipoPendencia: newGsKey, Tipo: newGsKey },
             },
           });
           gsyncMsg = " e sincronizada no GSystem";
@@ -719,6 +716,22 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
 
   const updateStatus = async (newStatus: string, observation?: string, financial?: { notes: string } | null) => {
     if (!ticket?.id) return;
+
+    if (newStatus === "finalizado" && !ticket.is_recurring && !hasRole("admin") && !hasRole("gestor")) {
+      const cat = findCategoryByLabel(tiposPendencia, ticket.category);
+      if (cat && cat.termType !== "none") {
+        const { data: sentTerms } = await supabase
+          .from("technical_service_terms")
+          .select("id")
+          .eq("ticket_id", ticket.id)
+          .eq("status", "enviada")
+          .limit(1);
+        if (!sentTerms?.length) {
+          toast.error("Este chamado exige termo de serviço técnico aceito e enviado para agendamento antes de finalizar. Gere o termo neste chamado e acompanhe em CRM > Serviços Técnicos.");
+          return;
+        }
+      }
+    }
 
     if (newStatus === "finalizado") {
       // Ticket recorrente: NÃO finaliza. Reagenda para a próxima ocorrência (mesmo ticket).
@@ -1366,6 +1379,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
 
               </div>
             </div>
+            <TicketTechnicalTermSection ticket={ticket as any} categories={tiposPendencia} />
             <div className="grid grid-cols-[140px_1fr] gap-2 items-start text-sm">
               <span className="text-muted-foreground">Observações</span>
               <div className="min-w-0">

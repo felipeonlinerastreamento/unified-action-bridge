@@ -218,19 +218,24 @@ export const criarAgendamento = createServerFn({ method: "POST" })
         contactName: z.string().max(200).optional(),
         contactPhone: z.string().max(30).optional(),
         notifyContact: z.boolean().optional(),
+        technicalTermId: z.string().uuid().optional(),
       })
       .parse(input),
   )
   .handler(async ({ data, context }) => {
+    const { assertSchedulingAllowed, markTermScheduled } = await import("./technical-terms.functions");
+    await assertSchedulingAllowed(context, data.technicalTermId);
     const userName = await resolveUserName(context);
-    const { idempotencyKey, ...body } = data;
-    return await callApi<any>({
+    const { idempotencyKey, technicalTermId, ...body } = data;
+    const res = await callApi<any>({
       path: "/appointments",
       method: "POST",
       body,
       idempotencyKey,
       userName,
     });
+    if (technicalTermId) await markTermScheduled(technicalTermId, context.userId, "agendamento", res);
+    return res;
   });
 
 // ---------- Ações em OS ----------
@@ -394,14 +399,19 @@ const thirdPartySchema = z.object({
   contactName: z.string().max(200).optional(),
   contactPhone: z.string().max(30).optional(),
   notifyContact: z.boolean().optional(),
+  technicalTermId: z.string().uuid().optional(),
 });
 export const criarAgendamentoTerceiro = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((input: unknown) => thirdPartySchema.parse(input))
   .handler(async ({ data, context }) => {
+    const { assertSchedulingAllowed, markTermScheduled } = await import("./technical-terms.functions");
+    await assertSchedulingAllowed(context, data.technicalTermId);
     const userName = await resolveUserName(context);
-    const { idempotencyKey, ...body } = data;
-    return await callApi<any>({ path: "/third-party-appointments", method: "POST", body, idempotencyKey, userName });
+    const { idempotencyKey, technicalTermId, ...body } = data;
+    const res = await callApi<any>({ path: "/third-party-appointments", method: "POST", body, idempotencyKey, userName });
+    if (technicalTermId) await markTermScheduled(technicalTermId, context.userId, "terceiro", res);
+    return res;
   });
 const _renovarLinkTerceiro = mutationDef(
   z.object({ idempotencyKey: idem, orderId: idStr }),
@@ -467,15 +477,21 @@ const requestBody = z.object({
   notifyContact: z.boolean().optional(),
   identifier: z.string().max(100).optional(),
 });
-const _criarSolicitacao = mutationDef(requestBody.extend({ idempotencyKey: idem }), ({ idempotencyKey, ...body }) => ({
-  path: "/requests",
-  method: "POST",
-  body,
-}));
+// Abrir solicitação exige termo técnico aceito (atendentes); gestores podem sem termo.
 export const criarSolicitacao = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .inputValidator(_criarSolicitacao.validate)
-  .handler(_criarSolicitacao.handle as any);
+  .inputValidator((input: unknown) =>
+    requestBody.extend({ idempotencyKey: idem, technicalTermId: z.string().uuid().optional() }).parse(input),
+  )
+  .handler(async ({ data, context }) => {
+    const { assertSchedulingAllowed, markTermScheduled } = await import("./technical-terms.functions");
+    await assertSchedulingAllowed(context, data.technicalTermId);
+    const userName = await resolveUserName(context);
+    const { idempotencyKey, technicalTermId, ...body } = data;
+    const res = await callApi<any>({ path: "/requests", method: "POST", body, idempotencyKey, userName });
+    if (technicalTermId) await markTermScheduled(technicalTermId, context.userId, "solicitacao", res);
+    return res;
+  });
 const _atualizarSolicitacao = mutationDef(
   requestBody.extend({ idempotencyKey: idem, requestId: idStr }),
   ({ idempotencyKey, requestId, ...body }) => ({ path: `/requests/${enc(requestId)}`, method: "PATCH", body }),
@@ -579,7 +595,12 @@ const _criarDirecionamento = mutationDef(
 export const criarDirecionamento = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(_criarDirecionamento.validate)
-  .handler(_criarDirecionamento.handle as any);
+  .handler(async (args: any) => {
+    // Direcionamento não carrega termo: só admin/gestor (contingência).
+    const { assertSchedulingAllowed } = await import("./technical-terms.functions");
+    await assertSchedulingAllowed(args.context, null);
+    return (_criarDirecionamento.handle as any)(args);
+  });
 const _analisarDirecionamento = mutationDef(
   z.object({ idempotencyKey: idem, routingId: idStr }),
   (d) => ({ path: `/routing-requests/${enc(d.routingId)}/analyze`, method: "POST", body: {} }),
