@@ -234,3 +234,29 @@ export async function getMessageRecipients(ctx: MailboxContext, messageId: strin
     .filter((r) => r.address);
   return [...map(data.toRecipients, "to"), ...map(data.ccRecipients, "cc")];
 }
+
+/** Envia um e-mail novo (fora de uma conversa existente) pela caixa conectada. */
+export async function sendNewMail(
+  ctx: MailboxContext,
+  opts: { to: string[]; subject: string; html: string; images?: InlineImage[] },
+): Promise<void> {
+  const base = mailboxPath(ctx.mailbox, ctx.connectedEmail);
+  const message: Record<string, unknown> = {
+    subject: opts.subject,
+    body: { contentType: "HTML", content: opts.html },
+    toRecipients: opts.to.map((address) => ({ emailAddress: { address } })),
+  };
+  if (opts.images?.length) {
+    message.attachments = opts.images.map((img) => ({
+      "@odata.type": "#microsoft.graph.fileAttachment",
+      name: img.name, contentType: img.contentType, contentBytes: img.base64,
+      isInline: true, contentId: img.cid,
+    }));
+  }
+  const res = await fetch(`${GATEWAY_URL}${base}/sendMail`, {
+    method: "POST",
+    headers: getAuthHeaders(ctx.connectionKey),
+    body: JSON.stringify({ message, saveToSentItems: true }),
+  });
+  if (!res.ok) throw friendlyError("Falha ao enviar e-mail", res.status, await res.json().catch(() => ({})));
+}

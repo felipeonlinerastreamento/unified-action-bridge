@@ -2290,6 +2290,216 @@ export type Database = {
           },
         ]
       }
+      crm_proposal_links: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          expires_at: string | null
+          first_viewed_at: string | null
+          id: string
+          last_viewed_at: string | null
+          opportunity_id: string
+          quote_id: string | null
+          responded_at: string | null
+          responder_ip: string | null
+          responder_name: string | null
+          responder_note: string | null
+          responder_user_agent: string | null
+          send_errors: Json
+          sent_channels: string[]
+          sent_to_email: string | null
+          sent_to_phone: string | null
+          snapshot: Json
+          status: string
+          token: string
+          view_count: number
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          first_viewed_at?: string | null
+          id?: string
+          last_viewed_at?: string | null
+          opportunity_id: string
+          quote_id?: string | null
+          responded_at?: string | null
+          responder_ip?: string | null
+          responder_name?: string | null
+          responder_note?: string | null
+          responder_user_agent?: string | null
+          send_errors?: Json
+          sent_channels?: string[]
+          sent_to_email?: string | null
+          sent_to_phone?: string | null
+          snapshot: Json
+          status?: string
+          token?: string
+          view_count?: number
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          expires_at?: string | null
+          first_viewed_at?: string | null
+          id?: string
+          last_viewed_at?: string | null
+          opportunity_id?: string
+          quote_id?: string | null
+          responded_at?: string | null
+          responder_ip?: string | null
+          responder_name?: string | null
+          responder_note?: string | null
+          responder_user_agent?: string | null
+          send_errors?: Json
+          sent_channels?: string[]
+          sent_to_email?: string | null
+          sent_to_phone?: string | null
+          snapshot?: Json
+          status?: string
+          token?: string
+          view_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_proposal_links_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "crm_opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_proposal_links_quote_id_fkey"
+            columns: ["quote_id"]
+            isOneToOne: false
+            referencedRelation: "crm_opportunity_quotes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_proposal_settings: {
+        Row: {
+          accepted_stage_id: string | null
+          company_address: string
+          company_cnpj: string
+          company_email: string
+          company_name: string
+          company_phone: string
+          company_website: string
+          email_channel_id: string | null
+          email_subject: string
+          email_template: string
+          footer_text: string
+          id: string
+          intro_text: string
+          logo_url: string
+          notify_owner: boolean
+          primary_color: string
+          public_base_url: string
+          rejected_stage_id: string | null
+          require_reject_reason: boolean
+          sent_stage_id: string | null
+          terms_text: string
+          updated_at: string
+          updated_by: string | null
+          validity_days: number
+          whatsapp_channel_id: string | null
+          whatsapp_template: string
+        }
+        Insert: {
+          accepted_stage_id?: string | null
+          company_address?: string
+          company_cnpj?: string
+          company_email?: string
+          company_name?: string
+          company_phone?: string
+          company_website?: string
+          email_channel_id?: string | null
+          email_subject?: string
+          email_template?: string
+          footer_text?: string
+          id?: string
+          intro_text?: string
+          logo_url?: string
+          notify_owner?: boolean
+          primary_color?: string
+          public_base_url?: string
+          rejected_stage_id?: string | null
+          require_reject_reason?: boolean
+          sent_stage_id?: string | null
+          terms_text?: string
+          updated_at?: string
+          updated_by?: string | null
+          validity_days?: number
+          whatsapp_channel_id?: string | null
+          whatsapp_template?: string
+        }
+        Update: {
+          accepted_stage_id?: string | null
+          company_address?: string
+          company_cnpj?: string
+          company_email?: string
+          company_name?: string
+          company_phone?: string
+          company_website?: string
+          email_channel_id?: string | null
+          email_subject?: string
+          email_template?: string
+          footer_text?: string
+          id?: string
+          intro_text?: string
+          logo_url?: string
+          notify_owner?: boolean
+          primary_color?: string
+          public_base_url?: string
+          rejected_stage_id?: string | null
+          require_reject_reason?: boolean
+          sent_stage_id?: string | null
+          terms_text?: string
+          updated_at?: string
+          updated_by?: string | null
+          validity_days?: number
+          whatsapp_channel_id?: string | null
+          whatsapp_template?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_proposal_settings_accepted_stage_id_fkey"
+            columns: ["accepted_stage_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipeline_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_proposal_settings_email_channel_id_fkey"
+            columns: ["email_channel_id"]
+            isOneToOne: false
+            referencedRelation: "email_channels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_proposal_settings_rejected_stage_id_fkey"
+            columns: ["rejected_stage_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipeline_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_proposal_settings_sent_stage_id_fkey"
+            columns: ["sent_stage_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipeline_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_proposal_settings_whatsapp_channel_id_fkey"
+            columns: ["whatsapp_channel_id"]
+            isOneToOne: false
+            referencedRelation: "channels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_recurring_contacts: {
         Row: {
           cadence: string
