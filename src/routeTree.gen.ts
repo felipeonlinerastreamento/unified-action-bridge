@@ -51,6 +51,7 @@ import { Route as ConfiguracoesUsuariosRouteImport } from './routes/configuracoe
 import { Route as ConfiguracoesZapiRouteImport } from './routes/configuracoes.zapi'
 import { Route as HooksRefreshTrackingRouteImport } from './routes/hooks/refresh-tracking'
 import { Route as PropostaTokenRouteImport } from './routes/proposta.$token'
+import { Route as TermoServicoTokenRouteImport } from './routes/termo-servico.$token'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as ApiPublicAutoRouteAguardandoRouteImport } from './routes/api.public.auto-route-aguardando'
 import { Route as ApiPublicBotAutoReplyScannerRouteImport } from './routes/api.public.bot-auto-reply-scanner'
@@ -284,6 +285,11 @@ const PropostaTokenRoute = PropostaTokenRouteImport.update({
   path: '/proposta/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
+const TermoServicoTokenRoute = TermoServicoTokenRouteImport.update({
+  id: '/termo-servico/$token',
+  path: '/termo-servico/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
   id: '/.lovable/oauth/consent',
   path: '/.lovable/oauth/consent',
@@ -387,6 +393,7 @@ export interface FileRoutesByFullPath {
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
   '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
   '/proposta/$token': typeof PropostaTokenRoute
+  '/termo-servico/$token': typeof TermoServicoTokenRoute
   '/agenda/': typeof AgendaIndexRoute
   '/configuracoes/': typeof ConfiguracoesIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -440,6 +447,7 @@ export interface FileRoutesByTo {
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
   '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
   '/proposta/$token': typeof PropostaTokenRoute
+  '/termo-servico/$token': typeof TermoServicoTokenRoute
   '/agenda': typeof AgendaIndexRoute
   '/configuracoes': typeof ConfiguracoesIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -496,6 +504,7 @@ export interface FileRoutesById {
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
   '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
   '/proposta/$token': typeof PropostaTokenRoute
+  '/termo-servico/$token': typeof TermoServicoTokenRoute
   '/agenda/': typeof AgendaIndexRoute
   '/configuracoes/': typeof ConfiguracoesIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -553,6 +562,7 @@ export interface FileRouteTypes {
     | '/configuracoes/zapi'
     | '/hooks/refresh-tracking'
     | '/proposta/$token'
+    | '/termo-servico/$token'
     | '/agenda/'
     | '/configuracoes/'
     | '/.lovable/oauth/consent'
@@ -606,6 +616,7 @@ export interface FileRouteTypes {
     | '/configuracoes/zapi'
     | '/hooks/refresh-tracking'
     | '/proposta/$token'
+    | '/termo-servico/$token'
     | '/agenda'
     | '/configuracoes'
     | '/.lovable/oauth/consent'
@@ -661,6 +672,7 @@ export interface FileRouteTypes {
     | '/configuracoes/zapi'
     | '/hooks/refresh-tracking'
     | '/proposta/$token'
+    | '/termo-servico/$token'
     | '/agenda/'
     | '/configuracoes/'
     | '/.lovable/oauth/consent'
@@ -698,6 +710,7 @@ export interface RootRouteChildren {
   AtendimentosTarefasRoute: typeof AtendimentosTarefasRoute
   HooksRefreshTrackingRoute: typeof HooksRefreshTrackingRoute
   PropostaTokenRoute: typeof PropostaTokenRoute
+  TermoServicoTokenRoute: typeof TermoServicoTokenRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   ApiPublicAutoRouteAguardandoRoute: typeof ApiPublicAutoRouteAguardandoRoute
   ApiPublicBotAutoReplyScannerRoute: typeof ApiPublicBotAutoReplyScannerRoute
@@ -1007,6 +1020,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof PropostaTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/termo-servico/$token': {
+      id: '/termo-servico/$token'
+      path: '/termo-servico/$token'
+      fullPath: '/termo-servico/$token'
+      preLoaderRoute: typeof TermoServicoTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/.lovable/oauth/consent': {
       id: '/.lovable/oauth/consent'
       path: '/.lovable/oauth/consent'
@@ -1172,6 +1192,7 @@ const rootRouteChildren: RootRouteChildren = {
   AtendimentosTarefasRoute: AtendimentosTarefasRoute,
   HooksRefreshTrackingRoute: HooksRefreshTrackingRoute,
   PropostaTokenRoute: PropostaTokenRoute,
+  TermoServicoTokenRoute: TermoServicoTokenRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   ApiPublicAutoRouteAguardandoRoute: ApiPublicAutoRouteAguardandoRoute,
   ApiPublicBotAutoReplyScannerRoute: ApiPublicBotAutoReplyScannerRoute,
