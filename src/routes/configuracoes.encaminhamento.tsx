@@ -36,7 +36,8 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { supabase } from "@/integrations/supabase/client";
-import { getTiposPendencia } from "@/lib/gsystem-api.functions";
+import { useTicketCategories } from "@/hooks/use-ticket-categories";
+import { TicketCategoriesConfig } from "@/components/configuracoes/ticket-categories-config";
 import { listSectors } from "@/lib/gsystem.functions";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, ArrowRightLeft, Loader2 } from "lucide-react";
@@ -114,15 +115,8 @@ function EncaminhamentoPage() {
     enabled: isAuthenticated,
   });
 
-  // Fetch categories from GSystem
-  const { data: tiposPendencia = [] } = useQuery({
-    queryKey: ["tipos-pendencia-config"],
-    queryFn: async () => {
-      const auth = await getAuthHeaders();
-      return getTiposPendencia(auth);
-    },
-    enabled: isAuthenticated,
-  });
+  // Categorias do nosso catálogo (sincronizado com o GSystem)
+  const { data: tiposPendencia = [] } = useTicketCategories({ enabled: isAuthenticated });
 
   // Fetch sectors from GSystem
   const { data: gsystemSectors = [] } = useQuery({
@@ -268,6 +262,8 @@ function EncaminhamentoPage() {
             Nova Regra
           </Button>
         </div>
+
+        <TicketCategoriesConfig />
 
         <OfflineRoutingConfig />
 

@@ -186,6 +186,17 @@ export const syncTicketToGsystem = createServerFn({ method: "POST" })
         tipoPendencia = String(ruleKey);
       }
     }
+    if (tipoPendencia && !/^\d+$/.test(tipoPendencia)) tipoPendencia = "";
+    if (!tipoPendencia && ticket.category) {
+      // Nosso catálogo de categorias (Config > Encaminhamento) guarda o código no GSystem.
+      const { data: cat } = await supabase
+        .from("ticket_categories")
+        .select("gsystem_key")
+        .ilike("label", ticket.category)
+        .limit(1)
+        .maybeSingle();
+      if (cat?.gsystem_key && /^\d+$/.test(cat.gsystem_key)) tipoPendencia = cat.gsystem_key;
+    }
     if (!tipoPendencia) tipoPendencia = "186";
     // Try to resolve gsystem veiculo key via plate
     let gsystemVeiculoKey: string | null = null;

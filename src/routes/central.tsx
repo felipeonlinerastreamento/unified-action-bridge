@@ -2,6 +2,7 @@ import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import ReactMarkdown from "react-markdown";
+import { useTicketCategories, findCategoryByLabel } from "@/hooks/use-ticket-categories";
 import { useAuth } from "@/hooks/use-auth";
 import { useUserPermissions } from "@/hooks/use-user-permissions";
 import { AppLayout } from "@/components/app-layout";
@@ -47,7 +48,6 @@ import {
   createPendenciaFromAtendimento,
   concluirPendencia,
   getClientes,
-  getTiposPendencia,
 } from "@/lib/gsystem-api.functions";
 import { SubClientLinker } from "@/components/central/sub-client-linker";
 import { ContactPicker, type PickedContact } from "@/components/central/contact-picker";
@@ -747,23 +747,8 @@ function CentralPage() {
   });
   const sectors = sectorsData || [];
 
-  // Fetch tipos de pendência from GSystem
-  const { data: tiposPendencia = [], isError: tiposPendenciaError } = useQuery({
-    queryKey: ["tipos-pendencia"],
-    queryFn: async () => {
-      const result = await getTiposPendencia({
-        ...await getAuthHeaders(),
-      });
-      console.log("[central] tiposPendencia result:", result);
-      if (!Array.isArray(result)) {
-        console.warn("[central] tiposPendencia não retornou array:", result);
-        return [];
-      }
-      return result;
-    },
-    enabled: isAuthenticated,
-    staleTime: 300000,
-  });
+  // Categorias do nosso catálogo (Configurações > Encaminhamento), sincronizado com o GSystem
+  const { data: tiposPendencia = [], isError: tiposPendenciaError } = useTicketCategories({ enabled: isAuthenticated });
 
   // Sub-itens (locais) — filtrados pela categoria GSystem selecionada na finalização
   const { data: finalizeSubcategoriesAll = [] } = useQuery({
@@ -2086,6 +2071,33 @@ function CentralPage() {
       // ticket NÃO é finalizado e o cliente continua no mesmo protocolo na
       // próxima mensagem (sem disparo do bot/saudação).
       const pendingResolve = status === "A resolver";
+
+      // Categoria que exige termo técnico: atendente só finaliza depois do termo
+      // aceito e enviado para agendamento (gestores podem, como contingência).
+      if (!pendingResolve && !hasRole("admin") && !hasRole("gestor")) {
+        const tk: any = currentTicket;
+        const cat = tipoPendencia
+          ? tiposPendencia.find((t) => t.Key === tipoPendencia)
+          : findCategoryByLabel(tiposPendencia, tk?.category);
+        if (cat && cat.termType !== "none") {
+          const ticketId = linkedId || tk?.id;
+          let ok = false;
+          if (ticketId) {
+            const { data: sentTerms } = await supabase
+              .from("technical_service_terms")
+              .select("id")
+              .eq("ticket_id", ticketId)
+              .eq("status", "enviada")
+              .limit(1);
+            ok = !!sentTerms?.length;
+          }
+          if (!ok) {
+            throw new Error(
+              `A categoria "${cat.Descricao}" exige termo de serviço técnico aceito e enviado para agendamento. Use "A resolver" e gere o termo no chamado (Atendimentos) ou em CRM > Serviços Técnicos.`,
+            );
+          }
+        }
+      }
 
       // Resolve category label antecipadamente para inserir já com a categoria correta
       let resolvedCategoryLabel: string | null = null;

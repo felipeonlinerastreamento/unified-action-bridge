@@ -42,7 +42,8 @@ import {
 } from "@/components/ui/command";
 import { cn } from "@/lib/utils";
 import { Check, ChevronsUpDown, Loader2, AlertCircle, Maximize2, Minimize2 } from "lucide-react";
-import { getClientes, getTiposPendencia } from "@/lib/gsystem-api.functions";
+import { getClientes } from "@/lib/gsystem-api.functions";
+import { useTicketCategories } from "@/hooks/use-ticket-categories";
 import { useTrackingSettings } from "@/hooks/use-tracking-settings";
 import {
   useTesteEquipamentoSettings,
@@ -107,7 +108,7 @@ interface GsystemCliente {
 }
 
 export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDialogProps) {
-  const { user: currentUser } = useAuth();
+  const { user: currentUser, hasRole } = useAuth();
   const [companyOpen, setCompanyOpen] = useState(false);
   const [companySearch, setCompanySearch] = useState("");
   const [selectedCliente, setSelectedCliente] = useState<GsystemCliente | null>(null);
@@ -248,16 +249,8 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
     refetchOnMount: "always",
   });
 
-  // GSystem categories (tipos de pendência)
-  const { data: tiposPendencia = [], isLoading: tiposLoading } = useQuery({
-    queryKey: ["tipos-pendencia-create-ticket"],
-    queryFn: async () => {
-      const result = await getTiposPendencia(await getAuthHeaders());
-      return Array.isArray(result) ? result : [];
-    },
-    enabled: open,
-    staleTime: 60_000,
-  });
+  // Categorias do nosso catálogo (Configurações > Encaminhamento), sincronizado com o GSystem
+  const { data: tiposPendencia = [], isLoading: tiposLoading } = useTicketCategories({ enabled: open });
 
   // Sub-itens (locais) — filtrados pelo Key da categoria GSystem selecionada
   const selectedTipoKey = useMemo(() => {
@@ -420,6 +413,11 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
   };
 
   const handleCreate = async (finalize: boolean = false) => {
+    const selectedCat = tiposPendencia.find((x) => x.Descricao === category);
+    if (finalize && selectedCat && selectedCat.termType !== "none" && !hasRole("admin") && !hasRole("gestor")) {
+      toast.error("Esta categoria exige termo de serviço técnico aceito antes de finalizar. Crie o chamado e gere o termo.");
+      return;
+    }
     const withFinancial = finalize && financial;
     if (withFinancial && !financialNotes.trim()) {
       toast.error("Informe os detalhes do lançamento financeiro");
@@ -563,7 +561,7 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
         notes: finalNotes,
         priority: priority as any,
         category: category || null,
-        pendencia_key: selectedTipoKey || null,
+        pendencia_key: (tiposPendencia.find((x) => x.Key === selectedTipoKey)?.gsystemKey) || null,
         subcategory_id: subcategoryId || null,
         subcategory_name: subcategoryId
           ? (subcategoryOptions.find((s: any) => s.id === subcategoryId)?.name || null)
