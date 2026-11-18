@@ -4,6 +4,7 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useTicketCategories } from "@/hooks/use-ticket-categories";
+import { TicketTechnicalTermSection } from "@/components/crm/ticket-technical-term-section";
 import { formatTicketProtocol } from "@/lib/protocol-format";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
@@ -1362,6 +1363,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
 
               </div>
             </div>
+            <TicketTechnicalTermSection ticket={ticket as any} categories={tiposPendencia} />
             <div className="grid grid-cols-[140px_1fr] gap-2 items-start text-sm">
               <span className="text-muted-foreground">Observações</span>
               <div className="min-w-0">
