@@ -3,7 +3,7 @@ import { useNavigate } from "@tanstack/react-router";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
-import { useTicketCategories } from "@/hooks/use-ticket-categories";
+import { useTicketCategories, findCategoryByLabel } from "@/hooks/use-ticket-categories";
 import { TicketTechnicalTermSection } from "@/components/crm/ticket-technical-term-section";
 import { formatTicketProtocol } from "@/lib/protocol-format";
 import { toast } from "sonner";
@@ -716,6 +716,22 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
 
   const updateStatus = async (newStatus: string, observation?: string, financial?: { notes: string } | null) => {
     if (!ticket?.id) return;
+
+    if (newStatus === "finalizado" && !ticket.is_recurring && !hasRole("admin") && !hasRole("gestor")) {
+      const cat = findCategoryByLabel(tiposPendencia, ticket.category);
+      if (cat && cat.termType !== "none") {
+        const { data: sentTerms } = await supabase
+          .from("technical_service_terms")
+          .select("id")
+          .eq("ticket_id", ticket.id)
+          .eq("status", "enviada")
+          .limit(1);
+        if (!sentTerms?.length) {
+          toast.error("Este chamado exige termo de serviço técnico aceito e enviado para agendamento antes de finalizar. Gere o termo neste chamado e acompanhe em CRM > Serviços Técnicos.");
+          return;
+        }
+      }
+    }
 
     if (newStatus === "finalizado") {
       // Ticket recorrente: NÃO finaliza. Reagenda para a próxima ocorrência (mesmo ticket).
