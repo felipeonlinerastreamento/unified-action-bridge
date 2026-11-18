@@ -292,6 +292,9 @@ function CrmPage() {
             <TabsTrigger value="categorias" className="gap-1">
               <Tag className="h-4 w-4" /> Categorias
             </TabsTrigger>
+            <TabsTrigger value="servicos-tecnicos" className="gap-1">
+              <Wrench className="h-4 w-4" /> Serviços Técnicos
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="tarefas" className="mt-4"><CrmTasksTab /></TabsContent>
