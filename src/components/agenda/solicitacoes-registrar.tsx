@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { AlertTriangle, CheckCircle2, Loader2, Search } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Loader2, Search, X } from "lucide-react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -147,6 +147,13 @@ export function SolicitacoesRegistrar({
 
   const canSubmit = clientId && serviceTypeId && date && time && (noAddress || address.trim()) && contactName.trim() && contactPhone.replace(/\D/g, "").length >= 8;
 
+  const clearClient = () => {
+    setClientId("");
+    setClientName("");
+    setServiceTypeId("");
+    setSearch("");
+  };
+
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -162,8 +169,25 @@ export function SolicitacoesRegistrar({
               className="pl-8"
               placeholder="Digite ao menos 3 letras do nome do cliente"
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                if (clientId) {
+                  setClientId("");
+                  setClientName("");
+                  setServiceTypeId("");
+                }
+              }}
             />
+            {clientId && (
+              <button
+                type="button"
+                aria-label="Trocar cliente"
+                onClick={clearClient}
+                className="absolute right-2 top-2.5 text-muted-foreground hover:text-foreground"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            )}
           </div>
           {clientsQuery.isFetching && (
             <p className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -171,7 +195,7 @@ export function SolicitacoesRegistrar({
             </p>
           )}
           {clientsQuery.isError && <p className="text-xs text-destructive">{errorMessage(clientsQuery.error)}</p>}
-          {clients.length > 0 && (
+          {!clientId && clients.length > 0 && (
             <div className="max-h-44 divide-y divide-border overflow-y-auto rounded-md border border-border">
               {clients.map((c: any) => {
                 const id = String(c.id);
@@ -183,11 +207,10 @@ export function SolicitacoesRegistrar({
                     onClick={() => {
                       setClientId(id);
                       setClientName(label);
+                      setSearch(label);
                       setServiceTypeId("");
                     }}
-                    className={`block w-full px-3 py-2 text-left text-sm hover:bg-muted/60 ${
-                      clientId === id ? "bg-primary/10 font-medium text-primary" : ""
-                    }`}
+                    className="block w-full px-3 py-2 text-left text-sm hover:bg-muted/60"
                   >
                     {label}
                   </button>
