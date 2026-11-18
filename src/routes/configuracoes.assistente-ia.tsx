@@ -12,6 +12,15 @@ import { Separator } from "@/components/ui/separator";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Slider } from "@/components/ui/slider";
+import {
+  AI_TONE_OPTIONS,
+  AI_FORMAT_OPTIONS,
+  DEFAULT_TEMPERATURE,
+  normalizeTemperature,
+  creativityLabel,
+} from "@/lib/ai-guidelines";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import ReactMarkdown from "react-markdown";
@@ -26,6 +35,8 @@ import {
   MessageSquare,
   Zap,
   BarChart3,
+  ShieldAlert,
+  Sparkles,
 } from "lucide-react";
 import { AiCreditsPanel } from "@/components/configuracoes/ai-credits-panel";
 import { CustomerAnalysisView } from "@/components/ai-manager/customer-analysis";
@@ -55,6 +66,14 @@ function AssistenteIaConfigPage() {
   const [saving, setSaving] = useState(false);
   const [togglingEnabled, setTogglingEnabled] = useState(false);
   const [docs, setDocs] = useState<any[]>([]);
+  const [tone, setTone] = useState("consultivo");
+  const [responseFormat, setResponseFormat] = useState("topicos");
+  const [temperature, setTemperature] = useState<number>(DEFAULT_TEMPERATURE);
+  const [forbiddenTopics, setForbiddenTopics] = useState("");
+  const [fallbackMessage, setFallbackMessage] = useState("");
+  const [suggestReplyEnabled, setSuggestReplyEnabled] = useState(true);
+  const [autoSummaryEnabled, setAutoSummaryEnabled] = useState(false);
+  const [savingBehavior, setSavingBehavior] = useState(false);
   const [uploading, setUploading] = useState(false);
 
   // AI Chat state
@@ -83,7 +102,41 @@ function AssistenteIaConfigPage() {
       setSystemPrompt(data[0].system_prompt);
       setIsEnabled((data[0] as any).is_enabled ?? true);
       setConfigId(data[0].id);
+      const row = data[0] as any;
+      setTone(row.tone || "consultivo");
+      setResponseFormat(row.response_format || "topicos");
+      setTemperature(normalizeTemperature(row.temperature));
+      setForbiddenTopics(row.forbidden_topics || "");
+      setFallbackMessage(row.fallback_message || "");
+      setSuggestReplyEnabled(row.suggest_reply_enabled ?? true);
+      setAutoSummaryEnabled(row.auto_summary_enabled ?? false);
     }
+  }
+
+  async function handleSaveBehavior() {
+    if (!configId) {
+      toast.error("Configuração não inicializada");
+      return;
+    }
+    setSavingBehavior(true);
+    const { data: sess } = await supabase.auth.getSession();
+    const { error } = await supabase
+      .from("ai_assistant_config")
+      .update({
+        tone,
+        response_format: responseFormat,
+        temperature: normalizeTemperature(temperature),
+        forbidden_topics: forbiddenTopics,
+        fallback_message: fallbackMessage,
+        suggest_reply_enabled: suggestReplyEnabled,
+        auto_summary_enabled: autoSummaryEnabled,
+        updated_at: new Date().toISOString(),
+        updated_by: sess.session?.user?.id || null,
+      })
+      .eq("id", configId);
+    if (error) toast.error(error.message);
+    else toast.success("Comportamento da IA salvo!");
+    setSavingBehavior(false);
   }
 
   async function handleToggleEnabled(next: boolean) {
@@ -266,6 +319,8 @@ function AssistenteIaConfigPage() {
 
   const isAdmin = hasRole("admin");
   const isGestor = hasRole("gestor");
+  // Gestores e administradores configuram o assistente; créditos seguem só para admin.
+  const canManage = isAdmin || isGestor;
 
   // Gestores need the per-user flag (default true). Admins always see.
   const canSeeReport = isAdmin || (isGestor && canAccessAiManager);
@@ -292,11 +347,11 @@ function AssistenteIaConfigPage() {
           </p>
         </div>
 
-        <Tabs defaultValue={isAdmin ? "config" : "manager"}>
+        <Tabs defaultValue={canManage ? "config" : "manager"}>
           <TabsList>
-            {isAdmin && <TabsTrigger value="config">Configuração</TabsTrigger>}
-            {isAdmin && <TabsTrigger value="docs">Base de Conhecimento</TabsTrigger>}
-            {isAdmin && <TabsTrigger value="chat">Chat com IA</TabsTrigger>}
+            {canManage && <TabsTrigger value="config">Configuração</TabsTrigger>}
+            {canManage && <TabsTrigger value="docs">Base de Conhecimento</TabsTrigger>}
+            {canManage && <TabsTrigger value="chat">Chat com IA</TabsTrigger>}
             {canSeeReport && (
               <TabsTrigger value="manager">
                 <BarChart3 className="h-3.5 w-3.5 mr-1" /> Relatório IA
@@ -322,9 +377,11 @@ function AssistenteIaConfigPage() {
             </TabsContent>
           )}
 
-          <TabsContent value="credits" className="mt-4">
-            <AiCreditsPanel />
-          </TabsContent>
+          {isAdmin && (
+            <TabsContent value="credits" className="mt-4">
+              <AiCreditsPanel />
+            </TabsContent>
+          )}
 
           {/* Config Tab */}
           <TabsContent value="config" className="mt-4 space-y-4">
@@ -356,6 +413,119 @@ function AssistenteIaConfigPage() {
                 </div>
               </CardContent>
             </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" /> Tom de voz e estilo de resposta
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-5">
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <Label>Perfil de comunicação</Label>
+                    <Select value={tone} onValueChange={setTone}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {AI_TONE_OPTIONS.map((o) => (
+                          <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Tamanho e formato padrão</Label>
+                    <Select value={responseFormat} onValueChange={setResponseFormat}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {AI_FORMAT_OPTIONS.map((o) => (
+                          <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label>Nível de criatividade</Label>
+                    <Badge variant="outline">{creativityLabel(temperature)} · {temperature.toFixed(2)}</Badge>
+                  </div>
+                  <Slider
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    value={[temperature]}
+                    onValueChange={(v) => setTemperature(v[0] ?? DEFAULT_TEMPERATURE)}
+                  />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <span>Estrito (só manuais)</span>
+                    <span>Amplo / flexível</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <ShieldAlert className="h-4 w-4 text-destructive" /> Regras de segurança (limites)
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="ai-forbidden">Tópicos proibidos / concessões bloqueadas</Label>
+                  <Textarea
+                    id="ai-forbidden"
+                    rows={4}
+                    value={forbiddenTopics}
+                    onChange={(e) => setForbiddenTopics(e.target.value)}
+                    placeholder={"Um por linha. Ex.:\nPrometer desconto\nCancelar ou excluir débitos\nInformar senhas ou credenciais de rastreadores"}
+                  />
+                  <p className="text-xs text-muted-foreground">A IA nunca responderá, prometerá ou orientará sobre esses temas.</p>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="ai-fallback">Conduta quando não encontrar a informação</Label>
+                  <Textarea
+                    id="ai-fallback"
+                    rows={2}
+                    value={fallbackMessage}
+                    onChange={(e) => setFallbackMessage(e.target.value)}
+                    placeholder="Ex.: Oriente o cliente a aguardar a transferência para o setor responsável."
+                  />
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Zap className="h-4 w-4 text-primary" /> Automações no atendimento
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex items-center justify-between gap-4 rounded-lg border p-4">
+                  <div className="space-y-1">
+                    <Label htmlFor="ai-suggest" className="text-sm font-medium">Sugestão de resposta ao operador</Label>
+                    <p className="text-xs text-muted-foreground">Exibe o painel do supervisor IA na Central de Atendimento com orientações sobre a conversa.</p>
+                  </div>
+                  <Switch id="ai-suggest" checked={suggestReplyEnabled} onCheckedChange={setSuggestReplyEnabled} />
+                </div>
+                <div className="flex items-center justify-between gap-4 rounded-lg border p-4">
+                  <div className="space-y-1">
+                    <Label htmlFor="ai-summary" className="text-sm font-medium">Resumo automático ao finalizar</Label>
+                    <p className="text-xs text-muted-foreground">Ao finalizar um chat na Central, a IA grava um resumo de 2 a 3 linhas como comentário no chamado.</p>
+                  </div>
+                  <Switch id="ai-summary" checked={autoSummaryEnabled} onCheckedChange={setAutoSummaryEnabled} />
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="flex justify-end">
+              <Button onClick={handleSaveBehavior} disabled={savingBehavior || !configId}>
+                {savingBehavior ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+                Salvar comportamento
+              </Button>
+            </div>
 
             <Card>
               <CardHeader>

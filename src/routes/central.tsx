@@ -134,6 +134,7 @@ import { WhisperToggle } from "@/components/central/whisper-toggle";
 import { QuickRepliesPopover } from "@/components/central/quick-replies-popover";
 import { applyQuickReplyVars } from "@/lib/quick-reply-vars";
 import { formatTicketProtocol } from "@/lib/protocol-format";
+import { gerarResumoAtendimento } from "@/lib/ai-summary.functions";
 import { ChatTags, type ChatTag } from "@/components/central/chat-tags";
 import { MessageStatusTicks } from "@/components/central/message-status-ticks";
 import { TypingIndicator } from "@/components/central/typing-indicator";
@@ -483,10 +484,11 @@ function CentralPage() {
     (async () => {
       const { data } = await supabase
         .from("ai_assistant_config")
-        .select("is_enabled")
+        .select("is_enabled, suggest_reply_enabled")
         .limit(1)
         .maybeSingle();
-      if (active) setAiEnabled(((data as any)?.is_enabled ?? true) as boolean);
+      if (active)
+        setAiEnabled(((data as any)?.is_enabled ?? true) && ((data as any)?.suggest_reply_enabled ?? true));
     })();
     const channel = supabase
       .channel("central-ai-assistant-flag")
@@ -494,8 +496,10 @@ function CentralPage() {
         "postgres_changes",
         { event: "*", schema: "public", table: "ai_assistant_config" },
         (payload: any) => {
-          const next = payload?.new?.is_enabled;
-          if (typeof next === "boolean") setAiEnabled(next);
+          const row = payload?.new;
+          if (row && typeof row.is_enabled === "boolean") {
+            setAiEnabled(row.is_enabled && row.suggest_reply_enabled !== false);
+          }
         }
       )
       .subscribe();
@@ -2654,6 +2658,17 @@ function CentralPage() {
             console.error("[Finalize] direct close also failed:", e?.message);
           }
         }
+      }
+      // Resumo automático (IA) — só gera se ativado nas configurações do Assistente IA.
+      // Fire-and-forget: nunca bloqueia nem atrasa a finalização.
+      if (ticketForProtocol?.id && messages.length > 0) {
+        const transcript = messages
+          .slice(-60)
+          .map((m: any) => `${m.isSentByMe ? "Operador" : "Cliente"}: ${m.text || "[mídia]"}`)
+          .join("\n");
+        void gerarResumoAtendimento({ data: { ticketId: ticketForProtocol.id, transcript } }).catch((e: any) =>
+          console.warn("[Finalize] resumo IA falhou:", e?.message),
+        );
       }
       return { success: true, ticketId: ticketForProtocol?.id || null, escalateGestao: !!escalateGestao, pendingResolve };
     },

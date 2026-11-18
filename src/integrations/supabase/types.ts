@@ -55,23 +55,44 @@ export type Database = {
       }
       ai_assistant_config: {
         Row: {
+          auto_summary_enabled: boolean
+          fallback_message: string
+          forbidden_topics: string
           id: string
           is_enabled: boolean
+          response_format: string
+          suggest_reply_enabled: boolean
           system_prompt: string
+          temperature: number
+          tone: string
           updated_at: string
           updated_by: string | null
         }
         Insert: {
+          auto_summary_enabled?: boolean
+          fallback_message?: string
+          forbidden_topics?: string
           id?: string
           is_enabled?: boolean
+          response_format?: string
+          suggest_reply_enabled?: boolean
           system_prompt?: string
+          temperature?: number
+          tone?: string
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
+          auto_summary_enabled?: boolean
+          fallback_message?: string
+          forbidden_topics?: string
           id?: string
           is_enabled?: boolean
+          response_format?: string
+          suggest_reply_enabled?: boolean
           system_prompt?: string
+          temperature?: number
+          tone?: string
           updated_at?: string
           updated_by?: string | null
         }

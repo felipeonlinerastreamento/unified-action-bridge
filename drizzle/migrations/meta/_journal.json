@@ -127,6 +127,13 @@
       "when": 1794944172435,
       "tag": "0017_fix_kit_item_username",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1795023991363,
+      "tag": "0018_ai_assistant_settings_and_gestor_access",
+      "breakpoints": true
     }
   ]
 }
