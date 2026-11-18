@@ -64,7 +64,7 @@ export function CrmTechnicalServicesTab() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("technical_service_terms")
-        .select("*, service_tickets(protocol, ticket_number)")
+        .select("*, service_tickets(protocol_number)")
         .order("created_at", { ascending: false })
         .limit(500);
       if (error) throw error;
@@ -101,7 +101,7 @@ export function CrmTechnicalServicesTab() {
     return (terms as any[]).filter((t) => {
       if (t.status !== filter) return false;
       if (!q) return true;
-      return [t.client_name, t.plate, t.responsible_name, t.equipment_id, termNumberLabel(t.seq), t.service_tickets?.protocol]
+      return [t.client_name, t.plate, t.responsible_name, t.equipment_id, termNumberLabel(t.seq), t.service_tickets?.protocol_number ? String(t.service_tickets.protocol_number).padStart(5, "0") : ""]
         .some((v) => String(v || "").toLowerCase().includes(q));
     });
   }, [terms, filter, search]);
@@ -192,7 +192,7 @@ export function CrmTechnicalServicesTab() {
                     <span className="font-mono text-xs text-muted-foreground">{termNumberLabel(t.seq)}</span>
                     <Badge variant="outline">{SERVICE_TYPE_LABELS[t.service_type as TechnicalServiceType]}</Badge>
                     <Badge variant={STATUS_VARIANT[t.status as TechnicalTermStatus]}>{TERM_STATUS_LABELS[t.status as TechnicalTermStatus]}</Badge>
-                    {t.service_tickets?.protocol && <span className="text-xs text-muted-foreground">Chamado {t.service_tickets.protocol}</span>}
+                    {t.service_tickets?.protocol_number && <span className="text-xs text-muted-foreground">Chamado #{String(t.service_tickets.protocol_number).padStart(5, "0")}</span>}
                   </div>
                   <p className="font-medium truncate">{t.client_name || "Cliente não informado"}{t.plate ? ` — ${t.plate}` : ""}</p>
                   <p className="text-xs text-muted-foreground">
