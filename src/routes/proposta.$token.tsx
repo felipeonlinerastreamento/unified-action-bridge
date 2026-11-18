@@ -1,15 +1,15 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { queryOptions, useSuspenseQuery, useQueryClient } from "@tanstack/react-query";
+import { queryOptions, useSuspenseQuery } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { useEffect, useState } from "react";
-import { CheckCircle2, XCircle, Clock, Ban, Loader2, Phone, Mail, Globe, MapPin } from "lucide-react";
+import { CheckCircle2, XCircle, Clock, Ban, Loader2, Phone, Mail, Globe, MapPin, ShieldCheck } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { getPublicProposal, markProposalViewed, respondToProposal } from "@/lib/crm-proposal.functions";
-import { brl, formatDateBR, proposalNumberLabel } from "@/lib/crm-proposal";
+import { getPublicProposal, unlockPublicProposal, respondToProposal } from "@/lib/crm-proposal.functions";
+import { brl, formatCpf, formatDateBR, isValidCpf, proposalNumberLabel } from "@/lib/crm-proposal";
 import defaultLogo from "@/assets/logo-online-rastreamento.png";
 
 const proposalQuery = (token: string) =>
@@ -28,7 +28,7 @@ export const Route = createFileRoute("/proposta/$token")({
     const company = loaderData?.branding.companyName || "Online Rastreamento";
     const title = loaderData ? `Proposta comercial — ${company}` : "Proposta indisponível";
     const description = loaderData
-      ? `Proposta ${proposalNumberLabel(loaderData.snapshot.quoteNumber)} preparada por ${company}. Veja os itens e responda online.`
+      ? `Proposta ${proposalNumberLabel(loaderData.quoteNumber)} preparada por ${company}. Veja os itens e responda online.`
       : "Este link de proposta não está disponível.";
     return {
       meta: [
@@ -64,23 +64,130 @@ function PublicProposalPage() {
   return <ProposalView token={token} />;
 }
 
+type GateData = NonNullable<Awaited<ReturnType<typeof getPublicProposal>>>;
+type ProposalData = Awaited<ReturnType<typeof unlockPublicProposal>>;
+
+const cpfStorageKey = (token: string) => `proposta-cpf:${token}`;
+
 function ProposalView({ token }: { token: string }) {
-  const { data } = useSuspenseQuery(proposalQuery(token));
-  const qc = useQueryClient();
-  const markViewed = useServerFn(markProposalViewed);
+  const { data: gate } = useSuspenseQuery(proposalQuery(token));
+  const unlock = useServerFn(unlockPublicProposal);
+  const [cpf, setCpf] = useState<string | null>(null);
+  const [data, setData] = useState<ProposalData | null>(null);
+  const [checking, setChecking] = useState(true);
+
+  // Reabre sem pedir o CPF de novo enquanto a aba estiver aberta.
+  useEffect(() => {
+    const saved = sessionStorage.getItem(cpfStorageKey(token));
+    if (!saved || !isValidCpf(saved)) { setChecking(false); return; }
+    unlock({ data: { token, cpf: saved } })
+      .then((d) => { setCpf(saved); setData(d); })
+      .catch(() => sessionStorage.removeItem(cpfStorageKey(token)))
+      .finally(() => setChecking(false));
+  }, [token, unlock]);
+
+  if (!gate) return <Unavailable text="Este link não existe ou foi removido." />;
+  if (gate.status === "cancelled") return <Unavailable text="Esta proposta foi cancelada pela empresa. Entre em contato para receber uma versão atualizada." />;
+
+  if (!data || !cpf) {
+    if (checking) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-muted/40">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      );
+    }
+    return (
+      <CpfGate
+        gate={gate}
+        onUnlock={async (value) => {
+          const d = await unlock({ data: { token, cpf: value } });
+          sessionStorage.setItem(cpfStorageKey(token), value);
+          setCpf(value);
+          setData(d);
+        }}
+      />
+    );
+  }
+
+  return (
+    <UnlockedProposal
+      token={token}
+      cpf={cpf}
+      data={data}
+      onRefresh={async () => setData(await unlock({ data: { token, cpf } }))}
+    />
+  );
+}
+
+function CpfGate({ gate, onUnlock }: { gate: GateData; onUnlock: (cpf: string) => Promise<void> }) {
+  const b = gate.branding;
+  const [value, setValue] = useState("");
+  const [sending, setSending] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError(null);
+    if (!isValidCpf(value)) return setError("Informe um CPF válido.");
+    setSending(true);
+    try {
+      await onUnlock(value);
+    } catch (err: any) {
+      setError(err?.message || "Não foi possível abrir a proposta.");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-muted/40 px-4" style={{ "--brand": b.primaryColor } as React.CSSProperties}>
+      <form onSubmit={submit} className="w-full max-w-sm bg-card text-card-foreground rounded-xl border shadow-sm overflow-hidden">
+        <div style={{ borderTop: "6px solid var(--brand)" }} className="p-6 space-y-5">
+          <img src={b.logoUrl || defaultLogo} alt={b.companyName} className="h-16 w-auto object-contain mx-auto" />
+          <div className="text-center space-y-1">
+            <h1 className="text-lg font-semibold text-foreground">
+              Proposta comercial {proposalNumberLabel(gate.quoteNumber)}
+            </h1>
+            <p className="text-sm text-muted-foreground">Para sua segurança, informe seu CPF para abrir a proposta.</p>
+          </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="gate-cpf">CPF *</Label>
+            <Input
+              id="gate-cpf"
+              inputMode="numeric"
+              autoComplete="off"
+              placeholder="000.000.000-00"
+              value={value}
+              onChange={(e) => setValue(formatCpf(e.target.value))}
+              maxLength={14}
+              autoFocus
+            />
+            {error && <p className="text-sm text-destructive">{error}</p>}
+          </div>
+          <Button
+            type="submit"
+            className="w-full text-primary-foreground hover:opacity-90"
+            style={{ background: "var(--brand)" }}
+            disabled={sending || value.replace(/\D/g, "").length < 11}
+          >
+            {sending ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <ShieldCheck className="h-4 w-4 mr-1" />}
+            Abrir proposta
+          </Button>
+          <p className="text-[11px] text-center text-muted-foreground">{b.companyName}</p>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+function UnlockedProposal({ token, cpf, data, onRefresh }: { token: string; cpf: string; data: ProposalData; onRefresh: () => Promise<void> }) {
   const respond = useServerFn(respondToProposal);
   const [decision, setDecision] = useState<"accept" | "reject" | null>(null);
   const [name, setName] = useState("");
   const [note, setNote] = useState("");
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    markViewed({ data: { token } }).catch(() => {});
-  }, [token, markViewed]);
-
-  if (!data) return <Unavailable text="Este link não existe ou foi removido." />;
-  if (data.status === "cancelled") return <Unavailable text="Esta proposta foi cancelada pela empresa. Entre em contato para receber uma versão atualizada." />;
 
   const { snapshot: s, branding: b } = data;
   const brand = { "--brand": b.primaryColor } as React.CSSProperties;
@@ -89,12 +196,12 @@ function ProposalView({ token }: { token: string }) {
   const submit = async () => {
     if (!decision) return;
     setError(null);
-    if (name.trim().length < 2) return setError("Informe seu nome completo.");
+    if (decision === "reject" && name.trim().length < 2) return setError("Informe seu nome completo.");
     if (needReason && !note.trim()) return setError("Conte o motivo da recusa.");
     setSending(true);
     try {
-      await respond({ data: { token, decision, name: name.trim(), note: note.trim() } });
-      await qc.invalidateQueries({ queryKey: ["public-proposal", token] });
+      await respond({ data: { token, cpf, decision, name: decision === "reject" ? name.trim() : "", note: note.trim() } });
+      await onRefresh();
       setDecision(null);
     } catch (e: any) {
       setError(e?.message || "Não foi possível registrar sua resposta.");
@@ -231,10 +338,12 @@ function ProposalView({ token }: { token: string }) {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
-            <div>
-              <Label htmlFor="resp-name">Seu nome completo *</Label>
-              <Input id="resp-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} />
-            </div>
+            {decision === "reject" && (
+              <div>
+                <Label htmlFor="resp-name">Seu nome completo *</Label>
+                <Input id="resp-name" value={name} onChange={(e) => setName(e.target.value)} maxLength={120} />
+              </div>
+            )}
             <div>
               <Label htmlFor="resp-note">{decision === "reject" ? `Motivo da recusa${needReason ? " *" : ""}` : "Observação (opcional)"}</Label>
               <Textarea id="resp-note" value={note} onChange={(e) => setNote(e.target.value)} rows={3} maxLength={1000} />
@@ -260,7 +369,7 @@ function ProposalView({ token }: { token: string }) {
   );
 }
 
-function StatusBanner({ data }: { data: NonNullable<Awaited<ReturnType<typeof getPublicProposal>>> }) {
+function StatusBanner({ data }: { data: ProposalData }) {
   if (data.status === "accepted") {
     return (
       <div className="rounded-lg border p-4 flex gap-3 items-start bg-muted/40" style={{ borderColor: "var(--brand)" }}>

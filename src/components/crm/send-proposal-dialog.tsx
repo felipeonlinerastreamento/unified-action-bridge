@@ -11,7 +11,7 @@ import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { sendProposalToClient, cancelProposalLink } from "@/lib/crm-proposal.functions";
-import { brl, buildProposalUrl, hasPhoneDigits, isProposalExpired, isValidEmail, type ProposalStatus } from "@/lib/crm-proposal";
+import { brl, buildProposalUrl, formatCpf, hasPhoneDigits, isProposalExpired, isValidEmail, type ProposalStatus } from "@/lib/crm-proposal";
 
 export type ProposalLinkRow = {
   id: string;
@@ -24,6 +24,8 @@ export type ProposalLinkRow = {
   responded_at: string | null;
   responder_name: string | null;
   responder_note: string | null;
+  viewer_cpf?: string | null;
+  responder_cpf?: string | null;
   sent_channels: string[];
   send_errors: Record<string, string> | null;
   snapshot: any;
@@ -232,9 +234,13 @@ export function SendProposalDialog({
                         )}
                       </span>
                     </div>
+                    {l.viewer_cpf && !l.responder_cpf && (
+                      <p className="text-muted-foreground">Aberta com CPF {formatCpf(l.viewer_cpf)}</p>
+                    )}
                     {l.responder_name && (
                       <p className="text-foreground">
                         {l.status === "accepted" ? "Aceita" : "Recusada"} por {l.responder_name}
+                        {l.responder_cpf && ` (CPF ${formatCpf(l.responder_cpf)})`}
                         {l.responded_at && ` em ${new Date(l.responded_at).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}`}
                         {l.responder_note && ` — "${l.responder_note}"`}
                       </p>

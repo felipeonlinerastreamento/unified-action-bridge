@@ -5,6 +5,9 @@ import {
   canRespond,
   computeTotals,
   computeValidUntil,
+  formatCpf,
+  isValidCpf,
+  maskCpf,
   renderProposalTemplate,
   resolveDecisionStage,
 } from "./crm-proposal";
@@ -66,5 +69,25 @@ describe("Proposta enviada ao cliente", () => {
 
   it("link público fica em /proposta/<token> sem barra duplicada", () => {
     assert.equal(buildProposalUrl("https://x.app/", "tok"), "https://x.app/proposta/tok");
+  });
+});
+
+describe("CPF para abrir o link da proposta", () => {
+  it("aceita CPF válido com ou sem pontuação", () => {
+    assert.equal(isValidCpf("529.982.247-25"), true);
+    assert.equal(isValidCpf("52998224725"), true);
+  });
+
+  it("recusa CPF com dígito verificador errado, incompleto ou repetido", () => {
+    assert.equal(isValidCpf("529.982.247-24"), false);
+    assert.equal(isValidCpf("5299822472"), false);
+    assert.equal(isValidCpf("111.111.111-11"), false);
+    assert.equal(isValidCpf(""), false);
+  });
+
+  it("formata enquanto digita e mascara para exibição", () => {
+    assert.equal(formatCpf("52998224725"), "529.982.247-25");
+    assert.equal(formatCpf("5299"), "529.9");
+    assert.equal(maskCpf("52998224725"), "529.***.***-25");
   });
 });

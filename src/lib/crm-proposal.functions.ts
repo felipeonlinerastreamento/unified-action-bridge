@@ -10,7 +10,10 @@ import {
   computeValidUntil,
   hasPhoneDigits,
   isProposalExpired,
+  isValidCpf,
   isValidEmail,
+  maskCpf,
+  onlyDigits,
   renderProposalTemplate,
   resolveDecisionStage,
   type ProposalItem,
@@ -242,20 +245,66 @@ export const cancelProposalLink = createServerFn({ method: "POST" })
   });
 
 // ============== PÁGINA PÚBLICA (cliente, sem login) ==============
-// O token (UUID aleatório) do link é a única credencial; só dados da própria
-// proposta são devolvidos.
+// O token (UUID aleatório) do link é a credencial; só dados da própria
+// proposta são devolvidos. Os itens e valores só são liberados depois que
+// o visitante informa um CPF válido (registrado no link).
 const tokenInput = (d: unknown) => z.object({ token: z.string().uuid() }).parse(d);
 
+function brandingFrom(s: Awaited<ReturnType<typeof loadSettings>>) {
+  return {
+    companyName: s.company_name,
+    cnpj: s.company_cnpj,
+    phone: s.company_phone,
+    email: s.company_email,
+    website: s.company_website,
+    address: s.company_address,
+    logoUrl: s.logo_url,
+    primaryColor: /^#[0-9a-f]{6}$/i.test(s.primary_color) ? s.primary_color : "#6c0015",
+    footer: s.footer_text,
+  };
+}
+
+/** Dados da tela de entrada (antes do CPF): sem itens, valores ou dados do cliente. */
 export const getPublicProposal = createServerFn({ method: "GET" })
   .inputValidator(tokenInput)
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: link } = await supabaseAdmin.from("crm_proposal_links")
-      .select("status, snapshot, expires_at, responded_at, responder_name, responder_note")
-      .eq("token", data.token).maybeSingle();
+      .select("status, snapshot").eq("token", data.token).maybeSingle();
     if (!link) return null;
     const s = await loadSettings(supabaseAdmin);
+    const snap = link.snapshot as unknown as ProposalSnapshot;
+    return {
+      status: link.status as ProposalStatus,
+      quoteNumber: snap?.quoteNumber ?? null,
+      branding: brandingFrom(s),
+    };
+  });
+
+const cpfField = z.string().trim().max(20).refine(isValidCpf, "Informe um CPF válido.");
+
+/** Libera a proposta completa após o CPF; registra o CPF e conta a visualização. */
+export const unlockPublicProposal = createServerFn({ method: "POST" })
+  .inputValidator((d) => z.object({ token: z.string().uuid(), cpf: cpfField }).parse(d))
+  .handler(async ({ data }) => {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: link } = await supabaseAdmin.from("crm_proposal_links")
+      .select("id, status, snapshot, expires_at, responded_at, responder_name, responder_note, view_count, first_viewed_at")
+      .eq("token", data.token).maybeSingle();
+    if (!link) throw new Error("Proposta não encontrada.");
     const status = link.status as ProposalStatus;
+    if (status === "cancelled") throw new Error("Esta proposta foi cancelada pela empresa.");
+
+    const now = new Date().toISOString();
+    await supabaseAdmin.from("crm_proposal_links").update({
+      viewer_cpf: onlyDigits(data.cpf),
+      cpf_verified_at: now,
+      view_count: (link.view_count || 0) + 1,
+      first_viewed_at: link.first_viewed_at || now,
+      last_viewed_at: now,
+    }).eq("id", link.id);
+
+    const s = await loadSettings(supabaseAdmin);
     return {
       status,
       expired: status === "pending" && isProposalExpired(link.expires_at),
@@ -266,41 +315,16 @@ export const getPublicProposal = createServerFn({ method: "GET" })
       responderNote: link.responder_note as string | null,
       snapshot: link.snapshot as unknown as ProposalSnapshot,
       requireRejectReason: !!s.require_reject_reason,
-      branding: {
-        companyName: s.company_name,
-        cnpj: s.company_cnpj,
-        phone: s.company_phone,
-        email: s.company_email,
-        website: s.company_website,
-        address: s.company_address,
-        logoUrl: s.logo_url,
-        primaryColor: /^#[0-9a-f]{6}$/i.test(s.primary_color) ? s.primary_color : "#6c0015",
-        footer: s.footer_text,
-      },
+      branding: brandingFrom(s),
     };
-  });
-
-export const markProposalViewed = createServerFn({ method: "POST" })
-  .inputValidator(tokenInput)
-  .handler(async ({ data }) => {
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const { data: link } = await supabaseAdmin.from("crm_proposal_links")
-      .select("id, view_count, first_viewed_at, status").eq("token", data.token).maybeSingle();
-    if (!link || link.status === "cancelled") return { ok: false };
-    const now = new Date().toISOString();
-    await supabaseAdmin.from("crm_proposal_links").update({
-      view_count: (link.view_count || 0) + 1,
-      first_viewed_at: link.first_viewed_at || now,
-      last_viewed_at: now,
-    }).eq("id", link.id);
-    return { ok: true };
   });
 
 export const respondToProposal = createServerFn({ method: "POST" })
   .inputValidator((d) => z.object({
     token: z.string().uuid(),
+    cpf: cpfField,
     decision: z.enum(["accept", "reject"]),
-    name: z.string().trim().min(2, "Informe seu nome").max(120),
+    name: z.string().trim().max(120).optional().default(""),
     note: z.string().trim().max(1000).optional().default(""),
   }).parse(d))
   .handler(async ({ data }) => {
@@ -312,17 +336,25 @@ export const respondToProposal = createServerFn({ method: "POST" })
       throw new Error(link.status === "pending" ? "Esta proposta está vencida." : "Esta proposta já foi respondida ou cancelada.");
     }
     const settings = await loadSettings(supabaseAdmin);
-    if (data.decision === "reject" && settings.require_reject_reason && !data.note) {
-      throw new Error("Conte o motivo da recusa.");
+    if (data.decision === "reject") {
+      if (data.name.length < 2) throw new Error("Informe seu nome completo.");
+      if (settings.require_reject_reason && !data.note) throw new Error("Conte o motivo da recusa.");
     }
+
+    const snap = link.snapshot as any;
+    const cpf = onlyDigits(data.cpf);
+    // No aceite o cliente só confirma (e opcionalmente comenta); o nome vem da proposta.
+    const responderName = (data.name
+      || snap?.client?.contactName || snap?.client?.companyName || "Cliente").slice(0, 120);
 
     const now = new Date().toISOString();
     const status = data.decision === "accept" ? "accepted" : "rejected";
     const { data: updated, error } = await supabaseAdmin.from("crm_proposal_links").update({
       status,
       responded_at: now,
-      responder_name: data.name,
+      responder_name: responderName,
       responder_note: data.note || null,
+      responder_cpf: cpf,
       responder_ip: getRequestHeader("cf-connecting-ip") || getRequestHeader("x-forwarded-for")?.split(",")[0]?.trim() || null,
       responder_user_agent: (getRequestHeader("user-agent") || "").slice(0, 300) || null,
     }).eq("id", link.id).eq("status", "pending").select("id");
@@ -338,7 +370,7 @@ export const respondToProposal = createServerFn({ method: "POST" })
     );
     const oppUpdate: { status: string; probability: number; closed_at: string; loss_reason?: string; stage_id?: string } = data.decision === "accept"
       ? { status: "won", probability: 100, closed_at: now }
-      : { status: "lost", probability: 0, closed_at: now, loss_reason: `Recusada pelo cliente (${data.name}) pelo link: ${data.note || "sem motivo informado"}`.slice(0, 500) };
+      : { status: "lost", probability: 0, closed_at: now, loss_reason: `Recusada pelo cliente (${responderName}) pelo link: ${data.note || "sem motivo informado"}`.slice(0, 500) };
     if (stageId) oppUpdate.stage_id = stageId;
     const { data: opp, error: oppErr } = await supabaseAdmin.from("crm_opportunities")
       .update(oppUpdate).eq("id", link.opportunity_id).select("owner_id, title").single();
@@ -347,13 +379,12 @@ export const respondToProposal = createServerFn({ method: "POST" })
     if (settings.notify_owner) {
       const target = opp?.owner_id || link.created_by;
       if (target) {
-        const snap = link.snapshot as any;
         const client = snap?.client?.companyName || snap?.client?.contactName || "Cliente";
         await supabaseAdmin.from("notifications").insert({
           user_id: target,
           type: "crm_proposal",
           title: data.decision === "accept" ? "✅ Proposta aceita" : "❌ Proposta recusada",
-          message: `${client} ${data.decision === "accept" ? "aceitou" : "recusou"} a proposta "${opp?.title || snap?.title || ""}" (${data.name}).${data.note ? ` Obs.: ${data.note}` : ""}`,
+          message: `${client} ${data.decision === "accept" ? "aceitou" : "recusou"} a proposta "${opp?.title || snap?.title || ""}" (${responderName}, CPF ${maskCpf(cpf)}).${data.note ? ` Obs.: ${data.note}` : ""}`,
           metadata: { opportunity_id: link.opportunity_id, proposal_link_id: link.id },
         });
       }

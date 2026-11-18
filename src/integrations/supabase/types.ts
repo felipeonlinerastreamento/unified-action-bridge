@@ -2292,6 +2292,7 @@ export type Database = {
       }
       crm_proposal_links: {
         Row: {
+          cpf_verified_at: string | null
           created_at: string
           created_by: string | null
           expires_at: string | null
@@ -2301,6 +2302,7 @@ export type Database = {
           opportunity_id: string
           quote_id: string | null
           responded_at: string | null
+          responder_cpf: string | null
           responder_ip: string | null
           responder_name: string | null
           responder_note: string | null
@@ -2313,8 +2315,10 @@ export type Database = {
           status: string
           token: string
           view_count: number
+          viewer_cpf: string | null
         }
         Insert: {
+          cpf_verified_at?: string | null
           created_at?: string
           created_by?: string | null
           expires_at?: string | null
@@ -2324,6 +2328,7 @@ export type Database = {
           opportunity_id: string
           quote_id?: string | null
           responded_at?: string | null
+          responder_cpf?: string | null
           responder_ip?: string | null
           responder_name?: string | null
           responder_note?: string | null
@@ -2336,8 +2341,10 @@ export type Database = {
           status?: string
           token?: string
           view_count?: number
+          viewer_cpf?: string | null
         }
         Update: {
+          cpf_verified_at?: string | null
           created_at?: string
           created_by?: string | null
           expires_at?: string | null
@@ -2347,6 +2354,7 @@ export type Database = {
           opportunity_id?: string
           quote_id?: string | null
           responded_at?: string | null
+          responder_cpf?: string | null
           responder_ip?: string | null
           responder_name?: string | null
           responder_note?: string | null
@@ -2359,6 +2367,7 @@ export type Database = {
           status?: string
           token?: string
           view_count?: number
+          viewer_cpf?: string | null
         }
         Relationships: [
           {

@@ -157,3 +157,38 @@ export function isValidEmail(email: string | null | undefined): boolean {
 export function hasPhoneDigits(phone: string | null | undefined): boolean {
   return String(phone || "").replace(/\D/g, "").length >= 10;
 }
+
+// ============== CPF exigido para abrir o link ==============
+
+export function onlyDigits(value: string | null | undefined): string {
+  return String(value || "").replace(/\D/g, "");
+}
+
+/** CPF válido = 11 dígitos, não repetidos, com os dois dígitos verificadores corretos. */
+export function isValidCpf(value: string | null | undefined): boolean {
+  const cpf = onlyDigits(value);
+  if (cpf.length !== 11 || /^(\d)\1{10}$/.test(cpf)) return false;
+  const digit = (len: number) => {
+    let sum = 0;
+    for (let i = 0; i < len; i++) sum += Number(cpf[i]) * (len + 1 - i);
+    const rest = (sum * 10) % 11;
+    return rest === 10 ? 0 : rest;
+  };
+  return digit(9) === Number(cpf[9]) && digit(10) === Number(cpf[10]);
+}
+
+/** Formata enquanto digita: 123.456.789-09 (no máximo 11 dígitos). */
+export function formatCpf(value: string | null | undefined): string {
+  const d = onlyDigits(value).slice(0, 11);
+  return d
+    .replace(/^(\d{3})(\d)/, "$1.$2")
+    .replace(/^(\d{3})\.(\d{3})(\d)/, "$1.$2.$3")
+    .replace(/\.(\d{3})(\d{1,2})$/, ".$1-$2");
+}
+
+/** Mostra só o começo e o fim: 123.***.***-09. */
+export function maskCpf(value: string | null | undefined): string {
+  const d = onlyDigits(value);
+  if (d.length !== 11) return "";
+  return `${d.slice(0, 3)}.***.***-${d.slice(9)}`;
+}

@@ -148,6 +148,13 @@
       "when": 1795031610622,
       "tag": "0020_crm_proposal_brand_color_default",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1795033130885,
+      "tag": "0021_crm_proposal_cpf_gate",
+      "breakpoints": true
     }
   ]
 }
