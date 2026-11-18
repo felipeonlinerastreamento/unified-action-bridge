@@ -595,7 +595,12 @@ const _criarDirecionamento = mutationDef(
 export const criarDirecionamento = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(_criarDirecionamento.validate)
-  .handler(_criarDirecionamento.handle as any);
+  .handler(async (args: any) => {
+    // Direcionamento não carrega termo: só admin/gestor (contingência).
+    const { assertSchedulingAllowed } = await import("./technical-terms.functions");
+    await assertSchedulingAllowed(args.context, null);
+    return (_criarDirecionamento.handle as any)(args);
+  });
 const _analisarDirecionamento = mutationDef(
   z.object({ idempotencyKey: idem, routingId: idStr }),
   (d) => ({ path: `/routing-requests/${enc(d.routingId)}/analyze`, method: "POST", body: {} }),
