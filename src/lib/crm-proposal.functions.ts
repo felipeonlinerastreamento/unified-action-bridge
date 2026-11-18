@@ -187,7 +187,7 @@ export const sendProposalToClient = createServerFn({ method: "POST" })
         const me = await getOutlookProfile(connectionKey);
         const ctx = { connectionKey, mailbox: emailChannel.email_address, connectedEmail: me.mail || me.userPrincipalName || null };
         const sig = await loadSignature(supabaseAdmin, userId);
-        const color = /^#[0-9a-f]{6}$/i.test(settings.primary_color) ? settings.primary_color : "#0f766e";
+        const color = /^#[0-9a-f]{6}$/i.test(settings.primary_color) ? settings.primary_color : "#6c0015";
         const bodyText = escapeHtml(renderProposalTemplate(settings.email_template, { ...vars, link: "{link}" }))
           .replace(/\n/g, "<br/>")
           .replace("{link}", `<a href="${escapeHtml(url)}">${escapeHtml(url)}</a>`);
@@ -274,7 +274,7 @@ export const getPublicProposal = createServerFn({ method: "GET" })
         website: s.company_website,
         address: s.company_address,
         logoUrl: s.logo_url,
-        primaryColor: /^#[0-9a-f]{6}$/i.test(s.primary_color) ? s.primary_color : "#0f766e",
+        primaryColor: /^#[0-9a-f]{6}$/i.test(s.primary_color) ? s.primary_color : "#6c0015",
         footer: s.footer_text,
       },
     };
@@ -336,7 +336,7 @@ export const respondToProposal = createServerFn({ method: "POST" })
       data.decision === "accept" ? settings.accepted_stage_id : settings.rejected_stage_id,
       stages || [],
     );
-    const oppUpdate: Record<string, unknown> = data.decision === "accept"
+    const oppUpdate: { status: string; probability: number; closed_at: string; loss_reason?: string; stage_id?: string } = data.decision === "accept"
       ? { status: "won", probability: 100, closed_at: now }
       : { status: "lost", probability: 0, closed_at: now, loss_reason: `Recusada pelo cliente (${data.name}) pelo link: ${data.note || "sem motivo informado"}`.slice(0, 500) };
     if (stageId) oppUpdate.stage_id = stageId;

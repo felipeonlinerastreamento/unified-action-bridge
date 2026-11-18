@@ -41,6 +41,7 @@ export const MENU_CATALOG: MenuEntry[] = [
   { slug: "config.popup-diario", label: "Popup Diário", category: "config" },
   { slug: "config.usuarios", label: "Usuários", category: "config" },
   { slug: "config.status-usuarios", label: "Status de Usuários", category: "config" },
+  { slug: "config.crm", label: "CRM (Proposta)", category: "config" },
   { slug: "config.notificacoes", label: "Notificações", category: "config" },
   { slug: "config.auditoria", label: "Auditoria", category: "config" },
 ];
@@ -89,6 +90,7 @@ export const URL_TO_MENU_SLUG: Record<string, string> = {
   "/configuracoes/popup-diario": "config.popup-diario",
   "/configuracoes/usuarios": "config.usuarios",
   "/configuracoes/status-usuarios": "config.status-usuarios",
+  "/configuracoes/crm": "config.crm",
   "/configuracoes/notificacoes": "config.notificacoes",
   "/configuracoes/auditoria": "config.auditoria",
 };

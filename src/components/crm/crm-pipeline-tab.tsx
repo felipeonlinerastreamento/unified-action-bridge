@@ -12,12 +12,13 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Plus, Loader2, DollarSign, TrendingUp, X, Pencil, Check, Trash2, Tag, Search, FileText, ChevronDown, ChevronRight, Building2, Package, Clock } from "lucide-react";
+import { Plus, Loader2, DollarSign, TrendingUp, X, Pencil, Check, Trash2, Tag, Search, FileText, ChevronDown, ChevronRight, Building2, Package, Clock, Send } from "lucide-react";
 import { toast } from "sonner";
 import { upsertOpportunity, moveOpportunityStage, deleteOpportunity } from "@/lib/crm.functions";
 import { ReferralPicker } from "@/components/crm/referral-picker";
 import { ServiceCatalogManager, useServiceCatalog, type CatalogService } from "@/components/crm/service-catalog-manager";
 import { generateProposalPDF } from "@/lib/proposal-pdf";
+import { SendProposalDialog, ProposalStatusBadge, type ProposalLinkRow } from "@/components/crm/send-proposal-dialog";
 
 type ContractItem = {
   categoryId: string;
@@ -127,6 +128,26 @@ export function CrmPipelineTab() {
       return data || [];
     },
   });
+  // Status da última proposta enviada por oportunidade (badge no cartão).
+  const { data: proposalLinks = [] } = useQuery({
+    queryKey: ["crm-proposal-links-all"],
+    refetchInterval: 30_000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("crm_proposal_links")
+        .select("opportunity_id, status, expires_at, first_viewed_at, created_at")
+        .order("created_at", { ascending: false })
+        .limit(2000);
+      return (data || []) as Pick<ProposalLinkRow, "opportunity_id" | "status" | "expires_at" | "first_viewed_at" | "created_at">[];
+    },
+  });
+  const latestProposalByOpp = useMemo(() => {
+    const m = new Map<string, (typeof proposalLinks)[number]>();
+    for (const l of proposalLinks) if (!m.has(l.opportunity_id)) m.set(l.opportunity_id, l);
+    return m;
+  }, [proposalLinks]);
+  const [sendTarget, setSendTarget] = useState<{ opportunity: any; quote: { id: string; quote_number: number } | null } | null>(null);
+
   const { data: oppTypes = [] } = useQuery({
     queryKey: ["crm-opportunity-types"],
     queryFn: async () => {
@@ -675,6 +696,7 @@ export function CrmPipelineTab() {
                       <Badge variant={stuck ? "destructive" : "outline"} className="text-[9px] flex items-center gap-1">
                         <Clock className="h-2.5 w-2.5" /> {daysInStage(o)}d na etapa
                       </Badge>
+                      {latestProposalByOpp.get(o.id) && <ProposalStatusBadge link={latestProposalByOpp.get(o.id)!} />}
                       {o.status === "lost" && o.loss_reason && (
                         <Badge variant="outline" className="text-[9px] truncate max-w-[150px]" title={o.loss_reason}>
                           Perda: {o.loss_reason}
@@ -692,6 +714,10 @@ export function CrmPipelineTab() {
                     <div className="flex gap-1 pt-1">
                       <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[10px] flex-1" onClick={() => openEdit(o)}>
                         <Pencil className="h-3 w-3 mr-1" /> Editar
+                      </Button>
+                      <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[10px]" title="Enviar proposta ao cliente"
+                        onClick={() => setSendTarget({ opportunity: o, quote: null })}>
+                        <Send className="h-3 w-3 mr-1" /> Enviar
                       </Button>
                       <Button type="button" size="icon" variant="ghost" className="h-6 w-6" onClick={() => { if (confirm("Excluir oportunidade?")) deleteMut.mutate(o.id); }}>
                         <Trash2 className="h-3 w-3 text-destructive" />
@@ -1092,6 +1118,17 @@ export function CrmPipelineTab() {
                     {createQuoteMut.isPending ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Plus className="h-3 w-3 mr-1" />}
                     Gerar nova proposta (nova versão)
                   </Button>
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => setSendTarget({
+                      opportunity: { id: editingId, title: form.title, contact_phone: form.contact_phone, contact_email: form.contact_email },
+                      quote: quotes[0] ? { id: quotes[0].id, quote_number: quotes[0].quote_number } : null,
+                    })}
+                  >
+                    <Send className="h-3 w-3 mr-1" /> Enviar ao cliente
+                  </Button>
                   </div>
                 </div>
                 {quotes.length === 0 ? (
@@ -1131,6 +1168,13 @@ export function CrmPipelineTab() {
                             <Button type="button" size="sm" variant="ghost" className="h-6 text-[11px]"
                               onClick={() => downloadProposal(q)}>
                               <FileText className="h-3 w-3 mr-1" /> PDF desta versão
+                            </Button>
+                            <Button type="button" size="sm" variant="ghost" className="h-6 text-[11px]"
+                              onClick={() => setSendTarget({
+                                opportunity: { id: editingId, title: form.title, contact_phone: form.contact_phone, contact_email: form.contact_email },
+                                quote: { id: q.id, quote_number: q.quote_number },
+                              })}>
+                              <Send className="h-3 w-3 mr-1" /> Enviar esta versão
                             </Button>
                           </div>
                           {isOpen && (
@@ -1179,6 +1223,12 @@ export function CrmPipelineTab() {
       </Dialog>
 
       <ServiceCatalogManager open={catalogOpen} onOpenChange={setCatalogOpen} />
+      <SendProposalDialog
+        open={!!sendTarget}
+        onOpenChange={(o) => { if (!o) setSendTarget(null); }}
+        opportunity={sendTarget?.opportunity ?? null}
+        quote={sendTarget?.quote ?? null}
+      />
     </div>
   );
 }

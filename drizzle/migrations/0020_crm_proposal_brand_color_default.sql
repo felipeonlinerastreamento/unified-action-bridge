@@ -1,0 +1,1 @@
+ALTER TABLE public.crm_proposal_settings ALTER COLUMN primary_color SET DEFAULT '#6c0015';

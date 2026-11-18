@@ -1,4 +1,4 @@
-import { Outlet, Link, createRootRouteWithContext, HeadContent, Scripts } from "@tanstack/react-router";
+import { Outlet, Link, createRootRouteWithContext, HeadContent, Scripts, useLocation } from "@tanstack/react-router";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { AuthProvider } from "@/hooks/use-auth";
 import { Toaster } from "@/components/ui/sonner";
@@ -64,13 +64,15 @@ function RootShell({ children }: { children: React.ReactNode }) {
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+  // Páginas abertas pelo cliente (link da proposta) não mostram ferramentas internas.
+  const isPublicPage = useLocation({ select: (l) => l.pathname.startsWith("/proposta/") });
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <GlobalEventsRunner />
+        {!isPublicPage && <GlobalEventsRunner />}
         <Outlet />
         <Toaster />
-        <AiFloatingAssistant />
+        {!isPublicPage && <AiFloatingAssistant />}
       </AuthProvider>
     </QueryClientProvider>
   );

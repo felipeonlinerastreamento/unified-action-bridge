@@ -39,6 +39,7 @@ import { Route as ConfiguracoesAuditoriaRouteImport } from './routes/configuraco
 import { Route as ConfiguracoesAutomacaoSemComunicacaoRouteImport } from './routes/configuracoes.automacao-sem-comunicacao'
 import { Route as ConfiguracoesCanaisEmailRouteImport } from './routes/configuracoes.canais-email'
 import { Route as ConfiguracoesCentralAtendimentoRouteImport } from './routes/configuracoes.central-atendimento'
+import { Route as ConfiguracoesCrmRouteImport } from './routes/configuracoes.crm'
 import { Route as ConfiguracoesEncaminhamentoRouteImport } from './routes/configuracoes.encaminhamento'
 import { Route as ConfiguracoesEstoqueRouteImport } from './routes/configuracoes.estoque'
 import { Route as ConfiguracoesFluxoAtendimentoRouteImport } from './routes/configuracoes.fluxo-atendimento'
@@ -49,6 +50,7 @@ import { Route as ConfiguracoesStatusUsuariosRouteImport } from './routes/config
 import { Route as ConfiguracoesUsuariosRouteImport } from './routes/configuracoes.usuarios'
 import { Route as ConfiguracoesZapiRouteImport } from './routes/configuracoes.zapi'
 import { Route as HooksRefreshTrackingRouteImport } from './routes/hooks/refresh-tracking'
+import { Route as PropostaTokenRouteImport } from './routes/proposta.$token'
 import { Route as DotlovableOauthConsentRouteImport } from './routes/[.]lovable.oauth.consent'
 import { Route as ApiPublicAutoRouteAguardandoRouteImport } from './routes/api.public.auto-route-aguardando'
 import { Route as ApiPublicBotAutoReplyScannerRouteImport } from './routes/api.public.bot-auto-reply-scanner'
@@ -216,6 +218,11 @@ const ConfiguracoesCentralAtendimentoRoute =
     path: '/central-atendimento',
     getParentRoute: () => ConfiguracoesRoute,
   } as any)
+const ConfiguracoesCrmRoute = ConfiguracoesCrmRouteImport.update({
+  id: '/crm',
+  path: '/crm',
+  getParentRoute: () => ConfiguracoesRoute,
+} as any)
 const ConfiguracoesEncaminhamentoRoute =
   ConfiguracoesEncaminhamentoRouteImport.update({
     id: '/encaminhamento',
@@ -270,6 +277,11 @@ const ConfiguracoesZapiRoute = ConfiguracoesZapiRouteImport.update({
 const HooksRefreshTrackingRoute = HooksRefreshTrackingRouteImport.update({
   id: '/hooks/refresh-tracking',
   path: '/hooks/refresh-tracking',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const PropostaTokenRoute = PropostaTokenRouteImport.update({
+  id: '/proposta/$token',
+  path: '/proposta/$token',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DotlovableOauthConsentRoute = DotlovableOauthConsentRouteImport.update({
@@ -363,6 +375,7 @@ export interface FileRoutesByFullPath {
   '/configuracoes/automacao-sem-comunicacao': typeof ConfiguracoesAutomacaoSemComunicacaoRoute
   '/configuracoes/canais-email': typeof ConfiguracoesCanaisEmailRoute
   '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
+  '/configuracoes/crm': typeof ConfiguracoesCrmRoute
   '/configuracoes/encaminhamento': typeof ConfiguracoesEncaminhamentoRoute
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
   '/configuracoes/fluxo-atendimento': typeof ConfiguracoesFluxoAtendimentoRoute
@@ -373,6 +386,7 @@ export interface FileRoutesByFullPath {
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
   '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
+  '/proposta/$token': typeof PropostaTokenRoute
   '/agenda/': typeof AgendaIndexRoute
   '/configuracoes/': typeof ConfiguracoesIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -414,6 +428,7 @@ export interface FileRoutesByTo {
   '/configuracoes/automacao-sem-comunicacao': typeof ConfiguracoesAutomacaoSemComunicacaoRoute
   '/configuracoes/canais-email': typeof ConfiguracoesCanaisEmailRoute
   '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
+  '/configuracoes/crm': typeof ConfiguracoesCrmRoute
   '/configuracoes/encaminhamento': typeof ConfiguracoesEncaminhamentoRoute
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
   '/configuracoes/fluxo-atendimento': typeof ConfiguracoesFluxoAtendimentoRoute
@@ -424,6 +439,7 @@ export interface FileRoutesByTo {
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
   '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
+  '/proposta/$token': typeof PropostaTokenRoute
   '/agenda': typeof AgendaIndexRoute
   '/configuracoes': typeof ConfiguracoesIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -468,6 +484,7 @@ export interface FileRoutesById {
   '/configuracoes/automacao-sem-comunicacao': typeof ConfiguracoesAutomacaoSemComunicacaoRoute
   '/configuracoes/canais-email': typeof ConfiguracoesCanaisEmailRoute
   '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
+  '/configuracoes/crm': typeof ConfiguracoesCrmRoute
   '/configuracoes/encaminhamento': typeof ConfiguracoesEncaminhamentoRoute
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
   '/configuracoes/fluxo-atendimento': typeof ConfiguracoesFluxoAtendimentoRoute
@@ -478,6 +495,7 @@ export interface FileRoutesById {
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
   '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
+  '/proposta/$token': typeof PropostaTokenRoute
   '/agenda/': typeof AgendaIndexRoute
   '/configuracoes/': typeof ConfiguracoesIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
@@ -523,6 +541,7 @@ export interface FileRouteTypes {
     | '/configuracoes/automacao-sem-comunicacao'
     | '/configuracoes/canais-email'
     | '/configuracoes/central-atendimento'
+    | '/configuracoes/crm'
     | '/configuracoes/encaminhamento'
     | '/configuracoes/estoque'
     | '/configuracoes/fluxo-atendimento'
@@ -533,6 +552,7 @@ export interface FileRouteTypes {
     | '/configuracoes/usuarios'
     | '/configuracoes/zapi'
     | '/hooks/refresh-tracking'
+    | '/proposta/$token'
     | '/agenda/'
     | '/configuracoes/'
     | '/.lovable/oauth/consent'
@@ -574,6 +594,7 @@ export interface FileRouteTypes {
     | '/configuracoes/automacao-sem-comunicacao'
     | '/configuracoes/canais-email'
     | '/configuracoes/central-atendimento'
+    | '/configuracoes/crm'
     | '/configuracoes/encaminhamento'
     | '/configuracoes/estoque'
     | '/configuracoes/fluxo-atendimento'
@@ -584,6 +605,7 @@ export interface FileRouteTypes {
     | '/configuracoes/usuarios'
     | '/configuracoes/zapi'
     | '/hooks/refresh-tracking'
+    | '/proposta/$token'
     | '/agenda'
     | '/configuracoes'
     | '/.lovable/oauth/consent'
@@ -627,6 +649,7 @@ export interface FileRouteTypes {
     | '/configuracoes/automacao-sem-comunicacao'
     | '/configuracoes/canais-email'
     | '/configuracoes/central-atendimento'
+    | '/configuracoes/crm'
     | '/configuracoes/encaminhamento'
     | '/configuracoes/estoque'
     | '/configuracoes/fluxo-atendimento'
@@ -637,6 +660,7 @@ export interface FileRouteTypes {
     | '/configuracoes/usuarios'
     | '/configuracoes/zapi'
     | '/hooks/refresh-tracking'
+    | '/proposta/$token'
     | '/agenda/'
     | '/configuracoes/'
     | '/.lovable/oauth/consent'
@@ -673,6 +697,7 @@ export interface RootRouteChildren {
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   AtendimentosTarefasRoute: typeof AtendimentosTarefasRoute
   HooksRefreshTrackingRoute: typeof HooksRefreshTrackingRoute
+  PropostaTokenRoute: typeof PropostaTokenRoute
   DotlovableOauthConsentRoute: typeof DotlovableOauthConsentRoute
   ApiPublicAutoRouteAguardandoRoute: typeof ApiPublicAutoRouteAguardandoRoute
   ApiPublicBotAutoReplyScannerRoute: typeof ApiPublicBotAutoReplyScannerRoute
@@ -898,6 +923,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConfiguracoesCentralAtendimentoRouteImport
       parentRoute: typeof ConfiguracoesRoute
     }
+    '/configuracoes/crm': {
+      id: '/configuracoes/crm'
+      path: '/crm'
+      fullPath: '/configuracoes/crm'
+      preLoaderRoute: typeof ConfiguracoesCrmRouteImport
+      parentRoute: typeof ConfiguracoesRoute
+    }
     '/configuracoes/encaminhamento': {
       id: '/configuracoes/encaminhamento'
       path: '/encaminhamento'
@@ -966,6 +998,13 @@ declare module '@tanstack/react-router' {
       path: '/hooks/refresh-tracking'
       fullPath: '/hooks/refresh-tracking'
       preLoaderRoute: typeof HooksRefreshTrackingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/proposta/$token': {
+      id: '/proposta/$token'
+      path: '/proposta/$token'
+      fullPath: '/proposta/$token'
+      preLoaderRoute: typeof PropostaTokenRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/.lovable/oauth/consent': {
@@ -1073,6 +1112,7 @@ interface ConfiguracoesRouteChildren {
   ConfiguracoesAutomacaoSemComunicacaoRoute: typeof ConfiguracoesAutomacaoSemComunicacaoRoute
   ConfiguracoesCanaisEmailRoute: typeof ConfiguracoesCanaisEmailRoute
   ConfiguracoesCentralAtendimentoRoute: typeof ConfiguracoesCentralAtendimentoRoute
+  ConfiguracoesCrmRoute: typeof ConfiguracoesCrmRoute
   ConfiguracoesEncaminhamentoRoute: typeof ConfiguracoesEncaminhamentoRoute
   ConfiguracoesEstoqueRoute: typeof ConfiguracoesEstoqueRoute
   ConfiguracoesFluxoAtendimentoRoute: typeof ConfiguracoesFluxoAtendimentoRoute
@@ -1092,6 +1132,7 @@ const ConfiguracoesRouteChildren: ConfiguracoesRouteChildren = {
     ConfiguracoesAutomacaoSemComunicacaoRoute,
   ConfiguracoesCanaisEmailRoute: ConfiguracoesCanaisEmailRoute,
   ConfiguracoesCentralAtendimentoRoute: ConfiguracoesCentralAtendimentoRoute,
+  ConfiguracoesCrmRoute: ConfiguracoesCrmRoute,
   ConfiguracoesEncaminhamentoRoute: ConfiguracoesEncaminhamentoRoute,
   ConfiguracoesEstoqueRoute: ConfiguracoesEstoqueRoute,
   ConfiguracoesFluxoAtendimentoRoute: ConfiguracoesFluxoAtendimentoRoute,
@@ -1130,6 +1171,7 @@ const rootRouteChildren: RootRouteChildren = {
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   AtendimentosTarefasRoute: AtendimentosTarefasRoute,
   HooksRefreshTrackingRoute: HooksRefreshTrackingRoute,
+  PropostaTokenRoute: PropostaTokenRoute,
   DotlovableOauthConsentRoute: DotlovableOauthConsentRoute,
   ApiPublicAutoRouteAguardandoRoute: ApiPublicAutoRouteAguardandoRoute,
   ApiPublicBotAutoReplyScannerRoute: ApiPublicBotAutoReplyScannerRoute,
