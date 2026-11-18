@@ -24,7 +24,9 @@ import { toast } from "sonner";
 import {
   Search, UserPlus, Building2, Loader2, Trash2, Edit, Users, Tag,
   Cake, TrendingUp, ListTodo, Plus, X, Workflow,
+  Wrench,
 } from "lucide-react";
+import { CrmTechnicalServicesTab } from "@/components/crm/crm-technical-services-tab";
 import { CrmCategories } from "@/components/crm/crm-categories";
 import { CrmBirthdaysTab } from "@/components/crm/crm-birthdays-tab";
 import { CrmPipelineTab } from "@/components/crm/crm-pipeline-tab";
@@ -487,6 +489,9 @@ function CrmPage() {
 
           <TabsContent value="categorias" className="mt-4">
             <CrmCategories />
+          </TabsContent>
+          <TabsContent value="servicos-tecnicos" className="mt-4">
+            <CrmTechnicalServicesTab />
           </TabsContent>
         </Tabs>
       </div>
