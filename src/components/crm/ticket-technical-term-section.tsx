@@ -9,6 +9,7 @@ import {
   SERVICE_TYPE_LABELS,
   TERM_STATUS_LABELS,
   allowedServiceTypes,
+  categoryRequiresTerm,
   termNumberLabel,
   type TechnicalServiceType,
   type TechnicalTermStatus,
@@ -33,7 +34,7 @@ export function TicketTechnicalTermSection({ ticket, categories }: Props) {
   const qc = useQueryClient();
   const [open, setOpen] = useState(false);
   const cat = findCategoryByLabel(categories, ticket.category);
-  const types = allowedServiceTypes(cat?.termType);
+  const types = categoryRequiresTerm(cat?.termType) ? allowedServiceTypes(cat?.termType) : [];
 
   const { data: terms = [] } = useQuery({
     queryKey: ["technical-terms", "ticket", ticket.id],
