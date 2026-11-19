@@ -169,6 +169,13 @@
       "when": 1795099496984,
       "tag": "0023_technical_term_contingency",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1795118297598,
+      "tag": "0024_fix_technical_term_trigger_recurring",
+      "breakpoints": true
     }
   ]
 }
