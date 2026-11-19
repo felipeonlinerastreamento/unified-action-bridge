@@ -87,6 +87,8 @@ import {
   type PurchaseLineItem,
 } from "./purchase-fields";
 import { useAuth } from "@/hooks/use-auth";
+import { TechnicalTermDialog, type TermTicketPrefill } from "@/components/crm/technical-term-dialog";
+import { allowedServiceTypes, type TechnicalServiceType } from "@/lib/technical-terms";
 
 
 interface TicketCreateDialogProps {
@@ -111,6 +113,7 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
   const { user: currentUser, hasRole } = useAuth();
   const [companyOpen, setCompanyOpen] = useState(false);
   const [companySearch, setCompanySearch] = useState("");
+  const [termTicket, setTermTicket] = useState<{ prefill: TermTicketPrefill; types: TechnicalServiceType[] } | null>(null);
   const [selectedCliente, setSelectedCliente] = useState<GsystemCliente | null>(null);
 
   const [contactName, setContactName] = useState("");
@@ -414,8 +417,8 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
 
   const handleCreate = async (finalize: boolean = false) => {
     const selectedCat = tiposPendencia.find((x) => x.Descricao === category);
-    if (finalize && selectedCat && selectedCat.termType !== "none" && !hasRole("admin") && !hasRole("gestor")) {
-      toast.error("Esta categoria exige termo de serviço técnico aceito antes de finalizar. Crie o chamado e gere o termo.");
+    if (finalize && selectedCat && selectedCat.termType && selectedCat.termType !== "none") {
+      toast.error("Esta categoria exige termo de serviço técnico. Use \"Criar\" — o termo será aberto em seguida.");
       return;
     }
     const withFinancial = finalize && financial;
@@ -743,6 +746,21 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
       setFinancial(false);
       setFinancialNotes("");
       toast.success(finalize ? "Ticket criado e finalizado" : "Ticket criado com sucesso");
+      const termCat = !finalize && selectedCat && selectedCat.termType && selectedCat.termType !== "none" ? selectedCat : null;
+      if (termCat && created?.id) {
+        setTermTicket({
+          prefill: {
+            id: created.id,
+            companyId,
+            clientName: selectedCliente?.Nome || selectedCliente?.RazaoSocial || null,
+            plate: plate || null,
+            contactName: contactName || null,
+            contactPhone: contactPhone || null,
+          },
+          types: allowedServiceTypes(termCat.termType),
+        });
+        toast.info("Preencha o termo de serviço técnico para enviar ao responsável pela frota.");
+      }
       resetForm();
       onCreated();
       onClose();
@@ -752,6 +770,7 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
   };
 
   return (
+    <>
     <Dialog open={open} onOpenChange={(o) => !o && (resetForm(), onClose())}>
       <DialogContent
         className={cn(
@@ -1120,5 +1139,15 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
         </div>
       </DialogContent>
     </Dialog>
+    {termTicket && (
+      <TechnicalTermDialog
+        open={!!termTicket}
+        onOpenChange={(v) => !v && setTermTicket(null)}
+        allowedTypes={termTicket.types}
+        ticket={termTicket.prefill}
+        onCreated={() => setTermTicket(null)}
+      />
+    )}
+    </>
   );
 }

@@ -162,6 +162,13 @@
       "when": 1795035130795,
       "tag": "0022_technical_service_terms_and_ticket_categories",
       "breakpoints": true
+    },
+    {
+      "idx": 23,
+      "version": "7",
+      "when": 1795099496984,
+      "tag": "0023_technical_term_contingency",
+      "breakpoints": true
     }
   ]
 }

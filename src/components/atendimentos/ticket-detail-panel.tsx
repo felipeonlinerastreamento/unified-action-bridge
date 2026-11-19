@@ -717,7 +717,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   const updateStatus = async (newStatus: string, observation?: string, financial?: { notes: string } | null) => {
     if (!ticket?.id) return;
 
-    if (newStatus === "finalizado" && !ticket.is_recurring && !hasRole("admin") && !hasRole("gestor")) {
+    if (newStatus === "finalizado" && !ticket.is_recurring) {
       const cat = findCategoryByLabel(tiposPendencia, ticket.category);
       if (cat && cat.termType !== "none") {
         const { data: sentTerms } = await supabase
@@ -727,8 +727,20 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
           .eq("status", "enviada")
           .limit(1);
         if (!sentTerms?.length) {
-          toast.error("Este chamado exige termo de serviço técnico aceito e enviado para agendamento antes de finalizar. Gere o termo neste chamado e acompanhe em CRM > Serviços Técnicos.");
-          return;
+          if (!hasRole("admin") && !hasRole("gestor")) {
+            toast.error("Este chamado exige termo de serviço técnico aceito e enviado para agendamento antes de finalizar. Gere o termo neste chamado e acompanhe em CRM > Serviços Técnicos.");
+            return;
+          }
+          const reason = window.prompt("Contingência: este chamado não tem termo técnico enviado para agendamento.\nInforme a justificativa (mín. 10 caracteres) para finalizar mesmo assim:");
+          if (!reason || reason.trim().length < 10) {
+            toast.error("Finalização cancelada: justificativa de contingência obrigatória (mín. 10 caracteres).");
+            return;
+          }
+          const { error: ovErr } = await supabase
+            .from("service_tickets")
+            .update({ technical_term_override_reason: reason.trim() } as any)
+            .eq("id", ticket.id);
+          if (ovErr) { toast.error("Erro ao registrar contingência: " + ovErr.message); return; }
         }
       }
     }

@@ -4897,6 +4897,8 @@ export type Database = {
           status: Database["public"]["Enums"]["service_ticket_status"]
           subcategory_id: string | null
           subcategory_name: string | null
+          technical_term_override_by: string | null
+          technical_term_override_reason: string | null
           tracking_code: string | null
           updated_at: string
         }
@@ -4939,6 +4941,8 @@ export type Database = {
           status?: Database["public"]["Enums"]["service_ticket_status"]
           subcategory_id?: string | null
           subcategory_name?: string | null
+          technical_term_override_by?: string | null
+          technical_term_override_reason?: string | null
           tracking_code?: string | null
           updated_at?: string
         }
@@ -4981,6 +4985,8 @@ export type Database = {
           status?: Database["public"]["Enums"]["service_ticket_status"]
           subcategory_id?: string | null
           subcategory_name?: string | null
+          technical_term_override_by?: string | null
+          technical_term_override_reason?: string | null
           tracking_code?: string | null
           updated_at?: string
         }

@@ -162,6 +162,8 @@ import {
 import { isLiberacaoCategory, useSubcategoryEquipmentModelsWithFallback } from "@/hooks/use-liberacao-equipamento";
 
 import { escalateToGestao as escalateToGestaoHelper } from "@/lib/escalate-gestao";
+import { TechnicalTermDialog, type TermTicketPrefill } from "@/components/crm/technical-term-dialog";
+import { allowedServiceTypes, type TechnicalServiceType } from "@/lib/technical-terms";
 import { useAttendanceEventSettings, useSlaBandChangeNotifier } from "@/hooks/use-attendance-events";
 import {
   AlertDialog,
@@ -2064,6 +2066,8 @@ function CentralPage() {
     }
   };
 
+  const [termPrompt, setTermPrompt] = useState<{ prefill: TermTicketPrefill; types: TechnicalServiceType[] } | null>(null);
+
   // Finalize chat
   const finalizeMutation = useMutation({
     mutationFn: async ({ notes, status, tipoPendencia, skipClosingMessage: skipMsg, escalateGestao, linkedTicketId: linkedId }: { notes?: string; status?: string; tipoPendencia?: string; skipClosingMessage?: boolean; escalateGestao?: boolean; linkedTicketId?: string } = {}) => {
@@ -2074,7 +2078,7 @@ function CentralPage() {
 
       // Categoria que exige termo técnico: atendente só finaliza depois do termo
       // aceito e enviado para agendamento (gestores podem, como contingência).
-      if (!pendingResolve && !hasRole("admin") && !hasRole("gestor")) {
+      if (!pendingResolve) {
         const tk: any = currentTicket;
         const cat = tipoPendencia
           ? tiposPendencia.find((t) => t.Key === tipoPendencia)
@@ -2091,7 +2095,29 @@ function CentralPage() {
               .limit(1);
             ok = !!sentTerms?.length;
           }
+          if (!ok && ticketId && (hasRole("admin") || hasRole("gestor"))) {
+            const reason = window.prompt("Contingência: este chamado não tem termo técnico enviado para agendamento.\nInforme a justificativa (mín. 10 caracteres) para finalizar mesmo assim:");
+            if (reason && reason.trim().length >= 10) {
+              const { error: ovErr } = await supabase
+                .from("service_tickets")
+                .update({ technical_term_override_reason: reason.trim() } as any)
+                .eq("id", ticketId);
+              if (!ovErr) ok = true;
+            }
+          }
           if (!ok) {
+            if (ticketId) {
+              setTermPrompt({
+                prefill: {
+                  id: ticketId,
+                  companyId: tk?.company_id ?? null,
+                  plate: tk?.plate ?? null,
+                  contactName: tk?.contact_name ?? null,
+                  contactPhone: tk?.contact_phone ?? null,
+                },
+                types: allowedServiceTypes(cat.termType),
+              });
+            }
             throw new Error(
               `A categoria "${cat.Descricao}" exige termo de serviço técnico aceito e enviado para agendamento. Use "A resolver" e gere o termo no chamado (Atendimentos) ou em CRM > Serviços Técnicos.`,
             );
@@ -6379,6 +6405,15 @@ function CentralPage() {
         contactName={chatDetail?.contact?.name || chatDetail?.description || null}
         contactAvatar={chatDetail?.contact?.linkImage || null}
       />
+      {termPrompt && (
+        <TechnicalTermDialog
+          open={!!termPrompt}
+          onOpenChange={(v) => !v && setTermPrompt(null)}
+          allowedTypes={termPrompt.types}
+          ticket={termPrompt.prefill}
+          onCreated={() => setTermPrompt(null)}
+        />
+      )}
     </AppLayout>
   );
 }
