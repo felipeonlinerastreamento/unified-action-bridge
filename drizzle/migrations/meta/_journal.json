@@ -204,6 +204,13 @@
       "when": 1795190990375,
       "tag": "0028_gamification_top_import",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1795191348315,
+      "tag": "0029_gamification_top_import_task_people",
+      "breakpoints": true
     }
   ]
 }

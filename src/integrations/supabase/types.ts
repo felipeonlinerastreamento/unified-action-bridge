@@ -8304,6 +8304,7 @@ export type Database = {
         }[]
       }
       gamif_import_directory: { Args: never; Returns: Json }
+      gamif_import_fix_tasks: { Args: { _p: Json }; Returns: number }
       gamif_import_top_apply: { Args: { _p: Json }; Returns: Json }
       gamif_is_manager: { Args: never; Returns: boolean }
       gamif_link_legacy_user: {

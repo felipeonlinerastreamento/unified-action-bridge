@@ -16,5 +16,6 @@
 - [x] Admin: lançamentos, métricas, regras automáticas, missões, loja, resgates, sugestões, usuários pendentes.
 - [x] Dashboard em branco: carregamento espera login e papéis (sem tela vazia).
 - [x] Telas restantes: Feed, Duelos, Perfil, Processos, Notificações, Métricas; Admin: relatórios, notificações, duelos, conquistas, análises da IA, auditoria, configurações.
-- [ ] Importação dos dados do TOP via /export (ids originais, idempotente, tarefas nas Tarefas do GS Hub, ADM = Administrativo) + relatório.
+- [x] Importação dos dados do TOP via /export (ids originais, idempotente, tarefas nas Tarefas do GS Hub, ADM = Administrativo) + relatório.
+- [ ] Ligar 20 pessoas pendentes (e-mail do TOP diferente do GS Hub) e repetir a importação — aguardando Felipe.
 - [ ] Virada: TOP só leitura, delta, liberar menu para todos — aguardando autorização do Felipe.

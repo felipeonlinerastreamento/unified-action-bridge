@@ -325,6 +325,7 @@ export function prepareTopImport(exp: TopExport, dir: Directory, importerId: str
     reading_confirmations: readings,
     settings,
     tasks,
+    task_people: d("tasks").map((t) => ({ id: t["id"], created_by: u(t["created_by"]), assigned_to: u(t["assigned_to"]) })),
     task_participants: participants,
     task_comments: comments,
   };

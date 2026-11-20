@@ -25,6 +25,10 @@ export const importTopGamific = createServerFn({ method: "POST" })
     const { data: applied, error: applyErr } = await supabase.rpc("gamif_import_top_apply", { _p: prep.payload as never });
     if (applyErr) throw new Error(`Falha ao gravar a importação: ${applyErr.message}`);
 
+    // tarefas já trazidas: corrige criador/responsável de quem foi ligado depois
+    const { error: fixErr } = await supabase.rpc("gamif_import_fix_tasks", { _p: prep.payload as never });
+    if (fixErr) throw new Error(`Falha ao atualizar as tarefas importadas: ${fixErr.message}`);
+
     const report = buildImportReport(exp, prep, applied as unknown as ApplyResult);
     const { error: runErr } = await supabase.from("gamif_import_runs").insert({ ran_by: userId, exported_at: exp.exported_at, report: report as never });
     if (runErr) throw new Error(runErr.message);

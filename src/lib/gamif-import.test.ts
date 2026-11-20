@@ -77,6 +77,8 @@ describe("preparação da importação", () => {
     const t = (prep.payload["tasks"] as { created_by: string; assigned_to: string | null }[])[0];
     assert.equal(t?.created_by, "importer");
     assert.equal(t?.assigned_to, "u1");
+    const people = prep.payload["task_people"] as { created_by: string | null }[];
+    assert.equal(people[0]?.created_by, null);
   });
   it("relatório compara saldo do TOP com o do GS Hub", () => {
     const rep = buildImportReport(exp, prep, {
