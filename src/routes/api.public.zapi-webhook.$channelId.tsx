@@ -1452,11 +1452,12 @@ async function sendInactivityMessageOnce(channelId: string, chatId: string, phon
   if (!claimed) return;
   const text = cfg.message.trim();
   const creds = await loadZapiChannel(supabaseAdmin, channelId);
-  await zapiSendText(creds, phone, text);
+  const sendRes: any = await zapiSendText(creds, phone, text);
   await supabaseAdmin.from("zapi_messages").insert({
     chat_id: chatId,
     from_me: true,
     text,
+    zapi_message_id: sendRes?.messageId || sendRes?.id || sendRes?.zaapId || null,
     status: "sent",
     is_bot_message: true,
   });
