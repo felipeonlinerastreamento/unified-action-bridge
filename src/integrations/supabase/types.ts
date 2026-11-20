@@ -8433,6 +8433,7 @@ export type Database = {
         Args: { _id: string; _winner: string }
         Returns: undefined
       }
+      crm_tab_allowed: { Args: { _tab: string }; Returns: boolean }
       delete_technical_term_type: { Args: { _id: string }; Returns: string }
       gamif_apply_auto_rules: { Args: { _day?: string }; Returns: number }
       gamif_cancel_duel: { Args: { _id: string }; Returns: undefined }

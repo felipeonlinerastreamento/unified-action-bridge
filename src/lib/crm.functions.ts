@@ -2,6 +2,12 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 
+/** Bloqueia no servidor quem não tem a aba do CRM liberada (mesma regra do menu). */
+async function assertCrmTab(supabase: any, tab: string) {
+  const { data, error } = await supabase.rpc("crm_tab_allowed", { _tab: tab });
+  if (error || data !== true) throw new Error("Você não tem acesso a esta aba do CRM.");
+}
+
 // ============== TASKS ==============
 const taskInput = z.object({
   id: z.string().uuid().optional(),
@@ -19,6 +25,7 @@ export const upsertCrmTask = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(taskInput.parse)
   .handler(async ({ data, context }) => {
+    await assertCrmTab(context.supabase, "tarefas");
     const { supabase, userId } = context;
     const payload: any = {
       contact_id: data.contact_id ?? null,
@@ -48,6 +55,7 @@ export const completeCrmTask = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ id: z.string().uuid(), note: z.string().max(2000).default("") }).parse)
   .handler(async ({ data, context }) => {
+    await assertCrmTab(context.supabase, "tarefas");
     const { error } = await context.supabase
       .from("crm_tasks")
       .update({ status: "done", completed_at: new Date().toISOString(), completion_note: data.note })
@@ -102,6 +110,7 @@ export const upsertOpportunity = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(oppInput.parse)
   .handler(async ({ data, context }) => {
+    await assertCrmTab(context.supabase, "pipeline");
     const { supabase, userId } = context;
     const payload: any = { ...data };
     delete payload.id;
@@ -130,6 +139,7 @@ export const moveOpportunityStage = createServerFn({ method: "POST" })
     }).parse
   )
   .handler(async ({ data, context }) => {
+    await assertCrmTab(context.supabase, "pipeline");
     const { supabase } = context;
     const { data: stage } = await supabase
       .from("crm_pipeline_stages")
@@ -226,6 +236,7 @@ export const upsertPostsaleRule = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(ruleInput.parse)
   .handler(async ({ data, context }) => {
+    await assertCrmTab(context.supabase, "fluxos");
     const { supabase } = context;
     let id = data.id;
     const baseFields = {
@@ -275,6 +286,7 @@ export const deleteOpportunity = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ id: z.string().uuid() }).parse)
   .handler(async ({ data, context }) => {
+    await assertCrmTab(context.supabase, "pipeline");
     const { error } = await context.supabase.from("crm_opportunities").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };
@@ -284,6 +296,7 @@ export const deletePostsaleRule = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator(z.object({ id: z.string().uuid() }).parse)
   .handler(async ({ data, context }) => {
+    await assertCrmTab(context.supabase, "fluxos");
     const { error } = await context.supabase.from("crm_postsale_rules").delete().eq("id", data.id);
     if (error) throw new Error(error.message);
     return { ok: true };

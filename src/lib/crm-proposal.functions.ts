@@ -81,6 +81,7 @@ export const sendProposalToClient = createServerFn({ method: "POST" })
     email: z.string().max(200).nullable().optional(),
   }).parse(d))
   .handler(async ({ data, context }) => {
+    { const { data: ok } = await context.supabase.rpc("crm_tab_allowed", { _tab: "pipeline" }); if (ok !== true) throw new Error("Você não tem acesso à aba Pipeline do CRM."); }
     const { supabase, userId, claims } = context;
     if (data.sendWhatsapp && !hasPhoneDigits(data.phone)) throw new Error("Informe um WhatsApp válido com DDD.");
     if (data.sendEmail && !isValidEmail(data.email)) throw new Error("Informe um e-mail válido.");
@@ -238,6 +239,7 @@ export const cancelProposalLink = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
+    { const { data: ok } = await context.supabase.rpc("crm_tab_allowed", { _tab: "pipeline" }); if (ok !== true) throw new Error("Você não tem acesso à aba Pipeline do CRM."); }
     const { error } = await context.supabase.from("crm_proposal_links")
       .update({ status: "cancelled" }).eq("id", data.id).eq("status", "pending");
     if (error) throw new Error(error.message);

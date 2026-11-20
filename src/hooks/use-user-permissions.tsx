@@ -3,6 +3,7 @@ import { useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { DEFAULT_OPERATOR_MENUS } from "@/lib/menu-catalog";
+import { withCrmParent } from "@/lib/crm-tabs";
 
 interface PermissionsResult {
   /** null = sem restrição (admin/gestor ou grupo sem allowed_menus). */
@@ -89,6 +90,9 @@ export function useUserPermissions(): PermissionsResult {
         for (const slug of g.allowed_menus ?? []) allowedMenus.add(slug);
       }
     }
+
+    // CRM só aparece com ao menos uma aba liberada.
+    allowedMenus = withCrmParent(allowedMenus);
 
     const canFinalizeWithoutMessage = groups.some((g) => g.can_finalize_without_message === true);
 

@@ -30,7 +30,7 @@ describe("Grupo Aplicações", () => {
     assert.equal(section("agenda.mapa"), "agenda");
   });
   test("outros menus não mudam de lugar", () => {
-    assert.equal(section("crm"), "main");
+    assert.equal(section("dashboard"), "main");
     assert.equal(section("config.assistente-ia"), "config");
   });
   test("grupo abre nas páginas das aplicações", () => {

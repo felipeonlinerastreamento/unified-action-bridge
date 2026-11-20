@@ -2,6 +2,8 @@ import { createFileRoute } from "@tanstack/react-router";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
+import { useUserPermissions } from "@/hooks/use-user-permissions";
+import { CRM_TABS, allowedCrmTabs, resolveCrmTab } from "@/lib/crm-tabs";
 import { AppLayout } from "@/components/app-layout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -54,8 +56,23 @@ const ROLE_LABELS: Record<string, string> = {
   outro: "Outro",
 };
 
+const CRM_TAB_ICONS: Record<string, typeof Tag> = {
+  tarefas: ListTodo,
+  pipeline: TrendingUp,
+  fluxos: Workflow,
+  aniversarios: Cake,
+  contatos: Users,
+  categorias: Tag,
+  "servicos-tecnicos": Wrench,
+};
+
 function CrmPage() {
   const { tab: initialTab } = Route.useSearch();
+  // Cada aba do CRM é liberada por grupo de setor; admin/gestor veem todas.
+  const { canSeeMenu, isLoading: permsLoading } = useUserPermissions();
+  const allowedTabs = allowedCrmTabs(canSeeMenu);
+  const [requestedTab, setRequestedTab] = useState<string | undefined>(initialTab);
+  const activeTab = resolveCrmTab(requestedTab, allowedTabs);
   const { isAuthenticated, isLoading } = useAuth();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
@@ -276,29 +293,20 @@ function CrmPage() {
           <h1 className="text-2xl font-bold text-foreground">CRM</h1>
         </div>
 
-        <Tabs defaultValue={initialTab || "tarefas"}>
+        {!permsLoading && !activeTab && (
+          <Card><CardContent className="py-10 text-center text-sm text-muted-foreground">Você não tem acesso a nenhuma aba do CRM.</CardContent></Card>
+        )}
+        {activeTab && (
+        <Tabs value={activeTab} onValueChange={setRequestedTab}>
           <TabsList className="flex-wrap h-auto">
-            <TabsTrigger value="tarefas" className="gap-1">
-              <ListTodo className="h-4 w-4" /> Tarefas
-            </TabsTrigger>
-            <TabsTrigger value="pipeline" className="gap-1">
-              <TrendingUp className="h-4 w-4" /> Pipeline
-            </TabsTrigger>
-            <TabsTrigger value="fluxos" className="gap-1">
-              <Workflow className="h-4 w-4" /> Fluxos
-            </TabsTrigger>
-            <TabsTrigger value="aniversarios" className="gap-1">
-              <Cake className="h-4 w-4" /> Aniversários
-            </TabsTrigger>
-            <TabsTrigger value="contatos" className="gap-1">
-              <Users className="h-4 w-4" /> Contatos
-            </TabsTrigger>
-            <TabsTrigger value="categorias" className="gap-1">
-              <Tag className="h-4 w-4" /> Categorias
-            </TabsTrigger>
-            <TabsTrigger value="servicos-tecnicos" className="gap-1">
-              <Wrench className="h-4 w-4" /> Serviços Técnicos
-            </TabsTrigger>
+            {CRM_TABS.filter((t) => allowedTabs.includes(t.key)).map((t) => {
+              const Icon = CRM_TAB_ICONS[t.key] ?? Tag;
+              return (
+                <TabsTrigger key={t.key} value={t.key} className="gap-1">
+                  <Icon className="h-4 w-4" /> {t.label}
+                </TabsTrigger>
+              );
+            })}
           </TabsList>
 
           <TabsContent value="tarefas" className="mt-4"><CrmTasksTab /></TabsContent>
@@ -496,6 +504,7 @@ function CrmPage() {
             <CrmTechnicalServicesTab />
           </TabsContent>
         </Tabs>
+        )}
       </div>
 
       {/* New/Edit Dialog */}

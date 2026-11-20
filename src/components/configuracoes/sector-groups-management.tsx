@@ -424,7 +424,7 @@ export function SectorGroupsManagement() {
                 </div>
 
                   <div className="space-y-4">
-                    {(["main", "apps", "agenda", "config"] as const).map((cat) => {
+                    {(["main", "crm", "apps", "agenda", "config"] as const).map((cat) => {
                       const items = MENU_CATALOG.filter((m) => menuSectionOf(m) === cat);
                       const catLabel = MENU_SECTION_LABELS[cat];
                       const catSlugs = items.map((i) => i.slug);
@@ -458,7 +458,7 @@ export function SectorGroupsManagement() {
                                       );
                                     }}
                                   />
-                                  <span>{cat === "agenda" ? m.label.replace("Agenda — ", "") : m.label}</span>
+                                  <span>{cat === "agenda" ? m.label.replace("Agenda — ", "") : cat === "crm" ? m.label.replace("CRM — ", "") : m.label}</span>
                                 </label>
                               );
                             })}

@@ -1,5 +1,6 @@
 // Catálogo dos menus do sistema usados para configurar permissões por
 // grupo de setores. Os slugs são estáveis e usados em `sector_groups.allowed_menus`.
+import { CRM_TABS, CRM_TAB_SLUGS, crmTabSlug } from "./crm-tabs";
 
 export type MenuCategory = "main" | "config";
 
@@ -13,7 +14,8 @@ export const MENU_CATALOG: MenuEntry[] = [
   // Principais
   { slug: "dashboard", label: "Dashboard", category: "main" },
   { slug: "central", label: "Chat / Central de Atendimento", category: "main" },
-  { slug: "crm", label: "CRM", category: "main" },
+  // CRM: uma entrada por aba (gerada da lista de abas do CRM).
+  ...CRM_TABS.map((t) => ({ slug: crmTabSlug(t.key), label: `CRM — ${t.label}`, category: "main" as const })),
   { slug: "contatos", label: "Contatos", category: "main" },
   { slug: "empresas", label: "Empresas", category: "main" },
   { slug: "estoque", label: "Estoque", category: "main" },
@@ -52,7 +54,7 @@ export const ALL_MENU_SLUGS = MENU_CATALOG.map((m) => m.slug);
 // (mantém o comportamento histórico antes da introdução de allowed_menus).
 export const DEFAULT_OPERATOR_MENUS: string[] = [
   "central",
-  "crm",
+  ...CRM_TAB_SLUGS,
   "contatos",
   "empresas",
   "atendimentos",
@@ -103,9 +105,10 @@ export function isApplicationPath(pathname: string): boolean {
   return APPLICATION_MENU_URLS.some((url) => pathname === url || pathname.startsWith(`${url}/`));
 }
 
-export type MenuSection = "main" | "apps" | "agenda" | "config";
+export type MenuSection = "main" | "crm" | "apps" | "agenda" | "config";
 export const MENU_SECTION_LABELS: Record<MenuSection, string> = {
   main: "Menu Principal",
+  crm: "CRM (abas)",
   apps: "Aplicações",
   agenda: "Aplicações — Agenda",
   config: "Configurações",
@@ -113,6 +116,7 @@ export const MENU_SECTION_LABELS: Record<MenuSection, string> = {
 
 /** Seção de cada menu na tela de grupos de setor, igual ao menu lateral. */
 export function menuSectionOf(entry: MenuEntry): MenuSection {
+  if (entry.slug.startsWith("crm.")) return "crm";
   if (entry.slug.startsWith("agenda.")) return "agenda";
   if (APPLICATION_MENU_SLUGS.includes(entry.slug)) return "apps";
   return entry.category;
