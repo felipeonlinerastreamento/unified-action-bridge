@@ -15,20 +15,19 @@ export function techStageLabel(stage?: string | null): string | null {
   return TECH_STAGE_LABELS[stage as TechStage] ?? stage;
 }
 
-/** Linha fixa que abre a descrição da solicitação ao Seu Instalador. */
-export function protocolPrefix(p: { protocol?: string | null; serviceLabel?: string | null; plate?: string | null }): string {
+/** Cabeçalho fixo da solicitação ao Seu Instalador: "Protocolo: #N" e, abaixo, "Cliente: nome". */
+export function protocolPrefix(p: { protocol?: string | null; clientName?: string | null }): string {
   const num = (p.protocol || "").trim().replace(/^#/, "");
-  const parts = [`Protocolo #${num || "-"}`];
-  if (p.serviceLabel?.trim()) parts.push(p.serviceLabel.trim());
-  if (p.plate?.trim()) parts.push(`Placa ${p.plate.trim().toUpperCase()}`);
-  return parts.join(" – ");
+  const lines = [`Protocolo: #${num || "-"}`];
+  if (p.clientName?.trim()) lines.push(`Cliente: ${p.clientName.trim()}`);
+  return lines.join("\n");
 }
 
-/** Garante o prefixo no início da descrição, mesmo se o usuário o apagou ou editou. */
+/** Garante o cabeçalho no início da descrição, mesmo se o usuário o apagou ou editou. */
 export function ensureProtocolPrefix(description: string | null | undefined, prefix: string): string {
   const lines = (description || "").split("\n");
-  const rest = lines[0]?.startsWith("Protocolo #") ? lines.slice(1) : lines;
-  const body = rest.join("\n").trim();
+  while (lines.length && /^(Protocolo[: ]|Cliente:)/.test(lines[0] ?? "")) lines.shift();
+  const body = lines.join("\n").trim();
   return body ? `${prefix}\n${body}` : prefix;
 }
 

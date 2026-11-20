@@ -504,16 +504,19 @@ export async function protocolPrefixForTerm(termId: string): Promise<string | nu
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
   const { protocolPrefix } = await import("./technical-service-cycle");
   const { data: term } = await supabaseAdmin.from("technical_service_terms")
-    .select("ticket_id, service_label, service_type, plate").eq("id", termId).maybeSingle();
+    .select("ticket_id, client_name").eq("id", termId).maybeSingle();
   if (!term) return null;
   let protocol: string | null = null;
-  let plate = term.plate as string | null;
+  let clientName = (term.client_name as string | null) ?? null;
   if (term.ticket_id) {
-    const { data: t } = await supabaseAdmin.from("service_tickets").select("protocol_number, plate").eq("id", term.ticket_id).maybeSingle();
+    const { data: t } = await supabaseAdmin.from("service_tickets").select("protocol_number, company_id").eq("id", term.ticket_id).maybeSingle();
     protocol = t?.protocol_number != null ? String(t.protocol_number).padStart(5, "0") : null;
-    plate = plate || ((t?.plate as string | null) ?? null);
+    if (t?.company_id) {
+      const { data: c } = await supabaseAdmin.from("companies").select("name").eq("id", t.company_id).maybeSingle();
+      clientName = (c?.name as string | null) || clientName;
+    }
   }
-  return protocolPrefix({ protocol, serviceLabel: (term.service_label as string | null) ?? serviceTypeLabel(term.service_type as string), plate });
+  return protocolPrefix({ protocol, clientName });
 }
 
 /** Recusado → reenvia o mesmo conteúdo congelado como novo termo pendente. */

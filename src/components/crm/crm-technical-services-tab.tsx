@@ -16,13 +16,13 @@ import { listarTecnicos } from "@/lib/seu-instalador.functions";
 import {
   serviceTypeLabel,
   TERM_STATUS_LABELS,
-  buildSchedulingDescription,
   buildTermUrl,
   canSendToScheduling,
   termNumberLabel,
   type ChecklistItem,
   type TechnicalTermStatus,
 } from "@/lib/technical-terms";
+import { protocolPrefix } from "@/lib/technical-service-cycle";
 import { TechnicalTermDialog } from "./technical-term-dialog";
 import { SolicitarServicoDialog } from "@/components/agenda/solicitar-servico-dialog";
 import { asList, todayISO } from "@/components/agenda/shared";
@@ -133,16 +133,7 @@ export function CrmTechnicalServicesTab() {
     contactName: t.responsible_name,
     contactPhone: t.responsible_phone,
     contactEmail: t.responsible_email,
-    description: buildSchedulingDescription({
-      seq: t.seq,
-      service_type: t.service_type,
-      service_label: t.service_label,
-      description: t.description,
-      checklist: t.checklist as ChecklistItem[],
-      responder_name: t.responder_name,
-      responded_at: t.responded_at,
-      equipment_id: t.equipment_id,
-    }),
+    description: protocolPrefix({ protocol: t.service_tickets?.protocol_number != null ? String(t.service_tickets.protocol_number).padStart(5, "0") : null, clientName: t.client_name }),
   });
 
   return (

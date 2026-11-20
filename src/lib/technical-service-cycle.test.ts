@@ -3,13 +3,14 @@ import assert from "node:assert/strict";
 import { canFinalizeProtocol, ensureProtocolPrefix, isNoResponseDue, protocolAcceptsTest, protocolAfterTest, protocolPrefix, termActions } from "./technical-service-cycle";
 
 describe("ciclo do serviço técnico", () => {
-  it("prefixo da solicitação tem protocolo, tipo e placa", () => {
-    assert.equal(protocolPrefix({ protocol: "10999", serviceLabel: "Manutenção", plate: "abc1d23" }), "Protocolo #10999 – Manutenção – Placa ABC1D23");
+  it("cabeçalho da solicitação tem só protocolo e cliente", () => {
+    assert.equal(protocolPrefix({ protocol: "11071", clientName: "Raja Aluguel" }), "Protocolo: #11071\nCliente: Raja Aluguel");
   });
-  it("prefixo não pode ser removido nem duplicado", () => {
-    const p = "Protocolo #10999 – Manutenção";
+  it("cabeçalho não pode ser removido nem duplicado", () => {
+    const p = "Protocolo: #11071\nCliente: Raja Aluguel";
     assert.equal(ensureProtocolPrefix("trocar chip", p), `${p}\ntrocar chip`);
-    assert.equal(ensureProtocolPrefix(`Protocolo #1 – editado\ntrocar chip`, p), `${p}\ntrocar chip`);
+    assert.equal(ensureProtocolPrefix(`Protocolo: #1\nCliente: X\ntrocar chip`, p), `${p}\ntrocar chip`);
+    assert.equal(ensureProtocolPrefix(`Protocolo #1 – antigo\ntrocar chip`, p), `${p}\ntrocar chip`);
     assert.equal(ensureProtocolPrefix("", p), p);
   });
   it("enviar solicitação só após aceite", () => {
