@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
+import { POLL, isTabVisible } from "@/lib/polling";
 import { Button } from "@/components/ui/button";
 import { BellRing, Mail, UserPlus, Repeat } from "lucide-react";
 import { toast } from "sonner";
@@ -34,39 +36,53 @@ function beep() {
 }
 
 export function TicketAssignmentAlert() {
-  const [uid, setUid] = useState<string | null>(null);
+  const { user } = useAuth();
+  const uid = user?.id ?? null;
   const [queue, setQueue] = useState<Alert[]>([]);
   const [sound, setSound] = useState(true);
   const lastBeep = useRef<string | null>(null);
   const dismissed = useRef<Set<string>>(new Set());
   const navigate = useNavigate();
 
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUid(data?.user?.id ?? null));
-  }, []);
+  const settingsLoadedAt = useRef(0);
 
   const load = useCallback(async () => {
     if (!uid) return;
-    const [{ data }, { data: s }] = await Promise.all([
+    // Configuração de som quase nunca muda: relê no máximo a cada 5 min.
+    const needSettings = Date.now() - settingsLoadedAt.current > POLL.settings;
+    const [{ data }, settingsRes] = await Promise.all([
       db.from("ticket_assignment_alerts").select("*").eq("target_user_id", uid)
         .is("acknowledged_at", null).order("created_at", { ascending: true }).limit(20),
-      db.from("ticket_assignment_alert_settings").select("sound_enabled").eq("id", 1).maybeSingle(),
+      needSettings
+        ? db.from("ticket_assignment_alert_settings").select("sound_enabled").eq("id", 1).maybeSingle()
+        : Promise.resolve(null),
     ]);
     setQueue(((data as Alert[]) || []).filter((a) => !dismissed.current.has(a.id)));
-    setSound(s?.sound_enabled ?? true);
+    if (settingsRes) {
+      settingsLoadedAt.current = Date.now();
+      setSound(settingsRes.data?.sound_enabled ?? true);
+    }
   }, [uid]);
 
   useEffect(() => {
     if (!uid) return;
     load();
+    // Realtime: aviso instantâneo quando um chamado é atribuído.
     const ch = supabase
       .channel(`ticket-assign-alerts-${uid}-${Math.random().toString(36).slice(2)}`)
       .on("postgres_changes",
         { event: "*", schema: "public", table: "ticket_assignment_alerts", filter: `target_user_id=eq.${uid}` },
         () => load())
       .subscribe();
-    const iv = setInterval(load, 30000);
-    return () => { supabase.removeChannel(ch); clearInterval(iv); };
+    // Rede de segurança só com a aba visível; ao voltar para a aba, recarrega.
+    const iv = setInterval(() => { if (isTabVisible()) load(); }, POLL.ticketAssignmentAlerts);
+    const onVisible = () => { if (isTabVisible()) load(); };
+    document.addEventListener("visibilitychange", onVisible);
+    return () => {
+      supabase.removeChannel(ch);
+      clearInterval(iv);
+      document.removeEventListener("visibilitychange", onVisible);
+    };
   }, [uid, load]);
 
   const current = queue[0];

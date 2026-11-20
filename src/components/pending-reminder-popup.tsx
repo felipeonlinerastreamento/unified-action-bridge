@@ -128,7 +128,10 @@ export function PendingReminderPopup() {
   // Tick reavaliador (a cada 60s + visibilidade)
   useEffect(() => {
     if (typeof window === "undefined") return;
-    const id = setInterval(() => setTick((t) => t + 1), 60_000);
+    // Só reavalia com a aba visível (cada tick refaz a consulta de pendências).
+    const id = setInterval(() => {
+      if (document.visibilityState !== "hidden") setTick((t) => t + 1);
+    }, 60_000);
     const onVis = () => {
       if (document.visibilityState === "visible") setTick((t) => t + 1);
     };

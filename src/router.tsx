@@ -1,4 +1,5 @@
 import { QueryClient } from "@tanstack/react-query";
+import { QUERY_DEFAULTS } from "@/lib/polling";
 import { createRouter, useRouter, type ErrorComponentProps } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
 
@@ -26,7 +27,10 @@ function DefaultErrorComponent({ error, reset }: ErrorComponentProps) {
 }
 
 export const getRouter = () => {
-  const queryClient = new QueryClient();
+  const queryClient = new QueryClient({
+    // Polling pausa com a aba em segundo plano e atualiza ao voltar.
+    defaultOptions: { queries: { ...QUERY_DEFAULTS } },
+  });
   const router = createRouter({
     routeTree,
     context: { queryClient },

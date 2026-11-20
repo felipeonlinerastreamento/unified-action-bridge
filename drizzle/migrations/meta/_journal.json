@@ -232,6 +232,13 @@
       "when": 1795194480835,
       "tag": "0032_gamification_disable_top_import",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1795196917027,
+      "tag": "0033_performance_indexes_last_direction_sidebar_counters",
+      "breakpoints": true
     }
   ]
 }

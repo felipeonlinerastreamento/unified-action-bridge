@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, createContext, useContext } from "react";
+import { useState, useEffect, useCallback, useRef, createContext, useContext } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { User, Session } from "@supabase/supabase-js";
 
@@ -30,7 +30,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     roles: [],
   });
 
+  // Perfil e papéis são carregados uma vez por usuário (não a cada evento de
+  // sessão, como renovação de token).
+  const loadedUserRef = useRef<string | null>(null);
   const fetchUserData = useCallback(async (userId: string) => {
+    if (loadedUserRef.current === userId) return;
+    loadedUserRef.current = userId;
     const [profileRes, rolesRes] = await Promise.all([
       supabase.from("profiles").select("name, avatar_url").eq("user_id", userId).single(),
       supabase.from("user_roles").select("role").eq("user_id", userId),
@@ -65,6 +70,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             }, 100);
           }
         } else {
+          loadedUserRef.current = null;
           setState((prev) => ({ ...prev, profile: null, roles: [] }));
         }
       }

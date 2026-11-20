@@ -1,6 +1,8 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useRef } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/use-auth";
+import { POLL } from "@/lib/polling";
 import { OperatorChatDialog } from "./operator-chat-dialog";
 import { playForKind } from "@/lib/notification-sounds";
 
@@ -13,17 +15,15 @@ import { playForKind } from "@/lib/notification-sounds";
  */
 export function OperatorChatLockOverlay() {
   const qc = useQueryClient();
-  const [userId, setUserId] = useState<string | null>(null);
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
   const prevCount = useRef(0);
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
-  }, []);
 
   const { data: locked = [], refetch } = useQuery({
     queryKey: ["operator-chat-locked", userId],
     enabled: !!userId,
-    refetchInterval: 5000,
+    // Realtime abaixo avisa na hora; o intervalo é só rede de segurança.
+    refetchInterval: POLL.operatorChatLock,
     refetchOnWindowFocus: true,
     queryFn: async () => {
       if (!userId) return [];

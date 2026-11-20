@@ -4,6 +4,7 @@ import { Link } from "@tanstack/react-router";
 import { AlertTriangle, MessageSquare, X, Check } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
+import { POLL } from "@/lib/polling";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -71,7 +72,7 @@ export function ChatInactivityAlert() {
         .maybeSingle();
       return (data as any) || null;
     },
-    refetchInterval: 60_000,
+    refetchInterval: POLL.settings,
     enabled: isAuthenticated,
   });
 

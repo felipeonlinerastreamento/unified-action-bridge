@@ -64,24 +64,9 @@ export const listAllOpenChats = createServerFn({ method: "POST" })
         })
         .slice(0, 200);
 
-      // Build a map chatId -> from_me of the most recent message, so the
-      // chat list can show an up/down arrow indicating who sent the last
-      // message. We do this in one batched query to avoid N round-trips.
-      const chatIds = rows.map((r: any) => r.id).filter(Boolean);
-      const lastFromMeByChat: Record<string, boolean> = {};
-      if (chatIds.length > 0) {
-        const { data: recentMsgs } = await context.supabase
-          .from("zapi_messages")
-          .select("chat_id, from_me, created_at")
-          .in("chat_id", chatIds)
-          .order("created_at", { ascending: false })
-          .limit(1000);
-        for (const m of recentMsgs || []) {
-          if (!(m.chat_id in lastFromMeByChat)) {
-            lastFromMeByChat[m.chat_id] = !!m.from_me;
-          }
-        }
-      }
+      // Quem enviou a última mensagem (seta na lista) vem direto da conversa:
+      // zapi_chats.last_message_from_me é mantido pelo banco a cada nova
+      // mensagem (webhook, sincronizador, envio, robô), sem ler mensagens aqui.
 
       // Resolve assigned operators (assigned_to → profiles)
       const assignedIds = Array.from(
@@ -118,7 +103,7 @@ export const listAllOpenChats = createServerFn({ method: "POST" })
           em_atendimento: 2,
           finalizado: 3,
         };
-        const lastIsMe = lastFromMeByChat[r.id];
+        const lastIsMe = r.last_message_from_me;
         return {
           attendanceId: r.id,
           status: statusMap[r.status] ?? 1,

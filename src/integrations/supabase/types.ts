@@ -8051,6 +8051,7 @@ export type Database = {
           created_at: string
           id: string
           last_message_at: string | null
+          last_message_from_me: boolean | null
           last_message_preview: string | null
           lid: string | null
           lid_aliases: string[] | null
@@ -8076,6 +8077,7 @@ export type Database = {
           created_at?: string
           id?: string
           last_message_at?: string | null
+          last_message_from_me?: boolean | null
           last_message_preview?: string | null
           lid?: string | null
           lid_aliases?: string[] | null
@@ -8101,6 +8103,7 @@ export type Database = {
           created_at?: string
           id?: string
           last_message_at?: string | null
+          last_message_from_me?: boolean | null
           last_message_preview?: string | null
           lid?: string | null
           lid_aliases?: string[] | null
@@ -8426,6 +8429,7 @@ export type Database = {
         Args: { _accessory: string; _codigo: string; _qtd: number }
         Returns: undefined
       }
+      sidebar_counters: { Args: never; Returns: Json }
       sys_can_monitor: { Args: never; Returns: boolean }
       sys_cron_runs: { Args: never; Returns: Json }
       sys_db_health: { Args: never; Returns: Json }

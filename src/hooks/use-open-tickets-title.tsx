@@ -1,28 +1,12 @@
 import { useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/use-auth";
+import { useSidebarCounters } from "@/hooks/use-sidebar-counters";
 
 const PREFIX_RE = /^\(\d+\+?\)\s*/;
 
 /** Mostra "(N) " no título da aba com os atendimentos em aberto do operador logado. */
 export function useOpenTicketsTitle() {
-  const { user } = useAuth();
-  const userId = user?.id;
-
-  const { data: count = 0 } = useQuery({
-    queryKey: ["my-open-tickets-count", userId],
-    enabled: !!userId,
-    refetchInterval: 30_000,
-    queryFn: async () => {
-      const { count } = await supabase
-        .from("service_tickets")
-        .select("id", { count: "exact", head: true })
-        .eq("assigned_to", userId!)
-        .in("status", ["aberto", "em_andamento", "reaberto"]);
-      return count ?? 0;
-    },
-  });
+  // Mesmo resumo do menu lateral (uma consulta só, a cada 60s).
+  const { my_open_tickets: count } = useSidebarCounters();
 
   useEffect(() => {
     if (typeof document === "undefined") return;

@@ -37,14 +37,11 @@ import {
 
 
 import { Link, useLocation } from "@tanstack/react-router";
-import { useQuery } from "@tanstack/react-query";
-import { useEffect, useState } from "react";
-import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { useUserPermissions } from "@/hooks/use-user-permissions";
 import { URL_TO_MENU_SLUG } from "@/lib/menu-catalog";
-import { fetchMyGroupChatIds, myChatsOrFilter } from "@/components/operator-chat/chat-access";
+import { useSidebarCounters } from "@/hooks/use-sidebar-counters";
 import { useTheme } from "@/hooks/use-theme";
 import {
   Sidebar,
@@ -122,104 +119,13 @@ export function AppSidebar() {
   const isGestor = hasRole("gestor");
   const canAudit = isAdmin || isGestor;
 
-  const [userId, setUserId] = useState<string | null>(null);
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
-  }, []);
-
-  // Chats atribuídos a mim e realmente abertos na fila — selo vermelho no item
-  // "Chat". Mesma regra da lista de conversas: ignora "finalizado" e
-  // "aguardando_retorno" (chats já encerrados aguardando retorno do cliente).
-  const { data: assignedChats = 0 } = useQuery({
-    queryKey: ["sidebar-assigned-chats", userId],
-    enabled: !!userId,
-    refetchInterval: 15000,
-    queryFn: async () => {
-      if (!userId) return 0;
-      const { count } = await supabase
-        .from("zapi_chats")
-        .select("id", { count: "exact", head: true })
-        .eq("assigned_to", userId)
-        .not("status", "in", "(finalizado,aguardando_retorno)");
-      return count || 0;
-    },
-  });
-
-  // Atendimentos (chamados) em aberto atrelados a mim — selo vermelho no item
-  // "Atendimentos". Considera responsável principal ou agente vinculado e
-  // respeita os setores do usuário (mesma visão padrão da tela Atendimentos).
-  const { data: openTickets = 0 } = useQuery({
-    queryKey: ["sidebar-open-tickets", userId],
-    enabled: !!userId,
-    refetchInterval: 15000,
-    queryFn: async () => {
-      if (!userId) return 0;
-      const { data: sectorRows } = await supabase
-        .from("user_sector_assignments" as any)
-        .select("sectors(name)")
-        .eq("user_id", userId);
-      const sectorNames = ((sectorRows as any[]) || [])
-        .map((r) => r?.sectors?.name)
-        .filter(Boolean) as string[];
-
-      const { data: agentRows } = await supabase
-        .from("ticket_agents")
-        .select("ticket_id")
-        .eq("user_id", userId);
-      const agentTicketIds = (agentRows || []).map((r) => r.ticket_id);
-
-      const withSector = (q: any) =>
-        sectorNames.length > 0 ? q.in("sector", sectorNames) : q;
-
-      let total = 0;
-      const { count: mine } = await withSector(
-        supabase
-          .from("service_tickets")
-          .select("id", { count: "exact", head: true })
-          .eq("assigned_to", userId)
-          .neq("status", "finalizado"),
-      );
-      total += mine || 0;
-      if (agentTicketIds.length > 0) {
-        const { count: asAgent } = await withSector(
-          supabase
-            .from("service_tickets")
-            .select("id", { count: "exact", head: true })
-            .in("id", agentTicketIds)
-            .neq("status", "finalizado")
-            .neq("assigned_to", userId),
-        );
-        total += asAgent || 0;
-      }
-      return total;
-    },
-  });
-
-  // Mensagens internas (chat entre operadores) não lidas para mim — selo no
-  // item "Chat com Operadores".
-  const { data: unreadOperatorMsgs = 0 } = useQuery({
-    queryKey: ["sidebar-unread-operator-chats", userId],
-    enabled: !!userId,
-    refetchInterval: 15000,
-    queryFn: async () => {
-      if (!userId) return 0;
-      const groupIds = await fetchMyGroupChatIds(userId);
-      const { data: chats } = await supabase
-        .from("operator_chats")
-        .select("id")
-        .or(myChatsOrFilter(userId, groupIds))
-        .is("closed_at", null);
-      const ids = (chats || []).map((c) => c.id);
-      if (ids.length === 0) return 0;
-      const { count } = await supabase
-        .from("operator_chat_messages")
-        .select("id", { count: "exact", head: true })
-        .in("chat_id", ids)
-        .is("read_at", null)
-        .neq("sender_user_id", userId);
-      return count || 0;
-    },
-  });
+  // Contadores do menu: uma única consulta de resumo a cada 60s (pausa com a
+  // aba em segundo plano). Mesmas regras de antes, calculadas no banco.
+  const {
+    assigned_chats: assignedChats,
+    open_tickets: openTickets,
+    unread_operator_msgs: unreadOperatorMsgs,
+  } = useSidebarCounters();
 
   const isConfigActive = location.pathname.startsWith("/configuracoes");
   const isAgendaActive = location.pathname.startsWith("/agenda");

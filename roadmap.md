@@ -19,3 +19,11 @@
 - [x] Importação dos dados do TOP via /export (ids originais, idempotente, tarefas nas Tarefas do GS Hub, ADM = Administrativo) + relatório.
 - [x] Pessoas pendentes ligadas/excluídas e importação repetida.
 - [x] Virada: importação desativada (função insegura removida), regra automática do Atendimento ligada, menu liberado para todos, /top-gamific removida, verificação de segurança.
+
+# Desempenho (itens 1 a 4 da auditoria)
+
+- [x] Índices: última mensagem por conversa (com/sem notas internas), status por id da mensagem, telefone (trigram), comentários e logs por data.
+- [x] Polling global: pausa em segundo plano, contadores do menu em uma consulta a cada 60s, sem getUser repetido; realtime mantido.
+- [x] Central: direção da última mensagem gravada na conversa (trigger + backfill); lista sem ler mensagens.
+- [x] Limpeza de históricos técnicos + rotina diária de retenção (7/90 dias).
+- [x] Medições antes x depois.

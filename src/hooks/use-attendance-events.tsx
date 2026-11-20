@@ -54,7 +54,7 @@ export function useAttendanceEventSettings() {
       return (data as any) || null;
     },
     staleTime: 30000,
-    refetchInterval: 60000,
+    refetchInterval: 5 * 60_000, // configuração quase nunca muda
   });
 }
 
