@@ -42,6 +42,48 @@ export async function isAutoReplyGloballyEnabled(): Promise<boolean> {
   }
 }
 
+let _observeCache: { value: boolean; at: number } | null = null;
+
+/** Modo observação ligado? Vale mesmo com o robô desligado: só classifica e registra, nunca envia. */
+export async function isObserveOnlyActive(): Promise<boolean> {
+  if (_observeCache && Date.now() - _observeCache.at < 30_000) return _observeCache.value;
+  try {
+    const { data } = await supabaseAdmin
+      .from("bot_auto_reply_settings")
+      .select("observe_only")
+      .limit(1)
+      .maybeSingle();
+    const value = (data as any)?.observe_only === true;
+    _observeCache = { value, at: Date.now() };
+    return value;
+  } catch {
+    return false;
+  }
+}
+
+/** Assuntos do catálogo ainda não habilitados, como regras só de classificação (modo observação). */
+async function catalogObserveRules(existing: BotRule[]): Promise<BotRule[]> {
+  const { CATALOG } = await import("@/lib/bot-catalog");
+  const have = new Set(existing.filter((r) => r.is_enabled).map((r) => r.catalog_key).filter(Boolean));
+  return CATALOG.filter((c) => !have.has(c.catalog_key)).map((c, i) => ({
+    id: `${CATALOG_RULE_PREFIX}${c.catalog_key}`,
+    name: c.name,
+    is_enabled: true,
+    keywords: c.keywords,
+    reply_text: c.reply_text,
+    reply_text_complete: null,
+    required_fields: c.required_fields,
+    target_sector: c.target_sector,
+    priority: 500 + i,
+    from_catalog: true,
+    catalog_key: c.catalog_key,
+    is_greeting: !!c.is_greeting,
+    create_ticket: false,
+    ticket_priority: "media",
+  }) as BotRule);
+}
+
+export const CATALOG_RULE_PREFIX = "catalog:";
 export const FALLBACK_RULE_ID = "__fallback__";
 export const DEFAULT_FALLBACK_TEXT = "Um momento, por favor, que estou verificando.";
 
@@ -496,12 +538,15 @@ export async function evaluateInboundForAutoReply(params: InboundParams): Promis
   const { channelId, chatId, phone, incomingText } = params;
   try {
     const settings = await loadBotSettings();
-    if (!settings || !settings.is_enabled) return false;
+    const observe = !!settings?.observe_only;
+    if (!settings || (!settings.is_enabled && !observe)) return false;
     if (settings.channel_id && settings.channel_id !== channelId) return false;
     if (isGroupPhone(phone)) return false;
-    if (!isWithinBotWindow(settings)) return false;
+    // Na observação o robô registra o dia todo, para formar o histórico de assuntos.
+    if (!observe && !isWithinBotWindow(settings)) return false;
 
-    const rules = await loadBotRules();
+    const baseRules = await loadBotRules();
+    const rules = observe ? [...baseRules, ...(await catalogObserveRules(baseRules))] : baseRules;
 
     // "Ok", "certo" etc. sozinhos cancelam uma resposta agendada e não geram nova.
     if (isShortAcknowledgment(incomingText)) {
@@ -588,7 +633,30 @@ export async function evaluateInboundForAutoReply(params: InboundParams): Promis
 
     const rule: BotRule = aiPicked || (useFallback ? fallbackRule : (matched as BotRule));
     // rule_id é uuid no log: a resposta de dúvida não tem automação.
-    const logRuleId: string | null = rule.id === FALLBACK_RULE_ID ? null : rule.id;
+    const logRuleId: string | null =
+      rule.id === FALLBACK_RULE_ID || rule.id.startsWith(CATALOG_RULE_PREFIX) ? null : rule.id;
+
+    // Modo observação: classifica e registra antes de qualquer outra regra; não atribui nem envia.
+    if (observe) {
+      const collectedObs = collectFields(incomingText);
+      const missingObs = missingRequiredFields(rule, collectedObs);
+      const completeObs = (rule.required_fields || []).length > 0 && missingObs.length === 0;
+      const templateObs = completeObs ? (rule.reply_text_complete || rule.reply_text) : rule.reply_text;
+      const operatorName = await operatorNameFor(chatId);
+      await supabaseAdmin.from("bot_auto_reply_log").insert({
+        chat_id: chatId,
+        channel_id: channelId,
+        rule_id: logRuleId,
+        rule_name: rule.name,
+        incoming_text: incomingText,
+        detected_intent: rule.name,
+        confidence: aiConfidence || null,
+        collected_data: collectedObs,
+        reply_text: renderReply(templateObs, { operatorName, contactName: params.contactName, collected: collectedObs }),
+        outcome: "simulated",
+      });
+      return false;
+    }
 
     if (settings.skip_when_ticket_open) {
       const { data: chat } = await supabaseAdmin
@@ -658,26 +726,6 @@ export async function evaluateInboundForAutoReply(params: InboundParams): Promis
       }
     }
 
-    if (settings.observe_only) {
-      const operatorName = await operatorNameFor(chatId);
-      await supabaseAdmin.from("bot_auto_reply_log").insert({
-        chat_id: chatId,
-        channel_id: channelId,
-        rule_id: logRuleId,
-        rule_name: rule.name,
-        incoming_text: incomingText,
-        detected_intent: rule.name,
-        confidence: aiConfidence || null,
-        collected_data: collected,
-        reply_text: renderReply(template, {
-          operatorName,
-          contactName: params.contactName,
-          collected,
-        }),
-        outcome: "simulated",
-      });
-      return false;
-    }
 
     // Guarda o que já foi coletado, mesmo quando não há resposta a enviar.
     const { data: chatRow } = await supabaseAdmin

@@ -26,34 +26,34 @@ export function FloatingNotificationsBell() {
           )}
         </button>
       </PopoverTrigger>
-      <PopoverContent side="top" align="end" className="w-96 max-w-[calc(100vw-2rem)] p-0">
-        <div className="flex items-center justify-between gap-2 border-b p-2">
-          <p className="text-sm font-semibold">Notificações {unread > 0 && <span className="text-muted-foreground">({unread})</span>}</p>
+      <PopoverContent side="top" align="end" className="w-[56rem] max-w-[calc(100vw-2rem)] p-0">
+        <div className="flex items-center justify-between gap-2 border-b p-4">
+          <p className="text-lg font-semibold">Notificações {unread > 0 && <span className="text-muted-foreground">({unread})</span>}</p>
           <Button variant="ghost" size="sm" className="h-7 gap-1 text-xs" disabled={unread === 0} onClick={markAllRead}>
             <CheckCheck className="h-3.5 w-3.5" /> Marcar todas como lidas
           </Button>
         </div>
-        <div className="max-h-[60vh] overflow-y-auto">
+        <div className="max-h-[80vh] overflow-y-auto">
           {notifications.length === 0 ? (
-            <p className="py-8 text-center text-sm text-muted-foreground">Nenhuma notificação</p>
+            <p className="py-16 text-center text-base text-muted-foreground">Nenhuma notificação</p>
           ) : (
             notifications.map((n) => (
-              <div key={n.id} className={`border-b p-3 ${!n.is_read ? "bg-accent/20" : ""}`}>
+              <div key={n.id} className={`border-b p-5 ${!n.is_read ? "bg-accent/20" : ""}`}>
                 <button
                   type="button"
-                  className="flex w-full items-start gap-2 text-left"
+                  className="flex w-full items-start gap-3 text-left"
                   onClick={async () => {
                     if (!n.is_read) await markRead(n.id);
                     if (n.ticket_id) navigate({ to: "/atendimentos" });
                   }}
                 >
                   {n.type === "tracking_delivered"
-                    ? <Package className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                    : <Bell className="mt-0.5 h-4 w-4 shrink-0 text-primary" />}
+                    ? <Package className="mt-0.5 h-6 w-6 shrink-0 text-primary" />
+                    : <Bell className="mt-0.5 h-6 w-6 shrink-0 text-primary" />}
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium">{n.title}</p>
-                    <p className="line-clamp-2 text-xs text-muted-foreground">{n.message}</p>
-                    <p className="mt-0.5 text-[10px] text-muted-foreground">{new Date(n.created_at).toLocaleString("pt-BR")}</p>
+                    <p className="text-base font-semibold">{n.title}</p>
+                    <p className="whitespace-pre-line text-sm text-muted-foreground">{n.message}</p>
+                    <p className="mt-1 text-xs text-muted-foreground">{new Date(n.created_at).toLocaleString("pt-BR")}</p>
                   </div>
                   {!n.is_read && <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-primary" />}
                 </button>

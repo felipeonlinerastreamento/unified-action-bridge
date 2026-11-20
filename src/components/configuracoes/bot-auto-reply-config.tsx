@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/dialog";
 import { Bot, Plus, Pencil, Trash2, FlaskConical, Lightbulb, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
+import { CATALOG, type CatalogEntry } from "@/lib/bot-catalog";
 import { testBotAutoReply, getBotAutoReplyInsights, suggestBotAutoReplyRules } from "@/lib/bot-auto-reply.functions";
 
 type Settings = {
@@ -49,86 +50,6 @@ type Rule = {
   create_ticket: boolean;
   ticket_priority: string;
 };
-
-const SAUDACAO_TEXT = "Olá,\nFala com {{operatorName}},\n\nEm que posso ajudar?";
-
-type CatalogEntry = {
-  catalog_key: string;
-  name: string;
-  keywords: string[];
-  reply_text: string;
-  required_fields: string[];
-  target_sector: string;
-  is_greeting?: boolean;
-};
-
-const CATALOG: CatalogEntry[] = [
-  {
-    catalog_key: "relatorio",
-    name: "Relatório de posições",
-    keywords: ["relatorio", "relatório", "posições", "posicoes", "histórico", "historico"],
-    reply_text: "Claro! Para gerar o relatório de posições, me informe a placa e o período desejado (data inicial e final).",
-    required_fields: ["placa", "período"],
-    target_sector: "Atendimento",
-  },
-  {
-    catalog_key: "rastreamento",
-    name: "Rastreamento / localização do veículo",
-    keywords: ["rastreamento", "localização", "localizacao", "onde está", "onde esta", "localizar"],
-    reply_text: "Vou verificar a localização. Me informe a placa do veículo, por favor.",
-    required_fields: ["placa"],
-    target_sector: "Atendimento",
-  },
-  {
-    catalog_key: "sem_comunicacao",
-    name: "Equipamento sem comunicação",
-    keywords: ["sem comunicação", "sem comunicacao", "sem sinal", "offline", "não comunica", "nao comunica"],
-    reply_text: "Entendi, vamos verificar o equipamento. Me informe a placa do veículo, por favor.",
-    required_fields: ["placa"],
-    target_sector: "Atendimento",
-  },
-  {
-    catalog_key: "instalacao",
-    name: "Instalação / agendamento",
-    keywords: ["instalação", "instalacao", "agendar", "agendamento", "instalar"],
-    reply_text: "Perfeito! Para agendar a instalação, me informe a cidade e o período desejado.",
-    required_fields: ["cidade", "período desejado"],
-    target_sector: "Atendimento",
-  },
-  {
-    catalog_key: "financeiro",
-    name: "Financeiro / 2ª via de boleto",
-    keywords: ["boleto", "financeiro", "2ª via", "segunda via", "fatura", "pagamento"],
-    reply_text: "Vou te ajudar com o financeiro. Me informe o CNPJ ou a razão social do cadastro, por favor.",
-    required_fields: ["CNPJ ou razão social"],
-    target_sector: "Financeiro",
-  },
-  {
-    catalog_key: "app",
-    name: "Suporte ao app / senha",
-    keywords: ["app", "aplicativo", "senha", "login", "acesso", "entrar"],
-    reply_text: "Vou te ajudar com o acesso ao app. Me informe o e-mail ou o usuário cadastrado, por favor.",
-    required_fields: ["e-mail ou usuário"],
-    target_sector: "Atendimento",
-  },
-  {
-    catalog_key: "bloqueio",
-    name: "Bloqueio / desbloqueio de veículo",
-    keywords: ["bloqueio", "desbloqueio", "bloquear", "desbloquear"],
-    reply_text: "Certo! Para bloqueio ou desbloqueio, me informe a placa do veículo, por favor.",
-    required_fields: ["placa"],
-    target_sector: "Atendimento",
-  },
-  {
-    catalog_key: "saudacao",
-    name: "Saudação sem assunto",
-    keywords: ["oi", "olá", "ola", "bom dia", "boa tarde", "boa noite", "preciso de ajuda"],
-    reply_text: SAUDACAO_TEXT,
-    required_fields: [],
-    target_sector: "Atendimento",
-    is_greeting: true,
-  },
-];
 
 const FIELD_OPTIONS: Array<{ key: string; label: string; auto: boolean }> = [
   { key: "cpf_cnpj", label: "CPF/CNPJ", auto: true },
@@ -668,16 +589,23 @@ export function BotAutoReplyConfig() {
           <CardTitle>Catálogo de sugestões prontas</CardTitle>
           <CardDescription>
             Habilite com um clique. Cada uma já vem com texto e os dados que o robô deve pedir.
+            No modo observação, o robô já classifica as mensagens nestes assuntos mesmo antes de habilitar; o número mostra quantas chegaram nos últimos 30 dias.
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-3 sm:grid-cols-2">
             {CATALOG.map((entry) => {
               const already = enabledCatalogKeys.has(entry.catalog_key);
+              const seen = insights?.topIntents.find((t) => t.name === entry.name)?.count ?? 0;
               return (
                 <div key={entry.catalog_key} className="flex flex-col gap-2 rounded-lg border p-4">
                   <div className="flex items-center justify-between gap-2">
-                    <span className="font-medium">{entry.name}</span>
+                    <span className="font-medium">
+                      {entry.name}
+                      <Badge variant={seen ? "default" : "outline"} className="ml-2 align-middle" title="Mensagens classificadas neste assunto nos últimos 30 dias">
+                        {seen} msg
+                      </Badge>
+                    </span>
                     <Button
                       size="sm"
                       variant={already ? "secondary" : "default"}

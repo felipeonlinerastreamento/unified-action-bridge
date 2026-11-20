@@ -14,7 +14,7 @@ import {
 } from "@/lib/business-hours.server";
 import { evaluateMessageTriggers } from "@/lib/message-triggers.server";
 import { processNoCommAutomation } from "@/lib/no-comm-automation.server";
-import { evaluateInboundForAutoReply, isAutoReplyGloballyEnabled } from "@/lib/bot-auto-reply.server";
+import { evaluateInboundForAutoReply, isAutoReplyGloballyEnabled, isObserveOnlyActive } from "@/lib/bot-auto-reply.server";
 
 // Z-API webhook payload (loose schema — Z-API sends many event shapes)
 const PayloadSchema = z.object({
@@ -1377,7 +1377,23 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                       console.error("[zapi-webhook] failed to send out-of-hours message:", err);
                     }
                   }
-                } else if (await isAutoReplyGloballyEnabled()) {
+                } else if (!(await isAutoReplyGloballyEnabled())) {
+                  // Robô desligado, mas em modo observação: só classifica e registra (nada é enviado).
+                  if (await isObserveOnlyActive()) {
+                    try {
+                      await evaluateInboundForAutoReply({
+                        channelId,
+                        chatId,
+                        phone,
+                        contactName: p.senderName || existing?.contact_name || null,
+                        incomingText: text,
+                        messageId: p.messageId || null,
+                      });
+                    } catch (obsErr) {
+                      console.warn("[zapi-webhook] bot observe error:", obsErr);
+                    }
+                  }
+                } else {
                   // Robô de Atendimento (automações por assunto) antes do fluxo de nós
                   let handledByAutoReply = false;
                   try {

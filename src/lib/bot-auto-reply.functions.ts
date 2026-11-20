@@ -234,7 +234,7 @@ export const getBotAutoReplyInsights = createServerFn({ method: "POST" })
       topIntents: [...intents.entries()]
         .map(([name, count]) => ({ name, count }))
         .sort((a, b) => b.count - a.count)
-        .slice(0, 10),
+        .slice(0, 30),
       unmatchedSamples,
     };
   });
