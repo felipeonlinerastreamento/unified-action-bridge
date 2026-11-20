@@ -7,8 +7,9 @@ import { AppLayout } from "@/components/app-layout";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { MessageCircle, Lock, Search, ChevronDown, ChevronRight } from "lucide-react";
+import { MessageCircle, Lock, Search, ChevronDown, ChevronRight, Eye } from "lucide-react";
 import { OperatorChatPanel } from "@/components/operator-chat/operator-chat-panel";
 import { NewOperatorChatDialog } from "@/components/operator-chat/new-operator-chat-dialog";
 import { fetchMyGroupChatIds, myChatsOrFilter } from "@/components/operator-chat/chat-access";
@@ -36,7 +37,8 @@ function ChatOperadoresPage() {
 function ChatOperadoresContent() {
   const qc = useQueryClient();
   const { hasRole } = useAuth();
-  const isAdmin = hasRole("admin");
+  // Admin e gestor podem ver (só leitura) as conversas de outros operadores.
+  const isAdmin = hasRole("admin") || hasRole("gestor");
   const navigate = useNavigate({ from: "/chat-operadores" });
   const { chat: selectedChatId } = useSearch({ from: "/chat-operadores" });
   const [userId, setUserId] = useState<string | null>(null);
@@ -44,13 +46,24 @@ function ChatOperadoresContent() {
   const [showClosed, setShowClosed] = useState(false);
   const [viewAll, setViewAll] = useState(false);
   const adminAll = isAdmin && viewAll;
+  const [operatorFilter, setOperatorFilter] = useState<string>("all");
+
+  const { data: operators = [] } = useQuery({
+    queryKey: ["operator-chat-operators"],
+    enabled: adminAll,
+    staleTime: 5 * 60_000,
+    queryFn: async () => {
+      const { data } = await supabase.from("profiles").select("user_id, name").order("name");
+      return ((data as any[]) || []).filter((p) => p.user_id && p.name);
+    },
+  });
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUserId(data.user?.id ?? null));
   }, []);
 
   const { data: chats = [] } = useQuery({
-    queryKey: ["operator-chats-list", userId, showClosed ? "all" : "open", adminAll ? "todas" : "minhas"],
+    queryKey: ["operator-chats-list", userId, showClosed ? "all" : "open", adminAll ? "todas" : "minhas", adminAll ? operatorFilter : "-"],
     enabled: !!userId,
     refetchInterval: 15000,
     queryFn: async () => {
@@ -63,6 +76,10 @@ function ChatOperadoresContent() {
       if (!adminAll) {
         const groupIds = await fetchMyGroupChatIds(userId);
         q = q.or(myChatsOrFilter(userId, groupIds));
+      } else if (operatorFilter !== "all") {
+        // Conversas de um operador específico (diretas e grupos em que participa).
+        const groupIds = await fetchMyGroupChatIds(operatorFilter);
+        q = q.or(myChatsOrFilter(operatorFilter, groupIds));
       }
       if (!showClosed) q = q.is("closed_at", null);
       const { data: rows } = await q;
@@ -187,23 +204,39 @@ function ChatOperadoresContent() {
           <div className="p-3 border-b space-y-2">
             <NewOperatorChatDialog onCreated={(id) => selectChat(id)} />
             {isAdmin && (
-              <div className="grid grid-cols-2 gap-1">
-                <Button
-                  size="sm"
-                  variant={viewAll ? "outline" : "default"}
-                  className="h-8 text-xs"
-                  onClick={() => setViewAll(false)}
-                >
-                  Minhas conversas
-                </Button>
-                <Button
-                  size="sm"
-                  variant={viewAll ? "default" : "outline"}
-                  className="h-8 text-xs"
-                  onClick={() => setViewAll(true)}
-                >
-                  Todas
-                </Button>
+              <div className="space-y-1.5">
+                <div className="grid grid-cols-2 gap-1">
+                  <Button
+                    size="sm"
+                    variant={viewAll ? "outline" : "default"}
+                    className="h-8 text-xs"
+                    onClick={() => setViewAll(false)}
+                  >
+                    Minhas conversas
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant={viewAll ? "default" : "outline"}
+                    className="h-8 text-xs gap-1"
+                    onClick={() => setViewAll(true)}
+                  >
+                    <Eye className="h-3.5 w-3.5" /> Outros operadores
+                  </Button>
+                </div>
+                {viewAll && (
+                  <Select value={operatorFilter} onValueChange={setOperatorFilter}>
+                    <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Operador" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os operadores</SelectItem>
+                      {operators.map((o: any) => (
+                        <SelectItem key={o.user_id} value={o.user_id}>{o.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
+                {viewAll && (
+                  <p className="text-[11px] text-muted-foreground">Somente leitura: você vê as mensagens, mas não envia nem marca como lidas.</p>
+                )}
               </div>
             )}
 

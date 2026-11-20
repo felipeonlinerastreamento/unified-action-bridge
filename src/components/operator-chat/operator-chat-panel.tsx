@@ -288,7 +288,7 @@ export function OperatorChatPanel({ chatId, className }: Props) {
 
       {!isClosed && !isMember && (
         <div className="border-t p-3 text-xs text-muted-foreground bg-background">
-          Visualização de administrador — você não participa desta conversa.
+          Somente leitura — você está vendo a conversa de outros operadores e não participa dela.
         </div>
       )}
 
