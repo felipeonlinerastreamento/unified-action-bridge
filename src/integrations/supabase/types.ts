@@ -3707,11 +3707,17 @@ export type Database = {
       gamif_pvp_challenges: {
         Row: {
           challenger_id: string | null
+          challenger_note: string | null
+          challenger_vote: string | null
           created_at: string
+          description: string | null
           ends_at: string | null
           id: string
           metric_id: string | null
           opponent_id: string | null
+          opponent_note: string | null
+          opponent_vote: string | null
+          resolved_at: string | null
           stake_coins: number
           starts_at: string | null
           status: string
@@ -3720,11 +3726,17 @@ export type Database = {
         }
         Insert: {
           challenger_id?: string | null
+          challenger_note?: string | null
+          challenger_vote?: string | null
           created_at?: string
+          description?: string | null
           ends_at?: string | null
           id?: string
           metric_id?: string | null
           opponent_id?: string | null
+          opponent_note?: string | null
+          opponent_vote?: string | null
+          resolved_at?: string | null
           stake_coins?: number
           starts_at?: string | null
           status?: string
@@ -3733,11 +3745,17 @@ export type Database = {
         }
         Update: {
           challenger_id?: string | null
+          challenger_note?: string | null
+          challenger_vote?: string | null
           created_at?: string
+          description?: string | null
           ends_at?: string | null
           id?: string
           metric_id?: string | null
           opponent_id?: string | null
+          opponent_note?: string | null
+          opponent_vote?: string | null
+          resolved_at?: string | null
           stake_coins?: number
           starts_at?: string | null
           status?: string
@@ -8233,10 +8251,32 @@ export type Database = {
       }
     }
     Functions: {
+      _gamif_fanout_notification: { Args: { _id: string }; Returns: number }
+      _gamif_notify_user: {
+        Args: { _body: string; _title: string; _user: string }
+        Returns: undefined
+      }
+      _gamif_settle_duel: {
+        Args: { _id: string; _winner: string }
+        Returns: undefined
+      }
       gamif_apply_auto_rules: { Args: { _day?: string }; Returns: number }
+      gamif_cancel_duel: { Args: { _id: string }; Returns: undefined }
       gamif_decide_redemption: {
         Args: { _id: string; _notes?: string; _status: string }
         Returns: undefined
+      }
+      gamif_dispatch_scheduled_notifications: { Args: never; Returns: number }
+      gamif_feed: {
+        Args: { _limit?: number }
+        Returns: {
+          at: string
+          coins: number
+          kind: string
+          title: string
+          user_id: string
+          user_name: string
+        }[]
       }
       gamif_is_manager: { Args: never; Returns: boolean }
       gamif_link_legacy_user: {
@@ -8256,6 +8296,30 @@ export type Database = {
         }[]
       }
       gamif_redeem: { Args: { _item_id: string }; Returns: string }
+      gamif_resolve_duel: {
+        Args: { _id: string; _winner?: string }
+        Returns: undefined
+      }
+      gamif_respond_duel: {
+        Args: { _accept: boolean; _id: string }
+        Returns: undefined
+      }
+      gamif_save_process: {
+        Args: {
+          _content: string
+          _id: string
+          _sector_id: string
+          _summary: string
+          _title: string
+        }
+        Returns: string
+      }
+      gamif_send_notification: { Args: { _id: string }; Returns: number }
+      gamif_setting_on: { Args: { _key: string }; Returns: boolean }
+      gamif_vote_duel: {
+        Args: { _claim: string; _id: string; _note?: string }
+        Returns: string
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

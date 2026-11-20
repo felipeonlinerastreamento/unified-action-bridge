@@ -12,9 +12,10 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMetrics, useRanking, useSectors, fmtDate, useMyUserId } from "@/components/gamificacao/gamif-data";
+import { Relatorios, Avisos, DuelosAdmin, Conquistas, Auditoria, Configuracoes, AnalisesIa } from "@/components/gamificacao/admin-extra";
 
 export const Route = createFileRoute("/gamificacao/admin")({
-  head: () => ({ meta: [{ title: "Admin da Gamificação | GS Hub" }, { name: "description", content: "Lançamentos, métricas, regras automáticas, missões, loja e resgates." }, { property: "og:title", content: "Admin da Gamificação | GS Hub" }, { property: "og:description", content: "Administração da gamificação." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
+  head: () => ({ meta: [{ title: "Admin da Gamificação | GS Hub" }, { name: "description", content: "Lançamentos, métricas, missões, loja, resgates, relatórios, duelos, auditoria e análises da IA." }, { property: "og:title", content: "Admin da Gamificação | GS Hub" }, { property: "og:description", content: "Administração da gamificação." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: AdminPage,
 });
 
@@ -32,6 +33,13 @@ function AdminPage() {
         <TabsTrigger value="resgates">Resgates</TabsTrigger>
         <TabsTrigger value="sugestoes">Sugestões</TabsTrigger>
         <TabsTrigger value="pendentes">Usuários pendentes</TabsTrigger>
+        <TabsTrigger value="relatorios">Relatórios</TabsTrigger>
+        <TabsTrigger value="avisos">Notificações</TabsTrigger>
+        <TabsTrigger value="duelos">Duelos</TabsTrigger>
+        <TabsTrigger value="conquistas">Conquistas</TabsTrigger>
+        <TabsTrigger value="ia">Análises da IA</TabsTrigger>
+        <TabsTrigger value="auditoria">Auditoria</TabsTrigger>
+        <TabsTrigger value="config">Configurações</TabsTrigger>
       </TabsList>
       <TabsContent value="lancamentos"><Lancamentos /></TabsContent>
       <TabsContent value="metricas"><Metricas /></TabsContent>
@@ -41,6 +49,13 @@ function AdminPage() {
       <TabsContent value="resgates"><Resgates /></TabsContent>
       <TabsContent value="sugestoes"><Sugestoes /></TabsContent>
       <TabsContent value="pendentes"><Pendentes /></TabsContent>
+      <TabsContent value="relatorios"><Relatorios /></TabsContent>
+      <TabsContent value="avisos"><Avisos /></TabsContent>
+      <TabsContent value="duelos"><DuelosAdmin /></TabsContent>
+      <TabsContent value="conquistas"><Conquistas /></TabsContent>
+      <TabsContent value="ia"><AnalisesIa /></TabsContent>
+      <TabsContent value="auditoria"><Auditoria /></TabsContent>
+      <TabsContent value="config"><Configuracoes /></TabsContent>
     </Tabs>
   );
 }

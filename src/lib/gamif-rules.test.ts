@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
-import { canSeeGamification, matchUsersByEmail, canAfford, levelFromXp, ruleAppliesOn } from "./gamif-rules";
+import { canSeeGamification, matchUsersByEmail, canAfford, levelFromXp, ruleAppliesOn, computeStreak, duelOutcome, validDuelStake, readingStatus, aggregateEntries, parseGamifSettings } from "./gamif-rules";
 
 describe("acesso à Gamificação antes da liberação", () => {
   it("só admin vê enquanto não liberado", () => {
@@ -44,5 +44,66 @@ describe("nível e regras automáticas", () => {
   it("domingo é 7", () => {
     assert.equal(ruleAppliesOn([1, 2, 3, 4, 5], new Date(2026, 10, 22)), false);
     assert.equal(ruleAppliesOn([7], new Date(2026, 10, 22)), true);
+  });
+});
+
+describe("nível configurável", () => {
+  it("usa XP por nível das configurações", () => {
+    assert.deepEqual(levelFromXp(1500, 500), { level: 4, progress: 0 });
+    assert.equal(levelFromXp(999).level, 1);
+  });
+});
+
+describe("sequência de dias", () => {
+  it("conta até ontem quando hoje ainda não teve lançamento", () => {
+    assert.deepEqual(computeStreak(["2026-11-17", "2026-11-18", "2026-11-19"], "2026-11-20"), { current: 3, best: 3 });
+  });
+  it("zera a atual após um dia sem lançamento e guarda a melhor", () => {
+    assert.deepEqual(computeStreak(["2026-11-01", "2026-11-02", "2026-11-03", "2026-11-18"], "2026-11-20"), { current: 0, best: 3 });
+  });
+});
+
+describe("duelos", () => {
+  it("acordo define vencedor; conflito vira disputa", () => {
+    assert.equal(duelOutcome("venci", "perdi"), "desafiante");
+    assert.equal(duelOutcome("perdi", "venci"), "desafiado");
+    assert.equal(duelOutcome("venci", "venci"), "disputa");
+    assert.equal(duelOutcome("venci", null), "aguardando");
+  });
+  it("aposta respeita teto e saldo", () => {
+    assert.equal(validDuelStake(100, 50, 500), "Saldo insuficiente");
+    assert.equal(validDuelStake(600, 1000, 500), "A aposta máxima é 500");
+    assert.equal(validDuelStake(0, 1000, 500), "Informe uma aposta maior que zero");
+    assert.equal(validDuelStake(100, 100, 500), null);
+  });
+});
+
+describe("leitura de processos", () => {
+  it("nova versão exige nova confirmação", () => {
+    assert.equal(readingStatus(2, 3), "desatualizado");
+    assert.equal(readingStatus(3, 3), "lido");
+    assert.equal(readingStatus(null, 1), "pendente");
+  });
+});
+
+describe("relatórios", () => {
+  it("soma por pessoa separando ganho e perdido", () => {
+    const r = aggregateEntries([
+      { key: "Ana", coins: 100, xp: 50 },
+      { key: "Ana", coins: -30, xp: 0 },
+      { key: "Bia", coins: 10, xp: 200 },
+    ]);
+    assert.equal(r[0]?.key, "Bia");
+    assert.deepEqual(r[1], { key: "Ana", coins: 70, xp: 50, count: 2, earned: 100, spent: 30 });
+  });
+});
+
+describe("configurações", () => {
+  it("aplica padrões e ignora valores inválidos", () => {
+    const s = parseGamifSettings({ xp_per_level: -5, notify_new_mission: false, coin_name: "  " });
+    assert.equal(s.xp_per_level, 1000);
+    assert.equal(s.notify_new_mission, false);
+    assert.equal(s.coin_name, "AtentaCoins");
+    assert.equal(s.notifications_enabled, true);
   });
 });

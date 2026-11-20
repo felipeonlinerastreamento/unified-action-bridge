@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Progress } from "@/components/ui/progress";
 import { Coins, Sparkles, Trophy, Target } from "lucide-react";
 import { levelFromXp } from "@/lib/gamif-rules";
-import { useMyUserId, useRanking, fmtDate } from "@/components/gamificacao/gamif-data";
+import { useMyUserId, useRanking, useGamifSettings, fmtDate } from "@/components/gamificacao/gamif-data";
 
 export const Route = createFileRoute("/gamificacao/")({
   head: () => ({ meta: [{ title: "Dashboard da Gamificação | GS Hub" }, { name: "description", content: "Seu saldo de AtentaCoins, XP, nível e últimos lançamentos." }, { property: "og:title", content: "Dashboard da Gamificação | GS Hub" }, { property: "og:description", content: "Saldo, XP e lançamentos recentes." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
@@ -17,7 +17,8 @@ function GamifDashboard() {
   const { data: ranking = [] } = useRanking();
   const mine = ranking.find((r) => r.user_id === me);
   const pos = ranking.findIndex((r) => r.user_id === me) + 1;
-  const { level, progress } = levelFromXp(mine?.xp ?? 0);
+  const { data: settings } = useGamifSettings();
+  const { level, progress } = levelFromXp(mine?.xp ?? 0, settings?.xp_per_level);
   const { data: entries = [] } = useQuery({
     queryKey: ["gamif-my-entries", me, 10],
     enabled: !!me,
@@ -30,7 +31,7 @@ function GamifDashboard() {
   return (
     <div className="space-y-4">
       <div className="grid gap-4 md:grid-cols-4">
-        <Stat icon={Coins} label="AtentaCoins" value={mine?.coins ?? 0} />
+        <Stat icon={Coins} label={settings?.coin_name ?? "AtentaCoins"} value={mine?.coins ?? 0} />
         <Stat icon={Sparkles} label="XP" value={mine?.xp ?? 0} />
         <Stat icon={Trophy} label="Posição no ranking" value={pos > 0 ? `${pos}º` : "—"} />
         <Card><CardContent className="pt-6 space-y-2"><div className="text-sm text-muted-foreground">Nível {level}</div><Progress value={progress * 100} /></CardContent></Card>

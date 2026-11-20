@@ -52,9 +52,15 @@ import { Route as ConfiguracoesUsuariosRouteImport } from './routes/configuracoe
 import { Route as ConfiguracoesZapiRouteImport } from './routes/configuracoes.zapi'
 import { Route as GamificacaoIndexRouteImport } from './routes/gamificacao.index'
 import { Route as GamificacaoAdminRouteImport } from './routes/gamificacao.admin'
+import { Route as GamificacaoDuelosRouteImport } from './routes/gamificacao.duelos'
+import { Route as GamificacaoFeedRouteImport } from './routes/gamificacao.feed'
 import { Route as GamificacaoHistoricoRouteImport } from './routes/gamificacao.historico'
 import { Route as GamificacaoLojaRouteImport } from './routes/gamificacao.loja'
+import { Route as GamificacaoMetricasRouteImport } from './routes/gamificacao.metricas'
 import { Route as GamificacaoMissoesRouteImport } from './routes/gamificacao.missoes'
+import { Route as GamificacaoNotificacoesRouteImport } from './routes/gamificacao.notificacoes'
+import { Route as GamificacaoPerfilRouteImport } from './routes/gamificacao.perfil'
+import { Route as GamificacaoProcessosRouteImport } from './routes/gamificacao.processos'
 import { Route as GamificacaoRankingsRouteImport } from './routes/gamificacao.rankings'
 import { Route as GamificacaoSugestoesRouteImport } from './routes/gamificacao.sugestoes'
 import { Route as HooksRefreshTrackingRouteImport } from './routes/hooks/refresh-tracking'
@@ -298,6 +304,16 @@ const GamificacaoAdminRoute = GamificacaoAdminRouteImport.update({
   path: '/admin',
   getParentRoute: () => GamificacaoRoute,
 } as any)
+const GamificacaoDuelosRoute = GamificacaoDuelosRouteImport.update({
+  id: '/duelos',
+  path: '/duelos',
+  getParentRoute: () => GamificacaoRoute,
+} as any)
+const GamificacaoFeedRoute = GamificacaoFeedRouteImport.update({
+  id: '/feed',
+  path: '/feed',
+  getParentRoute: () => GamificacaoRoute,
+} as any)
 const GamificacaoHistoricoRoute = GamificacaoHistoricoRouteImport.update({
   id: '/historico',
   path: '/historico',
@@ -308,9 +324,29 @@ const GamificacaoLojaRoute = GamificacaoLojaRouteImport.update({
   path: '/loja',
   getParentRoute: () => GamificacaoRoute,
 } as any)
+const GamificacaoMetricasRoute = GamificacaoMetricasRouteImport.update({
+  id: '/metricas',
+  path: '/metricas',
+  getParentRoute: () => GamificacaoRoute,
+} as any)
 const GamificacaoMissoesRoute = GamificacaoMissoesRouteImport.update({
   id: '/missoes',
   path: '/missoes',
+  getParentRoute: () => GamificacaoRoute,
+} as any)
+const GamificacaoNotificacoesRoute = GamificacaoNotificacoesRouteImport.update({
+  id: '/notificacoes',
+  path: '/notificacoes',
+  getParentRoute: () => GamificacaoRoute,
+} as any)
+const GamificacaoPerfilRoute = GamificacaoPerfilRouteImport.update({
+  id: '/perfil',
+  path: '/perfil',
+  getParentRoute: () => GamificacaoRoute,
+} as any)
+const GamificacaoProcessosRoute = GamificacaoProcessosRouteImport.update({
+  id: '/processos',
+  path: '/processos',
   getParentRoute: () => GamificacaoRoute,
 } as any)
 const GamificacaoRankingsRoute = GamificacaoRankingsRouteImport.update({
@@ -441,9 +477,15 @@ export interface FileRoutesByFullPath {
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
   '/gamificacao/admin': typeof GamificacaoAdminRoute
+  '/gamificacao/duelos': typeof GamificacaoDuelosRoute
+  '/gamificacao/feed': typeof GamificacaoFeedRoute
   '/gamificacao/historico': typeof GamificacaoHistoricoRoute
   '/gamificacao/loja': typeof GamificacaoLojaRoute
+  '/gamificacao/metricas': typeof GamificacaoMetricasRoute
   '/gamificacao/missoes': typeof GamificacaoMissoesRoute
+  '/gamificacao/notificacoes': typeof GamificacaoNotificacoesRoute
+  '/gamificacao/perfil': typeof GamificacaoPerfilRoute
+  '/gamificacao/processos': typeof GamificacaoProcessosRoute
   '/gamificacao/rankings': typeof GamificacaoRankingsRoute
   '/gamificacao/sugestoes': typeof GamificacaoSugestoesRoute
   '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
@@ -502,9 +544,15 @@ export interface FileRoutesByTo {
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
   '/gamificacao/admin': typeof GamificacaoAdminRoute
+  '/gamificacao/duelos': typeof GamificacaoDuelosRoute
+  '/gamificacao/feed': typeof GamificacaoFeedRoute
   '/gamificacao/historico': typeof GamificacaoHistoricoRoute
   '/gamificacao/loja': typeof GamificacaoLojaRoute
+  '/gamificacao/metricas': typeof GamificacaoMetricasRoute
   '/gamificacao/missoes': typeof GamificacaoMissoesRoute
+  '/gamificacao/notificacoes': typeof GamificacaoNotificacoesRoute
+  '/gamificacao/perfil': typeof GamificacaoPerfilRoute
+  '/gamificacao/processos': typeof GamificacaoProcessosRoute
   '/gamificacao/rankings': typeof GamificacaoRankingsRoute
   '/gamificacao/sugestoes': typeof GamificacaoSugestoesRoute
   '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
@@ -567,9 +615,15 @@ export interface FileRoutesById {
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
   '/gamificacao/admin': typeof GamificacaoAdminRoute
+  '/gamificacao/duelos': typeof GamificacaoDuelosRoute
+  '/gamificacao/feed': typeof GamificacaoFeedRoute
   '/gamificacao/historico': typeof GamificacaoHistoricoRoute
   '/gamificacao/loja': typeof GamificacaoLojaRoute
+  '/gamificacao/metricas': typeof GamificacaoMetricasRoute
   '/gamificacao/missoes': typeof GamificacaoMissoesRoute
+  '/gamificacao/notificacoes': typeof GamificacaoNotificacoesRoute
+  '/gamificacao/perfil': typeof GamificacaoPerfilRoute
+  '/gamificacao/processos': typeof GamificacaoProcessosRoute
   '/gamificacao/rankings': typeof GamificacaoRankingsRoute
   '/gamificacao/sugestoes': typeof GamificacaoSugestoesRoute
   '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
@@ -633,9 +687,15 @@ export interface FileRouteTypes {
     | '/configuracoes/usuarios'
     | '/configuracoes/zapi'
     | '/gamificacao/admin'
+    | '/gamificacao/duelos'
+    | '/gamificacao/feed'
     | '/gamificacao/historico'
     | '/gamificacao/loja'
+    | '/gamificacao/metricas'
     | '/gamificacao/missoes'
+    | '/gamificacao/notificacoes'
+    | '/gamificacao/perfil'
+    | '/gamificacao/processos'
     | '/gamificacao/rankings'
     | '/gamificacao/sugestoes'
     | '/hooks/refresh-tracking'
@@ -694,9 +754,15 @@ export interface FileRouteTypes {
     | '/configuracoes/usuarios'
     | '/configuracoes/zapi'
     | '/gamificacao/admin'
+    | '/gamificacao/duelos'
+    | '/gamificacao/feed'
     | '/gamificacao/historico'
     | '/gamificacao/loja'
+    | '/gamificacao/metricas'
     | '/gamificacao/missoes'
+    | '/gamificacao/notificacoes'
+    | '/gamificacao/perfil'
+    | '/gamificacao/processos'
     | '/gamificacao/rankings'
     | '/gamificacao/sugestoes'
     | '/hooks/refresh-tracking'
@@ -758,9 +824,15 @@ export interface FileRouteTypes {
     | '/configuracoes/usuarios'
     | '/configuracoes/zapi'
     | '/gamificacao/admin'
+    | '/gamificacao/duelos'
+    | '/gamificacao/feed'
     | '/gamificacao/historico'
     | '/gamificacao/loja'
+    | '/gamificacao/metricas'
     | '/gamificacao/missoes'
+    | '/gamificacao/notificacoes'
+    | '/gamificacao/perfil'
+    | '/gamificacao/processos'
     | '/gamificacao/rankings'
     | '/gamificacao/sugestoes'
     | '/hooks/refresh-tracking'
@@ -1122,6 +1194,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GamificacaoAdminRouteImport
       parentRoute: typeof GamificacaoRoute
     }
+    '/gamificacao/duelos': {
+      id: '/gamificacao/duelos'
+      path: '/duelos'
+      fullPath: '/gamificacao/duelos'
+      preLoaderRoute: typeof GamificacaoDuelosRouteImport
+      parentRoute: typeof GamificacaoRoute
+    }
+    '/gamificacao/feed': {
+      id: '/gamificacao/feed'
+      path: '/feed'
+      fullPath: '/gamificacao/feed'
+      preLoaderRoute: typeof GamificacaoFeedRouteImport
+      parentRoute: typeof GamificacaoRoute
+    }
     '/gamificacao/historico': {
       id: '/gamificacao/historico'
       path: '/historico'
@@ -1136,11 +1222,39 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GamificacaoLojaRouteImport
       parentRoute: typeof GamificacaoRoute
     }
+    '/gamificacao/metricas': {
+      id: '/gamificacao/metricas'
+      path: '/metricas'
+      fullPath: '/gamificacao/metricas'
+      preLoaderRoute: typeof GamificacaoMetricasRouteImport
+      parentRoute: typeof GamificacaoRoute
+    }
     '/gamificacao/missoes': {
       id: '/gamificacao/missoes'
       path: '/missoes'
       fullPath: '/gamificacao/missoes'
       preLoaderRoute: typeof GamificacaoMissoesRouteImport
+      parentRoute: typeof GamificacaoRoute
+    }
+    '/gamificacao/notificacoes': {
+      id: '/gamificacao/notificacoes'
+      path: '/notificacoes'
+      fullPath: '/gamificacao/notificacoes'
+      preLoaderRoute: typeof GamificacaoNotificacoesRouteImport
+      parentRoute: typeof GamificacaoRoute
+    }
+    '/gamificacao/perfil': {
+      id: '/gamificacao/perfil'
+      path: '/perfil'
+      fullPath: '/gamificacao/perfil'
+      preLoaderRoute: typeof GamificacaoPerfilRouteImport
+      parentRoute: typeof GamificacaoRoute
+    }
+    '/gamificacao/processos': {
+      id: '/gamificacao/processos'
+      path: '/processos'
+      fullPath: '/gamificacao/processos'
+      preLoaderRoute: typeof GamificacaoProcessosRouteImport
       parentRoute: typeof GamificacaoRoute
     }
     '/gamificacao/rankings': {
@@ -1322,9 +1436,15 @@ const ConfiguracoesRouteWithChildren = ConfiguracoesRoute._addFileChildren(
 
 interface GamificacaoRouteChildren {
   GamificacaoAdminRoute: typeof GamificacaoAdminRoute
+  GamificacaoDuelosRoute: typeof GamificacaoDuelosRoute
+  GamificacaoFeedRoute: typeof GamificacaoFeedRoute
   GamificacaoHistoricoRoute: typeof GamificacaoHistoricoRoute
   GamificacaoLojaRoute: typeof GamificacaoLojaRoute
+  GamificacaoMetricasRoute: typeof GamificacaoMetricasRoute
   GamificacaoMissoesRoute: typeof GamificacaoMissoesRoute
+  GamificacaoNotificacoesRoute: typeof GamificacaoNotificacoesRoute
+  GamificacaoPerfilRoute: typeof GamificacaoPerfilRoute
+  GamificacaoProcessosRoute: typeof GamificacaoProcessosRoute
   GamificacaoRankingsRoute: typeof GamificacaoRankingsRoute
   GamificacaoSugestoesRoute: typeof GamificacaoSugestoesRoute
   GamificacaoIndexRoute: typeof GamificacaoIndexRoute
@@ -1332,9 +1452,15 @@ interface GamificacaoRouteChildren {
 
 const GamificacaoRouteChildren: GamificacaoRouteChildren = {
   GamificacaoAdminRoute: GamificacaoAdminRoute,
+  GamificacaoDuelosRoute: GamificacaoDuelosRoute,
+  GamificacaoFeedRoute: GamificacaoFeedRoute,
   GamificacaoHistoricoRoute: GamificacaoHistoricoRoute,
   GamificacaoLojaRoute: GamificacaoLojaRoute,
+  GamificacaoMetricasRoute: GamificacaoMetricasRoute,
   GamificacaoMissoesRoute: GamificacaoMissoesRoute,
+  GamificacaoNotificacoesRoute: GamificacaoNotificacoesRoute,
+  GamificacaoPerfilRoute: GamificacaoPerfilRoute,
+  GamificacaoProcessosRoute: GamificacaoProcessosRoute,
   GamificacaoRankingsRoute: GamificacaoRankingsRoute,
   GamificacaoSugestoesRoute: GamificacaoSugestoesRoute,
   GamificacaoIndexRoute: GamificacaoIndexRoute,

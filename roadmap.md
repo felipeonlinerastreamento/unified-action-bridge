@@ -14,6 +14,7 @@
 - [x] Menu "Gamificação" só para admins até liberação.
 - [x] Telas: Dashboard, Rankings (individual/squads), Missões, Loja + Meus resgates, Histórico, Sugestões.
 - [x] Admin: lançamentos, métricas, regras automáticas, missões, loja, resgates, sugestões, usuários pendentes.
-- [ ] Telas restantes: Feed, PvP/Duelos, Perfil (conquistas/sequência), Processos, Notificações, Métricas, Admin relatórios/notificações/AI insights/duelos/auditoria/configurações.
+- [x] Dashboard em branco: carregamento espera login e papéis (sem tela vazia).
+- [x] Telas restantes: Feed, Duelos, Perfil, Processos, Notificações, Métricas; Admin: relatórios, notificações, duelos, conquistas, análises da IA, auditoria, configurações.
 - [ ] Importação dos dados do TOP — bloqueado: aguardando CSVs exportados no chat do TOP Gamific.
 - [ ] Virada: TOP só leitura, delta, liberar menu para todos — aguardando autorização do Felipe.
