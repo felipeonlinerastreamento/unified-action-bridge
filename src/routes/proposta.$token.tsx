@@ -328,7 +328,7 @@ function UnlockedProposal({ token, cpf, data, onRefresh }: { token: string; cpf:
       </div>
 
       <Dialog open={!!decision} onOpenChange={(o) => { if (!o && !sending) setDecision(null); }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md" style={brand}>
           <DialogHeader>
             <DialogTitle>{decision === "accept" ? "Aceitar proposta" : "Recusar proposta"}</DialogTitle>
             <DialogDescription>

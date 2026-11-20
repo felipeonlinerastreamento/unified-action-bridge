@@ -277,7 +277,7 @@ function UnlockedTerm({ token, cpf, data, onRefresh }: { token: string; cpf: str
       </div>
 
       <Dialog open={!!decision} onOpenChange={(o) => { if (!o && !sending) setDecision(null); }}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md" style={{ "--brand": b.primaryColor } as React.CSSProperties}>
           <DialogHeader>
             <DialogTitle>{decision === "accept" ? "Aceitar termo" : "Recusar termo"}</DialogTitle>
             <DialogDescription>
