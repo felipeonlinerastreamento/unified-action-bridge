@@ -998,9 +998,10 @@ export const createChat = createServerFn({ method: "POST" })
 
     if (data.message) {
       const channel = await loadZapiChannel(supabaseAdmin, data.channelId);
-      await zapiSendText(channel, phone, data.message);
+      const __r = await zapiSendText(channel, phone, data.message);
       await context.supabase.from("zapi_messages").insert({
         chat_id: chatId,
+        zapi_message_id: (__r as any)?.messageId || (__r as any)?.id || (__r as any)?.zaapId || null,
         from_me: true,
         text: data.message,
         status: "sent",

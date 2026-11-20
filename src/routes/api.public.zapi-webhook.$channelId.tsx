@@ -1357,9 +1357,10 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                   if (canSend && bh.out_of_hours_message?.trim()) {
                     try {
                       const creds = await loadZapiChannel(supabaseAdmin, channelId);
-                      await zapiSendText(creds, phone, bh.out_of_hours_message);
+                      const __r = await zapiSendText(creds, phone, bh.out_of_hours_message);
                       await supabaseAdmin.from("zapi_messages").insert({
                         chat_id: chatId,
+                        zapi_message_id: (__r as any)?.messageId || (__r as any)?.id || (__r as any)?.zaapId || null,
                         from_me: true,
                         text: bh.out_of_hours_message,
                         status: "sent",

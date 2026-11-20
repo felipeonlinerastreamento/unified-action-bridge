@@ -115,7 +115,7 @@ async function processRule(rule: Rule, results: any[]) {
         results.push({ rule: rule.name, chat: chat.id, error: `channel: ${e?.message}` });
         continue;
       }
-      await zapiSendText(creds, chat.phone, text);
+      const __r = await zapiSendText(creds, chat.phone, text);
 
       // Persist outgoing message + bump chat timestamps
       // Persist outgoing message + bump chat timestamps
@@ -124,6 +124,7 @@ async function processRule(rule: Rule, results: any[]) {
         from_me: true,
         text,
         status: "sent",
+        zapi_message_id: (__r as any)?.messageId || (__r as any)?.id || (__r as any)?.zaapId || null,
       } as any);
       await supabaseAdmin
         .from("zapi_chats")
