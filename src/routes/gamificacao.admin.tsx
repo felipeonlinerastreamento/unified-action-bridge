@@ -16,7 +16,7 @@ import { Relatorios, Avisos, DuelosAdmin, Conquistas, Auditoria, Configuracoes, 
 import { ImportacaoTop } from "@/components/gamificacao/admin-import";
 
 export const Route = createFileRoute("/gamificacao/admin")({
-  head: () => ({ meta: [{ title: "Admin da Gamificação | GS Hub" }, { name: "description", content: "Lançamentos, métricas, missões, loja, resgates, relatórios, duelos, auditoria e análises da IA." }, { property: "og:title", content: "Admin da Gamificação | GS Hub" }, { property: "og:description", content: "Administração da gamificação." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
+  head: () => ({ meta: [{ title: "Admin da Gamificação | Gestão Online" }, { name: "description", content: "Lançamentos, métricas, missões, loja, resgates, relatórios, duelos, auditoria e análises da IA." }, { property: "og:title", content: "Admin da Gamificação | Gestão Online" }, { property: "og:description", content: "Administração da gamificação." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: AdminPage,
 });
 
@@ -297,7 +297,7 @@ function Pendentes() {
         <div key={l.legacy_id} className="flex flex-wrap items-center justify-between gap-2 py-2">
           <span>{l.name ?? "—"} · {l.email ?? "sem e-mail"} · {l.coins} moedas · {l.xp} XP <Badge variant={l.status === "ligado" ? "default" : "secondary"}>{l.status}</Badge></span>
           {l.status !== "ligado" && (
-            <Select onValueChange={(v) => link(l.legacy_id, v)}><SelectTrigger className="w-60 h-8"><SelectValue placeholder="Ligar a usuário do GS Hub" /></SelectTrigger><SelectContent>{users.map((u) => <SelectItem key={u.user_id} value={u.user_id}>{u.name}</SelectItem>)}</SelectContent></Select>
+            <Select onValueChange={(v) => link(l.legacy_id, v)}><SelectTrigger className="w-60 h-8"><SelectValue placeholder="Ligar a usuário do Gestão Online" /></SelectTrigger><SelectContent>{users.map((u) => <SelectItem key={u.user_id} value={u.user_id}>{u.name}</SelectItem>)}</SelectContent></Select>
           )}
         </div>
       ))}

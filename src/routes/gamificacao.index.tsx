@@ -8,7 +8,7 @@ import { levelFromXp } from "@/lib/gamif-rules";
 import { useMyUserId, useRanking, useGamifSettings, fmtDate } from "@/components/gamificacao/gamif-data";
 
 export const Route = createFileRoute("/gamificacao/")({
-  head: () => ({ meta: [{ title: "Dashboard da Gamificação | GS Hub" }, { name: "description", content: "Seu saldo de AtentaCoins, XP, nível e últimos lançamentos." }, { property: "og:title", content: "Dashboard da Gamificação | GS Hub" }, { property: "og:description", content: "Saldo, XP e lançamentos recentes." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
+  head: () => ({ meta: [{ title: "Dashboard da Gamificação | Gestão Online" }, { name: "description", content: "Seu saldo de AtentaCoins, XP, nível e últimos lançamentos." }, { property: "og:title", content: "Dashboard da Gamificação | Gestão Online" }, { property: "og:description", content: "Saldo, XP e lançamentos recentes." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: GamifDashboard,
 });
 

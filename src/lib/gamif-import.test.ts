@@ -15,7 +15,7 @@ describe("ligação de usuários do TOP por e-mail", () => {
     );
     assert.deepEqual(r.map((m) => [m.legacyId, m.status, m.userId]), [["t1", "ligado", "u1"], ["t2", "pendente", null], ["t3", "pendente", null]]);
   });
-  it("segundo perfil do TOP com o mesmo usuário do GS Hub fica como duplicado", () => {
+  it("segundo perfil do TOP com o mesmo usuário do Gestão Online fica como duplicado", () => {
     const r = mapTopUsers([{ user_id: "t1", email: "ana@x.com", created_at: "1" }, { user_id: "t2", email: "Ana@X.com", created_at: "2" }], users, []);
     assert.equal(r[0]?.status, "ligado");
     assert.equal(r[1]?.status, "duplicado");
@@ -43,7 +43,7 @@ describe("valores dos lançamentos", () => {
     assert.notEqual(stableUuid("top-adjust:a"), stableUuid("top-adjust:b"));
     assert.match(stableUuid("x"), /^[0-9a-f]{8}-[0-9a-f]{4}-5[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/);
   });
-  it("situações do TOP viram as do GS Hub", () => {
+  it("situações do TOP viram as do Gestão Online", () => {
     assert.equal(redemptionStatus("approved"), "aprovado");
     assert.equal(missionStatus("active"), "ativa");
   });
@@ -80,7 +80,7 @@ describe("preparação da importação", () => {
     const people = prep.payload["task_people"] as { created_by: string | null }[];
     assert.equal(people[0]?.created_by, null);
   });
-  it("relatório compara saldo do TOP com o do GS Hub", () => {
+  it("relatório compara saldo do TOP com o do Gestão Online", () => {
     const rep = buildImportReport(exp, prep, {
       present: {},
       balances: [
@@ -116,7 +116,7 @@ describe("lista de exclusão da importação", () => {
   };
   const dir = { users, sectors: [], links: [], exclusions: [{ legacy_id: "tx", name: "Gustavo", email: "bia@x.com" }] };
   const prep = prepareTopImport(exp, dir, "importer");
-  it("pessoa excluída não é ligada nem fica pendente, mesmo com e-mail igual no GS Hub", () => {
+  it("pessoa excluída não é ligada nem fica pendente, mesmo com e-mail igual no Gestão Online", () => {
     assert.deepEqual(prep.mapping.map((m) => m.legacyId), ["t1"]);
     assert.equal((prep.payload["legacy_users"] as unknown[]).length, 1);
   });

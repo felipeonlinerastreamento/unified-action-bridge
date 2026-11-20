@@ -9,7 +9,7 @@ import { computeStreak, levelFromXp } from "@/lib/gamif-rules";
 import { useMyUserId, useRanking, useGamifSettings, fmtDate } from "@/components/gamificacao/gamif-data";
 
 export const Route = createFileRoute("/gamificacao/perfil")({
-  head: () => ({ meta: [{ title: "Meu perfil na Gamificação | GS Hub" }, { name: "description", content: "Nível, sequência de dias, conquistas e estatísticas pessoais." }, { property: "og:title", content: "Meu perfil na Gamificação | GS Hub" }, { property: "og:description", content: "Nível, sequência e conquistas." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
+  head: () => ({ meta: [{ title: "Meu perfil na Gamificação | Gestão Online" }, { name: "description", content: "Nível, sequência de dias, conquistas e estatísticas pessoais." }, { property: "og:title", content: "Meu perfil na Gamificação | Gestão Online" }, { property: "og:description", content: "Nível, sequência e conquistas." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: PerfilPage,
 });
 

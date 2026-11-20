@@ -46,9 +46,9 @@ const MapaLeaflet = lazy(() => import("@/components/agenda/mapa-leaflet"));
 export const Route = createFileRoute("/agenda/mapa")({
   head: () => ({
     meta: [
-      { title: "Agenda — Mapa de atendimentos | GSystem Hub" },
+      { title: "Agenda — Mapa de atendimentos | Gestão Online" },
       { name: "description", content: "Mapa dos atendimentos do dia com técnico, status e endereço de cada OS." },
-      { property: "og:title", content: "Agenda — Mapa de atendimentos | GSystem Hub" },
+      { property: "og:title", content: "Agenda — Mapa de atendimentos | Gestão Online" },
       { property: "og:description", content: "Veja no mapa todos os pontos de atendimento do dia." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

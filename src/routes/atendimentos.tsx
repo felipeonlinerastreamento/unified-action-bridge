@@ -5,10 +5,10 @@ import { AtendimentosContent } from "@/components/atendimentos/atendimentos-cont
 
 export const Route = createFileRoute("/atendimentos")({
   head: () => ({ meta: [
-    { title: "Atendimentos | GSystem Hub" },
-    { name: "description", content: "Gerencie chamados, comentários e respostas por e-mail no GSystem Hub." },
-    { property: "og:title", content: "Atendimentos | GSystem Hub" },
-    { property: "og:description", content: "Acompanhe chamados e conversas da equipe no GSystem Hub." },
+    { title: "Atendimentos | Gestão Online" },
+    { name: "description", content: "Gerencie chamados, comentários e respostas por e-mail no Gestão Online." },
+    { property: "og:title", content: "Atendimentos | Gestão Online" },
+    { property: "og:description", content: "Acompanhe chamados e conversas da equipe no Gestão Online." },
     { property: "og:type", content: "website" },
     { name: "twitter:card", content: "summary" },
   ] }),

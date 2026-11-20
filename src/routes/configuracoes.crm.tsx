@@ -23,9 +23,9 @@ import { TechnicalTermSettings } from "@/components/crm/technical-term-settings"
 export const Route = createFileRoute("/configuracoes/crm")({
   head: () => ({
     meta: [
-      { title: "Configurações do CRM — GSystem Hub" },
+      { title: "Configurações do CRM — Gestão Online" },
       { name: "description", content: "Parâmetros da proposta comercial enviada ao cliente por WhatsApp e e-mail." },
-      { property: "og:title", content: "Configurações do CRM — GSystem Hub" },
+      { property: "og:title", content: "Configurações do CRM — Gestão Online" },
       { property: "og:description", content: "Parâmetros da proposta comercial enviada ao cliente por WhatsApp e e-mail." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

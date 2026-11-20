@@ -116,7 +116,7 @@ function ConsentPage() {
   return (
     <Shell>
       <p className="text-sm text-muted-foreground">
-        Conectar <span className="font-medium text-foreground">{clientName}</span> à sua conta do GS Hub. Ele poderá
+        Conectar <span className="font-medium text-foreground">{clientName}</span> à sua conta do Gestão Online. Ele poderá
         consultar seus dados com as mesmas permissões que você tem no sistema.
       </p>
       {error && (

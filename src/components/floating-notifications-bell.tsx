@@ -8,7 +8,8 @@ import { useNotifications } from "@/hooks/use-notifications";
 export function FloatingNotificationsBell() {
   const navigate = useNavigate();
   const { userId, notifications, unread, totalUnread, markRead, markAllRead, dismiss } = useNotifications();
-  if (!userId) return null;
+  // Só aparece quando há notificação ou conversa não lida.
+  if (!userId || totalUnread === 0) return null;
 
   return (
     <Popover>
@@ -16,11 +17,11 @@ export function FloatingNotificationsBell() {
         <button
           type="button"
           aria-label={`Notificações${totalUnread ? ` (${totalUnread} não lidas)` : ""}`}
-          className="fixed bottom-24 right-5 z-50 flex h-16 w-16 items-center justify-center rounded-full border-2 border-primary bg-card text-primary shadow-xl transition-transform hover:scale-105 active:scale-95"
+          className="fixed bottom-24 right-5 z-50 flex h-24 w-24 items-center justify-center rounded-full border-2 border-primary bg-card text-primary shadow-xl transition-transform hover:scale-105 active:scale-95"
         >
-          <Bell className={`h-8 w-8 ${totalUnread > 0 ? "animate-pulse" : ""}`} />
+          <Bell className="h-12 w-12 animate-pulse" />
           {totalUnread > 0 && (
-            <span className="absolute -top-1.5 -right-1.5 flex h-7 min-w-[28px] items-center justify-center rounded-full bg-destructive px-1.5 text-sm font-bold text-destructive-foreground shadow ring-2 ring-background">
+            <span className="absolute -top-1 -right-1 flex h-9 min-w-[36px] items-center justify-center rounded-full bg-destructive px-2 text-base font-bold text-destructive-foreground shadow ring-2 ring-background">
               {totalUnread > 99 ? "99+" : totalUnread}
             </span>
           )}

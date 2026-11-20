@@ -111,7 +111,7 @@ async function checkSeuInstalador(): Promise<IntegrationCheck> {
   }
   const r = await timed(async () => {
     const res = await fetchWithTimeout("https://seuinstalador-com-br.lovable.app/api/public/integrations/v1/technicians", {
-      headers: { "X-Integration-Key": key, "X-External-User-Name": "Monitoramento GS Hub", "X-Request-Id": crypto.randomUUID() },
+      headers: { "X-Integration-Key": key, "X-External-User-Name": "Monitoramento Gestão Online", "X-Request-Id": crypto.randomUUID() },
     });
     if (!res.ok) throw new Error(`Resposta ${res.status}`);
     return "Respondendo normalmente.";

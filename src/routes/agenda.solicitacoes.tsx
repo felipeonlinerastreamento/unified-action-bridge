@@ -28,12 +28,12 @@ import {
 export const Route = createFileRoute("/agenda/solicitacoes")({
   head: () => ({
     meta: [
-      { title: "Agenda — Solicitações | GSystem Hub" },
+      { title: "Agenda — Solicitações | Gestão Online" },
       {
         name: "description",
         content: "Gerencie pedidos de serviço, verifique disponibilidade e direcione atendimentos por região.",
       },
-      { property: "og:title", content: "Agenda — Solicitações | GSystem Hub" },
+      { property: "og:title", content: "Agenda — Solicitações | Gestão Online" },
       {
         property: "og:description",
         content: "Pedidos de serviço sincronizados com o Seu Instalador: disponibilidade, registro e região.",

@@ -14,7 +14,7 @@ import { validDuelStake } from "@/lib/gamif-rules";
 import { useMyUserId, useRanking, useGamifSettings, fmtDate, DUEL_STATUS } from "@/components/gamificacao/gamif-data";
 
 export const Route = createFileRoute("/gamificacao/duelos")({
-  head: () => ({ meta: [{ title: "Duelos da Gamificação | GS Hub" }, { name: "description", content: "Desafie colegas apostando moedas; o vencedor leva a aposta." }, { property: "og:title", content: "Duelos da Gamificação | GS Hub" }, { property: "og:description", content: "Desafios entre colegas." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
+  head: () => ({ meta: [{ title: "Duelos da Gamificação | Gestão Online" }, { name: "description", content: "Desafie colegas apostando moedas; o vencedor leva a aposta." }, { property: "og:title", content: "Duelos da Gamificação | Gestão Online" }, { property: "og:description", content: "Desafios entre colegas." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: DuelosPage,
 });
 

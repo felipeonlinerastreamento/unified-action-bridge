@@ -19,7 +19,7 @@ export interface EmailMatch {
   duplicated: string[];
 }
 
-/** Liga usuários do TOP aos do GS Hub pelo e-mail; sem par único fica pendente. */
+/** Liga usuários do TOP aos do Gestão Online pelo e-mail; sem par único fica pendente. */
 export function matchUsersByEmail(legacy: LegacyUser[], hub: HubUser[]): EmailMatch {
   const byEmail = new Map<string, string[]>();
   for (const h of hub) {

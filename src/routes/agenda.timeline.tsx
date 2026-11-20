@@ -6,9 +6,9 @@ import { TimelineContent } from "@/components/agenda/timeline-content";
 export const Route = createFileRoute("/agenda/timeline")({
   head: () => ({
     meta: [
-      { title: "Agenda — Timeline do dia | GSystem Hub" },
+      { title: "Agenda — Timeline do dia | Gestão Online" },
       { name: "description", content: "Timeline diária dos agendamentos do Seu Instalador por técnico e horário." },
-      { property: "og:title", content: "Agenda — Timeline do dia | GSystem Hub" },
+      { property: "og:title", content: "Agenda — Timeline do dia | Gestão Online" },
       { property: "og:description", content: "Veja a agenda do dia por técnico e horário." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

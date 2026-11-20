@@ -71,13 +71,13 @@ function Relatorio({ r }: { r: ImportReport }) {
         <Pessoas title="Duplicados" list={r.users.duplicates} variant="destructive" />
       </div>
       {r.unmatchedSquads.length > 0 && (
-        <p className="text-sm text-muted-foreground">Squads sem setor correspondente no GS Hub: {r.unmatchedSquads.join(", ")}.</p>
+        <p className="text-sm text-muted-foreground">Squads sem setor correspondente no Gestão Online: {r.unmatchedSquads.join(", ")}.</p>
       )}
       <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-sm">Contagem por tabela (TOP x GS Hub)</CardTitle></CardHeader>
+        <CardHeader className="pb-2"><CardTitle className="text-sm">Contagem por tabela (TOP x Gestão Online)</CardTitle></CardHeader>
         <CardContent>
           <Table>
-            <TableHeader><TableRow><TableHead>Tabela do TOP</TableHead><TableHead className="text-right">TOP</TableHead><TableHead className="text-right">GS Hub</TableHead><TableHead>Observação</TableHead></TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead>Tabela do TOP</TableHead><TableHead className="text-right">TOP</TableHead><TableHead className="text-right">Gestão Online</TableHead><TableHead>Observação</TableHead></TableRow></TableHeader>
             <TableBody>
               {r.tables.map((t) => (
                 <TableRow key={t.table}>
@@ -92,10 +92,10 @@ function Relatorio({ r }: { r: ImportReport }) {
         </CardContent>
       </Card>
       <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2">Saldo por pessoa (TOP x GS Hub){diffs === 0 ? <Badge>todos iguais</Badge> : <Badge variant="destructive">{diffs} diferente(s)</Badge>}</CardTitle></CardHeader>
+        <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2">Saldo por pessoa (TOP x Gestão Online){diffs === 0 ? <Badge>todos iguais</Badge> : <Badge variant="destructive">{diffs} diferente(s)</Badge>}</CardTitle></CardHeader>
         <CardContent>
           <Table>
-            <TableHeader><TableRow><TableHead>Pessoa</TableHead><TableHead>Situação</TableHead><TableHead className="text-right">Moedas TOP</TableHead><TableHead className="text-right">Moedas GS Hub</TableHead><TableHead className="text-right">XP TOP</TableHead><TableHead className="text-right">XP GS Hub</TableHead><TableHead className="text-right">Ajuste da migração</TableHead></TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead>Pessoa</TableHead><TableHead>Situação</TableHead><TableHead className="text-right">Moedas TOP</TableHead><TableHead className="text-right">Moedas Gestão Online</TableHead><TableHead className="text-right">XP TOP</TableHead><TableHead className="text-right">XP Gestão Online</TableHead><TableHead className="text-right">Ajuste da migração</TableHead></TableRow></TableHeader>
             <TableBody>
               {r.balances.map((b) => (
                 <TableRow key={`${b.name}-${b.email}`}>

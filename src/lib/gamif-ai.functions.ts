@@ -4,7 +4,7 @@ import { buildAiGuidelines } from "@/lib/ai-guidelines";
 import { aggregateEntries } from "@/lib/gamif-rules";
 
 /**
- * Análise da equipe na Gamificação, gerada pelo Assistente IA do GS Hub
+ * Análise da equipe na Gamificação, gerada pelo Assistente IA do Gestão Online
  * (mesmas diretrizes de tom/temas/fallback de Configurações > Assistente IA).
  * Só admin/gestor. Cada análise fica registrada na auditoria da Gamificação.
  */
@@ -65,7 +65,7 @@ export const gerarAnaliseGamificacao = createServerFn({ method: "POST" })
       const resp = await generateResponse({
         model: "openai/gpt-6-astra",
         instructions:
-          "Você é o Assistente IA do GS Hub analisando a gamificação da equipe de uma empresa de rastreamento veicular. " +
+          "Você é o Assistente IA do Gestão Online analisando a gamificação da equipe de uma empresa de rastreamento veicular. " +
           "Com base apenas nos dados fornecidos, escreva em português, em Markdown: 1) Resumo geral; 2) Destaques (pessoas e setores); " +
           "3) Pontos de atenção (baixo engajamento, quem está sem lançamentos, métricas negativas); 4) Recomendações práticas para os gestores (missões, reconhecimento, ajustes de métricas). " +
           "Não invente números que não estejam nos dados.\n\n" +

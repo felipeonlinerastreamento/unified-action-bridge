@@ -7,7 +7,7 @@ import { Award, Gift, Swords, Target } from "lucide-react";
 import { fmtDateTime } from "@/components/gamificacao/gamif-data";
 
 export const Route = createFileRoute("/gamificacao/feed")({
-  head: () => ({ meta: [{ title: "Feed da Gamificação | GS Hub" }, { name: "description", content: "Conquistas, missões concluídas, resgates e duelos vencidos pela equipe." }, { property: "og:title", content: "Feed da Gamificação | GS Hub" }, { property: "og:description", content: "O que a equipe conquistou recentemente." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
+  head: () => ({ meta: [{ title: "Feed da Gamificação | Gestão Online" }, { name: "description", content: "Conquistas, missões concluídas, resgates e duelos vencidos pela equipe." }, { property: "og:title", content: "Feed da Gamificação | Gestão Online" }, { property: "og:description", content: "O que a equipe conquistou recentemente." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: FeedPage,
 });
 

@@ -1,4 +1,4 @@
-// Regras puras da importação do TOP Gamific para a Gamificação do GS Hub (testadas em gamif-import.test.ts).
+// Regras puras da importação do TOP Gamific para a Gamificação do Gestão Online (testadas em gamif-import.test.ts).
 import { normalizeEmail } from "./gamif-rules";
 
 type Row = Record<string, any>;
@@ -38,7 +38,7 @@ export function applyExclusions(exp: TopExport, excludedIds: Iterable<string>): 
   return { exp: { ...exp, data }, removed };
 }
 
-/** Squads do TOP com nome diferente no GS Hub (nome normalizado → setor do GS Hub). */
+/** Squads do TOP com nome diferente no Gestão Online (nome normalizado → setor do Gestão Online). */
 export const SECTOR_ALIASES: Record<string, string> = { adm: "administrativo" };
 
 export const TOP_TABLES = [
@@ -48,7 +48,7 @@ export const TOP_TABLES = [
   "role_functions", "platform_settings", "tasks", "task_comments", "task_participants", "kanban_columns",
 ] as const;
 
-/** Tabela do TOP → lista enviada ao GS Hub. */
+/** Tabela do TOP → lista enviada ao Gestão Online. */
 export const TABLE_TARGET: Record<string, string> = {
   profiles: "legacy_users", metric_categories: "metric_categories", performance_metrics: "metrics",
   user_performance_entries: "entries", auto_metric_rules: "auto_rules", missions: "missions", user_missions: "user_missions",
@@ -59,10 +59,10 @@ export const TABLE_TARGET: Record<string, string> = {
 };
 
 export const NOT_IMPORTED: Record<string, string> = {
-  user_roles: "Não importado: valem os papéis do GS Hub.",
-  sectors: "Não importado: usado só para ligar pelo nome aos setores do GS Hub.",
-  squads: "Não importado: cada squad é o setor do GS Hub com o mesmo nome.",
-  kanban_columns: "Não importado: as Tarefas do GS Hub já têm Pendente, Em andamento e Concluída.",
+  user_roles: "Não importado: valem os papéis do Gestão Online.",
+  sectors: "Não importado: usado só para ligar pelo nome aos setores do Gestão Online.",
+  squads: "Não importado: cada squad é o setor do Gestão Online com o mesmo nome.",
+  kanban_columns: "Não importado: as Tarefas do Gestão Online já têm Pendente, Em andamento e Concluída.",
   platform_settings: "Guardado nas Configurações da Gamificação (só preenche o que ainda não foi definido).",
 };
 
@@ -73,7 +73,7 @@ export function normalizeName(s: string | null | undefined): string {
 export type LinkStatus = "ligado" | "pendente" | "duplicado";
 export interface UserMapping { legacyId: string; name: string; email: string | null; userId: string | null; status: LinkStatus; reason: string }
 
-/** Liga perfis do TOP a usuários do GS Hub: ligação manual vale primeiro, depois e-mail único; repetidos ficam como duplicados. */
+/** Liga perfis do TOP a usuários do Gestão Online: ligação manual vale primeiro, depois e-mail único; repetidos ficam como duplicados. */
 export function mapTopUsers(profiles: Row[], users: DirUser[], links: DirLink[]): UserMapping[] {
   const sorted = [...profiles].sort((a, b) => String(a["created_at"] ?? "").localeCompare(String(b["created_at"] ?? "")));
   const byEmail = new Map<string, string[]>();
@@ -94,16 +94,16 @@ export function mapTopUsers(profiles: Row[], users: DirUser[], links: DirLink[])
     if (seenEmails.has(e)) return { ...base, userId: null, status: "duplicado", reason: "E-mail repetido no TOP" };
     seenEmails.add(e);
     const ids = byEmail.get(e) ?? [];
-    if (ids.length === 0) return { ...base, userId: null, status: "pendente", reason: "E-mail não encontrado no GS Hub" };
-    if (ids.length > 1) return { ...base, userId: null, status: "duplicado", reason: "E-mail com mais de um usuário no GS Hub" };
+    if (ids.length === 0) return { ...base, userId: null, status: "pendente", reason: "E-mail não encontrado no Gestão Online" };
+    if (ids.length > 1) return { ...base, userId: null, status: "duplicado", reason: "E-mail com mais de um usuário no Gestão Online" };
     const id = ids[0] as string;
-    if (taken.has(id)) return { ...base, userId: null, status: "duplicado", reason: "Usuário do GS Hub já ligado a outro perfil do TOP" };
+    if (taken.has(id)) return { ...base, userId: null, status: "duplicado", reason: "Usuário do Gestão Online já ligado a outro perfil do TOP" };
     taken.add(id);
     return { ...base, userId: id, status: "ligado", reason: "Mesmo e-mail" };
   });
 }
 
-/** Valor de uma métrica no GS Hub: negativas guardam moedas/XP com sinal negativo. */
+/** Valor de uma métrica no Gestão Online: negativas guardam moedas/XP com sinal negativo. */
 export function metricValues(m: Row | undefined): { coins: number; xp: number } {
   if (!m) return { coins: 0, xp: 0 };
   const pts = Number(m["points"] ?? 0);
@@ -120,7 +120,7 @@ export function entryValues(e: Row, m: Row | undefined): { coins: number; xp: nu
   };
 }
 
-/** Diferença que fecha o saldo do GS Hub igual ao do TOP. */
+/** Diferença que fecha o saldo do Gestão Online igual ao do TOP. */
 export function balanceAdjustment(topBalance: number, historySum: number): number {
   return Math.round(topBalance) - Math.round(historySum);
 }
@@ -266,7 +266,7 @@ export function prepareTopImport(fullExp: TopExport, dir: Directory, importerId:
 
   const votes: Row[] = [];
   for (const v of d("suggestion_votes")) {
-    if (v["vote_type"] && v["vote_type"] !== "up") { skip("suggestion_votes", "Voto contra (o GS Hub só conta apoios)"); continue; }
+    if (v["vote_type"] && v["vote_type"] !== "up") { skip("suggestion_votes", "Voto contra (o Gestão Online só conta apoios)"); continue; }
     if (!u(v["user_id"])) { skip("suggestion_votes", "Pessoa pendente de ligação (entra ao repetir após ligar)"); continue; }
     votes.push({ suggestion_id: v["suggestion_id"], user_id: u(v["user_id"]), created_at: v["created_at"] });
   }
@@ -382,7 +382,7 @@ export interface ImportReport {
   tasksCreatorFallback: number;
 }
 
-/** Relatório: pessoas, contagem por tabela e saldo TOP x GS Hub. Pendentes mostram o saldo guardado até a ligação. */
+/** Relatório: pessoas, contagem por tabela e saldo TOP x Gestão Online. Pendentes mostram o saldo guardado até a ligação. */
 export function buildImportReport(exp: TopExport, prep: Prepared, applied: ApplyResult, ranAt = new Date().toISOString()): ImportReport {
   const bal = new Map(applied.balances.map((b) => [b.legacy_id, b]));
   const profiles = new Map((exp.data["profiles"] ?? []).map((p) => [String(p["user_id"]), p]));

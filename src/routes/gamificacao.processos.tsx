@@ -16,7 +16,7 @@ import { useMyRoles, useMyUserId, useRanking, useSectors, fmtDate, fmtDateTime, 
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/gamificacao/processos")({
-  head: () => ({ meta: [{ title: "Processos da Gamificação | GS Hub" }, { name: "description", content: "Processos por setor com versões, histórico de mudanças e confirmação de leitura." }, { property: "og:title", content: "Processos da Gamificação | GS Hub" }, { property: "og:description", content: "Processos, versões e confirmação de leitura." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
+  head: () => ({ meta: [{ title: "Processos da Gamificação | Gestão Online" }, { name: "description", content: "Processos por setor com versões, histórico de mudanças e confirmação de leitura." }, { property: "og:title", content: "Processos da Gamificação | Gestão Online" }, { property: "og:description", content: "Processos, versões e confirmação de leitura." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: ProcessosPage,
 });
 

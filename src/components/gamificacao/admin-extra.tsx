@@ -391,7 +391,7 @@ export function AnalisesIa() {
         </CardContent></Card>
         <Card><CardContent className="pt-4">
           {result ? <div className={MD_CLASS}><ReactMarkdown>{result}</ReactMarkdown></div>
-            : <p className="text-sm text-muted-foreground">Gere uma análise para ver destaques, pontos de atenção e recomendações. Usa o Assistente IA do GS Hub com o tom e as regras definidos em Configurações › Assistente IA.</p>}
+            : <p className="text-sm text-muted-foreground">Gere uma análise para ver destaques, pontos de atenção e recomendações. Usa o Assistente IA do Gestão Online com o tom e as regras definidos em Configurações › Assistente IA.</p>}
         </CardContent></Card>
       </div>
       <Card className="h-fit"><CardHeader><CardTitle className="text-base">Análises anteriores</CardTitle></CardHeader>

@@ -8,7 +8,7 @@ import { useMyUserId, fmtDateTime } from "@/components/gamificacao/gamif-data";
 import { cn } from "@/lib/utils";
 
 export const Route = createFileRoute("/gamificacao/notificacoes")({
-  head: () => ({ meta: [{ title: "Notificações da Gamificação | GS Hub" }, { name: "description", content: "Avisos da gestão, novas missões, resgates e duelos." }, { property: "og:title", content: "Notificações da Gamificação | GS Hub" }, { property: "og:description", content: "Seus avisos da gamificação." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
+  head: () => ({ meta: [{ title: "Notificações da Gamificação | Gestão Online" }, { name: "description", content: "Avisos da gestão, novas missões, resgates e duelos." }, { property: "og:title", content: "Notificações da Gamificação | Gestão Online" }, { property: "og:description", content: "Seus avisos da gamificação." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: NotificacoesPage,
 });
 

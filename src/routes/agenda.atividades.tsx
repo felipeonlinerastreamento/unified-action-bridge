@@ -6,9 +6,9 @@ import { AtividadesContent } from "@/components/agenda/atividades-content";
 export const Route = createFileRoute("/agenda/atividades")({
   head: () => ({
     meta: [
-      { title: "Agenda — Atividades | GSystem Hub" },
+      { title: "Agenda — Atividades | Gestão Online" },
       { name: "description", content: "Atividades agendadas no Seu Instalador por período, status, cliente e técnico." },
-      { property: "og:title", content: "Agenda — Atividades | GSystem Hub" },
+      { property: "og:title", content: "Agenda — Atividades | Gestão Online" },
       { property: "og:description", content: "Consulte e agende atividades da rede de instaladores." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },

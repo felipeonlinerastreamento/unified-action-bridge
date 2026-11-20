@@ -12,10 +12,10 @@ import { cn } from "@/lib/utils";
 export const Route = createFileRoute("/gamificacao")({
   head: () => ({
     meta: [
-      { title: "Gamificação | GS Hub" },
+      { title: "Gamificação | Gestão Online" },
       { name: "description", content: "AtentaCoins, XP, rankings, missões e loja de recompensas da equipe." },
-      { property: "og:title", content: "Gamificação | GS Hub" },
-      { property: "og:description", content: "Rankings, missões e recompensas da equipe no GS Hub." },
+      { property: "og:title", content: "Gamificação | Gestão Online" },
+      { property: "og:description", content: "Rankings, missões e recompensas da equipe no Gestão Online." },
       { property: "og:type", content: "website" },
       { name: "twitter:card", content: "summary" },
     ],

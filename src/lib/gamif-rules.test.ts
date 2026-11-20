@@ -25,7 +25,7 @@ describe("mapeamento por e-mail", () => {
     assert.deepEqual(r.matched, [{ legacyId: "a", userId: "u1" }]);
     assert.deepEqual(r.pending, ["b", "c"]);
   });
-  it("e-mail duplicado no GS Hub não liga automaticamente", () => {
+  it("e-mail duplicado no Gestão Online não liga automaticamente", () => {
     const r = matchUsersByEmail([{ legacyId: "a", email: "x@x.com" }], [{ userId: "1", email: "x@x.com" }, { userId: "2", email: "X@x.com" }]);
     assert.deepEqual(r.duplicated, ["a"]);
     assert.deepEqual(r.matched, []);

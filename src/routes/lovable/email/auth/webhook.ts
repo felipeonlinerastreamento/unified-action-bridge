@@ -9,7 +9,7 @@ import { EmailChangeEmail } from '@/lib/email-templates/email-change'
 import { ReauthenticationEmail } from '@/lib/email-templates/reauthentication'
 
 // Configuration
-const SITE_NAME = "GS Hub"
+const SITE_NAME = "Gestão Online"
 const SENDER_DOMAIN = "notify.onlinerastreamento.com.br"
 const ROOT_DOMAIN = "onlinerastreamento.com.br"
 const FROM_DOMAIN = "onlinerastreamento.com.br"

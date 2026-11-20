@@ -7,7 +7,7 @@ import { aggregateEntries } from "@/lib/gamif-rules";
 import { useMetrics, useMyUserId } from "@/components/gamificacao/gamif-data";
 
 export const Route = createFileRoute("/gamificacao/metricas")({
-  head: () => ({ meta: [{ title: "Métricas da Gamificação | GS Hub" }, { name: "description", content: "Como ganhar moedas e XP e seu desempenho por métrica." }, { property: "og:title", content: "Métricas da Gamificação | GS Hub" }, { property: "og:description", content: "Métricas, valores e seu desempenho." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
+  head: () => ({ meta: [{ title: "Métricas da Gamificação | Gestão Online" }, { name: "description", content: "Como ganhar moedas e XP e seu desempenho por métrica." }, { property: "og:title", content: "Métricas da Gamificação | Gestão Online" }, { property: "og:description", content: "Métricas, valores e seu desempenho." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
   component: MetricasPage,
 });
 
