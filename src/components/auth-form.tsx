@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { toast } from "sonner";
+import logoOnline from "@/assets/logo-online-horizontal.png";
 
 
 // E-mails que possuem exceção de acesso quando o login global por e-mail está desativado.
@@ -65,9 +66,11 @@ export function AuthForm() {
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold">
-            GS
-          </div>
+          <img
+            src={logoOnline}
+            alt="Online Rastreamento"
+            className="mx-auto mb-4 h-16 w-auto object-contain"
+          />
           <CardTitle>GSystem Hub</CardTitle>
           <CardDescription>Sistema Unificado de Chamados e Operação</CardDescription>
         </CardHeader>
