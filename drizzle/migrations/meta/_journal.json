@@ -302,6 +302,13 @@
       "when": 1795206424218,
       "tag": "0042_crm_tab_permissions",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1795209113142,
+      "tag": "0043_active_staff_guard",
+      "breakpoints": true
     }
   ]
 }

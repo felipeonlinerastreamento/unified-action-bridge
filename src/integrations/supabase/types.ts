@@ -8502,6 +8502,7 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_active_staff: { Args: never; Returns: boolean }
       is_operator_chat_creator: {
         Args: { _chat_id: string; _user_id: string }
         Returns: boolean
