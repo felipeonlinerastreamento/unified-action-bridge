@@ -95,6 +95,29 @@ export const URL_TO_MENU_SLUG: Record<string, string> = {
   "/configuracoes/auditoria": "config.auditoria",
 };
 
+// Itens do grupo "Aplicações" do menu lateral (a Agenda entra com seus submenus).
+export const APPLICATION_MENU_URLS = ["/painel-tv", "/assistente-ia", "/agenda", "/gamificacao"] as const;
+export const APPLICATION_MENU_SLUGS = ["painel-tv", "assistente-ia", "gamificacao"];
+
+export function isApplicationPath(pathname: string): boolean {
+  return APPLICATION_MENU_URLS.some((url) => pathname === url || pathname.startsWith(`${url}/`));
+}
+
+export type MenuSection = "main" | "apps" | "agenda" | "config";
+export const MENU_SECTION_LABELS: Record<MenuSection, string> = {
+  main: "Menu Principal",
+  apps: "Aplicações",
+  agenda: "Aplicações — Agenda",
+  config: "Configurações",
+};
+
+/** Seção de cada menu na tela de grupos de setor, igual ao menu lateral. */
+export function menuSectionOf(entry: MenuEntry): MenuSection {
+  if (entry.slug.startsWith("agenda.")) return "agenda";
+  if (APPLICATION_MENU_SLUGS.includes(entry.slug)) return "apps";
+  return entry.category;
+}
+
 // A mesma correspondência é usada pelo menu lateral e pela proteção da Agenda.
 export function canAccessAgendaPath(pathname: string, canSeeMenu: (slug: string) => boolean): boolean {
   const slug = URL_TO_MENU_SLUG[pathname.replace(/\/$/, "")];

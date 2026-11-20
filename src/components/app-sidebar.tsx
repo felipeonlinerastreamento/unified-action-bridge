@@ -33,6 +33,7 @@ import {
   Map,
   CalendarClock,
   FileSignature,
+  LayoutGrid,
 } from "lucide-react";
 
 
@@ -40,7 +41,8 @@ import { Link, useLocation } from "@tanstack/react-router";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/hooks/use-auth";
 import { useUserPermissions } from "@/hooks/use-user-permissions";
-import { URL_TO_MENU_SLUG } from "@/lib/menu-catalog";
+import { URL_TO_MENU_SLUG, isApplicationPath } from "@/lib/menu-catalog";
+import { useEffect, useState } from "react";
 import { useSidebarCounters } from "@/hooks/use-sidebar-counters";
 import { useTheme } from "@/hooks/use-theme";
 import {
@@ -73,9 +75,6 @@ const mainItems = [
   { title: "Relatórios", url: "/relatorios", icon: BarChart3 },
   
   { title: "Chat com Operadores", url: "/chat-operadores", icon: MessageCircle },
-  { title: "Painel TV", url: "/painel-tv", icon: Monitor },
-  { title: "Gamificação", url: "/gamificacao", icon: Trophy },
-  { title: "Assistente IA", url: "/assistente-ia", icon: Bot },
 ];
 
 const atendimentosSubItems: { title: string; url: string; icon: typeof List }[] = [
@@ -142,6 +141,22 @@ export function AppSidebar() {
 
   const visibleAgendaItems = agendaSubItems.filter((sub) => canSeeUrl(sub.url));
 
+  // Grupo "Aplicações": cada item mantém a mesma permissão de antes.
+  const showPainelTv = canSeeUrl("/painel-tv");
+  const showAssistente = canSeeUrl("/assistente-ia");
+  const showAgenda = visibleAgendaItems.length > 0;
+  const showGamificacao = canSeeGamification({ isAdmin });
+  const showApps = showPainelTv || showAssistente || showAgenda || showGamificacao;
+  const isAppsActive = isApplicationPath(location.pathname);
+  const [appsOpen, setAppsOpen] = useState(isAppsActive);
+  const [agendaOpen, setAgendaOpen] = useState(isAgendaActive);
+  useEffect(() => { if (isAppsActive) setAppsOpen(true); }, [isAppsActive]);
+  useEffect(() => { if (isAgendaActive) setAgendaOpen(true); }, [isAgendaActive]);
+  const appLinks = [
+    { show: showPainelTv, title: "Painel TV", url: "/painel-tv", icon: Monitor },
+    { show: showAssistente, title: "Assistente IA", url: "/assistente-ia", icon: Bot },
+  ];
+
 
 
   return (
@@ -201,7 +216,7 @@ export function AppSidebar() {
 
               {/* Demais itens (pulando Dashboard) */}
               {mainItems.slice(1)
-                .filter((item) => (item.url === "/gamificacao" ? canSeeGamification({ isAdmin }) : canSeeUrl(item.url)))
+                .filter((item) => canSeeUrl(item.url))
                 .map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
@@ -243,29 +258,70 @@ export function AppSidebar() {
                 </SidebarMenuItem>
               )}
 
-              {/* Agenda com submenus */}
-              {visibleAgendaItems.length > 0 && (
-                <Collapsible defaultOpen={isAgendaActive} className="group/collapsible">
+              {/* Aplicações: Painel TV, Assistente IA, Agenda (com submenus) e Gamificação */}
+              {showApps && (
+                <Collapsible open={appsOpen} onOpenChange={setAppsOpen} className="group/apps">
                   <SidebarMenuItem>
                     <CollapsibleTrigger asChild>
-                      <SidebarMenuButton isActive={isAgendaActive} tooltip="Agenda">
-                        <CalendarDays className="h-4 w-4" />
-                        <span>Agenda</span>
-                        <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/collapsible:rotate-180" />
+                      <SidebarMenuButton isActive={isAppsActive} tooltip="Aplicações">
+                        <LayoutGrid className="h-4 w-4" />
+                        <span>Aplicações</span>
+                        <ChevronDown className="ml-auto h-4 w-4 transition-transform group-data-[state=open]/apps:rotate-180" />
                       </SidebarMenuButton>
                     </CollapsibleTrigger>
                     <CollapsibleContent>
                       <SidebarMenuSub>
-                        {visibleAgendaItems.map((sub) => (
-                          <SidebarMenuSubItem key={sub.title}>
-                            <SidebarMenuSubButton asChild isActive={location.pathname === sub.url}>
-                              <Link to={sub.url}>
-                                <sub.icon className="h-3.5 w-3.5" />
-                                <span>{sub.title}</span>
+                        {appLinks.filter((a) => a.show).map((a) => (
+                          <SidebarMenuSubItem key={a.url}>
+                            <SidebarMenuSubButton asChild isActive={location.pathname.startsWith(a.url)}>
+                              <Link to={a.url}>
+                                <a.icon className="h-3.5 w-3.5" />
+                                <span>{a.title}</span>
                               </Link>
                             </SidebarMenuSubButton>
                           </SidebarMenuSubItem>
                         ))}
+
+                        {showAgenda && (
+                          <Collapsible open={agendaOpen} onOpenChange={setAgendaOpen} className="group/agenda">
+                            <SidebarMenuSubItem>
+                              <CollapsibleTrigger asChild>
+                                <SidebarMenuSubButton asChild isActive={isAgendaActive}>
+                                  <button type="button" className="w-full">
+                                    <CalendarDays className="h-3.5 w-3.5" />
+                                    <span>Agenda</span>
+                                    <ChevronDown className="ml-auto h-3.5 w-3.5 transition-transform group-data-[state=open]/agenda:rotate-180" />
+                                  </button>
+                                </SidebarMenuSubButton>
+                              </CollapsibleTrigger>
+                              <CollapsibleContent>
+                                <SidebarMenuSub>
+                                  {visibleAgendaItems.map((sub) => (
+                                    <SidebarMenuSubItem key={sub.title}>
+                                      <SidebarMenuSubButton asChild isActive={location.pathname === sub.url}>
+                                        <Link to={sub.url}>
+                                          <sub.icon className="h-3.5 w-3.5" />
+                                          <span>{sub.title}</span>
+                                        </Link>
+                                      </SidebarMenuSubButton>
+                                    </SidebarMenuSubItem>
+                                  ))}
+                                </SidebarMenuSub>
+                              </CollapsibleContent>
+                            </SidebarMenuSubItem>
+                          </Collapsible>
+                        )}
+
+                        {showGamificacao && (
+                          <SidebarMenuSubItem>
+                            <SidebarMenuSubButton asChild isActive={location.pathname.startsWith("/gamificacao")}>
+                              <Link to="/gamificacao">
+                                <Trophy className="h-3.5 w-3.5" />
+                                <span>Gamificação</span>
+                              </Link>
+                            </SidebarMenuSubButton>
+                          </SidebarMenuSubItem>
+                        )}
                       </SidebarMenuSub>
                     </CollapsibleContent>
                   </SidebarMenuItem>

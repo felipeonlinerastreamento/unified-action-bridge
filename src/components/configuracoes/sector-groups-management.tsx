@@ -22,7 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, FolderTree, Loader2, ChevronDown, ChevronRight, Building2, ShieldCheck } from "lucide-react";
-import { MENU_CATALOG } from "@/lib/menu-catalog";
+import { MENU_CATALOG, MENU_SECTION_LABELS, menuSectionOf } from "@/lib/menu-catalog";
 
 interface SectorGroup {
   id: string;
@@ -424,11 +424,9 @@ export function SectorGroupsManagement() {
                 </div>
 
                   <div className="space-y-4">
-                    {(["main", "agenda", "config"] as const).map((cat) => {
-                      const items = MENU_CATALOG.filter((m) => cat === "agenda"
-                        ? m.slug.startsWith("agenda.")
-                        : m.category === cat && !m.slug.startsWith("agenda."));
-                      const catLabel = cat === "main" ? "Menu Principal" : cat === "agenda" ? "Agenda" : "Configurações";
+                    {(["main", "apps", "agenda", "config"] as const).map((cat) => {
+                      const items = MENU_CATALOG.filter((m) => menuSectionOf(m) === cat);
+                      const catLabel = MENU_SECTION_LABELS[cat];
                       const catSlugs = items.map((i) => i.slug);
                       const allChecked = catSlugs.every((s) => allowedMenus.includes(s));
                       const toggleAll = () => {
