@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { GsystemEquipamentosSyncTab } from "@/components/estoque/gsystem-equipamentos-sync-tab";
-import { EquipChipsTab } from "@/components/estoque/equip-chips-tab";
+import { EquipChipsTab, fetchAll as fetchEquipMirror } from "@/components/estoque/equip-chips-tab";
 import { AccessoryCatalogTab } from "@/components/estoque/accessory-catalog-tab";
 import { VinculosHistoricoTab } from "@/components/estoque/vinculos-historico-tab";
 import { History, Boxes } from "lucide-react";
@@ -220,11 +220,14 @@ function EstoquePage() {
   // ----- Filtering helpers for cadastros -----
   function filterCadastros(items: CadastroItem[]): CadastroItem[] {
     return items.filter((it) => {
-      const matchesSearch = !search ||
-        it.descricao.toLowerCase().includes(search.toLowerCase()) ||
-        it.identificador.toLowerCase().includes(search.toLowerCase()) ||
-        it.modelo.toLowerCase().includes(search.toLowerCase()) ||
-        it.key.toLowerCase().includes(search.toLowerCase());
+      const hay = [it.descricao, it.identificador, it.modelo, it.key, it.status, it.vinculo]
+        .filter(Boolean).join(" ").toLowerCase();
+      const hayCompact = hay.replace(/[^0-9a-z]/g, "");
+      const term = search.trim().toLowerCase();
+      const termCompact = term.replace(/[^0-9a-z]/g, "");
+      const matchesSearch = !term ||
+        term.split(/\s+/).every((w) => hay.includes(w)) ||
+        (termCompact.length >= 3 && hayCompact.includes(termCompact));
       const matchesModel = modelFilter === "all" || it.modelo === modelFilter;
       const cls = classifyStatus(it.status);
       const matchesStatus =
@@ -245,8 +248,32 @@ function EstoquePage() {
   const equipItems: CadastroItem[] = equipQuery.data?.items ?? [];
   const chipItems: CadastroItem[] = chipsQuery.data?.items ?? [];
 
-  const equipFiltered = filterCadastros(equipItems);
-  const chipFiltered = filterCadastros(chipItems);
+  // Equipamento com chip fica só na aba "Equipamentos e Chips"; aqui aparecem equipamentos sem chip e chips soltos.
+  const mirrorQuery = useQuery({ queryKey: ["estoque-equip-chips"], queryFn: fetchEquipMirror, staleTime: 60_000 });
+  const { equipWithChip, chipsInUse } = useMemo(() => {
+    const equip = new Set<string>();
+    const chips = new Set<string>();
+    for (const r of mirrorQuery.data ?? []) {
+      const chip = String(r.raw?.Chip ?? "").replace(/\D/g, "");
+      if (!chip) continue;
+      chips.add(chip);
+      [r.codigo, r.serie, r.equipamento].forEach((v) => {
+        const k = String(v ?? "").trim().toLowerCase();
+        if (k) equip.add(k);
+      });
+    }
+    return { equipWithChip: equip, chipsInUse: chips };
+  }, [mirrorQuery.data]);
+  const isPairedEquip = (it: CadastroItem) =>
+    [it.key, it.identificador, it.descricao].some((v) => equipWithChip.has(String(v ?? "").trim().toLowerCase()));
+  const isChipInUse = (it: CadastroItem) =>
+    [it.identificador, it.descricao, it.key].some((v) => {
+      const d = String(v ?? "").replace(/\D/g, "");
+      return d.length >= 8 && chipsInUse.has(d);
+    });
+
+  const equipFiltered = filterCadastros(equipItems).filter((it) => !isPairedEquip(it));
+  const chipFiltered = filterCadastros(chipItems).filter((it) => !isChipInUse(it));
 
   // Filter GSystem vehicles
   const filteredVeiculos = veiculos.filter((v: any) => {
@@ -295,8 +322,8 @@ function EstoquePage() {
     });
     return { total: items.length, disp, vinc, inat };
   }
-  const equipKpis = cadastroKpis(equipItems);
-  const chipKpis = cadastroKpis(chipItems);
+  const equipKpis = cadastroKpis(equipItems.filter((it) => !isPairedEquip(it)));
+  const chipKpis = cadastroKpis(chipItems.filter((it) => !isChipInUse(it)));
 
   const refreshActive = () => {
     if (tab === "equipamentos") equipQuery.refetch();
@@ -441,7 +468,7 @@ function EstoquePage() {
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Buscar descrição, serial, IMEI..."
+                placeholder="Pesquisar ID, serial/IMEI, chip, placa, cliente, modelo..."
                 className="pl-8"
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}

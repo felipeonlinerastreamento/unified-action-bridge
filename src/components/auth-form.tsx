@@ -3,7 +3,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader } from "@/components/ui/card";
 import { toast } from "sonner";
 import logoOnline from "@/assets/logo-online-horizontal.png";
 
@@ -71,7 +71,6 @@ export function AuthForm() {
             alt="Online Rastreamento"
             className="mx-auto mb-4 h-16 w-auto object-contain"
           />
-          <CardTitle>GSystem Hub</CardTitle>
           <CardDescription>Sistema Unificado de Chamados e Operação</CardDescription>
         </CardHeader>
         <CardContent>

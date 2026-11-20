@@ -87,3 +87,54 @@ export const vincularPlaca = createServerFn({ method: "POST" })
       throw new Error(msg);
     }
   });
+
+/**
+ * Desvincula o chip de um equipamento no GSystem (PUT /equipamentos/{Codigo} com Chip = null),
+ * atualiza o espelho local e registra no histórico de vínculos.
+ */
+export const desvincularChip = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ codigo: z.string().min(1).max(50) }).parse)
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context;
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { gsystemApiFetch } = await import("@/lib/gsystem-api.server");
+
+    const { data: eq } = await supabase
+      .from("gsystem_equipamentos")
+      .select("codigo, serie, equipamento, raw")
+      .eq("codigo", Number(data.codigo))
+      .maybeSingle();
+    if (!eq) throw new Error("Equipamento não encontrado no espelho do GSystem.");
+    const raw = (eq.raw ?? {}) as any;
+    if (!raw.Chip || !String(raw.Chip).trim()) throw new Error("Este equipamento não tem chip vinculado.");
+    if (String(raw.Status ?? "").toLowerCase().includes("vincul")) {
+      throw new Error("Equipamento está instalado em um veículo. Desvincule da placa antes de retirar o chip.");
+    }
+    const { data: prof } = await supabase.from("profiles").select("name").eq("user_id", userId).maybeSingle();
+    const log = {
+      operacao: "desvincular_chip",
+      equipamento_codigo: data.codigo,
+      equipamento_serie: String(eq.equipamento ?? eq.serie ?? ""),
+      equipamento_modelo: raw.Modelo ?? null,
+      chip: String(raw.Chip),
+      placa: null,
+      user_id: userId,
+      user_name: prof?.name ?? null,
+    };
+
+    try {
+      const atual = await gsystemApiFetch(`/equipamentos/${encodeURIComponent(data.codigo)}`, "GET");
+      const base = atual && typeof atual === "object" && !Array.isArray(atual) ? (atual.Data ?? atual.data ?? atual) : raw;
+      await gsystemApiFetch(`/equipamentos/${encodeURIComponent(data.codigo)}`, "PUT", { ...base, Chip: null });
+
+      const newRaw = { ...raw, Chip: null, Status: "Sem_Chip" };
+      await supabaseAdmin.from("gsystem_equipamentos").update({ raw: newRaw }).eq("codigo", Number(data.codigo));
+      await supabaseAdmin.from("gsystem_vinculos_historico").insert({ ...log, sucesso: true });
+      return { ok: true };
+    } catch (err: any) {
+      const msg = String(err?.message ?? err).slice(0, 500);
+      await supabaseAdmin.from("gsystem_vinculos_historico").insert({ ...log, sucesso: false, erro: msg });
+      throw new Error(msg);
+    }
+  });
