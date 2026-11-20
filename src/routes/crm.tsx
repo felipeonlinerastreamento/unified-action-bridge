@@ -35,6 +35,7 @@ import { CrmFlowsTab } from "@/components/crm/crm-flows-tab";
 import { ContactChatActions } from "@/components/contatos/contact-chat-actions";
 
 export const Route = createFileRoute("/crm")({
+  validateSearch: (s: Record<string, unknown>): { tab?: string } => (typeof s["tab"] === "string" ? { tab: s["tab"] as string } : {}),
   component: CrmPage,
 });
 
@@ -54,6 +55,7 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 function CrmPage() {
+  const { tab: initialTab } = Route.useSearch();
   const { isAuthenticated, isLoading } = useAuth();
   const queryClient = useQueryClient();
   const [search, setSearch] = useState("");
@@ -274,7 +276,7 @@ function CrmPage() {
           <h1 className="text-2xl font-bold text-foreground">CRM</h1>
         </div>
 
-        <Tabs defaultValue="tarefas">
+        <Tabs defaultValue={initialTab || "tarefas"}>
           <TabsList className="flex-wrap h-auto">
             <TabsTrigger value="tarefas" className="gap-1">
               <ListTodo className="h-4 w-4" /> Tarefas

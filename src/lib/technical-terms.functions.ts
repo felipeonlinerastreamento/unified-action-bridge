@@ -490,3 +490,114 @@ export const syncTicketCategoriesNow = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     return await syncFromGSystem(supabaseAdmin);
   });
+
+// ============== CICLO DO SERVIÇO TÉCNICO ==============
+/** Linha fixa "Protocolo #N – Tipo – Placa" do termo, usada na descrição da solicitação. */
+export async function protocolPrefixForTerm(termId: string): Promise<string | null> {
+  const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+  const { protocolPrefix } = await import("./technical-service-cycle");
+  const { data: term } = await supabaseAdmin.from("technical_service_terms")
+    .select("ticket_id, service_label, service_type, plate").eq("id", termId).maybeSingle();
+  if (!term) return null;
+  let protocol: string | null = null;
+  let plate = term.plate as string | null;
+  if (term.ticket_id) {
+    const { data: t } = await supabaseAdmin.from("service_tickets").select("protocol_number, plate").eq("id", term.ticket_id).maybeSingle();
+    protocol = t?.protocol_number != null ? String(t.protocol_number).padStart(5, "0") : null;
+    plate = plate || ((t?.plate as string | null) ?? null);
+  }
+  return protocolPrefix({ protocol, serviceLabel: (term.service_label as string | null) ?? serviceTypeLabel(term.service_type as string), plate });
+}
+
+/** Recusado → reenvia o mesmo conteúdo congelado como novo termo pendente. */
+export const reissueRefusedTerm = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ id: z.string().uuid(), ...sendFields }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { data: old } = await context.supabase.from("technical_service_terms").select("*").eq("id", data.id).maybeSingle();
+    if (!old) throw new Error("Termo não encontrado.");
+    if (old.status !== "recusado") throw new Error("Só termos recusados podem ser reenviados como novo termo.");
+    if (old.superseded_by) throw new Error("Este termo já foi substituído.");
+    if (!data.sendWhatsapp && !data.sendEmail) throw new Error("Escolha WhatsApp e/ou e-mail.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: term, error } = await supabaseAdmin.from("technical_service_terms").insert({
+      service_type: old.service_type, service_label: old.service_label, ticket_id: old.ticket_id, company_id: old.company_id,
+      client_name: old.client_name, plate: old.plate, equipment_id: old.equipment_id, address: old.address,
+      responsible_name: old.responsible_name, responsible_phone: old.responsible_phone, responsible_email: old.responsible_email,
+      description: old.description, checklist: old.checklist, term_title: old.term_title, term_text: old.term_text,
+      created_by: context.userId,
+    }).select("*").single();
+    if (error || !term) throw new Error(error?.message || "Falha ao reenviar.");
+    await supabaseAdmin.from("technical_service_terms").update({ superseded_by: term.id }).eq("id", old.id);
+    const res = await deliverTerm(supabaseAdmin, context.userId, term, {
+      sendWhatsapp: data.sendWhatsapp, sendEmail: data.sendEmail, phone: term.responsible_phone, email: term.responsible_email,
+    });
+    if (term.ticket_id) {
+      await supabaseAdmin.from("ticket_comments").insert({
+        ticket_id: term.ticket_id, user_id: context.userId, comment_type: "status_change",
+        content: `Termo recusado ${termNumberLabel(old.seq)} reenviado como ${termNumberLabel(term.seq)}.`,
+      });
+    }
+    return { id: term.id as string, sent: res.sent, errors: res.errors };
+  });
+
+/** Recusado → encerra o protocolo registrando o motivo. */
+export const closeProtocolByRefusal = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ ticketId: z.string().uuid(), reason: z.string().trim().min(5, "Informe o motivo.").max(1000) }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { error } = await context.supabase.from("service_tickets").update({
+      status: "finalizado", tech_stage: "encerrado_recusa", technical_term_override_reason: data.reason,
+      closed_at: new Date().toISOString(), closed_by: context.userId,
+    } as any).eq("id", data.ticketId);
+    if (error) throw new Error(error.message);
+    await context.supabase.from("ticket_comments").insert({
+      ticket_id: data.ticketId, user_id: context.userId, comment_type: "status_change",
+      content: `Protocolo encerrado por recusa do termo. Motivo: ${data.reason}`,
+    });
+    return { ok: true };
+  });
+
+/** Busca protocolos técnicos abertos por número, placa ou cliente. */
+export const searchTechProtocols = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ q: z.string().trim().max(80).default("") }).parse(d))
+  .handler(async ({ data, context }) => {
+    let q = context.supabase.from("service_tickets")
+      .select("id, protocol_number, plate, contact_name, category, tech_stage, status, companies(name)")
+      .not("tech_stage", "is", null).neq("status", "finalizado").order("created_at", { ascending: false }).limit(20);
+    const s = data.q.replace(/[%,()]/g, "");
+    if (s) q = q.or(`protocol_number.ilike.%${s}%,plate.ilike.%${s}%,contact_name.ilike.%${s}%`);
+    const { data: rows, error } = await q;
+    if (error) throw new Error(error.message);
+    return (rows || []) as any[];
+  });
+
+/** Registra o resultado do teste e, se "Serviço concluído", finaliza o protocolo original. */
+export const recordTechTestResult = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({
+    testTicketId: z.string().uuid(), protocolId: z.string().uuid(), result: z.enum(["parcial", "concluido"]),
+  }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { protocolAcceptsTest, protocolAfterTest } = await import("./technical-service-cycle");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data: p } = await supabaseAdmin.from("service_tickets").select("id, status, tech_stage, protocol_number").eq("id", data.protocolId).maybeSingle();
+    const err = protocolAcceptsTest(p as any);
+    if (err) throw new Error(err);
+    const { error } = await context.supabase.from("service_tickets")
+      .update({ tech_protocol_id: data.protocolId, test_result: data.result } as any).eq("id", data.testTicketId);
+    if (error) throw new Error(error.message);
+    const eff = protocolAfterTest(data.result);
+    if (eff.finalize) {
+      const { error: e2 } = await context.supabase.from("service_tickets").update({
+        status: "finalizado", tech_stage: eff.stage, closed_at: new Date().toISOString(), closed_by: context.userId,
+      } as any).eq("id", data.protocolId);
+      if (e2) throw new Error(e2.message);
+    }
+    await supabaseAdmin.from("ticket_comments").insert({
+      ticket_id: data.protocolId, user_id: context.userId, comment_type: "status_change",
+      content: data.result === "concluido" ? "Teste de equipamento: serviço concluído — protocolo finalizado." : "Teste de equipamento parcial registrado.",
+    });
+    return { ok: true, finalized: eff.finalize };
+  });

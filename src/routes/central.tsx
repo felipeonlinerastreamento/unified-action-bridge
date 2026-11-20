@@ -163,6 +163,7 @@ import { isLiberacaoCategory, useSubcategoryEquipmentModelsWithFallback } from "
 
 import { escalateToGestao as escalateToGestaoHelper } from "@/lib/escalate-gestao";
 import { TechnicalTermDialog, type TermTicketPrefill } from "@/components/crm/technical-term-dialog";
+import { ChatTermButton } from "@/components/crm/chat-term-button";
 import { allowedServiceTypes, TERM_STATUS_LABELS, type TechnicalServiceType, type TechnicalTermStatus } from "@/lib/technical-terms";
 import { useAttendanceEventSettings, useSlaBandChangeNotifier } from "@/hooks/use-attendance-events";
 import {
@@ -2073,6 +2074,7 @@ function CentralPage() {
   // responsável pela frota. Se a conversa ainda não tem chamado, ele é criado
   // agora (em aberto) para o termo ficar ligado a ele.
   const termFlowBusyRef = useRef(false);
+  const finalizeAfterTermRef = useRef<{ notes?: string; tipoPendencia?: string; skipClosingMessage?: boolean } | null>(null);
   const openTermFlowForCategory = useCallback(async (key: string) => {
     const cat = tiposPendencia.find((t) => t.Key === key);
     if (!cat || cat.termType === "none" || !selectedChatId || !chatDetail) return;
@@ -2167,58 +2169,40 @@ function CentralPage() {
 
   // Finalize chat
   const finalizeMutation = useMutation({
-    mutationFn: async ({ notes, status, tipoPendencia, skipClosingMessage: skipMsg, escalateGestao, linkedTicketId: linkedId }: { notes?: string; status?: string; tipoPendencia?: string; skipClosingMessage?: boolean; escalateGestao?: boolean; linkedTicketId?: string } = {}) => {
+    mutationFn: async ({ notes, status: statusIn, tipoPendencia, skipClosingMessage: skipMsg, escalateGestao, linkedTicketId: linkedId }: { notes?: string; status?: string; tipoPendencia?: string; skipClosingMessage?: boolean; escalateGestao?: boolean; linkedTicketId?: string } = {}) => {
       // "A resolver" = mantém protocolo aberto. O chat sai da Central, mas o
       // ticket NÃO é finalizado e o cliente continua no mesmo protocolo na
       // próxima mensagem (sem disparo do bot/saudação).
-      const pendingResolve = status === "A resolver";
+      let status = statusIn;
+      let pendingResolve = status === "A resolver";
 
-      // Categoria que exige termo técnico: atendente só finaliza depois do termo
-      // aceito e enviado para agendamento (gestores podem, como contingência).
-      if (!pendingResolve) {
+      // Categoria que exige termo técnico: sem termo enviado, abre o formulário
+      // (e finaliza sozinho depois do envio); com termo, encerra o chat e o
+      // protocolo fica obrigatoriamente "A resolver" (status único no protocolo).
+      {
         const tk: any = currentTicket;
         const cat = tipoPendencia
           ? tiposPendencia.find((t) => t.Key === tipoPendencia)
           : findCategoryByLabel(tiposPendencia, tk?.category);
-        if (cat && cat.termType !== "none") {
-          const ticketId = linkedId || tk?.id;
-          let ok = false;
+        if (cat && cat.termType !== "none" && !linkedId) {
+          const ticketId = tk?.id as string | undefined;
+          let hasTerm = false;
           if (ticketId) {
-            const { data: sentTerms } = await supabase
+            const { data: terms } = await supabase
               .from("technical_service_terms")
               .select("id")
               .eq("ticket_id", ticketId)
-              .eq("status", "enviada")
+              .neq("status", "cancelado")
               .limit(1);
-            ok = !!sentTerms?.length;
+            hasTerm = !!terms?.length;
           }
-          if (!ok && ticketId && (hasRole("admin") || hasRole("gestor"))) {
-            const reason = window.prompt("Contingência: este chamado não tem termo técnico enviado para agendamento.\nInforme a justificativa (mín. 10 caracteres) para finalizar mesmo assim:");
-            if (reason && reason.trim().length >= 10) {
-              const { error: ovErr } = await supabase
-                .from("service_tickets")
-                .update({ technical_term_override_reason: reason.trim() } as any)
-                .eq("id", ticketId);
-              if (!ovErr) ok = true;
-            }
+          if (!hasTerm) {
+            finalizeAfterTermRef.current = { notes, tipoPendencia, skipClosingMessage: skipMsg };
+            if (cat.Key) void openTermFlowForCategory(cat.Key);
+            throw new Error(`A categoria "${cat.Descricao}" exige termo de serviço técnico. Envie o termo — a conversa será encerrada em seguida.`);
           }
-          if (!ok) {
-            if (ticketId) {
-              setTermPrompt({
-                prefill: {
-                  id: ticketId,
-                  companyId: tk?.company_id ?? null,
-                  plate: tk?.plate ?? null,
-                  contactName: tk?.contact_name ?? null,
-                  contactPhone: tk?.contact_phone ?? null,
-                },
-                types: allowedServiceTypes(cat.termType, []),
-              });
-            }
-            throw new Error(
-              `A categoria "${cat.Descricao}" exige termo de serviço técnico aceito e enviado para agendamento. Use "A resolver" e gere o termo no chamado (Atendimentos) ou em CRM > Serviços Técnicos.`,
-            );
-          }
+          pendingResolve = true;
+          status = "A resolver";
         }
       }
 
@@ -2282,6 +2266,10 @@ function CentralPage() {
           console.warn("[Finalize] failed to refresh ticket before finalize:", e);
         }
       }
+      // Grupo dos técnicos: um teste já aberto não recebe o próximo teste.
+      if (isTEFlow && isGroupChat(chatDetail) && ticketForProtocol && isTesteEquipamentoCategory((ticketForProtocol as any).category, teFresh)) {
+        ticketForProtocol = null as any;
+      }
       let createdProtocolTicket = false;
 
       // VÍNCULO A PROTOCOLO EXISTENTE: não cria/atualiza ticket — apenas anexa
@@ -2336,7 +2324,8 @@ function CentralPage() {
           .neq("status", "finalizado")
           .order("created_at", { ascending: false })
           .limit(10);
-        const existing = (existingRaw || []).filter((t: any) => !isRoutedTeTicket(t));
+        // Grupo dos técnicos: cada teste de equipamento é um chamado próprio.
+        const existing = isTEFlow && isGroupChat(chatDetail) ? [] : (existingRaw || []).filter((t: any) => !isRoutedTeTicket(t));
         if (existing.length > 0) {
           ticketForProtocol = existing[0] as any;
         } else {
@@ -3885,7 +3874,7 @@ function CentralPage() {
                                       <CommandItem
                                         key={key}
                                         value={label}
-                                        onSelect={() => { setFinalizeTipoPendencia(key); void openTermFlowForCategory(key); }}
+                                        onSelect={() => setFinalizeTipoPendencia(key)}
                                         className="text-xs"
                                       >
                                         <Check className={`mr-2 h-3 w-3 ${finalizeTipoPendencia === key ? "opacity-100" : "opacity-0"}`} />
@@ -3898,6 +3887,16 @@ function CentralPage() {
                             </Command>
                           </PopoverContent>
                         </Popover>
+                        {(() => {
+                          const tc = tiposPendencia.find((t) => t.Key === finalizeTipoPendencia);
+                          if (!tc || tc.termType === "none") return null;
+                          return (
+                            <ChatTermButton
+                              ticketId={(currentTicket as any)?.id ?? null}
+                              onSend={() => void openTermFlowForCategory(tc.Key)}
+                            />
+                          );
+                        })()}
                         {finalizeTipoPendencia && finalizeSubcategoryOptions.length > 0 && (
                           <Select value={finalizeSubcategoryId || "__none__"} onValueChange={(v) => setFinalizeSubcategoryId(v === "__none__" ? "" : v)}>
                             <SelectTrigger className="w-[160px] h-7 text-xs">
@@ -5706,7 +5705,7 @@ function CentralPage() {
                           <CommandItem
                             key={tipo.Key}
                             value={tipo.Descricao || ""}
-                            onSelect={() => { setFinalizeTipoPendencia(tipo.Key); void openTermFlowForCategory(tipo.Key); }}
+                            onSelect={() => setFinalizeTipoPendencia(tipo.Key)}
                           >
                             <Check className={`mr-2 h-4 w-4 ${finalizeTipoPendencia === tipo.Key ? "opacity-100" : "opacity-0"}`} />
                             {tipo.Descricao || "Sem nome"}
@@ -6505,10 +6504,16 @@ function CentralPage() {
       {termPrompt && (
         <TechnicalTermDialog
           open={!!termPrompt}
-          onOpenChange={(v) => !v && setTermPrompt(null)}
+          onOpenChange={(v) => { if (!v) { setTermPrompt(null); finalizeAfterTermRef.current = null; } }}
           allowedTypes={termPrompt.types}
           ticket={termPrompt.prefill}
-          onCreated={() => setTermPrompt(null)}
+          onCreated={() => {
+            setTermPrompt(null);
+            queryClient.invalidateQueries({ queryKey: ["technical-terms", "ticket"] });
+            const pending = finalizeAfterTermRef.current;
+            finalizeAfterTermRef.current = null;
+            if (pending) finalizeMutation.mutate({ ...pending, status: "A resolver" });
+          }}
         />
       )}
     </AppLayout>

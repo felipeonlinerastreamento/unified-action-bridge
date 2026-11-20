@@ -36,3 +36,5 @@
 - [x] Mensagens de envio por termo (WhatsApp/e-mail) com variáveis e pré-visualização.
 - [x] Novos tipos no formulário do termo (chat/chamado) e em "Exige termo" (Encaminhamento).
 - [x] Termos já enviados não mudam.
+
+- [x] Ciclo do serviço técnico (termo no chat, A resolver, recusa, 8h, solicitação com protocolo, testes vinculados)

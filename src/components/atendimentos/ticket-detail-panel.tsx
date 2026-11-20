@@ -5,6 +5,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { useTicketCategories, findCategoryByLabel } from "@/hooks/use-ticket-categories";
 import { TicketTechnicalTermSection } from "@/components/crm/ticket-technical-term-section";
+import { TechTestLink } from "@/components/crm/tech-test-link";
 import { formatTicketProtocol } from "@/lib/protocol-format";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
@@ -718,30 +719,27 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
     if (!ticket?.id) return;
 
     if (newStatus === "finalizado" && !ticket.is_recurring) {
-      const cat = findCategoryByLabel(tiposPendencia, ticket.category);
-      if (cat && cat.termType !== "none") {
-        const { data: sentTerms } = await supabase
-          .from("technical_service_terms")
-          .select("id")
-          .eq("ticket_id", ticket.id)
-          .eq("status", "enviada")
-          .limit(1);
-        if (!sentTerms?.length) {
-          if (!hasRole("admin") && !hasRole("gestor")) {
-            toast.error("Este chamado exige termo de serviço técnico aceito e enviado para agendamento antes de finalizar. Gere o termo neste chamado e acompanhe em CRM > Serviços Técnicos.");
-            return;
-          }
-          const reason = window.prompt("Contingência: este chamado não tem termo técnico enviado para agendamento.\nInforme a justificativa (mín. 10 caracteres) para finalizar mesmo assim:");
-          if (!reason || reason.trim().length < 10) {
-            toast.error("Finalização cancelada: justificativa de contingência obrigatória (mín. 10 caracteres).");
-            return;
-          }
-          const { error: ovErr } = await supabase
-            .from("service_tickets")
-            .update({ technical_term_override_reason: reason.trim() } as any)
-            .eq("id", ticket.id);
-          if (ovErr) { toast.error("Erro ao registrar contingência: " + ovErr.message); return; }
+      // Protocolo de serviço técnico: só finaliza pelo fluxo (teste "Serviço
+      // concluído" ou encerramento por recusa). Gestor/admin com justificativa.
+      if ((ticket as any).tech_stage) {
+        if (!hasRole("admin") && !hasRole("gestor")) {
+          toast.error("Protocolo de serviço técnico só finaliza pelo fluxo: teste \"Serviço concluído\" ou encerramento por recusa do termo.");
+          return;
         }
+        const reason = window.prompt("Finalização fora do fluxo do serviço técnico.\nInforme a justificativa (mín. 10 caracteres):");
+        if (!reason || reason.trim().length < 10) {
+          toast.error("Finalização cancelada: justificativa obrigatória (mín. 10 caracteres).");
+          return;
+        }
+        const { error: ovErr } = await supabase
+          .from("service_tickets")
+          .update({ technical_term_override_reason: reason.trim() } as any)
+          .eq("id", ticket.id);
+        if (ovErr) { toast.error("Erro ao registrar justificativa: " + ovErr.message); return; }
+        await supabase.from("ticket_comments").insert({
+          ticket_id: ticket.id, user_id: (await supabase.auth.getUser()).data.user?.id, comment_type: "status_change",
+          content: `Protocolo de serviço técnico finalizado fora do fluxo. Justificativa: ${reason.trim()}`,
+        } as any);
       }
     }
 
@@ -1392,6 +1390,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
               </div>
             </div>
             <TicketTechnicalTermSection ticket={ticket as any} categories={tiposPendencia} />
+            {(isTesteEquipamentoCategory(ticket.category, null) || (ticket as any).tech_protocol_id) && <TechTestLink ticket={ticket as any} />}
             <div className="grid grid-cols-[140px_1fr] gap-2 items-start text-sm">
               <span className="text-muted-foreground">Observações</span>
               <div className="min-w-0">

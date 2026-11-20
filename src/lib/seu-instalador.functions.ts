@@ -227,6 +227,12 @@ export const criarAgendamento = createServerFn({ method: "POST" })
     await assertSchedulingAllowed(context, data.technicalTermId);
     const userName = await resolveUserName(context);
     const { idempotencyKey, technicalTermId, ...body } = data;
+    if (technicalTermId) {
+      const { protocolPrefixForTerm } = await import("./technical-terms.functions");
+      const { ensureProtocolPrefix } = await import("./technical-service-cycle");
+      const prefix = await protocolPrefixForTerm(technicalTermId);
+      if (prefix) (body as any).description = ensureProtocolPrefix((body as any).description, prefix);
+    }
     const res = await callApi<any>({
       path: "/appointments",
       method: "POST",
@@ -409,6 +415,12 @@ export const criarAgendamentoTerceiro = createServerFn({ method: "POST" })
     await assertSchedulingAllowed(context, data.technicalTermId);
     const userName = await resolveUserName(context);
     const { idempotencyKey, technicalTermId, ...body } = data;
+    if (technicalTermId) {
+      const { protocolPrefixForTerm } = await import("./technical-terms.functions");
+      const { ensureProtocolPrefix } = await import("./technical-service-cycle");
+      const prefix = await protocolPrefixForTerm(technicalTermId);
+      if (prefix) (body as any).description = ensureProtocolPrefix((body as any).description, prefix);
+    }
     const res = await callApi<any>({ path: "/third-party-appointments", method: "POST", body, idempotencyKey, userName });
     if (technicalTermId) await markTermScheduled(technicalTermId, context.userId, "terceiro", res);
     return res;
@@ -488,6 +500,12 @@ export const criarSolicitacao = createServerFn({ method: "POST" })
     await assertSchedulingAllowed(context, data.technicalTermId);
     const userName = await resolveUserName(context);
     const { idempotencyKey, technicalTermId, ...body } = data;
+    if (technicalTermId) {
+      const { protocolPrefixForTerm } = await import("./technical-terms.functions");
+      const { ensureProtocolPrefix } = await import("./technical-service-cycle");
+      const prefix = await protocolPrefixForTerm(technicalTermId);
+      if (prefix) (body as any).description = ensureProtocolPrefix((body as any).description, prefix);
+    }
     const res = await callApi<any>({ path: "/requests", method: "POST", body, idempotencyKey, userName });
     if (technicalTermId) await markTermScheduled(technicalTermId, context.userId, "solicitacao", res);
     return res;

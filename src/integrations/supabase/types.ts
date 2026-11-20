@@ -5955,8 +5955,11 @@ export type Database = {
           status: Database["public"]["Enums"]["service_ticket_status"]
           subcategory_id: string | null
           subcategory_name: string | null
+          tech_protocol_id: string | null
+          tech_stage: string | null
           technical_term_override_by: string | null
           technical_term_override_reason: string | null
+          test_result: string | null
           tracking_code: string | null
           updated_at: string
         }
@@ -5999,8 +6002,11 @@ export type Database = {
           status?: Database["public"]["Enums"]["service_ticket_status"]
           subcategory_id?: string | null
           subcategory_name?: string | null
+          tech_protocol_id?: string | null
+          tech_stage?: string | null
           technical_term_override_by?: string | null
           technical_term_override_reason?: string | null
+          test_result?: string | null
           tracking_code?: string | null
           updated_at?: string
         }
@@ -6043,8 +6049,11 @@ export type Database = {
           status?: Database["public"]["Enums"]["service_ticket_status"]
           subcategory_id?: string | null
           subcategory_name?: string | null
+          tech_protocol_id?: string | null
+          tech_stage?: string | null
           technical_term_override_by?: string | null
           technical_term_override_reason?: string | null
+          test_result?: string | null
           tracking_code?: string | null
           updated_at?: string
         }
@@ -6075,6 +6084,13 @@ export type Database = {
             columns: ["subcategory_id"]
             isOneToOne: false
             referencedRelation: "ticket_subcategories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_tickets_tech_protocol_id_fkey"
+            columns: ["tech_protocol_id"]
+            isOneToOne: false
+            referencedRelation: "service_tickets"
             referencedColumns: ["id"]
           },
         ]
@@ -6503,6 +6519,7 @@ export type Database = {
           first_viewed_at: string | null
           id: string
           last_viewed_at: string | null
+          no_response_notified_at: string | null
           plate: string | null
           responded_at: string | null
           responder_cpf: string | null
@@ -6524,6 +6541,7 @@ export type Database = {
           service_label: string | null
           service_type: string
           status: string
+          superseded_by: string | null
           term_text: string
           term_title: string
           ticket_id: string | null
@@ -6547,6 +6565,7 @@ export type Database = {
           first_viewed_at?: string | null
           id?: string
           last_viewed_at?: string | null
+          no_response_notified_at?: string | null
           plate?: string | null
           responded_at?: string | null
           responder_cpf?: string | null
@@ -6568,6 +6587,7 @@ export type Database = {
           service_label?: string | null
           service_type: string
           status?: string
+          superseded_by?: string | null
           term_text: string
           term_title: string
           ticket_id?: string | null
@@ -6591,6 +6611,7 @@ export type Database = {
           first_viewed_at?: string | null
           id?: string
           last_viewed_at?: string | null
+          no_response_notified_at?: string | null
           plate?: string | null
           responded_at?: string | null
           responder_cpf?: string | null
@@ -6612,6 +6633,7 @@ export type Database = {
           service_label?: string | null
           service_type?: string
           status?: string
+          superseded_by?: string | null
           term_text?: string
           term_title?: string
           ticket_id?: string | null
@@ -8493,6 +8515,7 @@ export type Database = {
       sys_db_health: { Args: never; Returns: Json }
       sys_slow_queries: { Args: never; Returns: Json }
       sys_table_sizes: { Args: never; Returns: Json }
+      tech_term_no_response_scan: { Args: never; Returns: number }
       zapi_net_request: {
         Args: {
           _body: Json

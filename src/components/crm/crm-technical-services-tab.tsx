@@ -1,3 +1,4 @@
+import { techStageLabel } from "@/lib/technical-service-cycle";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -63,7 +64,7 @@ export function CrmTechnicalServicesTab() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("technical_service_terms")
-        .select("*, service_tickets(protocol_number)")
+        .select("*, service_tickets(protocol_number, tech_stage)")
         .order("created_at", { ascending: false })
         .limit(500);
       if (error) throw error;
@@ -192,6 +193,7 @@ export function CrmTechnicalServicesTab() {
                     <span className="font-mono text-xs text-muted-foreground">{termNumberLabel(t.seq)}</span>
                     <Badge variant="outline">{serviceTypeLabel(t.service_type, null, t.service_label)}</Badge>
                     <Badge variant={STATUS_VARIANT[t.status as TechnicalTermStatus]}>{TERM_STATUS_LABELS[t.status as TechnicalTermStatus]}</Badge>
+                    {t.service_tickets?.tech_stage && <Badge variant="secondary">Protocolo: {techStageLabel(t.service_tickets.tech_stage)}</Badge>}
                     {t.service_tickets?.protocol_number && <span className="text-xs text-muted-foreground">Chamado #{String(t.service_tickets.protocol_number).padStart(5, "0")}</span>}
                   </div>
                   <p className="font-medium truncate">{t.client_name || "Cliente não informado"}{t.plate ? ` — ${t.plate}` : ""}</p>
@@ -219,7 +221,7 @@ export function CrmTechnicalServicesTab() {
                   )}
                   {canSendToScheduling(t.status) && (
                     <Button size="sm" onClick={() => setScheduling(t)}>
-                      <CalendarPlus className="h-4 w-4 mr-1" /> Enviar para agendamento
+                      <CalendarPlus className="h-4 w-4 mr-1" /> Enviar solicitação
                     </Button>
                   )}
                 </div>
