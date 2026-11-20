@@ -5,12 +5,11 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { brandingFrom, escapeHtml, loadSettings as loadBrandSettings, loadSignature } from "./crm-proposal.functions";
 import { hasPhoneDigits, isValidCpf, isValidEmail, maskCpf, onlyDigits } from "./crm-proposal";
 import {
-  SERVICE_TYPE_LABELS,
   allowedServiceTypes,
+  serviceTypeLabel,
   buildTermUrl,
   canRespondTerm,
   missingChecklistItems,
-  normalizeChecklistConfig,
   renderTermTemplate,
   schedulingGate,
   statusAfterDecision,
@@ -31,13 +30,13 @@ async function loadTermSettings(admin: Admin) {
   return created;
 }
 
-type TermSettings = Awaited<ReturnType<typeof loadTermSettings>>;
-
-function termTextFor(s: TermSettings, type: TechnicalServiceType) {
+/** Tipo de termo do catálogo (Configurações > CRM). */
+async function loadTermType(admin: Admin, key: string) {
+  const { data } = await admin.from("technical_term_types").select("*").eq("key", key).maybeSingle();
+  if (!data) return null;
   return {
-    title: (s as any)[`${type}_title`] as string,
-    text: (s as any)[`${type}_text`] as string,
-    checklist: normalizeChecklistConfig((s as any)[`${type}_checklist`], type),
+    ...data,
+    checklist: (Array.isArray(data.checklist) ? data.checklist : []).map((x: unknown) => String(x ?? "").trim()).filter(Boolean) as string[],
   };
 }
 
@@ -64,13 +63,20 @@ async function deliverTerm(
   opts: { sendWhatsapp: boolean; sendEmail: boolean; phone?: string | null; email?: string | null },
 ) {
   const brand = await loadBrandSettings(admin);
-  const settings = await loadTermSettings(admin);
+  // Mensagens do próprio tipo de termo; reserva: mensagens antigas gerais.
+  const type = await loadTermType(admin, term.service_type);
+  const legacy = type ? null : await loadTermSettings(admin);
+  const templates = {
+    whatsapp: (type?.whatsapp_template || legacy?.whatsapp_template || "") as string,
+    emailSubject: (type?.email_subject || legacy?.email_subject || "") as string,
+    email: (type?.email_template || legacy?.email_template || "") as string,
+  };
   const url = buildTermUrl(publicBase(brand), term.token);
   const vars: Record<string, string> = {
     responsavel: term.responsible_name || "",
     cliente: term.client_name || "",
     placa: term.plate || "—",
-    servico: SERVICE_TYPE_LABELS[term.service_type as TechnicalServiceType],
+    servico: serviceTypeLabel(term.service_type, null, term.service_label || type?.label),
     numero: termNumberLabel(term.seq),
     empresa: brand.company_name,
     link: url,
@@ -89,7 +95,7 @@ async function deliverTerm(
       if (!channelId) throw new Error("Nenhum canal de WhatsApp ativo. Defina um em Configurações > CRM.");
       const { loadZapiChannel, zapiSendText } = await import("./zapi.server");
       const channel = await loadZapiChannel(admin, channelId);
-      await zapiSendText(channel, String(opts.phone), renderTermTemplate(settings.whatsapp_template, vars));
+      await zapiSendText(channel, String(opts.phone), renderTermTemplate(templates.whatsapp, vars));
       sent.push("whatsapp");
     } catch (e: any) {
       console.error("[termo-tecnico] WhatsApp falhou:", e?.message);
@@ -111,13 +117,13 @@ async function deliverTerm(
       const ctx = { connectionKey, mailbox: emailChannel.email_address, connectedEmail: me.mail || me.userPrincipalName || null };
       const sig = await loadSignature(admin, userId);
       const color = /^#[0-9a-f]{6}$/i.test(brand.primary_color) ? brand.primary_color : "#6c0015";
-      const bodyText = escapeHtml(renderTermTemplate(settings.email_template, { ...vars, link: "{link}" }))
+      const bodyText = escapeHtml(renderTermTemplate(templates.email, { ...vars, link: "{link}" }))
         .replace(/\n/g, "<br/>")
         .replace("{link}", `<a href="${escapeHtml(url)}">${escapeHtml(url)}</a>`);
       const button = `<p style="margin:24px 0"><a href="${escapeHtml(url)}" style="background:${color};color:#ffffff;padding:12px 22px;border-radius:6px;text-decoration:none;font-weight:bold;display:inline-block">Ver termo e responder</a></p>`;
       await sendNewMail(ctx, {
         to: [String(opts.email).trim()],
-        subject: renderTermTemplate(settings.email_subject, vars),
+        subject: renderTermTemplate(templates.emailSubject, vars),
         html: `<div style="font-family:Arial,sans-serif;font-size:14px;color:#1f2937">${bodyText}${button}${sig.html}</div>`,
         images: sig.images,
       });
@@ -147,7 +153,7 @@ const sendFields = {
 export const createTechnicalTerm = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({
-    serviceType: z.enum(["instalacao", "manutencao", "retirada"]),
+    serviceType: z.string().trim().regex(/^[a-z0-9_]{2,40}$/, "Tipo de termo inválido."),
     ticketId: z.string().uuid().nullable().optional(),
     companyId: z.string().uuid().nullable().optional(),
     clientName: z.string().trim().max(200).optional().default(""),
@@ -166,7 +172,11 @@ export const createTechnicalTerm = createServerFn({ method: "POST" })
     if (!data.sendWhatsapp && !data.sendEmail) throw new Error("Escolha WhatsApp e/ou e-mail para enviar o termo.");
     if (data.sendWhatsapp && !hasPhoneDigits(data.responsiblePhone)) throw new Error("Informe um WhatsApp válido com DDD.");
     if (data.sendEmail && !isValidEmail(data.responsibleEmail)) throw new Error("Informe um e-mail válido.");
-    if (data.serviceType === "retirada" && !data.equipmentId) throw new Error("Informe o ID do equipamento para retirada.");
+
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const cfg = await loadTermType(supabaseAdmin, data.serviceType);
+    if (!cfg || !cfg.is_active) throw new Error("Este tipo de termo não existe ou está inativo.");
+    if (cfg.requires_equipment_id && !data.equipmentId) throw new Error(`Informe o ID do equipamento para ${cfg.label}.`);
 
     if (data.ticketId) {
       const { data: ticket } = await supabase.from("service_tickets").select("id, category").eq("id", data.ticketId).maybeSingle();
@@ -174,15 +184,13 @@ export const createTechnicalTerm = createServerFn({ method: "POST" })
       if (ticket.category) {
         const { data: cat } = await supabase.from("ticket_categories")
           .select("technical_term_type").ilike("label", ticket.category).limit(1).maybeSingle();
-        if (cat && !allowedServiceTypes(cat.technical_term_type).includes(data.serviceType)) {
-          throw new Error(`A categoria "${ticket.category}" exige termo de ${SERVICE_TYPE_LABELS[cat.technical_term_type as TechnicalServiceType] ?? "outro tipo"}.`);
+        if (cat && !allowedServiceTypes(cat.technical_term_type, [data.serviceType]).includes(data.serviceType)) {
+          const { data: req } = await supabaseAdmin.from("technical_term_types").select("label").eq("key", cat.technical_term_type).maybeSingle();
+          throw new Error(`A categoria "${ticket.category}" exige termo de ${req?.label ?? serviceTypeLabel(cat.technical_term_type)}.`);
         }
       }
     }
 
-    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const settings = await loadTermSettings(supabaseAdmin);
-    const cfg = termTextFor(settings, data.serviceType);
     const missing = missingChecklistItems(cfg.checklist, data.checklist);
     if (missing.length) throw new Error(`Marque o checklist antes de enviar: ${missing.join(", ")}.`);
     // Grava exatamente o que o atendente marcou (auditoria do checklist).
@@ -204,8 +212,10 @@ export const createTechnicalTerm = createServerFn({ method: "POST" })
       responsible_email: data.responsibleEmail || null,
       description: data.description || null,
       checklist: checklist as any,
+      // Cópia congelada: editar o tipo depois não altera este termo.
+      service_label: cfg.label,
       term_title: cfg.title,
-      term_text: cfg.text,
+      term_text: cfg.body,
       created_by: userId,
     }).select("*").single();
     if (error || !term) throw new Error(error?.message || "Falha ao criar o termo.");
@@ -222,7 +232,7 @@ export const createTechnicalTerm = createServerFn({ method: "POST" })
         ticket_id: data.ticketId,
         user_id: userId,
         comment_type: "status_change",
-        content: `Termo de ${SERVICE_TYPE_LABELS[data.serviceType]} ${termNumberLabel(term.seq)} enviado para aceite de ${data.responsibleName}${res.sent.length ? ` (${res.sent.join(" e ")})` : ""}.`,
+        content: `Termo de ${cfg.label} ${termNumberLabel(term.seq)} enviado para aceite de ${data.responsibleName}${res.sent.length ? ` (${res.sent.join(" e ")})` : ""}.`,
       });
     }
     return { id: term.id as string, url: res.url, sent: res.sent, errors: res.errors };
@@ -311,12 +321,13 @@ export const getPublicTerm = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: term } = await supabaseAdmin.from("technical_service_terms")
-      .select("status, service_type, seq").eq("token", data.token).maybeSingle();
+      .select("status, service_type, service_label, seq").eq("token", data.token).maybeSingle();
     if (!term) return null;
     const brand = await loadBrandSettings(supabaseAdmin);
     return {
       status: term.status as TechnicalTermStatus,
       serviceType: term.service_type as TechnicalServiceType,
+      serviceLabel: serviceTypeLabel(term.service_type, null, term.service_label),
       number: termNumberLabel(term.seq),
       branding: brandingFrom(brand),
     };
@@ -344,6 +355,7 @@ export const unlockPublicTerm = createServerFn({ method: "POST" })
       canRespond: canRespondTerm(t.status as TechnicalTermStatus),
       number: termNumberLabel(t.seq),
       serviceType: t.service_type as TechnicalServiceType,
+      serviceLabel: serviceTypeLabel(t.service_type, null, t.service_label),
       title: t.term_title as string,
       text: t.term_text as string,
       clientName: t.client_name as string | null,
@@ -373,7 +385,7 @@ export const respondToTerm = createServerFn({ method: "POST" })
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: t } = await supabaseAdmin.from("technical_service_terms")
-      .select("id, status, responsible_name, created_by, ticket_id, seq, service_type, plate, client_name")
+      .select("id, status, responsible_name, created_by, ticket_id, seq, service_type, service_label, plate, client_name")
       .eq("token", data.token).maybeSingle();
     if (!t) throw new Error("Termo não encontrado.");
     if (!canRespondTerm(t.status as TechnicalTermStatus)) throw new Error("Este termo já foi respondido ou cancelado.");
@@ -397,7 +409,7 @@ export const respondToTerm = createServerFn({ method: "POST" })
     if (error) throw new Error("Não foi possível registrar sua resposta. Tente novamente.");
     if (!updated?.length) throw new Error("Este termo já foi respondido.");
 
-    const label = SERVICE_TYPE_LABELS[t.service_type as TechnicalServiceType];
+    const label = serviceTypeLabel(t.service_type, null, t.service_label);
     const summary = `${responderName} (CPF ${maskCpf(cpf)}) ${data.decision === "accept" ? "aceitou" : "recusou"} o termo ${termNumberLabel(t.seq)} de ${label}${t.plate ? ` — ${t.plate}` : ""}.${data.note ? ` Obs.: ${data.note}` : ""}`;
     if (t.ticket_id) {
       await supabaseAdmin.from("ticket_comments").insert({

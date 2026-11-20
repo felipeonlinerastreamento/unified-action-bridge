@@ -239,6 +239,20 @@
       "when": 1795196917027,
       "tag": "0033_performance_indexes_last_direction_sidebar_counters",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1795197589540,
+      "tag": "0034_technical_term_types_catalog",
+      "breakpoints": true
+    },
+    {
+      "idx": 35,
+      "version": "7",
+      "when": 1795197620355,
+      "tag": "0035_technical_term_types_block_used_delete",
+      "breakpoints": true
     }
   ]
 }

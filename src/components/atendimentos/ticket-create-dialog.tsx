@@ -757,7 +757,7 @@ export function TicketCreateDialog({ open, onClose, onCreated }: TicketCreateDia
             contactName: contactName || null,
             contactPhone: contactPhone || null,
           },
-          types: allowedServiceTypes(termCat.termType),
+          types: allowedServiceTypes(termCat.termType, []),
         });
         toast.info("Preencha o termo de serviço técnico para enviar ao responsável pela frota.");
       }

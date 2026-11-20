@@ -6521,6 +6521,7 @@ export type Database = {
           sent_at: string | null
           sent_channels: string[]
           seq: number
+          service_label: string | null
           service_type: string
           status: string
           term_text: string
@@ -6564,6 +6565,7 @@ export type Database = {
           sent_at?: string | null
           sent_channels?: string[]
           seq?: never
+          service_label?: string | null
           service_type: string
           status?: string
           term_text: string
@@ -6607,6 +6609,7 @@ export type Database = {
           sent_at?: string | null
           sent_channels?: string[]
           seq?: never
+          service_label?: string | null
           service_type?: string
           status?: string
           term_text?: string
@@ -6688,6 +6691,60 @@ export type Database = {
           retirada_checklist?: Json
           retirada_text?: string
           retirada_title?: string
+          updated_at?: string
+          updated_by?: string | null
+          whatsapp_template?: string
+        }
+        Relationships: []
+      }
+      technical_term_types: {
+        Row: {
+          body: string
+          checklist: Json
+          created_at: string
+          email_subject: string
+          email_template: string
+          id: string
+          is_active: boolean
+          key: string
+          label: string
+          position: number
+          requires_equipment_id: boolean
+          title: string
+          updated_at: string
+          updated_by: string | null
+          whatsapp_template: string
+        }
+        Insert: {
+          body: string
+          checklist?: Json
+          created_at?: string
+          email_subject?: string
+          email_template?: string
+          id?: string
+          is_active?: boolean
+          key: string
+          label: string
+          position?: number
+          requires_equipment_id?: boolean
+          title: string
+          updated_at?: string
+          updated_by?: string | null
+          whatsapp_template?: string
+        }
+        Update: {
+          body?: string
+          checklist?: Json
+          created_at?: string
+          email_subject?: string
+          email_template?: string
+          id?: string
+          is_active?: boolean
+          key?: string
+          label?: string
+          position?: number
+          requires_equipment_id?: boolean
+          title?: string
           updated_at?: string
           updated_by?: string | null
           whatsapp_template?: string
@@ -8315,6 +8372,7 @@ export type Database = {
         Args: { _id: string; _winner: string }
         Returns: undefined
       }
+      delete_technical_term_type: { Args: { _id: string }; Returns: string }
       gamif_apply_auto_rules: { Args: { _day?: string }; Returns: number }
       gamif_cancel_duel: { Args: { _id: string }; Returns: undefined }
       gamif_decide_redemption: {

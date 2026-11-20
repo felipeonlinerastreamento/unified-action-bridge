@@ -13,14 +13,13 @@ import { useAuth } from "@/hooks/use-auth";
 import { cancelTechnicalTerm, resendTechnicalTerm } from "@/lib/technical-terms.functions";
 import { listarTecnicos } from "@/lib/seu-instalador.functions";
 import {
-  SERVICE_TYPE_LABELS,
+  serviceTypeLabel,
   TERM_STATUS_LABELS,
   buildSchedulingDescription,
   buildTermUrl,
   canSendToScheduling,
   termNumberLabel,
   type ChecklistItem,
-  type TechnicalServiceType,
   type TechnicalTermStatus,
 } from "@/lib/technical-terms";
 import { TechnicalTermDialog } from "./technical-term-dialog";
@@ -136,6 +135,7 @@ export function CrmTechnicalServicesTab() {
     description: buildSchedulingDescription({
       seq: t.seq,
       service_type: t.service_type,
+      service_label: t.service_label,
       description: t.description,
       checklist: t.checklist as ChecklistItem[],
       responder_name: t.responder_name,
@@ -190,7 +190,7 @@ export function CrmTechnicalServicesTab() {
                 <div className="flex-1 min-w-0 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <span className="font-mono text-xs text-muted-foreground">{termNumberLabel(t.seq)}</span>
-                    <Badge variant="outline">{SERVICE_TYPE_LABELS[t.service_type as TechnicalServiceType]}</Badge>
+                    <Badge variant="outline">{serviceTypeLabel(t.service_type, null, t.service_label)}</Badge>
                     <Badge variant={STATUS_VARIANT[t.status as TechnicalTermStatus]}>{TERM_STATUS_LABELS[t.status as TechnicalTermStatus]}</Badge>
                     {t.service_tickets?.protocol_number && <span className="text-xs text-muted-foreground">Chamado #{String(t.service_tickets.protocol_number).padStart(5, "0")}</span>}
                   </div>
@@ -236,7 +236,7 @@ export function CrmTechnicalServicesTab() {
           {detail && (
             <>
               <DialogHeader>
-                <DialogTitle>{termNumberLabel(detail.seq)} — {SERVICE_TYPE_LABELS[detail.service_type as TechnicalServiceType]}</DialogTitle>
+                <DialogTitle>{termNumberLabel(detail.seq)} — {serviceTypeLabel(detail.service_type, null, detail.service_label)}</DialogTitle>
               </DialogHeader>
               <div className="space-y-3 text-sm">
                 <Badge variant={STATUS_VARIANT[detail.status as TechnicalTermStatus]}>{TERM_STATUS_LABELS[detail.status as TechnicalTermStatus]}</Badge>

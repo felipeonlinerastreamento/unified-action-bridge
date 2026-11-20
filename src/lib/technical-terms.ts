@@ -1,14 +1,34 @@
 // Regras puras do termo de serviço técnico (aceite do responsável da frota
 // antes de abrir solicitação na Agenda). Sem dependências de servidor.
 
-export type TechnicalServiceType = "instalacao" | "manutencao" | "retirada";
+/** Chave do tipo de termo (catálogo technical_term_types). Ex.: "instalacao". */
+export type TechnicalServiceType = string;
 export type TechnicalTermStatus = "pendente" | "aceito" | "recusado" | "enviada" | "cancelado";
-/** O que a categoria do chamado exige. "escolher" = o atendente escolhe o tipo ao gerar o termo. */
-export type CategoryTermRequirement = "none" | TechnicalServiceType | "escolher";
+/** O que a categoria do chamado exige: "none", a chave de um tipo, ou "escolher" (o atendente escolhe). */
+export type CategoryTermRequirement = string;
 
 export type ChecklistItem = { label: string; checked: boolean };
 
-export const SERVICE_TYPE_LABELS: Record<TechnicalServiceType, string> = {
+/** Tipo de termo cadastrado em Configurações > CRM. */
+export type TermType = {
+  id: string;
+  key: string;
+  label: string;
+  title: string;
+  body: string;
+  checklist: string[];
+  requires_equipment_id: boolean;
+  whatsapp_template: string;
+  email_subject: string;
+  email_template: string;
+  is_active: boolean;
+  position: number;
+};
+
+/** Tipos originais (usados como nome de reserva quando o catálogo não carregou). */
+export const BUILTIN_SERVICE_TYPES = ["instalacao", "manutencao", "retirada"] as const;
+
+export const SERVICE_TYPE_LABELS: Record<string, string> = {
   instalacao: "Instalação",
   manutencao: "Manutenção",
   retirada: "Retirada",
@@ -22,7 +42,8 @@ export const TERM_STATUS_LABELS: Record<TechnicalTermStatus, string> = {
   cancelado: "Cancelado",
 };
 
-export const CATEGORY_REQUIREMENT_LABELS: Record<CategoryTermRequirement, string> = {
+/** @deprecated use categoryRequirementOptions(tipos) */
+export const CATEGORY_REQUIREMENT_LABELS: Record<string, string> = {
   none: "Não exige termo",
   instalacao: "Instalação",
   manutencao: "Manutenção",
@@ -30,7 +51,7 @@ export const CATEGORY_REQUIREMENT_LABELS: Record<CategoryTermRequirement, string
   escolher: "Serviço técnico (escolher tipo)",
 };
 
-export const DEFAULT_CHECKLISTS: Record<TechnicalServiceType, string[]> = {
+export const DEFAULT_CHECKLISTS: Record<string, string[]> = {
   instalacao: [],
   manutencao: [
     "Solicitou reset chip",
@@ -41,13 +62,87 @@ export const DEFAULT_CHECKLISTS: Record<TechnicalServiceType, string[]> = {
   retirada: ["Conferir localização com agendamento", "Conferir ID equipamento"],
 };
 
+/** Nome do serviço: catálogo → nome congelado no termo → nome original → a própria chave. */
+export function serviceTypeLabel(key: string | null | undefined, types?: Pick<TermType, "key" | "label">[] | null, frozen?: string | null): string {
+  if (frozen) return frozen;
+  const k = String(key || "");
+  const found = types?.find((t) => t.key === k);
+  return found?.label || SERVICE_TYPE_LABELS[k] || k;
+}
+
+/** Opções de "Exige termo" das categorias: não exige, cada tipo ativo, escolher. */
+export function categoryRequirementOptions(types: Pick<TermType, "key" | "label" | "is_active">[]): { value: string; label: string }[] {
+  return [
+    { value: "none", label: "Não exige termo" },
+    ...types.filter((t) => t.is_active).map((t) => ({ value: t.key, label: t.label })),
+    { value: "escolher", label: "Serviço técnico (escolher tipo)" },
+  ];
+}
+
+/** Gera a chave de um novo tipo a partir do nome, sem repetir as existentes. */
+export function slugifyTermKey(label: string, existing: string[] = []): string {
+  let base = String(label || "")
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "")
+    .slice(0, 34);
+  if (base.length < 2 || base === "none" || base === "escolher") base = `termo_${base}`.replace(/_+$/, "");
+  if (base.length < 2) base = "termo";
+  const taken = new Set(existing);
+  if (!taken.has(base)) return base;
+  for (let i = 2; i < 1000; i++) {
+    const k = `${base}_${i}`;
+    if (!taken.has(k)) return k;
+  }
+  return `${base}_${Date.now()}`;
+}
+
+/** Variáveis disponíveis nas mensagens de envio. */
+export const TERM_MESSAGE_VARS: { key: string; label: string; sample: string }[] = [
+  { key: "responsavel", label: "Nome do responsável pela frota", sample: "João Silva" },
+  { key: "cliente", label: "Nome do cliente (empresa)", sample: "Transportes Exemplo Ltda" },
+  { key: "placa", label: "Placa do veículo", sample: "ABC1D23" },
+  { key: "servico", label: "Tipo de serviço", sample: "Instalação" },
+  { key: "link", label: "Link do aceite", sample: "https://exemplo.com/termo-servico/…" },
+  { key: "numero", label: "Número do termo", sample: "TST-00012" },
+  { key: "empresa", label: "Nome da nossa empresa", sample: "Online Rastreamento" },
+];
+
+/** Valores de exemplo para a pré-visualização das mensagens. */
+export function sampleTermVars(overrides: Record<string, string> = {}): Record<string, string> {
+  const vars: Record<string, string> = {};
+  for (const v of TERM_MESSAGE_VARS) vars[v.key] = v.sample;
+  return { ...vars, ...overrides };
+}
+
+/** Validação do cadastro de um tipo de termo; devolve a primeira mensagem de erro ou null. */
+export function validateTermType(t: Pick<TermType, "label" | "title" | "body" | "whatsapp_template" | "email_subject" | "email_template">): string | null {
+  if (!String(t.label || "").trim()) return "Informe o nome do tipo de serviço.";
+  if (!String(t.title || "").trim()) return "Informe o título do termo.";
+  if (!String(t.body || "").trim()) return "Informe o texto do termo.";
+  if (!String(t.whatsapp_template || "").includes("{link}")) return "A mensagem de WhatsApp precisa ter a variável {link}.";
+  if (!String(t.email_subject || "").trim()) return "Informe o assunto do e-mail.";
+  if (!String(t.email_template || "").includes("{link}")) return "O texto do e-mail precisa ter a variável {link}.";
+  return null;
+}
+
+/** O que acontece ao excluir um tipo: bloqueia (categoria exige), inativa (já usado) ou exclui. */
+export function termDeletionAction(opts: { usedInTerms: boolean; requiredByCategories: string[] }): "block" | "inactivate" | "delete" {
+  if (opts.requiredByCategories.length > 0) return "block";
+  return opts.usedInTerms ? "inactivate" : "delete";
+}
+
+/** Converte o texto do checklist (um item por linha) em lista. */
+export function parseChecklistText(text: string): string[] {
+  return String(text || "").split("\n").map((s) => s.trim()).filter(Boolean);
+}
+
 export function isServiceType(v: unknown): v is TechnicalServiceType {
-  return v === "instalacao" || v === "manutencao" || v === "retirada";
+  return typeof v === "string" && v !== "" && v !== "none" && v !== "escolher";
 }
 
 /** Itens obrigatórios configurados; vazio/ inválido cai no padrão do tipo. */
 export function normalizeChecklistConfig(raw: unknown, type: TechnicalServiceType): string[] {
-  if (!Array.isArray(raw)) return [...DEFAULT_CHECKLISTS[type]];
+  if (!Array.isArray(raw)) return [...(DEFAULT_CHECKLISTS[type] ?? [])];
   return raw.map((s) => String(s ?? "").trim()).filter(Boolean);
 }
 
@@ -62,10 +157,16 @@ export function categoryRequiresTerm(req: string | null | undefined): boolean {
   return !!req && req !== "none";
 }
 
-/** Tipos permitidos ao gerar o termo para uma categoria. */
-export function allowedServiceTypes(req: string | null | undefined): TechnicalServiceType[] {
+/**
+ * Tipos permitidos ao gerar o termo para uma categoria: o tipo exigido, ou
+ * (em "escolher") todos os tipos ativos do catálogo.
+ */
+export function allowedServiceTypes(
+  req: string | null | undefined,
+  activeKeys: readonly string[] = BUILTIN_SERVICE_TYPES,
+): TechnicalServiceType[] {
   if (isServiceType(req)) return [req];
-  return ["instalacao", "manutencao", "retirada"];
+  return [...activeKeys];
 }
 
 /** O responsável só responde enquanto o termo está pendente. */
@@ -113,13 +214,14 @@ export function buildTermUrl(baseUrl: string, token: string): string {
 export function buildSchedulingDescription(term: {
   seq?: number | null;
   service_type: TechnicalServiceType;
+  service_label?: string | null;
   description?: string | null;
   checklist?: ChecklistItem[] | null;
   responder_name?: string | null;
   responded_at?: string | null;
   equipment_id?: string | null;
 }): string {
-  const lines = [`${SERVICE_TYPE_LABELS[term.service_type]} — termo ${termNumberLabel(term.seq)} aceito`];
+  const lines = [`${serviceTypeLabel(term.service_type, null, term.service_label)} — termo ${termNumberLabel(term.seq)} aceito`];
   if (term.responder_name) {
     const when = term.responded_at ? new Date(term.responded_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }) : "";
     lines.push(`Aceite: ${term.responder_name}${when ? ` em ${when}` : ""}`);

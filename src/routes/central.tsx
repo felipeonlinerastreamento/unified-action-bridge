@@ -2156,7 +2156,7 @@ function CentralPage() {
           contactName: tk.contact_name ?? chatDetail.contact?.name ?? chatDetail.description ?? null,
           contactPhone: tk.contact_phone ?? contactPhone ?? null,
         },
-        types: allowedServiceTypes(cat.termType),
+        types: allowedServiceTypes(cat.termType, []),
       });
     } catch (e: any) {
       toast.error(e?.message || "Erro ao abrir o termo técnico.");
@@ -2212,7 +2212,7 @@ function CentralPage() {
                   contactName: tk?.contact_name ?? null,
                   contactPhone: tk?.contact_phone ?? null,
                 },
-                types: allowedServiceTypes(cat.termType),
+                types: allowedServiceTypes(cat.termType, []),
               });
             }
             throw new Error(

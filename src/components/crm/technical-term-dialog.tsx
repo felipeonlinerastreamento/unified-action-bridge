@@ -13,11 +13,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { createTechnicalTerm } from "@/lib/technical-terms.functions";
 import {
-  SERVICE_TYPE_LABELS,
   missingChecklistItems,
-  normalizeChecklistConfig,
+  serviceTypeLabel,
   type TechnicalServiceType,
 } from "@/lib/technical-terms";
+import { useTechnicalTermTypes } from "@/hooks/use-technical-term-types";
 
 export type TermTicketPrefill = {
   id: string;
@@ -37,12 +37,17 @@ interface Props {
   onCreated?: () => void;
 }
 
-const ALL: TechnicalServiceType[] = ["instalacao", "manutencao", "retirada"];
-
-export function TechnicalTermDialog({ open, onOpenChange, allowedTypes = ALL, ticket, onCreated }: Props) {
+export function TechnicalTermDialog({ open, onOpenChange, allowedTypes: allowedProp, ticket, onCreated }: Props) {
   const qc = useQueryClient();
   const create = useServerFn(createTechnicalTerm);
-  const [type, setType] = useState<TechnicalServiceType>(allowedTypes[0]);
+  // Tipos cadastrados em Configurações > CRM (novos tipos aparecem aqui sozinhos).
+  const { all: termTypes, activeKeys } = useTechnicalTermTypes({ enabled: open });
+  const allowedTypes = useMemo(() => {
+    const base = allowedProp && allowedProp.length ? allowedProp : activeKeys;
+    // Mostra só tipos ativos; se a categoria exige um tipo específico, ele vale mesmo assim.
+    return allowedProp?.length === 1 ? allowedProp : base.filter((k) => activeKeys.includes(k));
+  }, [allowedProp, activeKeys]);
+  const [type, setType] = useState<TechnicalServiceType>(allowedTypes[0] ?? "");
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [clientName, setClientName] = useState("");
   const [companySearch, setCompanySearch] = useState("");
@@ -61,7 +66,7 @@ export function TechnicalTermDialog({ open, onOpenChange, allowedTypes = ALL, ti
 
   useEffect(() => {
     if (!open) return;
-    setType(allowedTypes[0]);
+    setType(allowedTypes[0] ?? "");
     setCompanyId(ticket?.companyId ?? null);
     setClientName(ticket?.clientName ?? "");
     setCompanySearch("");
@@ -79,15 +84,14 @@ export function TechnicalTermDialog({ open, onOpenChange, allowedTypes = ALL, ti
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  const { data: settings } = useQuery({
-    queryKey: ["technical-term-settings"],
-    queryFn: async () => {
-      const { data } = await supabase.from("technical_term_settings").select("*").eq("id", "default").maybeSingle();
-      return (data as any) || null;
-    },
-    enabled: open,
-  });
-  const required = useMemo(() => normalizeChecklistConfig(settings?.[`${type}_checklist`], type), [settings, type]);
+  // Quando o catálogo termina de carregar, seleciona o primeiro tipo permitido.
+  useEffect(() => {
+    if (open && (!type || !allowedTypes.includes(type)) && allowedTypes[0]) setType(allowedTypes[0]);
+  }, [open, type, allowedTypes]);
+  const typeCfg = termTypes.find((t) => t.key === type);
+  const required = useMemo(() => typeCfg?.checklist ?? [], [typeCfg]);
+  const needsEquipment = !!typeCfg?.requires_equipment_id;
+  const label = (k: string) => serviceTypeLabel(k, termTypes);
   useEffect(() => setChecked({}), [type]);
 
   const { data: companies = [] } = useQuery({
@@ -104,7 +108,8 @@ export function TechnicalTermDialog({ open, onOpenChange, allowedTypes = ALL, ti
     const missing = missingChecklistItems(required, checklist);
     if (missing.length) return toast.error(`Marque o checklist: ${missing.join(", ")}`);
     if (respName.trim().length < 2) return toast.error("Informe o responsável pela frota");
-    if (type === "retirada" && !equipmentId.trim()) return toast.error("Informe o ID do equipamento");
+    if (!type) return toast.error("Escolha o tipo de serviço");
+    if (needsEquipment && !equipmentId.trim()) return toast.error("Informe o ID do equipamento");
     if (!sendWhatsapp && !sendEmail) return toast.error("Escolha WhatsApp e/ou e-mail");
     setSending(true);
     try {
@@ -174,7 +179,7 @@ export function TechnicalTermDialog({ open, onOpenChange, allowedTypes = ALL, ti
                 <Select value={type} onValueChange={(v) => setType(v as TechnicalServiceType)} disabled={allowedTypes.length === 1}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
                   <SelectContent>
-                    {allowedTypes.map((t) => <SelectItem key={t} value={t}>{SERVICE_TYPE_LABELS[t]}</SelectItem>)}
+                    {allowedTypes.map((t) => <SelectItem key={t} value={t}>{label(t)}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -210,7 +215,7 @@ export function TechnicalTermDialog({ open, onOpenChange, allowedTypes = ALL, ti
               </div>
               <div className="space-y-1.5"><Label>Placa</Label><Input value={plate} onChange={(e) => setPlate(e.target.value.toUpperCase())} maxLength={10} placeholder="ABC1D23" /></div>
               <div className="space-y-1.5">
-                <Label>ID do equipamento {type === "retirada" && "*"}</Label>
+                <Label>ID do equipamento {needsEquipment && "*"}</Label>
                 <Input value={equipmentId} onChange={(e) => setEquipmentId(e.target.value)} maxLength={100} />
               </div>
               <div className="space-y-1.5 sm:col-span-2"><Label>Endereço do serviço</Label><Input value={address} onChange={(e) => setAddress(e.target.value)} maxLength={500} placeholder="Rua, número, bairro, cidade - UF" /></div>
@@ -218,7 +223,7 @@ export function TechnicalTermDialog({ open, onOpenChange, allowedTypes = ALL, ti
 
             {required.length > 0 && (
               <div className="rounded-md border p-3 space-y-2">
-                <p className="text-sm font-medium">Checklist de {SERVICE_TYPE_LABELS[type]} (obrigatório)</p>
+                <p className="text-sm font-medium">Checklist de {label(type)} (obrigatório)</p>
                 {required.map((label) => (
                   <label key={label} className="flex items-center gap-2 text-sm cursor-pointer">
                     <Checkbox checked={!!checked[label]} onCheckedChange={(v) => setChecked((c) => ({ ...c, [label]: v === true }))} />

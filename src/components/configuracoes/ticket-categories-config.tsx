@@ -13,11 +13,11 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { listTicketCategories, syncTicketCategoriesNow } from "@/lib/technical-terms.functions";
-import { CATEGORY_REQUIREMENT_LABELS, type CategoryTermRequirement } from "@/lib/technical-terms";
+import { categoryRequirementOptions, serviceTypeLabel } from "@/lib/technical-terms";
+import { useTechnicalTermTypes } from "@/hooks/use-technical-term-types";
 import { TICKET_CATEGORIES_QUERY_KEY } from "@/hooks/use-ticket-categories";
 
 const ADMIN_KEY = ["ticket-categories-admin"] as const;
-const REQUIREMENTS = Object.keys(CATEGORY_REQUIREMENT_LABELS) as CategoryTermRequirement[];
 
 function slugify(v: string) {
   return v.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -32,6 +32,9 @@ export function TicketCategoriesConfig() {
   const sync = useServerFn(syncTicketCategoriesNow);
   const [search, setSearch] = useState("");
   const [newLabel, setNewLabel] = useState("");
+  // Opções de "Exige termo" vêm dos tipos cadastrados em Configurações > CRM.
+  const { all: termTypes } = useTechnicalTermTypes();
+  const requirementOptions = useMemo(() => categoryRequirementOptions(termTypes), [termTypes]);
 
   const { data: rows = [], isLoading } = useQuery({
     queryKey: ADMIN_KEY,
@@ -154,7 +157,10 @@ export function TicketCategoriesConfig() {
                       >
                         <SelectTrigger className="h-8 w-56"><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          {REQUIREMENTS.map((k) => <SelectItem key={k} value={k}>{CATEGORY_REQUIREMENT_LABELS[k]}</SelectItem>)}
+                          {requirementOptions.map((o) => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}
+                          {!requirementOptions.some((o) => o.value === r.technical_term_type) && (
+                            <SelectItem value={r.technical_term_type}>{serviceTypeLabel(r.technical_term_type, termTypes)} (inativo)</SelectItem>
+                          )}
                         </SelectContent>
                       </Select>
                     </TableCell>

@@ -10,7 +10,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { getPublicTerm, respondToTerm, unlockPublicTerm } from "@/lib/technical-terms.functions";
 import { formatCpf, formatDateBR, isValidCpf } from "@/lib/crm-proposal";
-import { SERVICE_TYPE_LABELS } from "@/lib/technical-terms";
 import defaultLogo from "@/assets/logo-online-rastreamento.png";
 
 const termQuery = (token: string) =>
@@ -27,7 +26,7 @@ export const Route = createFileRoute("/termo-servico/$token")({
   },
   head: ({ loaderData }) => {
     const company = loaderData?.branding.companyName || "Online Rastreamento";
-    const title = loaderData ? `Termo de ${SERVICE_TYPE_LABELS[loaderData.serviceType]} — ${company}` : "Termo indisponível";
+    const title = loaderData ? `Termo de ${loaderData.serviceLabel} — ${company}` : "Termo indisponível";
     const description = loaderData
       ? `Termo ${loaderData.number} de serviço técnico enviado por ${company}. Leia e registre seu aceite ou recusa.`
       : "Este link de termo não está disponível.";
@@ -137,7 +136,7 @@ function CpfGate({ gate, onUnlock }: { gate: GateData; onUnlock: (cpf: string) =
         <div style={{ borderTop: "6px solid var(--brand)" }} className="p-6 space-y-5">
           <img src={b.logoUrl || defaultLogo} alt={b.companyName} className="h-16 w-auto object-contain mx-auto" />
           <div className="text-center space-y-1">
-            <h1 className="text-lg font-semibold text-foreground">Termo de {SERVICE_TYPE_LABELS[gate.serviceType]} {gate.number}</h1>
+            <h1 className="text-lg font-semibold text-foreground">Termo de {gate.serviceLabel} {gate.number}</h1>
             <p className="text-sm text-muted-foreground">Para sua segurança, informe seu CPF para abrir o termo.</p>
           </div>
           <div className="space-y-1.5">
@@ -202,7 +201,7 @@ function UnlockedTerm({ token, cpf, data, onRefresh }: { token: string; cpf: str
         <main className="p-6 space-y-6">
           <div>
             <p className="text-xs uppercase tracking-wider font-semibold" style={{ color: "var(--brand)" }}>
-              Termo de {SERVICE_TYPE_LABELS[data.serviceType]} {data.number}
+              Termo de {data.serviceLabel} {data.number}
             </p>
             <h1 className="text-2xl font-bold text-foreground">{data.title}</h1>
             <p className="text-xs text-muted-foreground mt-1">Emitido em {formatDateBR(data.createdAt)}</p>
@@ -234,7 +233,7 @@ function UnlockedTerm({ token, cpf, data, onRefresh }: { token: string; cpf: str
             </div>
             <div className="space-y-0.5">
               <p className="text-[11px] uppercase tracking-wide text-muted-foreground mb-1">Serviço</p>
-              <p className="flex items-center gap-1 text-foreground"><Truck className="h-3.5 w-3.5" /> {SERVICE_TYPE_LABELS[data.serviceType]}{data.plate ? ` — placa ${data.plate}` : ""}</p>
+              <p className="flex items-center gap-1 text-foreground"><Truck className="h-3.5 w-3.5" /> {data.serviceLabel}{data.plate ? ` — placa ${data.plate}` : ""}</p>
               {data.equipmentId && <p className="text-muted-foreground">Equipamento: {data.equipmentId}</p>}
               {data.address && <p className="flex items-center gap-1 text-muted-foreground"><MapPin className="h-3.5 w-3.5" /> {data.address}</p>}
             </div>

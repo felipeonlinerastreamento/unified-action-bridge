@@ -27,3 +27,12 @@
 - [x] Central: direção da última mensagem gravada na conversa (trigger + backfill); lista sem ler mensagens.
 - [x] Limpeza de históricos técnicos + rotina diária de retenção (7/90 dias).
 - [x] Medições antes x depois.
+
+# Termos de serviço técnico — gestão completa (Config > CRM)
+
+- [x] Criar novos tipos de termo (título, texto, checklist próprios).
+- [x] Editar qualquer termo.
+- [x] Excluir com confirmação; se já usado, apenas inativar.
+- [x] Mensagens de envio por termo (WhatsApp/e-mail) com variáveis e pré-visualização.
+- [x] Novos tipos no formulário do termo (chat/chamado) e em "Exige termo" (Encaminhamento).
+- [x] Termos já enviados não mudam.
