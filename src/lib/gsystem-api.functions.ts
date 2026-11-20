@@ -637,6 +637,57 @@ function normalizeEquipItem(c: any) {
   };
 }
 
+function nextCursorOf(res: any): string | undefined {
+  return res?.Pagination?.NextCursor ?? res?.pagination?.nextCursor ?? res?.NextCursor ?? undefined;
+}
+
+function itemsOf(res: any): any[] {
+  if (Array.isArray(res)) return res;
+  const arr = res?.data ?? res?.Data ?? res?.Items ?? res?.items ?? res?.resultado;
+  return Array.isArray(arr) ? arr : [];
+}
+
+/** Percorre todas as páginas (Limit=100 + Cursor) a partir de um endpoint que já respondeu. */
+async function fetchAllPages(
+  fetcher: (endpoint: string, method?: string, body?: unknown) => Promise<any>,
+  ep: string,
+  firstResult: any,
+): Promise<any[]> {
+  const out: any[] = [];
+  const seen = new Set<string>();
+  const push = (list: any[]) => {
+    for (const it of list) {
+      const k = String(it?.Codigo ?? it?.Key ?? it?.Id ?? JSON.stringify(it));
+      if (seen.has(k)) continue;
+      seen.add(k);
+      out.push(it);
+    }
+  };
+  // Recomeça com Limit=100 para pegar páginas cheias; se falhar, usa a resposta original.
+  let res: any;
+  try {
+    res = await fetcher(`${ep}?Limit=100`);
+  } catch {
+    res = firstResult;
+  }
+  push(itemsOf(res));
+  let cursor = nextCursorOf(res);
+  for (let page = 0; cursor && page < 200; page++) {
+    const qs = new URLSearchParams({ Limit: "100", Cursor: cursor });
+    try {
+      res = await fetcher(`${ep}?${qs.toString()}`);
+    } catch {
+      break;
+    }
+    const list = itemsOf(res);
+    if (list.length === 0) break;
+    push(list);
+    cursor = nextCursorOf(res);
+  }
+  if (out.length === 0) push(itemsOf(firstResult));
+  return out;
+}
+
 async function probeEndpoints(
   fetcher: (endpoint: string, method?: string, body?: unknown) => Promise<any>,
   endpoints: string[]
@@ -654,10 +705,14 @@ async function probeEndpoints(
         // Some APIs wrap arrays in { data: [...] } or { Items: [...] }
         const arr = (result as any).data ?? (result as any).Data ?? (result as any).Items ?? (result as any).items ?? (result as any).resultado;
         if (Array.isArray(arr)) {
-          tried.push({ endpoint: ep, status: `ok (${arr.length} itens, wrapped)` });
           if (arr.length > 0) {
-            return { matchedEndpoint: ep, items: arr, tried };
+            // A API do GSystem pagina (Limit/Cursor): sem percorrer as páginas só vinha a primeira,
+            // e os itens disponíveis (ex.: chips soltos) ficavam de fora.
+            const all = await fetchAllPages(fetcher, ep, result);
+            tried.push({ endpoint: ep, status: `ok (${all.length} itens, paginado)` });
+            return { matchedEndpoint: ep, items: all, tried };
           }
+          tried.push({ endpoint: ep, status: `ok (0 itens, wrapped)` });
         } else {
           tried.push({ endpoint: ep, status: "resposta não-array" });
         }
