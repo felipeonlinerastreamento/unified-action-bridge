@@ -16,5 +16,5 @@
 - [x] Admin: lançamentos, métricas, regras automáticas, missões, loja, resgates, sugestões, usuários pendentes.
 - [x] Dashboard em branco: carregamento espera login e papéis (sem tela vazia).
 - [x] Telas restantes: Feed, Duelos, Perfil, Processos, Notificações, Métricas; Admin: relatórios, notificações, duelos, conquistas, análises da IA, auditoria, configurações.
-- [ ] Importação dos dados do TOP — bloqueado: aguardando CSVs exportados no chat do TOP Gamific.
+- [ ] Importação dos dados do TOP via /export (ids originais, idempotente, tarefas nas Tarefas do GS Hub, ADM = Administrativo) + relatório.
 - [ ] Virada: TOP só leitura, delta, liberar menu para todos — aguardando autorização do Felipe.

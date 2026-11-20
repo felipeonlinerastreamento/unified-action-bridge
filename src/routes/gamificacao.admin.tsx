@@ -13,6 +13,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useMetrics, useRanking, useSectors, fmtDate, useMyUserId } from "@/components/gamificacao/gamif-data";
 import { Relatorios, Avisos, DuelosAdmin, Conquistas, Auditoria, Configuracoes, AnalisesIa } from "@/components/gamificacao/admin-extra";
+import { ImportacaoTop } from "@/components/gamificacao/admin-import";
 
 export const Route = createFileRoute("/gamificacao/admin")({
   head: () => ({ meta: [{ title: "Admin da Gamificação | GS Hub" }, { name: "description", content: "Lançamentos, métricas, missões, loja, resgates, relatórios, duelos, auditoria e análises da IA." }, { property: "og:title", content: "Admin da Gamificação | GS Hub" }, { property: "og:description", content: "Administração da gamificação." }, { property: "og:type", content: "website" }, { name: "twitter:card", content: "summary" }] }),
@@ -40,6 +41,7 @@ function AdminPage() {
         <TabsTrigger value="ia">Análises da IA</TabsTrigger>
         <TabsTrigger value="auditoria">Auditoria</TabsTrigger>
         <TabsTrigger value="config">Configurações</TabsTrigger>
+        <TabsTrigger value="importacao">Importação do TOP</TabsTrigger>
       </TabsList>
       <TabsContent value="lancamentos"><Lancamentos /></TabsContent>
       <TabsContent value="metricas"><Metricas /></TabsContent>
@@ -56,6 +58,7 @@ function AdminPage() {
       <TabsContent value="ia"><AnalisesIa /></TabsContent>
       <TabsContent value="auditoria"><Auditoria /></TabsContent>
       <TabsContent value="config"><Configuracoes /></TabsContent>
+      <TabsContent value="importacao"><ImportacaoTop /></TabsContent>
     </Tabs>
   );
 }

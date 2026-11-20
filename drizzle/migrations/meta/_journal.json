@@ -197,6 +197,13 @@
       "when": 1795187019819,
       "tag": "0027_gamification_screens",
       "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "7",
+      "when": 1795190990375,
+      "tag": "0028_gamification_top_import",
+      "breakpoints": true
     }
   ]
 }

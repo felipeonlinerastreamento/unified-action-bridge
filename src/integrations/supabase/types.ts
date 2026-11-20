@@ -3389,6 +3389,30 @@ export type Database = {
           },
         ]
       }
+      gamif_import_runs: {
+        Row: {
+          created_at: string
+          exported_at: string | null
+          id: string
+          ran_by: string | null
+          report: Json
+        }
+        Insert: {
+          created_at?: string
+          exported_at?: string | null
+          id?: string
+          ran_by?: string | null
+          report?: Json
+        }
+        Update: {
+          created_at?: string
+          exported_at?: string | null
+          id?: string
+          ran_by?: string | null
+          report?: Json
+        }
+        Relationships: []
+      }
       gamif_legacy_users: {
         Row: {
           coins: number
@@ -8252,6 +8276,7 @@ export type Database = {
     }
     Functions: {
       _gamif_fanout_notification: { Args: { _id: string }; Returns: number }
+      _gamif_importing: { Args: never; Returns: boolean }
       _gamif_notify_user: {
         Args: { _body: string; _title: string; _user: string }
         Returns: undefined
@@ -8278,6 +8303,8 @@ export type Database = {
           user_name: string
         }[]
       }
+      gamif_import_directory: { Args: never; Returns: Json }
+      gamif_import_top_apply: { Args: { _p: Json }; Returns: Json }
       gamif_is_manager: { Args: never; Returns: boolean }
       gamif_link_legacy_user: {
         Args: { _legacy_id: string; _user_id: string }
