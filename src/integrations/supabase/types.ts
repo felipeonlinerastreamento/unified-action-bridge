@@ -4353,6 +4353,30 @@ export type Database = {
         }
         Relationships: []
       }
+      inactivity_message_settings: {
+        Row: {
+          id: string
+          is_enabled: boolean
+          message: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          is_enabled?: boolean
+          message?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          is_enabled?: boolean
+          message?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       integration_logs: {
         Row: {
           channel_id: string | null
@@ -8129,6 +8153,7 @@ export type Database = {
           contact_name: string | null
           created_at: string
           id: string
+          inactivity_message_sent_at: string | null
           last_message_at: string | null
           last_message_from_me: boolean | null
           last_message_preview: string | null
@@ -8155,6 +8180,7 @@ export type Database = {
           contact_name?: string | null
           created_at?: string
           id?: string
+          inactivity_message_sent_at?: string | null
           last_message_at?: string | null
           last_message_from_me?: boolean | null
           last_message_preview?: string | null
@@ -8181,6 +8207,7 @@ export type Database = {
           contact_name?: string | null
           created_at?: string
           id?: string
+          inactivity_message_sent_at?: string | null
           last_message_at?: string | null
           last_message_from_me?: boolean | null
           last_message_preview?: string | null

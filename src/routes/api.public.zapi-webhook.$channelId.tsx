@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { isGroupPhoneIdentifier } from "@/lib/chat-utils";
+import { shouldSendInactivityMessage } from "@/lib/inactivity-message";
 import { processIncomingForBot } from "@/lib/zapi-bot.server";
 import { loadZapiChannel, zapiSendText } from "@/lib/zapi.server";
 import {
@@ -868,6 +869,10 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
 
           let chatId = existing?.id as string | undefined;
           let justReopenedSilently = false;
+          // Conversa nova (criada agora ou reaberta após finalizada): usada pela
+          // Mensagem de Inatividade, enviada uma única vez por conversa.
+          let isNewConversation = false;
+          let outOfHoursNow = false;
           if (!chatId) {
             // Toda nova conversa deve entrar diretamente no setor Atendimento
             // com o operador menos carregado. Isso evita que chats individuais
@@ -934,6 +939,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               }
             } else {
               chatId = created?.id;
+              isNewConversation = true;
             }
           } else if (existing) {
             // ECHO GUARD (early): se a Z-API entrega como ReceivedCallback o eco
@@ -1021,6 +1027,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               pending_resolve_user_id?: string | null;
               pending_resolve_ticket_id?: string | null;
               pending_resolve_at?: string | null;
+              inactivity_message_sent_at?: string | null;
               lid?: string;
               lid_aliases?: string[];
             } = {
@@ -1067,6 +1074,8 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               if (!picked) picked = await pickLeastLoadedAgent("Atendimento");
               if (!picked) picked = await pickLeastLoadedAgentAny("Atendimento");
               baseUpdate.bot_state = {};
+              baseUpdate.inactivity_message_sent_at = null;
+              isNewConversation = true;
               baseUpdate.sector_name = "Atendimento";
               baseUpdate.assigned_to = picked;
               baseUpdate.status = picked ? "em_atendimento" : "aguardando";
@@ -1331,6 +1340,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
                 const withinHours = bh ? isWithinBusinessHours(bh) : true;
 
                 if (bh && bh.is_enabled && !withinHours) {
+                  outOfHoursNow = true;
                   // Fora do horário: envia mensagem de ausência (com cooldown) e NÃO executa bot.
                   // Também reseta qualquer bot_state pendente para evitar que, na próxima
                   // mensagem do cliente, o bot retome um fluxo antigo (ex.: pedir CPF/CNPJ).
@@ -1397,9 +1407,56 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
               }
             }
 
+            // Mensagem de Inatividade: depois das boas-vindas/menu do bot, uma
+            // única vez por conversa nova; grupos ficam de fora.
+            if (isNewConversation && !p.fromMe && !isGroupMessage) {
+              try {
+                await sendInactivityMessageOnce(channelId, chatId, phone, outOfHoursNow);
+              } catch (e) {
+                console.warn("[zapi-webhook] inactivity message error:", e);
+              }
+            }
+
           }
         }
 
+}
+
+async function sendInactivityMessageOnce(channelId: string, chatId: string, phone: string, outOfHours: boolean) {
+  const { data: cfg } = await supabaseAdmin
+    .from("inactivity_message_settings")
+    .select("is_enabled, message")
+    .eq("id", "default")
+    .maybeSingle();
+  const send = shouldSendInactivityMessage({
+    enabled: !!cfg?.is_enabled,
+    message: cfg?.message,
+    isGroup: false,
+    fromMe: false,
+    isNewConversation: true,
+    alreadySent: false,
+    outOfHours,
+  });
+  if (!send || !cfg) return;
+  // Reserva atômica: só um webhook concorrente consegue marcar a conversa.
+  const { data: claimed } = await supabaseAdmin
+    .from("zapi_chats")
+    .update({ inactivity_message_sent_at: new Date().toISOString() } as any)
+    .eq("id", chatId)
+    .is("inactivity_message_sent_at", null)
+    .select("id")
+    .maybeSingle();
+  if (!claimed) return;
+  const text = cfg.message.trim();
+  const creds = await loadZapiChannel(supabaseAdmin, channelId);
+  await zapiSendText(creds, phone, text);
+  await supabaseAdmin.from("zapi_messages").insert({
+    chat_id: chatId,
+    from_me: true,
+    text,
+    status: "sent",
+    is_bot_message: true,
+  });
 }
 
 async function persistZapiMessage(args: {

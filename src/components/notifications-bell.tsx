@@ -1,8 +1,8 @@
-import { useEffect, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useNotifications, setChatUnread } from "@/hooks/use-notifications";
 import { useNavigate } from "@tanstack/react-router";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/use-auth";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -18,27 +18,9 @@ import { OperatorChatList } from "@/components/operator-chat/operator-chat-list"
 export function NotificationsBell() {
   const qc = useQueryClient();
   const navigate = useNavigate();
-  const { user } = useAuth();
-  const userId = user?.id ?? null;
-  const [chatUnread, setChatUnread] = useState(0);
+  const { userId, notifications, unread, chatUnread, totalUnread, markAllRead, markRead } = useNotifications();
 
-  const { data: notifications = [] } = useQuery({
-    queryKey: ["notifications", userId],
-    queryFn: async () => {
-      if (!userId) return [];
-      const { data } = await supabase
-        .from("notifications")
-        .select("*")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false })
-        .limit(20);
-      return data || [];
-    },
-    enabled: !!userId,
-    refetchInterval: 60000,
-  });
-
-  // Realtime
+  // Realtime (montado uma vez aqui; o balão flutuante usa os mesmos dados)
   useEffect(() => {
     if (!userId) return;
     const channel = supabase
@@ -56,20 +38,8 @@ export function NotificationsBell() {
     return () => { supabase.removeChannel(channel); };
   }, [userId, qc]);
 
-  const unread = notifications.filter((n) => !n.is_read).length;
-  const totalUnread = unread + chatUnread;
-
-  const markAllRead = async () => {
-    if (!userId || unread === 0) return;
-    await supabase.from("notifications").update({ is_read: true, read_at: new Date().toISOString() }).eq("user_id", userId).eq("is_read", false);
-    qc.invalidateQueries({ queryKey: ["notifications", userId] });
-  };
-
   const onClickNotification = async (n: any) => {
-    if (!n.is_read) {
-      await supabase.from("notifications").update({ is_read: true, read_at: new Date().toISOString() }).eq("id", n.id);
-      qc.invalidateQueries({ queryKey: ["notifications", userId] });
-    }
+    if (!n.is_read) await markRead(n.id);
     if (n.ticket_id) navigate({ to: "/atendimentos" });
   };
 

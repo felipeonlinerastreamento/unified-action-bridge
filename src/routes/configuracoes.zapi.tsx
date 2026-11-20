@@ -9,6 +9,7 @@ import { ZapiMessageTemplatesConfig } from "@/components/configuracoes/zapi-mess
 import { BusinessHoursForm } from "@/components/configuracoes/business-hours-form";
 import { EmailChannelsConfig } from "@/components/configuracoes/email-channels-config";
 import { CsatConfig } from "@/components/configuracoes/csat-config";
+import { InactivityMessageConfig } from "@/components/configuracoes/inactivity-message-config";
 import { MessageTriggersConfig } from "@/components/configuracoes/message-triggers-config";
 
 export const Route = createFileRoute("/configuracoes/zapi")({
@@ -46,6 +47,7 @@ function ZapiPage() {
         <BusinessHoursForm />
         <EmailChannelsConfig />
         <ZapiBotFlowEditor />
+        <InactivityMessageConfig />
         <ZapiMessageTemplatesConfig />
         <CsatConfig />
         <MessageTriggersConfig />

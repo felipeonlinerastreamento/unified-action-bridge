@@ -4,6 +4,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { Toaster } from "@/components/ui/sonner";
 import { NotificationsBell } from "@/components/notifications-bell";
+import { FloatingNotificationsBell } from "@/components/floating-notifications-bell";
 import { DailyWelcomeDialog } from "@/components/daily-welcome-dialog";
 import { PendingReminderPopup } from "@/components/pending-reminder-popup";
 import { NotificationPopup } from "@/components/notification-popup";
@@ -87,6 +88,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <ChatInactivityAlert />
         <MessageTriggerAlert />
         <TicketAssignmentAlert />
+        <FloatingNotificationsBell />
       </PanelOnlyGuard>
       <Toaster />
     </SidebarProvider>
