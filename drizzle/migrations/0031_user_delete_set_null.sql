@@ -1,0 +1,4 @@
+ALTER TABLE public.audit_logs DROP CONSTRAINT audit_logs_user_id_fkey, ADD CONSTRAINT audit_logs_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE public.channels DROP CONSTRAINT channels_created_by_fkey, ADD CONSTRAINT channels_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE public.email_channels DROP CONSTRAINT email_channels_created_by_fkey, ADD CONSTRAINT email_channels_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
+ALTER TABLE public.inventory_movements DROP CONSTRAINT inventory_movements_created_by_fkey, ADD CONSTRAINT inventory_movements_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id) ON DELETE SET NULL;
