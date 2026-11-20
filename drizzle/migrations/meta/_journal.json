@@ -309,6 +309,13 @@
       "when": 1795209113142,
       "tag": "0043_active_staff_guard",
       "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1795209417615,
+      "tag": "0044_operator_chat_gestor_read",
+      "breakpoints": true
     }
   ]
 }
