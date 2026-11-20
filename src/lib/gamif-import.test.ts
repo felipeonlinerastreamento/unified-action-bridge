@@ -93,3 +93,43 @@ describe("preparação da importação", () => {
     assert.ok(rep.balances.every((b) => b.ok));
   });
 });
+
+describe("lista de exclusão da importação", () => {
+  const exp = {
+    exported_at: "2026-11-20T16:00:00Z", counts: {},
+    data: {
+      profiles: [
+        { user_id: "t1", email: "ana@x.com", name: "Ana", coins: 70, total_points: 4, created_at: "1" },
+        { user_id: "tx", email: "bia@x.com", name: "Gustavo", coins: 100, total_points: 0, created_at: "2" },
+      ],
+      performance_metrics: [{ id: "m1", name: "Bom", type: "positive", coins_reward: 10, points: 1 }],
+      user_performance_entries: [
+        { id: "e1", user_id: "t1", metric_id: "m1", created_at: "2026-02-18T12:00:00Z" },
+        { id: "e2", user_id: "tx", metric_id: "m1", created_at: "2026-02-18T12:00:00Z" },
+      ],
+      user_streaks: [{ user_id: "tx", current_streak: 3 }],
+      user_notifications: [{ id: "n1", user_id: "tx", notification_id: "x" }],
+      pvp_challenges: [{ id: "d1", challenger_id: "t1", challenged_id: "tx" }],
+      tasks: [{ id: "k1", title: "T", created_by: "t1", assigned_to: "tx", status: "pending" }],
+      task_participants: [{ id: "p1", task_id: "k1", user_id: "tx" }],
+    },
+  };
+  const dir = { users, sectors: [], links: [], exclusions: [{ legacy_id: "tx", name: "Gustavo", email: "bia@x.com" }] };
+  const prep = prepareTopImport(exp, dir, "importer");
+  it("pessoa excluída não é ligada nem fica pendente, mesmo com e-mail igual no GS Hub", () => {
+    assert.deepEqual(prep.mapping.map((m) => m.legacyId), ["t1"]);
+    assert.equal((prep.payload["legacy_users"] as unknown[]).length, 1);
+  });
+  it("nenhum lançamento, ajuste, sequência, aviso ou duelo dela é trazido", () => {
+    const has = (k: string) => JSON.stringify(prep.payload[k]).includes('"tx"');
+    for (const k of ["entries", "adjustments", "streaks", "user_notifications", "pvp_challenges", "task_participants"]) assert.equal(has(k), false, k);
+    assert.equal((prep.payload["pvp_challenges"] as unknown[]).length, 0);
+    assert.equal(prep.excluded["user_performance_entries"], 1);
+  });
+  it("tarefa dela continua, sem responsável", () => {
+    const t = (prep.payload["tasks"] as { id: string; assigned_to: string | null; created_by: string }[])[0];
+    assert.equal(t?.id, "k1");
+    assert.equal(t?.assigned_to, null);
+    assert.equal(t?.created_by, "u1");
+  });
+});

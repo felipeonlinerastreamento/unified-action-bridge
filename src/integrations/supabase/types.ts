@@ -3389,6 +3389,33 @@ export type Database = {
           },
         ]
       }
+      gamif_import_exclusions: {
+        Row: {
+          created_at: string
+          email: string | null
+          excluded_by: string | null
+          legacy_id: string
+          name: string | null
+          reason: string | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          excluded_by?: string | null
+          legacy_id: string
+          name?: string | null
+          reason?: string | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          excluded_by?: string | null
+          legacy_id?: string
+          name?: string | null
+          reason?: string | null
+        }
+        Relationships: []
+      }
       gamif_import_runs: {
         Row: {
           created_at: string

@@ -83,6 +83,15 @@ function Relatorio({ r }: { r: ImportReport }) {
         <Pessoas title="Pendentes" list={r.users.pending} variant="secondary" />
         <Pessoas title="Duplicados" list={r.users.duplicates} variant="destructive" />
       </div>
+      {(r.users.excluded?.length ?? 0) > 0 && (
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm flex items-center gap-2">Excluídos da gamificação<Badge variant="outline">{r.users.excluded?.length}</Badge></CardTitle></CardHeader>
+          <CardContent className="text-sm space-y-1">
+            <p className="text-xs text-muted-foreground">Ficam fora de toda importação do TOP, inclusive em "Importar de novo". As tarefas deles foram mantidas, sem vínculo com essas pessoas.</p>
+            <p>{r.users.excluded?.map((x) => x.name).join(" · ")}</p>
+          </CardContent>
+        </Card>
+      )}
       {r.unmatchedSquads.length > 0 && (
         <p className="text-sm text-muted-foreground">Squads sem setor correspondente no GS Hub: {r.unmatchedSquads.join(", ")}.</p>
       )}
@@ -96,7 +105,7 @@ function Relatorio({ r }: { r: ImportReport }) {
                 <TableRow key={t.table}>
                   <TableCell className="font-mono text-xs">{t.table}</TableCell>
                   <TableCell className="text-right">{t.top}</TableCell>
-                  <TableCell className={`text-right ${t.gs !== null && t.gs < t.top && t.table !== "platform_settings" ? "text-destructive font-medium" : ""}`}>{t.gs ?? "—"}</TableCell>
+                  <TableCell className={`text-right ${t.gs !== null && t.gs < t.top - (t.excluded ?? 0) && t.table !== "platform_settings" ? "text-destructive font-medium" : ""}`}>{t.gs ?? "—"}</TableCell>
                   <TableCell className="text-xs text-muted-foreground">{t.note}</TableCell>
                 </TableRow>
               ))}

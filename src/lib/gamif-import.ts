@@ -7,7 +7,36 @@ export interface TopExport { exported_at: string; counts: Record<string, number>
 export interface DirUser { user_id: string; email: string | null; name: string; is_active: boolean }
 export interface DirSector { id: string; name: string }
 export interface DirLink { legacy_id: string; user_id: string | null; status: string }
-export interface Directory { users: DirUser[]; sectors: DirSector[]; links: DirLink[] }
+export interface DirExclusion { legacy_id: string; name: string | null; email: string | null }
+export interface Directory { users: DirUser[]; sectors: DirSector[]; links: DirLink[]; exclusions?: DirExclusion[] }
+
+/** Tira do export tudo que pertence a pessoas da lista de exclusão; tarefas ficam, sem vínculo com elas. */
+export function applyExclusions(exp: TopExport, excludedIds: Iterable<string>): { exp: TopExport; removed: Record<string, number> } {
+  const ex = new Set([...excludedIds].map(String));
+  const removed: Record<string, number> = {};
+  if (ex.size === 0) return { exp, removed };
+  const isEx = (v: unknown) => v !== null && v !== undefined && ex.has(String(v));
+  // tabelas em que a linha é da pessoa: sai inteira
+  const owner: Record<string, string[]> = {
+    profiles: ["user_id"], user_roles: ["user_id"], user_performance_entries: ["user_id"], user_missions: ["user_id"], redemptions: ["user_id"],
+    pvp_challenges: ["challenger_id", "challenged_id"], suggestions: ["user_id"], suggestion_votes: ["user_id"], user_streaks: ["user_id"],
+    user_notifications: ["user_id"], reading_confirmations: ["user_id"], task_comments: ["user_id"], task_participants: ["user_id"],
+  };
+  // tabelas em que a pessoa só aparece como referência: a linha fica, sem o vínculo
+  const refs: Record<string, string[]> = {
+    tasks: ["created_by", "assigned_to"], notifications: ["created_by"], user_performance_entries: ["applied_by"], redemptions: ["reviewed_by"],
+    pvp_challenges: ["winner_id"], process_changelog: ["user_id"], role_functions: ["created_by"], missions: ["created_by"],
+  };
+  const data: Record<string, Row[]> = {};
+  for (const [t, rows] of Object.entries(exp.data)) {
+    const own = owner[t] ?? [];
+    const kept = rows.filter((r) => !own.some((c) => isEx(r[c])));
+    if (kept.length !== rows.length) removed[t] = rows.length - kept.length;
+    const rc = refs[t] ?? [];
+    data[t] = rc.length ? kept.map((r) => (rc.some((c) => isEx(r[c])) ? { ...r, ...Object.fromEntries(rc.filter((c) => isEx(r[c])).map((c) => [c, null])) } : r)) : kept;
+  }
+  return { exp: { ...exp, data }, removed };
+}
 
 /** Squads do TOP com nome diferente no GS Hub (nome normalizado → setor do GS Hub). */
 export const SECTOR_ALIASES: Record<string, string> = { adm: "administrativo" };
@@ -134,18 +163,23 @@ export interface Prepared {
   payload: Record<string, unknown>;
   mapping: UserMapping[];
   skipped: Record<string, Skip>;
+  /** linhas do TOP deixadas de fora por serem de pessoas excluídas, por tabela */
+  excluded: Record<string, number>;
+  excludedPeople: { legacyId: string; name: string; email: string | null }[];
   unmatchedSquads: string[];
   tasksCreatorFallback: number;
   history: Record<string, { coins: number; xp: number; adjCoins: number; adjXp: number }>;
 }
 
-export function prepareTopImport(exp: TopExport, dir: Directory, importerId: string, aliases: Record<string, string> = SECTOR_ALIASES): Prepared {
+export function prepareTopImport(fullExp: TopExport, dir: Directory, importerId: string, aliases: Record<string, string> = SECTOR_ALIASES): Prepared {
+  const { exp, removed } = applyExclusions(fullExp, (dir.exclusions ?? []).map((x) => x.legacy_id));
   const d = (t: string): Row[] => exp.data[t] ?? [];
   const mapping = mapTopUsers(d("profiles"), dir.users, dir.links);
   const uid = new Map(mapping.map((m) => [m.legacyId, m.userId]));
   const u = (id: unknown): string | null => (id ? uid.get(String(id)) ?? null : null);
   const skipped: Record<string, Skip> = {};
   const skip = (t: string, reason: string) => { skipped[t] = { count: (skipped[t]?.count ?? 0) + 1, reason }; };
+  const excluded: Record<string, number> = removed;
 
   const sectorByName = new Map(dir.sectors.map((s) => [normalizeName(s.name), s.id]));
   const unmatched = new Set<string>();
@@ -329,7 +363,8 @@ export function prepareTopImport(exp: TopExport, dir: Directory, importerId: str
     task_participants: participants,
     task_comments: comments,
   };
-  return { payload, mapping, skipped, unmatchedSquads: [...unmatched].sort(), tasksCreatorFallback, history };
+  const excludedPeople = (dir.exclusions ?? []).map((x) => ({ legacyId: String(x.legacy_id), name: x.name ?? "", email: x.email ?? null }));
+  return { payload, mapping, skipped, excluded, excludedPeople, unmatchedSquads: [...unmatched].sort(), tasksCreatorFallback, history };
 }
 
 export interface ApplyResult {
@@ -340,8 +375,8 @@ export interface ApplyResult {
 export interface ImportReport {
   exported_at: string;
   ran_at: string;
-  users: { linked: UserMapping[]; pending: UserMapping[]; duplicates: UserMapping[] };
-  tables: { table: string; top: number; gs: number | null; note: string }[];
+  users: { linked: UserMapping[]; pending: UserMapping[]; duplicates: UserMapping[]; excluded?: { legacyId: string; name: string; email: string | null }[] };
+  tables: { table: string; top: number; gs: number | null; note: string; excluded?: number }[];
   balances: { name: string; email: string | null; status: string; gsName: string | null; topCoins: number; gsCoins: number; topXp: number; gsXp: number; historyCoins: number; adjustmentCoins: number; ok: boolean }[];
   unmatchedSquads: string[];
   tasksCreatorFallback: number;
@@ -361,11 +396,13 @@ export function buildImportReport(exp: TopExport, prep: Prepared, applied: Apply
     const sk = prep.skipped[t];
     if (t === "platform_settings") return { table: t, top, gs: Object.keys((prep.payload["settings"] as Row)["top_settings"] ?? {}).length, note: NOT_IMPORTED[t] ?? "" };
     if (!target) return { table: t, top, gs: null, note: NOT_IMPORTED[t] ?? "" };
+    const exn = prep.excluded[t] ?? 0;
     let note = sk ? `${sk.count} não trazido(s): ${sk.reason}` : "";
+    if (exn) note = `${note ? note + " · " : ""}${exn} de pessoa(s) excluída(s) da gamificação`;
     if (t === "user_performance_entries") note = `${note ? note + " · " : ""}+${applied.present["adjustments"] ?? 0} ajuste(s) de saldo da migração`;
     if (t === "tasks" && prep.tasksCreatorFallback) note = `${note ? note + " · " : ""}${prep.tasksCreatorFallback} com criador pendente, registradas em nome de quem importou`;
     if (t === "auto_metric_rules") note = "Entra desligada para não pontuar em dobro enquanto o TOP funciona; ligar na virada.";
-    return { table: t, top, gs: applied.present[target] ?? 0, note };
+    return { table: t, top, gs: applied.present[target] ?? 0, note, excluded: exn };
   });
   const balances = prep.mapping.map((m) => {
     const p = profiles.get(m.legacyId) ?? {};
@@ -380,7 +417,7 @@ export function buildImportReport(exp: TopExport, prep: Prepared, applied: Apply
   });
   return {
     exported_at: exp.exported_at, ran_at: ranAt,
-    users: { linked: status("ligado"), pending: status("pendente"), duplicates: status("duplicado") },
+    users: { linked: status("ligado"), pending: status("pendente"), duplicates: status("duplicado"), excluded: prep.excludedPeople },
     tables, balances, unmatchedSquads: prep.unmatchedSquads, tasksCreatorFallback: prep.tasksCreatorFallback,
   };
 }
