@@ -225,6 +225,13 @@
       "when": 1795192884620,
       "tag": "0031_user_delete_set_null",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1795194480835,
+      "tag": "0032_gamification_disable_top_import",
+      "breakpoints": true
     }
   ]
 }

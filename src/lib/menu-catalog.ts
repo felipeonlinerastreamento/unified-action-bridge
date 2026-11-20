@@ -25,7 +25,6 @@ export const MENU_CATALOG: MenuEntry[] = [
   { slug: "agenda.solicitacoes", label: "Agenda — Solicitações", category: "main" },
   { slug: "chat-operadores", label: "Chat com Operadores", category: "main" },
   { slug: "painel-tv", label: "Painel TV (Monitoramento)", category: "main" },
-  { slug: "top-gamific", label: "Top Gamific", category: "main" },
   { slug: "gamificacao", label: "Gamificação", category: "main" },
   { slug: "assistente-ia", label: "Assistente IA", category: "main" },
 
@@ -77,7 +76,6 @@ export const URL_TO_MENU_SLUG: Record<string, string> = {
   "/agenda/solicitacoes": "agenda.solicitacoes",
   "/chat-operadores": "chat-operadores",
   "/painel-tv": "painel-tv",
-  "/top-gamific": "top-gamific",
   "/gamificacao": "gamificacao",
   "/assistente-ia": "assistente-ia",
   "/configuracoes": "config.integracoes",

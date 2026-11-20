@@ -17,5 +17,5 @@
 - [x] Dashboard em branco: carregamento espera login e papéis (sem tela vazia).
 - [x] Telas restantes: Feed, Duelos, Perfil, Processos, Notificações, Métricas; Admin: relatórios, notificações, duelos, conquistas, análises da IA, auditoria, configurações.
 - [x] Importação dos dados do TOP via /export (ids originais, idempotente, tarefas nas Tarefas do GS Hub, ADM = Administrativo) + relatório.
-- [ ] Ligar 20 pessoas pendentes (e-mail do TOP diferente do GS Hub) e repetir a importação — aguardando Felipe.
-- [ ] Virada: TOP só leitura, delta, liberar menu para todos — aguardando autorização do Felipe.
+- [x] Pessoas pendentes ligadas/excluídas e importação repetida.
+- [x] Virada: importação desativada (função insegura removida), regra automática do Atendimento ligada, menu liberado para todos, /top-gamific removida, verificação de segurança.

@@ -25,7 +25,6 @@ import { Route as GamificacaoRouteImport } from './routes/gamificacao'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as PainelTvRouteImport } from './routes/painel-tv'
 import { Route as RelatoriosRouteImport } from './routes/relatorios'
-import { Route as TopGamificRouteImport } from './routes/top-gamific'
 import { Route as TratativasRouteImport } from './routes/tratativas'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as AgendaIndexRouteImport } from './routes/agenda.index'
@@ -156,11 +155,6 @@ const PainelTvRoute = PainelTvRouteImport.update({
 const RelatoriosRoute = RelatoriosRouteImport.update({
   id: '/relatorios',
   path: '/relatorios',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const TopGamificRoute = TopGamificRouteImport.update({
-  id: '/top-gamific',
-  path: '/top-gamific',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TratativasRoute = TratativasRouteImport.update({
@@ -453,7 +447,6 @@ export interface FileRoutesByFullPath {
   '/mcp': typeof McpRoute
   '/painel-tv': typeof PainelTvRoute
   '/relatorios': typeof RelatoriosRoute
-  '/top-gamific': typeof TopGamificRoute
   '/tratativas': typeof TratativasRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/agenda/atividades': typeof AgendaAtividadesRoute
@@ -520,7 +513,6 @@ export interface FileRoutesByTo {
   '/mcp': typeof McpRoute
   '/painel-tv': typeof PainelTvRoute
   '/relatorios': typeof RelatoriosRoute
-  '/top-gamific': typeof TopGamificRoute
   '/tratativas': typeof TratativasRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/agenda/atividades': typeof AgendaAtividadesRoute
@@ -591,7 +583,6 @@ export interface FileRoutesById {
   '/mcp': typeof McpRoute
   '/painel-tv': typeof PainelTvRoute
   '/relatorios': typeof RelatoriosRoute
-  '/top-gamific': typeof TopGamificRoute
   '/tratativas': typeof TratativasRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/agenda/atividades': typeof AgendaAtividadesRoute
@@ -663,7 +654,6 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/painel-tv'
     | '/relatorios'
-    | '/top-gamific'
     | '/tratativas'
     | '/.well-known/oauth-protected-resource'
     | '/agenda/atividades'
@@ -730,7 +720,6 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/painel-tv'
     | '/relatorios'
-    | '/top-gamific'
     | '/tratativas'
     | '/.well-known/oauth-protected-resource'
     | '/agenda/atividades'
@@ -800,7 +789,6 @@ export interface FileRouteTypes {
     | '/mcp'
     | '/painel-tv'
     | '/relatorios'
-    | '/top-gamific'
     | '/tratativas'
     | '/.well-known/oauth-protected-resource'
     | '/agenda/atividades'
@@ -871,7 +859,6 @@ export interface RootRouteChildren {
   McpRoute: typeof McpRoute
   PainelTvRoute: typeof PainelTvRoute
   RelatoriosRoute: typeof RelatoriosRoute
-  TopGamificRoute: typeof TopGamificRoute
   TratativasRoute: typeof TratativasRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   AtendimentosTarefasRoute: typeof AtendimentosTarefasRoute
@@ -1003,13 +990,6 @@ declare module '@tanstack/react-router' {
       path: '/relatorios'
       fullPath: '/relatorios'
       preLoaderRoute: typeof RelatoriosRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/top-gamific': {
-      id: '/top-gamific'
-      path: '/top-gamific'
-      fullPath: '/top-gamific'
-      preLoaderRoute: typeof TopGamificRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tratativas': {
@@ -1487,7 +1467,6 @@ const rootRouteChildren: RootRouteChildren = {
   McpRoute: McpRoute,
   PainelTvRoute: PainelTvRoute,
   RelatoriosRoute: RelatoriosRoute,
-  TopGamificRoute: TopGamificRoute,
   TratativasRoute: TratativasRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,

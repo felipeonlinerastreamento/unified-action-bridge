@@ -1,6 +1,6 @@
 import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
-import { canSeeGamification, matchUsersByEmail, canAfford, levelFromXp, ruleAppliesOn, computeStreak, duelOutcome, validDuelStake, readingStatus, aggregateEntries, parseGamifSettings } from "./gamif-rules";
+import { GAMIF_RELEASED, canSeeGamification, matchUsersByEmail, canAfford, levelFromXp, ruleAppliesOn, computeStreak, duelOutcome, validDuelStake, readingStatus, aggregateEntries, parseGamifSettings } from "./gamif-rules";
 
 describe("acesso à Gamificação antes da liberação", () => {
   it("só admin vê enquanto não liberado", () => {
@@ -9,6 +9,10 @@ describe("acesso à Gamificação antes da liberação", () => {
   });
   it("todos veem após liberar", () => {
     assert.equal(canSeeGamification({ isAdmin: false }, true), true);
+  });
+  it("liberada para todos desde a virada", () => {
+    assert.equal(GAMIF_RELEASED, true);
+    assert.equal(canSeeGamification({ isAdmin: false }), true);
   });
 });
 

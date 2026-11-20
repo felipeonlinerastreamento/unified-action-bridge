@@ -1,7 +1,7 @@
 // Regras puras da Gamificação (testadas em gamif-rules.test.ts).
 
-/** Enquanto false, o menu e as telas da Gamificação ficam só para admins. */
-export const GAMIF_RELEASED = false;
+/** Liberada para todos na virada (20/11/2026); o Admin da gamificação segue só para admin e gestor. */
+export const GAMIF_RELEASED = true;
 
 export function canSeeGamification(roles: { isAdmin: boolean }, released = GAMIF_RELEASED): boolean {
   return released || roles.isAdmin;
