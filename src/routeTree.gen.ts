@@ -21,6 +21,7 @@ import { Route as CrmRouteImport } from './routes/crm'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as EmpresasRouteImport } from './routes/empresas'
 import { Route as EstoqueRouteImport } from './routes/estoque'
+import { Route as GamificacaoRouteImport } from './routes/gamificacao'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as PainelTvRouteImport } from './routes/painel-tv'
 import { Route as RelatoriosRouteImport } from './routes/relatorios'
@@ -49,6 +50,13 @@ import { Route as ConfiguracoesRoboAtendimentoRouteImport } from './routes/confi
 import { Route as ConfiguracoesStatusUsuariosRouteImport } from './routes/configuracoes.status-usuarios'
 import { Route as ConfiguracoesUsuariosRouteImport } from './routes/configuracoes.usuarios'
 import { Route as ConfiguracoesZapiRouteImport } from './routes/configuracoes.zapi'
+import { Route as GamificacaoIndexRouteImport } from './routes/gamificacao.index'
+import { Route as GamificacaoAdminRouteImport } from './routes/gamificacao.admin'
+import { Route as GamificacaoHistoricoRouteImport } from './routes/gamificacao.historico'
+import { Route as GamificacaoLojaRouteImport } from './routes/gamificacao.loja'
+import { Route as GamificacaoMissoesRouteImport } from './routes/gamificacao.missoes'
+import { Route as GamificacaoRankingsRouteImport } from './routes/gamificacao.rankings'
+import { Route as GamificacaoSugestoesRouteImport } from './routes/gamificacao.sugestoes'
 import { Route as HooksRefreshTrackingRouteImport } from './routes/hooks/refresh-tracking'
 import { Route as PropostaTokenRouteImport } from './routes/proposta.$token'
 import { Route as TermoServicoTokenRouteImport } from './routes/termo-servico.$token'
@@ -122,6 +130,11 @@ const EmpresasRoute = EmpresasRouteImport.update({
 const EstoqueRoute = EstoqueRouteImport.update({
   id: '/estoque',
   path: '/estoque',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GamificacaoRoute = GamificacaoRouteImport.update({
+  id: '/gamificacao',
+  path: '/gamificacao',
   getParentRoute: () => rootRouteImport,
 } as any)
 const McpRoute = McpRouteImport.update({
@@ -275,6 +288,41 @@ const ConfiguracoesZapiRoute = ConfiguracoesZapiRouteImport.update({
   path: '/zapi',
   getParentRoute: () => ConfiguracoesRoute,
 } as any)
+const GamificacaoIndexRoute = GamificacaoIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => GamificacaoRoute,
+} as any)
+const GamificacaoAdminRoute = GamificacaoAdminRouteImport.update({
+  id: '/admin',
+  path: '/admin',
+  getParentRoute: () => GamificacaoRoute,
+} as any)
+const GamificacaoHistoricoRoute = GamificacaoHistoricoRouteImport.update({
+  id: '/historico',
+  path: '/historico',
+  getParentRoute: () => GamificacaoRoute,
+} as any)
+const GamificacaoLojaRoute = GamificacaoLojaRouteImport.update({
+  id: '/loja',
+  path: '/loja',
+  getParentRoute: () => GamificacaoRoute,
+} as any)
+const GamificacaoMissoesRoute = GamificacaoMissoesRouteImport.update({
+  id: '/missoes',
+  path: '/missoes',
+  getParentRoute: () => GamificacaoRoute,
+} as any)
+const GamificacaoRankingsRoute = GamificacaoRankingsRouteImport.update({
+  id: '/rankings',
+  path: '/rankings',
+  getParentRoute: () => GamificacaoRoute,
+} as any)
+const GamificacaoSugestoesRoute = GamificacaoSugestoesRouteImport.update({
+  id: '/sugestoes',
+  path: '/sugestoes',
+  getParentRoute: () => GamificacaoRoute,
+} as any)
 const HooksRefreshTrackingRoute = HooksRefreshTrackingRouteImport.update({
   id: '/hooks/refresh-tracking',
   path: '/hooks/refresh-tracking',
@@ -365,6 +413,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
+  '/gamificacao': typeof GamificacaoRouteWithChildren
   '/mcp': typeof McpRoute
   '/painel-tv': typeof PainelTvRoute
   '/relatorios': typeof RelatoriosRoute
@@ -391,11 +440,18 @@ export interface FileRoutesByFullPath {
   '/configuracoes/status-usuarios': typeof ConfiguracoesStatusUsuariosRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
+  '/gamificacao/admin': typeof GamificacaoAdminRoute
+  '/gamificacao/historico': typeof GamificacaoHistoricoRoute
+  '/gamificacao/loja': typeof GamificacaoLojaRoute
+  '/gamificacao/missoes': typeof GamificacaoMissoesRoute
+  '/gamificacao/rankings': typeof GamificacaoRankingsRoute
+  '/gamificacao/sugestoes': typeof GamificacaoSugestoesRoute
   '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
   '/proposta/$token': typeof PropostaTokenRoute
   '/termo-servico/$token': typeof TermoServicoTokenRoute
   '/agenda/': typeof AgendaIndexRoute
   '/configuracoes/': typeof ConfiguracoesIndexRoute
+  '/gamificacao/': typeof GamificacaoIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/api/public/auto-route-aguardando': typeof ApiPublicAutoRouteAguardandoRoute
   '/api/public/bot-auto-reply-scanner': typeof ApiPublicBotAutoReplyScannerRoute
@@ -445,11 +501,18 @@ export interface FileRoutesByTo {
   '/configuracoes/status-usuarios': typeof ConfiguracoesStatusUsuariosRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
+  '/gamificacao/admin': typeof GamificacaoAdminRoute
+  '/gamificacao/historico': typeof GamificacaoHistoricoRoute
+  '/gamificacao/loja': typeof GamificacaoLojaRoute
+  '/gamificacao/missoes': typeof GamificacaoMissoesRoute
+  '/gamificacao/rankings': typeof GamificacaoRankingsRoute
+  '/gamificacao/sugestoes': typeof GamificacaoSugestoesRoute
   '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
   '/proposta/$token': typeof PropostaTokenRoute
   '/termo-servico/$token': typeof TermoServicoTokenRoute
   '/agenda': typeof AgendaIndexRoute
   '/configuracoes': typeof ConfiguracoesIndexRoute
+  '/gamificacao': typeof GamificacaoIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/api/public/auto-route-aguardando': typeof ApiPublicAutoRouteAguardandoRoute
   '/api/public/bot-auto-reply-scanner': typeof ApiPublicBotAutoReplyScannerRoute
@@ -476,6 +539,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
+  '/gamificacao': typeof GamificacaoRouteWithChildren
   '/mcp': typeof McpRoute
   '/painel-tv': typeof PainelTvRoute
   '/relatorios': typeof RelatoriosRoute
@@ -502,11 +566,18 @@ export interface FileRoutesById {
   '/configuracoes/status-usuarios': typeof ConfiguracoesStatusUsuariosRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
+  '/gamificacao/admin': typeof GamificacaoAdminRoute
+  '/gamificacao/historico': typeof GamificacaoHistoricoRoute
+  '/gamificacao/loja': typeof GamificacaoLojaRoute
+  '/gamificacao/missoes': typeof GamificacaoMissoesRoute
+  '/gamificacao/rankings': typeof GamificacaoRankingsRoute
+  '/gamificacao/sugestoes': typeof GamificacaoSugestoesRoute
   '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
   '/proposta/$token': typeof PropostaTokenRoute
   '/termo-servico/$token': typeof TermoServicoTokenRoute
   '/agenda/': typeof AgendaIndexRoute
   '/configuracoes/': typeof ConfiguracoesIndexRoute
+  '/gamificacao/': typeof GamificacaoIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/api/public/auto-route-aguardando': typeof ApiPublicAutoRouteAguardandoRoute
   '/api/public/bot-auto-reply-scanner': typeof ApiPublicBotAutoReplyScannerRoute
@@ -534,6 +605,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/empresas'
     | '/estoque'
+    | '/gamificacao'
     | '/mcp'
     | '/painel-tv'
     | '/relatorios'
@@ -560,11 +632,18 @@ export interface FileRouteTypes {
     | '/configuracoes/status-usuarios'
     | '/configuracoes/usuarios'
     | '/configuracoes/zapi'
+    | '/gamificacao/admin'
+    | '/gamificacao/historico'
+    | '/gamificacao/loja'
+    | '/gamificacao/missoes'
+    | '/gamificacao/rankings'
+    | '/gamificacao/sugestoes'
     | '/hooks/refresh-tracking'
     | '/proposta/$token'
     | '/termo-servico/$token'
     | '/agenda/'
     | '/configuracoes/'
+    | '/gamificacao/'
     | '/.lovable/oauth/consent'
     | '/api/public/auto-route-aguardando'
     | '/api/public/bot-auto-reply-scanner'
@@ -614,11 +693,18 @@ export interface FileRouteTypes {
     | '/configuracoes/status-usuarios'
     | '/configuracoes/usuarios'
     | '/configuracoes/zapi'
+    | '/gamificacao/admin'
+    | '/gamificacao/historico'
+    | '/gamificacao/loja'
+    | '/gamificacao/missoes'
+    | '/gamificacao/rankings'
+    | '/gamificacao/sugestoes'
     | '/hooks/refresh-tracking'
     | '/proposta/$token'
     | '/termo-servico/$token'
     | '/agenda'
     | '/configuracoes'
+    | '/gamificacao'
     | '/.lovable/oauth/consent'
     | '/api/public/auto-route-aguardando'
     | '/api/public/bot-auto-reply-scanner'
@@ -644,6 +730,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/empresas'
     | '/estoque'
+    | '/gamificacao'
     | '/mcp'
     | '/painel-tv'
     | '/relatorios'
@@ -670,11 +757,18 @@ export interface FileRouteTypes {
     | '/configuracoes/status-usuarios'
     | '/configuracoes/usuarios'
     | '/configuracoes/zapi'
+    | '/gamificacao/admin'
+    | '/gamificacao/historico'
+    | '/gamificacao/loja'
+    | '/gamificacao/missoes'
+    | '/gamificacao/rankings'
+    | '/gamificacao/sugestoes'
     | '/hooks/refresh-tracking'
     | '/proposta/$token'
     | '/termo-servico/$token'
     | '/agenda/'
     | '/configuracoes/'
+    | '/gamificacao/'
     | '/.lovable/oauth/consent'
     | '/api/public/auto-route-aguardando'
     | '/api/public/bot-auto-reply-scanner'
@@ -701,6 +795,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   EmpresasRoute: typeof EmpresasRoute
   EstoqueRoute: typeof EstoqueRoute
+  GamificacaoRoute: typeof GamificacaoRouteWithChildren
   McpRoute: typeof McpRoute
   PainelTvRoute: typeof PainelTvRoute
   RelatoriosRoute: typeof RelatoriosRoute
@@ -808,6 +903,13 @@ declare module '@tanstack/react-router' {
       path: '/estoque'
       fullPath: '/estoque'
       preLoaderRoute: typeof EstoqueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/gamificacao': {
+      id: '/gamificacao'
+      path: '/gamificacao'
+      fullPath: '/gamificacao'
+      preLoaderRoute: typeof GamificacaoRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mcp': {
@@ -1006,6 +1108,55 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConfiguracoesZapiRouteImport
       parentRoute: typeof ConfiguracoesRoute
     }
+    '/gamificacao/': {
+      id: '/gamificacao/'
+      path: '/'
+      fullPath: '/gamificacao/'
+      preLoaderRoute: typeof GamificacaoIndexRouteImport
+      parentRoute: typeof GamificacaoRoute
+    }
+    '/gamificacao/admin': {
+      id: '/gamificacao/admin'
+      path: '/admin'
+      fullPath: '/gamificacao/admin'
+      preLoaderRoute: typeof GamificacaoAdminRouteImport
+      parentRoute: typeof GamificacaoRoute
+    }
+    '/gamificacao/historico': {
+      id: '/gamificacao/historico'
+      path: '/historico'
+      fullPath: '/gamificacao/historico'
+      preLoaderRoute: typeof GamificacaoHistoricoRouteImport
+      parentRoute: typeof GamificacaoRoute
+    }
+    '/gamificacao/loja': {
+      id: '/gamificacao/loja'
+      path: '/loja'
+      fullPath: '/gamificacao/loja'
+      preLoaderRoute: typeof GamificacaoLojaRouteImport
+      parentRoute: typeof GamificacaoRoute
+    }
+    '/gamificacao/missoes': {
+      id: '/gamificacao/missoes'
+      path: '/missoes'
+      fullPath: '/gamificacao/missoes'
+      preLoaderRoute: typeof GamificacaoMissoesRouteImport
+      parentRoute: typeof GamificacaoRoute
+    }
+    '/gamificacao/rankings': {
+      id: '/gamificacao/rankings'
+      path: '/rankings'
+      fullPath: '/gamificacao/rankings'
+      preLoaderRoute: typeof GamificacaoRankingsRouteImport
+      parentRoute: typeof GamificacaoRoute
+    }
+    '/gamificacao/sugestoes': {
+      id: '/gamificacao/sugestoes'
+      path: '/sugestoes'
+      fullPath: '/gamificacao/sugestoes'
+      preLoaderRoute: typeof GamificacaoSugestoesRouteImport
+      parentRoute: typeof GamificacaoRoute
+    }
     '/hooks/refresh-tracking': {
       id: '/hooks/refresh-tracking'
       path: '/hooks/refresh-tracking'
@@ -1169,6 +1320,30 @@ const ConfiguracoesRouteWithChildren = ConfiguracoesRoute._addFileChildren(
   ConfiguracoesRouteChildren,
 )
 
+interface GamificacaoRouteChildren {
+  GamificacaoAdminRoute: typeof GamificacaoAdminRoute
+  GamificacaoHistoricoRoute: typeof GamificacaoHistoricoRoute
+  GamificacaoLojaRoute: typeof GamificacaoLojaRoute
+  GamificacaoMissoesRoute: typeof GamificacaoMissoesRoute
+  GamificacaoRankingsRoute: typeof GamificacaoRankingsRoute
+  GamificacaoSugestoesRoute: typeof GamificacaoSugestoesRoute
+  GamificacaoIndexRoute: typeof GamificacaoIndexRoute
+}
+
+const GamificacaoRouteChildren: GamificacaoRouteChildren = {
+  GamificacaoAdminRoute: GamificacaoAdminRoute,
+  GamificacaoHistoricoRoute: GamificacaoHistoricoRoute,
+  GamificacaoLojaRoute: GamificacaoLojaRoute,
+  GamificacaoMissoesRoute: GamificacaoMissoesRoute,
+  GamificacaoRankingsRoute: GamificacaoRankingsRoute,
+  GamificacaoSugestoesRoute: GamificacaoSugestoesRoute,
+  GamificacaoIndexRoute: GamificacaoIndexRoute,
+}
+
+const GamificacaoRouteWithChildren = GamificacaoRoute._addFileChildren(
+  GamificacaoRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AgendaRoute: AgendaRouteWithChildren,
@@ -1182,6 +1357,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   EmpresasRoute: EmpresasRoute,
   EstoqueRoute: EstoqueRoute,
+  GamificacaoRoute: GamificacaoRouteWithChildren,
   McpRoute: McpRoute,
   PainelTvRoute: PainelTvRoute,
   RelatoriosRoute: RelatoriosRoute,

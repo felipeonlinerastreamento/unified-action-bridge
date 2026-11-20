@@ -176,6 +176,20 @@
       "when": 1795118297598,
       "tag": "0024_fix_technical_term_trigger_recurring",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1795185982190,
+      "tag": "0025_gamification_core",
+      "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1795186185605,
+      "tag": "0026_gamification_link_legacy_and_cron",
+      "breakpoints": true
     }
   ]
 }

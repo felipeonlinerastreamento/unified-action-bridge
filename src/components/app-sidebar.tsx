@@ -65,6 +65,7 @@ import {
   SidebarSeparator,
   useSidebar,
 } from "@/components/ui/sidebar";
+import { canSeeGamification } from "@/lib/gamif-rules";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 
 const mainItems = [
@@ -79,6 +80,7 @@ const mainItems = [
   { title: "Chat com Operadores", url: "/chat-operadores", icon: MessageCircle },
   { title: "Painel TV", url: "/painel-tv", icon: Monitor },
   { title: "Top Gamific", url: "/top-gamific", icon: Trophy },
+  { title: "Gamificação", url: "/gamificacao", icon: Trophy },
   { title: "Assistente IA", url: "/assistente-ia", icon: Bot },
 ];
 
@@ -306,7 +308,7 @@ export function AppSidebar() {
 
               {/* Demais itens (pulando Dashboard) */}
               {mainItems.slice(1)
-                .filter((item) => canSeeUrl(item.url))
+                .filter((item) => (item.url === "/gamificacao" ? canSeeGamification({ isAdmin }) : canSeeUrl(item.url)))
                 .map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton

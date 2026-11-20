@@ -3145,6 +3145,995 @@ export type Database = {
         }
         Relationships: []
       }
+      gamif_activity_checklist: {
+        Row: {
+          created_at: string
+          data: Json
+          id: string
+          sector_id: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json
+          id?: string
+          sector_id?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          id?: string
+          sector_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gamif_activity_checklist_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gamif_audit_logs: {
+        Row: {
+          action: string
+          actor_id: string | null
+          created_at: string
+          details: Json
+          entity: string | null
+          entity_id: string | null
+          id: string
+        }
+        Insert: {
+          action: string
+          actor_id?: string | null
+          created_at?: string
+          details?: Json
+          entity?: string | null
+          entity_id?: string | null
+          id?: string
+        }
+        Update: {
+          action?: string
+          actor_id?: string | null
+          created_at?: string
+          details?: Json
+          entity?: string | null
+          entity_id?: string | null
+          id?: string
+        }
+        Relationships: []
+      }
+      gamif_auto_rules: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          metric_id: string | null
+          sector_id: string | null
+          weekdays: number[]
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          metric_id?: string | null
+          sector_id?: string | null
+          weekdays?: number[]
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          metric_id?: string | null
+          sector_id?: string | null
+          weekdays?: number[]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gamif_auto_rules_metric_id_fkey"
+            columns: ["metric_id"]
+            isOneToOne: false
+            referencedRelation: "gamif_metrics"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "gamif_auto_rules_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gamif_badges: {
+        Row: {
+          created_at: string
+          criteria: Json
+          description: string | null
+          icon: string | null
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          criteria?: Json
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          criteria?: Json
+          description?: string | null
+          icon?: string | null
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
+      gamif_complementary_activities: {
+        Row: {
+          created_at: string
+          data: Json
+          id: string
+          legacy_user_id: string | null
+          title: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          data?: Json
+          id?: string
+          legacy_user_id?: string | null
+          title: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          id?: string
+          legacy_user_id?: string | null
+          title?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      gamif_daily_performance: {
+        Row: {
+          created_at: string
+          data: Json
+          id: string
+          legacy_user_id: string | null
+          perf_date: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          data?: Json
+          id?: string
+          legacy_user_id?: string | null
+          perf_date: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          id?: string
+          legacy_user_id?: string | null
+          perf_date?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      gamif_entries: {
+        Row: {
+          acknowledged: boolean
+          auto_rule_id: string | null
+          coins: number
+          created_at: string
+          created_by: string | null
+          entry_date: string
+          id: string
+          legacy_user_id: string | null
+          metric_id: string | null
+          metric_name: string | null
+          notes: string | null
+          source: string
+          user_id: string | null
+          xp: number
+        }
+        Insert: {
+          acknowledged?: boolean
+          auto_rule_id?: string | null
+          coins?: number
+          created_at?: string
+          created_by?: string | null
+          entry_date?: string
+          id?: string
+          legacy_user_id?: string | null
+          metric_id?: string | null
+          metric_name?: string | null
+          notes?: string | null
+          source?: string
+          user_id?: string | null
+          xp?: number
+        }
+        Update: {
+          acknowledged?: boolean
+          auto_rule_id?: string | null
+          coins?: number
+          created_at?: string
+          created_by?: string | null
+          entry_date?: string
+          id?: string
+          legacy_user_id?: string | null
+          metric_id?: string | null
+          metric_name?: string | null
+          notes?: string | null
+          source?: string
+          user_id?: string | null
+          xp?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gamif_entries_metric_id_fkey"
+            columns: ["metric_id"]
+            isOneToOne: false
+            referencedRelation: "gamif_metrics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gamif_legacy_users: {
+        Row: {
+          coins: number
+          created_at: string
+          email: string | null
+          legacy_id: string
+          name: string | null
+          raw: Json
+          status: string
+          user_id: string | null
+          xp: number
+        }
+        Insert: {
+          coins?: number
+          created_at?: string
+          email?: string | null
+          legacy_id: string
+          name?: string | null
+          raw?: Json
+          status?: string
+          user_id?: string | null
+          xp?: number
+        }
+        Update: {
+          coins?: number
+          created_at?: string
+          email?: string | null
+          legacy_id?: string
+          name?: string | null
+          raw?: Json
+          status?: string
+          user_id?: string | null
+          xp?: number
+        }
+        Relationships: []
+      }
+      gamif_metric_categories: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          name: string
+          position: number
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          position?: number
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          position?: number
+        }
+        Relationships: []
+      }
+      gamif_metrics: {
+        Row: {
+          category_id: string | null
+          coins: number
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          metric_type: string
+          name: string
+          xp: number
+        }
+        Insert: {
+          category_id?: string | null
+          coins?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          metric_type?: string
+          name: string
+          xp?: number
+        }
+        Update: {
+          category_id?: string | null
+          coins?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          metric_type?: string
+          name?: string
+          xp?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gamif_metrics_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "gamif_metric_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gamif_missions: {
+        Row: {
+          category: string | null
+          created_at: string
+          created_by: string | null
+          description: string | null
+          expires_at: string | null
+          id: string
+          mission_type: string | null
+          reward_coins: number
+          reward_xp: number
+          starts_at: string | null
+          status: string
+          target: number | null
+          target_sector_id: string | null
+          title: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          mission_type?: string | null
+          reward_coins?: number
+          reward_xp?: number
+          starts_at?: string | null
+          status?: string
+          target?: number | null
+          target_sector_id?: string | null
+          title: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          expires_at?: string | null
+          id?: string
+          mission_type?: string | null
+          reward_coins?: number
+          reward_xp?: number
+          starts_at?: string | null
+          status?: string
+          target?: number | null
+          target_sector_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gamif_missions_target_sector_id_fkey"
+            columns: ["target_sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gamif_notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          scheduled_at: string | null
+          sent_at: string | null
+          target_sector_id: string | null
+          title: string
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          scheduled_at?: string | null
+          sent_at?: string | null
+          target_sector_id?: string | null
+          title: string
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          scheduled_at?: string | null
+          sent_at?: string | null
+          target_sector_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gamif_notifications_target_sector_id_fkey"
+            columns: ["target_sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gamif_process_changelog: {
+        Row: {
+          changed_by: string | null
+          created_at: string
+          id: string
+          process_id: string | null
+          summary: string | null
+          version: number | null
+        }
+        Insert: {
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          process_id?: string | null
+          summary?: string | null
+          version?: number | null
+        }
+        Update: {
+          changed_by?: string | null
+          created_at?: string
+          id?: string
+          process_id?: string | null
+          summary?: string | null
+          version?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gamif_process_changelog_process_id_fkey"
+            columns: ["process_id"]
+            isOneToOne: false
+            referencedRelation: "gamif_processes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gamif_process_suggestions: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          process_id: string | null
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          process_id?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          process_id?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gamif_process_suggestions_process_id_fkey"
+            columns: ["process_id"]
+            isOneToOne: false
+            referencedRelation: "gamif_processes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gamif_processes: {
+        Row: {
+          content: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          sector_id: string | null
+          title: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          sector_id?: string | null
+          title: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          sector_id?: string | null
+          title?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gamif_processes_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gamif_pvp_challenges: {
+        Row: {
+          challenger_id: string | null
+          created_at: string
+          ends_at: string | null
+          id: string
+          metric_id: string | null
+          opponent_id: string | null
+          stake_coins: number
+          starts_at: string | null
+          status: string
+          title: string | null
+          winner_id: string | null
+        }
+        Insert: {
+          challenger_id?: string | null
+          created_at?: string
+          ends_at?: string | null
+          id?: string
+          metric_id?: string | null
+          opponent_id?: string | null
+          stake_coins?: number
+          starts_at?: string | null
+          status?: string
+          title?: string | null
+          winner_id?: string | null
+        }
+        Update: {
+          challenger_id?: string | null
+          created_at?: string
+          ends_at?: string | null
+          id?: string
+          metric_id?: string | null
+          opponent_id?: string | null
+          stake_coins?: number
+          starts_at?: string | null
+          status?: string
+          title?: string | null
+          winner_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gamif_pvp_challenges_metric_id_fkey"
+            columns: ["metric_id"]
+            isOneToOne: false
+            referencedRelation: "gamif_metrics"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gamif_reading_confirmations: {
+        Row: {
+          confirmed_at: string
+          id: string
+          process_id: string | null
+          user_id: string | null
+          version: number | null
+        }
+        Insert: {
+          confirmed_at?: string
+          id?: string
+          process_id?: string | null
+          user_id?: string | null
+          version?: number | null
+        }
+        Update: {
+          confirmed_at?: string
+          id?: string
+          process_id?: string | null
+          user_id?: string | null
+          version?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gamif_reading_confirmations_process_id_fkey"
+            columns: ["process_id"]
+            isOneToOne: false
+            referencedRelation: "gamif_processes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gamif_redemptions: {
+        Row: {
+          cost_coins: number
+          created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          id: string
+          item_id: string | null
+          item_name: string | null
+          legacy_user_id: string | null
+          notes: string | null
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          cost_coins?: number
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          item_id?: string | null
+          item_name?: string | null
+          legacy_user_id?: string | null
+          notes?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          cost_coins?: number
+          created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          id?: string
+          item_id?: string | null
+          item_name?: string | null
+          legacy_user_id?: string | null
+          notes?: string | null
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gamif_redemptions_item_id_fkey"
+            columns: ["item_id"]
+            isOneToOne: false
+            referencedRelation: "gamif_store_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gamif_role_functions: {
+        Row: {
+          created_at: string
+          data: Json
+          id: string
+          sector_id: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          data?: Json
+          id?: string
+          sector_id?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string
+          data?: Json
+          id?: string
+          sector_id?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gamif_role_functions_sector_id_fkey"
+            columns: ["sector_id"]
+            isOneToOne: false
+            referencedRelation: "sectors"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gamif_settings: {
+        Row: {
+          data: Json
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          data?: Json
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          data?: Json
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      gamif_store_items: {
+        Row: {
+          cost_coins: number
+          created_at: string
+          description: string | null
+          id: string
+          image_url: string | null
+          is_active: boolean
+          name: string
+          stock: number | null
+        }
+        Insert: {
+          cost_coins: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          name: string
+          stock?: number | null
+        }
+        Update: {
+          cost_coins?: number
+          created_at?: string
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_active?: boolean
+          name?: string
+          stock?: number | null
+        }
+        Relationships: []
+      }
+      gamif_streaks: {
+        Row: {
+          best_streak: number
+          current_streak: number
+          last_date: string | null
+          user_id: string
+        }
+        Insert: {
+          best_streak?: number
+          current_streak?: number
+          last_date?: string | null
+          user_id: string
+        }
+        Update: {
+          best_streak?: number
+          current_streak?: number
+          last_date?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      gamif_suggestion_votes: {
+        Row: {
+          created_at: string
+          suggestion_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          suggestion_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          suggestion_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gamif_suggestion_votes_suggestion_id_fkey"
+            columns: ["suggestion_id"]
+            isOneToOne: false
+            referencedRelation: "gamif_suggestions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gamif_suggestions: {
+        Row: {
+          admin_response: string | null
+          created_at: string
+          description: string | null
+          id: string
+          legacy_user_id: string | null
+          status: string
+          title: string
+          user_id: string | null
+        }
+        Insert: {
+          admin_response?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          legacy_user_id?: string | null
+          status?: string
+          title: string
+          user_id?: string | null
+        }
+        Update: {
+          admin_response?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          legacy_user_id?: string | null
+          status?: string
+          title?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      gamif_user_badges: {
+        Row: {
+          awarded_at: string
+          badge_id: string | null
+          id: string
+          legacy_user_id: string | null
+          user_id: string | null
+        }
+        Insert: {
+          awarded_at?: string
+          badge_id?: string | null
+          id?: string
+          legacy_user_id?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          awarded_at?: string
+          badge_id?: string | null
+          id?: string
+          legacy_user_id?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gamif_user_badges_badge_id_fkey"
+            columns: ["badge_id"]
+            isOneToOne: false
+            referencedRelation: "gamif_badges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gamif_user_missions: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          id: string
+          legacy_user_id: string | null
+          mission_id: string
+          progress: number
+          status: string
+          user_id: string | null
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          legacy_user_id?: string | null
+          mission_id: string
+          progress?: number
+          status?: string
+          user_id?: string | null
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          legacy_user_id?: string | null
+          mission_id?: string
+          progress?: number
+          status?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gamif_user_missions_mission_id_fkey"
+            columns: ["mission_id"]
+            isOneToOne: false
+            referencedRelation: "gamif_missions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gamif_user_notifications: {
+        Row: {
+          body: string | null
+          created_at: string
+          id: string
+          legacy_user_id: string | null
+          notification_id: string | null
+          read_at: string | null
+          title: string | null
+          user_id: string | null
+        }
+        Insert: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          legacy_user_id?: string | null
+          notification_id?: string | null
+          read_at?: string | null
+          title?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          body?: string | null
+          created_at?: string
+          id?: string
+          legacy_user_id?: string | null
+          notification_id?: string | null
+          read_at?: string | null
+          title?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "gamif_user_notifications_notification_id_fkey"
+            columns: ["notification_id"]
+            isOneToOne: false
+            referencedRelation: "gamif_notifications"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      gamif_wallets: {
+        Row: {
+          coins: number
+          updated_at: string
+          user_id: string
+          xp: number
+        }
+        Insert: {
+          coins?: number
+          updated_at?: string
+          user_id: string
+          xp?: number
+        }
+        Update: {
+          coins?: number
+          updated_at?: string
+          user_id?: string
+          xp?: number
+        }
+        Relationships: []
+      }
       geocode_cache: {
         Row: {
           address: string
@@ -7244,6 +8233,29 @@ export type Database = {
       }
     }
     Functions: {
+      gamif_apply_auto_rules: { Args: { _day?: string }; Returns: number }
+      gamif_decide_redemption: {
+        Args: { _id: string; _notes?: string; _status: string }
+        Returns: undefined
+      }
+      gamif_is_manager: { Args: never; Returns: boolean }
+      gamif_link_legacy_user: {
+        Args: { _legacy_id: string; _user_id: string }
+        Returns: undefined
+      }
+      gamif_ranking: {
+        Args: never
+        Returns: {
+          avatar_url: string
+          coins: number
+          name: string
+          sector_id: string
+          sector_name: string
+          user_id: string
+          xp: number
+        }[]
+      }
+      gamif_redeem: { Args: { _item_id: string }; Returns: string }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
