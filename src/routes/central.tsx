@@ -163,7 +163,7 @@ import { isLiberacaoCategory, useSubcategoryEquipmentModelsWithFallback } from "
 
 import { escalateToGestao as escalateToGestaoHelper } from "@/lib/escalate-gestao";
 import { TechnicalTermDialog, type TermTicketPrefill } from "@/components/crm/technical-term-dialog";
-import { allowedServiceTypes, type TechnicalServiceType } from "@/lib/technical-terms";
+import { allowedServiceTypes, TERM_STATUS_LABELS, type TechnicalServiceType, type TechnicalTermStatus } from "@/lib/technical-terms";
 import { useAttendanceEventSettings, useSlaBandChangeNotifier } from "@/hooks/use-attendance-events";
 import {
   AlertDialog,
@@ -2068,6 +2068,103 @@ function CentralPage() {
 
   const [termPrompt, setTermPrompt] = useState<{ prefill: TermTicketPrefill; types: TechnicalServiceType[] } | null>(null);
 
+  // Ao escolher no chat uma categoria que exige termo técnico (ex.: Serviço
+  // Técnico), abre na hora o formulário do termo para envio do aceite ao
+  // responsável pela frota. Se a conversa ainda não tem chamado, ele é criado
+  // agora (em aberto) para o termo ficar ligado a ele.
+  const termFlowBusyRef = useRef(false);
+  const openTermFlowForCategory = useCallback(async (key: string) => {
+    const cat = tiposPendencia.find((t) => t.Key === key);
+    if (!cat || cat.termType === "none" || !selectedChatId || !chatDetail) return;
+    if (termFlowBusyRef.current) return;
+    termFlowBusyRef.current = true;
+    try {
+      const label = cat.Descricao || key;
+      let tk: any = currentTicket;
+      if (!tk) {
+        const { data: existingRaw } = await supabase
+          .from("service_tickets")
+          .select("*")
+          .eq("attendance_id", selectedChatId)
+          .neq("status", "finalizado")
+          .order("created_at", { ascending: false })
+          .limit(10);
+        tk = (existingRaw || []).filter((t: any) => !isRoutedTeTicket(t))[0] ?? null;
+      }
+      if (!tk) {
+        const { data: sess } = await supabase.auth.getSession();
+        const { data: created, error } = await supabase.from("service_tickets").insert({
+          attendance_id: selectedChatId,
+          channel_id: selectedChannelId || null,
+          company_id: companyLookup?.id || null,
+          contact_phone: contactPhone || null,
+          contact_name: chatDetail.contact?.name || chatDetail.description || null,
+          plate: ticketPlate || null,
+          category: label,
+          status: "aberto" as const,
+          opened_by: sess.session?.user?.id || null,
+        } as any).select("*").single();
+        if (error || !created) throw new Error(error?.message || "Não foi possível criar o chamado para o termo.");
+        tk = created;
+        const newId = (created as any).id as string;
+        // Pendência no GSystem em segundo plano (mesma regra da criação manual).
+        void (async () => {
+          try {
+            const authHeaders = await getAuthHeaders();
+            const pendResult = await createPendenciaFromAtendimento({
+              data: {
+                attendanceId: selectedChatId,
+                contactPhone: contactPhone || undefined,
+                contactName: chatDetail.contact?.name || chatDetail.description || undefined,
+                companyId: companyLookup?.id || undefined,
+                subClientId: subClientLookup?.id || undefined,
+                crmContactId: crmContactLookup?.id || undefined,
+                plate: ticketPlate || undefined,
+              },
+              ...authHeaders,
+            });
+            if (pendResult?.success && pendResult.pendenciaKey) {
+              await supabase.from("service_tickets").update({ pendencia_key: pendResult.pendenciaKey } as any).eq("id", newId);
+            }
+          } catch (err: any) {
+            console.warn("[TermFlow] Pendência creation failed:", err?.message);
+          }
+          refetchTicket();
+        })();
+      } else if ((tk.category || "") !== label) {
+        await supabase.from("service_tickets").update({ category: label } as any).eq("id", tk.id);
+      }
+
+      const { data: activeTerms } = await supabase
+        .from("technical_service_terms")
+        .select("id, status")
+        .eq("ticket_id", tk.id)
+        .in("status", ["pendente", "aceito", "enviada"])
+        .limit(1);
+      refetchTicket();
+      const active = activeTerms?.[0] as { status: TechnicalTermStatus } | undefined;
+      if (active) {
+        toast.info(`Este chamado já tem termo técnico (${TERM_STATUS_LABELS[active.status]}). Acompanhe em CRM > Serviços Técnicos.`);
+        return;
+      }
+      setTermPrompt({
+        prefill: {
+          id: tk.id,
+          companyId: tk.company_id ?? companyLookup?.id ?? null,
+          clientName: (companyLookup as any)?.name ?? null,
+          plate: tk.plate ?? ticketPlate ?? null,
+          contactName: tk.contact_name ?? chatDetail.contact?.name ?? chatDetail.description ?? null,
+          contactPhone: tk.contact_phone ?? contactPhone ?? null,
+        },
+        types: allowedServiceTypes(cat.termType),
+      });
+    } catch (e: any) {
+      toast.error(e?.message || "Erro ao abrir o termo técnico.");
+    } finally {
+      termFlowBusyRef.current = false;
+    }
+  }, [tiposPendencia, selectedChatId, chatDetail, currentTicket, selectedChannelId, companyLookup, contactPhone, ticketPlate, subClientLookup, crmContactLookup, getAuthHeaders, refetchTicket]);
+
   // Finalize chat
   const finalizeMutation = useMutation({
     mutationFn: async ({ notes, status, tipoPendencia, skipClosingMessage: skipMsg, escalateGestao, linkedTicketId: linkedId }: { notes?: string; status?: string; tipoPendencia?: string; skipClosingMessage?: boolean; escalateGestao?: boolean; linkedTicketId?: string } = {}) => {
@@ -3788,7 +3885,7 @@ function CentralPage() {
                                       <CommandItem
                                         key={key}
                                         value={label}
-                                        onSelect={() => setFinalizeTipoPendencia(key)}
+                                        onSelect={() => { setFinalizeTipoPendencia(key); void openTermFlowForCategory(key); }}
                                         className="text-xs"
                                       >
                                         <Check className={`mr-2 h-3 w-3 ${finalizeTipoPendencia === key ? "opacity-100" : "opacity-0"}`} />
@@ -5609,7 +5706,7 @@ function CentralPage() {
                           <CommandItem
                             key={tipo.Key}
                             value={tipo.Descricao || ""}
-                            onSelect={() => setFinalizeTipoPendencia(tipo.Key)}
+                            onSelect={() => { setFinalizeTipoPendencia(tipo.Key); void openTermFlowForCategory(tipo.Key); }}
                           >
                             <Check className={`mr-2 h-4 w-4 ${finalizeTipoPendencia === tipo.Key ? "opacity-100" : "opacity-0"}`} />
                             {tipo.Descricao || "Sem nome"}
