@@ -96,7 +96,11 @@ function EstoquePage() {
     }
   };
 
-  // Equipamentos: try dedicated endpoints first, fallback to /cadastros
+  // Espelho completo dos equipamentos do GSystem (sincronizado com todas as páginas).
+  const mirrorQuery = useQuery({ queryKey: ["estoque-equip-chips"], queryFn: fetchEquipMirror, staleTime: 60_000 });
+  const mirrorHasData = (mirrorQuery.data?.length ?? 0) > 0;
+
+  // Equipamentos ao vivo: só quando o espelho ainda estiver vazio.
   const equipQuery = useQuery({
     queryKey: ["gsystem-equipamentos-v2"],
     queryFn: async () => {
@@ -130,7 +134,7 @@ function EstoquePage() {
         availableTipos: fb.availableTipos ?? [],
       };
     },
-    enabled: isAuthenticated && tab === "equipamentos",
+    enabled: isAuthenticated && tab === "equipamentos" && mirrorQuery.isFetched && !mirrorHasData,
     staleTime: 5 * 60 * 1000,
   });
 
@@ -245,11 +249,22 @@ function EstoquePage() {
     return Array.from(set).sort();
   }
 
-  const equipItems: CadastroItem[] = equipQuery.data?.items ?? [];
+  // Aba Equipamentos: vem do espelho (todos os equipamentos, inclusive os disponíveis sem chip).
+  const mirrorEquipItems = useMemo<CadastroItem[]>(() => (mirrorQuery.data ?? []).map((r) => {
+    const id = String(r.equipamento ?? r.serie ?? r.codigo);
+    return {
+      key: String(r.codigo),
+      descricao: id,
+      modelo: String(r.raw?.Modelo ?? ""),
+      identificador: id,
+      status: String(r.raw?.Status ?? ""),
+      vinculo: r.raw?.Placa ?? r.raw?.Cliente ?? null,
+    } as CadastroItem;
+  }), [mirrorQuery.data]);
+  const equipItems: CadastroItem[] = mirrorHasData ? mirrorEquipItems : (equipQuery.data?.items ?? []);
   const chipItems: CadastroItem[] = chipsQuery.data?.items ?? [];
 
   // Equipamento com chip fica só na aba "Equipamentos e Chips"; aqui aparecem equipamentos sem chip e chips soltos.
-  const mirrorQuery = useQuery({ queryKey: ["estoque-equip-chips"], queryFn: fetchEquipMirror, staleTime: 60_000 });
   const { equipWithChip, chipsInUse } = useMemo(() => {
     const equip = new Set<string>();
     const chips = new Set<string>();
@@ -513,15 +528,15 @@ function EstoquePage() {
           <TabsContent value="equipamentos">
             <CadastrosTable
               icon={<Cpu className="h-8 w-8 mx-auto mb-2 opacity-50" />}
-              loading={equipQuery.isLoading}
+              loading={mirrorQuery.isLoading || equipQuery.isLoading}
               error={equipQuery.error}
               items={equipFiltered}
               identifierLabel="Serial / IMEI"
-              matchedTipo={equipQuery.data?.matched ?? null}
+              matchedTipo={mirrorHasData ? "Espelho do GSystem (todas as páginas)" : (equipQuery.data?.matched ?? null)}
               availableTipos={equipQuery.data?.availableTipos ?? []}
               endpointsTried={equipQuery.data?.tried ?? []}
               candidatesTried={EQUIP_CANDIDATES}
-              source={equipQuery.data?.source ?? null}
+              source={mirrorHasData ? "espelho" : (equipQuery.data?.source ?? null)}
               kind="equipamento"
               mirrorIndex={mirrorIndex}
             />
