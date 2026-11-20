@@ -1409,7 +1409,7 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
 
             // Mensagem de Inatividade: depois das boas-vindas/menu do bot, uma
             // única vez por conversa nova; grupos ficam de fora.
-            if (isNewConversation && !p.fromMe && !isGroupMessage) {
+            if (!p.fromMe && !isGroupMessage) {
               try {
                 await sendInactivityMessageOnce(channelId, chatId, phone, outOfHoursNow);
               } catch (e) {
@@ -1425,25 +1425,28 @@ async function processWebhookPayload({ channelId, p }: { channelId: string; p: a
 async function sendInactivityMessageOnce(channelId: string, chatId: string, phone: string, outOfHours: boolean) {
   const { data: cfg } = await supabaseAdmin
     .from("inactivity_message_settings")
-    .select("is_enabled, message")
+    .select("is_enabled, message, enabled_at")
     .eq("id", "default")
     .maybeSingle();
+  if (!cfg?.is_enabled) return;
+  const { data: chat } = await supabaseAdmin
+    .from("zapi_chats").select("inactivity_message_sent_at").eq("id", chatId).maybeSingle();
   const send = shouldSendInactivityMessage({
     enabled: !!cfg?.is_enabled,
     message: cfg?.message,
     isGroup: false,
     fromMe: false,
-    isNewConversation: true,
-    alreadySent: false,
+    sentAt: (chat as any)?.inactivity_message_sent_at ?? null,
+    enabledAt: (cfg as any).enabled_at ?? null,
     outOfHours,
   });
-  if (!send || !cfg) return;
+  if (!send) return;
   // Reserva atômica: só um webhook concorrente consegue marcar a conversa.
   const { data: claimed } = await supabaseAdmin
     .from("zapi_chats")
     .update({ inactivity_message_sent_at: new Date().toISOString() } as any)
     .eq("id", chatId)
-    .is("inactivity_message_sent_at", null)
+    .or(`inactivity_message_sent_at.is.null${(cfg as any).enabled_at ? `,inactivity_message_sent_at.lt.${(cfg as any).enabled_at}` : ""}`)
     .select("id")
     .maybeSingle();
   if (!claimed) return;

@@ -4355,6 +4355,7 @@ export type Database = {
       }
       inactivity_message_settings: {
         Row: {
+          enabled_at: string | null
           id: string
           is_enabled: boolean
           message: string
@@ -4362,6 +4363,7 @@ export type Database = {
           updated_by: string | null
         }
         Insert: {
+          enabled_at?: string | null
           id?: string
           is_enabled?: boolean
           message?: string
@@ -4369,6 +4371,7 @@ export type Database = {
           updated_by?: string | null
         }
         Update: {
+          enabled_at?: string | null
           id?: string
           is_enabled?: boolean
           message?: string

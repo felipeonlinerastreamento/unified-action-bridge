@@ -51,7 +51,7 @@ export function InactivityMessageConfig() {
       <CardHeader>
         <CardTitle className="flex items-center gap-2"><Hourglass className="h-4 w-4" /> Inatividade</CardTitle>
         <CardDescription>
-          Quando ativada, toda conversa nova recebe esta mensagem automaticamente, uma única vez, logo após as boas-vindas/menu do bot.
+          Quando ativada, a próxima mensagem do cliente em qualquer conversa (nova ou já aberta) recebe esta mensagem automaticamente, uma única vez por conversa, logo após as boas-vindas/menu do bot. Desligar e ligar de novo libera um novo envio.
           Grupos de WhatsApp ficam de fora e, fora do horário de atendimento, vale só o aviso de ausência.
         </CardDescription>
       </CardHeader>
