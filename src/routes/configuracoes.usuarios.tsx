@@ -23,7 +23,7 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
-import { listGSystemUsers, listSectors, listAllOpenChats } from "@/lib/gsystem.functions";
+import { listGSystemUsers, listAllOpenChats } from "@/lib/gsystem.functions";
 import { getGSystemColaboradores } from "@/lib/gsystem-api.functions";
 import { createUser, updateUserRole, updateUserName, deleteUser, resetUserPassword, updateUserGroup, setUserActive, getUserEmail } from "@/lib/user-admin.functions";
 import { toast } from "sonner";
@@ -42,7 +42,6 @@ export const Route = createFileRoute("/configuracoes/usuarios")({
 });
 
 type GSystemAgent = { id: string; name: string; status?: string; currentAttendanceId?: string };
-type GSystemSector = { id: string; description?: string; name?: string };
 
 const ROLE_LABEL: Record<string, string> = { admin: "Admin", gestor: "Gestor", atendente: "Atendente" };
 const ROLE_VARIANT = (role: string) => {
@@ -183,19 +182,6 @@ function UsuariosConfigPage() {
     enabled: isAuthenticated && isAdmin,
   });
 
-  const { data: gsystemSectors = [] } = useQuery({
-    queryKey: ["gsystem-sectors-config", firstChannelId],
-    queryFn: async () => {
-      if (!firstChannelId) return [];
-      try {
-        const result = await listSectors({ data: { channelId: firstChannelId } });
-        return (Array.isArray(result) ? result : []) as GSystemSector[];
-      } catch { return []; }
-    },
-    enabled: !!firstChannelId,
-    staleTime: 60000,
-  });
-
   const { data: chatsData, isLoading: chatsLoading, refetch: refetchChats } = useQuery({
     queryKey: ["gsystem-chats-tree", firstChannelId],
     queryFn: async () => {
@@ -215,15 +201,6 @@ function UsuariosConfigPage() {
   const waitingChats = allChats.filter((c) => c.status === 1 || c.status === "WAITING" || c.status === "PENDING");
   const attendingChats = allChats.filter((c) => c.status === 2 || c.status === "OPEN");
   const outOfHourChats = allChats.filter((c) => (c.timeInOutOfHour && c.timeInOutOfHour > 0) || c.status === "OUT_OF_HOUR");
-
-  const chatsBySector = new Map<string, { name: string; count: number }>();
-  for (const chat of allChats) {
-    const sectorId = chat.currentSector?.id || "sem-setor";
-    const sectorName = chat.currentSector?.description || "Sem setor";
-    const existing = chatsBySector.get(sectorId);
-    if (existing) existing.count++;
-    else chatsBySector.set(sectorId, { name: sectorName, count: 1 });
-  }
 
   // ========== Mutations ==========
   const invalidateAll = () => {
@@ -527,29 +504,6 @@ function UsuariosConfigPage() {
                       </div>
                     ))}
                   </div>
-                </div>
-
-                <Separator />
-
-                <div>
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Grupos (Setores)</p>
-                  {gsystemSectors.length === 0 && chatsBySector.size === 0 ? (
-                    <p className="text-sm text-muted-foreground">Nenhum setor encontrado.</p>
-                  ) : (
-                    <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                      {gsystemSectors.map((sector) => {
-                        const count = chatsBySector.get(sector.id)?.count || 0;
-                        return (
-                          <div key={sector.id} className="flex items-center justify-between rounded-md border border-border bg-card p-2.5">
-                            <span className="text-sm font-medium truncate">{sector.description || sector.name || sector.id}</span>
-                            <Badge variant={count > 0 ? "default" : "secondary"} className="text-xs ml-2 shrink-0">
-                              {count} chat{count !== 1 ? "s" : ""}
-                            </Badge>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
                 </div>
 
                 <Separator />
