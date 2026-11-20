@@ -21,7 +21,9 @@ export function isAuthorizedCronRequest(request: Request): boolean {
   } catch {
     // ignore
   }
-  return bearer === expected || headerSecret === expected || querySecret === expected;
+  // Preferir o cabeçalho (x-cron-secret ou Authorization). O ?cron_secret= fica só por compatibilidade
+  // com agendamentos antigos e deve ser removido quando todos enviarem o cabeçalho.
+  return safeEqual(bearer, expected) || safeEqual(headerSecret, expected) || safeEqual(querySecret, expected);
 }
 
 export function unauthorizedCronResponse(): Response {
@@ -29,4 +31,15 @@ export function unauthorizedCronResponse(): Response {
     JSON.stringify({ error: "Unauthorized" }),
     { status: 401, headers: { "Content-Type": "application/json" } },
   );
+}
+
+/** Comparação em tempo constante, para não vazar o segredo por diferença de tempo de resposta. */
+export function safeEqual(a: string | null | undefined, b: string | null | undefined): boolean {
+  if (!a || !b) return false;
+  const enc = new TextEncoder();
+  const x = enc.encode(a);
+  const y = enc.encode(b);
+  let diff = x.length ^ y.length;
+  for (let i = 0; i < y.length; i++) diff |= (x[i % (x.length || 1)] ?? 0) ^ y[i];
+  return diff === 0;
 }

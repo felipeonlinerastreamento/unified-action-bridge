@@ -1,4 +1,5 @@
 import logoPin from "@/assets/logo-online-pin.png";
+import logoFull from "@/assets/logo-online-horizontal.png";
 import {
   LayoutDashboard,
   MessageSquare,
@@ -163,14 +164,11 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader>
-        <div className="flex items-center gap-2 px-2 py-1">
-          <img
-            src={logoPin}
-            alt="Online Rastreamento"
-            className="h-8 w-8 shrink-0 object-contain"
-          />
-          {!collapsed && (
-            <span className="font-semibold text-sm">GSystem Hub</span>
+        <div className="flex items-center justify-center px-2 py-1">
+          {collapsed ? (
+            <img src={logoPin} alt="Online Rastreamento" className="h-8 w-8 shrink-0 object-contain" />
+          ) : (
+            <img src={logoFull} alt="Online Rastreamento" className="h-10 w-auto max-w-full object-contain" />
           )}
         </div>
       </SidebarHeader>

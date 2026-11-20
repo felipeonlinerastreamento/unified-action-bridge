@@ -44,7 +44,9 @@ export const Route = createRootRouteWithContext<RouterContext>()({
     ],
     links: [
       { rel: "stylesheet", href: appCss },
-      { rel: "icon", type: "image/png", href: "/favicon.png" },
+      { rel: "icon", type: "image/png", sizes: "192x192", href: "/favicon-online.png?v=3" },
+      { rel: "shortcut icon", href: "/favicon.ico?v=3" },
+      { rel: "apple-touch-icon", href: "/apple-touch-icon.png?v=3" },
       { rel: "stylesheet", href: "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" },
     ],
   }),

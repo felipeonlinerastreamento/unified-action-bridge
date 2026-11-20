@@ -24,6 +24,7 @@ import { Route as EstoqueRouteImport } from './routes/estoque'
 import { Route as GamificacaoRouteImport } from './routes/gamificacao'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as PainelTvRouteImport } from './routes/painel-tv'
+import { Route as RedefinirSenhaRouteImport } from './routes/redefinir-senha'
 import { Route as RelatoriosRouteImport } from './routes/relatorios'
 import { Route as TratativasRouteImport } from './routes/tratativas'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
@@ -150,6 +151,11 @@ const McpRoute = McpRouteImport.update({
 const PainelTvRoute = PainelTvRouteImport.update({
   id: '/painel-tv',
   path: '/painel-tv',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RedefinirSenhaRoute = RedefinirSenhaRouteImport.update({
+  id: '/redefinir-senha',
+  path: '/redefinir-senha',
   getParentRoute: () => rootRouteImport,
 } as any)
 const RelatoriosRoute = RelatoriosRouteImport.update({
@@ -446,6 +452,7 @@ export interface FileRoutesByFullPath {
   '/gamificacao': typeof GamificacaoRouteWithChildren
   '/mcp': typeof McpRoute
   '/painel-tv': typeof PainelTvRoute
+  '/redefinir-senha': typeof RedefinirSenhaRoute
   '/relatorios': typeof RelatoriosRoute
   '/tratativas': typeof TratativasRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -512,6 +519,7 @@ export interface FileRoutesByTo {
   '/estoque': typeof EstoqueRoute
   '/mcp': typeof McpRoute
   '/painel-tv': typeof PainelTvRoute
+  '/redefinir-senha': typeof RedefinirSenhaRoute
   '/relatorios': typeof RelatoriosRoute
   '/tratativas': typeof TratativasRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -582,6 +590,7 @@ export interface FileRoutesById {
   '/gamificacao': typeof GamificacaoRouteWithChildren
   '/mcp': typeof McpRoute
   '/painel-tv': typeof PainelTvRoute
+  '/redefinir-senha': typeof RedefinirSenhaRoute
   '/relatorios': typeof RelatoriosRoute
   '/tratativas': typeof TratativasRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -653,6 +662,7 @@ export interface FileRouteTypes {
     | '/gamificacao'
     | '/mcp'
     | '/painel-tv'
+    | '/redefinir-senha'
     | '/relatorios'
     | '/tratativas'
     | '/.well-known/oauth-protected-resource'
@@ -719,6 +729,7 @@ export interface FileRouteTypes {
     | '/estoque'
     | '/mcp'
     | '/painel-tv'
+    | '/redefinir-senha'
     | '/relatorios'
     | '/tratativas'
     | '/.well-known/oauth-protected-resource'
@@ -788,6 +799,7 @@ export interface FileRouteTypes {
     | '/gamificacao'
     | '/mcp'
     | '/painel-tv'
+    | '/redefinir-senha'
     | '/relatorios'
     | '/tratativas'
     | '/.well-known/oauth-protected-resource'
@@ -858,6 +870,7 @@ export interface RootRouteChildren {
   GamificacaoRoute: typeof GamificacaoRouteWithChildren
   McpRoute: typeof McpRoute
   PainelTvRoute: typeof PainelTvRoute
+  RedefinirSenhaRoute: typeof RedefinirSenhaRoute
   RelatoriosRoute: typeof RelatoriosRoute
   TratativasRoute: typeof TratativasRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
@@ -983,6 +996,13 @@ declare module '@tanstack/react-router' {
       path: '/painel-tv'
       fullPath: '/painel-tv'
       preLoaderRoute: typeof PainelTvRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/redefinir-senha': {
+      id: '/redefinir-senha'
+      path: '/redefinir-senha'
+      fullPath: '/redefinir-senha'
+      preLoaderRoute: typeof RedefinirSenhaRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/relatorios': {
@@ -1466,6 +1486,7 @@ const rootRouteChildren: RootRouteChildren = {
   GamificacaoRoute: GamificacaoRouteWithChildren,
   McpRoute: McpRoute,
   PainelTvRoute: PainelTvRoute,
+  RedefinirSenhaRoute: RedefinirSenhaRoute,
   RelatoriosRoute: RelatoriosRoute,
   TratativasRoute: TratativasRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
@@ -1490,13 +1511,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

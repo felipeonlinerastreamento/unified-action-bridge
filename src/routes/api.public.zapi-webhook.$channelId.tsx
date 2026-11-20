@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { safeEqual } from "@/lib/cron-auth.server";
 import { z } from "zod";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { isGroupPhoneIdentifier } from "@/lib/chat-utils";
@@ -163,7 +164,7 @@ export const Route = createFileRoute("/api/public/zapi-webhook/$channelId")({
           .eq("id", channelId)
           .single();
         if (chErr || !channel) return new Response("Channel not found", { status: 404 });
-        if (!channel.webhook_secret || providedSecret !== channel.webhook_secret) {
+        if (!channel.webhook_secret || !safeEqual(providedSecret, channel.webhook_secret)) {
           return new Response("Invalid secret", { status: 401 });
         }
 

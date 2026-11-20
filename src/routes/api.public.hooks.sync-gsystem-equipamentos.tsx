@@ -1,9 +1,11 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { isAuthorizedCronRequest, unauthorizedCronResponse } from "@/lib/cron-auth.server";
 
 export const Route = createFileRoute("/api/public/hooks/sync-gsystem-equipamentos")({
   server: {
     handlers: {
-      POST: async () => {
+      POST: async ({ request }) => {
+        if (!isAuthorizedCronRequest(request)) return unauthorizedCronResponse();
         const { syncGsystemEquipamentos } = await import(
           "@/lib/gsystem-equipamentos-sync.server"
         );
