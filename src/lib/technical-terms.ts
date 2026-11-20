@@ -23,7 +23,40 @@ export type TermType = {
   email_template: string;
   is_active: boolean;
   position: number;
+  /** Tipo de serviço para o qual este termo vem pré-selecionado (ou null). */
+  default_service_type?: FixedServiceType | null;
 };
+
+/** Tipos de serviço do formulário: sempre e somente estes três, nesta ordem. */
+export const FIXED_SERVICE_TYPES = [
+  { key: "instalacao", label: "Instalação" },
+  { key: "retirada", label: "Retirada" },
+  { key: "manutencao", label: "Manutenção" },
+] as const;
+export type FixedServiceType = (typeof FIXED_SERVICE_TYPES)[number]["key"];
+
+export function isFixedServiceType(v: unknown): v is FixedServiceType {
+  return FIXED_SERVICE_TYPES.some((t) => t.key === v);
+}
+
+export function fixedServiceLabel(key: string | null | undefined): string {
+  return FIXED_SERVICE_TYPES.find((t) => t.key === key)?.label ?? "";
+}
+
+/**
+ * Termo de aceite que já vem marcado: o exigido pela categoria (se ativo) ou o
+ * termo ativo marcado como padrão para o tipo de serviço; senão nenhum.
+ */
+export function defaultTermFor(
+  serviceType: string | null | undefined,
+  terms: Pick<TermType, "key" | "is_active" | "default_service_type">[],
+  requiredTermKey?: string | null,
+): string {
+  const active = terms.filter((t) => t.is_active);
+  if (requiredTermKey && active.some((t) => t.key === requiredTermKey)) return requiredTermKey;
+  if (!isFixedServiceType(serviceType)) return "";
+  return active.find((t) => t.default_service_type === serviceType)?.key ?? "";
+}
 
 /** Tipos originais (usados como nome de reserva quando o catálogo não carregou). */
 export const BUILTIN_SERVICE_TYPES = ["instalacao", "manutencao", "retirada"] as const;
@@ -116,7 +149,7 @@ export function sampleTermVars(overrides: Record<string, string> = {}): Record<s
 
 /** Validação do cadastro de um tipo de termo; devolve a primeira mensagem de erro ou null. */
 export function validateTermType(t: Pick<TermType, "label" | "title" | "body" | "whatsapp_template" | "email_subject" | "email_template">): string | null {
-  if (!String(t.label || "").trim()) return "Informe o nome do tipo de serviço.";
+  if (!String(t.label || "").trim()) return "Informe o nome do termo.";
   if (!String(t.title || "").trim()) return "Informe o título do termo.";
   if (!String(t.body || "").trim()) return "Informe o texto do termo.";
   if (!String(t.whatsapp_template || "").includes("{link}")) return "A mensagem de WhatsApp precisa ter a variável {link}.";

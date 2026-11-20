@@ -281,6 +281,13 @@
       "when": 1795200477510,
       "tag": "0039_inactivity_message_settings",
       "breakpoints": true
+    },
+    {
+      "idx": 40,
+      "version": "7",
+      "when": 1795201712849,
+      "tag": "0040_term_choice_independent_of_service_type",
+      "breakpoints": true
     }
   ]
 }

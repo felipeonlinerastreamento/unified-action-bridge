@@ -13,8 +13,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { supabase } from "@/integrations/supabase/client";
 import { createTechnicalTerm } from "@/lib/technical-terms.functions";
 import {
+  FIXED_SERVICE_TYPES,
+  defaultTermFor,
+  fixedServiceLabel,
+  isFixedServiceType,
   missingChecklistItems,
-  serviceTypeLabel,
   type TechnicalServiceType,
 } from "@/lib/technical-terms";
 import { useTechnicalTermTypes } from "@/hooks/use-technical-term-types";
@@ -40,14 +43,12 @@ interface Props {
 export function TechnicalTermDialog({ open, onOpenChange, allowedTypes: allowedProp, ticket, onCreated }: Props) {
   const qc = useQueryClient();
   const create = useServerFn(createTechnicalTerm);
-  // Tipos cadastrados em Configurações > CRM (novos tipos aparecem aqui sozinhos).
-  const { all: termTypes, activeKeys } = useTechnicalTermTypes({ enabled: open });
-  const allowedTypes = useMemo(() => {
-    const base = allowedProp && allowedProp.length ? allowedProp : activeKeys;
-    // Mostra só tipos ativos; se a categoria exige um tipo específico, ele vale mesmo assim.
-    return allowedProp?.length === 1 ? allowedProp : base.filter((k) => activeKeys.includes(k));
-  }, [allowedProp, activeKeys]);
-  const [type, setType] = useState<TechnicalServiceType>(allowedTypes[0] ?? "");
+  // Termos cadastrados em Configurações > CRM (novos termos aparecem aqui sozinhos).
+  const { all: termTypes, active: activeTerms, isSuccess: termsLoaded } = useTechnicalTermTypes({ enabled: open });
+  // Categoria que exige um termo específico: esse termo vale e não pode ser trocado.
+  const requiredTermKey = allowedProp?.length === 1 ? allowedProp[0] ?? null : null;
+  const [type, setType] = useState<string>("");
+  const [termKey, setTermKey] = useState<string>("");
   const [companyId, setCompanyId] = useState<string | null>(null);
   const [clientName, setClientName] = useState("");
   const [companySearch, setCompanySearch] = useState("");
@@ -66,7 +67,8 @@ export function TechnicalTermDialog({ open, onOpenChange, allowedTypes: allowedP
 
   useEffect(() => {
     if (!open) return;
-    setType(allowedTypes[0] ?? "");
+    setType(isFixedServiceType(requiredTermKey) ? requiredTermKey : "");
+    setTermKey("");
     setCompanyId(ticket?.companyId ?? null);
     setClientName(ticket?.clientName ?? "");
     setCompanySearch("");
@@ -84,15 +86,29 @@ export function TechnicalTermDialog({ open, onOpenChange, allowedTypes: allowedP
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open]);
 
-  // Quando o catálogo termina de carregar, seleciona o primeiro tipo permitido.
+  // Quando o catálogo termina de carregar, marca o termo padrão (se houver).
   useEffect(() => {
-    if (open && (!type || !allowedTypes.includes(type)) && allowedTypes[0]) setType(allowedTypes[0]);
-  }, [open, type, allowedTypes]);
-  const typeCfg = termTypes.find((t) => t.key === type);
-  const required = useMemo(() => typeCfg?.checklist ?? [], [typeCfg]);
-  const needsEquipment = !!typeCfg?.requires_equipment_id;
-  const label = (k: string) => serviceTypeLabel(k, termTypes);
-  useEffect(() => setChecked({}), [type]);
+    if (open && termsLoaded && !termKey) {
+      const def = defaultTermFor(type, termTypes, requiredTermKey);
+      if (def) setTermKey(def);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, termsLoaded]);
+  // Trocar o tipo de serviço pré-seleciona o termo padrão desse tipo; sem padrão, mantém a escolha.
+  const changeType = (v: string) => {
+    setType(v);
+    const def = defaultTermFor(v, termTypes, requiredTermKey);
+    if (def) setTermKey(def);
+  };
+  const termCfg = termTypes.find((t) => t.key === termKey);
+  const termOptions = useMemo(
+    () => (requiredTermKey ? termTypes.filter((t) => t.key === requiredTermKey) : activeTerms),
+    [requiredTermKey, termTypes, activeTerms],
+  );
+  const required = useMemo(() => termCfg?.checklist ?? [], [termCfg]);
+  const needsEquipment = !!termCfg?.requires_equipment_id;
+  const serviceLabel = fixedServiceLabel(type);
+  useEffect(() => setChecked({}), [termKey]);
 
   const { data: companies = [] } = useQuery({
     queryKey: ["term-company-search", companySearch],
@@ -107,8 +123,9 @@ export function TechnicalTermDialog({ open, onOpenChange, allowedTypes: allowedP
     const checklist = required.map((label) => ({ label, checked: !!checked[label] }));
     const missing = missingChecklistItems(required, checklist);
     if (missing.length) return toast.error(`Marque o checklist: ${missing.join(", ")}`);
-    if (respName.trim().length < 2) return toast.error("Informe o responsável pela frota");
     if (!type) return toast.error("Escolha o tipo de serviço");
+    if (!termKey) return toast.error("Escolha o termo de aceite");
+    if (respName.trim().length < 2) return toast.error("Informe o responsável pela frota");
     if (needsEquipment && !equipmentId.trim()) return toast.error("Informe o ID do equipamento");
     if (!sendWhatsapp && !sendEmail) return toast.error("Escolha WhatsApp e/ou e-mail");
     setSending(true);
@@ -116,6 +133,7 @@ export function TechnicalTermDialog({ open, onOpenChange, allowedTypes: allowedP
       const r = await create({
         data: {
           serviceType: type,
+          termType: termKey,
           ticketId: ticket?.id ?? null,
           companyId,
           clientName: clientName.trim(),
@@ -176,10 +194,10 @@ export function TechnicalTermDialog({ open, onOpenChange, allowedTypes: allowedP
             <div className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label>Tipo de serviço *</Label>
-                <Select value={type} onValueChange={(v) => setType(v as TechnicalServiceType)} disabled={allowedTypes.length === 1}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
+                <Select value={type} onValueChange={changeType}>
+                  <SelectTrigger aria-label="Tipo de serviço"><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>
-                    {allowedTypes.map((t) => <SelectItem key={t} value={t}>{label(t)}</SelectItem>)}
+                    {FIXED_SERVICE_TYPES.map((t) => <SelectItem key={t.key} value={t.key}>{t.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
@@ -223,7 +241,7 @@ export function TechnicalTermDialog({ open, onOpenChange, allowedTypes: allowedP
 
             {required.length > 0 && (
               <div className="rounded-md border p-3 space-y-2">
-                <p className="text-sm font-medium">Checklist de {label(type)} (obrigatório)</p>
+                <p className="text-sm font-medium">Checklist do termo {termCfg?.label} (obrigatório)</p>
                 {required.map((label) => (
                   <label key={label} className="flex items-center gap-2 text-sm cursor-pointer">
                     <Checkbox checked={!!checked[label]} onCheckedChange={(v) => setChecked((c) => ({ ...c, [label]: v === true }))} />
@@ -243,6 +261,22 @@ export function TechnicalTermDialog({ open, onOpenChange, allowedTypes: allowedP
             </div>
 
             <div className="space-y-1.5"><Label>Observações para o termo</Label><Textarea rows={3} value={description} onChange={(e) => setDescription(e.target.value)} maxLength={3000} /></div>
+
+            <div className="space-y-1.5">
+              <Label>Termo de aceite *</Label>
+              <Select value={termKey} onValueChange={setTermKey} disabled={!!requiredTermKey}>
+                <SelectTrigger aria-label="Termo de aceite"><SelectValue placeholder={termOptions.length ? "Selecione o termo que será enviado" : "Nenhum termo ativo cadastrado"} /></SelectTrigger>
+                <SelectContent>
+                  {termOptions.map((t) => (
+                    <SelectItem key={t.key} value={t.key}>
+                      {t.label}{t.default_service_type ? ` (padrão de ${fixedServiceLabel(t.default_service_type)})` : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {termCfg && <p className="text-xs text-muted-foreground">Será enviado: "{termCfg.title}"{serviceLabel ? `, para o serviço de ${serviceLabel}` : ""}. Checklist e mensagens de WhatsApp/e-mail são os deste termo.</p>}
+              {requiredTermKey && <p className="text-xs text-muted-foreground">A categoria do chamado exige este termo.</p>}
+            </div>
 
             <div className="flex flex-wrap items-center gap-4 text-sm">
               <label className="flex items-center gap-2 cursor-pointer"><Checkbox checked={sendWhatsapp} onCheckedChange={(v) => setSendWhatsapp(v === true)} /> Enviar por WhatsApp</label>

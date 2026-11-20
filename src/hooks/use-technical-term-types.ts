@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
-import type { TermType } from "@/lib/technical-terms";
+import { isFixedServiceType, type TermType } from "@/lib/technical-terms";
 
 export const TERM_TYPES_QUERY_KEY = ["technical-term-types"] as const;
 
@@ -18,6 +18,7 @@ function toTermType(r: any): TermType {
     email_template: String(r.email_template ?? ""),
     is_active: r.is_active !== false,
     position: Number(r.position) || 0,
+    default_service_type: isFixedServiceType(r.default_service_type) ? r.default_service_type : null,
   };
 }
 

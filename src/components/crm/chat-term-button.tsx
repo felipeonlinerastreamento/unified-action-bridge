@@ -57,6 +57,7 @@ export function ChatTermButton({ ticketId, onSend }: { ticketId: string | null; 
       </PopoverTrigger>
       <PopoverContent className="w-80 space-y-2" align="start">
         <p className="text-sm font-medium">{termNumberLabel(term.seq)} — {term.service_label ?? term.service_type}</p>
+        {term.term_label && <p className="text-xs text-muted-foreground">Termo de aceite: {term.term_label}</p>}
         <p className="text-xs text-muted-foreground">
           Responsável: {term.responsible_name}
           {data?.ticket?.tech_stage && <> · Protocolo: {techStageLabel(data.ticket.tech_stage)}</>}

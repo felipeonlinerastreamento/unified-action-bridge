@@ -9,6 +9,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
@@ -26,6 +27,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { TERM_TYPES_QUERY_KEY, useTechnicalTermTypes } from "@/hooks/use-technical-term-types";
 import {
+  FIXED_SERVICE_TYPES,
+  fixedServiceLabel,
+  isFixedServiceType,
   TERM_MESSAGE_VARS,
   parseChecklistText,
   renderTermTemplate,
@@ -53,6 +57,7 @@ function emptyDraft(position: number): Draft {
     requires_equipment_id: false,
     is_active: true,
     position,
+    default_service_type: null,
     ...DEFAULT_MESSAGES,
   };
 }
@@ -87,7 +92,7 @@ export function TechnicalTermSettings() {
   const askDelete = async (t: TermType) => {
     setBusyId(t.id);
     const [{ count }, { data: cats }] = await Promise.all([
-      supabase.from("technical_service_terms").select("id", { count: "exact", head: true }).eq("service_type", t.key),
+      supabase.from("technical_service_terms").select("id", { count: "exact", head: true }).or(`service_type.eq.${t.key},term_type.eq.${t.key}`),
       supabase.from("ticket_categories").select("label").eq("technical_term_type", t.key),
     ]);
     setBusyId(null);
@@ -115,12 +120,12 @@ export function TechnicalTermSettings() {
           <div>
             <CardTitle className="text-base flex items-center gap-2"><ClipboardCheck className="h-4 w-4" /> Termos de serviço técnico</CardTitle>
             <CardDescription className="mt-1.5">
-              Cada tipo tem título, texto, checklist do atendente e mensagens de envio próprios. Os tipos ativos aparecem no formulário do termo (chat e chamado) e em "Exige termo" das categorias, em Configurações &gt; Encaminhamento.
+              Cada termo tem título, texto, checklist do atendente e mensagens de envio próprios. Os termos ativos aparecem no campo "Termo de aceite" do formulário (chat e chamado) e em "Exige termo" das categorias, em Configurações &gt; Encaminhamento. O termo marcado como padrão de um tipo de serviço (Instalação, Retirada ou Manutenção) já vem selecionado para esse tipo.
               Alterações valem só para novos envios: termos já enviados aos clientes não mudam.
             </CardDescription>
           </div>
           <Button size="sm" onClick={() => setEditing(emptyDraft((types.at(-1)?.position ?? 0) + 1))}>
-            <Plus className="h-4 w-4 mr-1" /> Novo tipo de termo
+            <Plus className="h-4 w-4 mr-1" /> Novo termo
           </Button>
         </div>
       </CardHeader>
@@ -131,8 +136,9 @@ export function TechnicalTermSettings() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Tipo de serviço</TableHead>
+                <TableHead>Termo</TableHead>
                 <TableHead>Título do termo</TableHead>
+                <TableHead>Padrão para</TableHead>
                 <TableHead className="text-center">Checklist</TableHead>
                 <TableHead className="text-center">Ativo</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
@@ -146,6 +152,7 @@ export function TechnicalTermSettings() {
                     {!t.is_active && <Badge variant="secondary" className="ml-2">Inativo</Badge>}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground max-w-xs truncate">{t.title}</TableCell>
+                  <TableCell className="text-sm">{t.default_service_type ? <Badge variant="outline">{fixedServiceLabel(t.default_service_type)}</Badge> : "—"}</TableCell>
                   <TableCell className="text-center text-sm">{t.checklist.length || "—"}</TableCell>
                   <TableCell className="text-center">
                     <Switch
@@ -166,7 +173,7 @@ export function TechnicalTermSettings() {
                 </TableRow>
               ))}
               {types.length === 0 && (
-                <TableRow><TableCell colSpan={5} className="text-center text-sm text-muted-foreground">Nenhum tipo de termo cadastrado.</TableCell></TableRow>
+                <TableRow><TableCell colSpan={6} className="text-center text-sm text-muted-foreground">Nenhum termo cadastrado.</TableCell></TableRow>
               )}
             </TableBody>
           </Table>
@@ -293,7 +300,7 @@ function TermTypeEditor({ draft, existingKeys, onClose, onSaved }: {
     });
   };
 
-  const vars = useMemo(() => sampleTermVars({ servico: d.label.trim() || "Serviço" }), [d.label]);
+  const vars = useMemo(() => sampleTermVars({ servico: fixedServiceLabel(d.default_service_type) || "Instalação" }), [d.default_service_type]);
   const preview = {
     whatsapp: renderTermTemplate(d.whatsapp_template, vars),
     subject: renderTermTemplate(d.email_subject, vars),
@@ -304,6 +311,7 @@ function TermTypeEditor({ draft, existingKeys, onClose, onSaved }: {
     const err = validateTermType(d);
     if (err) return toast.error(err);
     setSaving(true);
+    const defaultService = isFixedServiceType(d.default_service_type) && d.is_active ? d.default_service_type : null;
     const payload = {
       label: d.label.trim(),
       title: d.title.trim(),
@@ -315,14 +323,22 @@ function TermTypeEditor({ draft, existingKeys, onClose, onSaved }: {
       email_template: d.email_template,
       is_active: d.is_active,
       position: Number(d.position) || 0,
+      default_service_type: defaultService,
       updated_by: user?.id ?? null,
     };
+    // Só um termo padrão por tipo de serviço: tira a marca do anterior.
+    if (defaultService) {
+      let clear = supabase.from("technical_term_types").update({ default_service_type: null }).eq("default_service_type", defaultService);
+      if (d.id) clear = clear.neq("id", d.id);
+      const { error: clearErr } = await clear;
+      if (clearErr) { setSaving(false); return toast.error(clearErr.message); }
+    }
     const { error } = isNew
       ? await supabase.from("technical_term_types").insert({ ...payload, key: slugifyTermKey(payload.label, existingKeys) })
       : await supabase.from("technical_term_types").update(payload).eq("id", d.id!);
     setSaving(false);
     if (error) return toast.error(error.message);
-    toast.success(isNew ? `Tipo "${payload.label}" criado` : `Tipo "${payload.label}" salvo`);
+    toast.success(isNew ? `Termo "${payload.label}" criado` : `Termo "${payload.label}" salvo`);
     onSaved();
   };
 
@@ -330,7 +346,7 @@ function TermTypeEditor({ draft, existingKeys, onClose, onSaved }: {
     <Dialog open onOpenChange={(v) => !v && onClose()}>
       <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>{isNew ? "Novo tipo de termo" : `Editar termo — ${draft.label}`}</DialogTitle>
+          <DialogTitle>{isNew ? "Novo termo" : `Editar termo — ${draft.label}`}</DialogTitle>
           <DialogDescription>As mudanças valem para os próximos envios. Termos já enviados aos clientes continuam exatamente como foram enviados.</DialogDescription>
         </DialogHeader>
 
@@ -343,13 +359,24 @@ function TermTypeEditor({ draft, existingKeys, onClose, onSaved }: {
           <TabsContent value="termo" className="space-y-3 mt-3">
             <div className="grid gap-3 sm:grid-cols-[1fr_120px]">
               <div className="space-y-1.5">
-                <Label htmlFor="tt-label">Tipo de serviço *</Label>
-                <Input id="tt-label" value={d.label} onChange={(e) => set("label", e.target.value)} maxLength={60} placeholder="Ex.: Troca de equipamento" />
+                <Label htmlFor="tt-label">Nome do termo *</Label>
+                <Input id="tt-label" value={d.label} onChange={(e) => set("label", e.target.value)} maxLength={60} placeholder="Ex.: Manutenção com reset de chip" />
               </div>
               <div className="space-y-1.5">
                 <Label htmlFor="tt-pos">Ordem</Label>
                 <Input id="tt-pos" type="number" value={d.position} onChange={(e) => set("position", Number(e.target.value))} />
               </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Padrão para o tipo de serviço</Label>
+              <Select value={d.default_service_type ?? "none"} onValueChange={(v) => set("default_service_type", isFixedServiceType(v) ? v : null)}>
+                <SelectTrigger aria-label="Padrão para o tipo de serviço" className="sm:w-72"><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhum (só escolha manual)</SelectItem>
+                  {FIXED_SERVICE_TYPES.map((t) => <SelectItem key={t.key} value={t.key}>{t.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">Já vem selecionado no formulário quando o atendente escolhe esse tipo; ele pode trocar. Cada tipo tem no máximo um termo padrão.</p>
             </div>
             <div className="space-y-1.5">
               <Label htmlFor="tt-title">Título do termo *</Label>

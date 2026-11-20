@@ -6566,8 +6566,10 @@ export type Database = {
           service_type: string
           status: string
           superseded_by: string | null
+          term_label: string | null
           term_text: string
           term_title: string
+          term_type: string | null
           ticket_id: string | null
           token: string
           updated_at: string
@@ -6612,8 +6614,10 @@ export type Database = {
           service_type: string
           status?: string
           superseded_by?: string | null
+          term_label?: string | null
           term_text: string
           term_title: string
+          term_type?: string | null
           ticket_id?: string | null
           token?: string
           updated_at?: string
@@ -6658,8 +6662,10 @@ export type Database = {
           service_type?: string
           status?: string
           superseded_by?: string | null
+          term_label?: string | null
           term_text?: string
           term_title?: string
+          term_type?: string | null
           ticket_id?: string | null
           token?: string
           updated_at?: string
@@ -6748,6 +6754,7 @@ export type Database = {
           body: string
           checklist: Json
           created_at: string
+          default_service_type: string | null
           email_subject: string
           email_template: string
           id: string
@@ -6765,6 +6772,7 @@ export type Database = {
           body: string
           checklist?: Json
           created_at?: string
+          default_service_type?: string | null
           email_subject?: string
           email_template?: string
           id?: string
@@ -6782,6 +6790,7 @@ export type Database = {
           body?: string
           checklist?: Json
           created_at?: string
+          default_service_type?: string | null
           email_subject?: string
           email_template?: string
           id?: string

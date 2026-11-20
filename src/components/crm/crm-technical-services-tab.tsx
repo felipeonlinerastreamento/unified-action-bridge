@@ -243,6 +243,7 @@ export function CrmTechnicalServicesTab() {
               <div className="space-y-3 text-sm">
                 <Badge variant={STATUS_VARIANT[detail.status as TechnicalTermStatus]}>{TERM_STATUS_LABELS[detail.status as TechnicalTermStatus]}</Badge>
                 <dl className="grid grid-cols-[140px_1fr] gap-x-3 gap-y-1">
+                  <dt className="text-muted-foreground">Termo de aceite</dt><dd>{detail.term_label || detail.term_title || "—"}</dd>
                   <dt className="text-muted-foreground">Cliente</dt><dd>{detail.client_name || "—"}</dd>
                   <dt className="text-muted-foreground">Placa</dt><dd>{detail.plate || "—"}</dd>
                   <dt className="text-muted-foreground">ID equipamento</dt><dd>{detail.equipment_id || "—"}</dd>

@@ -46,7 +46,7 @@ export function TicketTechnicalTermSection({ ticket, categories }: Props) {
     queryFn: async () => {
       const { data } = await supabase
         .from("technical_service_terms")
-        .select("id, seq, service_type, service_label, status, responsible_name, responsible_phone, responsible_email, responded_at, responder_note, superseded_by")
+        .select("id, seq, service_type, service_label, term_label, status, responsible_name, responsible_phone, responsible_email, responded_at, responder_note, superseded_by")
         .eq("ticket_id", ticket.id)
         .order("created_at", { ascending: false });
       return data || [];
@@ -85,6 +85,7 @@ export function TicketTechnicalTermSection({ ticket, categories }: Props) {
         <div key={t.id} className="flex flex-wrap items-center gap-2 text-xs">
           <span className="font-mono text-muted-foreground">{termNumberLabel(t.seq)}</span>
           <Badge variant="outline">{serviceTypeLabel(t.service_type, null, t.service_label)}</Badge>
+          {t.term_label && t.term_label !== t.service_label && <span className="text-muted-foreground">{t.term_label}</span>}
           <Badge variant={t.status === "recusado" ? "destructive" : t.status === "aceito" ? "default" : "secondary"}>
             {TERM_STATUS_LABELS[t.status as TechnicalTermStatus]}
           </Badge>

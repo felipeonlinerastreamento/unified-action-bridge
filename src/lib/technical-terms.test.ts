@@ -13,6 +13,9 @@ import {
   normalizeChecklistConfig,
   schedulingGate,
   statusAfterDecision,
+  FIXED_SERVICE_TYPES,
+  isFixedServiceType,
+  defaultTermFor,
 } from "./technical-terms";
 
 test("manutenção exige os 4 itens do checklist antes de enviar", () => {
@@ -110,4 +113,33 @@ test("termo exigido por categoria não pode ser excluído", () => {
 
 test("termo enviado mostra o nome do serviço da época do envio", () => {
   assert.equal(serviceTypeLabel("instalacao", [{ key: "instalacao", label: "Instalação nova" }], "Instalação"), "Instalação");
+});
+
+// ---- Tipo de serviço fixo + termo de aceite independente ----
+
+test("tipo de serviço tem sempre e somente Instalação, Retirada e Manutenção", () => {
+  assert.deepEqual(FIXED_SERVICE_TYPES.map((t) => t.label), ["Instalação", "Retirada", "Manutenção"]);
+  assert.equal(isFixedServiceType("termo_teste"), false);
+  assert.equal(isFixedServiceType("retirada"), true);
+});
+
+const catalog = [
+  { key: "instalacao", is_active: true, default_service_type: "instalacao" as const },
+  { key: "manutencao_frota", is_active: true, default_service_type: "manutencao" as const },
+  { key: "manutencao", is_active: true, default_service_type: null },
+  { key: "retirada_antiga", is_active: false, default_service_type: "retirada" as const },
+];
+
+test("termo padrão do tipo escolhido vem pré-selecionado", () => {
+  assert.equal(defaultTermFor("instalacao", catalog), "instalacao");
+  assert.equal(defaultTermFor("manutencao", catalog), "manutencao_frota");
+});
+
+test("sem termo padrão ativo para o tipo, nenhum termo vem marcado", () => {
+  assert.equal(defaultTermFor("retirada", catalog), "");
+  assert.equal(defaultTermFor("", catalog), "");
+});
+
+test("categoria que exige um termo específico pré-seleciona esse termo", () => {
+  assert.equal(defaultTermFor("instalacao", catalog, "manutencao"), "manutencao");
 });

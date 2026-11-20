@@ -5,7 +5,9 @@ import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { brandingFrom, escapeHtml, loadSettings as loadBrandSettings, loadSignature } from "./crm-proposal.functions";
 import { hasPhoneDigits, isValidCpf, isValidEmail, maskCpf, onlyDigits } from "./crm-proposal";
 import {
-  allowedServiceTypes,
+  FIXED_SERVICE_TYPES,
+  fixedServiceLabel,
+  isServiceType,
   serviceTypeLabel,
   buildTermUrl,
   canRespondTerm,
@@ -64,7 +66,7 @@ async function deliverTerm(
 ) {
   const brand = await loadBrandSettings(admin);
   // Mensagens do próprio tipo de termo; reserva: mensagens antigas gerais.
-  const type = await loadTermType(admin, term.service_type);
+  const type = await loadTermType(admin, term.term_type || term.service_type);
   const legacy = type ? null : await loadTermSettings(admin);
   const templates = {
     whatsapp: (type?.whatsapp_template || legacy?.whatsapp_template || "") as string,
@@ -153,7 +155,8 @@ const sendFields = {
 export const createTechnicalTerm = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({
-    serviceType: z.string().trim().regex(/^[a-z0-9_]{2,40}$/, "Tipo de termo inválido."),
+    serviceType: z.enum(FIXED_SERVICE_TYPES.map((t) => t.key) as [string, ...string[]], { message: "Escolha Instalação, Retirada ou Manutenção." }),
+    termType: z.string().trim().regex(/^[a-z0-9_]{2,40}$/, "Escolha o termo de aceite."),
     ticketId: z.string().uuid().nullable().optional(),
     companyId: z.string().uuid().nullable().optional(),
     clientName: z.string().trim().max(200).optional().default(""),
@@ -174,9 +177,10 @@ export const createTechnicalTerm = createServerFn({ method: "POST" })
     if (data.sendEmail && !isValidEmail(data.responsibleEmail)) throw new Error("Informe um e-mail válido.");
 
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const cfg = await loadTermType(supabaseAdmin, data.serviceType);
-    if (!cfg || !cfg.is_active) throw new Error("Este tipo de termo não existe ou está inativo.");
-    if (cfg.requires_equipment_id && !data.equipmentId) throw new Error(`Informe o ID do equipamento para ${cfg.label}.`);
+    const serviceLabel = fixedServiceLabel(data.serviceType);
+    const cfg = await loadTermType(supabaseAdmin, data.termType);
+    if (!cfg || !cfg.is_active) throw new Error("Este termo de aceite não existe ou está inativo.");
+    if (cfg.requires_equipment_id && !data.equipmentId) throw new Error(`Informe o ID do equipamento para o termo ${cfg.label}.`);
 
     if (data.ticketId) {
       const { data: ticket } = await supabase.from("service_tickets").select("id, category").eq("id", data.ticketId).maybeSingle();
@@ -184,7 +188,8 @@ export const createTechnicalTerm = createServerFn({ method: "POST" })
       if (ticket.category) {
         const { data: cat } = await supabase.from("ticket_categories")
           .select("technical_term_type").ilike("label", ticket.category).limit(1).maybeSingle();
-        if (cat && !allowedServiceTypes(cat.technical_term_type, [data.serviceType]).includes(data.serviceType)) {
+        // Categoria que exige um termo específico: só esse termo pode ser enviado.
+        if (cat && isServiceType(cat.technical_term_type) && cat.technical_term_type !== data.termType) {
           const { data: req } = await supabaseAdmin.from("technical_term_types").select("label").eq("key", cat.technical_term_type).maybeSingle();
           throw new Error(`A categoria "${ticket.category}" exige termo de ${req?.label ?? serviceTypeLabel(cat.technical_term_type)}.`);
         }
@@ -201,6 +206,7 @@ export const createTechnicalTerm = createServerFn({ method: "POST" })
 
     const { data: term, error } = await supabaseAdmin.from("technical_service_terms").insert({
       service_type: data.serviceType,
+      term_type: data.termType,
       ticket_id: data.ticketId || null,
       company_id: data.companyId || null,
       client_name: data.clientName || null,
@@ -213,7 +219,8 @@ export const createTechnicalTerm = createServerFn({ method: "POST" })
       description: data.description || null,
       checklist: checklist as any,
       // Cópia congelada: editar o tipo depois não altera este termo.
-      service_label: cfg.label,
+      service_label: serviceLabel,
+      term_label: cfg.label,
       term_title: cfg.title,
       term_text: cfg.body,
       created_by: userId,
@@ -232,7 +239,7 @@ export const createTechnicalTerm = createServerFn({ method: "POST" })
         ticket_id: data.ticketId,
         user_id: userId,
         comment_type: "status_change",
-        content: `Termo de ${cfg.label} ${termNumberLabel(term.seq)} enviado para aceite de ${data.responsibleName}${res.sent.length ? ` (${res.sent.join(" e ")})` : ""}.`,
+        content: `Termo de ${serviceLabel} ${termNumberLabel(term.seq)} (${cfg.label}) enviado para aceite de ${data.responsibleName}${res.sent.length ? ` (${res.sent.join(" e ")})` : ""}.`,
       });
     }
     return { id: term.id as string, url: res.url, sent: res.sent, errors: res.errors };
@@ -521,7 +528,7 @@ export const reissueRefusedTerm = createServerFn({ method: "POST" })
     if (!data.sendWhatsapp && !data.sendEmail) throw new Error("Escolha WhatsApp e/ou e-mail.");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: term, error } = await supabaseAdmin.from("technical_service_terms").insert({
-      service_type: old.service_type, service_label: old.service_label, ticket_id: old.ticket_id, company_id: old.company_id,
+      service_type: old.service_type, service_label: old.service_label, term_type: old.term_type, term_label: old.term_label, ticket_id: old.ticket_id, company_id: old.company_id,
       client_name: old.client_name, plate: old.plate, equipment_id: old.equipment_id, address: old.address,
       responsible_name: old.responsible_name, responsible_phone: old.responsible_phone, responsible_email: old.responsible_email,
       description: old.description, checklist: old.checklist, term_title: old.term_title, term_text: old.term_text,
