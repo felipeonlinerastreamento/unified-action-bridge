@@ -10,7 +10,7 @@ import { useTableColumns } from "@/components/data-table/use-table-columns";
 import { ColumnFilterHeader } from "@/components/data-table/column-filter-header";
 import { TableToolbar } from "@/components/data-table/table-toolbar";
 
-const LABEL: Record<string, string> = { vincular: "Vinculação", desvincular: "Desvinculação", kit_adicionar: "Kit: adicionado", kit_remover: "Kit: removido", desvincular_chip: "Chip desvinculado" };
+const LABEL: Record<string, string> = { vincular: "Vinculação", desvincular: "Desvinculação", kit_adicionar: "Kit: adicionado", kit_remover: "Kit: removido", desvincular_chip: "Chip desvinculado", vincular_chip: "Chip vinculado" };
 
 type H = {
   id: string; created_at: string; operacao: string; equipamento_codigo: number | null; equipamento_serie: string | null;

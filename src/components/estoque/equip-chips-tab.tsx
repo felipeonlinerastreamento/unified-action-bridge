@@ -11,16 +11,47 @@ import { Label } from "@/components/ui/label";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { Loader2, Link2, Unlink, Package, X, Search, Wifi } from "lucide-react";
+import { Loader2, Link2, Unlink, Package, X, Search, Wifi, Pencil, Cpu } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { computeKpis, summaryByModel, isReady, hasTecnico, hasChip, normStatus } from "@/lib/estoque-kpis";
-import { vincularPlaca, desvincularChip } from "@/lib/estoque.functions";
+import { vincularPlaca, desvincularChip, vincularChip, mapaPlacasEquipamentos } from "@/lib/estoque.functions";
 import type { TableColumn } from "@/lib/table-columns";
 import { useTableColumns } from "@/components/data-table/use-table-columns";
 import { ColumnFilterHeader } from "@/components/data-table/column-filter-header";
 import { TableToolbar } from "@/components/data-table/table-toolbar";
 
-export type Row = { codigo: number; serie: string | null; equipamento: string | null; raw: any };
+export type Row = { codigo: number; serie: string | null; equipamento: string | null; raw: any; placa?: string | null; clienteVeiculo?: string | null };
+
+export type PlacaInfo = { placa: string; cliente: string | null; secundario: boolean };
+
+/** Placa de cada equipamento, lida dos veículos do GSystem (chave: código, série ou IMEI em minúsculas). */
+export function usePlacaMap() {
+  const fn = useServerFn(mapaPlacasEquipamentos);
+  const { data, isLoading } = useQuery({
+    queryKey: ["estoque-placas"],
+    queryFn: async () => (await fn()) as { equip: string; placa: string; cliente: string | null; secundario: boolean }[],
+    staleTime: 5 * 60_000,
+    retry: 1,
+  });
+  const map = useMemo(() => {
+    const m = new Map<string, PlacaInfo>();
+    for (const it of data ?? []) {
+      const k = it.equip.trim().toLowerCase();
+      if (k && !m.has(k)) m.set(k, { placa: it.placa, cliente: it.cliente, secundario: it.secundario });
+    }
+    return m;
+  }, [data]);
+  return { map, isLoading };
+}
+
+export function placaOf(map: Map<string, PlacaInfo>, ids: unknown[]): PlacaInfo | null {
+  for (const id of ids) {
+    const k = String(id ?? "").trim().toLowerCase();
+    if (k && map.has(k)) return map.get(k)!;
+  }
+  return null;
+}
 
 const PAGE = 100;
 
@@ -33,11 +64,11 @@ function tecName(t: unknown): string {
 
 const COLUMNS: TableColumn<Row>[] = [
   { id: "serie", label: "Série/IMEI", value: (r) => r.equipamento ?? r.serie },
-  { id: "placa", label: "Placa vinculada", value: (r) => r.raw?.Placa },
+  { id: "placa", label: "Placa vinculada", value: (r) => r.placa ?? r.raw?.Placa },
   { id: "chip", label: "Chip", value: (r) => r.raw?.Chip },
   { id: "modelo", label: "Modelo", value: (r) => r.raw?.Modelo },
   { id: "status", label: "Status", value: (r) => r.raw?.Status },
-  { id: "cliente", label: "Cliente", value: (r) => r.raw?.Cliente ?? r.raw?.Empresa },
+  { id: "cliente", label: "Cliente", value: (r) => r.raw?.Cliente ?? r.clienteVeiculo ?? r.raw?.Empresa },
   { id: "tecnico", label: "Técnico", value: (r) => tecName(r.raw?.Tecnico) },
   { id: "plataforma", label: "Plataforma", value: (r) => r.raw?.Plataforma },
   { id: "acoes", label: "Ações", value: () => "", data: false },
@@ -46,7 +77,7 @@ const COLUMNS: TableColumn<Row>[] = [
 /** Texto único de busca: ID, série/IMEI, chip, placa, cliente, técnico, modelo, status, plataforma e observação. */
 export function searchText(r: Row): string {
   const x = r.raw ?? {};
-  const parts = [r.codigo, r.serie, r.equipamento, x.Chip, x.Placa, x.Cliente, x.Empresa, tecName(x.Tecnico), x.Modelo, x.Status, x.Plataforma, x.Observacao];
+  const parts = [r.codigo, r.serie, r.equipamento, x.Chip, r.placa, x.Placa, r.clienteVeiculo, x.Cliente, x.Empresa, tecName(x.Tecnico), x.Modelo, x.Status, x.Plataforma, x.Observacao];
   const base = parts.filter((p) => p != null && p !== "").map((p) => (typeof p === "object" ? JSON.stringify(p) : String(p))).join(" ");
   return `${base} ${base.replace(/[^0-9a-z]/gi, "")}`.toLowerCase();
 }
@@ -76,15 +107,17 @@ export async function fetchAll(): Promise<Row[]> {
 
 export function EquipChipsTab() {
   const qc = useQueryClient();
-  const { data: rows = [], isLoading } = useQuery({ queryKey: ["estoque-equip-chips"], queryFn: fetchAll, staleTime: 60_000 });
+  const { data: mirror = [], isLoading } = useQuery({ queryKey: ["estoque-equip-chips"], queryFn: fetchAll, staleTime: 60_000 });
+  const { map: placaMap, isLoading: placasLoading } = usePlacaMap();
+  const rows = useMemo<Row[]>(() => mirror.map((r) => {
+    const p = placaOf(placaMap, [r.codigo, r.equipamento, r.serie]);
+    return { ...r, placa: p?.placa ?? r.raw?.Placa ?? null, clienteVeiculo: p?.cliente ?? null };
+  }), [mirror, placaMap]);
   const [q, setQ] = useState("");
   const [fStatus, setFStatus] = useState("all");
   const [fModelo, setFModelo] = useState("all");
   const [fTec, setFTec] = useState("all");
   const [page, setPage] = useState(0);
-  const [linkRow, setLinkRow] = useState<{ row: Row; op: "vincular" | "desvincular" } | null>(null);
-  const [kitRow, setKitRow] = useState<Row | null>(null);
-  const [chipRow, setChipRow] = useState<Row | null>(null);
 
   // Esta aba mostra só equipamentos com chip; equipamento sem chip fica na aba Equipamentos e chip solto na aba Chips.
   const pairs = useMemo(() => rows.filter((r) => hasChip(r.raw ?? {})), [rows]);
@@ -193,27 +226,19 @@ export function EquipChipsTab() {
                 <TableRow><TableCell colSpan={table.visibleColumns.length || 1} className="text-center py-8 text-muted-foreground">Nenhum equipamento encontrado.</TableCell></TableRow>
               ) : pageRows.map((r) => {
                 const x = r.raw ?? {};
-                const linked = normStatus(x.Status) === "vinculado";
+                const linked = !!r.placa || normStatus(x.Status) === "vinculado";
                 const cells: Record<string, React.ReactNode> = {
                   serie: <TableCell key="serie" className="font-mono text-xs">{r.equipamento ?? r.serie}</TableCell>,
                   modelo: <TableCell key="modelo" className="text-xs">{x.Modelo ?? "—"}</TableCell>,
                   chip: <TableCell key="chip" className="text-xs max-w-[180px] truncate" title={x.Chip ?? ""}>{x.Chip ?? "—"}</TableCell>,
                   status: <TableCell key="status"><Badge variant={linked ? "secondary" : "outline"}>{x.Status ?? "—"}</Badge></TableCell>,
-                  placa: <TableCell key="placa" className="text-xs font-mono font-semibold">{x.Placa ?? "—"}</TableCell>,
-                  cliente: <TableCell key="cliente" className="text-xs max-w-[180px] truncate" title={x.Cliente ?? ""}>{x.Cliente ?? x.Empresa ?? "—"}</TableCell>,
+                  placa: <TableCell key="placa" className="text-xs font-mono font-semibold">{r.placa ?? (placasLoading ? "…" : "—")}</TableCell>,
+                  cliente: <TableCell key="cliente" className="text-xs max-w-[180px] truncate" title={x.Cliente ?? r.clienteVeiculo ?? ""}>{x.Cliente ?? r.clienteVeiculo ?? x.Empresa ?? "—"}</TableCell>,
                   tecnico: <TableCell key="tecnico" className="text-xs">{tecName(x.Tecnico) || "—"}</TableCell>,
                   plataforma: <TableCell key="plataforma" className="text-xs">{x.Plataforma ?? "—"}</TableCell>,
                   acoes: (
                     <TableCell key="acoes" className="text-right whitespace-nowrap">
-                      {linked ? (
-                        <Button size="sm" variant="outline" onClick={() => setLinkRow({ row: r, op: "desvincular" })}><Unlink className="h-3.5 w-3.5 mr-1" />Desvincular placa</Button>
-                      ) : (
-                        <>
-                          <Button size="sm" variant="outline" onClick={() => setLinkRow({ row: r, op: "vincular" })}><Link2 className="h-3.5 w-3.5 mr-1" />Vincular placa</Button>
-                          <Button size="sm" variant="outline" className="ml-1" onClick={() => setChipRow(r)}><Wifi className="h-3.5 w-3.5 mr-1" />Desvincular chip</Button>
-                        </>
-                      )}
-                      <Button size="sm" variant="ghost" className="ml-1" onClick={() => setKitRow(r)}><Package className="h-4 w-4 mr-1" />Acessório</Button>
+                      <EditMenu row={r} />
                     </TableCell>
                   ),
                 };
@@ -232,11 +257,6 @@ export function EquipChipsTab() {
         </div>
       </div>
 
-      {linkRow && <LinkDialog row={linkRow.row} op={linkRow.op} onClose={() => setLinkRow(null)}
-        onDone={() => { setLinkRow(null); qc.invalidateQueries({ queryKey: ["estoque-equip-chips"] }); qc.invalidateQueries({ queryKey: ["estoque-historico"] }); }} />}
-      {kitRow && <KitDialog row={kitRow} onClose={() => setKitRow(null)} />}
-      {chipRow && <UnlinkChipDialog row={chipRow} onClose={() => setChipRow(null)}
-        onDone={() => { setChipRow(null); qc.invalidateQueries({ queryKey: ["estoque-equip-chips"] }); qc.invalidateQueries({ queryKey: ["estoque-historico"] }); }} />}
     </div>
   );
 }
@@ -254,9 +274,9 @@ function Kpi({ label, value, hint, onClick }: { label: string; value: number; hi
   );
 }
 
-function LinkDialog({ row, op, onClose, onDone }: { row: Row; op: "vincular" | "desvincular"; onClose: () => void; onDone: () => void }) {
+export function LinkDialog({ row, op, onClose, onDone }: { row: Row; op: "vincular" | "desvincular"; onClose: () => void; onDone: () => void }) {
   const fn = useServerFn(vincularPlaca);
-  const [placa, setPlaca] = useState(String(row.raw?.Placa ?? ""));
+  const [placa, setPlaca] = useState(String(row.placa ?? row.raw?.Placa ?? ""));
   const [sec, setSec] = useState(false);
   const [busy, setBusy] = useState(false);
   const submit = async () => {
@@ -291,7 +311,7 @@ function LinkDialog({ row, op, onClose, onDone }: { row: Row; op: "vincular" | "
   );
 }
 
-function KitDialog({ row, onClose }: { row: Row; onClose: () => void }) {
+export function KitDialog({ row, onClose }: { row: Row; onClose: () => void }) {
   const qc = useQueryClient();
   const codigo = String(row.codigo);
   const { data: catalog = [] } = useQuery({
@@ -341,7 +361,7 @@ function KitDialog({ row, onClose }: { row: Row; onClose: () => void }) {
   );
 }
 
-function UnlinkChipDialog({ row, onClose, onDone }: { row: Row; onClose: () => void; onDone: () => void }) {
+export function UnlinkChipDialog({ row, onClose, onDone }: { row: Row; onClose: () => void; onDone: () => void }) {
   const fn = useServerFn(desvincularChip);
   const [busy, setBusy] = useState(false);
   const submit = async () => {
@@ -366,6 +386,132 @@ function UnlinkChipDialog({ row, onClose, onDone }: { row: Row; onClose: () => v
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
           <Button onClick={submit} disabled={busy}>{busy && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}Desvincular</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/**
+ * Menu "Editar" único de vínculos do estoque.
+ * - Equipamento com chip: placa, desvincular chip e acessório.
+ * - Equipamento sem chip: vincular chip, placa e acessório.
+ * - Chip solto (sem row, com chip): vincular a um equipamento.
+ */
+export function EditMenu({ row, chip }: { row?: Row | null; chip?: string | null }) {
+  const qc = useQueryClient();
+  const [open, setOpen] = useState<null | "vincular-placa" | "desvincular-placa" | "desvincular-chip" | "vincular-chip" | "acessorio">(null);
+  const done = () => {
+    setOpen(null);
+    ["estoque-equip-chips", "estoque-historico", "estoque-placas", "gsystem-equipamentos", "gsystem-chips"].forEach((k) =>
+      qc.invalidateQueries({ queryKey: [k] }));
+  };
+  const temChip = !!row && hasChip(row.raw ?? {});
+  const linked = !!row && (!!row.placa || normStatus(row.raw?.Status) === "vinculado");
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button size="sm" variant="outline"><Pencil className="h-3.5 w-3.5 mr-1" />Editar</Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-56">
+          <DropdownMenuLabel className="text-xs text-muted-foreground">Vínculos</DropdownMenuLabel>
+          {row ? (
+            <>
+              {linked ? (
+                <DropdownMenuItem onSelect={() => setOpen("desvincular-placa")}><Unlink className="h-4 w-4 mr-2" />Desvincular placa</DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem onSelect={() => setOpen("vincular-placa")}><Link2 className="h-4 w-4 mr-2" />Vincular placa</DropdownMenuItem>
+              )}
+              {temChip ? (
+                <DropdownMenuItem disabled={linked} onSelect={() => setOpen("desvincular-chip")}>
+                  <Wifi className="h-4 w-4 mr-2" />Desvincular chip{linked && <span className="ml-auto text-[10px] text-muted-foreground">tire a placa</span>}
+                </DropdownMenuItem>
+              ) : (
+                <DropdownMenuItem onSelect={() => setOpen("vincular-chip")}><Wifi className="h-4 w-4 mr-2" />Vincular chip</DropdownMenuItem>
+              )}
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => setOpen("acessorio")}><Package className="h-4 w-4 mr-2" />Vincular acessório</DropdownMenuItem>
+            </>
+          ) : (
+            <DropdownMenuItem disabled={!chip} onSelect={() => setOpen("vincular-chip")}><Cpu className="h-4 w-4 mr-2" />Vincular equipamento</DropdownMenuItem>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+      {row && open === "vincular-placa" && <LinkDialog row={row} op="vincular" onClose={() => setOpen(null)} onDone={done} />}
+      {row && open === "desvincular-placa" && <LinkDialog row={row} op="desvincular" onClose={() => setOpen(null)} onDone={done} />}
+      {row && open === "desvincular-chip" && <UnlinkChipDialog row={row} onClose={() => setOpen(null)} onDone={done} />}
+      {row && open === "acessorio" && <KitDialog row={row} onClose={() => setOpen(null)} />}
+      {open === "vincular-chip" && <LinkChipDialog row={row ?? null} chip={chip ?? null} onClose={() => setOpen(null)} onDone={done} />}
+    </>
+  );
+}
+
+export function LinkChipDialog({ row, chip, onClose, onDone }: { row: Row | null; chip: string | null; onClose: () => void; onDone: () => void }) {
+  const fn = useServerFn(vincularChip);
+  const { data: mirror = [] } = useQuery({ queryKey: ["estoque-equip-chips"], queryFn: fetchAll, staleTime: 60_000, enabled: !row });
+  const [chipNum, setChipNum] = useState(chip ?? "");
+  const [busca, setBusca] = useState("");
+  const [equip, setEquip] = useState<Row | null>(row);
+  const [busy, setBusy] = useState(false);
+  const candidatos = useMemo(() => {
+    if (row) return [];
+    const t = busca.trim().toLowerCase();
+    return mirror.filter((r) => !hasChip(r.raw ?? {}) && (!t || matchesSearch(r, t))).slice(0, 15);
+  }, [mirror, busca, row]);
+  const submit = async () => {
+    if (!equip) return;
+    setBusy(true);
+    try {
+      await fn({ data: { codigo: String(equip.codigo), chip: chipNum } });
+      toast.success("Chip vinculado ao equipamento no GSystem.");
+      onDone();
+    } catch (e: any) {
+      toast.error(e?.message ?? "Falha ao vincular o chip.");
+    } finally { setBusy(false); }
+  };
+  return (
+    <Dialog open onOpenChange={(o) => !o && onClose()}>
+      <DialogContent>
+        <DialogHeader><DialogTitle>{row ? "Vincular chip ao equipamento" : "Vincular chip a um equipamento"}</DialogTitle></DialogHeader>
+        <div className="space-y-3 text-sm">
+          {row ? (
+            <p>Equipamento <b>{row.equipamento ?? row.serie}</b> · {row.raw?.Modelo}</p>
+          ) : (
+            <div className="space-y-2">
+              <Label>Equipamento (sem chip)</Label>
+              {equip ? (
+                <div className="flex items-center justify-between rounded border px-2 py-1.5">
+                  <span><b>{equip.equipamento ?? equip.serie}</b> · {equip.raw?.Modelo}</span>
+                  <Button size="sm" variant="ghost" onClick={() => setEquip(null)}><X className="h-3.5 w-3.5" /></Button>
+                </div>
+              ) : (
+                <>
+                  <Input placeholder="Pesquisar série/IMEI, modelo..." value={busca} onChange={(e) => setBusca(e.target.value)} />
+                  <div className="max-h-48 overflow-y-auto rounded border divide-y">
+                    {candidatos.length === 0 ? (
+                      <p className="p-2 text-xs text-muted-foreground">Nenhum equipamento sem chip encontrado.</p>
+                    ) : candidatos.map((c) => (
+                      <button key={c.codigo} type="button" className="w-full text-left px-2 py-1.5 hover:bg-accent text-xs" onClick={() => setEquip(c)}>
+                        <span className="font-mono">{c.equipamento ?? c.serie}</span> · {c.raw?.Modelo ?? "—"} · {c.raw?.Status ?? ""}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+          <div>
+            <Label>Chip (ICCID ou número da linha)</Label>
+            <Input value={chipNum} disabled={!!chip} onChange={(e) => setChipNum(e.target.value)} placeholder="8955..." />
+          </div>
+          <p className="text-xs text-muted-foreground">A alteração é gravada no GSystem e registrada no histórico com seu usuário e data/hora.</p>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={onClose}>Cancelar</Button>
+          <Button onClick={submit} disabled={busy || !equip || chipNum.replace(/\D/g, "").length < 8}>
+            {busy && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}Vincular
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>

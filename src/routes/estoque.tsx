@@ -17,7 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { GsystemEquipamentosSyncTab } from "@/components/estoque/gsystem-equipamentos-sync-tab";
-import { EquipChipsTab, fetchAll as fetchEquipMirror } from "@/components/estoque/equip-chips-tab";
+import { EquipChipsTab, EditMenu, fetchAll as fetchEquipMirror, type Row as MirrorRow } from "@/components/estoque/equip-chips-tab";
 import { AccessoryCatalogTab } from "@/components/estoque/accessory-catalog-tab";
 import { VinculosHistoricoTab } from "@/components/estoque/vinculos-historico-tab";
 import { History, Boxes } from "lucide-react";
@@ -272,6 +272,17 @@ function EstoquePage() {
       return d.length >= 8 && chipsInUse.has(d);
     });
 
+  const mirrorIndex = useMemo(() => {
+    const m = new Map<string, MirrorRow>();
+    for (const r of mirrorQuery.data ?? []) {
+      [r.codigo, r.serie, r.equipamento].forEach((v) => {
+        const k = String(v ?? "").trim().toLowerCase();
+        if (k && !m.has(k)) m.set(k, r);
+      });
+    }
+    return m;
+  }, [mirrorQuery.data]);
+
   const equipFiltered = filterCadastros(equipItems).filter((it) => !isPairedEquip(it));
   const chipFiltered = filterCadastros(chipItems).filter((it) => !isChipInUse(it));
 
@@ -512,6 +523,7 @@ function EstoquePage() {
               candidatesTried={EQUIP_CANDIDATES}
               source={equipQuery.data?.source ?? null}
               kind="equipamento"
+              mirrorIndex={mirrorIndex}
             />
           </TabsContent>
 
@@ -587,6 +599,7 @@ function CadastrosTable({
   candidatesTried,
   source,
   kind,
+  mirrorIndex,
 }: {
   icon: React.ReactNode;
   loading: boolean;
@@ -599,6 +612,7 @@ function CadastrosTable({
   candidatesTried: string[];
   source: string | null;
   kind: string;
+  mirrorIndex?: Map<string, MirrorRow>;
 }) {
   const columns = useMemo(() => cadastroColumns(identifierLabel), [identifierLabel]);
   const table = useTableColumns(`estoque-${kind}`, columns, items);
@@ -723,6 +737,20 @@ function CadastrosTable({
                   ),
                   vinculo: <TableCell key="vinculo" className="text-sm text-muted-foreground">{vinculoText(it.vinculo) || "—"}</TableCell>,
                   key: <TableCell key="key" className="font-mono text-xs">{it.key || "—"}</TableCell>,
+                  acoes: (
+                    <TableCell key="acoes" className="text-right whitespace-nowrap">
+                      {kind === "chip" ? (
+                        <EditMenu chip={it.identificador || it.descricao || it.key} />
+                      ) : (() => {
+                        const mr = [it.key, it.identificador, it.descricao]
+                          .map((v) => mirrorIndex?.get(String(v ?? "").trim().toLowerCase()))
+                          .find(Boolean);
+                        return mr
+                          ? <EditMenu row={{ ...mr, placa: typeof it.vinculo === "string" ? it.vinculo : null }} />
+                          : <span className="text-xs text-muted-foreground" title="Equipamento ainda não está no espelho. Rode a sincronização.">—</span>;
+                      })()}
+                    </TableCell>
+                  ),
                 };
                 return <TableRow key={it.key}>{table.visibleColumns.map((c) => cells[c.id])}</TableRow>;
               })
@@ -746,6 +774,7 @@ function cadastroColumns(identifierLabel: string): TableColumn<CadastroItem>[] {
     { id: "status", label: "Status", value: (it) => it.status },
     { id: "vinculo", label: "Vínculo", value: (it) => vinculoText(it.vinculo) },
     { id: "key", label: "Código interno", value: (it) => it.key, defaultHidden: true },
+    { id: "acoes", label: "Ações", value: () => "", data: false },
   ];
 }
 
