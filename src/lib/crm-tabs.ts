@@ -2,8 +2,8 @@
 // (Configurações > Usuários) leem esta lista, então uma aba nova aparece nos dois.
 // A chave também é usada no servidor pela função `crm_tab_allowed(<chave>)`.
 
+// "tarefas" foi retirada da tela (sem demanda). Os dados da tabela crm_tasks continuam no banco.
 export const CRM_TABS = [
-  { key: "tarefas", label: "Tarefas" },
   { key: "pipeline", label: "Pipeline" },
   { key: "fluxos", label: "Fluxos" },
   { key: "aniversarios", label: "Aniversários" },

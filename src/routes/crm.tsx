@@ -25,14 +25,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
   Search, UserPlus, Building2, Loader2, Trash2, Edit, Users, Tag,
-  Cake, TrendingUp, ListTodo, Plus, X, Workflow,
+  Cake, TrendingUp, Plus, X, Workflow,
   Wrench,
 } from "lucide-react";
 import { CrmTechnicalServicesTab } from "@/components/crm/crm-technical-services-tab";
 import { CrmCategories } from "@/components/crm/crm-categories";
 import { CrmBirthdaysTab } from "@/components/crm/crm-birthdays-tab";
 import { CrmPipelineTab } from "@/components/crm/crm-pipeline-tab";
-import { CrmTasksTab } from "@/components/crm/crm-tasks-tab";
 import { CrmFlowsTab } from "@/components/crm/crm-flows-tab";
 import { ContactChatActions } from "@/components/contatos/contact-chat-actions";
 
@@ -57,7 +56,6 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 const CRM_TAB_ICONS: Record<string, typeof Tag> = {
-  tarefas: ListTodo,
   pipeline: TrendingUp,
   fluxos: Workflow,
   aniversarios: Cake,
@@ -309,7 +307,6 @@ function CrmPage() {
             })}
           </TabsList>
 
-          <TabsContent value="tarefas" className="mt-4"><CrmTasksTab /></TabsContent>
           <TabsContent value="pipeline" className="mt-4"><CrmPipelineTab /></TabsContent>
           <TabsContent value="fluxos" className="mt-4"><CrmFlowsTab /></TabsContent>
           <TabsContent value="aniversarios" className="mt-4"><CrmBirthdaysTab /></TabsContent>
