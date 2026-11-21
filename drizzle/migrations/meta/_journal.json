@@ -323,6 +323,13 @@
       "when": 1795209633017,
       "tag": "0045_replace_tautology_policies_with_staff_check",
       "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1795275373094,
+      "tag": "0046_replace_signed_in_checks_with_staff_check",
+      "breakpoints": true
     }
   ]
 }
