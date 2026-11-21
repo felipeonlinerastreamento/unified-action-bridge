@@ -25,6 +25,8 @@ export type ResultadoSyncFaturas = {
   novas: number;
   atualizadas: number;
   erros: number;
+  /** true quando o agendamento não precisou rodar (última rodada ainda recente). */
+  pulado?: boolean;
   error?: string;
 };
 
@@ -42,11 +44,25 @@ async function faturasDoCliente(c: ClienteGsystem): Promise<any[]> {
  * Roda um lote. `limiteMs` é o tempo máximo antes de parar e salvar o ponto de parada.
  * Chame de novo até `concluido` = true para terminar a rodada completa.
  */
-export async function syncFaturasGsystem(limiteMs = 45_000): Promise<ResultadoSyncFaturas> {
+export async function syncFaturasGsystem(
+  limiteMs = 45_000,
+  opcoes: { minutosEntreRodadas?: number } = {},
+): Promise<ResultadoSyncFaturas> {
   const inicio = Date.now();
   const agora = () => new Date().toISOString();
   const { data: estado } = await db.from("fin_gsystem_sync").select("*").eq("id", SYNC_ID).maybeSingle();
   let indice: number = estado?.proximo_indice ?? 0;
+
+  // Agendamento: rodada em andamento continua sempre; rodada nova só depois do intervalo.
+  if (opcoes.minutosEntreRodadas && indice === 0 && estado?.ultima_rodada_concluida_em) {
+    const desde = Date.now() - Date.parse(estado.ultima_rodada_concluida_em);
+    if (desde < opcoes.minutosEntreRodadas * 60_000) {
+      return {
+        ok: true, concluido: true, pulado: true, processados: 0, proximoIndice: 0,
+        totalClientes: estado.total_clientes ?? 0, novas: 0, atualizadas: 0, erros: 0,
+      };
+    }
+  }
   const novaRodada = indice === 0;
   let novas = novaRodada ? 0 : estado?.faturas_novas ?? 0;
   let atualizadas = novaRodada ? 0 : estado?.faturas_atualizadas ?? 0;

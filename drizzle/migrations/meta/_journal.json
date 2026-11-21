@@ -358,6 +358,13 @@
       "when": 1795279057938,
       "tag": "0050_financeiro_gsystem_faturas",
       "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1795279117938,
+      "tag": "0051_financeiro_agendador_faturas",
+      "breakpoints": true
     }
   ]
 }
