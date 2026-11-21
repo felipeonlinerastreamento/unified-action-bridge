@@ -183,9 +183,11 @@ CREATE POLICY "fin_comprovantes_delete" ON storage.objects FOR DELETE TO authent
   USING (bucket_id = 'fin-comprovantes' AND public.can_access_finance());
 
 -- 8) Dados iniciais ---------------------------------------------------------
-INSERT INTO public.fin_empresas (codigo, nome, cnpj) VALUES
-  ('OR', 'Online Rastreamento Ltda', '22.632.188/0001-23'),
-  ('OT', 'OT (definir nome)', NULL)
+-- OT: empresa usada para dividir o faturamento, já encerrada. Fica inativa (não aparece em
+-- lançamentos novos), mas continua ligando os comprovantes antigos com "OT" no nome do arquivo.
+INSERT INTO public.fin_empresas (codigo, nome, cnpj, ativo) VALUES
+  ('OR', 'Online Rastreamento Ltda', '22.632.188/0001-23', true),
+  ('OT', 'OT (empresa encerrada)', NULL, false)
 ON CONFLICT (codigo) DO NOTHING;
 
 INSERT INTO public.fin_categorias (nome, tipo, grupo_dre, ordem) VALUES
