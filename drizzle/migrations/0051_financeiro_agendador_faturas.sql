@@ -35,7 +35,7 @@ SELECT cron.schedule(
   '*/10 * * * *',
   $job$
   SELECT net.http_post(
-    url := 'https://project--40ab25b5-cec0-4fe2-8de9-27bfd1074392.lovable.app/api/public/hooks/sync-gsystem-faturas',
+    url := 'https://gestao.onlinerastreamento.com.br/api/public/hooks/sync-gsystem-faturas',
     headers := jsonb_build_object(
       'Content-Type', 'application/json',
       'x-fin-cron-token', (SELECT token FROM public.fin_cron_token WHERE id = 1)
