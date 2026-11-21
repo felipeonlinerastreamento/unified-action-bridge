@@ -29,6 +29,8 @@ export default defineTool({
     numero_documento: z.string().max(80).optional().nullable(),
     confianca: z.number().min(0).max(1).optional(),
     pago: z.boolean().optional().describe("true para cupom/recibo já pago (usa vencimento como data de pagamento)."),
+    revisado: z.boolean().optional().describe("true quando o usuário já conferiu os dados na conversa (não vai para a fila A revisar)."),
+    observacao: z.string().max(1000).optional().nullable().describe("Descrição dada pelo usuário, ex.: 'almoço com cliente X'."),
   },
   annotations: { readOnlyHint: false, idempotentHint: true, destructiveHint: false, openWorldHint: false },
   handler: async (input, ctx) => {
@@ -69,7 +71,8 @@ export default defineTool({
         arquivo_nome: input.arquivo_nome,
         arquivo_url: input.arquivo_url ?? null,
         ia_confianca: input.confianca ?? null,
-        revisado: false,
+        revisado: input.revisado === true,
+        observacao: input.observacao ?? null,
       })
       .select("id")
       .single();
