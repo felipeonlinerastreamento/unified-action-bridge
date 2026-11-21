@@ -174,8 +174,19 @@ export const contextoFinanceiroIA = createServerFn({ method: "POST" })
     await assertFinance(supabase);
 
     const F = await import("@/lib/finance");
+    // Lançamentos em páginas de 1000 (limite do servidor), já que as faturas do GSystem aumentam o volume.
+    const lerLancamentos = async () => {
+      const todos: any[] = [];
+      for (let de = 0; de < 50_000; de += 1000) {
+        const { data: pg, error: e } = await supabase.from("fin_lancamentos").select("*").order("id").range(de, de + 999);
+        if (e) return { data: null, error: e };
+        todos.push(...(pg || []));
+        if (!pg || pg.length < 1000) break;
+      }
+      return { data: todos, error: null };
+    };
     const [{ data: lancs, error }, { data: cats }, { data: emps }] = await Promise.all([
-      supabase.from("fin_lancamentos").select("*").limit(10000),
+      lerLancamentos(),
       supabase.from("fin_categorias").select("id, nome, tipo, grupo_dre, ordem"),
       supabase.from("fin_empresas").select("id, codigo, nome"),
     ]);
@@ -241,7 +252,20 @@ export const contextoFinanceiroIA = createServerFn({ method: "POST" })
       `\n### Gastos por categoria no período\n${top(gastosCat, 20) || "- nenhum"}`,
       `\n### Maiores fornecedores no período\n${top(fornecedores, 10) || "- nenhum"}`,
       `\n### Fluxo de caixa projetado (próximos 30 dias, por semana)\n${fluxo.map((p) => `- semana de ${dt(p.periodo)}: entradas ${brl(p.entradas)}, saídas ${brl(p.saidas)}`).join("\n") || "- sem vencimentos"}`,
-      `\nObservação: inadimplência considera as contas a receber lançadas no Financeiro. As faturas do GSystem ainda não são importadas.`,
+      `\nObservação: inadimplência considera as contas a receber do Financeiro, que incluem as faturas importadas do GSystem (origem "gsystem").`,
     ].join("\n");
     return { texto };
+  });
+
+/**
+ * Importa as faturas do GSystem para Contas a receber (um lote por chamada; a tela chama de novo
+ * até `concluido`). Só quem está na lista do Financeiro.
+ */
+export const sincronizarFaturasGsystem = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase } = context as any;
+    await assertFinance(supabase);
+    const { syncFaturasGsystem } = await import("@/lib/finance-gsystem-sync.server");
+    return syncFaturasGsystem(40_000);
   });

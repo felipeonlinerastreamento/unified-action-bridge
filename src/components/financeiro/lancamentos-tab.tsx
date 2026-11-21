@@ -13,6 +13,7 @@ import { formatBRL, formatDataBR, hojeSP, statusVisivel } from "@/lib/finance";
 import { linkComprovante } from "@/lib/finance.functions";
 import { fin, useFinInvalidate, type Cat, type Emp, type Lanc } from "./use-fin";
 import { LancamentoDialog } from "./lancamento-dialog";
+import { GsystemSyncCard } from "./gsystem-sync-card";
 
 export const STATUS_LABEL: Record<string, string> = { aberto: "Aberto", vencido: "Vencido", pago: "Pago", cancelado: "Cancelado" };
 export function StatusBadge({ s, tipo }: { s: string; tipo?: string }) {
@@ -88,6 +89,7 @@ export function LancamentosTab({ tipo, lancamentos, categorias, empresas }: { ti
 
   return (
     <div className="space-y-3">
+      {tipo === "receber" && <GsystemSyncCard />}
       <Card>
         <CardContent className="p-3 flex flex-wrap items-center gap-2">
           <div className="relative flex-1 min-w-[220px]">
@@ -154,7 +156,7 @@ export function LancamentosTab({ tipo, lancamentos, categorias, empresas }: { ti
               return (
                 <TableRow key={l.id} className="cursor-pointer" onClick={() => setEdit(l)}>
                   <TableCell className="whitespace-nowrap">{formatDataBR(l.vencimento)}</TableCell>
-                  <TableCell className="font-medium">{l.contraparte ?? "—"}{!l.revisado && <Badge variant="outline" className="ml-2 text-[10px]">A revisar</Badge>}</TableCell>
+                  <TableCell className="font-medium">{l.contraparte ?? "—"}{!l.revisado && <Badge variant="outline" className="ml-2 text-[10px]">A revisar</Badge>}{l.origem === "gsystem" && <Badge variant="outline" className="ml-2 text-[10px]">GSystem</Badge>}</TableCell>
                   <TableCell className="max-w-[260px] truncate" title={l.descricao ?? ""}>{l.descricao ?? "—"}</TableCell>
                   <TableCell>{catById.get(l.categoria_id ?? "")?.nome ?? <span className="text-muted-foreground">—</span>}</TableCell>
                   <TableCell>{empById.get(l.empresa_id ?? "")?.codigo ?? "—"}</TableCell>
@@ -169,7 +171,7 @@ export function LancamentosTab({ tipo, lancamentos, categorias, empresas }: { ti
                         )}
                         {s === "pago" && <DropdownMenuItem onSelect={() => reabrir(l)}><Undo2 className="h-4 w-4 mr-2" />Reabrir</DropdownMenuItem>}
                         <DropdownMenuItem onSelect={() => setEdit(l)}><Pencil className="h-4 w-4 mr-2" />Editar</DropdownMenuItem>
-                        {(l.arquivo_url || l.arquivo_path) && <DropdownMenuItem onSelect={() => abrirAnexo(l)}><Paperclip className="h-4 w-4 mr-2" />Abrir anexo</DropdownMenuItem>}
+                        {(l.arquivo_url || l.arquivo_path) && <DropdownMenuItem onSelect={() => abrirAnexo(l)}><Paperclip className="h-4 w-4 mr-2" />{l.origem === "gsystem" ? "Abrir boleto" : "Abrir anexo"}</DropdownMenuItem>}
                         <DropdownMenuSeparator />
                         <DropdownMenuItem className="text-destructive" onSelect={() => excluir(l)}><Trash2 className="h-4 w-4 mr-2" />Excluir</DropdownMenuItem>
                       </DropdownMenuContent>
