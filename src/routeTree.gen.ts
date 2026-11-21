@@ -21,6 +21,7 @@ import { Route as CrmRouteImport } from './routes/crm'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as EmpresasRouteImport } from './routes/empresas'
 import { Route as EstoqueRouteImport } from './routes/estoque'
+import { Route as FinanceiroRouteImport } from './routes/financeiro'
 import { Route as GamificacaoRouteImport } from './routes/gamificacao'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as PainelTvRouteImport } from './routes/painel-tv'
@@ -136,6 +137,11 @@ const EmpresasRoute = EmpresasRouteImport.update({
 const EstoqueRoute = EstoqueRouteImport.update({
   id: '/estoque',
   path: '/estoque',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FinanceiroRoute = FinanceiroRouteImport.update({
+  id: '/financeiro',
+  path: '/financeiro',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GamificacaoRoute = GamificacaoRouteImport.update({
@@ -449,6 +455,7 @@ export interface FileRoutesByFullPath {
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
+  '/financeiro': typeof FinanceiroRoute
   '/gamificacao': typeof GamificacaoRouteWithChildren
   '/mcp': typeof McpRoute
   '/painel-tv': typeof PainelTvRoute
@@ -517,6 +524,7 @@ export interface FileRoutesByTo {
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
+  '/financeiro': typeof FinanceiroRoute
   '/mcp': typeof McpRoute
   '/painel-tv': typeof PainelTvRoute
   '/redefinir-senha': typeof RedefinirSenhaRoute
@@ -587,6 +595,7 @@ export interface FileRoutesById {
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
+  '/financeiro': typeof FinanceiroRoute
   '/gamificacao': typeof GamificacaoRouteWithChildren
   '/mcp': typeof McpRoute
   '/painel-tv': typeof PainelTvRoute
@@ -659,6 +668,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/empresas'
     | '/estoque'
+    | '/financeiro'
     | '/gamificacao'
     | '/mcp'
     | '/painel-tv'
@@ -727,6 +737,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/empresas'
     | '/estoque'
+    | '/financeiro'
     | '/mcp'
     | '/painel-tv'
     | '/redefinir-senha'
@@ -796,6 +807,7 @@ export interface FileRouteTypes {
     | '/dashboard'
     | '/empresas'
     | '/estoque'
+    | '/financeiro'
     | '/gamificacao'
     | '/mcp'
     | '/painel-tv'
@@ -867,6 +879,7 @@ export interface RootRouteChildren {
   DashboardRoute: typeof DashboardRoute
   EmpresasRoute: typeof EmpresasRoute
   EstoqueRoute: typeof EstoqueRoute
+  FinanceiroRoute: typeof FinanceiroRoute
   GamificacaoRoute: typeof GamificacaoRouteWithChildren
   McpRoute: typeof McpRoute
   PainelTvRoute: typeof PainelTvRoute
@@ -975,6 +988,13 @@ declare module '@tanstack/react-router' {
       path: '/estoque'
       fullPath: '/estoque'
       preLoaderRoute: typeof EstoqueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/financeiro': {
+      id: '/financeiro'
+      path: '/financeiro'
+      fullPath: '/financeiro'
+      preLoaderRoute: typeof FinanceiroRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/gamificacao': {
@@ -1483,6 +1503,7 @@ const rootRouteChildren: RootRouteChildren = {
   DashboardRoute: DashboardRoute,
   EmpresasRoute: EmpresasRoute,
   EstoqueRoute: EstoqueRoute,
+  FinanceiroRoute: FinanceiroRoute,
   GamificacaoRoute: GamificacaoRouteWithChildren,
   McpRoute: McpRoute,
   PainelTvRoute: PainelTvRoute,
@@ -1511,13 +1532,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}

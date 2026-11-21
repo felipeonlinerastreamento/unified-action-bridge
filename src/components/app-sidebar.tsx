@@ -1,5 +1,7 @@
 import logoPin from "@/assets/logo-online-pin.png";
 import logoFull from "@/assets/logo-online-horizontal.png";
+import { Wallet } from "lucide-react";
+import { useFinanceAccess } from "@/components/financeiro/use-fin";
 import {
   LayoutDashboard,
   MessageSquare,
@@ -117,6 +119,8 @@ export function AppSidebar() {
   const { theme, toggleTheme } = useTheme();
   const { canSeeMenu } = useUserPermissions();
   const isAdmin = hasRole("admin");
+  // Financeiro: só quem está na lista fin_acesso (não entra na liberação por setor).
+  const { canAccess: canFinance } = useFinanceAccess();
   const isGestor = hasRole("gestor");
   const canAudit = isAdmin || isGestor;
 
@@ -242,6 +246,17 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+
+              {canFinance && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={location.pathname.startsWith("/financeiro")} tooltip="Financeiro">
+                    <Link to="/financeiro">
+                      <Wallet className="h-4 w-4" />
+                      <span>Financeiro</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
 
               {/* Auditoria — visível para Admin e Gestor (atalho fora de Configurações) */}
               {canAudit && !isAdmin && (
