@@ -179,6 +179,13 @@ export async function syncFaturasGsystem(
       ...(concluido ? { ultima_rodada_concluida_em: agora() } : {}),
       updated_at: agora(),
     });
+    if (concluido) {
+      // Carteira do Pós-venda (CRM) usa a receita dessas faturas.
+      try {
+        const { atualizarCarteiraPosVenda } = await import("@/lib/posvenda-carteira.server");
+        await atualizarCarteiraPosVenda();
+      } catch { /* não interrompe a importação */ }
+    }
     return { ok: true, concluido, processados, proximoIndice: concluido ? 0 : indice, totalClientes: clientes.length, novas, atualizadas, erros };
   } catch (e: any) {
     const msg = String(e?.message ?? e).slice(0, 500);
