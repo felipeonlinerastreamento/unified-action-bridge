@@ -351,6 +351,13 @@
       "when": 1795278997938,
       "tag": "0049_financeiro_bpo",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1795279057938,
+      "tag": "0050_financeiro_gsystem_faturas",
+      "breakpoints": true
     }
   ]
 }

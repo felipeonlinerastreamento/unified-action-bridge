@@ -74,6 +74,7 @@ import { Route as ApiPublicCrmDailyRouteImport } from './routes/api.public.crm-d
 import { Route as ApiPublicEmailPollRouteImport } from './routes/api.public.email-poll'
 import { Route as ApiPublicSystemHealthScanRouteImport } from './routes/api.public.system-health-scan'
 import { Route as ApiPublicHooksSyncGsystemEquipamentosRouteImport } from './routes/api.public.hooks.sync-gsystem-equipamentos'
+import { Route as ApiPublicHooksSyncGsystemFaturasRouteImport } from './routes/api.public.hooks.sync-gsystem-faturas'
 import { Route as ApiPublicZapiWebhookChannelIdRouteImport } from './routes/api.public.zapi-webhook.$channelId'
 import { Route as LovableEmailAuthPreviewRouteImport } from './routes/lovable/email/auth/preview'
 import { Route as LovableEmailAuthWebhookRouteImport } from './routes/lovable/email/auth/webhook'
@@ -418,6 +419,12 @@ const ApiPublicHooksSyncGsystemEquipamentosRoute =
     path: '/api/public/hooks/sync-gsystem-equipamentos',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksSyncGsystemFaturasRoute =
+  ApiPublicHooksSyncGsystemFaturasRouteImport.update({
+    id: '/api/public/hooks/sync-gsystem-faturas',
+    path: '/api/public/hooks/sync-gsystem-faturas',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicZapiWebhookChannelIdRoute =
   ApiPublicZapiWebhookChannelIdRouteImport.update({
     id: '/api/public/zapi-webhook/$channelId',
@@ -501,6 +508,7 @@ export interface FileRoutesByFullPath {
   '/api/public/email-poll': typeof ApiPublicEmailPollRoute
   '/api/public/system-health-scan': typeof ApiPublicSystemHealthScanRoute
   '/api/public/hooks/sync-gsystem-equipamentos': typeof ApiPublicHooksSyncGsystemEquipamentosRoute
+  '/api/public/hooks/sync-gsystem-faturas': typeof ApiPublicHooksSyncGsystemFaturasRoute
   '/api/public/zapi-webhook/$channelId': typeof ApiPublicZapiWebhookChannelIdRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -568,6 +576,7 @@ export interface FileRoutesByTo {
   '/api/public/email-poll': typeof ApiPublicEmailPollRoute
   '/api/public/system-health-scan': typeof ApiPublicSystemHealthScanRoute
   '/api/public/hooks/sync-gsystem-equipamentos': typeof ApiPublicHooksSyncGsystemEquipamentosRoute
+  '/api/public/hooks/sync-gsystem-faturas': typeof ApiPublicHooksSyncGsystemFaturasRoute
   '/api/public/zapi-webhook/$channelId': typeof ApiPublicZapiWebhookChannelIdRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -639,6 +648,7 @@ export interface FileRoutesById {
   '/api/public/email-poll': typeof ApiPublicEmailPollRoute
   '/api/public/system-health-scan': typeof ApiPublicSystemHealthScanRoute
   '/api/public/hooks/sync-gsystem-equipamentos': typeof ApiPublicHooksSyncGsystemEquipamentosRoute
+  '/api/public/hooks/sync-gsystem-faturas': typeof ApiPublicHooksSyncGsystemFaturasRoute
   '/api/public/zapi-webhook/$channelId': typeof ApiPublicZapiWebhookChannelIdRoute
   '/lovable/email/auth/preview': typeof LovableEmailAuthPreviewRoute
   '/lovable/email/auth/webhook': typeof LovableEmailAuthWebhookRoute
@@ -711,6 +721,7 @@ export interface FileRouteTypes {
     | '/api/public/email-poll'
     | '/api/public/system-health-scan'
     | '/api/public/hooks/sync-gsystem-equipamentos'
+    | '/api/public/hooks/sync-gsystem-faturas'
     | '/api/public/zapi-webhook/$channelId'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -778,6 +789,7 @@ export interface FileRouteTypes {
     | '/api/public/email-poll'
     | '/api/public/system-health-scan'
     | '/api/public/hooks/sync-gsystem-equipamentos'
+    | '/api/public/hooks/sync-gsystem-faturas'
     | '/api/public/zapi-webhook/$channelId'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -848,6 +860,7 @@ export interface FileRouteTypes {
     | '/api/public/email-poll'
     | '/api/public/system-health-scan'
     | '/api/public/hooks/sync-gsystem-equipamentos'
+    | '/api/public/hooks/sync-gsystem-faturas'
     | '/api/public/zapi-webhook/$channelId'
     | '/lovable/email/auth/preview'
     | '/lovable/email/auth/webhook'
@@ -886,6 +899,7 @@ export interface RootRouteChildren {
   ApiPublicEmailPollRoute: typeof ApiPublicEmailPollRoute
   ApiPublicSystemHealthScanRoute: typeof ApiPublicSystemHealthScanRoute
   ApiPublicHooksSyncGsystemEquipamentosRoute: typeof ApiPublicHooksSyncGsystemEquipamentosRoute
+  ApiPublicHooksSyncGsystemFaturasRoute: typeof ApiPublicHooksSyncGsystemFaturasRoute
   ApiPublicZapiWebhookChannelIdRoute: typeof ApiPublicZapiWebhookChannelIdRoute
   LovableEmailAuthPreviewRoute: typeof LovableEmailAuthPreviewRoute
   LovableEmailAuthWebhookRoute: typeof LovableEmailAuthWebhookRoute
@@ -1348,6 +1362,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksSyncGsystemEquipamentosRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/sync-gsystem-faturas': {
+      id: '/api/public/hooks/sync-gsystem-faturas'
+      path: '/api/public/hooks/sync-gsystem-faturas'
+      fullPath: '/api/public/hooks/sync-gsystem-faturas'
+      preLoaderRoute: typeof ApiPublicHooksSyncGsystemFaturasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/zapi-webhook/$channelId': {
       id: '/api/public/zapi-webhook/$channelId'
       path: '/api/public/zapi-webhook/$channelId'
@@ -1503,6 +1524,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicSystemHealthScanRoute: ApiPublicSystemHealthScanRoute,
   ApiPublicHooksSyncGsystemEquipamentosRoute:
     ApiPublicHooksSyncGsystemEquipamentosRoute,
+  ApiPublicHooksSyncGsystemFaturasRoute: ApiPublicHooksSyncGsystemFaturasRoute,
   ApiPublicZapiWebhookChannelIdRoute: ApiPublicZapiWebhookChannelIdRoute,
   LovableEmailAuthPreviewRoute: LovableEmailAuthPreviewRoute,
   LovableEmailAuthWebhookRoute: LovableEmailAuthWebhookRoute,
@@ -1510,3 +1532,13 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}

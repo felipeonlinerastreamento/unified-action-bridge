@@ -60,9 +60,16 @@ export function useFinData(enabled = true) {
     queryKey: ["fin-lancamentos"],
     enabled,
     queryFn: async () => {
-      const { data, error } = await fin.from("fin_lancamentos").select("*").order("vencimento", { ascending: true, nullsFirst: false }).limit(5000);
-      if (error) throw error;
-      return (data || []) as Lanc[];
+      // Lê em páginas de 1000 (limite do servidor) para trazer tudo, inclusive as faturas do GSystem.
+      const todos: Lanc[] = [];
+      for (let de = 0; de < 50_000; de += 1000) {
+        const { data, error } = await fin.from("fin_lancamentos").select("*")
+          .order("vencimento", { ascending: true, nullsFirst: false }).order("id").range(de, de + 999);
+        if (error) throw error;
+        todos.push(...((data || []) as Lanc[]));
+        if (!data || data.length < 1000) break;
+      }
+      return todos;
     },
   });
   const cats = useQuery({
