@@ -132,6 +132,36 @@ export const updateUserName = createServerFn({ method: "POST" })
     return { success: true };
   });
 
+// Update user login e-mail (admin only). Confirms the new address right away so the
+// person can log in with it immediately; the old address stops working.
+export const updateUserEmail = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    z.object({
+      targetUserId: z.string().uuid(),
+      email: z.string().trim().toLowerCase().email().max(255),
+    }).parse
+  )
+  .handler(async ({ data, context }): Promise<{ success: boolean; changed: boolean }> => {
+    await requireAdmin(context.supabase, context.userId);
+
+    const { data: current, error: getErr } = await supabaseAdmin.auth.admin.getUserById(data.targetUserId);
+    if (getErr || !current?.user) throw new Error("Usuário não encontrado.");
+    if ((current.user.email ?? "").toLowerCase() === data.email) return { success: true, changed: false };
+
+    const { error } = await supabaseAdmin.auth.admin.updateUserById(data.targetUserId, {
+      email: data.email,
+      email_confirm: true,
+    });
+    if (error) {
+      const msg = /already|registered|exists|duplicate/i.test(error.message)
+        ? "Este e-mail já está em uso por outro usuário."
+        : `Erro ao alterar e-mail: ${error.message}`;
+      throw new Error(msg);
+    }
+    return { success: true, changed: true };
+  });
+
 // Reset user password
 export const resetUserPassword = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])

@@ -25,7 +25,7 @@ import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { listGSystemUsers, listAllOpenChats } from "@/lib/gsystem.functions";
 import { getGSystemColaboradores } from "@/lib/gsystem-api.functions";
-import { createUser, updateUserRole, updateUserName, deleteUser, resetUserPassword, updateUserGroup, setUserActive, getUserEmail } from "@/lib/user-admin.functions";
+import { createUser, updateUserRole, updateUserName, deleteUser, resetUserPassword, updateUserGroup, setUserActive, getUserEmail, updateUserEmail } from "@/lib/user-admin.functions";
 import { toast } from "sonner";
 import {
   Users, Link as LinkIcon, Unlink, Loader2, Bot, Clock, Headphones,
@@ -71,6 +71,7 @@ function UsuariosConfigPage() {
   const [editUserId, setEditUserId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editEmail, setEditEmail] = useState("");
+  const [editEmailOriginal, setEditEmailOriginal] = useState("");
   const [editRole, setEditRole] = useState<"admin" | "gestor" | "atendente">("atendente");
   const [editTargetMinutes, setEditTargetMinutes] = useState<string>("");
   const [editCanAccessAiManager, setEditCanAccessAiManager] = useState<boolean>(true);
@@ -227,6 +228,11 @@ function UsuariosConfigPage() {
     mutationFn: async () => {
       if (!editUserId) return;
       await updateUserName({ data: { targetUserId: editUserId, name: editName } });
+      const novoEmail = editEmail.trim().toLowerCase();
+      if (editEmailOriginal && novoEmail && novoEmail !== editEmailOriginal.toLowerCase()) {
+        await updateUserEmail({ data: { targetUserId: editUserId, email: novoEmail } });
+        setEditEmailOriginal(novoEmail);
+      }
       // O próprio papel não pode ser alterado; ao editar a si mesmo, mantém o papel atual.
       if (editUserId !== currentUser?.id) {
         await updateUserRole({ data: { targetUserId: editUserId, role: editRole } });
@@ -413,9 +419,10 @@ function UsuariosConfigPage() {
     setEditUserId(profile.user_id);
     setEditName(profile.name || "");
     setEditEmail("");
+    setEditEmailOriginal("");
     getUserEmail({ data: { targetUserId: profile.user_id } })
-      .then((r) => setEditEmail(r?.email || ""))
-      .catch(() => setEditEmail(""));
+      .then((r) => { setEditEmail(r?.email || ""); setEditEmailOriginal(r?.email || ""); })
+      .catch(() => { setEditEmail(""); setEditEmailOriginal(""); });
     const roles = getRolesForUser(profile.user_id);
     setEditRole((roles[0] as any) || "atendente");
     setEditTargetMinutes(
@@ -711,8 +718,18 @@ function UsuariosConfigPage() {
           <div className="space-y-4 pt-2">
             <div className="space-y-2">
               <Label>E-mail de acesso</Label>
-              <Input value={editEmail} disabled readOnly placeholder={editEmail ? undefined : "Carregando..."} />
-              <p className="text-xs text-muted-foreground">E-mail usado para login. Não editável por aqui.</p>
+              <Input
+                type="email"
+                value={editEmail}
+                onChange={(e) => setEditEmail(e.target.value)}
+                disabled={!editEmailOriginal}
+                placeholder={editEmailOriginal ? undefined : "Carregando..."}
+              />
+              <p className="text-xs text-muted-foreground">
+                {editEmailOriginal && editEmail.trim().toLowerCase() !== editEmailOriginal.toLowerCase()
+                  ? "Ao salvar, o login passa a ser feito com o novo e-mail; o antigo deixa de funcionar. A senha continua a mesma."
+                  : "E-mail usado para login."}
+              </p>
             </div>
             <div className="space-y-2">
               <Label>Nome</Label>
