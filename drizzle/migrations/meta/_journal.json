@@ -372,6 +372,20 @@
       "when": 1795279177938,
       "tag": "0052_crm_posvenda",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1795279237938,
+      "tag": "0053_contratos",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1795279297938,
+      "tag": "0054_contratos_autentique",
+      "breakpoints": true
     }
   ]
 }

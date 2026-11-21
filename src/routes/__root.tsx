@@ -67,7 +67,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
   // Páginas abertas pelo cliente (link da proposta) não mostram ferramentas internas.
-  const isPublicPage = useLocation({ select: (l) => l.pathname.startsWith("/proposta/") || l.pathname.startsWith("/termo-servico/") });
+  const isPublicPage = useLocation({ select: (l) => l.pathname.startsWith("/proposta/") || l.pathname.startsWith("/termo-servico/") || l.pathname.startsWith("/contrato/") });
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>

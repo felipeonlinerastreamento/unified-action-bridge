@@ -17,6 +17,7 @@ import { Route as CentralRouteImport } from './routes/central'
 import { Route as ChatOperadoresRouteImport } from './routes/chat-operadores'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as ContatosRouteImport } from './routes/contatos'
+import { Route as ContratosRouteImport } from './routes/contratos'
 import { Route as CrmRouteImport } from './routes/crm'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as EmpresasRouteImport } from './routes/empresas'
@@ -50,6 +51,7 @@ import { Route as ConfiguracoesPopupDiarioRouteImport } from './routes/configura
 import { Route as ConfiguracoesRoboAtendimentoRouteImport } from './routes/configuracoes.robo-atendimento'
 import { Route as ConfiguracoesUsuariosRouteImport } from './routes/configuracoes.usuarios'
 import { Route as ConfiguracoesZapiRouteImport } from './routes/configuracoes.zapi'
+import { Route as ContratoTokenRouteImport } from './routes/contrato.$token'
 import { Route as GamificacaoIndexRouteImport } from './routes/gamificacao.index'
 import { Route as GamificacaoAdminRouteImport } from './routes/gamificacao.admin'
 import { Route as GamificacaoDuelosRouteImport } from './routes/gamificacao.duelos'
@@ -73,6 +75,7 @@ import { Route as ApiPublicChatIdleScannerRouteImport } from './routes/api.publi
 import { Route as ApiPublicCrmDailyRouteImport } from './routes/api.public.crm-daily'
 import { Route as ApiPublicEmailPollRouteImport } from './routes/api.public.email-poll'
 import { Route as ApiPublicSystemHealthScanRouteImport } from './routes/api.public.system-health-scan'
+import { Route as ApiPublicHooksAutentiqueRouteImport } from './routes/api.public.hooks.autentique'
 import { Route as ApiPublicHooksSyncGsystemEquipamentosRouteImport } from './routes/api.public.hooks.sync-gsystem-equipamentos'
 import { Route as ApiPublicHooksSyncGsystemFaturasRouteImport } from './routes/api.public.hooks.sync-gsystem-faturas'
 import { Route as ApiPublicZapiWebhookChannelIdRouteImport } from './routes/api.public.zapi-webhook.$channelId'
@@ -117,6 +120,11 @@ const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
 const ContatosRoute = ContatosRouteImport.update({
   id: '/contatos',
   path: '/contatos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContratosRoute = ContratosRouteImport.update({
+  id: '/contratos',
+  path: '/contratos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CrmRoute = CrmRouteImport.update({
@@ -294,6 +302,11 @@ const ConfiguracoesZapiRoute = ConfiguracoesZapiRouteImport.update({
   path: '/zapi',
   getParentRoute: () => ConfiguracoesRoute,
 } as any)
+const ContratoTokenRoute = ContratoTokenRouteImport.update({
+  id: '/contrato/$token',
+  path: '/contrato/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const GamificacaoIndexRoute = GamificacaoIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -413,6 +426,12 @@ const ApiPublicSystemHealthScanRoute =
     path: '/api/public/system-health-scan',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksAutentiqueRoute =
+  ApiPublicHooksAutentiqueRouteImport.update({
+    id: '/api/public/hooks/autentique',
+    path: '/api/public/hooks/autentique',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksSyncGsystemEquipamentosRoute =
   ApiPublicHooksSyncGsystemEquipamentosRouteImport.update({
     id: '/api/public/hooks/sync-gsystem-equipamentos',
@@ -451,6 +470,7 @@ export interface FileRoutesByFullPath {
   '/chat-operadores': typeof ChatOperadoresRoute
   '/configuracoes': typeof ConfiguracoesRouteWithChildren
   '/contatos': typeof ContatosRoute
+  '/contratos': typeof ContratosRoute
   '/crm': typeof CrmRoute
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
@@ -482,6 +502,7 @@ export interface FileRoutesByFullPath {
   '/configuracoes/robo-atendimento': typeof ConfiguracoesRoboAtendimentoRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
+  '/contrato/$token': typeof ContratoTokenRoute
   '/gamificacao/admin': typeof GamificacaoAdminRoute
   '/gamificacao/duelos': typeof GamificacaoDuelosRoute
   '/gamificacao/feed': typeof GamificacaoFeedRoute
@@ -507,6 +528,7 @@ export interface FileRoutesByFullPath {
   '/api/public/crm-daily': typeof ApiPublicCrmDailyRoute
   '/api/public/email-poll': typeof ApiPublicEmailPollRoute
   '/api/public/system-health-scan': typeof ApiPublicSystemHealthScanRoute
+  '/api/public/hooks/autentique': typeof ApiPublicHooksAutentiqueRoute
   '/api/public/hooks/sync-gsystem-equipamentos': typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   '/api/public/hooks/sync-gsystem-faturas': typeof ApiPublicHooksSyncGsystemFaturasRoute
   '/api/public/zapi-webhook/$channelId': typeof ApiPublicZapiWebhookChannelIdRoute
@@ -520,6 +542,7 @@ export interface FileRoutesByTo {
   '/central': typeof CentralRoute
   '/chat-operadores': typeof ChatOperadoresRoute
   '/contatos': typeof ContatosRoute
+  '/contratos': typeof ContratosRoute
   '/crm': typeof CrmRoute
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
@@ -550,6 +573,7 @@ export interface FileRoutesByTo {
   '/configuracoes/robo-atendimento': typeof ConfiguracoesRoboAtendimentoRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
+  '/contrato/$token': typeof ContratoTokenRoute
   '/gamificacao/admin': typeof GamificacaoAdminRoute
   '/gamificacao/duelos': typeof GamificacaoDuelosRoute
   '/gamificacao/feed': typeof GamificacaoFeedRoute
@@ -575,6 +599,7 @@ export interface FileRoutesByTo {
   '/api/public/crm-daily': typeof ApiPublicCrmDailyRoute
   '/api/public/email-poll': typeof ApiPublicEmailPollRoute
   '/api/public/system-health-scan': typeof ApiPublicSystemHealthScanRoute
+  '/api/public/hooks/autentique': typeof ApiPublicHooksAutentiqueRoute
   '/api/public/hooks/sync-gsystem-equipamentos': typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   '/api/public/hooks/sync-gsystem-faturas': typeof ApiPublicHooksSyncGsystemFaturasRoute
   '/api/public/zapi-webhook/$channelId': typeof ApiPublicZapiWebhookChannelIdRoute
@@ -591,6 +616,7 @@ export interface FileRoutesById {
   '/chat-operadores': typeof ChatOperadoresRoute
   '/configuracoes': typeof ConfiguracoesRouteWithChildren
   '/contatos': typeof ContatosRoute
+  '/contratos': typeof ContratosRoute
   '/crm': typeof CrmRoute
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
@@ -622,6 +648,7 @@ export interface FileRoutesById {
   '/configuracoes/robo-atendimento': typeof ConfiguracoesRoboAtendimentoRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
+  '/contrato/$token': typeof ContratoTokenRoute
   '/gamificacao/admin': typeof GamificacaoAdminRoute
   '/gamificacao/duelos': typeof GamificacaoDuelosRoute
   '/gamificacao/feed': typeof GamificacaoFeedRoute
@@ -647,6 +674,7 @@ export interface FileRoutesById {
   '/api/public/crm-daily': typeof ApiPublicCrmDailyRoute
   '/api/public/email-poll': typeof ApiPublicEmailPollRoute
   '/api/public/system-health-scan': typeof ApiPublicSystemHealthScanRoute
+  '/api/public/hooks/autentique': typeof ApiPublicHooksAutentiqueRoute
   '/api/public/hooks/sync-gsystem-equipamentos': typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   '/api/public/hooks/sync-gsystem-faturas': typeof ApiPublicHooksSyncGsystemFaturasRoute
   '/api/public/zapi-webhook/$channelId': typeof ApiPublicZapiWebhookChannelIdRoute
@@ -664,6 +692,7 @@ export interface FileRouteTypes {
     | '/chat-operadores'
     | '/configuracoes'
     | '/contatos'
+    | '/contratos'
     | '/crm'
     | '/dashboard'
     | '/empresas'
@@ -695,6 +724,7 @@ export interface FileRouteTypes {
     | '/configuracoes/robo-atendimento'
     | '/configuracoes/usuarios'
     | '/configuracoes/zapi'
+    | '/contrato/$token'
     | '/gamificacao/admin'
     | '/gamificacao/duelos'
     | '/gamificacao/feed'
@@ -720,6 +750,7 @@ export interface FileRouteTypes {
     | '/api/public/crm-daily'
     | '/api/public/email-poll'
     | '/api/public/system-health-scan'
+    | '/api/public/hooks/autentique'
     | '/api/public/hooks/sync-gsystem-equipamentos'
     | '/api/public/hooks/sync-gsystem-faturas'
     | '/api/public/zapi-webhook/$channelId'
@@ -733,6 +764,7 @@ export interface FileRouteTypes {
     | '/central'
     | '/chat-operadores'
     | '/contatos'
+    | '/contratos'
     | '/crm'
     | '/dashboard'
     | '/empresas'
@@ -763,6 +795,7 @@ export interface FileRouteTypes {
     | '/configuracoes/robo-atendimento'
     | '/configuracoes/usuarios'
     | '/configuracoes/zapi'
+    | '/contrato/$token'
     | '/gamificacao/admin'
     | '/gamificacao/duelos'
     | '/gamificacao/feed'
@@ -788,6 +821,7 @@ export interface FileRouteTypes {
     | '/api/public/crm-daily'
     | '/api/public/email-poll'
     | '/api/public/system-health-scan'
+    | '/api/public/hooks/autentique'
     | '/api/public/hooks/sync-gsystem-equipamentos'
     | '/api/public/hooks/sync-gsystem-faturas'
     | '/api/public/zapi-webhook/$channelId'
@@ -803,6 +837,7 @@ export interface FileRouteTypes {
     | '/chat-operadores'
     | '/configuracoes'
     | '/contatos'
+    | '/contratos'
     | '/crm'
     | '/dashboard'
     | '/empresas'
@@ -834,6 +869,7 @@ export interface FileRouteTypes {
     | '/configuracoes/robo-atendimento'
     | '/configuracoes/usuarios'
     | '/configuracoes/zapi'
+    | '/contrato/$token'
     | '/gamificacao/admin'
     | '/gamificacao/duelos'
     | '/gamificacao/feed'
@@ -859,6 +895,7 @@ export interface FileRouteTypes {
     | '/api/public/crm-daily'
     | '/api/public/email-poll'
     | '/api/public/system-health-scan'
+    | '/api/public/hooks/autentique'
     | '/api/public/hooks/sync-gsystem-equipamentos'
     | '/api/public/hooks/sync-gsystem-faturas'
     | '/api/public/zapi-webhook/$channelId'
@@ -875,6 +912,7 @@ export interface RootRouteChildren {
   ChatOperadoresRoute: typeof ChatOperadoresRoute
   ConfiguracoesRoute: typeof ConfiguracoesRouteWithChildren
   ContatosRoute: typeof ContatosRoute
+  ContratosRoute: typeof ContratosRoute
   CrmRoute: typeof CrmRoute
   DashboardRoute: typeof DashboardRoute
   EmpresasRoute: typeof EmpresasRoute
@@ -888,6 +926,7 @@ export interface RootRouteChildren {
   TratativasRoute: typeof TratativasRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   AtendimentosTarefasRoute: typeof AtendimentosTarefasRoute
+  ContratoTokenRoute: typeof ContratoTokenRoute
   HooksRefreshTrackingRoute: typeof HooksRefreshTrackingRoute
   PropostaTokenRoute: typeof PropostaTokenRoute
   TermoServicoTokenRoute: typeof TermoServicoTokenRoute
@@ -898,6 +937,7 @@ export interface RootRouteChildren {
   ApiPublicCrmDailyRoute: typeof ApiPublicCrmDailyRoute
   ApiPublicEmailPollRoute: typeof ApiPublicEmailPollRoute
   ApiPublicSystemHealthScanRoute: typeof ApiPublicSystemHealthScanRoute
+  ApiPublicHooksAutentiqueRoute: typeof ApiPublicHooksAutentiqueRoute
   ApiPublicHooksSyncGsystemEquipamentosRoute: typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   ApiPublicHooksSyncGsystemFaturasRoute: typeof ApiPublicHooksSyncGsystemFaturasRoute
   ApiPublicZapiWebhookChannelIdRoute: typeof ApiPublicZapiWebhookChannelIdRoute
@@ -961,6 +1001,13 @@ declare module '@tanstack/react-router' {
       path: '/contatos'
       fullPath: '/contatos'
       preLoaderRoute: typeof ContatosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contratos': {
+      id: '/contratos'
+      path: '/contratos'
+      fullPath: '/contratos'
+      preLoaderRoute: typeof ContratosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/crm': {
@@ -1194,6 +1241,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConfiguracoesZapiRouteImport
       parentRoute: typeof ConfiguracoesRoute
     }
+    '/contrato/$token': {
+      id: '/contrato/$token'
+      path: '/contrato/$token'
+      fullPath: '/contrato/$token'
+      preLoaderRoute: typeof ContratoTokenRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/gamificacao/': {
       id: '/gamificacao/'
       path: '/'
@@ -1355,6 +1409,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicSystemHealthScanRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/autentique': {
+      id: '/api/public/hooks/autentique'
+      path: '/api/public/hooks/autentique'
+      fullPath: '/api/public/hooks/autentique'
+      preLoaderRoute: typeof ApiPublicHooksAutentiqueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/sync-gsystem-equipamentos': {
       id: '/api/public/hooks/sync-gsystem-equipamentos'
       path: '/api/public/hooks/sync-gsystem-equipamentos'
@@ -1498,6 +1559,7 @@ const rootRouteChildren: RootRouteChildren = {
   ChatOperadoresRoute: ChatOperadoresRoute,
   ConfiguracoesRoute: ConfiguracoesRouteWithChildren,
   ContatosRoute: ContatosRoute,
+  ContratosRoute: ContratosRoute,
   CrmRoute: CrmRoute,
   DashboardRoute: DashboardRoute,
   EmpresasRoute: EmpresasRoute,
@@ -1512,6 +1574,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   AtendimentosTarefasRoute: AtendimentosTarefasRoute,
+  ContratoTokenRoute: ContratoTokenRoute,
   HooksRefreshTrackingRoute: HooksRefreshTrackingRoute,
   PropostaTokenRoute: PropostaTokenRoute,
   TermoServicoTokenRoute: TermoServicoTokenRoute,
@@ -1522,6 +1585,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCrmDailyRoute: ApiPublicCrmDailyRoute,
   ApiPublicEmailPollRoute: ApiPublicEmailPollRoute,
   ApiPublicSystemHealthScanRoute: ApiPublicSystemHealthScanRoute,
+  ApiPublicHooksAutentiqueRoute: ApiPublicHooksAutentiqueRoute,
   ApiPublicHooksSyncGsystemEquipamentosRoute:
     ApiPublicHooksSyncGsystemEquipamentosRoute,
   ApiPublicHooksSyncGsystemFaturasRoute: ApiPublicHooksSyncGsystemFaturasRoute,
@@ -1532,13 +1596,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
