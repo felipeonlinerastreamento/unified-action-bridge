@@ -76,6 +76,7 @@ function UsuariosConfigPage() {
   const [editTargetMinutes, setEditTargetMinutes] = useState<string>("");
   const [editCanAccessAiManager, setEditCanAccessAiManager] = useState<boolean>(true);
   const [editPanelOnly, setEditPanelOnly] = useState<boolean>(false);
+  const [editChatAvailable, setEditChatAvailable] = useState<boolean>(true);
 
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteUserId, setDeleteUserId] = useState<string | null>(null);
@@ -98,12 +99,14 @@ function UsuariosConfigPage() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("profiles")
-        .select("user_id, name, avatar_url, group_id, attendance_target_minutes, can_access_ai_manager, is_active, panel_only")
+        .select("user_id, name, avatar_url, group_id, attendance_target_minutes, can_access_ai_manager, is_active, panel_only, is_chat_available, last_seen_at")
         .order("name");
       if (error) throw error;
       return data || [];
     },
     enabled: isAuthenticated && isAdmin,
+    // Atualiza o status online/offline da lista a cada minuto.
+    refetchInterval: 60_000,
   });
 
   const { data: userRoles = [] } = useQuery({
@@ -245,7 +248,8 @@ function UsuariosConfigPage() {
           can_access_ai_manager: editCanAccessAiManager,
           panel_only: editPanelOnly,
           // Usuário somente-painel não pode receber chats
-          ...(editPanelOnly ? { is_chat_available: false } : {}),
+          // Status manual Online/Offline (recebe conversas). Somente-painel fica sempre offline.
+          is_chat_available: editPanelOnly ? false : editChatAvailable,
         } as any)
         .eq("user_id", editUserId);
       if (profErr) throw profErr;
@@ -430,6 +434,7 @@ function UsuariosConfigPage() {
     );
     setEditCanAccessAiManager(profile.can_access_ai_manager ?? true);
     setEditPanelOnly(profile.panel_only ?? false);
+    setEditChatAvailable((profile as any).is_chat_available ?? true);
     setSelectedSectorIds(getSectorsForUser(profile.user_id));
     setSelectedAgentId(getLinkForUser(profile.user_id)?.gsystem_user_id || "");
     setResetPassword("");
@@ -599,6 +604,7 @@ function UsuariosConfigPage() {
                       <TableRow key={profile.user_id} className={profile.is_active === false ? "opacity-60" : undefined}>
                         <TableCell className="font-medium">
                           <div className="flex items-center gap-2">
+                            <UserStatusDot available={(profile as any).is_chat_available} lastSeen={(profile as any).last_seen_at} />
                             <span>{profile.name || "Sem nome"}</span>
                             {profile.is_active === false && (
                               <Badge variant="outline" className="text-[10px] border-destructive text-destructive">Inativo</Badge>
@@ -782,6 +788,16 @@ function UsuariosConfigPage() {
                 checked={editPanelOnly}
                 onCheckedChange={setEditPanelOnly}
               />
+            </div>
+            <div className="flex items-center justify-between gap-3 rounded-lg border p-3">
+              <div className="space-y-0.5">
+                <Label className="text-sm font-medium">Status: {editPanelOnly ? "Offline" : editChatAvailable ? "Online" : "Offline"}</Label>
+                <p className="text-xs text-muted-foreground">
+                  Online: o usuário pode receber conversas e aparece disponível para transferências. Offline: não recebe conversas novas.
+                  {editPanelOnly && " Usuário somente Painel TV fica sempre offline."}
+                </p>
+              </div>
+              <Switch checked={!editPanelOnly && editChatAvailable} disabled={editPanelOnly} onCheckedChange={setEditChatAvailable} />
             </div>
             {editUserId && <SignatureUpload userId={editUserId} />}
 
@@ -1040,5 +1056,23 @@ function UsuariosConfigPage() {
         </DialogContent>
       </Dialog>
     </AppLayout>
+  );
+}
+
+/** Bolinha de status: Online = marcado como online e com o sistema aberto nos últimos 2 minutos. */
+function UserStatusDot({ available, lastSeen }: { available?: boolean | null; lastSeen?: string | null }) {
+  const logado = !!lastSeen && Date.now() - new Date(lastSeen).getTime() < 2 * 60 * 1000;
+  const online = logado && available !== false;
+  const visto = lastSeen ? new Date(lastSeen).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }) : "nunca";
+  const title = online
+    ? "Online"
+    : available === false
+      ? `Offline (marcado manualmente) · visto por último: ${visto}`
+      : `Offline · visto por último: ${visto}`;
+  return (
+    <span className="flex items-center gap-1 shrink-0" title={title}>
+      <span className={`h-2.5 w-2.5 rounded-full ${online ? "bg-emerald-500" : "bg-muted-foreground/40"}`} />
+      <span className={`text-[10px] ${online ? "text-emerald-600" : "text-muted-foreground"}`}>{online ? "Online" : "Offline"}</span>
+    </span>
   );
 }

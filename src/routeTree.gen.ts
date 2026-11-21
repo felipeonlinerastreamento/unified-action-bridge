@@ -48,7 +48,6 @@ import { Route as ConfiguracoesFluxoAtendimentoRouteImport } from './routes/conf
 import { Route as ConfiguracoesNotificacoesRouteImport } from './routes/configuracoes.notificacoes'
 import { Route as ConfiguracoesPopupDiarioRouteImport } from './routes/configuracoes.popup-diario'
 import { Route as ConfiguracoesRoboAtendimentoRouteImport } from './routes/configuracoes.robo-atendimento'
-import { Route as ConfiguracoesStatusUsuariosRouteImport } from './routes/configuracoes.status-usuarios'
 import { Route as ConfiguracoesUsuariosRouteImport } from './routes/configuracoes.usuarios'
 import { Route as ConfiguracoesZapiRouteImport } from './routes/configuracoes.zapi'
 import { Route as GamificacaoIndexRouteImport } from './routes/gamificacao.index'
@@ -284,12 +283,6 @@ const ConfiguracoesRoboAtendimentoRoute =
     path: '/robo-atendimento',
     getParentRoute: () => ConfiguracoesRoute,
   } as any)
-const ConfiguracoesStatusUsuariosRoute =
-  ConfiguracoesStatusUsuariosRouteImport.update({
-    id: '/status-usuarios',
-    path: '/status-usuarios',
-    getParentRoute: () => ConfiguracoesRoute,
-  } as any)
 const ConfiguracoesUsuariosRoute = ConfiguracoesUsuariosRouteImport.update({
   id: '/usuarios',
   path: '/usuarios',
@@ -480,7 +473,6 @@ export interface FileRoutesByFullPath {
   '/configuracoes/notificacoes': typeof ConfiguracoesNotificacoesRoute
   '/configuracoes/popup-diario': typeof ConfiguracoesPopupDiarioRoute
   '/configuracoes/robo-atendimento': typeof ConfiguracoesRoboAtendimentoRoute
-  '/configuracoes/status-usuarios': typeof ConfiguracoesStatusUsuariosRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
   '/gamificacao/admin': typeof GamificacaoAdminRoute
@@ -548,7 +540,6 @@ export interface FileRoutesByTo {
   '/configuracoes/notificacoes': typeof ConfiguracoesNotificacoesRoute
   '/configuracoes/popup-diario': typeof ConfiguracoesPopupDiarioRoute
   '/configuracoes/robo-atendimento': typeof ConfiguracoesRoboAtendimentoRoute
-  '/configuracoes/status-usuarios': typeof ConfiguracoesStatusUsuariosRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
   '/gamificacao/admin': typeof GamificacaoAdminRoute
@@ -620,7 +611,6 @@ export interface FileRoutesById {
   '/configuracoes/notificacoes': typeof ConfiguracoesNotificacoesRoute
   '/configuracoes/popup-diario': typeof ConfiguracoesPopupDiarioRoute
   '/configuracoes/robo-atendimento': typeof ConfiguracoesRoboAtendimentoRoute
-  '/configuracoes/status-usuarios': typeof ConfiguracoesStatusUsuariosRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
   '/gamificacao/admin': typeof GamificacaoAdminRoute
@@ -693,7 +683,6 @@ export interface FileRouteTypes {
     | '/configuracoes/notificacoes'
     | '/configuracoes/popup-diario'
     | '/configuracoes/robo-atendimento'
-    | '/configuracoes/status-usuarios'
     | '/configuracoes/usuarios'
     | '/configuracoes/zapi'
     | '/gamificacao/admin'
@@ -761,7 +750,6 @@ export interface FileRouteTypes {
     | '/configuracoes/notificacoes'
     | '/configuracoes/popup-diario'
     | '/configuracoes/robo-atendimento'
-    | '/configuracoes/status-usuarios'
     | '/configuracoes/usuarios'
     | '/configuracoes/zapi'
     | '/gamificacao/admin'
@@ -832,7 +820,6 @@ export interface FileRouteTypes {
     | '/configuracoes/notificacoes'
     | '/configuracoes/popup-diario'
     | '/configuracoes/robo-atendimento'
-    | '/configuracoes/status-usuarios'
     | '/configuracoes/usuarios'
     | '/configuracoes/zapi'
     | '/gamificacao/admin'
@@ -1179,13 +1166,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConfiguracoesRoboAtendimentoRouteImport
       parentRoute: typeof ConfiguracoesRoute
     }
-    '/configuracoes/status-usuarios': {
-      id: '/configuracoes/status-usuarios'
-      path: '/status-usuarios'
-      fullPath: '/configuracoes/status-usuarios'
-      preLoaderRoute: typeof ConfiguracoesStatusUsuariosRouteImport
-      parentRoute: typeof ConfiguracoesRoute
-    }
     '/configuracoes/usuarios': {
       id: '/configuracoes/usuarios'
       path: '/usuarios'
@@ -1424,7 +1404,6 @@ interface ConfiguracoesRouteChildren {
   ConfiguracoesNotificacoesRoute: typeof ConfiguracoesNotificacoesRoute
   ConfiguracoesPopupDiarioRoute: typeof ConfiguracoesPopupDiarioRoute
   ConfiguracoesRoboAtendimentoRoute: typeof ConfiguracoesRoboAtendimentoRoute
-  ConfiguracoesStatusUsuariosRoute: typeof ConfiguracoesStatusUsuariosRoute
   ConfiguracoesUsuariosRoute: typeof ConfiguracoesUsuariosRoute
   ConfiguracoesZapiRoute: typeof ConfiguracoesZapiRoute
   ConfiguracoesIndexRoute: typeof ConfiguracoesIndexRoute
@@ -1444,7 +1423,6 @@ const ConfiguracoesRouteChildren: ConfiguracoesRouteChildren = {
   ConfiguracoesNotificacoesRoute: ConfiguracoesNotificacoesRoute,
   ConfiguracoesPopupDiarioRoute: ConfiguracoesPopupDiarioRoute,
   ConfiguracoesRoboAtendimentoRoute: ConfiguracoesRoboAtendimentoRoute,
-  ConfiguracoesStatusUsuariosRoute: ConfiguracoesStatusUsuariosRoute,
   ConfiguracoesUsuariosRoute: ConfiguracoesUsuariosRoute,
   ConfiguracoesZapiRoute: ConfiguracoesZapiRoute,
   ConfiguracoesIndexRoute: ConfiguracoesIndexRoute,
@@ -1532,13 +1510,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
