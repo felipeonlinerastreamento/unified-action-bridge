@@ -213,6 +213,14 @@ INSERT INTO public.fin_categorias (nome, tipo, grupo_dre, ordem) VALUES
   ('Outros', 'despesa', 'Outras despesas', 99)
 ON CONFLICT (nome) DO NOTHING;
 
+-- Contas bancárias da Online Rastreamento (saldo inicial é ajustado na tela de Conciliação).
+INSERT INTO public.fin_contas_bancarias (empresa_id, nome, banco)
+SELECT e.id, v.nome, v.banco
+FROM public.fin_empresas e
+CROSS JOIN (VALUES ('Itaú PJ', 'Itaú'), ('Bradesco PJ', 'Bradesco'), ('Inter PJ', 'Inter')) AS v(nome, banco)
+WHERE e.codigo = 'OR'
+  AND NOT EXISTS (SELECT 1 FROM public.fin_contas_bancarias c WHERE c.nome = v.nome);
+
 -- 9) Papéis: admins (exceto Felipe e Patrícia) passam a gestor --------------
 -- Confirmado pelo usuário em 21/11/2026: Ricardo, Giseli, Marcus e Wellington.
 INSERT INTO public.user_roles (user_id, role)

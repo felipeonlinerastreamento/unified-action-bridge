@@ -112,6 +112,53 @@ export function calcularDre(
   };
 }
 
+export type RegimeDre = "competencia" | "caixa";
+
+/** Mês de referência do lançamento no DRE: competência ou data do pagamento (caixa; só pagos). */
+export function mesDreDe(l: FinLancamento, regime: RegimeDre): string | null {
+  if (l.status === "cancelado") return null;
+  if (regime === "caixa") {
+    if (l.status !== "pago" || !(l.data_pagamento || l.vencimento)) return null;
+    return mesDe((l.data_pagamento || l.vencimento) as string);
+  }
+  return l.competencia ? mesDe(l.competencia) : null;
+}
+
+/**
+ * DRE com uma coluna por mês (ex.: os 12 meses do ano), no regime escolhido.
+ * Linhas por grupo do DRE; receitas primeiro; total de receitas, despesas e resultado por mês.
+ */
+export function calcularDreMensal(lancamentos: FinLancamento[], categorias: FinCategoria[], meses: string[], regime: RegimeDre = "competencia") {
+  const catById = new Map(categorias.map((c) => [c.id, c]));
+  const pos = new Map(meses.map((m, i) => [m, i]));
+  const linhas = new Map<string, { grupo: string; tipo: "receita" | "despesa"; valores: number[]; total: number }>();
+  for (const l of lancamentos) {
+    const m = mesDreDe(l, regime);
+    if (!m || !pos.has(m)) continue;
+    const cat = l.categoria_id ? catById.get(l.categoria_id) : undefined;
+    const tipo: "receita" | "despesa" = cat?.tipo ?? (l.tipo === "receber" ? "receita" : "despesa");
+    const grupo = cat?.grupo_dre ?? (tipo === "receita" ? "Receitas sem categoria" : "Despesas sem categoria");
+    const key = `${tipo}|${grupo}`;
+    const linha = linhas.get(key) ?? { grupo, tipo, valores: meses.map(() => 0), total: 0 };
+    const v = Number((regime === "caixa" ? l.valor_pago ?? l.valor : l.valor) || 0);
+    linha.valores[pos.get(m)!] += v;
+    linha.total += v;
+    linhas.set(key, linha);
+  }
+  const arr = [...linhas.values()]
+    .map((x) => ({ ...x, valores: x.valores.map(round2), total: round2(x.total) }))
+    .sort((a, b) => (a.tipo === b.tipo ? b.total - a.total : a.tipo === "receita" ? -1 : 1));
+  const somaMes = (t: "receita" | "despesa") => meses.map((_, i) => round2(arr.filter((x) => x.tipo === t).reduce((s, x) => s + x.valores[i], 0)));
+  const receitas = somaMes("receita");
+  const despesas = somaMes("despesa");
+  const resultado = meses.map((_, i) => round2(receitas[i] - despesas[i]));
+  return { meses, linhas: arr, receitas, despesas, resultado };
+}
+
+export function mesesDoAno(ano: number): string[] {
+  return Array.from({ length: 12 }, (_, i) => `${ano}-${String(i + 1).padStart(2, "0")}-01`);
+}
+
 export type PontoFluxo = { periodo: string; entradas: number; saidas: number; saldo: number };
 
 /**
@@ -191,28 +238,55 @@ export function parseOfx(texto: string): ItemExtrato[] {
 }
 
 /**
- * Lê um CSV de extrato com colunas de data, descrição e valor (separador ; ou ,).
- * Aceita datas DD/MM/AAAA ou AAAA-MM-DD e valores no formato brasileiro.
+ * Lê um CSV de extrato (Itaú, Bradesco, Inter e genéricos), separador ; ou ,.
+ * - Pula linhas de cabeçalho do banco antes da linha de colunas (Bradesco/Inter).
+ * - Aceita uma coluna "Valor" (com sinal) ou colunas separadas "Crédito"/"Débito" (Bradesco).
+ * - Ignora linhas de saldo ("SALDO ANTERIOR", "SALDO DO DIA", "Total").
+ * Datas DD/MM/AAAA ou AAAA-MM-DD e valores no formato brasileiro.
  */
 export function parseCsvExtrato(texto: string): ItemExtrato[] {
-  const linhas = texto.split(/\r?\n/).filter((l) => l.trim());
+  const linhas = texto.replace(/^\uFEFF/, "").split(/\r?\n/).filter((l) => l.trim());
   if (!linhas.length) return [];
-  const sep = (linhas[0].match(/;/g)?.length ?? 0) >= (linhas[0].match(/,/g)?.length ?? 0) ? ";" : ",";
-  const cab = linhas[0].split(sep).map((c) => c.trim().toLowerCase());
-  const idx = (re: RegExp) => cab.findIndex((c) => re.test(c));
-  let iData = idx(/data|date/);
-  let iDesc = idx(/hist|desc|memo|lan/);
-  let iValor = idx(/valor|amount|quantia/);
-  const temCabecalho = iData >= 0 || iValor >= 0;
-  if (!temCabecalho) { iData = 0; iDesc = 1; iValor = 2; }
+  const contar = (l: string, c: string) => (l.match(new RegExp(`\\${c}`, "g"))?.length ?? 0);
+  const amostra = linhas.slice(0, 15).join("\n");
+  const sep = contar(amostra, ";") >= contar(amostra, ",") ? ";" : ",";
+  const split = (l: string) => l.split(sep).map((c) => c.trim().replace(/^"|"$/g, ""));
+
+  // Acha a linha de colunas: a primeira que tem "data" e ("valor" ou "crédito"/"débito").
+  let hIdx = linhas.findIndex((l) => {
+    const t = l.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    return /data/.test(t) && (/valor|amount/.test(t) || /credito|debito/.test(t));
+  });
+  const norm = (c: string) => c.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  let iData = 0, iDesc = 1, iValor = 2, iCred = -1, iDeb = -1;
+  if (hIdx >= 0) {
+    const cab = split(linhas[hIdx]).map(norm);
+    const idx = (re: RegExp) => cab.findIndex((c) => re.test(c));
+    iData = idx(/^data|date/);
+    iDesc = idx(/hist|desc|memo|lancamento|detalh/);
+    iCred = idx(/^credito|credit/);
+    iDeb = idx(/^debito|debit/);
+    iValor = idx(/^valor|amount|quantia/);
+    if (iDesc < 0) iDesc = iData === 0 ? 1 : 0;
+  } else {
+    hIdx = -1;
+  }
   const out: ItemExtrato[] = [];
-  for (const l of linhas.slice(temCabecalho ? 1 : 0)) {
-    const cols = l.split(sep).map((c) => c.trim().replace(/^"|"$/g, ""));
+  for (const l of linhas.slice(hIdx + 1)) {
+    const cols = split(l);
     const data = normalizarData(cols[iData] ?? "");
     if (!data) continue;
-    const valor = parseValorBR(cols[iValor] ?? "");
+    const descricao = cols[iDesc] ?? "";
+    if (/^saldo|saldo (anterior|do dia|final)|^total/i.test(descricao.trim())) continue;
+    let valor = 0;
+    if (iCred >= 0 || iDeb >= 0) {
+      const cr = iCred >= 0 ? Math.abs(parseValorBR(cols[iCred] ?? "")) : 0;
+      const db = iDeb >= 0 ? Math.abs(parseValorBR(cols[iDeb] ?? "")) : 0;
+      valor = cr - db;
+    }
+    if (!valor && iValor >= 0) valor = parseValorBR(cols[iValor] ?? "");
     if (!valor) continue;
-    out.push({ data, valor: round2(valor), descricao: cols[iDesc] ?? "" });
+    out.push({ data, valor: round2(valor), descricao });
   }
   return out;
 }

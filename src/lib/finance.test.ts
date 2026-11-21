@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
 import {
   statusVisivel, parseValorBR, calcularDre, fluxoDeCaixa, chavePeriodo, parseOfx, parseCsvExtrato,
-  sugerirConciliacao, dicasDoNomeArquivo, mesAnterior, type FinLancamento, type FinCategoria,
+  sugerirConciliacao, dicasDoNomeArquivo, mesAnterior, calcularDreMensal, mesesDoAno, type FinLancamento, type FinCategoria,
 } from "./finance";
 
 const cats: FinCategoria[] = [
@@ -115,5 +115,49 @@ describe("dicasDoNomeArquivo", () => {
     assert.equal(dicasDoNomeArquivo("DARF_INSS_OR_boleto_1911.pdf").empresa, "OR");
     assert.equal(dicasDoNomeArquivo("JIMI_out26_nf_2050_1.850,56.pdf").tipoDocumento, "nota_fiscal");
     assert.equal(dicasDoNomeArquivo("FELIPE_PRO_LABORE_OR_recibo_nov26.pdf").tipoDocumento, "recibo");
+  });
+});
+
+describe("extrato por banco", () => {
+  it("Bradesco: cabeçalho do banco, colunas Crédito/Débito e linha de saldo", () => {
+    const csv = [
+      "Extrato de: Agência: 1234 Conta: 56789-0",
+      "Data;Histórico;Docto.;Crédito (R$);Débito (R$);Saldo (R$)",
+      "29/11/2026;SALDO ANTERIOR;;;;10.000,00",
+      "30/11/2026;PAGTO ELETRON COBRANCA SYSTEMSAT;123;;1.000,00;9.000,00",
+      "30/11/2026;PIX RECEBIDO CLIENTE;456;350,00;;9.350,00",
+    ].join("\n");
+    const r = parseCsvExtrato(csv);
+    assert.equal(r.length, 2);
+    assert.equal(r[0].valor, -1000);
+    assert.equal(r[1].valor, 350);
+  });
+  it("Inter: Data Lançamento;Histórico;Descrição;Valor;Saldo", () => {
+    const csv = "Extrato Conta Corrente\nConta ;123\nData Lançamento;Histórico;Descrição;Valor;Saldo\n30/11/2026;Pix enviado;SYSTEMSAT;-1.000,00;5.000,00\n";
+    const r = parseCsvExtrato(csv);
+    assert.equal(r.length, 1);
+    assert.equal(r[0].valor, -1000);
+    assert.equal(r[0].data, "2026-11-30");
+  });
+  it("Itaú: data;lançamento;valor sem cabeçalho extra", () => {
+    const r = parseCsvExtrato("data;lançamento;valor\n30/11/2026;TAR BANCARIA;-12,50\n");
+    assert.equal(r[0].valor, -12.5);
+  });
+});
+
+describe("calcularDreMensal", () => {
+  it("competência x caixa por mês", () => {
+    const ls = [
+      L({ tipo: "receber", valor: 1000, competencia: "2026-10-01", status: "pago", data_pagamento: "2026-11-05", categoria_id: "r1" }),
+      L({ valor: 300, competencia: "2026-11-01", categoria_id: "d1" }),
+    ];
+    const meses = mesesDoAno(2026);
+    const comp = calcularDreMensal(ls, cats, meses, "competencia");
+    assert.equal(comp.receitas[9], 1000); // outubro
+    assert.equal(comp.despesas[10], 300); // novembro
+    const caixa = calcularDreMensal(ls, cats, meses, "caixa");
+    assert.equal(caixa.receitas[10], 1000); // recebido em novembro
+    assert.equal(caixa.despesas[10], 0); // em aberto não entra no caixa
+    assert.equal(caixa.resultado[10], 1000);
   });
 });

@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { calcularDre, fluxoDeCaixa, formatBRL, formatDataBR, hojeSP, mesDe } from "@/lib/finance";
+import { calcularDreMensal, fluxoDeCaixa, formatBRL, formatDataBR, hojeSP, mesAnterior, mesDe, mesesDoAno, type RegimeDre } from "@/lib/finance";
 import type { Cat, Conta, Lanc } from "./use-fin";
 
 export function FluxoTab({ lancamentos, contas }: { lancamentos: Lanc[]; contas: Conta[] }) {
@@ -67,50 +67,119 @@ export function FluxoTab({ lancamentos, contas }: { lancamentos: Lanc[]; contas:
 }
 
 export function DreTab({ lancamentos, categorias }: { lancamentos: Lanc[]; categorias: Cat[] }) {
-  const [mes, setMes] = useState(mesDe(hojeSP()));
-  const dre = useMemo(() => calcularDre(lancamentos, categorias, mes), [lancamentos, categorias, mes]);
+  const hoje = hojeSP();
+  const [visao, setVisao] = useState<"mes" | "ano">("mes");
+  const [regime, setRegime] = useState<RegimeDre>("competencia");
+  const [mes, setMes] = useState(mesDe(hoje));
+  const [ano, setAno] = useState(Number(hoje.slice(0, 4)));
+
+  // Visão mês: mês escolhido x mês anterior, no regime escolhido.
+  const mensal = useMemo(() => calcularDreMensal(lancamentos, categorias, [mesAnterior(mes), mes], regime), [lancamentos, categorias, mes, regime]);
+  const anual = useMemo(() => calcularDreMensal(lancamentos, categorias, mesesDoAno(ano), regime), [lancamentos, categorias, ano, regime]);
   const variacao = (a: number, b: number) => (b ? `${(((a - b) / Math.abs(b)) * 100).toFixed(0)}%` : "—");
-  const linhas = (tipo: "receita" | "despesa") => dre.linhas.filter((l) => l.tipo === tipo);
+  const nomeMes = (m: string) => ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"][Number(m.slice(5, 7)) - 1];
 
   return (
     <div className="space-y-3">
       <Card>
-        <CardContent className="p-3 flex items-center gap-2 text-sm">
-          <span>Competência</span>
-          <Input type="month" className="w-[170px]" value={mes.slice(0, 7)} onChange={(e) => e.target.value && setMes(`${e.target.value}-01`)} />
-          <span className="text-muted-foreground text-xs">Comparado com o mês anterior. Lançamentos cancelados ficam fora.</span>
+        <CardContent className="p-3 flex flex-wrap items-center gap-2 text-sm">
+          <Select value={visao} onValueChange={(v) => setVisao(v as any)}>
+            <SelectTrigger className="w-[150px]"><SelectValue /></SelectTrigger>
+            <SelectContent><SelectItem value="mes">Mês a mês</SelectItem><SelectItem value="ano">Ano (12 meses)</SelectItem></SelectContent>
+          </Select>
+          {visao === "mes" ? (
+            <Input type="month" className="w-[170px]" value={mes.slice(0, 7)} onChange={(e) => e.target.value && setMes(`${e.target.value}-01`)} />
+          ) : (
+            <Input type="number" className="w-[110px]" value={ano} onChange={(e) => setAno(Number(e.target.value) || ano)} />
+          )}
+          <Select value={regime} onValueChange={(v) => setRegime(v as RegimeDre)}>
+            <SelectTrigger className="w-[200px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="competencia">Regime de competência</SelectItem>
+              <SelectItem value="caixa">Regime de caixa (pagos)</SelectItem>
+            </SelectContent>
+          </Select>
+          <span className="text-muted-foreground text-xs">
+            {regime === "competencia" ? "Pelo mês de competência de cada lançamento." : "Só o que foi pago/recebido, pela data do pagamento."} Cancelados ficam fora.
+          </span>
         </CardContent>
       </Card>
-      <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-sm">DRE gerencial</CardTitle></CardHeader>
-        <Table>
-          <TableHeader>
-            <TableRow><TableHead>Grupo</TableHead><TableHead className="text-right">Mês</TableHead><TableHead className="text-right">Mês anterior</TableHead><TableHead className="text-right">Variação</TableHead></TableRow>
-          </TableHeader>
-          <TableBody>
-            {(["receita", "despesa"] as const).map((tipo) => (
-              <Fragment key={tipo}>
-                <TableRow key={`h-${tipo}`} className="bg-muted/40"><TableCell colSpan={4} className="font-semibold">{tipo === "receita" ? "Receitas" : "Despesas"}</TableCell></TableRow>
-                {linhas(tipo).length === 0 && <TableRow key={`e-${tipo}`}><TableCell colSpan={4} className="text-muted-foreground text-sm">Nada lançado.</TableCell></TableRow>}
-                {linhas(tipo).map((l) => (
-                  <TableRow key={`${tipo}-${l.grupo}`}>
-                    <TableCell className="pl-6">{l.grupo}</TableCell>
-                    <TableCell className="text-right">{formatBRL(l.atual)}</TableCell>
-                    <TableCell className="text-right text-muted-foreground">{formatBRL(l.anterior)}</TableCell>
-                    <TableCell className="text-right text-muted-foreground">{variacao(l.atual, l.anterior)}</TableCell>
+
+      {visao === "mes" ? (
+        <Card>
+          <CardHeader className="pb-2"><CardTitle className="text-sm">DRE gerencial · {nomeMes(mes)}/{mes.slice(0, 4)}</CardTitle></CardHeader>
+          <Table>
+            <TableHeader>
+              <TableRow><TableHead>Grupo</TableHead><TableHead className="text-right">Mês</TableHead><TableHead className="text-right">Mês anterior</TableHead><TableHead className="text-right">Variação</TableHead></TableRow>
+            </TableHeader>
+            <TableBody>
+              {(["receita", "despesa"] as const).map((tipo) => (
+                <Fragment key={tipo}>
+                  <TableRow className="bg-muted/40">
+                    <TableCell className="font-semibold">{tipo === "receita" ? "Receitas" : "Despesas"}</TableCell>
+                    <TableCell className="text-right font-semibold">{formatBRL((tipo === "receita" ? mensal.receitas : mensal.despesas)[1])}</TableCell>
+                    <TableCell className="text-right text-muted-foreground">{formatBRL((tipo === "receita" ? mensal.receitas : mensal.despesas)[0])}</TableCell>
+                    <TableCell />
                   </TableRow>
-                ))}
-              </Fragment>
-            ))}
-            <TableRow className="border-t-2">
-              <TableCell className="font-semibold">Resultado (receitas − despesas)</TableCell>
-              <TableCell className={`text-right font-bold ${dre.resultadoAtual < 0 ? "text-destructive" : "text-emerald-600"}`}>{formatBRL(dre.resultadoAtual)}</TableCell>
-              <TableCell className="text-right text-muted-foreground">{formatBRL(dre.resultadoAnterior)}</TableCell>
-              <TableCell className="text-right text-muted-foreground">{variacao(dre.resultadoAtual, dre.resultadoAnterior)}</TableCell>
-            </TableRow>
-          </TableBody>
-        </Table>
-      </Card>
+                  {mensal.linhas.filter((l) => l.tipo === tipo).map((l) => (
+                    <TableRow key={`${tipo}-${l.grupo}`}>
+                      <TableCell className="pl-6">{l.grupo}</TableCell>
+                      <TableCell className="text-right">{formatBRL(l.valores[1])}</TableCell>
+                      <TableCell className="text-right text-muted-foreground">{formatBRL(l.valores[0])}</TableCell>
+                      <TableCell className="text-right text-muted-foreground">{variacao(l.valores[1], l.valores[0])}</TableCell>
+                    </TableRow>
+                  ))}
+                </Fragment>
+              ))}
+              <TableRow className="border-t-2">
+                <TableCell className="font-semibold">Resultado (receitas − despesas)</TableCell>
+                <TableCell className={`text-right font-bold ${mensal.resultado[1] < 0 ? "text-destructive" : "text-emerald-600"}`}>{formatBRL(mensal.resultado[1])}</TableCell>
+                <TableCell className="text-right text-muted-foreground">{formatBRL(mensal.resultado[0])}</TableCell>
+                <TableCell className="text-right text-muted-foreground">{variacao(mensal.resultado[1], mensal.resultado[0])}</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </Card>
+      ) : (
+        <Card className="overflow-x-auto">
+          <CardHeader className="pb-2"><CardTitle className="text-sm">DRE gerencial · {ano}</CardTitle></CardHeader>
+          <Table className="text-xs">
+            <TableHeader>
+              <TableRow>
+                <TableHead className="min-w-[180px]">Grupo</TableHead>
+                {anual.meses.map((m) => <TableHead key={m} className="text-right">{nomeMes(m)}</TableHead>)}
+                <TableHead className="text-right">Total</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {(["receita", "despesa"] as const).map((tipo) => {
+                const tot = tipo === "receita" ? anual.receitas : anual.despesas;
+                return (
+                  <Fragment key={tipo}>
+                    <TableRow className="bg-muted/40 font-semibold">
+                      <TableCell>{tipo === "receita" ? "Receitas" : "Despesas"}</TableCell>
+                      {tot.map((v, i) => <TableCell key={i} className="text-right">{v ? formatBRL(v) : "—"}</TableCell>)}
+                      <TableCell className="text-right">{formatBRL(tot.reduce((a, b) => a + b, 0))}</TableCell>
+                    </TableRow>
+                    {anual.linhas.filter((l) => l.tipo === tipo).map((l) => (
+                      <TableRow key={`${tipo}-${l.grupo}`}>
+                        <TableCell className="pl-6">{l.grupo}</TableCell>
+                        {l.valores.map((v, i) => <TableCell key={i} className="text-right">{v ? formatBRL(v) : "—"}</TableCell>)}
+                        <TableCell className="text-right font-medium">{formatBRL(l.total)}</TableCell>
+                      </TableRow>
+                    ))}
+                  </Fragment>
+                );
+              })}
+              <TableRow className="border-t-2 font-semibold">
+                <TableCell>Resultado</TableCell>
+                {anual.resultado.map((v, i) => <TableCell key={i} className={`text-right ${v < 0 ? "text-destructive" : ""}`}>{v ? formatBRL(v) : "—"}</TableCell>)}
+                <TableCell className="text-right">{formatBRL(anual.resultado.reduce((a, b) => a + b, 0))}</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </Card>
+      )}
     </div>
   );
 }
