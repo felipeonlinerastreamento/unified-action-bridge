@@ -174,6 +174,7 @@ export const enviarContrato = createServerFn({ method: "POST" })
     const { data: c } = await admin.from("contratos").select("*").eq("id", data.id).maybeSingle();
     if (!c) throw new Error("Contrato não encontrado.");
     if (c.status === "assinado" || c.status === "cancelado") throw new Error("Este contrato já foi assinado ou cancelado.");
+    if (c.provedor === "autentique") throw new Error("Este contrato está no Autentique: use o link do Autentique.");
     if (!c.signatario_nome || !isValidCpf(c.signatario_cpf)) throw new Error("Informe nome e CPF válido do signatário.");
     if (data.whatsapp && !soDigitos(c.signatario_telefone)) throw new Error("Informe o WhatsApp do signatário.");
     if (data.email && !String(c.signatario_email || "").includes("@")) throw new Error("Informe o e-mail do signatário.");
@@ -266,6 +267,7 @@ async function contratoPorToken(admin: Admin, token: string) {
 }
 function confereCpf(c: any, cpf: string) {
   if (!c || c.status === "rascunho") throw new Error("Contrato não encontrado.");
+  if (c.provedor === "autentique") throw new Error("Este contrato é assinado pela plataforma Autentique. Use o link recebido do Autentique.");
   if (soDigitos(cpf) !== soDigitos(c.signatario_cpf)) throw new Error("CPF não confere com o signatário deste contrato.");
 }
 
@@ -365,4 +367,36 @@ export const assinarContrato = createServerFn({ method: "POST" })
       });
     }
     return { ok: true, assinadoEm: agora, hash: c.hash_sha256 as string, documento: formatarDoc(c.cliente_documento) };
+  });
+
+// ------------------------------------------------------------------ Autentique
+export const statusAutentique = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertContratos((context as any).supabase);
+    const { autentiqueConfigurado, autentiqueSandbox } = await import("@/lib/autentique.server");
+    return { configurado: autentiqueConfigurado(), sandbox: autentiqueSandbox() };
+  });
+
+export const enviarAutentique = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({
+    id: z.string().uuid(), canal: z.enum(["email", "whatsapp"]), verificacao: z.enum(["nenhuma", "LIVE", "PF_FACIAL", "UPLOAD"]),
+  }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context as any;
+    await assertContratos(supabase);
+    const admin = await adminDb();
+    const m = await modelos(admin);
+    const { enviarPeloAutentique } = await import("@/lib/contratos-autentique.server");
+    return enviarPeloAutentique({ contratoId: data.id, userId, verificacao: data.verificacao, canal: data.canal, modelos: { contrato: m.contrato, termo: m.termo } });
+  });
+
+export const atualizarAutentique = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ id: z.string().uuid() }).parse(d))
+  .handler(async ({ data, context }) => {
+    await assertContratos((context as any).supabase);
+    const { sincronizarAutentique } = await import("@/lib/contratos-autentique.server");
+    return sincronizarAutentique(data.id);
   });

@@ -75,6 +75,7 @@ import { Route as ApiPublicChatIdleScannerRouteImport } from './routes/api.publi
 import { Route as ApiPublicCrmDailyRouteImport } from './routes/api.public.crm-daily'
 import { Route as ApiPublicEmailPollRouteImport } from './routes/api.public.email-poll'
 import { Route as ApiPublicSystemHealthScanRouteImport } from './routes/api.public.system-health-scan'
+import { Route as ApiPublicHooksAutentiqueRouteImport } from './routes/api.public.hooks.autentique'
 import { Route as ApiPublicHooksSyncGsystemEquipamentosRouteImport } from './routes/api.public.hooks.sync-gsystem-equipamentos'
 import { Route as ApiPublicHooksSyncGsystemFaturasRouteImport } from './routes/api.public.hooks.sync-gsystem-faturas'
 import { Route as ApiPublicZapiWebhookChannelIdRouteImport } from './routes/api.public.zapi-webhook.$channelId'
@@ -425,6 +426,12 @@ const ApiPublicSystemHealthScanRoute =
     path: '/api/public/system-health-scan',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksAutentiqueRoute =
+  ApiPublicHooksAutentiqueRouteImport.update({
+    id: '/api/public/hooks/autentique',
+    path: '/api/public/hooks/autentique',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksSyncGsystemEquipamentosRoute =
   ApiPublicHooksSyncGsystemEquipamentosRouteImport.update({
     id: '/api/public/hooks/sync-gsystem-equipamentos',
@@ -521,6 +528,7 @@ export interface FileRoutesByFullPath {
   '/api/public/crm-daily': typeof ApiPublicCrmDailyRoute
   '/api/public/email-poll': typeof ApiPublicEmailPollRoute
   '/api/public/system-health-scan': typeof ApiPublicSystemHealthScanRoute
+  '/api/public/hooks/autentique': typeof ApiPublicHooksAutentiqueRoute
   '/api/public/hooks/sync-gsystem-equipamentos': typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   '/api/public/hooks/sync-gsystem-faturas': typeof ApiPublicHooksSyncGsystemFaturasRoute
   '/api/public/zapi-webhook/$channelId': typeof ApiPublicZapiWebhookChannelIdRoute
@@ -591,6 +599,7 @@ export interface FileRoutesByTo {
   '/api/public/crm-daily': typeof ApiPublicCrmDailyRoute
   '/api/public/email-poll': typeof ApiPublicEmailPollRoute
   '/api/public/system-health-scan': typeof ApiPublicSystemHealthScanRoute
+  '/api/public/hooks/autentique': typeof ApiPublicHooksAutentiqueRoute
   '/api/public/hooks/sync-gsystem-equipamentos': typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   '/api/public/hooks/sync-gsystem-faturas': typeof ApiPublicHooksSyncGsystemFaturasRoute
   '/api/public/zapi-webhook/$channelId': typeof ApiPublicZapiWebhookChannelIdRoute
@@ -665,6 +674,7 @@ export interface FileRoutesById {
   '/api/public/crm-daily': typeof ApiPublicCrmDailyRoute
   '/api/public/email-poll': typeof ApiPublicEmailPollRoute
   '/api/public/system-health-scan': typeof ApiPublicSystemHealthScanRoute
+  '/api/public/hooks/autentique': typeof ApiPublicHooksAutentiqueRoute
   '/api/public/hooks/sync-gsystem-equipamentos': typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   '/api/public/hooks/sync-gsystem-faturas': typeof ApiPublicHooksSyncGsystemFaturasRoute
   '/api/public/zapi-webhook/$channelId': typeof ApiPublicZapiWebhookChannelIdRoute
@@ -740,6 +750,7 @@ export interface FileRouteTypes {
     | '/api/public/crm-daily'
     | '/api/public/email-poll'
     | '/api/public/system-health-scan'
+    | '/api/public/hooks/autentique'
     | '/api/public/hooks/sync-gsystem-equipamentos'
     | '/api/public/hooks/sync-gsystem-faturas'
     | '/api/public/zapi-webhook/$channelId'
@@ -810,6 +821,7 @@ export interface FileRouteTypes {
     | '/api/public/crm-daily'
     | '/api/public/email-poll'
     | '/api/public/system-health-scan'
+    | '/api/public/hooks/autentique'
     | '/api/public/hooks/sync-gsystem-equipamentos'
     | '/api/public/hooks/sync-gsystem-faturas'
     | '/api/public/zapi-webhook/$channelId'
@@ -883,6 +895,7 @@ export interface FileRouteTypes {
     | '/api/public/crm-daily'
     | '/api/public/email-poll'
     | '/api/public/system-health-scan'
+    | '/api/public/hooks/autentique'
     | '/api/public/hooks/sync-gsystem-equipamentos'
     | '/api/public/hooks/sync-gsystem-faturas'
     | '/api/public/zapi-webhook/$channelId'
@@ -924,6 +937,7 @@ export interface RootRouteChildren {
   ApiPublicCrmDailyRoute: typeof ApiPublicCrmDailyRoute
   ApiPublicEmailPollRoute: typeof ApiPublicEmailPollRoute
   ApiPublicSystemHealthScanRoute: typeof ApiPublicSystemHealthScanRoute
+  ApiPublicHooksAutentiqueRoute: typeof ApiPublicHooksAutentiqueRoute
   ApiPublicHooksSyncGsystemEquipamentosRoute: typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   ApiPublicHooksSyncGsystemFaturasRoute: typeof ApiPublicHooksSyncGsystemFaturasRoute
   ApiPublicZapiWebhookChannelIdRoute: typeof ApiPublicZapiWebhookChannelIdRoute
@@ -1395,6 +1409,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicSystemHealthScanRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/autentique': {
+      id: '/api/public/hooks/autentique'
+      path: '/api/public/hooks/autentique'
+      fullPath: '/api/public/hooks/autentique'
+      preLoaderRoute: typeof ApiPublicHooksAutentiqueRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/sync-gsystem-equipamentos': {
       id: '/api/public/hooks/sync-gsystem-equipamentos'
       path: '/api/public/hooks/sync-gsystem-equipamentos'
@@ -1564,6 +1585,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicCrmDailyRoute: ApiPublicCrmDailyRoute,
   ApiPublicEmailPollRoute: ApiPublicEmailPollRoute,
   ApiPublicSystemHealthScanRoute: ApiPublicSystemHealthScanRoute,
+  ApiPublicHooksAutentiqueRoute: ApiPublicHooksAutentiqueRoute,
   ApiPublicHooksSyncGsystemEquipamentosRoute:
     ApiPublicHooksSyncGsystemEquipamentosRoute,
   ApiPublicHooksSyncGsystemFaturasRoute: ApiPublicHooksSyncGsystemFaturasRoute,

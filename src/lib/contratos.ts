@@ -240,6 +240,7 @@ export const EVENTO_LABEL: Record<string, string> = {
   assinado_contratada: "Assinado pela CONTRATADA",
   assinado_testemunha: "Assinado por testemunha",
   cancelado: "Contrato cancelado",
+  recusado: "Recusado pelo signatário",
 };
 
 /** Código de 6 dígitos. */
@@ -249,3 +250,34 @@ export function gerarCodigo(rand: () => number = Math.random): string {
 
 export const MAX_TENTATIVAS_CODIGO = 5;
 export const VALIDADE_CODIGO_MIN = 10;
+
+export type BlocoTexto = { tipo: "h2" | "h3" | "p"; texto: string };
+
+/** Volta o HTML gerado por textoParaHtml/montarDocumento para blocos de texto (usado no PDF). */
+export function htmlParaBlocos(html: string): BlocoTexto[] {
+  const des = (s: string) => s.replace(/<br\s*\/?>/g, "\n").replace(/<[^>]+>/g, "")
+    .replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&quot;/g, '"').replace(/&#39;/g, "'").replace(/&amp;/g, "&");
+  const out: BlocoTexto[] = [];
+  for (const m of html.matchAll(/<(h2|h3|p)>([\s\S]*?)<\/\1>/g)) {
+    const texto = des(m[2]).trim();
+    if (texto) out.push({ tipo: m[1] as BlocoTexto["tipo"], texto });
+  }
+  return out;
+}
+
+/** Troca caracteres que a fonte padrão do PDF (WinAnsi) não tem. */
+export function textoSeguroPdf(s: string): string {
+  return s
+    .replace(/[‐-‒]/g, "-")
+    .replace(/[-▪-●•]/g, "•")
+    .replace(/ /g, " ")
+    .replace(/[^\n\t\x20-\x7E¡-ÿ–—‘’“”•…€]/g, "");
+}
+
+/** Telefone em formato internacional para o Autentique (+55...). */
+export function telefoneInternacional(tel: string): string | null {
+  const d = soDigitos(tel);
+  if (d.length === 10 || d.length === 11) return `+55${d}`;
+  if ((d.length === 12 || d.length === 13) && d.startsWith("55")) return `+${d}`;
+  return null;
+}

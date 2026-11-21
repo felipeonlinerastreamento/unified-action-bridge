@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { Plus, Search, Loader2, Send, Copy, PenLine, Ban, Printer, Eye, Download, Trash2, FileSignature } from "lucide-react";
+import { Plus, Search, Loader2, Send, Copy, PenLine, Ban, Printer, Eye, Download, Trash2, FileSignature, RefreshCw, ExternalLink, ShieldCheck } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/hooks/use-auth";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,7 +24,7 @@ import {
   type DadosContrato, type Veiculo, type SituacaoContrato,
 } from "@/lib/contratos";
 import { EQUIPAMENTOS_PADRAO } from "@/lib/contratos-modelos";
-import { assinarInterno, buscarClienteGsystem, cancelarContrato, enviarContrato, prepararModelos, previaContrato } from "@/lib/contratos.functions";
+import { assinarInterno, atualizarAutentique, buscarClienteGsystem, cancelarContrato, enviarAutentique, enviarContrato, prepararModelos, previaContrato, statusAutentique } from "@/lib/contratos.functions";
 import { CONTRATO_CSS } from "./contrato-css";
 
 const db = supabase as any; // tabelas novas ainda fora dos tipos gerados
@@ -38,8 +38,10 @@ type Contrato = {
   assinatura_ip: string | null; assinatura_user_agent: string | null; assinatura_canal: string | null;
   contratada_assinado_nome: string | null; contratada_assinado_em: string | null; contratada_ip: string | null;
   testemunhas: { nome: string; cpf: string; assinado_em: string; ip: string | null }[]; cancelado_motivo: string | null; created_at: string;
+  provedor: "proprio" | "autentique"; provedor_documento_id: string | null; provedor_link: string | null; provedor_verificacao: string | null;
+  provedor_sandbox: boolean; arquivo_assinado_url: string | null; assinatura_geo: string | null;
 };
-const COLS = "id, numero, status, cliente_nome, cliente_documento, dados, vigencia_inicio, vigencia_meses, renovacao_automatica, valor_mensal, valor_implantacao, signatario_nome, signatario_cpf, signatario_email, signatario_telefone, conteudo_html, hash_sha256, token, enviado_em, visualizado_em, assinado_em, assinatura_nome, assinatura_ip, assinatura_user_agent, assinatura_canal, contratada_assinado_nome, contratada_assinado_em, contratada_ip, testemunhas, cancelado_motivo, created_at";
+const COLS = "id, numero, status, cliente_nome, cliente_documento, dados, vigencia_inicio, vigencia_meses, renovacao_automatica, valor_mensal, valor_implantacao, signatario_nome, signatario_cpf, signatario_email, signatario_telefone, conteudo_html, hash_sha256, token, enviado_em, visualizado_em, assinado_em, assinatura_nome, assinatura_ip, assinatura_user_agent, assinatura_canal, contratada_assinado_nome, contratada_assinado_em, contratada_ip, testemunhas, cancelado_motivo, created_at, provedor, provedor_documento_id, provedor_link, provedor_verificacao, provedor_sandbox, arquivo_assinado_url, assinatura_geo";
 
 const dh = (iso?: string | null) => (iso ? new Date(iso).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "short", timeStyle: "short" }) : "—");
 const num = (s?: string) => { const n = Number(String(s ?? "").replace(/\./g, "").replace(",", ".")); return Number.isFinite(n) && n > 0 ? n : null; };
@@ -333,6 +335,12 @@ function Detalhe({ contrato, onClose }: { contrato: Contrato; onClose: () => voi
   const enviar = useServerFn(enviarContrato);
   const cancelar = useServerFn(cancelarContrato);
   const assinar = useServerFn(assinarInterno);
+  const enviarAut = useServerFn(enviarAutentique);
+  const atualizarAut = useServerFn(atualizarAutentique);
+  const statusAut = useServerFn(statusAutentique);
+  const { data: aut } = useQuery({ queryKey: ["autentique-status"], queryFn: () => statusAut(), staleTime: 10 * 60_000 });
+  const [autCanal, setAutCanal] = useState<"email" | "whatsapp">(contrato.signatario_email ? "email" : "whatsapp");
+  const [autVerif, setAutVerif] = useState<"nenhuma" | "LIVE" | "PF_FACIAL" | "UPLOAD">("nenhuma");
   const hoje = hojeSP();
   const { data: c = contrato, refetch } = useQuery({
     queryKey: ["contrato", contrato.id],
@@ -358,6 +366,16 @@ function Detalhe({ contrato, onClose }: { contrato: Contrato; onClose: () => voi
       Object.entries(r.erros).forEach(([k, v]) => toast.error(`${k}: ${v}`));
       atualizar();
     } catch (e: any) { toast.error(e?.message ?? "Falha ao enviar."); } finally { setOcupado(false); }
+  };
+  const doEnviarAut = async () => {
+    setOcupado(true);
+    try { await enviarAut({ data: { id: c.id, canal: autCanal, verificacao: autVerif } }); toast.success("Enviado pelo Autentique."); atualizar(); }
+    catch (e: any) { toast.error(e?.message ?? "Falha no Autentique."); } finally { setOcupado(false); }
+  };
+  const doAtualizarAut = async () => {
+    setOcupado(true);
+    try { const r = await atualizarAut({ data: { id: c.id } }); toast.success(r.mudou ? "Atualizado do Autentique." : "Sem novidades no Autentique."); atualizar(); }
+    catch (e: any) { toast.error(e?.message ?? "Falha ao consultar o Autentique."); } finally { setOcupado(false); }
   };
   const doAssinar = async (papel: "contratada" | "testemunha") => {
     if (papel === "testemunha" && !isValidCpf(cpfTest)) { toast.error("Informe seu CPF para assinar como testemunha."); return; }
@@ -391,7 +409,7 @@ function Detalhe({ contrato, onClose }: { contrato: Contrato; onClose: () => voi
         </div>
         {c.status === "cancelado" && <p className="text-sm text-destructive">Cancelado: {c.cancelado_motivo}</p>}
 
-        {c.status === "enviado" && (
+        {c.status === "enviado" && c.provedor !== "autentique" && (
           <Card><CardContent className="p-3 flex flex-wrap items-center gap-3 text-sm">
             <label className="flex items-center gap-1.5"><Checkbox checked={canais.whatsapp} onCheckedChange={(v) => setCanais({ ...canais, whatsapp: v === true })} />WhatsApp</label>
             <label className="flex items-center gap-1.5"><Checkbox checked={canais.email} onCheckedChange={(v) => setCanais({ ...canais, email: v === true })} />E-mail</label>
@@ -399,16 +417,46 @@ function Detalhe({ contrato, onClose }: { contrato: Contrato; onClose: () => voi
             <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(url); toast.success("Link copiado."); }}><Copy className="h-4 w-4 mr-1" />Copiar link</Button>
           </CardContent></Card>
         )}
+        {c.status === "rascunho" && aut?.configurado && (
+          <Card><CardContent className="p-3 flex flex-wrap items-center gap-3 text-sm">
+            <span className="flex items-center gap-1 font-medium"><ShieldCheck className="h-4 w-4" />Autentique{aut.sandbox ? " (modo teste)" : ""}</span>
+            <Select value={autCanal} onValueChange={(v) => setAutCanal(v as any)}><SelectTrigger className="w-[130px]"><SelectValue /></SelectTrigger>
+              <SelectContent><SelectItem value="email">E-mail</SelectItem><SelectItem value="whatsapp">WhatsApp</SelectItem></SelectContent></Select>
+            <Select value={autVerif} onValueChange={(v) => setAutVerif(v as any)}><SelectTrigger className="w-[230px]"><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="nenhuma">Sem verificação extra</SelectItem>
+                <SelectItem value="LIVE">Documento + selfie + prova de vida</SelectItem>
+                <SelectItem value="PF_FACIAL">Selfie validada no governo (SERPRO)</SelectItem>
+                <SelectItem value="UPLOAD">Foto do documento (frente e verso)</SelectItem>
+              </SelectContent></Select>
+            <Button size="sm" variant="outline" onClick={doEnviarAut} disabled={ocupado}>{ocupado ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Send className="h-4 w-4 mr-1" />}Enviar pelo Autentique</Button>
+            <span className="text-xs text-muted-foreground w-full">Você assina como CONTRATADA pelo e-mail da sua conta. Verificações extras consomem créditos do Autentique.</span>
+          </CardContent></Card>
+        )}
+        {c.provedor === "autentique" && c.status !== "rascunho" && (
+          <Card><CardContent className="p-3 flex flex-wrap items-center gap-3 text-sm">
+            <span className="flex items-center gap-1 font-medium"><ShieldCheck className="h-4 w-4" />Assinatura pelo Autentique{c.provedor_sandbox ? " (teste)" : ""}</span>
+            {c.provedor_link && <Button size="sm" variant="outline" onClick={() => { navigator.clipboard.writeText(c.provedor_link!); toast.success("Link copiado."); }}><Copy className="h-4 w-4 mr-1" />Link do cliente</Button>}
+            <Button size="sm" variant="outline" onClick={doAtualizarAut} disabled={ocupado}><RefreshCw className="h-4 w-4 mr-1" />Atualizar do Autentique</Button>
+            {c.arquivo_assinado_url && <a href={c.arquivo_assinado_url} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 underline"><ExternalLink className="h-4 w-4" />PDF assinado</a>}
+          </CardContent></Card>
+        )}
         {c.status === "rascunho" && (
           <Card><CardContent className="p-3 flex flex-wrap items-center gap-3 text-sm">
-            <span>Ao enviar, o texto é congelado e recebe o código de integridade (SHA-256).</span>
+            <span className="font-medium">Assinatura própria:</span><span>ao enviar, o texto é congelado e recebe o código de integridade (SHA-256).</span>
             <label className="flex items-center gap-1.5"><Checkbox checked={canais.whatsapp} onCheckedChange={(v) => setCanais({ ...canais, whatsapp: v === true })} />WhatsApp</label>
             <label className="flex items-center gap-1.5"><Checkbox checked={canais.email} onCheckedChange={(v) => setCanais({ ...canais, email: v === true })} />E-mail</label>
             <Button size="sm" onClick={doEnviar} disabled={ocupado}>{ocupado ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Send className="h-4 w-4 mr-1" />}Enviar para assinatura</Button>
           </CardContent></Card>
         )}
 
-        {(c.status === "enviado" || c.status === "assinado") && (
+        {(c.status === "enviado" || c.status === "assinado") && c.provedor === "autentique" && (
+          <Card><CardContent className="p-3 text-sm space-y-1">
+            <div>CONTRATANTE: {c.assinado_em ? `${c.assinatura_nome} em ${dh(c.assinado_em)} (IP ${c.assinatura_ip ?? "—"}${c.assinatura_geo ? `, ${c.assinatura_geo}` : ""})` : "aguardando"}</div>
+            <div>CONTRATADA: {c.contratada_assinado_em ? `${c.contratada_assinado_nome} em ${dh(c.contratada_assinado_em)}` : "aguardando (assine pelo e-mail do Autentique)"}</div>
+          </CardContent></Card>
+        )}
+        {(c.status === "enviado" || c.status === "assinado") && c.provedor !== "autentique" && (
           <Card><CardHeader className="pb-2"><CardTitle className="text-sm">Assinaturas</CardTitle></CardHeader>
             <CardContent className="text-sm space-y-2">
               <div>CONTRATANTE: {c.assinado_em ? `${c.assinatura_nome} em ${dh(c.assinado_em)} (IP ${c.assinatura_ip ?? "—"})` : "aguardando"}</div>

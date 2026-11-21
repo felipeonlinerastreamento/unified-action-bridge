@@ -88,3 +88,19 @@ describe("máscaras e código", () => {
     assert.equal(gerarCodigo(() => 0.999999).length, 6);
   });
 });
+
+import { htmlParaBlocos, textoSeguroPdf, telefoneInternacional } from "./contratos";
+describe("PDF e Autentique", () => {
+  it("HTML volta a blocos", () => {
+    const b = htmlParaBlocos('<section><h2>ANEXO I</h2>\n<h3>CLÁUSULA</h3>\n<p>a &lt;b&gt;<br/>c &amp; d</p></section>');
+    assert.deepEqual(b, [{ tipo: "h2", texto: "ANEXO I" }, { tipo: "h3", texto: "CLÁUSULA" }, { tipo: "p", texto: "a <b>\nc & d" }]);
+  });
+  it("texto seguro para a fonte do PDF", () => {
+    assert.equal(textoSeguroPdf("Ação – “ok”  item ☺"), "Ação – “ok” • item ");
+  });
+  it("telefone internacional", () => {
+    assert.equal(telefoneInternacional("(31) 99999-8888"), "+5531999998888");
+    assert.equal(telefoneInternacional("5531999998888"), "+5531999998888");
+    assert.equal(telefoneInternacional("123"), null);
+  });
+});
