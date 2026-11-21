@@ -3145,6 +3145,303 @@ export type Database = {
         }
         Relationships: []
       }
+      fin_acesso: {
+        Row: {
+          created_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      fin_categorias: {
+        Row: {
+          ativo: boolean
+          created_at: string
+          grupo_dre: string
+          id: string
+          nome: string
+          ordem: number
+          tipo: string
+        }
+        Insert: {
+          ativo?: boolean
+          created_at?: string
+          grupo_dre?: string
+          id?: string
+          nome: string
+          ordem?: number
+          tipo?: string
+        }
+        Update: {
+          ativo?: boolean
+          created_at?: string
+          grupo_dre?: string
+          id?: string
+          nome?: string
+          ordem?: number
+          tipo?: string
+        }
+        Relationships: []
+      }
+      fin_contas_bancarias: {
+        Row: {
+          agencia: string | null
+          ativo: boolean
+          banco: string | null
+          conta: string | null
+          created_at: string
+          empresa_id: string | null
+          id: string
+          nome: string
+          saldo_inicial: number
+          saldo_inicial_data: string | null
+        }
+        Insert: {
+          agencia?: string | null
+          ativo?: boolean
+          banco?: string | null
+          conta?: string | null
+          created_at?: string
+          empresa_id?: string | null
+          id?: string
+          nome: string
+          saldo_inicial?: number
+          saldo_inicial_data?: string | null
+        }
+        Update: {
+          agencia?: string | null
+          ativo?: boolean
+          banco?: string | null
+          conta?: string | null
+          created_at?: string
+          empresa_id?: string | null
+          id?: string
+          nome?: string
+          saldo_inicial?: number
+          saldo_inicial_data?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_contas_bancarias_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "fin_empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fin_empresas: {
+        Row: {
+          ativo: boolean
+          cnpj: string | null
+          codigo: string
+          created_at: string
+          id: string
+          nome: string
+        }
+        Insert: {
+          ativo?: boolean
+          cnpj?: string | null
+          codigo: string
+          created_at?: string
+          id?: string
+          nome: string
+        }
+        Update: {
+          ativo?: boolean
+          cnpj?: string | null
+          codigo?: string
+          created_at?: string
+          id?: string
+          nome?: string
+        }
+        Relationships: []
+      }
+      fin_extrato_itens: {
+        Row: {
+          conciliado_em: string | null
+          conciliado_por: string | null
+          conta_bancaria_id: string
+          created_at: string
+          data: string
+          descricao: string | null
+          documento: string | null
+          fit_id: string | null
+          id: string
+          lancamento_id: string | null
+          valor: number
+        }
+        Insert: {
+          conciliado_em?: string | null
+          conciliado_por?: string | null
+          conta_bancaria_id: string
+          created_at?: string
+          data: string
+          descricao?: string | null
+          documento?: string | null
+          fit_id?: string | null
+          id?: string
+          lancamento_id?: string | null
+          valor: number
+        }
+        Update: {
+          conciliado_em?: string | null
+          conciliado_por?: string | null
+          conta_bancaria_id?: string
+          created_at?: string
+          data?: string
+          descricao?: string | null
+          documento?: string | null
+          fit_id?: string | null
+          id?: string
+          lancamento_id?: string | null
+          valor?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_extrato_itens_conta_bancaria_id_fkey"
+            columns: ["conta_bancaria_id"]
+            isOneToOne: false
+            referencedRelation: "fin_contas_bancarias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_extrato_itens_lancamento_id_fkey"
+            columns: ["lancamento_id"]
+            isOneToOne: false
+            referencedRelation: "fin_lancamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fin_lancamentos: {
+        Row: {
+          arquivo_nome: string | null
+          arquivo_path: string | null
+          arquivo_url: string | null
+          categoria_id: string | null
+          competencia: string | null
+          conta_bancaria_id: string | null
+          contraparte: string | null
+          created_at: string
+          created_by: string | null
+          data_emissao: string | null
+          data_pagamento: string | null
+          descricao: string | null
+          documento_contraparte: string | null
+          drive_file_id: string | null
+          empresa_id: string | null
+          forma_pagamento: string | null
+          ia_confianca: number | null
+          id: string
+          linha_digitavel: string | null
+          numero_documento: string | null
+          observacao: string | null
+          origem: string
+          revisado: boolean
+          status: string
+          tipo: string
+          tipo_documento: string | null
+          updated_at: string
+          valor: number
+          valor_pago: number | null
+          vencimento: string | null
+        }
+        Insert: {
+          arquivo_nome?: string | null
+          arquivo_path?: string | null
+          arquivo_url?: string | null
+          categoria_id?: string | null
+          competencia?: string | null
+          conta_bancaria_id?: string | null
+          contraparte?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_emissao?: string | null
+          data_pagamento?: string | null
+          descricao?: string | null
+          documento_contraparte?: string | null
+          drive_file_id?: string | null
+          empresa_id?: string | null
+          forma_pagamento?: string | null
+          ia_confianca?: number | null
+          id?: string
+          linha_digitavel?: string | null
+          numero_documento?: string | null
+          observacao?: string | null
+          origem?: string
+          revisado?: boolean
+          status?: string
+          tipo?: string
+          tipo_documento?: string | null
+          updated_at?: string
+          valor?: number
+          valor_pago?: number | null
+          vencimento?: string | null
+        }
+        Update: {
+          arquivo_nome?: string | null
+          arquivo_path?: string | null
+          arquivo_url?: string | null
+          categoria_id?: string | null
+          competencia?: string | null
+          conta_bancaria_id?: string | null
+          contraparte?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_emissao?: string | null
+          data_pagamento?: string | null
+          descricao?: string | null
+          documento_contraparte?: string | null
+          drive_file_id?: string | null
+          empresa_id?: string | null
+          forma_pagamento?: string | null
+          ia_confianca?: number | null
+          id?: string
+          linha_digitavel?: string | null
+          numero_documento?: string | null
+          observacao?: string | null
+          origem?: string
+          revisado?: boolean
+          status?: string
+          tipo?: string
+          tipo_documento?: string | null
+          updated_at?: string
+          valor?: number
+          valor_pago?: number | null
+          vencimento?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_lancamentos_categoria_id_fkey"
+            columns: ["categoria_id"]
+            isOneToOne: false
+            referencedRelation: "fin_categorias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_lancamentos_conta_bancaria_id_fkey"
+            columns: ["conta_bancaria_id"]
+            isOneToOne: false
+            referencedRelation: "fin_contas_bancarias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_lancamentos_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "fin_empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       gamif_activity_checklist: {
         Row: {
           created_at: string
@@ -8433,6 +8730,7 @@ export type Database = {
         Args: { _id: string; _winner: string }
         Returns: undefined
       }
+      can_access_finance: { Args: never; Returns: boolean }
       crm_tab_allowed: { Args: { _tab: string }; Returns: boolean }
       delete_technical_term_type: { Args: { _id: string }; Returns: string }
       gamif_apply_auto_rules: { Args: { _day?: string }; Returns: number }
