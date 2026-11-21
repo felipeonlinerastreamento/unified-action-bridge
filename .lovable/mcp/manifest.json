@@ -144,6 +144,305 @@
           }
         },
         "outputSchema": null
+      },
+      {
+        "name": "financeiro_categorias",
+        "title": "Financeiro: categorias e empresas",
+        "description": "Lista as categorias ativas do Financeiro (nome, tipo, grupo do DRE) e as empresas do grupo (código, nome, CNPJ). Use antes de registrar documentos.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {}
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "financeiro_documentos_registrados",
+        "title": "Financeiro: arquivos já registrados",
+        "description": "Recebe uma lista de IDs de arquivos do Google Drive e devolve quais já foram registrados no Financeiro, para não lançar de novo.",
+        "annotations": {
+          "readOnlyHint": true,
+          "idempotentHint": true,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "drive_file_ids": {
+              "minItems": 1,
+              "maxItems": 200,
+              "type": "array",
+              "items": {
+                "type": "string",
+                "minLength": 5,
+                "maxLength": 200
+              },
+              "description": "IDs dos arquivos no Google Drive."
+            }
+          },
+          "required": [
+            "drive_file_ids"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "financeiro_registrar_documento",
+        "title": "Financeiro: registrar documento do Drive",
+        "description": "Cria um lançamento a pagar (status aberto, 'A revisar') a partir de um comprovante/boleto/nota lido do Google Drive. Não duplica: se o drive_file_id já existir, devolve o lançamento existente. Categoria e empresa são pelo nome/código de financeiro_categorias.",
+        "annotations": {
+          "readOnlyHint": false,
+          "idempotentHint": true,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "drive_file_id": {
+              "type": "string",
+              "minLength": 5,
+              "maxLength": 200
+            },
+            "arquivo_nome": {
+              "type": "string",
+              "maxLength": 300
+            },
+            "arquivo_url": {
+              "type": "string",
+              "maxLength": 1000,
+              "format": "uri"
+            },
+            "empresa": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 20
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Código da empresa pagadora (ex.: OR)."
+            },
+            "tipo_documento": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "enum": [
+                    "boleto",
+                    "nota_fiscal",
+                    "recibo",
+                    "cupom_fiscal",
+                    "guia",
+                    "fatura",
+                    "outro"
+                  ]
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "contraparte": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 200
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Fornecedor/beneficiário."
+            },
+            "documento_contraparte": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 30
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "CNPJ/CPF do fornecedor."
+            },
+            "descricao": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "categoria": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 100
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Nome exato de uma categoria ativa."
+            },
+            "valor": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 100000000
+            },
+            "data_emissao": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "vencimento": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "competencia": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Qualquer dia do mês de competência."
+            },
+            "linha_digitavel": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 120
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "numero_documento": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 80
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            },
+            "confianca": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "pago": {
+              "description": "true para cupom/recibo já pago (usa vencimento como data de pagamento).",
+              "type": "boolean"
+            },
+            "revisado": {
+              "description": "true quando o usuário já conferiu os dados na conversa (não vai para a fila A revisar).",
+              "type": "boolean"
+            },
+            "observacao": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 1000
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Descrição dada pelo usuário, ex.: 'almoço com cliente X'."
+            }
+          },
+          "required": [
+            "drive_file_id",
+            "arquivo_nome",
+            "valor"
+          ]
+        },
+        "outputSchema": null
+      },
+      {
+        "name": "financeiro_criar_categoria",
+        "title": "Financeiro: criar categoria",
+        "description": "Cria uma categoria nova no Financeiro (ou reativa uma existente com o mesmo nome). Use SOMENTE depois que o usuário confirmar o nome da categoria nova.",
+        "annotations": {
+          "readOnlyHint": false,
+          "idempotentHint": true,
+          "destructiveHint": false,
+          "openWorldHint": false
+        },
+        "inputSchema": {
+          "$schema": "https://json-schema.org/draft/2020-12/schema",
+          "type": "object",
+          "properties": {
+            "nome": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 80
+            },
+            "tipo": {
+              "default": "despesa",
+              "type": "string",
+              "enum": [
+                "despesa",
+                "receita"
+              ]
+            },
+            "grupo_dre": {
+              "default": "Despesas operacionais",
+              "description": "Grupo do DRE onde a categoria soma.",
+              "type": "string",
+              "enum": [
+                "Receita bruta",
+                "Outras receitas",
+                "Custo dos serviços",
+                "Impostos",
+                "Pessoal",
+                "Despesas comerciais",
+                "Despesas administrativas",
+                "Despesas operacionais",
+                "Despesas financeiras",
+                "Outras despesas"
+              ]
+            }
+          },
+          "required": [
+            "nome"
+          ]
+        },
+        "outputSchema": null
       }
     ]
   }
