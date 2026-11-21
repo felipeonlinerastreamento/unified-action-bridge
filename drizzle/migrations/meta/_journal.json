@@ -330,6 +330,13 @@
       "when": 1795275373094,
       "tag": "0046_replace_signed_in_checks_with_staff_check",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1795275846739,
+      "tag": "0047_financeiro_bpo",
+      "breakpoints": true
     }
   ]
 }
