@@ -12,6 +12,10 @@ import {
   Sparkles, Send, Loader2, Copy, Check, Download, Trash2, History, FileText,
 } from "lucide-react";
 import { exportToCSV } from "@/components/relatorios/export-utils";
+import { useAuth } from "@/hooks/use-auth";
+import { useServerFn } from "@tanstack/react-start";
+import { ehPerguntaFinanceira } from "@/lib/finance";
+import { contextoFinanceiroIA } from "@/lib/finance.functions";
 
 type Interaction = {
   id: string;
@@ -21,6 +25,14 @@ type Interaction = {
 };
 
 const STORAGE_KEY = "relatorios-resumo-ia-historico";
+
+// Só para administradores: consultas financeiras (os números vêm do Financeiro).
+const SUGGESTIONS_FIN = [
+  "Mostre o DRE do período.",
+  "Quais clientes estão inadimplentes?",
+  "Quais contas a pagar estão vencidas ou vencem nos próximos 7 dias?",
+  "Relatório de gastos por categoria e maiores fornecedores.",
+];
 
 const SUGGESTIONS = [
   "Faça um resumo geral da operação no período.",
@@ -36,6 +48,9 @@ export function AiSummaryTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: s
   const [copied, setCopied] = useState(false);
   const [history, setHistory] = useState<Interaction[]>([]);
   const answerRef = useRef<HTMLDivElement>(null);
+  const { hasRole } = useAuth();
+  const isAdmin = hasRole("admin");
+  const finContexto = useServerFn(contextoFinanceiroIA);
 
   useEffect(() => {
     try {
@@ -112,10 +127,23 @@ export function AiSummaryTab({ dateFrom, dateTo }: { dateFrom: string; dateTo: s
     setAnswer("");
     try {
       const { data: sess } = await supabase.auth.getSession();
-      const prompt = `Você é um analista de operação. Responda em português, de forma objetiva, com bullets e números quando possível.
+      // Perguntas financeiras: só administradores; os números vêm calculados do Financeiro.
+      let finText = "";
+      if (ehPerguntaFinanceira(text)) {
+        if (!isAdmin) {
+          const msg = "Consultas financeiras (DRE, inadimplência, contas a pagar e a receber) são exclusivas de administradores.";
+          setAnswer(msg);
+          toast.error(msg);
+          return;
+        }
+        const r = await finContexto({ data: { dateFrom, dateTo } });
+        finText = r.texto;
+      }
+      const prompt = `Você é um analista ${finText ? "financeiro e de operação" : "de operação"}. Responda em português, de forma objetiva, com bullets, tabelas em markdown e números quando possível.${finText ? " Use SOMENTE os números dos dados financeiros abaixo; não invente valores. Quando pedirem um relatório (DRE, inadimplentes, contas), traga a tabela/lista completa e um resumo no topo." : ""}
 
 ## Dados do sistema (relatórios) no período:
 ${contextText || "(sem dados carregados)"}
+${finText ? `\n${finText}\n` : ""}
 
 ## Pergunta do gestor:
 ${text}`;
@@ -229,6 +257,11 @@ ${text}`;
         </CardHeader>
         <CardContent className="space-y-3">
           <div className="flex flex-wrap gap-2">
+            {isAdmin && SUGGESTIONS_FIN.map((s) => (
+              <Button key={s} size="sm" variant="outline" className="text-xs h-7 border-primary/40" disabled={loading} onClick={() => handleAsk(s)}>
+                {s}
+              </Button>
+            ))}
             {SUGGESTIONS.map((s) => (
               <Button
                 key={s}

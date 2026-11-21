@@ -373,3 +373,41 @@ export function dicasDoNomeArquivo(nome: string): { empresa?: string; tipoDocume
 export function round2(n: number): number {
   return Math.round(n * 100) / 100;
 }
+
+// ---------------------------------------------------------------------------
+// Resumo IA (Relatórios): reconhecer perguntas financeiras
+// ---------------------------------------------------------------------------
+
+const RE_FINANCEIRO = new RegExp(
+  [
+    "\\bdre\\b", "financeir", "inadimpl", "devedor", "em atraso", "atrasad", "fatur", "receita", "despesa", "lucro", "prejuiz",
+    "resultado (do|da|financ)", "fluxo de caixa", "\\bcaixa\\b", "contas? a (pagar|receber)", "a pagar", "a receber", "pagament",
+    "recebiment", "boleto", "gasto", "custo", "margem", "concilia", "extrato", "fornecedor", "vencid", "mensalidade", "cobran",
+  ].join("|"),
+  "i",
+);
+
+/** A pergunta do Resumo IA é sobre o financeiro? (DRE, inadimplência, contas, fluxo de caixa...) */
+export function ehPerguntaFinanceira(texto: string): boolean {
+  const t = String(texto || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase();
+  return RE_FINANCEIRO.test(t);
+}
+
+export type Inadimplente = { cliente: string; documento: string | null; qtd: number; valor: number; maisAntigo: string; diasAtraso: number };
+
+/** Clientes com contas a receber vencidas e não pagas, do maior valor para o menor. */
+export function listarInadimplentes(lancamentos: (FinLancamento & { documento_contraparte?: string | null })[], hoje: string = hojeSP()): Inadimplente[] {
+  const m = new Map<string, Inadimplente>();
+  for (const l of lancamentos) {
+    if (l.tipo !== "receber" || statusVisivel(l, hoje) !== "vencido" || !l.vencimento) continue;
+    const cliente = (l.contraparte || "Cliente sem nome").trim();
+    const key = (l.documento_contraparte || cliente).replace(/\D/g, "") || cliente.toLowerCase();
+    const cur = m.get(key) ?? { cliente, documento: l.documento_contraparte ?? null, qtd: 0, valor: 0, maisAntigo: l.vencimento, diasAtraso: 0 };
+    cur.qtd += 1;
+    cur.valor = round2(cur.valor + Number(l.valor || 0));
+    if (l.vencimento < cur.maisAntigo) cur.maisAntigo = l.vencimento;
+    cur.diasAtraso = diasEntre(cur.maisAntigo, hoje);
+    m.set(key, cur);
+  }
+  return [...m.values()].sort((a, b) => b.valor - a.valor);
+}

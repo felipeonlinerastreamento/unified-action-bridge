@@ -2,7 +2,7 @@ import { describe, it } from "node:test";
 import { strict as assert } from "node:assert";
 import {
   statusVisivel, parseValorBR, calcularDre, fluxoDeCaixa, chavePeriodo, parseOfx, parseCsvExtrato,
-  sugerirConciliacao, dicasDoNomeArquivo, mesAnterior, calcularDreMensal, mesesDoAno, type FinLancamento, type FinCategoria,
+  sugerirConciliacao, dicasDoNomeArquivo, mesAnterior, calcularDreMensal, mesesDoAno, ehPerguntaFinanceira, listarInadimplentes, type FinLancamento, type FinCategoria,
 } from "./finance";
 
 const cats: FinCategoria[] = [
@@ -159,5 +159,29 @@ describe("calcularDreMensal", () => {
     assert.equal(caixa.receitas[10], 1000); // recebido em novembro
     assert.equal(caixa.despesas[10], 0); // em aberto não entra no caixa
     assert.equal(caixa.resultado[10], 1000);
+  });
+});
+
+describe("Resumo IA financeiro", () => {
+  it("reconhece perguntas financeiras e ignora as de operação", () => {
+    for (const q of ["Me mostre o DRE de outubro", "quais clientes estão inadimplentes?", "relatório de contas a pagar vencidas", "qual foi o lucro do mês", "Fluxo de caixa da semana", "gastos por categoria"]) {
+      assert.equal(ehPerguntaFinanceira(q), true, q);
+    }
+    for (const q of ["Quais operadores tiveram melhor desempenho?", "Faça um resumo geral da operação no período."]) {
+      assert.equal(ehPerguntaFinanceira(q), false, q);
+    }
+  });
+  it("agrupa inadimplentes por cliente", () => {
+    const ls = [
+      L({ tipo: "receber", valor: 100, vencimento: "2026-10-01", contraparte: "Raja Aluguel", documento_contraparte: "11.111.111/0001-11" } as any),
+      L({ tipo: "receber", valor: 50, vencimento: "2026-11-01", contraparte: "Raja Aluguel", documento_contraparte: "11111111000111" } as any),
+      L({ tipo: "receber", valor: 900, vencimento: "2026-11-10", contraparte: "Outro" }),
+      L({ tipo: "receber", valor: 70, vencimento: "2026-11-30", contraparte: "Em dia" }),
+    ];
+    const r = listarInadimplentes(ls, "2026-11-21");
+    assert.equal(r.length, 2);
+    assert.equal(r[0].cliente, "Outro");
+    assert.equal(r[1].valor, 150);
+    assert.equal(r[1].diasAtraso, 51);
   });
 });
