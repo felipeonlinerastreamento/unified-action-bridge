@@ -26,13 +26,14 @@ import { toast } from "sonner";
 import {
   Search, UserPlus, Building2, Loader2, Trash2, Edit, Users, Tag,
   Cake, TrendingUp, Plus, X, Workflow,
-  Wrench,
+  Wrench, HeartHandshake,
 } from "lucide-react";
 import { CrmTechnicalServicesTab } from "@/components/crm/crm-technical-services-tab";
 import { CrmCategories } from "@/components/crm/crm-categories";
 import { CrmBirthdaysTab } from "@/components/crm/crm-birthdays-tab";
 import { CrmPipelineTab } from "@/components/crm/crm-pipeline-tab";
 import { CrmFlowsTab } from "@/components/crm/crm-flows-tab";
+import { CrmPosVendaTab } from "@/components/crm/crm-posvenda-tab";
 import { ContactChatActions } from "@/components/contatos/contact-chat-actions";
 
 export const Route = createFileRoute("/crm")({
@@ -56,6 +57,7 @@ const ROLE_LABELS: Record<string, string> = {
 };
 
 const CRM_TAB_ICONS: Record<string, typeof Tag> = {
+  posvenda: HeartHandshake,
   pipeline: TrendingUp,
   fluxos: Workflow,
   aniversarios: Cake,
@@ -307,6 +309,7 @@ function CrmPage() {
             })}
           </TabsList>
 
+          <TabsContent value="posvenda" className="mt-4"><CrmPosVendaTab /></TabsContent>
           <TabsContent value="pipeline" className="mt-4"><CrmPipelineTab /></TabsContent>
           <TabsContent value="fluxos" className="mt-4"><CrmFlowsTab /></TabsContent>
           <TabsContent value="aniversarios" className="mt-4"><CrmBirthdaysTab /></TabsContent>
