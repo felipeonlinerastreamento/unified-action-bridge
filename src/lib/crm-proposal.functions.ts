@@ -221,13 +221,20 @@ export const sendProposalToClient = createServerFn({ method: "POST" })
       send_errors: sendErrors,
     }).eq("id", link.id);
 
-    // Etapa opcional ao enviar (ex.: "Proposta"), apenas para oportunidades em aberto.
-    if (settings.sent_stage_id && opp.status === "open" && opp.stage_id !== settings.sent_stage_id && sentChannels.length > 0) {
-      const { data: st } = await supabase.from("crm_pipeline_stages")
-        .select("is_won, is_lost, default_probability, is_active").eq("id", settings.sent_stage_id).maybeSingle();
-      if (st && st.is_active && !st.is_won && !st.is_lost) {
+    // Ao enviar, a oportunidade em aberto vai para a etapa "Proposta": a configurada em
+    // Configurações > CRM ou, se não houver, a etapa chamada "Proposta" (só avança, nunca volta).
+    if (opp.status === "open" && sentChannels.length > 0) {
+      const { data: allStages } = await supabase.from("crm_pipeline_stages")
+        .select("id, name, position, is_won, is_lost, default_probability, is_active");
+      const active = (allStages || []).filter((x: any) => x.is_active !== false);
+      const current = active.find((x: any) => x.id === opp.stage_id);
+      const target = settings.sent_stage_id
+        ? active.find((x: any) => x.id === settings.sent_stage_id)
+        : active.find((x: any) => /proposta/i.test(String(x.name)) && !x.is_won && !x.is_lost);
+      const advances = !current || settings.sent_stage_id || Number(target?.position ?? 0) > Number(current.position ?? 0);
+      if (target && target.id !== opp.stage_id && !target.is_won && !target.is_lost && advances) {
         await supabase.from("crm_opportunities")
-          .update({ stage_id: settings.sent_stage_id, probability: st.default_probability ?? opp.probability })
+          .update({ stage_id: target.id, probability: target.default_probability ?? opp.probability })
           .eq("id", opp.id);
       }
     }

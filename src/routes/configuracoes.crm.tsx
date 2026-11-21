@@ -267,7 +267,7 @@ function ProposalSettingsForm() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2"><GitBranch className="h-4 w-4" /> Pipeline</CardTitle>
+          <CardTitle className="text-base flex items-center gap-2"><GitBranch className="h-4 w-4" /> Oportunidades (etapas automáticas)</CardTitle>
           <CardDescription>Para onde a oportunidade vai em cada momento.</CardDescription>
         </CardHeader>
         <CardContent className="grid gap-3 sm:grid-cols-3">

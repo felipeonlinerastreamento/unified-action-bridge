@@ -4,7 +4,7 @@
 
 // "tarefas" foi retirada da tela (sem demanda). Os dados da tabela crm_tasks continuam no banco.
 export const CRM_TABS = [
-  { key: "pipeline", label: "Pipeline" },
+  { key: "pipeline", label: "Oportunidades" },
   { key: "fluxos", label: "Fluxos" },
   { key: "aniversarios", label: "Aniversários" },
   { key: "contatos", label: "Contatos" },

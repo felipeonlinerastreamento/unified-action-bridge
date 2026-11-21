@@ -10,9 +10,13 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { Plus, Loader2, DollarSign, TrendingUp, X, Pencil, Check, Trash2, Tag, Search, FileText, ChevronDown, ChevronRight, Building2, Package, Clock, Send } from "lucide-react";
+import { Plus, Loader2, DollarSign, TrendingUp, X, Pencil, Check, Trash2, Tag, Search, FileText, ChevronDown, ChevronRight, Building2, Package, Clock, Send, MoreHorizontal, MessageCircle, History, SlidersHorizontal, ArrowRightLeft } from "lucide-react";
+import { useNavigate } from "@tanstack/react-router";
 import { toast } from "sonner";
 import { upsertOpportunity, moveOpportunityStage, deleteOpportunity } from "@/lib/crm.functions";
 import { ReferralPicker } from "@/components/crm/referral-picker";
@@ -110,6 +114,9 @@ export function CrmPipelineTab() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [minValue, setMinValue] = useState<string>("");
   const [maxValue, setMaxValue] = useState<string>("");
+  const [moreFilters, setMoreFilters] = useState(false);
+  const [sheetTab, setSheetTab] = useState<"resumo" | "proposta" | "historico" | "conversa">("resumo");
+  const navigate = useNavigate();
 
   const { data: stages = [] } = useQuery({
     queryKey: ["crm-stages"],
@@ -213,7 +220,7 @@ export function CrmPipelineTab() {
       if (min != null && v < min) return false;
       if (max != null && v > max) return false;
       if (term) {
-        const hay = `${o.title || ""} ${o.contact_name || ""} ${o.company_name || ""} ${o.crm_contacts?.name || ""} ${o.companies?.name || ""}`.toLowerCase();
+        const hay = `${o.title || ""} ${o.contact_name || ""} ${o.company_name || ""} ${o.crm_contacts?.name || ""} ${o.companies?.name || ""} ${o.contact_phone || ""} ${String(o.contact_phone || "").replace(/\D/g, "")} ${o.contact_email || ""} ${o.cnpj || ""} ${String(o.cnpj || "").replace(/\D/g, "")}`.toLowerCase();
         if (!hay.includes(term)) return false;
       }
       return true;
@@ -298,7 +305,15 @@ export function CrmPipelineTab() {
       0
     );
     const valWon = won.reduce((s: number, o: any) => s + Number(o.expected_value || 0), 0);
-    return { count: open.length, valOpen, weighted, valWon };
+    const lost = filteredOpps.filter((o: any) => o.status === "lost");
+    const closed = won.length + lost.length;
+    const conversion = closed > 0 ? Math.round((won.length / closed) * 100) : null;
+    const now = new Date();
+    const monthStart = new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+    const wonMonth = won
+      .filter((o: any) => new Date(o.closed_at || o.updated_at || o.created_at).getTime() >= monthStart)
+      .reduce((s: number, o: any) => s + Number(o.expected_value || 0), 0);
+    return { count: open.length, valOpen, weighted, valWon, conversion, wonMonth, wonCount: won.length, closed };
   }, [filteredOpps]);
 
   const activationTotal = useMemo(
@@ -358,7 +373,27 @@ export function CrmPipelineTab() {
     onError: (e: any) => toast.error(e.message),
   });
 
+  // Abre a conversa do WhatsApp do contato da oportunidade (pelo telefone).
+  const editingOpp = useMemo(() => (editingId ? opps.find((o: any) => o.id === editingId) : null), [opps, editingId]);
+  const editingStage = useMemo(() => stages.find((st: any) => st.id === editingOpp?.stage_id), [stages, editingOpp]);
+
+  const openConversation = async (o: any) => {
+    const digits = String(o?.contact_phone || "").replace(/\D/g, "");
+    if (digits.length < 8) { toast.error("Oportunidade sem telefone do contato."); return; }
+    const tail = digits.slice(-8);
+    const { data } = await supabase
+      .from("zapi_chats")
+      .select("id, phone, phone_normalized, last_message_at")
+      .or(`phone.ilike.%${tail},phone_normalized.ilike.%${tail}`)
+      .order("last_message_at", { ascending: false, nullsFirst: false })
+      .limit(1);
+    const chat = (data || [])[0];
+    if (!chat) { toast.info("Nenhuma conversa encontrada para este telefone."); return; }
+    navigate({ to: "/central", search: { chat: chat.id } as any });
+  };
+
   const openEdit = (o: any) => {
+    setSheetTab("resumo");
     setEditingId(o.id);
     setForm({
       title: o.title || "",
@@ -566,15 +601,15 @@ export function CrmPipelineTab() {
   return (
     <div className="space-y-4">
       <div className="grid gap-3 grid-cols-2 lg:grid-cols-5">
-        <KPI label="Oportunidades abertas" value={totals.count} />
-        <KPI label="Valor em pipeline" value={`R$ ${totals.valOpen.toLocaleString("pt-BR")}`} />
-        <KPI label="Previsão ponderada" value={`R$ ${Math.round(totals.weighted).toLocaleString("pt-BR")}`} />
-        <KPI label="Ganho acumulado" value={`R$ ${totals.valWon.toLocaleString("pt-BR")}`} />
-        <KPI label="Fora do prazo (SLA)" value={stuckCount} />
+        <KPI label="Valor em aberto" value={`R$ ${totals.valOpen.toLocaleString("pt-BR")}`} hint={`${totals.count} oportunidade(s)`} />
+        <KPI label="Previsão (ponderada pela chance)" value={`R$ ${Math.round(totals.weighted).toLocaleString("pt-BR")}`} hint="valor × probabilidade" />
+        <KPI label="Ganho no mês" value={`R$ ${totals.wonMonth.toLocaleString("pt-BR")}`} hint={`Total ganho: R$ ${totals.valWon.toLocaleString("pt-BR")}`} />
+        <KPI label="Taxa de conversão" value={totals.conversion == null ? "—" : `${totals.conversion}%`} hint={`${totals.wonCount} ganha(s) de ${totals.closed} fechada(s)`} />
+        <KPI label="Paradas além do prazo" value={stuckCount} hint="acima do SLA da etapa" alert={stuckCount > 0} />
       </div>
 
       <div className="flex justify-between items-center">
-        <h3 className="text-sm font-semibold flex items-center gap-1"><TrendingUp className="h-4 w-4" /> Pipeline</h3>
+        <h3 className="text-sm font-semibold flex items-center gap-1"><TrendingUp className="h-4 w-4" /> Oportunidades</h3>
         <div className="flex gap-2">
           {isPrivileged && (
             <Button
@@ -593,15 +628,26 @@ export function CrmPipelineTab() {
       </div>
 
 
-      {/* Filters */}
-      <div className="flex flex-wrap items-end gap-2 p-3 rounded-lg border bg-card">
-        <div className="flex-1 min-w-[180px]">
-          <Label className="text-[10px] text-muted-foreground">Buscar (título, contato, empresa)</Label>
-          <div className="relative">
-            <Search className="h-3 w-3 absolute left-2 top-1/2 -translate-y-1/2 text-muted-foreground" />
-            <Input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-8 text-xs pl-7" placeholder="Nome..." />
+      {/* Filtros: busca única + "Mais filtros" */}
+      <div className="space-y-2 p-3 rounded-lg border bg-card">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="relative flex-1 min-w-[220px]">
+            <Search className="h-4 w-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <Input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="h-9 pl-8"
+              placeholder="Buscar por título, contato, empresa, telefone ou CNPJ..." />
           </div>
+          <Button size="sm" variant={moreFilters ? "secondary" : "outline"} onClick={() => setMoreFilters((v) => !v)}>
+            <SlidersHorizontal className="h-4 w-4 mr-1" /> Mais filtros
+          </Button>
+          {(searchTerm || categoryFilter !== "all" || statusFilter !== "all" || minValue || maxValue || (isPrivileged && ownerFilter !== "mine")) && (
+          <Button size="sm" variant="ghost" onClick={() => { setSearchTerm(""); setCategoryFilter("all"); setStatusFilter("all"); setMinValue(""); setMaxValue(""); setOwnerFilter("mine"); }}>
+            <X className="h-3 w-3 mr-1" /> Limpar
+          </Button>
+        )}
+          <Badge variant="secondary" className="ml-auto">{filteredOpps.length} resultado(s)</Badge>
         </div>
+        {moreFilters && (
+          <div className="flex flex-wrap items-end gap-2 pt-1">
         {isPrivileged && (
           <div>
             <Label className="text-[10px] text-muted-foreground">Responsável</Label>
@@ -647,12 +693,8 @@ export function CrmPipelineTab() {
           <Label className="text-[10px] text-muted-foreground">Valor máx.</Label>
           <Input type="number" value={maxValue} onChange={(e) => setMaxValue(e.target.value)} className="h-8 text-xs w-[100px]" placeholder="∞" />
         </div>
-        {(searchTerm || categoryFilter !== "all" || statusFilter !== "all" || minValue || maxValue || (isPrivileged && ownerFilter !== "mine")) && (
-          <Button size="sm" variant="ghost" onClick={() => { setSearchTerm(""); setCategoryFilter("all"); setStatusFilter("all"); setMinValue(""); setMaxValue(""); setOwnerFilter("mine"); }}>
-            <X className="h-3 w-3 mr-1" /> Limpar
-          </Button>
+          </div>
         )}
-        <Badge variant="secondary" className="ml-auto">{filteredOpps.length} resultado(s)</Badge>
       </div>
 
       <div className="grid gap-3 overflow-x-auto" style={{ gridTemplateColumns: `repeat(${stages.length}, minmax(220px, 1fr))` }}>
@@ -681,48 +723,53 @@ export function CrmPipelineTab() {
                 {stageOpps.map((o: any) => {
                   const stuck = isStuck(o, s);
                   return (
-                  <div key={o.id} className={`border rounded-md p-2 bg-card text-xs space-y-1 ${stuck ? "border-destructive/60 ring-1 ring-destructive/30" : ""}`}>
-                    <div className="font-medium">{o.title}</div>
+                  <div key={o.id}
+                    className={`group border rounded-md p-2.5 bg-card text-sm space-y-1.5 cursor-pointer hover:border-primary/50 hover:shadow-sm transition ${stuck ? "border-destructive/60 ring-1 ring-destructive/30" : ""}`}
+                    onClick={() => openEdit(o)}>
+                    <div className="flex items-start justify-between gap-1">
+                      <div className="font-medium leading-tight">{o.title}</div>
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                          <Button type="button" size="icon" variant="ghost" className="h-6 w-6 shrink-0 -mr-1 -mt-0.5"><MoreHorizontal className="h-4 w-4" /></Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="w-52" onClick={(e) => e.stopPropagation()}>
+                          <DropdownMenuItem onSelect={() => openEdit(o)}><Pencil className="h-4 w-4 mr-2" />Abrir / editar</DropdownMenuItem>
+                          <DropdownMenuItem onSelect={() => setSendTarget({ opportunity: o, quote: null })}><Send className="h-4 w-4 mr-2" />Enviar proposta</DropdownMenuItem>
+                          {o.contact_phone && (
+                            <DropdownMenuItem onSelect={() => openConversation(o)}><MessageCircle className="h-4 w-4 mr-2" />Abrir conversa</DropdownMenuItem>
+                          )}
+                          <DropdownMenuSeparator />
+                          {stages.filter((st: any) => st.id !== o.stage_id).map((st: any) => (
+                            <DropdownMenuItem key={st.id} onSelect={() => requestMove(o, st.id)}>
+                              <ArrowRightLeft className="h-4 w-4 mr-2" />Mover para {st.name}
+                            </DropdownMenuItem>
+                          ))}
+                          <DropdownMenuSeparator />
+                          <DropdownMenuItem className="text-destructive" onSelect={() => { if (confirm("Excluir oportunidade?")) deleteMut.mutate(o.id); }}>
+                            <Trash2 className="h-4 w-4 mr-2" />Excluir
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+                    </div>
                     {(o.company_name || o.contact_name || o.companies?.name || o.crm_contacts?.name) && (
-                      <div className="text-muted-foreground">
+                      <div className="text-xs text-muted-foreground truncate">
                         {o.company_name || o.companies?.name || o.contact_name || o.crm_contacts?.name}
                       </div>
                     )}
                     <div className="flex items-center justify-between">
-                      <span className="text-emerald-600 font-medium">R$ {Number(o.expected_value || 0).toLocaleString("pt-BR")}</span>
-                      <Badge variant="outline" className="text-[9px]">{o.probability}%</Badge>
+                      <span className="text-emerald-600 font-semibold">R$ {Number(o.expected_value || 0).toLocaleString("pt-BR")}</span>
+                      <span className={`text-[11px] flex items-center gap-1 ${stuck ? "text-destructive font-medium" : "text-muted-foreground"}`}>
+                        <Clock className="h-3 w-3" /> {daysInStage(o)}d
+                      </span>
                     </div>
-                    <div className="flex items-center gap-1 flex-wrap">
-                      <Badge variant={stuck ? "destructive" : "outline"} className="text-[9px] flex items-center gap-1">
-                        <Clock className="h-2.5 w-2.5" /> {daysInStage(o)}d na etapa
-                      </Badge>
-                      {latestProposalByOpp.get(o.id) && <ProposalStatusBadge link={latestProposalByOpp.get(o.id)!} />}
-                      {o.status === "lost" && o.loss_reason && (
-                        <Badge variant="outline" className="text-[9px] truncate max-w-[150px]" title={o.loss_reason}>
-                          Perda: {o.loss_reason}
-                        </Badge>
-                      )}
-                    </div>
-                    <Select value={o.stage_id || ""} onValueChange={(v) => requestMove(o, v)}>
-                      <SelectTrigger className="h-7 text-[10px]"><SelectValue /></SelectTrigger>
-                      <SelectContent>
-                        {stages.map((st: any) => (
-                          <SelectItem key={st.id} value={st.id}>{st.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <div className="flex gap-1 pt-1">
-                      <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[10px] flex-1" onClick={() => openEdit(o)}>
-                        <Pencil className="h-3 w-3 mr-1" /> Editar
-                      </Button>
-                      <Button type="button" size="sm" variant="outline" className="h-6 px-2 text-[10px]" title="Enviar proposta ao cliente"
-                        onClick={() => setSendTarget({ opportunity: o, quote: null })}>
-                        <Send className="h-3 w-3 mr-1" /> Enviar
-                      </Button>
-                      <Button type="button" size="icon" variant="ghost" className="h-6 w-6" onClick={() => { if (confirm("Excluir oportunidade?")) deleteMut.mutate(o.id); }}>
-                        <Trash2 className="h-3 w-3 text-destructive" />
-                      </Button>
-                    </div>
+                    {(latestProposalByOpp.get(o.id) || (o.status === "lost" && o.loss_reason)) && (
+                      <div className="flex items-center gap-1 flex-wrap">
+                        {latestProposalByOpp.get(o.id) && <ProposalStatusBadge link={latestProposalByOpp.get(o.id)!} />}
+                        {o.status === "lost" && o.loss_reason && (
+                          <Badge variant="outline" className="text-[10px] truncate max-w-[170px]" title={o.loss_reason}>Perda: {o.loss_reason}</Badge>
+                        )}
+                      </div>
+                    )}
                   </div>
                   );
                 })}
@@ -789,10 +836,37 @@ export function CrmPipelineTab() {
       </Dialog>
 
 
-      <Dialog open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setEditingId(null); setForm(emptyForm); } }}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-          <DialogHeader><DialogTitle>{editingId ? "Editar oportunidade" : "Nova oportunidade"}</DialogTitle></DialogHeader>
-          <div className="space-y-3">
+      <Sheet open={open} onOpenChange={(o) => { setOpen(o); if (!o) { setEditingId(null); setForm(emptyForm); } }}>
+        <SheetContent side="right" className="w-full sm:max-w-2xl p-0 flex flex-col">
+          <SheetHeader className="px-5 pt-5 pb-3 border-b space-y-2">
+            <SheetTitle>{editingId ? (form.title || "Oportunidade") : "Nova oportunidade"}</SheetTitle>
+            {editingOpp && (
+              <div className="flex flex-wrap items-center gap-2 text-xs">
+                <Badge variant="outline" style={{ borderColor: editingStage?.color ?? undefined, color: editingStage?.color ?? undefined }}>{editingStage?.name ?? "—"}</Badge>
+                <span className="text-emerald-600 font-semibold">R$ {Number(editingOpp.expected_value || 0).toLocaleString("pt-BR")}</span>
+                <span className="text-muted-foreground">{editingOpp.probability}% de chance</span>
+                {latestProposalByOpp.get(editingOpp.id) && <ProposalStatusBadge link={latestProposalByOpp.get(editingOpp.id)!} />}
+                <div className="ml-auto flex gap-1">
+                  <Button size="sm" variant="outline" className="h-7" onClick={() => setSendTarget({ opportunity: editingOpp, quote: null })}>
+                    <Send className="h-3.5 w-3.5 mr-1" /> Enviar proposta
+                  </Button>
+                  {editingOpp.contact_phone && (
+                    <Button size="sm" variant="outline" className="h-7" onClick={() => openConversation(editingOpp)}>
+                      <MessageCircle className="h-3.5 w-3.5 mr-1" /> Conversa
+                    </Button>
+                  )}
+                </div>
+              </div>
+            )}
+          </SheetHeader>
+          <Tabs value={sheetTab} onValueChange={(v) => setSheetTab(v as any)} className="flex-1 flex flex-col min-h-0">
+            <TabsList className="mx-5 mt-3 self-start">
+              <TabsTrigger value="resumo">Resumo</TabsTrigger>
+              <TabsTrigger value="proposta">Proposta{form.items.length ? ` (${form.items.length})` : ""}</TabsTrigger>
+              {editingId && <TabsTrigger value="historico"><History className="h-3.5 w-3.5 mr-1" />Histórico</TabsTrigger>}
+            </TabsList>
+            <div className="flex-1 overflow-y-auto px-5 py-3">
+              <TabsContent value="resumo" className="mt-0 space-y-3">
             <div><Label>Título *</Label><Input value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} /></div>
 
             <div className="grid grid-cols-2 gap-2">
@@ -1006,6 +1080,10 @@ export function CrmPipelineTab() {
               </p>
             </div>
 
+            <div><Label>Notas</Label><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
+
+              </TabsContent>
+              <TabsContent value="proposta" className="mt-0 space-y-3">
             <div className="rounded-md border border-border bg-muted/30 p-3 space-y-2">
               <div className="flex items-center justify-between">
                 <Label className="text-xs uppercase tracking-wide text-muted-foreground">Itens da proposta</Label>
@@ -1212,15 +1290,22 @@ export function CrmPipelineTab() {
               </div>
             )}
 
-            <div><Label>Notas</Label><Textarea value={form.notes} onChange={(e) => setForm({ ...form, notes: e.target.value })} /></div>
-
+              </TabsContent>
+              {editingId && (
+                <TabsContent value="historico" className="mt-0">
+                  <OpportunityHistory opp={editingOpp} quotes={quotes} links={proposalLinks.filter((l: any) => l.opportunity_id === editingId)} stages={stages} />
+                </TabsContent>
+              )}
+            </div>
+          </Tabs>
+          <div className="border-t px-5 py-3 bg-background">
             <Button className="w-full" disabled={!form.title || createMut.isPending} onClick={() => createMut.mutate()}>
               {createMut.isPending && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
               <DollarSign className="h-4 w-4 mr-1" /> {editingId ? "Salvar alterações" : "Criar"}
             </Button>
           </div>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
 
       <ServiceCatalogManager open={catalogOpen} onOpenChange={setCatalogOpen} />
       <SendProposalDialog
@@ -1233,14 +1318,46 @@ export function CrmPipelineTab() {
   );
 }
 
-function KPI({ label, value }: { label: string; value: any }) {
+function KPI({ label, value, hint, alert }: { label: string; value: any; hint?: string; alert?: boolean }) {
   return (
-    <Card>
+    <Card className={alert ? "border-destructive/50" : undefined}>
       <CardContent className="p-3">
-        <p className="text-xs text-muted-foreground">{label}</p>
-        <p className="text-lg font-bold">{value}</p>
+        <p className="text-[11px] text-muted-foreground">{label}</p>
+        <p className={`text-lg font-semibold ${alert ? "text-destructive" : ""}`}>{value}</p>
+        {hint && <p className="text-[10px] text-muted-foreground mt-0.5">{hint}</p>}
       </CardContent>
     </Card>
+  );
+}
+
+function OpportunityHistory({ opp, quotes, links, stages }: { opp: any; quotes: any[]; links: any[]; stages: any[] }) {
+  type Ev = { at: string; text: string };
+  const ev: Ev[] = [];
+  if (opp?.created_at) ev.push({ at: opp.created_at, text: "Oportunidade criada" });
+  for (const q of quotes || []) ev.push({ at: q.created_at, text: `Proposta #${q.quote_number} gerada por ${q.operator_name ?? "—"}` });
+  for (const l of links || []) {
+    ev.push({ at: l.created_at, text: "Proposta enviada ao cliente" });
+    if (l.first_viewed_at) ev.push({ at: l.first_viewed_at, text: "Cliente abriu o link da proposta" });
+    if (l.status === "accepted") ev.push({ at: l.responded_at ?? l.first_viewed_at ?? l.created_at, text: "✅ Cliente aceitou a proposta" });
+    if (l.status === "rejected") ev.push({ at: l.responded_at ?? l.first_viewed_at ?? l.created_at, text: "❌ Cliente recusou a proposta" });
+  }
+  if (opp?.stage_entered_at) {
+    const st = stages.find((s: any) => s.id === opp.stage_id);
+    ev.push({ at: opp.stage_entered_at, text: `Entrou na etapa ${st?.name ?? "atual"}` });
+  }
+  if (opp?.closed_at) ev.push({ at: opp.closed_at, text: opp.status === "won" ? "Fechada como ganha" : opp.status === "lost" ? `Fechada como perdida${opp.loss_reason ? `: ${opp.loss_reason}` : ""}` : "Fechada" });
+  ev.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+  if (!ev.length) return <p className="text-sm text-muted-foreground">Sem eventos registrados.</p>;
+  return (
+    <ol className="relative border-l pl-4 space-y-3">
+      {ev.map((e, i) => (
+        <li key={i} className="text-sm">
+          <span className="absolute -left-1.5 mt-1.5 h-3 w-3 rounded-full bg-primary/70" />
+          <p>{e.text}</p>
+          <p className="text-[11px] text-muted-foreground">{new Date(e.at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" })}</p>
+        </li>
+      ))}
+    </ol>
   );
 }
 

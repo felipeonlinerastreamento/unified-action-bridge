@@ -215,5 +215,51 @@ export async function runCrmDailyJob() {
     }
   }
 
+  summary.followups = await notifyProposalFollowups();
   return summary;
 }
+
+/**
+ * Lembrete de retorno: proposta enviada há 2 dias ou mais, ainda sem resposta do cliente,
+ * gera um aviso no sino para o responsável. Um aviso por proposta.
+ */
+export async function notifyProposalFollowups(): Promise<number> {
+  const limite = new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString();
+  const { data: links } = await supabaseAdmin
+    .from("crm_proposal_links")
+    .select("id, opportunity_id, created_by, created_at, expires_at, first_viewed_at, status")
+    .eq("status", "pending")
+    .lte("created_at", limite)
+    .limit(500);
+  let count = 0;
+  for (const l of links || []) {
+    if (l.expires_at && new Date(l.expires_at as string).getTime() < Date.now()) continue;
+    const { data: already } = await supabaseAdmin
+      .from("notifications")
+      .select("id")
+      .eq("type", "crm_proposal_followup")
+      .contains("metadata", { proposal_link_id: l.id })
+      .limit(1);
+    if (already && already.length) continue;
+    const { data: opp } = await supabaseAdmin
+      .from("crm_opportunities")
+      .select("id, title, owner_id, status, company_name, contact_name")
+      .eq("id", l.opportunity_id as string)
+      .maybeSingle();
+    if (!opp || opp.status !== "open") continue;
+    const target = opp.owner_id || l.created_by;
+    if (!target) continue;
+    const dias = Math.floor((Date.now() - new Date(l.created_at as string).getTime()) / 86_400_000);
+    const cliente = opp.company_name || opp.contact_name || "o cliente";
+    await supabaseAdmin.from("notifications").insert({
+      user_id: target,
+      type: "crm_proposal_followup",
+      title: "📞 Retornar proposta",
+      message: `A proposta "${opp.title}" para ${cliente} foi enviada há ${dias} dias e ainda não teve resposta${l.first_viewed_at ? " (o cliente já abriu o link)" : " (o cliente ainda não abriu o link)"}.`,
+      metadata: { opportunity_id: opp.id, proposal_link_id: l.id },
+    });
+    count++;
+  }
+  return count;
+}
+

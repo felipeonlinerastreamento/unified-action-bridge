@@ -1735,7 +1735,7 @@ function CentralPage() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success("Oportunidade criada no Pipeline");
+      toast.success("Oportunidade criada em Oportunidades");
       queryClient.invalidateQueries({ queryKey: ["crm-opportunities"] });
       queryClient.invalidateQueries({ queryKey: ["contact-opportunities", crmContactLookup?.id] });
     },
@@ -4884,7 +4884,7 @@ function CentralPage() {
                               <Separator />
                               <div className="space-y-2">
                                 <div className="flex items-center justify-between">
-                                  <p className="text-xs text-muted-foreground uppercase tracking-wider">CRM / Pipeline</p>
+                                  <p className="text-xs text-muted-foreground uppercase tracking-wider">CRM / Oportunidades</p>
                                   <Badge variant="secondary" className="text-[10px]">
                                     <UserPlus className="h-2.5 w-2.5 mr-1" />
                                     Contato CRM
@@ -4906,7 +4906,7 @@ function CentralPage() {
                                       disabled={createOpportunityMutation.isPending}
                                     >
                                       {createOpportunityMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Plus className="h-3 w-3 mr-2" />}
-                                      Nova oportunidade no Pipeline
+                                      Nova oportunidade
                                     </Button>
                                   </div>
                                 ) : (
@@ -4917,7 +4917,7 @@ function CentralPage() {
                                     disabled={createOpportunityMutation.isPending}
                                   >
                                     {createOpportunityMutation.isPending ? <Loader2 className="h-3 w-3 animate-spin mr-2" /> : <Plus className="h-3 w-3 mr-2" />}
-                                    Criar oportunidade no Pipeline
+                                    Criar oportunidade
                                   </Button>
                                 )}
                               </div>
