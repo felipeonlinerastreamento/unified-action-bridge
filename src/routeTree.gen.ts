@@ -17,6 +17,7 @@ import { Route as CentralRouteImport } from './routes/central'
 import { Route as ChatOperadoresRouteImport } from './routes/chat-operadores'
 import { Route as ConfiguracoesRouteImport } from './routes/configuracoes'
 import { Route as ContatosRouteImport } from './routes/contatos'
+import { Route as ContratosRouteImport } from './routes/contratos'
 import { Route as CrmRouteImport } from './routes/crm'
 import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as EmpresasRouteImport } from './routes/empresas'
@@ -50,6 +51,7 @@ import { Route as ConfiguracoesPopupDiarioRouteImport } from './routes/configura
 import { Route as ConfiguracoesRoboAtendimentoRouteImport } from './routes/configuracoes.robo-atendimento'
 import { Route as ConfiguracoesUsuariosRouteImport } from './routes/configuracoes.usuarios'
 import { Route as ConfiguracoesZapiRouteImport } from './routes/configuracoes.zapi'
+import { Route as ContratoTokenRouteImport } from './routes/contrato.$token'
 import { Route as GamificacaoIndexRouteImport } from './routes/gamificacao.index'
 import { Route as GamificacaoAdminRouteImport } from './routes/gamificacao.admin'
 import { Route as GamificacaoDuelosRouteImport } from './routes/gamificacao.duelos'
@@ -117,6 +119,11 @@ const ConfiguracoesRoute = ConfiguracoesRouteImport.update({
 const ContatosRoute = ContatosRouteImport.update({
   id: '/contatos',
   path: '/contatos',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ContratosRoute = ContratosRouteImport.update({
+  id: '/contratos',
+  path: '/contratos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const CrmRoute = CrmRouteImport.update({
@@ -294,6 +301,11 @@ const ConfiguracoesZapiRoute = ConfiguracoesZapiRouteImport.update({
   path: '/zapi',
   getParentRoute: () => ConfiguracoesRoute,
 } as any)
+const ContratoTokenRoute = ContratoTokenRouteImport.update({
+  id: '/contrato/$token',
+  path: '/contrato/$token',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const GamificacaoIndexRoute = GamificacaoIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -451,6 +463,7 @@ export interface FileRoutesByFullPath {
   '/chat-operadores': typeof ChatOperadoresRoute
   '/configuracoes': typeof ConfiguracoesRouteWithChildren
   '/contatos': typeof ContatosRoute
+  '/contratos': typeof ContratosRoute
   '/crm': typeof CrmRoute
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
@@ -482,6 +495,7 @@ export interface FileRoutesByFullPath {
   '/configuracoes/robo-atendimento': typeof ConfiguracoesRoboAtendimentoRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
+  '/contrato/$token': typeof ContratoTokenRoute
   '/gamificacao/admin': typeof GamificacaoAdminRoute
   '/gamificacao/duelos': typeof GamificacaoDuelosRoute
   '/gamificacao/feed': typeof GamificacaoFeedRoute
@@ -520,6 +534,7 @@ export interface FileRoutesByTo {
   '/central': typeof CentralRoute
   '/chat-operadores': typeof ChatOperadoresRoute
   '/contatos': typeof ContatosRoute
+  '/contratos': typeof ContratosRoute
   '/crm': typeof CrmRoute
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
@@ -550,6 +565,7 @@ export interface FileRoutesByTo {
   '/configuracoes/robo-atendimento': typeof ConfiguracoesRoboAtendimentoRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
+  '/contrato/$token': typeof ContratoTokenRoute
   '/gamificacao/admin': typeof GamificacaoAdminRoute
   '/gamificacao/duelos': typeof GamificacaoDuelosRoute
   '/gamificacao/feed': typeof GamificacaoFeedRoute
@@ -591,6 +607,7 @@ export interface FileRoutesById {
   '/chat-operadores': typeof ChatOperadoresRoute
   '/configuracoes': typeof ConfiguracoesRouteWithChildren
   '/contatos': typeof ContatosRoute
+  '/contratos': typeof ContratosRoute
   '/crm': typeof CrmRoute
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
@@ -622,6 +639,7 @@ export interface FileRoutesById {
   '/configuracoes/robo-atendimento': typeof ConfiguracoesRoboAtendimentoRoute
   '/configuracoes/usuarios': typeof ConfiguracoesUsuariosRoute
   '/configuracoes/zapi': typeof ConfiguracoesZapiRoute
+  '/contrato/$token': typeof ContratoTokenRoute
   '/gamificacao/admin': typeof GamificacaoAdminRoute
   '/gamificacao/duelos': typeof GamificacaoDuelosRoute
   '/gamificacao/feed': typeof GamificacaoFeedRoute
@@ -664,6 +682,7 @@ export interface FileRouteTypes {
     | '/chat-operadores'
     | '/configuracoes'
     | '/contatos'
+    | '/contratos'
     | '/crm'
     | '/dashboard'
     | '/empresas'
@@ -695,6 +714,7 @@ export interface FileRouteTypes {
     | '/configuracoes/robo-atendimento'
     | '/configuracoes/usuarios'
     | '/configuracoes/zapi'
+    | '/contrato/$token'
     | '/gamificacao/admin'
     | '/gamificacao/duelos'
     | '/gamificacao/feed'
@@ -733,6 +753,7 @@ export interface FileRouteTypes {
     | '/central'
     | '/chat-operadores'
     | '/contatos'
+    | '/contratos'
     | '/crm'
     | '/dashboard'
     | '/empresas'
@@ -763,6 +784,7 @@ export interface FileRouteTypes {
     | '/configuracoes/robo-atendimento'
     | '/configuracoes/usuarios'
     | '/configuracoes/zapi'
+    | '/contrato/$token'
     | '/gamificacao/admin'
     | '/gamificacao/duelos'
     | '/gamificacao/feed'
@@ -803,6 +825,7 @@ export interface FileRouteTypes {
     | '/chat-operadores'
     | '/configuracoes'
     | '/contatos'
+    | '/contratos'
     | '/crm'
     | '/dashboard'
     | '/empresas'
@@ -834,6 +857,7 @@ export interface FileRouteTypes {
     | '/configuracoes/robo-atendimento'
     | '/configuracoes/usuarios'
     | '/configuracoes/zapi'
+    | '/contrato/$token'
     | '/gamificacao/admin'
     | '/gamificacao/duelos'
     | '/gamificacao/feed'
@@ -875,6 +899,7 @@ export interface RootRouteChildren {
   ChatOperadoresRoute: typeof ChatOperadoresRoute
   ConfiguracoesRoute: typeof ConfiguracoesRouteWithChildren
   ContatosRoute: typeof ContatosRoute
+  ContratosRoute: typeof ContratosRoute
   CrmRoute: typeof CrmRoute
   DashboardRoute: typeof DashboardRoute
   EmpresasRoute: typeof EmpresasRoute
@@ -888,6 +913,7 @@ export interface RootRouteChildren {
   TratativasRoute: typeof TratativasRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   AtendimentosTarefasRoute: typeof AtendimentosTarefasRoute
+  ContratoTokenRoute: typeof ContratoTokenRoute
   HooksRefreshTrackingRoute: typeof HooksRefreshTrackingRoute
   PropostaTokenRoute: typeof PropostaTokenRoute
   TermoServicoTokenRoute: typeof TermoServicoTokenRoute
@@ -961,6 +987,13 @@ declare module '@tanstack/react-router' {
       path: '/contatos'
       fullPath: '/contatos'
       preLoaderRoute: typeof ContatosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contratos': {
+      id: '/contratos'
+      path: '/contratos'
+      fullPath: '/contratos'
+      preLoaderRoute: typeof ContratosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/crm': {
@@ -1193,6 +1226,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/configuracoes/zapi'
       preLoaderRoute: typeof ConfiguracoesZapiRouteImport
       parentRoute: typeof ConfiguracoesRoute
+    }
+    '/contrato/$token': {
+      id: '/contrato/$token'
+      path: '/contrato/$token'
+      fullPath: '/contrato/$token'
+      preLoaderRoute: typeof ContratoTokenRouteImport
+      parentRoute: typeof rootRouteImport
     }
     '/gamificacao/': {
       id: '/gamificacao/'
@@ -1498,6 +1538,7 @@ const rootRouteChildren: RootRouteChildren = {
   ChatOperadoresRoute: ChatOperadoresRoute,
   ConfiguracoesRoute: ConfiguracoesRouteWithChildren,
   ContatosRoute: ContatosRoute,
+  ContratosRoute: ContratosRoute,
   CrmRoute: CrmRoute,
   DashboardRoute: DashboardRoute,
   EmpresasRoute: EmpresasRoute,
@@ -1512,6 +1553,7 @@ const rootRouteChildren: RootRouteChildren = {
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
   AtendimentosTarefasRoute: AtendimentosTarefasRoute,
+  ContratoTokenRoute: ContratoTokenRoute,
   HooksRefreshTrackingRoute: HooksRefreshTrackingRoute,
   PropostaTokenRoute: PropostaTokenRoute,
   TermoServicoTokenRoute: TermoServicoTokenRoute,
@@ -1532,13 +1574,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
