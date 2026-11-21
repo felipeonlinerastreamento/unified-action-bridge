@@ -337,6 +337,13 @@
       "when": 1795275846739,
       "tag": "0047_financeiro_bpo",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1795278878285,
+      "tag": "0048_financeiro_bucket_policies",
+      "breakpoints": true
     }
   ]
 }

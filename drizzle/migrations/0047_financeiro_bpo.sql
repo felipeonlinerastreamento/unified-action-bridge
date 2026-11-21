@@ -167,20 +167,8 @@ CREATE POLICY "Only active staff" ON public.fin_acesso AS RESTRICTIVE FOR ALL TO
   USING (public.is_active_staff()) WITH CHECK (public.is_active_staff());
 GRANT SELECT ON public.fin_acesso TO authenticated;
 
--- 7) Bucket privado para comprovantes --------------------------------------
-INSERT INTO storage.buckets (id, name, public)
-VALUES ('fin-comprovantes', 'fin-comprovantes', false)
-ON CONFLICT (id) DO NOTHING;
-
-DROP POLICY IF EXISTS "fin_comprovantes_select" ON storage.objects;
-CREATE POLICY "fin_comprovantes_select" ON storage.objects FOR SELECT TO authenticated
-  USING (bucket_id = 'fin-comprovantes' AND public.can_access_finance());
-DROP POLICY IF EXISTS "fin_comprovantes_insert" ON storage.objects;
-CREATE POLICY "fin_comprovantes_insert" ON storage.objects FOR INSERT TO authenticated
-  WITH CHECK (bucket_id = 'fin-comprovantes' AND public.can_access_finance());
-DROP POLICY IF EXISTS "fin_comprovantes_delete" ON storage.objects;
-CREATE POLICY "fin_comprovantes_delete" ON storage.objects FOR DELETE TO authenticated
-  USING (bucket_id = 'fin-comprovantes' AND public.can_access_finance());
+-- 7) Bucket privado "fin-comprovantes": criado à parte pela plataforma (não pode ser criado
+--    em migração). As regras de acesso do bucket ficam em 0048_financeiro_bucket_policies.sql.
 
 -- 8) Dados iniciais ---------------------------------------------------------
 -- OT: empresa usada para dividir o faturamento, já encerrada. Fica inativa (não aparece em
