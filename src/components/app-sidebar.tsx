@@ -76,6 +76,7 @@ const mainItems = [
   { title: "Contatos", url: "/contatos", icon: Users },
   { title: "Empresas", url: "/empresas", icon: Building2 },
   { title: "Estoque", url: "/estoque", icon: Boxes },
+  { title: "Contratos", url: "/contratos", icon: FileSignature },
   { title: "Relatórios", url: "/relatorios", icon: BarChart3 },
   
   { title: "Chat com Operadores", url: "/chat-operadores", icon: MessageCircle },
