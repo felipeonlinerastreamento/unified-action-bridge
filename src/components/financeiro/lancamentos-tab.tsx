@@ -53,7 +53,7 @@ export function LancamentosTab({ tipo, lancamentos, categorias, empresas }: { ti
 
   const rows = useMemo(() => {
     const t = q.trim().toLowerCase();
-    return lancamentos.filter((l) => {
+    const filtradas = lancamentos.filter((l) => {
       if (l.tipo !== tipo) return false;
       const s = statusVisivel(l, hoje);
       if (fStatus === "pendentes" && !(s === "aberto" || s === "vencido")) return false;
@@ -69,6 +69,12 @@ export function LancamentosTab({ tipo, lancamentos, categorias, empresas }: { ti
       }
       return true;
     });
+    // Contas a receber: mais recentes primeiro (vencimento, senão emissão, senão data do lançamento).
+    if (tipo === "receber") {
+      const ref = (l: Lanc) => String(l.vencimento || l.data_emissao || (l as any).created_at || "");
+      filtradas.sort((a, b) => ref(b).localeCompare(ref(a)));
+    }
+    return filtradas;
   }, [lancamentos, tipo, q, fStatus, fCat, fEmp, de, ate, hoje, catById]);
 
   const total = rows.reduce((s, l) => s + Number(l.valor || 0), 0);
