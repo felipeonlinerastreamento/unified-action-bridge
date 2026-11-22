@@ -44,6 +44,7 @@ import { Route as ConfiguracoesAutomacaoSemComunicacaoRouteImport } from './rout
 import { Route as ConfiguracoesCanaisEmailRouteImport } from './routes/configuracoes.canais-email'
 import { Route as ConfiguracoesCentralAtendimentoRouteImport } from './routes/configuracoes.central-atendimento'
 import { Route as ConfiguracoesCrmRouteImport } from './routes/configuracoes.crm'
+import { Route as ConfiguracoesContratosRouteImport } from './routes/configuracoes.contratos'
 import { Route as ConfiguracoesEncaminhamentoRouteImport } from './routes/configuracoes.encaminhamento'
 import { Route as ConfiguracoesEstoqueRouteImport } from './routes/configuracoes.estoque'
 import { Route as ConfiguracoesFluxoAtendimentoRouteImport } from './routes/configuracoes.fluxo-atendimento'
@@ -77,6 +78,7 @@ import { Route as ApiPublicCrmDailyRouteImport } from './routes/api.public.crm-d
 import { Route as ApiPublicEmailPollRouteImport } from './routes/api.public.email-poll'
 import { Route as ApiPublicSystemHealthScanRouteImport } from './routes/api.public.system-health-scan'
 import { Route as ApiPublicHooksAutentiqueRouteImport } from './routes/api.public.hooks.autentique'
+import { Route as ApiPublicHooksContratosDiarioRouteImport } from './routes/api.public.hooks.contratos-diario'
 import { Route as ApiPublicHooksSyncGsystemEquipamentosRouteImport } from './routes/api.public.hooks.sync-gsystem-equipamentos'
 import { Route as ApiPublicHooksSyncGsystemFaturasRouteImport } from './routes/api.public.hooks.sync-gsystem-faturas'
 import { Route as ApiPublicZapiWebhookChannelIdRouteImport } from './routes/api.public.zapi-webhook.$channelId'
@@ -263,6 +265,11 @@ const ConfiguracoesCrmRoute = ConfiguracoesCrmRouteImport.update({
   path: '/crm',
   getParentRoute: () => ConfiguracoesRoute,
 } as any)
+const ConfiguracoesContratosRoute = ConfiguracoesContratosRouteImport.update({
+  id: '/contratos',
+  path: '/contratos',
+  getParentRoute: () => ConfiguracoesRoute,
+} as any)
 const ConfiguracoesEncaminhamentoRoute =
   ConfiguracoesEncaminhamentoRouteImport.update({
     id: '/encaminhamento',
@@ -438,6 +445,12 @@ const ApiPublicHooksAutentiqueRoute =
     path: '/api/public/hooks/autentique',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksContratosDiarioRoute =
+  ApiPublicHooksContratosDiarioRouteImport.update({
+    id: '/api/public/hooks/contratos-diario',
+    path: '/api/public/hooks/contratos-diario',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksSyncGsystemEquipamentosRoute =
   ApiPublicHooksSyncGsystemEquipamentosRouteImport.update({
     id: '/api/public/hooks/sync-gsystem-equipamentos',
@@ -478,6 +491,7 @@ export interface FileRoutesByFullPath {
   '/contatos': typeof ContatosRoute
   '/contratos': typeof ContratosRoute
   '/crm': typeof CrmRoute
+  '/contratos': typeof CrmRoute
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
@@ -501,6 +515,7 @@ export interface FileRoutesByFullPath {
   '/configuracoes/canais-email': typeof ConfiguracoesCanaisEmailRoute
   '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
   '/configuracoes/crm': typeof ConfiguracoesCrmRoute
+  '/configuracoes/contratos': typeof ConfiguracoesContratosRoute
   '/configuracoes/encaminhamento': typeof ConfiguracoesEncaminhamentoRoute
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
   '/configuracoes/fluxo-atendimento': typeof ConfiguracoesFluxoAtendimentoRoute
@@ -536,6 +551,7 @@ export interface FileRoutesByFullPath {
   '/api/public/email-poll': typeof ApiPublicEmailPollRoute
   '/api/public/system-health-scan': typeof ApiPublicSystemHealthScanRoute
   '/api/public/hooks/autentique': typeof ApiPublicHooksAutentiqueRoute
+  '/api/public/hooks/contratos-diario': typeof ApiPublicHooksContratosDiarioRoute
   '/api/public/hooks/sync-gsystem-equipamentos': typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   '/api/public/hooks/sync-gsystem-faturas': typeof ApiPublicHooksSyncGsystemFaturasRoute
   '/api/public/zapi-webhook/$channelId': typeof ApiPublicZapiWebhookChannelIdRoute
@@ -551,6 +567,7 @@ export interface FileRoutesByTo {
   '/contatos': typeof ContatosRoute
   '/contratos': typeof ContratosRoute
   '/crm': typeof CrmRoute
+  '/contratos': typeof CrmRoute
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
@@ -573,6 +590,7 @@ export interface FileRoutesByTo {
   '/configuracoes/canais-email': typeof ConfiguracoesCanaisEmailRoute
   '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
   '/configuracoes/crm': typeof ConfiguracoesCrmRoute
+  '/configuracoes/contratos': typeof ConfiguracoesContratosRoute
   '/configuracoes/encaminhamento': typeof ConfiguracoesEncaminhamentoRoute
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
   '/configuracoes/fluxo-atendimento': typeof ConfiguracoesFluxoAtendimentoRoute
@@ -608,6 +626,7 @@ export interface FileRoutesByTo {
   '/api/public/email-poll': typeof ApiPublicEmailPollRoute
   '/api/public/system-health-scan': typeof ApiPublicSystemHealthScanRoute
   '/api/public/hooks/autentique': typeof ApiPublicHooksAutentiqueRoute
+  '/api/public/hooks/contratos-diario': typeof ApiPublicHooksContratosDiarioRoute
   '/api/public/hooks/sync-gsystem-equipamentos': typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   '/api/public/hooks/sync-gsystem-faturas': typeof ApiPublicHooksSyncGsystemFaturasRoute
   '/api/public/zapi-webhook/$channelId': typeof ApiPublicZapiWebhookChannelIdRoute
@@ -626,6 +645,7 @@ export interface FileRoutesById {
   '/contatos': typeof ContatosRoute
   '/contratos': typeof ContratosRoute
   '/crm': typeof CrmRoute
+  '/contratos': typeof CrmRoute
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
@@ -649,6 +669,7 @@ export interface FileRoutesById {
   '/configuracoes/canais-email': typeof ConfiguracoesCanaisEmailRoute
   '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
   '/configuracoes/crm': typeof ConfiguracoesCrmRoute
+  '/configuracoes/contratos': typeof ConfiguracoesContratosRoute
   '/configuracoes/encaminhamento': typeof ConfiguracoesEncaminhamentoRoute
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
   '/configuracoes/fluxo-atendimento': typeof ConfiguracoesFluxoAtendimentoRoute
@@ -684,6 +705,7 @@ export interface FileRoutesById {
   '/api/public/email-poll': typeof ApiPublicEmailPollRoute
   '/api/public/system-health-scan': typeof ApiPublicSystemHealthScanRoute
   '/api/public/hooks/autentique': typeof ApiPublicHooksAutentiqueRoute
+  '/api/public/hooks/contratos-diario': typeof ApiPublicHooksContratosDiarioRoute
   '/api/public/hooks/sync-gsystem-equipamentos': typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   '/api/public/hooks/sync-gsystem-faturas': typeof ApiPublicHooksSyncGsystemFaturasRoute
   '/api/public/zapi-webhook/$channelId': typeof ApiPublicZapiWebhookChannelIdRoute
@@ -703,6 +725,7 @@ export interface FileRouteTypes {
     | '/contatos'
     | '/contratos'
     | '/crm'
+    | '/contratos'
     | '/dashboard'
     | '/empresas'
     | '/estoque'
@@ -726,6 +749,7 @@ export interface FileRouteTypes {
     | '/configuracoes/canais-email'
     | '/configuracoes/central-atendimento'
     | '/configuracoes/crm'
+    | '/configuracoes/contratos'
     | '/configuracoes/encaminhamento'
     | '/configuracoes/estoque'
     | '/configuracoes/fluxo-atendimento'
@@ -761,6 +785,7 @@ export interface FileRouteTypes {
     | '/api/public/email-poll'
     | '/api/public/system-health-scan'
     | '/api/public/hooks/autentique'
+    | '/api/public/hooks/contratos-diario'
     | '/api/public/hooks/sync-gsystem-equipamentos'
     | '/api/public/hooks/sync-gsystem-faturas'
     | '/api/public/zapi-webhook/$channelId'
@@ -776,6 +801,7 @@ export interface FileRouteTypes {
     | '/contatos'
     | '/contratos'
     | '/crm'
+    | '/contratos'
     | '/dashboard'
     | '/empresas'
     | '/estoque'
@@ -798,6 +824,7 @@ export interface FileRouteTypes {
     | '/configuracoes/canais-email'
     | '/configuracoes/central-atendimento'
     | '/configuracoes/crm'
+    | '/configuracoes/contratos'
     | '/configuracoes/encaminhamento'
     | '/configuracoes/estoque'
     | '/configuracoes/fluxo-atendimento'
@@ -833,6 +860,7 @@ export interface FileRouteTypes {
     | '/api/public/email-poll'
     | '/api/public/system-health-scan'
     | '/api/public/hooks/autentique'
+    | '/api/public/hooks/contratos-diario'
     | '/api/public/hooks/sync-gsystem-equipamentos'
     | '/api/public/hooks/sync-gsystem-faturas'
     | '/api/public/zapi-webhook/$channelId'
@@ -850,6 +878,7 @@ export interface FileRouteTypes {
     | '/contatos'
     | '/contratos'
     | '/crm'
+    | '/contratos'
     | '/dashboard'
     | '/empresas'
     | '/estoque'
@@ -873,6 +902,7 @@ export interface FileRouteTypes {
     | '/configuracoes/canais-email'
     | '/configuracoes/central-atendimento'
     | '/configuracoes/crm'
+    | '/configuracoes/contratos'
     | '/configuracoes/encaminhamento'
     | '/configuracoes/estoque'
     | '/configuracoes/fluxo-atendimento'
@@ -908,6 +938,7 @@ export interface FileRouteTypes {
     | '/api/public/email-poll'
     | '/api/public/system-health-scan'
     | '/api/public/hooks/autentique'
+    | '/api/public/hooks/contratos-diario'
     | '/api/public/hooks/sync-gsystem-equipamentos'
     | '/api/public/hooks/sync-gsystem-faturas'
     | '/api/public/zapi-webhook/$channelId'
@@ -951,6 +982,7 @@ export interface RootRouteChildren {
   ApiPublicEmailPollRoute: typeof ApiPublicEmailPollRoute
   ApiPublicSystemHealthScanRoute: typeof ApiPublicSystemHealthScanRoute
   ApiPublicHooksAutentiqueRoute: typeof ApiPublicHooksAutentiqueRoute
+  ApiPublicHooksContratosDiarioRoute: typeof ApiPublicHooksContratosDiarioRoute
   ApiPublicHooksSyncGsystemEquipamentosRoute: typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   ApiPublicHooksSyncGsystemFaturasRoute: typeof ApiPublicHooksSyncGsystemFaturasRoute
   ApiPublicZapiWebhookChannelIdRoute: typeof ApiPublicZapiWebhookChannelIdRoute
@@ -1027,6 +1059,13 @@ declare module '@tanstack/react-router' {
       id: '/crm'
       path: '/crm'
       fullPath: '/crm'
+      preLoaderRoute: typeof CrmRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/contratos': {
+      id: '/contratos'
+      path: '/contratos'
+      fullPath: '/contratos'
       preLoaderRoute: typeof CrmRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -1203,6 +1242,13 @@ declare module '@tanstack/react-router' {
       path: '/crm'
       fullPath: '/configuracoes/crm'
       preLoaderRoute: typeof ConfiguracoesCrmRouteImport
+      parentRoute: typeof ConfiguracoesRoute
+    }
+    '/configuracoes/contratos': {
+      id: '/configuracoes/contratos'
+      path: '/contratos'
+      fullPath: '/configuracoes/contratos'
+      preLoaderRoute: typeof ConfiguracoesContratosRouteImport
       parentRoute: typeof ConfiguracoesRoute
     }
     '/configuracoes/encaminhamento': {
@@ -1436,6 +1482,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksAutentiqueRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/contratos-diario': {
+      id: '/api/public/hooks/contratos-diario'
+      path: '/api/public/hooks/contratos-diario'
+      fullPath: '/api/public/hooks/contratos-diario'
+      preLoaderRoute: typeof ApiPublicHooksContratosDiarioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/sync-gsystem-equipamentos': {
       id: '/api/public/hooks/sync-gsystem-equipamentos'
       path: '/api/public/hooks/sync-gsystem-equipamentos'
@@ -1500,6 +1553,7 @@ interface ConfiguracoesRouteChildren {
   ConfiguracoesCanaisEmailRoute: typeof ConfiguracoesCanaisEmailRoute
   ConfiguracoesCentralAtendimentoRoute: typeof ConfiguracoesCentralAtendimentoRoute
   ConfiguracoesCrmRoute: typeof ConfiguracoesCrmRoute
+  ConfiguracoesContratosRoute: typeof ConfiguracoesContratosRoute
   ConfiguracoesEncaminhamentoRoute: typeof ConfiguracoesEncaminhamentoRoute
   ConfiguracoesEstoqueRoute: typeof ConfiguracoesEstoqueRoute
   ConfiguracoesFluxoAtendimentoRoute: typeof ConfiguracoesFluxoAtendimentoRoute
@@ -1519,6 +1573,7 @@ const ConfiguracoesRouteChildren: ConfiguracoesRouteChildren = {
   ConfiguracoesCanaisEmailRoute: ConfiguracoesCanaisEmailRoute,
   ConfiguracoesCentralAtendimentoRoute: ConfiguracoesCentralAtendimentoRoute,
   ConfiguracoesCrmRoute: ConfiguracoesCrmRoute,
+  ConfiguracoesContratosRoute: ConfiguracoesContratosRoute,
   ConfiguracoesEncaminhamentoRoute: ConfiguracoesEncaminhamentoRoute,
   ConfiguracoesEstoqueRoute: ConfiguracoesEstoqueRoute,
   ConfiguracoesFluxoAtendimentoRoute: ConfiguracoesFluxoAtendimentoRoute,
@@ -1607,6 +1662,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicEmailPollRoute: ApiPublicEmailPollRoute,
   ApiPublicSystemHealthScanRoute: ApiPublicSystemHealthScanRoute,
   ApiPublicHooksAutentiqueRoute: ApiPublicHooksAutentiqueRoute,
+  ApiPublicHooksContratosDiarioRoute: ApiPublicHooksContratosDiarioRoute,
   ApiPublicHooksSyncGsystemEquipamentosRoute:
     ApiPublicHooksSyncGsystemEquipamentosRoute,
   ApiPublicHooksSyncGsystemFaturasRoute: ApiPublicHooksSyncGsystemFaturasRoute,

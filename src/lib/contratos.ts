@@ -245,6 +245,8 @@ export const EVENTO_LABEL: Record<string, string> = {
   ajustado: "Dados do contrato completados",
   pasta: "Pasta alterada",
   categoria: "Categoria alterada",
+  reajuste: "Reajuste aplicado",
+  reajuste_avisado: "Cliente avisado do reajuste",
 };
 
 /** Código de 6 dígitos. */

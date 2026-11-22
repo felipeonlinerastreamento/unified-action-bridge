@@ -107,6 +107,7 @@ const configSubItems = [
   { title: "Popup Diário", url: "/configuracoes/popup-diario", icon: Sun },
   { title: "Usuários", url: "/configuracoes/usuarios", icon: UserCog },
   { title: "CRM", url: "/configuracoes/crm", icon: FileSignature },
+  { title: "Contratos", url: "/configuracoes/contratos", icon: FileSignature },
   { title: "Notificações", url: "/configuracoes/notificacoes", icon: Bell },
   { title: "Auditoria", url: "/configuracoes/auditoria", icon: ShieldCheck },
 ];

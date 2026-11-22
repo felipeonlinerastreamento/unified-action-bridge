@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
-import { FolderInput, Loader2, Send, X, RefreshCw, Tags } from "lucide-react";
+import { FolderInput, Loader2, Send, X, RefreshCw, Tags, Download } from "lucide-react";
+import { pdfContratoFn } from "@/lib/contratos-automacao.functions";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,6 +23,8 @@ export function AcoesLote({ selecionados, pastasLocais, onLimpar }: { selecionad
   const [dlg, setDlg] = useState<"reenviar" | "pasta" | null>(null);
   const sincronizar = useServerFn(sincronizarPendentesAutentiqueFn);
   const categorizar = useServerFn(categorizarContratos);
+  const pdfFn = useServerFn(pdfContratoFn);
+  const [baixando, setBaixando] = useState<string | null>(null);
   const [sinc, setSinc] = useState(false);
   if (!selecionados.length) return null;
   const pendentes = selecionados.filter((c) => c.status === "enviado");
@@ -35,6 +38,37 @@ export function AcoesLote({ selecionados, pastasLocais, onLimpar }: { selecionad
       qc.invalidateQueries({ queryKey: ["contratos"] });
     } catch (e: any) { toast.error(e?.message ?? "Falha ao atualizar do Autentique."); }
     finally { setSinc(false); }
+  };
+
+  /** Baixa os PDFs dos marcados num arquivo ZIP (assinados do Autentique ou gerados do texto congelado). */
+  const baixar = async () => {
+    const alvo = selecionados.filter((c) => c.status !== "rascunho");
+    if (!alvo.length) { toast.error("Rascunhos não têm PDF: marque contratos enviados ou assinados."); return; }
+    const arquivos: Record<string, Uint8Array> = {};
+    const falhas: string[] = [];
+    try {
+      for (let i = 0; i < alvo.length; i++) {
+        setBaixando(`${i + 1}/${alvo.length}`);
+        const r: any = await pdfFn({ data: { id: alvo[i].id } });
+        if (r.erro) { falhas.push(`nº ${alvo[i].numero}: ${r.erro}`); continue; }
+        const bin = atob(r.base64);
+        const u8 = new Uint8Array(bin.length);
+        for (let j = 0; j < bin.length; j++) u8[j] = bin.charCodeAt(j);
+        let nome = r.nome as string;
+        for (let k = 2; arquivos[nome]; k++) nome = r.nome.replace(/\.pdf$/, `-${k}.pdf`);
+        arquivos[nome] = u8;
+      }
+      if (!Object.keys(arquivos).length) { toast.error(`Nenhum PDF baixado. ${falhas.slice(0, 3).join(" · ")}`); return; }
+      const { zipSync } = await import("@/vendor/fflate/fflate.mjs");
+      const zip = zipSync(arquivos, { level: 0 });
+      const url = URL.createObjectURL(new Blob([new Uint8Array(zip)], { type: "application/zip" }));
+      const a = document.createElement("a");
+      a.href = url; a.download = `contratos-${new Date().toISOString().slice(0, 10)}.zip`; a.click();
+      setTimeout(() => URL.revokeObjectURL(url), 5000);
+      toast.success(`${Object.keys(arquivos).length} PDF(s) no arquivo ZIP.`);
+      if (falhas.length) toast.error(`Sem PDF: ${falhas.slice(0, 3).join(" · ")}${falhas.length > 3 ? ` e mais ${falhas.length - 3}` : ""}`);
+    } catch (e: any) { toast.error(e?.message ?? "Falha ao baixar."); }
+    finally { setBaixando(null); }
   };
 
   const marcar = async (categoria: "cliente" | "fornecedor") => {
@@ -61,6 +95,7 @@ export function AcoesLote({ selecionados, pastasLocais, onLimpar }: { selecionad
               <DropdownMenuItem onClick={() => marcar("fornecedor")}>Contrato com fornecedor</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
+          <Button size="sm" variant="outline" onClick={baixar} disabled={!!baixando}>{baixando ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Download className="h-4 w-4 mr-1" />}{baixando ? `Baixando ${baixando}` : "Baixar PDFs"}</Button>
           <Button size="sm" variant="outline" onClick={() => setDlg("pasta")}><FolderInput className="h-4 w-4 mr-1" />Mudar de pasta</Button>
           {doAutentique.length > 0 && (
             <Button size="sm" variant="outline" onClick={atualizar} disabled={sinc}>{sinc ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1" />}Atualizar do Autentique</Button>

@@ -243,40 +243,17 @@ export const reenviarContratosLote = createServerFn({ method: "POST" })
     const admin = await adminDb();
     const brand = await marca(admin);
     const { data: lista } = await admin.from("contratos").select("*").in("id", data.ids);
-    const canais = { whatsapp: data.modo === "whatsapp" || data.modo === "whatsapp_email", email: data.modo === "email" || data.modo === "whatsapp_email" };
+    const { reenviarUmContrato } = await import("@/lib/contratos-envio.server");
     const resultado: { id: string; numero: number; ok: boolean; detalhe: string }[] = [];
     const inicio = Date.now();
     for (const c of lista || []) {
       if (Date.now() - inicio > 22_000) { resultado.push({ id: c.id, numero: c.numero, ok: false, detalhe: "não deu tempo nesta rodada: reenvie de novo" }); continue; }
       try {
-        if (c.status !== "enviado") throw new Error(c.status === "rascunho" ? "ainda é rascunho (envie pela tela do contrato)" : `está ${c.status}`);
-        if (c.provedor === "autentique") {
-          const { reenviarAssinaturasAutentique, linkAssinaturaAutentique } = await import("@/lib/autentique.server");
-          const papeis: any[] = Array.isArray(c.provedor_signatarios) ? c.provedor_signatarios : [];
-          const contratante = papeis.find((p) => p.papel === "contratante");
-          if (!contratante?.public_id) throw new Error("signatário do Autentique não identificado");
-          if (data.modo === "autentique") {
-            await reenviarAssinaturasAutentique([contratante.public_id]);
-            await evento(admin, c.id, "reenviado", "Convite reenviado pelo Autentique", userId);
-            resultado.push({ id: c.id, numero: c.numero, ok: true, detalhe: "reenviado pelo Autentique" });
-            continue;
-          }
-          const link = (await linkAssinaturaAutentique(contratante.public_id)) || c.provedor_link;
-          if (!link) throw new Error("o Autentique não devolveu o link de assinatura");
-          const r = await mandarLink(admin, brand, c, link, canais, "A assinatura é feita na plataforma Autentique.", true);
-          if (!r.enviados.length) throw new Error(Object.values(r.erros).join("; "));
-          await evento(admin, c.id, "reenviado", `Link do Autentique reenviado por ${r.enviados.join(" e ")}`, userId);
-          resultado.push({ id: c.id, numero: c.numero, ok: true, detalhe: `link do Autentique por ${r.enviados.join(" e ")}${Object.keys(r.erros).length ? ` (falhou: ${Object.values(r.erros).join("; ")})` : ""}` });
-          continue;
-        }
-        if (data.modo === "autentique") throw new Error("contrato com assinatura própria: escolha WhatsApp ou e-mail");
-        const url = `${baseUrl(brand)}/contrato/${c.token}`;
-        const r = await mandarLink(admin, brand, c, url, canais, "Para abrir, informe seu CPF. A assinatura é confirmada com um código enviado a você.", true);
-        if (!r.enviados.length) throw new Error(Object.values(r.erros).join("; "));
-        await evento(admin, c.id, "reenviado", `Reenviado por ${r.enviados.join(" e ")}`, userId);
-        resultado.push({ id: c.id, numero: c.numero, ok: true, detalhe: `por ${r.enviados.join(" e ")}${Object.keys(r.erros).length ? ` (falhou: ${Object.values(r.erros).join("; ")})` : ""}` });
+        if (c.provedor !== "autentique" && data.modo === "autentique") throw new Error("contrato com assinatura própria: escolha WhatsApp ou e-mail");
+        const r = await reenviarUmContrato(admin, brand, c, data.modo, userId);
+        resultado.push({ id: c.id, numero: c.numero, ok: true, detalhe: r.detalhe });
       } catch (e: any) {
-        resultado.push({ id: c.id, numero: c.numero, ok: false, detalhe: String(e?.message ?? e).replace(/^Autentique: /, "Autentique: ").replace("too_many_resent_emails", "o Autentique já reenviou há pouco tempo") });
+        resultado.push({ id: c.id, numero: c.numero, ok: false, detalhe: String(e?.message ?? e).replace("too_many_resent_emails", "o Autentique já reenviou há pouco tempo") });
       }
     }
     return { resultado };

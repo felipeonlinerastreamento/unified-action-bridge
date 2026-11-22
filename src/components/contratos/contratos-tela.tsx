@@ -25,6 +25,8 @@ import {
 } from "@/lib/contratos";
 import { EQUIPAMENTOS_PADRAO } from "@/lib/contratos-modelos";
 import { AcoesLote } from "./acoes-lote";
+import { ReajustesTab } from "./reajustes-tab";
+import { financeiroContratosFn } from "@/lib/contratos-automacao.functions";
 import { ajustarContratoImportado, assinarInterno, atualizarAutentique, buscarClienteGsystem, cancelarContrato, enviarAutentique, enviarContrato, prepararModelos, previaContrato, statusAutentique } from "@/lib/contratos.functions";
 import { CONTRATO_CSS } from "./contrato-css";
 
@@ -71,13 +73,25 @@ export function ContratosTela() {
       <Tabs defaultValue="lista">
         <TabsList>
           <TabsTrigger value="lista">Contratos</TabsTrigger>
+          <TabsTrigger value="reajustes">Reajustes</TabsTrigger>
           {gestor && <TabsTrigger value="modelos">Modelos</TabsTrigger>}
         </TabsList>
         <TabsContent value="lista" className="mt-4"><Lista /></TabsContent>
+        <TabsContent value="reajustes" className="mt-4"><ReajustesTab gestor={gestor} /></TabsContent>
         {gestor && <TabsContent value="modelos" className="mt-4"><Modelos /></TabsContent>}
       </Tabs>
     </div>
   );
+}
+
+const brlCurto = (n: number | null | undefined) => (n == null ? "—" : n.toLocaleString("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }));
+function FinBadge({ f }: { f?: { status: string; contrato: number | null; realizado: number | null; diferenca: number | null; pct: number | null; origem: string } }) {
+  if (!f || f.status === "sem_dados") return <span className="text-xs text-muted-foreground" title="Sem valor no contrato ou sem faturas/pagamentos para comparar">—</span>;
+  const titulo = `Contrato ${brlCurto(f.contrato)} · ${f.origem === "pagamentos" ? "pago" : "faturado"} (média 3 meses) ${brlCurto(f.realizado)}`;
+  if (f.status === "ok") return <Badge variant="outline" className="text-[10px] border-emerald-500/50 text-emerald-700" title={titulo}>ok</Badge>;
+  return <Badge variant="outline" className={`text-[10px] ${f.status === "abaixo" ? "border-red-500/50 text-red-700" : "border-amber-500/50 text-amber-700"}`} title={titulo}>
+    {f.status === "abaixo" ? "↓" : "↑"} {brlCurto(f.diferenca)} ({f.pct?.toLocaleString("pt-BR")}%)
+  </Badge>;
 }
 
 // ------------------------------------------------------------------ lista
@@ -89,6 +103,10 @@ function Lista() {
   const [abrir, setAbrir] = useState<Contrato | null>(null);
   const [pasta, setPasta] = useState("all");
   const [cat, setCat] = useState<"all" | "cliente" | "fornecedor">("all");
+  const [soDivergentes, setSoDivergentes] = useState(false);
+  const finFn = useServerFn(financeiroContratosFn);
+  const { data: fin } = useQuery({ queryKey: ["contratos-financeiro"], queryFn: () => finFn(), retry: false, staleTime: 5 * 60_000 });
+  const finPor = (fin?.permitido ? fin.porContrato : {}) as Record<string, { status: string; contrato: number | null; realizado: number | null; diferenca: number | null; pct: number | null; origem: string }>;
   const [sel, setSel] = useState<string[]>([]);
   const { data: contratos = [], isLoading } = useQuery({
     queryKey: ["contratos"],
@@ -103,10 +121,11 @@ function Lista() {
     const s = situacao(c, hoje);
     if (f !== "all" && s !== f) return false;
     if (cat !== "all" && (c.categoria ?? "cliente") !== cat) return false;
+    if (soDivergentes && !["abaixo", "acima"].includes(finPor[c.id]?.status ?? "")) return false;
     if (pasta === "sem" ? !!c.pasta : pasta !== "all" && c.pasta !== pasta) return false;
     const t = q.trim().toLowerCase();
     return !t || `${c.numero} ${c.cliente_nome} ${c.cliente_documento}`.toLowerCase().includes(t);
-  }), [contratos, q, f, hoje, pasta, cat]);
+  }), [contratos, q, f, hoje, pasta, cat, soDivergentes, finPor]);
   const pastas = useMemo(() => [...new Set(contratos.map((c) => c.pasta).filter(Boolean) as string[])].sort((a, b) => a.localeCompare(b, "pt-BR")), [contratos]);
   const todosMarcados = linhas.length > 0 && linhas.every((c) => sel.includes(c.id));
   const contar = (s: SituacaoContrato) => contratos.filter((c) => situacao(c, hoje) === s).length;
@@ -150,15 +169,20 @@ function Lista() {
             </SelectContent>
           </Select>
         )}
+        {fin?.permitido && (
+          <Button variant={soDivergentes ? "default" : "outline"} onClick={() => setSoDivergentes(!soDivergentes)} title={`Valor do contrato diferente do realizado em mais de ${fin.tolerancia}%`}>
+            Valor divergente ({Object.values(finPor).filter((x) => x.status === "abaixo" || x.status === "acima").length})
+          </Button>
+        )}
         <Button onClick={() => setEditar("novo")}><Plus className="h-4 w-4 mr-1" />Novo contrato</Button>
       </div>
       <AcoesLote selecionados={contratos.filter((c) => sel.includes(c.id))} pastasLocais={pastas} onLimpar={() => setSel([])} />
       <Card>
         {isLoading ? <Loader2 className="h-5 w-5 animate-spin m-4" /> : (
           <Table>
-            <TableHeader><TableRow><TableHead className="w-8"><Checkbox checked={todosMarcados} onCheckedChange={(v) => setSel(v ? [...new Set([...sel, ...linhas.map((c) => c.id)])] : sel.filter((id) => !linhas.some((c) => c.id === id)))} aria-label="Marcar todos" /></TableHead><TableHead>Nº</TableHead><TableHead>Cliente</TableHead><TableHead>Situação</TableHead><TableHead>Vigência</TableHead><TableHead>Enviado</TableHead><TableHead>Assinado</TableHead></TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead className="w-8"><Checkbox checked={todosMarcados} onCheckedChange={(v) => setSel(v ? [...new Set([...sel, ...linhas.map((c) => c.id)])] : sel.filter((id) => !linhas.some((c) => c.id === id)))} aria-label="Marcar todos" /></TableHead><TableHead>Nº</TableHead><TableHead>Cliente</TableHead><TableHead>Situação</TableHead><TableHead>Vigência</TableHead><TableHead>Enviado</TableHead><TableHead>Assinado</TableHead>{fin?.permitido && <TableHead>Financeiro</TableHead>}</TableRow></TableHeader>
             <TableBody>
-              {linhas.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-8">Nenhum contrato.</TableCell></TableRow>}
+              {linhas.length === 0 && <TableRow><TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-8">Nenhum contrato.</TableCell></TableRow>}
               {linhas.map((c) => (
                 <TableRow key={c.id} className="cursor-pointer" onClick={() => (c.status === "rascunho" ? setEditar(c) : setAbrir(c))}>
                   <TableCell onClick={(e) => e.stopPropagation()}><Checkbox checked={sel.includes(c.id)} onCheckedChange={(v) => setSel((x) => (v ? [...x, c.id] : x.filter((id) => id !== c.id)))} aria-label={`Marcar contrato ${c.numero}`} /></TableCell>
@@ -168,6 +192,7 @@ function Lista() {
                   <TableCell className="whitespace-nowrap">{c.vigencia_inicio ? `${formatDataBR(c.vigencia_inicio)} → ${formatDataBR(fimVigencia(c.vigencia_inicio, c.vigencia_meses, c.renovacao_automatica, hoje))}` : "—"}</TableCell>
                   <TableCell>{dh(c.enviado_em)}</TableCell>
                   <TableCell>{dh(c.assinado_em)}</TableCell>
+                  {fin?.permitido && <TableCell><FinBadge f={finPor[c.id]} /></TableCell>}
                 </TableRow>
               ))}
             </TableBody>

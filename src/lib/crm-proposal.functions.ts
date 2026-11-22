@@ -385,6 +385,12 @@ export const respondToProposal = createServerFn({ method: "POST" })
       .update(oppUpdate).eq("id", link.opportunity_id).select("owner_id, title").single();
     if (oppErr) console.error("[proposta] falha ao atualizar oportunidade:", oppErr.message);
 
+    // Contratos: a proposta aceita vira rascunho de contrato (Configurações › Contratos).
+    if (data.decision === "accept") {
+      const { criarRascunhoDaProposta } = await import("@/lib/contratos-automacao.server");
+      await criarRascunhoDaProposta(link.id, snap, opp?.owner_id || link.created_by || null);
+    }
+
     if (settings.notify_owner) {
       const target = opp?.owner_id || link.created_by;
       if (target) {
