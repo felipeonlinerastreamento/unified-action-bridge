@@ -2565,6 +2565,10 @@ export type Database = {
           observacoes: string | null
           primeira_fatura_em: string | null
           proximo_contato_em: string | null
+          rc_atualizado_em: string | null
+          rc_dias_max: number
+          rc_notificadas: number
+          rc_placas_paradas: number
           receita_mensal: number
           responsavel_id: string | null
           ultimo_contato_em: string | null
@@ -2591,6 +2595,10 @@ export type Database = {
           observacoes?: string | null
           primeira_fatura_em?: string | null
           proximo_contato_em?: string | null
+          rc_atualizado_em?: string | null
+          rc_dias_max?: number
+          rc_notificadas?: number
+          rc_placas_paradas?: number
           receita_mensal?: number
           responsavel_id?: string | null
           ultimo_contato_em?: string | null
@@ -2617,6 +2625,10 @@ export type Database = {
           observacoes?: string | null
           primeira_fatura_em?: string | null
           proximo_contato_em?: string | null
+          rc_atualizado_em?: string | null
+          rc_dias_max?: number
+          rc_notificadas?: number
+          rc_placas_paradas?: number
           receita_mensal?: number
           responsavel_id?: string | null
           ultimo_contato_em?: string | null
