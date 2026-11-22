@@ -3798,6 +3798,89 @@ export type Database = {
         }
         Relationships: []
       }
+      fin_email_config: {
+        Row: {
+          ativo: boolean
+          connection_key: string
+          id: number
+          ler_desde: string
+          mailbox: string
+          ultima_leitura_em: string | null
+          ultimo_resumo: Json | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          connection_key?: string
+          id?: number
+          ler_desde?: string
+          mailbox?: string
+          ultima_leitura_em?: string | null
+          ultimo_resumo?: Json | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          connection_key?: string
+          id?: number
+          ler_desde?: string
+          mailbox?: string
+          ultima_leitura_em?: string | null
+          ultimo_resumo?: Json | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      fin_email_mensagens: {
+        Row: {
+          anexos: number
+          assunto: string | null
+          created_at: string
+          id: string
+          lancamento_id: string | null
+          message_id: string
+          motivo: string | null
+          recebido_em: string | null
+          remetente: string | null
+          status: string
+        }
+        Insert: {
+          anexos?: number
+          assunto?: string | null
+          created_at?: string
+          id?: string
+          lancamento_id?: string | null
+          message_id: string
+          motivo?: string | null
+          recebido_em?: string | null
+          remetente?: string | null
+          status: string
+        }
+        Update: {
+          anexos?: number
+          assunto?: string | null
+          created_at?: string
+          id?: string
+          lancamento_id?: string | null
+          message_id?: string
+          motivo?: string | null
+          recebido_em?: string | null
+          remetente?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_email_mensagens_lancamento_id_fkey"
+            columns: ["lancamento_id"]
+            isOneToOne: false
+            referencedRelation: "fin_lancamentos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fin_empresas: {
         Row: {
           ativo: boolean
@@ -3824,6 +3907,57 @@ export type Database = {
           nome?: string
         }
         Relationships: []
+      }
+      fin_evidencias: {
+        Row: {
+          created_at: string
+          dados: Json
+          descricao: string | null
+          fornecedor_id: string | null
+          id: string
+          lancamento_id: string | null
+          tipo: string
+          titulo: string
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          dados?: Json
+          descricao?: string | null
+          fornecedor_id?: string | null
+          id?: string
+          lancamento_id?: string | null
+          tipo: string
+          titulo: string
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          dados?: Json
+          descricao?: string | null
+          fornecedor_id?: string | null
+          id?: string
+          lancamento_id?: string | null
+          tipo?: string
+          titulo?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_evidencias_fornecedor_id_fkey"
+            columns: ["fornecedor_id"]
+            isOneToOne: false
+            referencedRelation: "fin_fornecedores"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_evidencias_lancamento_id_fkey"
+            columns: ["lancamento_id"]
+            isOneToOne: false
+            referencedRelation: "fin_lancamentos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       fin_extrato_itens: {
         Row: {
@@ -3882,6 +4016,81 @@ export type Database = {
           },
         ]
       }
+      fin_fornecedores: {
+        Row: {
+          ativo: boolean
+          categoria_id: string | null
+          competencia_ref: string
+          created_at: string
+          created_by: string | null
+          dia_vencimento: number | null
+          documento: string | null
+          emails: string[]
+          empresa_id: string | null
+          exige_aprovacao: boolean
+          explicacao: string | null
+          id: string
+          nome: string
+          regras: Json
+          tolerancia_pct: number
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          categoria_id?: string | null
+          competencia_ref?: string
+          created_at?: string
+          created_by?: string | null
+          dia_vencimento?: number | null
+          documento?: string | null
+          emails?: string[]
+          empresa_id?: string | null
+          exige_aprovacao?: boolean
+          explicacao?: string | null
+          id?: string
+          nome: string
+          regras?: Json
+          tolerancia_pct?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          categoria_id?: string | null
+          competencia_ref?: string
+          created_at?: string
+          created_by?: string | null
+          dia_vencimento?: number | null
+          documento?: string | null
+          emails?: string[]
+          empresa_id?: string | null
+          exige_aprovacao?: boolean
+          explicacao?: string | null
+          id?: string
+          nome?: string
+          regras?: Json
+          tolerancia_pct?: number
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_fornecedores_categoria_id_fkey"
+            columns: ["categoria_id"]
+            isOneToOne: false
+            referencedRelation: "fin_categorias"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_fornecedores_empresa_id_fkey"
+            columns: ["empresa_id"]
+            isOneToOne: false
+            referencedRelation: "fin_empresas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       fin_gsystem_sync: {
         Row: {
           erros: number
@@ -3926,104 +4135,143 @@ export type Database = {
       }
       fin_lancamentos: {
         Row: {
+          aprovacao: string | null
+          aprovacao_obs: string | null
+          aprovado_em: string | null
+          aprovado_por: string | null
           arquivo_nome: string | null
           arquivo_path: string | null
           arquivo_url: string | null
           categoria_id: string | null
           competencia: string | null
+          conferencia: Json | null
           conta_bancaria_id: string | null
           contraparte: string | null
           created_at: string
           created_by: string | null
           data_emissao: string | null
           data_pagamento: string | null
+          data_programada: string | null
+          dda_chave: string | null
           descricao: string | null
           documento_contraparte: string | null
           drive_file_id: string | null
+          email_message_id: string | null
           empresa_id: string | null
           forma_pagamento: string | null
+          fornecedor_id: string | null
           gsystem_cliente_key: string | null
           gsystem_fatura_key: string | null
           ia_confianca: number | null
           id: string
           linha_digitavel: string | null
+          nota_chave: string | null
           numero_documento: string | null
           observacao: string | null
           origem: string
+          programado_em: string | null
+          programado_por: string | null
           revisado: boolean
           status: string
           tipo: string
           tipo_documento: string | null
           updated_at: string
           valor: number
+          valor_esperado: number | null
           valor_pago: number | null
           vencimento: string | null
         }
         Insert: {
+          aprovacao?: string | null
+          aprovacao_obs?: string | null
+          aprovado_em?: string | null
+          aprovado_por?: string | null
           arquivo_nome?: string | null
           arquivo_path?: string | null
           arquivo_url?: string | null
           categoria_id?: string | null
           competencia?: string | null
+          conferencia?: Json | null
           conta_bancaria_id?: string | null
           contraparte?: string | null
           created_at?: string
           created_by?: string | null
           data_emissao?: string | null
           data_pagamento?: string | null
+          data_programada?: string | null
+          dda_chave?: string | null
           descricao?: string | null
           documento_contraparte?: string | null
           drive_file_id?: string | null
+          email_message_id?: string | null
           empresa_id?: string | null
           forma_pagamento?: string | null
+          fornecedor_id?: string | null
           gsystem_cliente_key?: string | null
           gsystem_fatura_key?: string | null
           ia_confianca?: number | null
           id?: string
           linha_digitavel?: string | null
+          nota_chave?: string | null
           numero_documento?: string | null
           observacao?: string | null
           origem?: string
+          programado_em?: string | null
+          programado_por?: string | null
           revisado?: boolean
           status?: string
           tipo?: string
           tipo_documento?: string | null
           updated_at?: string
           valor?: number
+          valor_esperado?: number | null
           valor_pago?: number | null
           vencimento?: string | null
         }
         Update: {
+          aprovacao?: string | null
+          aprovacao_obs?: string | null
+          aprovado_em?: string | null
+          aprovado_por?: string | null
           arquivo_nome?: string | null
           arquivo_path?: string | null
           arquivo_url?: string | null
           categoria_id?: string | null
           competencia?: string | null
+          conferencia?: Json | null
           conta_bancaria_id?: string | null
           contraparte?: string | null
           created_at?: string
           created_by?: string | null
           data_emissao?: string | null
           data_pagamento?: string | null
+          data_programada?: string | null
+          dda_chave?: string | null
           descricao?: string | null
           documento_contraparte?: string | null
           drive_file_id?: string | null
+          email_message_id?: string | null
           empresa_id?: string | null
           forma_pagamento?: string | null
+          fornecedor_id?: string | null
           gsystem_cliente_key?: string | null
           gsystem_fatura_key?: string | null
           ia_confianca?: number | null
           id?: string
           linha_digitavel?: string | null
+          nota_chave?: string | null
           numero_documento?: string | null
           observacao?: string | null
           origem?: string
+          programado_em?: string | null
+          programado_por?: string | null
           revisado?: boolean
           status?: string
           tipo?: string
           tipo_documento?: string | null
           updated_at?: string
           valor?: number
+          valor_esperado?: number | null
           valor_pago?: number | null
           vencimento?: string | null
         }
@@ -4047,6 +4295,13 @@ export type Database = {
             columns: ["empresa_id"]
             isOneToOne: false
             referencedRelation: "fin_empresas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "fin_lancamentos_fornecedor_id_fkey"
+            columns: ["fornecedor_id"]
+            isOneToOne: false
+            referencedRelation: "fin_fornecedores"
             referencedColumns: ["id"]
           },
         ]

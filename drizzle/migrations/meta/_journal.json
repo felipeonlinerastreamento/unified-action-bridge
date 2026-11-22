@@ -470,6 +470,13 @@
       "when": 1795351652204,
       "tag": "0066_financeiro_agenda_pagamentos",
       "breakpoints": true
+    },
+    {
+      "idx": 67,
+      "version": "7",
+      "when": 1795380409646,
+      "tag": "0067_financeiro_fornecedores",
+      "breakpoints": true
     }
   ]
 }
