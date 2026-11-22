@@ -376,7 +376,7 @@ export const statusAutentique = createServerFn({ method: "GET" })
   .handler(async ({ context }) => {
     await assertContratos((context as any).supabase);
     const { autentiqueConfigurado, autentiqueSandbox } = await import("@/lib/autentique.server");
-    return { configurado: autentiqueConfigurado(), sandbox: autentiqueSandbox() };
+    return { configurado: await autentiqueConfigurado(), sandbox: await autentiqueSandbox() };
   });
 
 export const enviarAutentique = createServerFn({ method: "POST" })
@@ -403,21 +403,39 @@ export const atualizarAutentique = createServerFn({ method: "POST" })
   });
 
 /** Status da integração para Configurações › Integrações. */
+async function assertGestor(supabase: any, userId: string) {
+  const [{ data: a }, { data: g }] = await Promise.all([
+    supabase.rpc("has_role", { _user_id: userId, _role: "admin" }),
+    supabase.rpc("has_role", { _user_id: userId, _role: "gestor" }),
+  ]);
+  if (a !== true && g !== true) throw new Error("Só administradores e gestores veem esta integração.");
+}
+
 export const integracaoAutentique = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await assertContratos((context as any).supabase);
-    const { autentiqueConfigurado, autentiqueSandbox, contaAutentique } = await import("@/lib/autentique.server");
+    const { supabase, userId } = context as any;
+    await assertGestor(supabase, userId); // não depende das tabelas de Contratos existirem
+    const { configAutentique, contaAutentique } = await import("@/lib/autentique.server");
     const host = getRequestHeader("x-forwarded-host") || getRequestHeader("host");
     const webhookUrl = host ? `https://${host}/api/public/hooks/autentique` : "/api/public/hooks/autentique";
-    const base = { configurado: autentiqueConfigurado(), sandbox: autentiqueSandbox(), segredoWebhook: !!process.env.AUTENTIQUE_WEBHOOK_SECRET, webhookUrl };
+    const cfg = await configAutentique();
+    const base = {
+      configurado: !!cfg.token, origemToken: cfg.origemToken, finalToken: cfg.token ? cfg.token.slice(-4) : null,
+      sandbox: cfg.sandbox, segredoWebhook: !!cfg.segredo, webhookUrl,
+    };
     if (!base.configurado) return { ...base, conta: null, erro: null };
     try {
       const conta = await contaAutentique();
       const admin = await adminDb();
-      const { count } = await admin.from("contratos").select("id", { count: "exact", head: true }).eq("provedor", "autentique");
-      const { data: ult } = await admin.from("contratos_eventos").select("created_at").in("tipo", ["assinado_contratante", "assinado_contratada", "visualizado", "recusado"]).order("created_at", { ascending: false }).limit(1).maybeSingle();
-      return { ...base, conta, erro: null, contratosNoPainel: count ?? 0, ultimoRetorno: ult?.created_at ?? null };
+      let contratosNoPainel: number | null = null;
+      let ultimoRetorno: string | null = null;
+      try {
+        const { count } = await admin.from("contratos").select("id", { count: "exact", head: true }).eq("provedor", "autentique");
+        const { data: ult } = await admin.from("contratos_eventos").select("created_at").in("tipo", ["assinado_contratante", "assinado_contratada", "visualizado", "recusado"]).order("created_at", { ascending: false }).limit(1).maybeSingle();
+        contratosNoPainel = count ?? 0; ultimoRetorno = ult?.created_at ?? null;
+      } catch { /* tabelas de Contratos ainda não existem */ }
+      return { ...base, conta, erro: null, contratosNoPainel, ultimoRetorno };
     } catch (e: any) {
       return { ...base, conta: null, erro: String(e?.message ?? e) };
     }
@@ -445,4 +463,32 @@ export const ajustarContratoImportado = createServerFn({ method: "POST" })
     const { id, ...campos } = data;
     await ajustarImportado(id, { ...campos, cliente_documento: soDigitos(campos.cliente_documento) }, userId);
     return { ok: true };
+  });
+
+/** Salva a chave do Autentique pela tela (só admin). Valor vazio apaga. A variável de ambiente, se existir, continua valendo. */
+export const salvarConfigAutentique = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({
+    token: z.string().trim().max(500).optional(),
+    sandbox: z.boolean(),
+    segredo: z.string().trim().max(500).optional(),
+  }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context as any;
+    const { data: admin } = await supabase.rpc("has_role", { _user_id: userId, _role: "admin" });
+    if (admin !== true) throw new Error("Só administradores podem alterar a chave do Autentique.");
+    const db = await adminDb();
+    const gravar = async (chave: string, valor: string | undefined) => {
+      if (valor === undefined) return;               // campo não enviado: mantém
+      if (valor === "") { await db.from("integracoes_segredos").delete().eq("chave", chave); return; }
+      const { error } = await db.from("integracoes_segredos").upsert({ chave, valor, updated_by: userId, updated_at: new Date().toISOString() });
+      if (error) throw new Error(`Não foi possível salvar (${error.message}). Confira se a migração 0055 foi aplicada.`);
+    };
+    await gravar("AUTENTIQUE_API_TOKEN", data.token);
+    await gravar("AUTENTIQUE_SANDBOX", data.sandbox ? "true" : "false");
+    await gravar("AUTENTIQUE_WEBHOOK_SECRET", data.segredo);
+    const { limparCacheAutentique, contaAutentique } = await import("@/lib/autentique.server");
+    limparCacheAutentique();
+    try { const conta = await contaAutentique(); return { ok: true, conta: conta?.name ?? null, erro: null }; }
+    catch (e: any) { return { ok: false, conta: null, erro: String(e?.message ?? e) }; }
   });

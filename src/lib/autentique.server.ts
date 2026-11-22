@@ -5,12 +5,41 @@
  */
 const URL_API = "https://api.autentique.com.br/v2/graphql";
 
-export const autentiqueConfigurado = () => !!process.env.AUTENTIQUE_API_TOKEN;
-export const autentiqueSandbox = () => /^(1|true|sim|yes)$/i.test(process.env.AUTENTIQUE_SANDBOX || "");
+/**
+ * Configuração: variável de ambiente primeiro; senão o que foi salvo na tela
+ * (tabela integracoes_segredos, só o servidor lê). Guardada em memória por 60 s.
+ */
+type Config = { token: string | null; sandbox: boolean; segredo: string | null; origemToken: "ambiente" | "tela" | null };
+let cache: { em: number; cfg: Config } | null = null;
 
-function token(): string {
-  const t = process.env.AUTENTIQUE_API_TOKEN;
-  if (!t) throw new Error("Chave do Autentique não configurada (AUTENTIQUE_API_TOKEN).");
+export function limparCacheAutentique() { cache = null; }
+
+export async function configAutentique(): Promise<Config> {
+  if (cache && Date.now() - cache.em < 60_000) return cache.cfg;
+  let salvos: Record<string, string> = {};
+  try {
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const { data } = await (supabaseAdmin as any).from("integracoes_segredos").select("chave, valor").like("chave", "AUTENTIQUE_%");
+    salvos = Object.fromEntries((data || []).map((r: any) => [r.chave, r.valor]));
+  } catch { /* tabela ainda não existe: só ambiente */ }
+  const envToken = process.env.AUTENTIQUE_API_TOKEN || null;
+  const sim = (v?: string | null) => /^(1|true|sim|yes)$/i.test(v || "");
+  const cfg: Config = {
+    token: envToken || salvos.AUTENTIQUE_API_TOKEN || null,
+    origemToken: envToken ? "ambiente" : salvos.AUTENTIQUE_API_TOKEN ? "tela" : null,
+    sandbox: process.env.AUTENTIQUE_SANDBOX != null ? sim(process.env.AUTENTIQUE_SANDBOX) : sim(salvos.AUTENTIQUE_SANDBOX),
+    segredo: process.env.AUTENTIQUE_WEBHOOK_SECRET || salvos.AUTENTIQUE_WEBHOOK_SECRET || null,
+  };
+  cache = { em: Date.now(), cfg };
+  return cfg;
+}
+
+export const autentiqueConfigurado = async () => !!(await configAutentique()).token;
+export const autentiqueSandbox = async () => (await configAutentique()).sandbox;
+
+async function token(): Promise<string> {
+  const t = (await configAutentique()).token;
+  if (!t) throw new Error("Chave do Autentique não configurada. Cadastre em Configurações › Integrações.");
   return t;
 }
 
@@ -53,11 +82,11 @@ export async function criarDocumentoAutentique(opts: { nome: string; pdf: Uint8A
   const form = new FormData();
   form.append("operations", JSON.stringify({
     query: CRIAR,
-    variables: { document: { name: opts.nome }, signers, file: null, sandbox: autentiqueSandbox() },
+    variables: { document: { name: opts.nome }, signers, file: null, sandbox: await autentiqueSandbox() },
   }));
   form.append("map", JSON.stringify({ file: ["variables.file"] }));
   form.append("file", new Blob([new Uint8Array(opts.pdf)], { type: "application/pdf" }), opts.arquivo);
-  const res = await fetch(URL_API, { method: "POST", headers: { Authorization: `Bearer ${token()}` }, body: form });
+  const res = await fetch(URL_API, { method: "POST", headers: { Authorization: `Bearer ${await token()}` }, body: form });
   const data = await lerResposta(res);
   return data.createDocument as { id: string; signatures: { public_id: string; name: string | null; email: string | null; action: { name: string } | null; link: { short_link: string } | null }[] };
 }
@@ -79,7 +108,7 @@ fragment ev on Event { ip reason created_at geolocation { city state country } }
 export async function consultarDocumentoAutentique(id: string) {
   const res = await fetch(URL_API, {
     method: "POST",
-    headers: { Authorization: `Bearer ${token()}`, "Content-Type": "application/json" },
+    headers: { Authorization: `Bearer ${await token()}`, "Content-Type": "application/json" },
     body: JSON.stringify({ query: CONSULTAR, variables: { id } }),
   });
   const data = await lerResposta(res);
@@ -88,7 +117,7 @@ export async function consultarDocumentoAutentique(id: string) {
 
 /** Confere o cabeçalho X-Autentique-Signature (HMAC-SHA256 do corpo bruto, hex). */
 export async function webhookValido(corpo: string, assinatura: string | null): Promise<boolean> {
-  const segredo = process.env.AUTENTIQUE_WEBHOOK_SECRET;
+  const segredo = (await configAutentique()).segredo;
   if (!segredo) return true; // sem segredo configurado, o webhook só dispara uma consulta à API (não confia no corpo)
   if (!assinatura) return false;
   const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(segredo), { name: "HMAC", hash: "SHA-256" }, false, ["sign"]);
@@ -104,7 +133,7 @@ export async function webhookValido(corpo: string, assinatura: string | null): P
 async function consulta(query: string, variables: Record<string, unknown> = {}) {
   const res = await fetch(URL_API, {
     method: "POST",
-    headers: { Authorization: `Bearer ${token()}`, "Content-Type": "application/json" },
+    headers: { Authorization: `Bearer ${await token()}`, "Content-Type": "application/json" },
     body: JSON.stringify({ query, variables }),
   });
   return lerResposta(res);
