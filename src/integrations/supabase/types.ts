@@ -1603,6 +1603,262 @@ export type Database = {
         }
         Relationships: []
       }
+      contratos: {
+        Row: {
+          arquivo_assinado_url: string | null
+          assinado_em: string | null
+          assinatura_canal: string | null
+          assinatura_geo: string | null
+          assinatura_ip: string | null
+          assinatura_nome: string | null
+          assinatura_user_agent: string | null
+          cancelado_motivo: string | null
+          cliente_documento: string
+          cliente_nome: string
+          conteudo_html: string | null
+          contratada_assinado_em: string | null
+          contratada_assinado_nome: string | null
+          contratada_assinado_por: string | null
+          contratada_ip: string | null
+          created_at: string
+          created_by: string | null
+          dados: Json
+          enviado_em: string | null
+          hash_sha256: string | null
+          id: string
+          modelos_versao: Json | null
+          numero: number
+          provedor: string
+          provedor_documento_id: string | null
+          provedor_link: string | null
+          provedor_sandbox: boolean
+          provedor_signatarios: Json
+          provedor_verificacao: string | null
+          renovacao_automatica: boolean
+          signatario_cpf: string | null
+          signatario_email: string | null
+          signatario_nome: string | null
+          signatario_telefone: string | null
+          status: string
+          testemunhas: Json
+          token: string
+          updated_at: string
+          valor_implantacao: number | null
+          valor_mensal: number | null
+          vigencia_inicio: string | null
+          vigencia_meses: number
+          visualizado_em: string | null
+        }
+        Insert: {
+          arquivo_assinado_url?: string | null
+          assinado_em?: string | null
+          assinatura_canal?: string | null
+          assinatura_geo?: string | null
+          assinatura_ip?: string | null
+          assinatura_nome?: string | null
+          assinatura_user_agent?: string | null
+          cancelado_motivo?: string | null
+          cliente_documento: string
+          cliente_nome: string
+          conteudo_html?: string | null
+          contratada_assinado_em?: string | null
+          contratada_assinado_nome?: string | null
+          contratada_assinado_por?: string | null
+          contratada_ip?: string | null
+          created_at?: string
+          created_by?: string | null
+          dados?: Json
+          enviado_em?: string | null
+          hash_sha256?: string | null
+          id?: string
+          modelos_versao?: Json | null
+          numero?: number
+          provedor?: string
+          provedor_documento_id?: string | null
+          provedor_link?: string | null
+          provedor_sandbox?: boolean
+          provedor_signatarios?: Json
+          provedor_verificacao?: string | null
+          renovacao_automatica?: boolean
+          signatario_cpf?: string | null
+          signatario_email?: string | null
+          signatario_nome?: string | null
+          signatario_telefone?: string | null
+          status?: string
+          testemunhas?: Json
+          token?: string
+          updated_at?: string
+          valor_implantacao?: number | null
+          valor_mensal?: number | null
+          vigencia_inicio?: string | null
+          vigencia_meses?: number
+          visualizado_em?: string | null
+        }
+        Update: {
+          arquivo_assinado_url?: string | null
+          assinado_em?: string | null
+          assinatura_canal?: string | null
+          assinatura_geo?: string | null
+          assinatura_ip?: string | null
+          assinatura_nome?: string | null
+          assinatura_user_agent?: string | null
+          cancelado_motivo?: string | null
+          cliente_documento?: string
+          cliente_nome?: string
+          conteudo_html?: string | null
+          contratada_assinado_em?: string | null
+          contratada_assinado_nome?: string | null
+          contratada_assinado_por?: string | null
+          contratada_ip?: string | null
+          created_at?: string
+          created_by?: string | null
+          dados?: Json
+          enviado_em?: string | null
+          hash_sha256?: string | null
+          id?: string
+          modelos_versao?: Json | null
+          numero?: number
+          provedor?: string
+          provedor_documento_id?: string | null
+          provedor_link?: string | null
+          provedor_sandbox?: boolean
+          provedor_signatarios?: Json
+          provedor_verificacao?: string | null
+          renovacao_automatica?: boolean
+          signatario_cpf?: string | null
+          signatario_email?: string | null
+          signatario_nome?: string | null
+          signatario_telefone?: string | null
+          status?: string
+          testemunhas?: Json
+          token?: string
+          updated_at?: string
+          valor_implantacao?: number | null
+          valor_mensal?: number | null
+          vigencia_inicio?: string | null
+          vigencia_meses?: number
+          visualizado_em?: string | null
+        }
+        Relationships: []
+      }
+      contratos_codigos: {
+        Row: {
+          canal: string
+          codigo_hash: string
+          contrato_id: string
+          created_at: string
+          destino: string
+          enviados_ultima_hora: number
+          expira_em: string
+          janela_inicio: string
+          tentativas: number
+        }
+        Insert: {
+          canal: string
+          codigo_hash: string
+          contrato_id: string
+          created_at?: string
+          destino: string
+          enviados_ultima_hora?: number
+          expira_em: string
+          janela_inicio?: string
+          tentativas?: number
+        }
+        Update: {
+          canal?: string
+          codigo_hash?: string
+          contrato_id?: string
+          created_at?: string
+          destino?: string
+          enviados_ultima_hora?: number
+          expira_em?: string
+          janela_inicio?: string
+          tentativas?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contratos_codigos_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: true
+            referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contratos_eventos: {
+        Row: {
+          contrato_id: string
+          created_at: string
+          descricao: string | null
+          id: string
+          ip: string | null
+          tipo: string
+          user_agent: string | null
+          user_id: string | null
+        }
+        Insert: {
+          contrato_id: string
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          ip?: string | null
+          tipo: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          contrato_id?: string
+          created_at?: string
+          descricao?: string | null
+          id?: string
+          ip?: string | null
+          tipo?: string
+          user_agent?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "contratos_eventos_contrato_id_fkey"
+            columns: ["contrato_id"]
+            isOneToOne: false
+            referencedRelation: "contratos"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      contratos_modelos: {
+        Row: {
+          chave: string
+          conteudo: string
+          created_at: string
+          id: string
+          nome: string
+          updated_at: string
+          updated_by: string | null
+          versao: number
+        }
+        Insert: {
+          chave: string
+          conteudo: string
+          created_at?: string
+          id?: string
+          nome: string
+          updated_at?: string
+          updated_by?: string | null
+          versao?: number
+        }
+        Update: {
+          chave?: string
+          conteudo?: string
+          created_at?: string
+          id?: string
+          nome?: string
+          updated_at?: string
+          updated_by?: string | null
+          versao?: number
+        }
+        Relationships: []
+      }
       crm_categories: {
         Row: {
           created_at: string
@@ -2286,6 +2542,161 @@ export type Database = {
             columns: ["template_id"]
             isOneToOne: false
             referencedRelation: "crm_message_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_posvenda_carteira: {
+        Row: {
+          ativo: boolean
+          atualizado_em: string
+          classe: string
+          classe_manual: string | null
+          created_at: string
+          decisor_nome: string | null
+          decisor_telefone: string | null
+          diagnostico_em: string | null
+          documento: string
+          frota_total: number | null
+          gsystem_cliente_key: string | null
+          id: string
+          interesses: string[]
+          nome: string
+          observacoes: string | null
+          primeira_fatura_em: string | null
+          proximo_contato_em: string | null
+          receita_mensal: number
+          responsavel_id: string | null
+          ultimo_contato_em: string | null
+          ultimo_nps: number | null
+          ultimo_sentimento: string | null
+          vencidas_qtd: number
+          vencidas_valor: number
+        }
+        Insert: {
+          ativo?: boolean
+          atualizado_em?: string
+          classe?: string
+          classe_manual?: string | null
+          created_at?: string
+          decisor_nome?: string | null
+          decisor_telefone?: string | null
+          diagnostico_em?: string | null
+          documento: string
+          frota_total?: number | null
+          gsystem_cliente_key?: string | null
+          id?: string
+          interesses?: string[]
+          nome: string
+          observacoes?: string | null
+          primeira_fatura_em?: string | null
+          proximo_contato_em?: string | null
+          receita_mensal?: number
+          responsavel_id?: string | null
+          ultimo_contato_em?: string | null
+          ultimo_nps?: number | null
+          ultimo_sentimento?: string | null
+          vencidas_qtd?: number
+          vencidas_valor?: number
+        }
+        Update: {
+          ativo?: boolean
+          atualizado_em?: string
+          classe?: string
+          classe_manual?: string | null
+          created_at?: string
+          decisor_nome?: string | null
+          decisor_telefone?: string | null
+          diagnostico_em?: string | null
+          documento?: string
+          frota_total?: number | null
+          gsystem_cliente_key?: string | null
+          id?: string
+          interesses?: string[]
+          nome?: string
+          observacoes?: string | null
+          primeira_fatura_em?: string | null
+          proximo_contato_em?: string | null
+          receita_mensal?: number
+          responsavel_id?: string | null
+          ultimo_contato_em?: string | null
+          ultimo_nps?: number | null
+          ultimo_sentimento?: string | null
+          vencidas_qtd?: number
+          vencidas_valor?: number
+        }
+        Relationships: []
+      }
+      crm_posvenda_contatos: {
+        Row: {
+          canal: string
+          carteira_id: string
+          created_at: string
+          data: string
+          decisor_nome: string | null
+          decisor_telefone: string | null
+          frota_total: number | null
+          id: string
+          interesses: string[] | null
+          nps: number | null
+          oportunidade: string | null
+          oportunidade_valor: number | null
+          proximo_contato_em: string | null
+          proximo_passo: string | null
+          resultado: string
+          resumo: string
+          roteiro: string
+          sentimento: string | null
+          user_id: string | null
+        }
+        Insert: {
+          canal?: string
+          carteira_id: string
+          created_at?: string
+          data?: string
+          decisor_nome?: string | null
+          decisor_telefone?: string | null
+          frota_total?: number | null
+          id?: string
+          interesses?: string[] | null
+          nps?: number | null
+          oportunidade?: string | null
+          oportunidade_valor?: number | null
+          proximo_contato_em?: string | null
+          proximo_passo?: string | null
+          resultado?: string
+          resumo?: string
+          roteiro?: string
+          sentimento?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          canal?: string
+          carteira_id?: string
+          created_at?: string
+          data?: string
+          decisor_nome?: string | null
+          decisor_telefone?: string | null
+          frota_total?: number | null
+          id?: string
+          interesses?: string[] | null
+          nps?: number | null
+          oportunidade?: string | null
+          oportunidade_valor?: number | null
+          proximo_contato_em?: string | null
+          proximo_passo?: string | null
+          resultado?: string
+          resumo?: string
+          roteiro?: string
+          sentimento?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_posvenda_contatos_carteira_id_fkey"
+            columns: ["carteira_id"]
+            isOneToOne: false
+            referencedRelation: "crm_posvenda_carteira"
             referencedColumns: ["id"]
           },
         ]
@@ -3237,6 +3648,24 @@ export type Database = {
           },
         ]
       }
+      fin_cron_token: {
+        Row: {
+          created_at: string
+          id: number
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          token: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          token?: string
+        }
+        Relationships: []
+      }
       fin_empresas: {
         Row: {
           ativo: boolean
@@ -3321,6 +3750,48 @@ export type Database = {
           },
         ]
       }
+      fin_gsystem_sync: {
+        Row: {
+          erros: number
+          faturas_atualizadas: number
+          faturas_novas: number
+          id: string
+          proximo_indice: number
+          rodada_iniciada_em: string | null
+          total_clientes: number | null
+          ultima_execucao_em: string | null
+          ultima_rodada_concluida_em: string | null
+          ultimo_erro: string | null
+          updated_at: string
+        }
+        Insert: {
+          erros?: number
+          faturas_atualizadas?: number
+          faturas_novas?: number
+          id: string
+          proximo_indice?: number
+          rodada_iniciada_em?: string | null
+          total_clientes?: number | null
+          ultima_execucao_em?: string | null
+          ultima_rodada_concluida_em?: string | null
+          ultimo_erro?: string | null
+          updated_at?: string
+        }
+        Update: {
+          erros?: number
+          faturas_atualizadas?: number
+          faturas_novas?: number
+          id?: string
+          proximo_indice?: number
+          rodada_iniciada_em?: string | null
+          total_clientes?: number | null
+          ultima_execucao_em?: string | null
+          ultima_rodada_concluida_em?: string | null
+          ultimo_erro?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       fin_lancamentos: {
         Row: {
           arquivo_nome: string | null
@@ -3339,6 +3810,8 @@ export type Database = {
           drive_file_id: string | null
           empresa_id: string | null
           forma_pagamento: string | null
+          gsystem_cliente_key: string | null
+          gsystem_fatura_key: string | null
           ia_confianca: number | null
           id: string
           linha_digitavel: string | null
@@ -3371,6 +3844,8 @@ export type Database = {
           drive_file_id?: string | null
           empresa_id?: string | null
           forma_pagamento?: string | null
+          gsystem_cliente_key?: string | null
+          gsystem_fatura_key?: string | null
           ia_confianca?: number | null
           id?: string
           linha_digitavel?: string | null
@@ -3403,6 +3878,8 @@ export type Database = {
           drive_file_id?: string | null
           empresa_id?: string | null
           forma_pagamento?: string | null
+          gsystem_cliente_key?: string | null
+          gsystem_fatura_key?: string | null
           ia_confianca?: number | null
           id?: string
           linha_digitavel?: string | null
@@ -4674,6 +5151,27 @@ export type Database = {
           message?: string
           updated_at?: string
           updated_by?: string | null
+        }
+        Relationships: []
+      }
+      integracoes_segredos: {
+        Row: {
+          chave: string
+          updated_at: string
+          updated_by: string | null
+          valor: string
+        }
+        Insert: {
+          chave: string
+          updated_at?: string
+          updated_by?: string | null
+          valor: string
+        }
+        Update: {
+          chave?: string
+          updated_at?: string
+          updated_by?: string | null
+          valor?: string
         }
         Relationships: []
       }
@@ -8731,6 +9229,7 @@ export type Database = {
         Returns: undefined
       }
       can_access_finance: { Args: never; Returns: boolean }
+      contratos_allowed: { Args: never; Returns: boolean }
       crm_tab_allowed: { Args: { _tab: string }; Returns: boolean }
       delete_technical_term_type: { Args: { _id: string }; Returns: string }
       gamif_apply_auto_rules: { Args: { _day?: string }; Returns: number }

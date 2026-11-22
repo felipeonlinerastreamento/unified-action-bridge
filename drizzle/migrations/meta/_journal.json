@@ -393,6 +393,13 @@
       "when": 1795279357938,
       "tag": "0055_integracoes_segredos",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1795311796579,
+      "tag": "0056_financeiro_gsystem_faturas",
+      "breakpoints": true
     }
   ]
 }
