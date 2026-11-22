@@ -11,6 +11,8 @@ import { FileSpreadsheet, Loader2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
 import { autoDetect, buildRowsFromMatrix, normalizeClientKey, planImport, type Mapping, type VehicleRow } from "@/lib/reconnect";
+import { useServerFn } from "@tanstack/react-start";
+import { atualizarRiscoReconnect } from "@/lib/reconnect.functions";
 import { logRc, rc, upsertEmBlocos, useRcInvalidate, type RcClient, type RcImportTemplate } from "./use-rc";
 
 type Arquivo = { name: string; headers: string[]; rows: Record<string, unknown>[] };
@@ -37,6 +39,7 @@ export function UploadPlanilhas({ vehicles, clients, importTemplates, onResumo }
 }) {
   const { user } = useAuth();
   const invalidate = useRcInvalidate();
+  const atualizarRisco = useServerFn(atualizarRiscoReconnect);
   const inputRef = useRef<HTMLInputElement>(null);
   const [arquivos, setArquivos] = useState<Arquivo[]>([]);
   const [lendo, setLendo] = useState(false);
@@ -104,6 +107,7 @@ export function UploadPlanilhas({ vehicles, clients, importTemplates, onResumo }
       });
       await logRc(user?.id, "upload", { newVehicles: plan.newVehicles, updatedVehicles: plan.updatedVehicles, skipped: plan.skipped.length, recovered: plan.recovered.length, warnings: plan.warnings.length, arquivos: arquivos.map((a) => a.name) });
       invalidate();
+      atualizarRisco().catch(() => undefined); // placas paradas entram no risco do Pós-venda
       onResumo({ total: rows.length, novos: plan.newVehicles, atualizados: plan.updatedVehicles, pulados: plan.skipped, recuperados: plan.recovered.length, avisos: plan.warnings });
       setArquivos([]);
     } catch (e: any) {

@@ -3,6 +3,7 @@ import { strict as assert } from "node:assert";
 import {
   detectHeaderRow, buildRowsFromMatrix, autoDetect, parseDaysOffline, getCriticality, normalizeClientKey,
   planImport, buildNotificationMessage, type VehicleRow,
+  chaveEmpresa, vincularCarteira, riscoPorCarteira, metricasReconnect,
 } from "./reconnect";
 
 const NOW = new Date("2026-11-21T15:00:00Z"); // 21/11 12:00 em São Paulo
@@ -82,5 +83,61 @@ describe("planImport", () => {
 describe("mensagem", () => {
   it("troca {cliente} e põe as placas no fim", () => {
     assert.equal(buildNotificationMessage("Olá {cliente}, {placas}", "Raja", ["A-1", "B-2"]), "Olá Raja,\n\nPlacas sem comunicação:\n• A-1\n• B-2");
+  });
+});
+
+describe("resultados e risco", () => {
+  it("chaveEmpresa ignora sufixos e pontuação", () => {
+    assert.equal(chaveEmpresa("Transportes Silva LTDA."), chaveEmpresa("TRANSPORTES SILVA - ME"));
+    assert.equal(chaveEmpresa("Açaí & Cia S/A"), "acai");
+  });
+  it("vincularCarteira usa o CNPJ da empresa e depois o nome", () => {
+    const v = vincularCarteira(
+      [{ id: "r1", name: "Nome diferente", company_id: "e1" }, { id: "r2", name: "Logística Beta Ltda" }, { id: "r3", name: "Sem par" }],
+      new Map([["e1", "11222333000144"]]),
+      [{ id: "c1", documento: "11222333000144", nome: "Alfa Transportes" }, { id: "c2", documento: "99", nome: "LOGISTICA BETA" }],
+    );
+    assert.equal(v.get("r1"), "c1");
+    assert.equal(v.get("r2"), "c2");
+    assert.equal(v.has("r3"), false);
+  });
+  it("riscoPorCarteira soma placas, pior placa e avisadas", () => {
+    const r = riscoPorCarteira([
+      { client_id: "r1", days_offline: 5, notifications: 0 },
+      { client_id: "r1", days_offline: 40, notifications: 2 },
+      { client_id: "rx", days_offline: 9, notifications: 0 },
+    ], new Map([["r1", "c1"]]));
+    assert.deepEqual(r.get("c1"), { rc_placas_paradas: 2, rc_dias_max: 40, rc_notificadas: 1 });
+    assert.equal(r.size, 1);
+  });
+  it("metricasReconnect: recuperados após aviso, taxa de retorno e receita", () => {
+    const m = metricasReconnect({
+      de: "2026-11-01", ate: "2026-11-30",
+      recovered: [
+        { plate: "AAA1", client_id: "r1", client_name: "A", last_days_offline: 12, recovered_at: "2026-11-10T15:00:00Z" },
+        { plate: "BBB2", client_id: "r2", client_name: "B", last_days_offline: 4, recovered_at: "2026-11-12T15:00:00Z" },
+        { plate: "OLD9", client_id: "r2", client_name: "B", last_days_offline: 4, recovered_at: "2026-10-12T15:00:00Z" },
+      ],
+      notifications: [
+        { client_id: "r1", sent_at: "2026-11-06T15:00:00Z", plates: ["AAA1"] },
+        { client_id: "r3", sent_at: "2026-11-08T15:00:00Z", plates: ["CCC3"] },
+      ],
+      atuais: [
+        { plate: "CCC3", client_id: "r3", client_name: "C", days_offline: 35, notifications: 1 },
+        { plate: "DDD4", client_id: "r1", client_name: "A", days_offline: 3, notifications: 0 },
+      ],
+      receitaPorCliente: new Map([["r1", 1000], ["r3", 500]]),
+    });
+    assert.equal(m.recuperados, 2);
+    assert.equal(m.recuperadosAposAviso, 1);
+    assert.equal(m.diasMedioAvisoAteVoltar, 4);
+    assert.equal(m.placasAvisadas, 2);
+    assert.equal(m.taxaRetornoAviso, 50);
+    assert.equal(m.notificadasSemRetorno, 1);
+    assert.equal(m.clientesQueMaisDemoram[0].clientId, "r3");
+    assert.equal(m.receita?.emRisco, 1500);
+    assert.equal(m.receita?.emRisco31, 500);
+    assert.equal(m.receita?.recuperada, 1000);
+    assert.deepEqual(m.semanas.map((s) => s.semana), ["2026-11-09"]);
   });
 });

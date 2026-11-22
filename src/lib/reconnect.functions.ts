@@ -132,3 +132,35 @@ export const canaisReconnect = createServerFn({ method: "POST" })
       email: (em || []).map((c: any) => ({ id: c.id as string, nome: c.email_address as string })),
     };
   });
+
+/** Atualiza na carteira do Pós-venda as placas sem comunicação de cada cliente (chamado depois de cada importação). */
+export const atualizarRiscoReconnect = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertReconnect((context as any).supabase);
+    const { sincronizarRiscoReconnect } = await import("./reconnect-risco.server");
+    return sincronizarRiscoReconnect();
+  });
+
+/**
+ * Painel de resultado do Reconnect. A receita (média mensal das faturas, vinda da carteira do Pós-venda)
+ * só volta para quem já pode ver esse número: admin, acesso ao Financeiro ou aba Pós-venda do CRM.
+ */
+export const resultadoReconnect = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ de: z.string().regex(/^\d{4}-\d{2}-\d{2}$/), ate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }).parse)
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context as any;
+    await assertReconnect(supabase);
+    const [fin, pos, adm] = await Promise.all([
+      supabase.rpc("can_access_finance"),
+      supabase.rpc("crm_tab_allowed", { _tab: "posvenda" }),
+      supabase.from("user_roles").select("role").eq("user_id", userId).eq("role", "admin").maybeSingle(),
+    ]);
+    const comReceita = fin.data === true || pos.data === true || !!adm.data;
+    const { dadosResultadoReconnect } = await import("./reconnect-risco.server");
+    const { metricasReconnect } = await import("./reconnect");
+    const base = await dadosResultadoReconnect(data.de, data.ate, comReceita);
+    const m = metricasReconnect({ ...base, de: data.de, ate: data.ate });
+    return { ...m, comReceita, vinculados: base.vinculados };
+  });

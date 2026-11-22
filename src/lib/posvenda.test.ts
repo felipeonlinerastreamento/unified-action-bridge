@@ -55,6 +55,15 @@ describe("saúde e risco", () => {
     assert.equal(riscoDe(60), "medio");
     assert.equal(riscoDe(80), "baixo");
   });
+  it("placas paradas no Reconnect descontam pela pior placa e pelo aviso sem retorno", () => {
+    const base = C({ ultimo_contato_em: "2026-11-15", ultimo_nps: 10 });
+    assert.equal(saudeCliente({ ...base, rc_placas_paradas: 2, rc_dias_max: 8 }, HOJE), 95);
+    assert.equal(saudeCliente({ ...base, rc_placas_paradas: 2, rc_dias_max: 35 }, HOJE), 80);
+    assert.equal(saudeCliente({ ...base, rc_placas_paradas: 2, rc_dias_max: 35, rc_notificadas: 1 }, HOJE), 75);
+    assert.equal(saudeCliente({ ...base, rc_placas_paradas: 0, rc_dias_max: 35 }, HOJE), 100);
+    const sug = sugestoesCliente({ ...base, rc_placas_paradas: 3, rc_dias_max: 25, rc_notificadas: 1 }, HOJE);
+    assert.ok(sug.some((x) => x.roteiro === "retencao" && x.texto.includes("3 placa(s)")));
+  });
 });
 
 describe("sugestões", () => {

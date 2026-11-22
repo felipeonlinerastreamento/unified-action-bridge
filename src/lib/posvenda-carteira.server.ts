@@ -93,6 +93,11 @@ export async function atualizarCarteiraPosVenda(): Promise<{ ok: boolean; client
     if (perfis && perfis.length === 1) {
       await db.from("crm_posvenda_carteira").update({ responsavel_id: perfis[0].user_id }).is("responsavel_id", null);
     }
+    // Placas sem comunicação do Reconnect entram no risco (falha aqui não derruba a carteira).
+    try {
+      const { sincronizarRiscoReconnect } = await import("@/lib/reconnect-risco.server");
+      await sincronizarRiscoReconnect();
+    } catch { /* Reconnect ainda sem tabelas */ }
     return { ok: true, clientes: rows.length, pj, comReceita: linhas.filter((l) => l.receita > 0).length };
   } catch (e: any) {
     return { ok: false, clientes: 0, pj: 0, comReceita: 0, error: String(e?.message ?? e).slice(0, 500) };

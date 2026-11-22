@@ -141,7 +141,7 @@ export function CrmPosVendaTab() {
 
 // ------------------------------------------------------------------ Agenda
 function Agenda({ carteira, hoje, onRegistrar, onAbrir }: { carteira: Cli[]; hoje: string; onRegistrar: (c: Cli, r?: RoteiroKey) => void; onAbrir: (c: Cli) => void }) {
-  const [filtro, setFiltro] = useState<"recorrentes" | "primeiro" | "risco">("recorrentes");
+  const [filtro, setFiltro] = useState<"recorrentes" | "primeiro" | "risco" | "reconnect">("recorrentes");
   const itens = useMemo(() => {
     const comInfo = carteira.map((c) => {
       const prox = proximoContato(c, hoje, c.proximo_contato_em);
@@ -152,12 +152,14 @@ function Agenda({ carteira, hoje, onRegistrar, onAbrir }: { carteira: Cli[]; hoj
     let lista = comInfo;
     if (filtro === "primeiro") lista = comInfo.filter((x) => !x.c.diagnostico_em);
     else if (filtro === "risco") lista = comInfo.filter((x) => riscoDe(x.saude) === "alto");
+    else if (filtro === "reconnect") return comInfo.filter((x) => (x.c.rc_placas_paradas ?? 0) > 0).sort((a, b) => (b.c.rc_dias_max ?? 0) - (a.c.rc_dias_max ?? 0) || b.c.receita_mensal - a.c.receita_mensal).slice(0, 200);
     else lista = comInfo.filter((x) => !!x.c.diagnostico_em && x.sit !== "em_dia");
     return lista.sort((a, b) => ordClasse(classeDe(a.c)) - ordClasse(classeDe(b.c)) || a.saude - b.saude || b.c.receita_mensal - a.c.receita_mensal).slice(0, 200);
   }, [carteira, hoje, filtro]);
   const contar = (f: typeof filtro) => carteira.filter((c) => {
     if (f === "primeiro") return !c.diagnostico_em;
     if (f === "risco") return riscoDe(saudeCliente(c, hoje)) === "alto";
+    if (f === "reconnect") return (c.rc_placas_paradas ?? 0) > 0;
     return !!c.diagnostico_em && situacaoContato(proximoContato(c, hoje, c.proximo_contato_em), hoje) !== "em_dia";
   }).length;
 
@@ -167,6 +169,7 @@ function Agenda({ carteira, hoje, onRegistrar, onAbrir }: { carteira: Cli[]; hoj
         <Button size="sm" variant={filtro === "recorrentes" ? "default" : "outline"} onClick={() => setFiltro("recorrentes")}>Contatos do dia e atrasados ({contar("recorrentes")})</Button>
         <Button size="sm" variant={filtro === "primeiro" ? "default" : "outline"} onClick={() => setFiltro("primeiro")}>Primeiro contato / diagnóstico ({contar("primeiro")})</Button>
         <Button size="sm" variant={filtro === "risco" ? "default" : "outline"} onClick={() => setFiltro("risco")}>Risco alto ({contar("risco")})</Button>
+        <Button size="sm" variant={filtro === "reconnect" ? "default" : "outline"} onClick={() => setFiltro("reconnect")}>Placas sem comunicação ({contar("reconnect")})</Button>
       </div>
       {itens.length === 0 && <Card><CardContent className="p-6 text-sm text-muted-foreground flex items-center gap-2"><CheckCircle2 className="h-4 w-4 text-emerald-600" />Nada pendente nesta lista.</CardContent></Card>}
       {itens.map(({ c, prox, saude, sit, sug }) => (
@@ -240,7 +243,7 @@ function Carteira({ carteira, hoje, onAbrir }: { carteira: Cli[]; hoje: string; 
               const prox = proximoContato(c, hoje, c.proximo_contato_em);
               return (
                 <TableRow key={c.id} className="cursor-pointer" onClick={() => onAbrir(c)}>
-                  <TableCell className="font-medium">{c.nome}{!c.diagnostico_em && <Badge variant="outline" className="ml-2 text-[10px]">sem diagnóstico</Badge>}</TableCell>
+                  <TableCell className="font-medium">{c.nome}{!c.diagnostico_em && <Badge variant="outline" className="ml-2 text-[10px]">sem diagnóstico</Badge>}{(c.rc_placas_paradas ?? 0) > 0 && <Badge variant="outline" className="ml-2 text-[10px] border-orange-500/50 text-orange-700" title={`Reconnect: ${c.rc_placas_paradas} placa(s) sem comunicação, a pior há ${c.rc_dias_max} dias${(c.rc_notificadas ?? 0) > 0 ? `; ${c.rc_notificadas} já avisada(s)` : ""}`}>{c.rc_placas_paradas} sem comunicação</Badge>}</TableCell>
                   <TableCell><ClasseBadge c={classeDe(c)} /></TableCell>
                   <TableCell className="text-right whitespace-nowrap">{formatBRL(c.receita_mensal)}</TableCell>
                   <TableCell>{c.vencidas_qtd ? <span className="text-destructive">{c.vencidas_qtd} · {formatBRL(c.vencidas_valor)}</span> : "—"}</TableCell>

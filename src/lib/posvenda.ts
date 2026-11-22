@@ -33,6 +33,11 @@ export type ClienteCarteira = {
   diagnostico_em?: string | null;
   frota_total?: number | null;
   interesses?: string[] | null;
+  /** Reconnect: placas do cliente sem comunicação na última importação. */
+  rc_placas_paradas?: number | null;
+  rc_dias_max?: number | null;
+  /** Placas paradas que já foram notificadas e continuam sem comunicar. */
+  rc_notificadas?: number | null;
 };
 
 export type ContatoPosVenda = {
@@ -96,7 +101,8 @@ export function situacaoContato(proximo: string | null | undefined, hoje: string
  * - faturas vencidas: até 35 (proporcional ao valor vencido sobre a receita mensal);
  * - contato atrasado: até 25 (proporcional aos dias além da cadência);
  * - último NPS: detrator (0–6) 25, neutro (7–8) 10;
- * - último sentimento negativo: 15.
+ * - último sentimento negativo: 15;
+ * - placas sem comunicação no Reconnect: até 25 (pela pior placa, +5 se já foi avisado e não voltou).
  */
 export function saudeCliente(c: ClienteCarteira, hoje: string): number {
   let s = 100;
@@ -110,7 +116,16 @@ export function saudeCliente(c: ClienteCarteira, hoje: string): number {
   if (atraso > 0) s -= Math.min(25, Math.round((atraso / cad) * 25));
   if (c.ultimo_nps != null) s -= c.ultimo_nps <= 6 ? 25 : c.ultimo_nps <= 8 ? 10 : 0;
   if (c.ultimo_sentimento === "negativo") s -= 15;
+  s -= descontoReconnect(c);
   return Math.max(0, Math.min(100, s));
+}
+
+/** Desconto da saúde pelas placas paradas: 1-10 dias 5, 11-20 10, 21-30 15, 31+ 20; +5 se notificado sem retorno. */
+export function descontoReconnect(c: Pick<ClienteCarteira, "rc_placas_paradas" | "rc_dias_max" | "rc_notificadas">): number {
+  if (!c.rc_placas_paradas || c.rc_placas_paradas <= 0) return 0;
+  const d = c.rc_dias_max ?? 0;
+  const base = d > 30 ? 20 : d > 20 ? 15 : d > 10 ? 10 : 5;
+  return Math.min(25, base + ((c.rc_notificadas ?? 0) > 0 ? 5 : 0));
 }
 
 export function riscoDe(saude: number): Risco {
@@ -126,6 +141,11 @@ export function sugestoesCliente(c: ClienteCarteira, hoje: string): Sugestao[] {
   const saude = saudeCliente(c, hoje);
   if (riscoDe(saude) === "alto") out.push({ roteiro: "retencao", prioridade: 1, texto: "Risco alto de cancelamento: ligar, entender a insatisfação e propor plano de ação." });
   if (c.ultimo_nps != null && c.ultimo_nps <= 6) out.push({ roteiro: "retencao", prioridade: 1, texto: `NPS ${c.ultimo_nps} (detrator): retornar em até 48h com uma solução para a reclamação.` });
+  if (c.rc_placas_paradas && c.rc_placas_paradas > 0) {
+    const d = c.rc_dias_max ?? 0;
+    const avisado = (c.rc_notificadas ?? 0) > 0 ? " Já foi avisado e não voltou:" : "";
+    out.push({ roteiro: d > 20 ? "retencao" : "revisao", prioridade: d > 20 ? 1 : 2, texto: `${c.rc_placas_paradas} placa(s) sem comunicação há até ${d} dias (Reconnect).${avisado} ligar, entender o motivo e agendar a manutenção.` });
+  }
   if (c.vencidas_qtd > 0) out.push({ roteiro: "financeiro", prioridade: 1, texto: `${c.vencidas_qtd} fatura(s) vencida(s): contato amigável, confirmar se recebeu o boleto e se há problema no serviço.` });
   if (!c.diagnostico_em) {
     out.push({ roteiro: "primeiro_contato", prioridade: classe === "A" ? 1 : 2, texto: "Fazer o primeiro contato e o diagnóstico (decisor, frota total e interesses)." });

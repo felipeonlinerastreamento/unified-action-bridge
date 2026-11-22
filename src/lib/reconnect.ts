@@ -281,3 +281,152 @@ export function buildNotificationMessage(body: string, clientName: string, plate
   const text = String(body || "").replace(/\{cliente\}/gi, clientName).replace(/\{placas\}/gi, "");
   return `${text.trim()}\n\nPlacas sem comunicação:\n${plates.map((p) => `• ${p}`).join("\n")}`;
 }
+
+// ---------------------------------------------------------------------------
+// Resultados e risco (Pós-venda / Financeiro)
+// ---------------------------------------------------------------------------
+
+/** Nome para comparar entre sistemas: sem acento, pontuação e sufixos societários (LTDA, ME, EIRELI, S/A...). */
+export function chaveEmpresa(nome: string): string {
+  return normalizeClientKey(nome)
+    .replace(/[^a-z0-9 ]+/g, " ")
+    .replace(/\b(ltda|me|epp|eireli|s ?a|sa|ss|mei|cia|e cia|comercio e servicos)\b/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+/**
+ * Liga cada cliente do Reconnect a um cliente da carteira do Pós-venda:
+ * primeiro pelo CNPJ da empresa vinculada no Gestão Online, depois pelo nome.
+ */
+export function vincularCarteira(
+  rcClients: { id: string; name: string; company_id?: string | null }[],
+  cnpjPorEmpresa: Map<string, string>,
+  carteira: { id: string; documento: string; nome: string }[],
+): Map<string, string> {
+  const porDoc = new Map(carteira.map((c) => [c.documento, c.id]));
+  const porNome = new Map<string, string>();
+  for (const c of carteira) { const k = chaveEmpresa(c.nome); if (k && !porNome.has(k)) porNome.set(k, c.id); }
+  const out = new Map<string, string>();
+  for (const r of rcClients) {
+    const doc = r.company_id ? cnpjPorEmpresa.get(r.company_id) : undefined;
+    const id = (doc && porDoc.get(doc)) || porNome.get(chaveEmpresa(r.name));
+    if (id) out.set(r.id, id);
+  }
+  return out;
+}
+
+/** Placas da sessão mais recente (as que estão sem comunicação agora). */
+export function sessaoAtual<T extends { import_date: string }>(vehicles: T[]): T[] {
+  const ultima = vehicles.reduce((m, v) => (v.import_date > m ? v.import_date : m), "");
+  return vehicles.filter((v) => v.import_date === ultima);
+}
+
+export type RiscoCarteira = { rc_placas_paradas: number; rc_dias_max: number; rc_notificadas: number };
+
+/** Soma as placas paradas por cliente da carteira. */
+export function riscoPorCarteira(atuais: Pick<VehicleRow, "client_id" | "days_offline" | "notifications">[], vinculo: Map<string, string>): Map<string, RiscoCarteira> {
+  const out = new Map<string, RiscoCarteira>();
+  for (const v of atuais) {
+    const cid = vinculo.get(v.client_id);
+    if (!cid) continue;
+    const r = out.get(cid) ?? { rc_placas_paradas: 0, rc_dias_max: 0, rc_notificadas: 0 };
+    r.rc_placas_paradas++;
+    r.rc_dias_max = Math.max(r.rc_dias_max, v.days_offline || 0);
+    if ((v.notifications || 0) > 0) r.rc_notificadas++;
+    out.set(cid, r);
+  }
+  return out;
+}
+
+export type RecuperadoRow = { plate: string; client_id: string; client_name: string; last_days_offline: number; recovered_at: string };
+export type NotificacaoRow = { client_id: string; sent_at: string; plates: string[] };
+
+const diaSP = (iso: string) => todaySP(new Date(iso));
+const segundaDe = (dia: string) => {
+  const d = new Date(`${dia}T12:00:00Z`);
+  d.setUTCDate(d.getUTCDate() - ((d.getUTCDay() + 6) % 7));
+  return d.toISOString().slice(0, 10);
+};
+const difDias = (a: string, b: string) => Math.round((Date.parse(b) - Date.parse(a)) / 86_400_000);
+
+/**
+ * Métricas do painel de resultado do Reconnect no período [de, ate] (datas AAAA-MM-DD, inclusive).
+ * Uma placa conta como "recuperada após aviso" se foi notificada até `janelaDias` antes de voltar.
+ * Receita (opcional) é a receita mensal da carteira do Pós-venda por cliente do Reconnect.
+ */
+export function metricasReconnect(input: {
+  recovered: RecuperadoRow[];
+  notifications: NotificacaoRow[];
+  atuais: Pick<VehicleRow, "plate" | "client_id" | "client_name" | "days_offline" | "notifications">[];
+  de: string;
+  ate: string;
+  janelaDias?: number;
+  receitaPorCliente?: Map<string, number>;
+}) {
+  const janela = input.janelaDias ?? 30;
+  const noPeriodo = (dia: string) => dia >= input.de && dia <= input.ate;
+  const avisosPorPlaca = new Map<string, string[]>();
+  for (const n of input.notifications) for (const p of n.plates || []) avisosPorPlaca.set(p, [...(avisosPorPlaca.get(p) ?? []), n.sent_at]);
+
+  const recs = input.recovered.filter((r) => noPeriodo(diaSP(r.recovered_at)));
+  const semanas = new Map<string, { recuperados: number; aposAviso: number }>();
+  let aposAviso = 0, somaDiasAviso = 0, somaDiasParado = 0;
+  for (const r of recs) {
+    const sem = segundaDe(diaSP(r.recovered_at));
+    const w = semanas.get(sem) ?? { recuperados: 0, aposAviso: 0 };
+    w.recuperados++;
+    const aviso = (avisosPorPlaca.get(r.plate) ?? []).filter((s) => s <= r.recovered_at && difDias(s, r.recovered_at) <= janela).sort().pop();
+    if (aviso) { w.aposAviso++; aposAviso++; somaDiasAviso += Math.max(0, difDias(aviso, r.recovered_at)); }
+    somaDiasParado += r.last_days_offline || 0;
+    semanas.set(sem, w);
+  }
+
+  // Taxa de retorno do aviso: placas avisadas no período que voltaram em até `janela` dias.
+  const avisadas = new Map<string, string>(); // placa -> primeiro aviso no período
+  for (const n of input.notifications) {
+    if (!noPeriodo(diaSP(n.sent_at))) continue;
+    for (const p of n.plates || []) if (!avisadas.has(p) || n.sent_at < avisadas.get(p)!) avisadas.set(p, n.sent_at);
+  }
+  let voltaram = 0;
+  for (const [placa, s] of avisadas) {
+    if (input.recovered.some((r) => r.plate === placa && r.recovered_at >= s && difDias(s, r.recovered_at) <= janela)) voltaram++;
+  }
+
+  const porCliente = new Map<string, { clientId: string; nome: string; placas: number; diasMax: number; notificadas: number }>();
+  for (const v of input.atuais) {
+    const c = porCliente.get(v.client_id) ?? { clientId: v.client_id, nome: v.client_name, placas: 0, diasMax: 0, notificadas: 0 };
+    c.placas++;
+    c.diasMax = Math.max(c.diasMax, v.days_offline || 0);
+    if ((v.notifications || 0) > 0) c.notificadas++;
+    porCliente.set(v.client_id, c);
+  }
+  const receita = input.receitaPorCliente;
+  const clientes = [...porCliente.values()].map((c) => ({ ...c, receita: receita?.get(c.clientId) ?? null }));
+  const soma = (ids: Iterable<string>) => { let t = 0; for (const id of new Set(ids)) t += receita?.get(id) ?? 0; return Math.round(t * 100) / 100; };
+
+  return {
+    recuperados: recs.length,
+    recuperadosAposAviso: aposAviso,
+    diasMedioAvisoAteVoltar: aposAviso ? Math.round((somaDiasAviso / aposAviso) * 10) / 10 : null,
+    diasMedioParadoAntesDeVoltar: recs.length ? Math.round((somaDiasParado / recs.length) * 10) / 10 : null,
+    placasAvisadas: avisadas.size,
+    taxaRetornoAviso: avisadas.size ? Math.round((voltaram / avisadas.size) * 1000) / 10 : null,
+    semanas: [...semanas.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([semana, w]) => ({ semana, ...w })),
+    paradasAgora: input.atuais.length,
+    notificadasSemRetorno: input.atuais.filter((v) => (v.notifications || 0) > 0).length,
+    clientesQueMaisDemoram: clientes.sort((a, b) => b.diasMax - a.diasMax || b.placas - a.placas).slice(0, 15),
+    receita: receita
+      ? {
+          emRisco: soma(clientes.map((c) => c.clientId)),
+          emRisco31: soma(clientes.filter((c) => c.diasMax > 30).map((c) => c.clientId)),
+          clientesComReceita: clientes.filter((c) => (c.receita ?? 0) > 0).length,
+          recuperada: soma(recs.map((r) => r.client_id)),
+          porFaixa: (["green", "yellow", "orange", "red"] as Criticidade[]).map((f) => ({
+            faixa: f,
+            receita: soma(clientes.filter((c) => getCriticality(c.diasMax) === f).map((c) => c.clientId)),
+          })),
+        }
+      : null,
+  };
+}

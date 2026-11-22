@@ -5,6 +5,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useRcAccess, useRcData } from "@/components/reconnect/use-rc";
 import { PainelTab } from "@/components/reconnect/painel-tab";
+import { ResultadosTab } from "@/components/reconnect/resultados-tab";
 import { ClientesTab, ConfigTab, MensagensTab, NotificacoesTab, RecuperadosTab } from "@/components/reconnect/outras-abas";
 
 export const Route = createFileRoute("/reconnect")({
@@ -50,6 +51,7 @@ function ReconnectTela() {
           <TabsTrigger value="painel">Painel</TabsTrigger>
           <TabsTrigger value="clientes">Clientes</TabsTrigger>
           <TabsTrigger value="notificacoes">Notificações</TabsTrigger>
+          <TabsTrigger value="resultados">Resultados</TabsTrigger>
           <TabsTrigger value="recuperados">Recuperados</TabsTrigger>
           <TabsTrigger value="mensagens">Mensagens</TabsTrigger>
           <TabsTrigger value="config">Configurações</TabsTrigger>
@@ -59,6 +61,7 @@ function ReconnectTela() {
             <TabsContent value="painel" className="mt-4"><PainelTab {...d} /></TabsContent>
             <TabsContent value="clientes" className="mt-4"><ClientesTab clients={d.clients} vehicles={d.vehicles} templates={d.templates} /></TabsContent>
             <TabsContent value="notificacoes" className="mt-4"><NotificacoesTab clients={d.clients} vehicles={d.vehicles} templates={d.templates} /></TabsContent>
+            <TabsContent value="resultados" className="mt-4"><ResultadosTab /></TabsContent>
             <TabsContent value="recuperados" className="mt-4"><RecuperadosTab recovered={d.recovered} /></TabsContent>
             <TabsContent value="mensagens" className="mt-4"><MensagensTab templates={d.templates} /></TabsContent>
             <TabsContent value="config" className="mt-4"><ConfigTab importTemplates={d.importTemplates} /></TabsContent>
