@@ -1612,7 +1612,9 @@ export type Database = {
           assinatura_ip: string | null
           assinatura_nome: string | null
           assinatura_user_agent: string | null
+          avisos_enviados: Json
           cancelado_motivo: string | null
+          categoria: string
           cliente_documento: string
           cliente_nome: string
           conteudo_html: string | null
@@ -1626,14 +1628,19 @@ export type Database = {
           enviado_em: string | null
           hash_sha256: string | null
           id: string
+          lembretes_enviados: number
           modelos_versao: Json | null
           numero: number
+          pasta: string | null
+          proposta_link_id: string | null
           provedor: string
           provedor_documento_id: string | null
           provedor_link: string | null
+          provedor_pasta_id: string | null
           provedor_sandbox: boolean
           provedor_signatarios: Json
           provedor_verificacao: string | null
+          reajustes: Json
           renovacao_automatica: boolean
           signatario_cpf: string | null
           signatario_email: string | null
@@ -1642,9 +1649,11 @@ export type Database = {
           status: string
           testemunhas: Json
           token: string
+          ultimo_lembrete_em: string | null
           updated_at: string
           valor_implantacao: number | null
           valor_mensal: number | null
+          valor_mensal_atual: number | null
           vigencia_inicio: string | null
           vigencia_meses: number
           visualizado_em: string | null
@@ -1657,7 +1666,9 @@ export type Database = {
           assinatura_ip?: string | null
           assinatura_nome?: string | null
           assinatura_user_agent?: string | null
+          avisos_enviados?: Json
           cancelado_motivo?: string | null
+          categoria?: string
           cliente_documento: string
           cliente_nome: string
           conteudo_html?: string | null
@@ -1671,14 +1682,19 @@ export type Database = {
           enviado_em?: string | null
           hash_sha256?: string | null
           id?: string
+          lembretes_enviados?: number
           modelos_versao?: Json | null
           numero?: number
+          pasta?: string | null
+          proposta_link_id?: string | null
           provedor?: string
           provedor_documento_id?: string | null
           provedor_link?: string | null
+          provedor_pasta_id?: string | null
           provedor_sandbox?: boolean
           provedor_signatarios?: Json
           provedor_verificacao?: string | null
+          reajustes?: Json
           renovacao_automatica?: boolean
           signatario_cpf?: string | null
           signatario_email?: string | null
@@ -1687,9 +1703,11 @@ export type Database = {
           status?: string
           testemunhas?: Json
           token?: string
+          ultimo_lembrete_em?: string | null
           updated_at?: string
           valor_implantacao?: number | null
           valor_mensal?: number | null
+          valor_mensal_atual?: number | null
           vigencia_inicio?: string | null
           vigencia_meses?: number
           visualizado_em?: string | null
@@ -1702,7 +1720,9 @@ export type Database = {
           assinatura_ip?: string | null
           assinatura_nome?: string | null
           assinatura_user_agent?: string | null
+          avisos_enviados?: Json
           cancelado_motivo?: string | null
+          categoria?: string
           cliente_documento?: string
           cliente_nome?: string
           conteudo_html?: string | null
@@ -1716,14 +1736,19 @@ export type Database = {
           enviado_em?: string | null
           hash_sha256?: string | null
           id?: string
+          lembretes_enviados?: number
           modelos_versao?: Json | null
           numero?: number
+          pasta?: string | null
+          proposta_link_id?: string | null
           provedor?: string
           provedor_documento_id?: string | null
           provedor_link?: string | null
+          provedor_pasta_id?: string | null
           provedor_sandbox?: boolean
           provedor_signatarios?: Json
           provedor_verificacao?: string | null
+          reajustes?: Json
           renovacao_automatica?: boolean
           signatario_cpf?: string | null
           signatario_email?: string | null
@@ -1732,9 +1757,11 @@ export type Database = {
           status?: string
           testemunhas?: Json
           token?: string
+          ultimo_lembrete_em?: string | null
           updated_at?: string
           valor_implantacao?: number | null
           valor_mensal?: number | null
+          valor_mensal_atual?: number | null
           vigencia_inicio?: string | null
           vigencia_meses?: number
           visualizado_em?: string | null
@@ -1784,6 +1811,99 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      contratos_config: {
+        Row: {
+          financeiro_tolerancia_pct: number
+          id: number
+          indices: Json
+          lembrete_ativo: boolean
+          lembrete_avisar_responsavel: boolean
+          lembrete_dias: number[]
+          lembrete_modo: string
+          proposta_cria_rascunho: boolean
+          reajuste_ativo: boolean
+          reajuste_aviso_dias: number
+          reajuste_fixo_pct: number
+          reajuste_indice: string
+          reajuste_mensagem: string
+          ultima_rotina_em: string | null
+          ultima_rotina_resumo: Json | null
+          updated_at: string
+          updated_by: string | null
+          vencimento_ativo: boolean
+          vencimento_avisar_responsavel: boolean
+          vencimento_avisar_usuarios: string[]
+          vencimento_dias: number[]
+          vencimento_fornecedores: boolean
+        }
+        Insert: {
+          financeiro_tolerancia_pct?: number
+          id?: number
+          indices?: Json
+          lembrete_ativo?: boolean
+          lembrete_avisar_responsavel?: boolean
+          lembrete_dias?: number[]
+          lembrete_modo?: string
+          proposta_cria_rascunho?: boolean
+          reajuste_ativo?: boolean
+          reajuste_aviso_dias?: number
+          reajuste_fixo_pct?: number
+          reajuste_indice?: string
+          reajuste_mensagem?: string
+          ultima_rotina_em?: string | null
+          ultima_rotina_resumo?: Json | null
+          updated_at?: string
+          updated_by?: string | null
+          vencimento_ativo?: boolean
+          vencimento_avisar_responsavel?: boolean
+          vencimento_avisar_usuarios?: string[]
+          vencimento_dias?: number[]
+          vencimento_fornecedores?: boolean
+        }
+        Update: {
+          financeiro_tolerancia_pct?: number
+          id?: number
+          indices?: Json
+          lembrete_ativo?: boolean
+          lembrete_avisar_responsavel?: boolean
+          lembrete_dias?: number[]
+          lembrete_modo?: string
+          proposta_cria_rascunho?: boolean
+          reajuste_ativo?: boolean
+          reajuste_aviso_dias?: number
+          reajuste_fixo_pct?: number
+          reajuste_indice?: string
+          reajuste_mensagem?: string
+          ultima_rotina_em?: string | null
+          ultima_rotina_resumo?: Json | null
+          updated_at?: string
+          updated_by?: string | null
+          vencimento_ativo?: boolean
+          vencimento_avisar_responsavel?: boolean
+          vencimento_avisar_usuarios?: string[]
+          vencimento_dias?: number[]
+          vencimento_fornecedores?: boolean
+        }
+        Relationships: []
+      }
+      contratos_cron_token: {
+        Row: {
+          created_at: string
+          id: number
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          token: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          token?: string
+        }
+        Relationships: []
       }
       contratos_eventos: {
         Row: {

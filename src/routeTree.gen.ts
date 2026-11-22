@@ -43,8 +43,8 @@ import { Route as ConfiguracoesAuditoriaRouteImport } from './routes/configuraco
 import { Route as ConfiguracoesAutomacaoSemComunicacaoRouteImport } from './routes/configuracoes.automacao-sem-comunicacao'
 import { Route as ConfiguracoesCanaisEmailRouteImport } from './routes/configuracoes.canais-email'
 import { Route as ConfiguracoesCentralAtendimentoRouteImport } from './routes/configuracoes.central-atendimento'
-import { Route as ConfiguracoesCrmRouteImport } from './routes/configuracoes.crm'
 import { Route as ConfiguracoesContratosRouteImport } from './routes/configuracoes.contratos'
+import { Route as ConfiguracoesCrmRouteImport } from './routes/configuracoes.crm'
 import { Route as ConfiguracoesEncaminhamentoRouteImport } from './routes/configuracoes.encaminhamento'
 import { Route as ConfiguracoesEstoqueRouteImport } from './routes/configuracoes.estoque'
 import { Route as ConfiguracoesFluxoAtendimentoRouteImport } from './routes/configuracoes.fluxo-atendimento'
@@ -260,14 +260,14 @@ const ConfiguracoesCentralAtendimentoRoute =
     path: '/central-atendimento',
     getParentRoute: () => ConfiguracoesRoute,
   } as any)
-const ConfiguracoesCrmRoute = ConfiguracoesCrmRouteImport.update({
-  id: '/crm',
-  path: '/crm',
-  getParentRoute: () => ConfiguracoesRoute,
-} as any)
 const ConfiguracoesContratosRoute = ConfiguracoesContratosRouteImport.update({
   id: '/contratos',
   path: '/contratos',
+  getParentRoute: () => ConfiguracoesRoute,
+} as any)
+const ConfiguracoesCrmRoute = ConfiguracoesCrmRouteImport.update({
+  id: '/crm',
+  path: '/crm',
   getParentRoute: () => ConfiguracoesRoute,
 } as any)
 const ConfiguracoesEncaminhamentoRoute =
@@ -491,7 +491,6 @@ export interface FileRoutesByFullPath {
   '/contatos': typeof ContatosRoute
   '/contratos': typeof ContratosRoute
   '/crm': typeof CrmRoute
-  '/contratos': typeof CrmRoute
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
@@ -514,8 +513,8 @@ export interface FileRoutesByFullPath {
   '/configuracoes/automacao-sem-comunicacao': typeof ConfiguracoesAutomacaoSemComunicacaoRoute
   '/configuracoes/canais-email': typeof ConfiguracoesCanaisEmailRoute
   '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
-  '/configuracoes/crm': typeof ConfiguracoesCrmRoute
   '/configuracoes/contratos': typeof ConfiguracoesContratosRoute
+  '/configuracoes/crm': typeof ConfiguracoesCrmRoute
   '/configuracoes/encaminhamento': typeof ConfiguracoesEncaminhamentoRoute
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
   '/configuracoes/fluxo-atendimento': typeof ConfiguracoesFluxoAtendimentoRoute
@@ -567,7 +566,6 @@ export interface FileRoutesByTo {
   '/contatos': typeof ContatosRoute
   '/contratos': typeof ContratosRoute
   '/crm': typeof CrmRoute
-  '/contratos': typeof CrmRoute
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
@@ -589,8 +587,8 @@ export interface FileRoutesByTo {
   '/configuracoes/automacao-sem-comunicacao': typeof ConfiguracoesAutomacaoSemComunicacaoRoute
   '/configuracoes/canais-email': typeof ConfiguracoesCanaisEmailRoute
   '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
-  '/configuracoes/crm': typeof ConfiguracoesCrmRoute
   '/configuracoes/contratos': typeof ConfiguracoesContratosRoute
+  '/configuracoes/crm': typeof ConfiguracoesCrmRoute
   '/configuracoes/encaminhamento': typeof ConfiguracoesEncaminhamentoRoute
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
   '/configuracoes/fluxo-atendimento': typeof ConfiguracoesFluxoAtendimentoRoute
@@ -645,7 +643,6 @@ export interface FileRoutesById {
   '/contatos': typeof ContatosRoute
   '/contratos': typeof ContratosRoute
   '/crm': typeof CrmRoute
-  '/contratos': typeof CrmRoute
   '/dashboard': typeof DashboardRoute
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
@@ -668,8 +665,8 @@ export interface FileRoutesById {
   '/configuracoes/automacao-sem-comunicacao': typeof ConfiguracoesAutomacaoSemComunicacaoRoute
   '/configuracoes/canais-email': typeof ConfiguracoesCanaisEmailRoute
   '/configuracoes/central-atendimento': typeof ConfiguracoesCentralAtendimentoRoute
-  '/configuracoes/crm': typeof ConfiguracoesCrmRoute
   '/configuracoes/contratos': typeof ConfiguracoesContratosRoute
+  '/configuracoes/crm': typeof ConfiguracoesCrmRoute
   '/configuracoes/encaminhamento': typeof ConfiguracoesEncaminhamentoRoute
   '/configuracoes/estoque': typeof ConfiguracoesEstoqueRoute
   '/configuracoes/fluxo-atendimento': typeof ConfiguracoesFluxoAtendimentoRoute
@@ -725,7 +722,6 @@ export interface FileRouteTypes {
     | '/contatos'
     | '/contratos'
     | '/crm'
-    | '/contratos'
     | '/dashboard'
     | '/empresas'
     | '/estoque'
@@ -748,8 +744,8 @@ export interface FileRouteTypes {
     | '/configuracoes/automacao-sem-comunicacao'
     | '/configuracoes/canais-email'
     | '/configuracoes/central-atendimento'
-    | '/configuracoes/crm'
     | '/configuracoes/contratos'
+    | '/configuracoes/crm'
     | '/configuracoes/encaminhamento'
     | '/configuracoes/estoque'
     | '/configuracoes/fluxo-atendimento'
@@ -801,7 +797,6 @@ export interface FileRouteTypes {
     | '/contatos'
     | '/contratos'
     | '/crm'
-    | '/contratos'
     | '/dashboard'
     | '/empresas'
     | '/estoque'
@@ -823,8 +818,8 @@ export interface FileRouteTypes {
     | '/configuracoes/automacao-sem-comunicacao'
     | '/configuracoes/canais-email'
     | '/configuracoes/central-atendimento'
-    | '/configuracoes/crm'
     | '/configuracoes/contratos'
+    | '/configuracoes/crm'
     | '/configuracoes/encaminhamento'
     | '/configuracoes/estoque'
     | '/configuracoes/fluxo-atendimento'
@@ -878,7 +873,6 @@ export interface FileRouteTypes {
     | '/contatos'
     | '/contratos'
     | '/crm'
-    | '/contratos'
     | '/dashboard'
     | '/empresas'
     | '/estoque'
@@ -901,8 +895,8 @@ export interface FileRouteTypes {
     | '/configuracoes/automacao-sem-comunicacao'
     | '/configuracoes/canais-email'
     | '/configuracoes/central-atendimento'
-    | '/configuracoes/crm'
     | '/configuracoes/contratos'
+    | '/configuracoes/crm'
     | '/configuracoes/encaminhamento'
     | '/configuracoes/estoque'
     | '/configuracoes/fluxo-atendimento'
@@ -1059,13 +1053,6 @@ declare module '@tanstack/react-router' {
       id: '/crm'
       path: '/crm'
       fullPath: '/crm'
-      preLoaderRoute: typeof CrmRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/contratos': {
-      id: '/contratos'
-      path: '/contratos'
-      fullPath: '/contratos'
       preLoaderRoute: typeof CrmRouteImport
       parentRoute: typeof rootRouteImport
     }
@@ -1237,18 +1224,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ConfiguracoesCentralAtendimentoRouteImport
       parentRoute: typeof ConfiguracoesRoute
     }
-    '/configuracoes/crm': {
-      id: '/configuracoes/crm'
-      path: '/crm'
-      fullPath: '/configuracoes/crm'
-      preLoaderRoute: typeof ConfiguracoesCrmRouteImport
-      parentRoute: typeof ConfiguracoesRoute
-    }
     '/configuracoes/contratos': {
       id: '/configuracoes/contratos'
       path: '/contratos'
       fullPath: '/configuracoes/contratos'
       preLoaderRoute: typeof ConfiguracoesContratosRouteImport
+      parentRoute: typeof ConfiguracoesRoute
+    }
+    '/configuracoes/crm': {
+      id: '/configuracoes/crm'
+      path: '/crm'
+      fullPath: '/configuracoes/crm'
+      preLoaderRoute: typeof ConfiguracoesCrmRouteImport
       parentRoute: typeof ConfiguracoesRoute
     }
     '/configuracoes/encaminhamento': {
@@ -1552,8 +1539,8 @@ interface ConfiguracoesRouteChildren {
   ConfiguracoesAutomacaoSemComunicacaoRoute: typeof ConfiguracoesAutomacaoSemComunicacaoRoute
   ConfiguracoesCanaisEmailRoute: typeof ConfiguracoesCanaisEmailRoute
   ConfiguracoesCentralAtendimentoRoute: typeof ConfiguracoesCentralAtendimentoRoute
-  ConfiguracoesCrmRoute: typeof ConfiguracoesCrmRoute
   ConfiguracoesContratosRoute: typeof ConfiguracoesContratosRoute
+  ConfiguracoesCrmRoute: typeof ConfiguracoesCrmRoute
   ConfiguracoesEncaminhamentoRoute: typeof ConfiguracoesEncaminhamentoRoute
   ConfiguracoesEstoqueRoute: typeof ConfiguracoesEstoqueRoute
   ConfiguracoesFluxoAtendimentoRoute: typeof ConfiguracoesFluxoAtendimentoRoute
@@ -1572,8 +1559,8 @@ const ConfiguracoesRouteChildren: ConfiguracoesRouteChildren = {
     ConfiguracoesAutomacaoSemComunicacaoRoute,
   ConfiguracoesCanaisEmailRoute: ConfiguracoesCanaisEmailRoute,
   ConfiguracoesCentralAtendimentoRoute: ConfiguracoesCentralAtendimentoRoute,
-  ConfiguracoesCrmRoute: ConfiguracoesCrmRoute,
   ConfiguracoesContratosRoute: ConfiguracoesContratosRoute,
+  ConfiguracoesCrmRoute: ConfiguracoesCrmRoute,
   ConfiguracoesEncaminhamentoRoute: ConfiguracoesEncaminhamentoRoute,
   ConfiguracoesEstoqueRoute: ConfiguracoesEstoqueRoute,
   ConfiguracoesFluxoAtendimentoRoute: ConfiguracoesFluxoAtendimentoRoute,
