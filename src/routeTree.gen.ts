@@ -78,8 +78,8 @@ import { Route as ApiPublicCrmDailyRouteImport } from './routes/api.public.crm-d
 import { Route as ApiPublicEmailPollRouteImport } from './routes/api.public.email-poll'
 import { Route as ApiPublicSystemHealthScanRouteImport } from './routes/api.public.system-health-scan'
 import { Route as ApiPublicHooksAutentiqueRouteImport } from './routes/api.public.hooks.autentique'
-import { Route as ApiPublicHooksFinanceiroEmailRouteImport } from './routes/api.public.hooks.financeiro-email'
 import { Route as ApiPublicHooksContratosDiarioRouteImport } from './routes/api.public.hooks.contratos-diario'
+import { Route as ApiPublicHooksFinanceiroEmailRouteImport } from './routes/api.public.hooks.financeiro-email'
 import { Route as ApiPublicHooksSyncGsystemEquipamentosRouteImport } from './routes/api.public.hooks.sync-gsystem-equipamentos'
 import { Route as ApiPublicHooksSyncGsystemFaturasRouteImport } from './routes/api.public.hooks.sync-gsystem-faturas'
 import { Route as ApiPublicZapiWebhookChannelIdRouteImport } from './routes/api.public.zapi-webhook.$channelId'
@@ -446,16 +446,16 @@ const ApiPublicHooksAutentiqueRoute =
     path: '/api/public/hooks/autentique',
     getParentRoute: () => rootRouteImport,
   } as any)
-const ApiPublicHooksFinanceiroEmailRoute =
-  ApiPublicHooksFinanceiroEmailRouteImport.update({
-    id: '/api/public/hooks/financeiro-email',
-    path: '/api/public/hooks/financeiro-email',
-    getParentRoute: () => rootRouteImport,
-  } as any)
 const ApiPublicHooksContratosDiarioRoute =
   ApiPublicHooksContratosDiarioRouteImport.update({
     id: '/api/public/hooks/contratos-diario',
     path: '/api/public/hooks/contratos-diario',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksFinanceiroEmailRoute =
+  ApiPublicHooksFinanceiroEmailRouteImport.update({
+    id: '/api/public/hooks/financeiro-email',
+    path: '/api/public/hooks/financeiro-email',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicHooksSyncGsystemEquipamentosRoute =
@@ -557,8 +557,8 @@ export interface FileRoutesByFullPath {
   '/api/public/email-poll': typeof ApiPublicEmailPollRoute
   '/api/public/system-health-scan': typeof ApiPublicSystemHealthScanRoute
   '/api/public/hooks/autentique': typeof ApiPublicHooksAutentiqueRoute
-  '/api/public/hooks/financeiro-email': typeof ApiPublicHooksFinanceiroEmailRoute
   '/api/public/hooks/contratos-diario': typeof ApiPublicHooksContratosDiarioRoute
+  '/api/public/hooks/financeiro-email': typeof ApiPublicHooksFinanceiroEmailRoute
   '/api/public/hooks/sync-gsystem-equipamentos': typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   '/api/public/hooks/sync-gsystem-faturas': typeof ApiPublicHooksSyncGsystemFaturasRoute
   '/api/public/zapi-webhook/$channelId': typeof ApiPublicZapiWebhookChannelIdRoute
@@ -632,8 +632,8 @@ export interface FileRoutesByTo {
   '/api/public/email-poll': typeof ApiPublicEmailPollRoute
   '/api/public/system-health-scan': typeof ApiPublicSystemHealthScanRoute
   '/api/public/hooks/autentique': typeof ApiPublicHooksAutentiqueRoute
-  '/api/public/hooks/financeiro-email': typeof ApiPublicHooksFinanceiroEmailRoute
   '/api/public/hooks/contratos-diario': typeof ApiPublicHooksContratosDiarioRoute
+  '/api/public/hooks/financeiro-email': typeof ApiPublicHooksFinanceiroEmailRoute
   '/api/public/hooks/sync-gsystem-equipamentos': typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   '/api/public/hooks/sync-gsystem-faturas': typeof ApiPublicHooksSyncGsystemFaturasRoute
   '/api/public/zapi-webhook/$channelId': typeof ApiPublicZapiWebhookChannelIdRoute
@@ -711,8 +711,8 @@ export interface FileRoutesById {
   '/api/public/email-poll': typeof ApiPublicEmailPollRoute
   '/api/public/system-health-scan': typeof ApiPublicSystemHealthScanRoute
   '/api/public/hooks/autentique': typeof ApiPublicHooksAutentiqueRoute
-  '/api/public/hooks/financeiro-email': typeof ApiPublicHooksFinanceiroEmailRoute
   '/api/public/hooks/contratos-diario': typeof ApiPublicHooksContratosDiarioRoute
+  '/api/public/hooks/financeiro-email': typeof ApiPublicHooksFinanceiroEmailRoute
   '/api/public/hooks/sync-gsystem-equipamentos': typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   '/api/public/hooks/sync-gsystem-faturas': typeof ApiPublicHooksSyncGsystemFaturasRoute
   '/api/public/zapi-webhook/$channelId': typeof ApiPublicZapiWebhookChannelIdRoute
@@ -791,8 +791,8 @@ export interface FileRouteTypes {
     | '/api/public/email-poll'
     | '/api/public/system-health-scan'
     | '/api/public/hooks/autentique'
-    | '/api/public/hooks/financeiro-email'
     | '/api/public/hooks/contratos-diario'
+    | '/api/public/hooks/financeiro-email'
     | '/api/public/hooks/sync-gsystem-equipamentos'
     | '/api/public/hooks/sync-gsystem-faturas'
     | '/api/public/zapi-webhook/$channelId'
@@ -866,8 +866,8 @@ export interface FileRouteTypes {
     | '/api/public/email-poll'
     | '/api/public/system-health-scan'
     | '/api/public/hooks/autentique'
-    | '/api/public/hooks/financeiro-email'
     | '/api/public/hooks/contratos-diario'
+    | '/api/public/hooks/financeiro-email'
     | '/api/public/hooks/sync-gsystem-equipamentos'
     | '/api/public/hooks/sync-gsystem-faturas'
     | '/api/public/zapi-webhook/$channelId'
@@ -944,8 +944,8 @@ export interface FileRouteTypes {
     | '/api/public/email-poll'
     | '/api/public/system-health-scan'
     | '/api/public/hooks/autentique'
-    | '/api/public/hooks/financeiro-email'
     | '/api/public/hooks/contratos-diario'
+    | '/api/public/hooks/financeiro-email'
     | '/api/public/hooks/sync-gsystem-equipamentos'
     | '/api/public/hooks/sync-gsystem-faturas'
     | '/api/public/zapi-webhook/$channelId'
@@ -989,8 +989,8 @@ export interface RootRouteChildren {
   ApiPublicEmailPollRoute: typeof ApiPublicEmailPollRoute
   ApiPublicSystemHealthScanRoute: typeof ApiPublicSystemHealthScanRoute
   ApiPublicHooksAutentiqueRoute: typeof ApiPublicHooksAutentiqueRoute
-  ApiPublicHooksFinanceiroEmailRoute: typeof ApiPublicHooksFinanceiroEmailRoute
   ApiPublicHooksContratosDiarioRoute: typeof ApiPublicHooksContratosDiarioRoute
+  ApiPublicHooksFinanceiroEmailRoute: typeof ApiPublicHooksFinanceiroEmailRoute
   ApiPublicHooksSyncGsystemEquipamentosRoute: typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   ApiPublicHooksSyncGsystemFaturasRoute: typeof ApiPublicHooksSyncGsystemFaturasRoute
   ApiPublicZapiWebhookChannelIdRoute: typeof ApiPublicZapiWebhookChannelIdRoute
@@ -1483,18 +1483,18 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksAutentiqueRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/api/public/hooks/financeiro-email': {
-      id: '/api/public/hooks/financeiro-email'
-      path: '/api/public/hooks/financeiro-email'
-      fullPath: '/api/public/hooks/financeiro-email'
-      preLoaderRoute: typeof ApiPublicHooksFinanceiroEmailRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/public/hooks/contratos-diario': {
       id: '/api/public/hooks/contratos-diario'
       path: '/api/public/hooks/contratos-diario'
       fullPath: '/api/public/hooks/contratos-diario'
       preLoaderRoute: typeof ApiPublicHooksContratosDiarioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/financeiro-email': {
+      id: '/api/public/hooks/financeiro-email'
+      path: '/api/public/hooks/financeiro-email'
+      fullPath: '/api/public/hooks/financeiro-email'
+      preLoaderRoute: typeof ApiPublicHooksFinanceiroEmailRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/hooks/sync-gsystem-equipamentos': {
@@ -1670,8 +1670,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicEmailPollRoute: ApiPublicEmailPollRoute,
   ApiPublicSystemHealthScanRoute: ApiPublicSystemHealthScanRoute,
   ApiPublicHooksAutentiqueRoute: ApiPublicHooksAutentiqueRoute,
-  ApiPublicHooksFinanceiroEmailRoute: ApiPublicHooksFinanceiroEmailRoute,
   ApiPublicHooksContratosDiarioRoute: ApiPublicHooksContratosDiarioRoute,
+  ApiPublicHooksFinanceiroEmailRoute: ApiPublicHooksFinanceiroEmailRoute,
   ApiPublicHooksSyncGsystemEquipamentosRoute:
     ApiPublicHooksSyncGsystemEquipamentosRoute,
   ApiPublicHooksSyncGsystemFaturasRoute: ApiPublicHooksSyncGsystemFaturasRoute,
