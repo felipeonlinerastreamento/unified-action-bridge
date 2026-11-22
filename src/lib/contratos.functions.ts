@@ -197,21 +197,165 @@ export const enviarContrato = createServerFn({ method: "POST" })
 
     const brand = await marca(admin);
     const url = `${baseUrl(brand)}/contrato/${c.token}`;
-    const empresa = brand.company_name || "Online Rastreamento";
-    const texto = `Olá, ${c.signatario_nome}! A ${empresa} enviou o contrato nº ${c.numero} (${c.cliente_nome}) para sua assinatura eletrônica.\n\nAcesse: ${url}\n\nPara abrir, informe seu CPF. A assinatura é confirmada com um código enviado a você.`;
-    const enviados: string[] = [];
-    const erros: Record<string, string> = {};
-    if (data.whatsapp) {
-      try { await enviarWhatsapp(admin, brand, c.signatario_telefone, texto); enviados.push("whatsapp"); } catch (e: any) { erros.whatsapp = e?.message ?? "Falha no WhatsApp"; }
-    }
-    if (data.email) {
+    const r = await mandarLink(admin, brand, c, url, { whatsapp: data.whatsapp, email: data.email }, "Para abrir, informe seu CPF. A assinatura é confirmada com um código enviado a você.");
+    return { url, ...r };
+  });
+
+/** Manda o link de assinatura ao signatário pelo WhatsApp da Central e/ou pela caixa de e-mail do Gestão Online. */
+async function mandarLink(admin: Admin, brand: any, c: any, url: string, canais: { whatsapp: boolean; email: boolean }, rodape: string, lembrete = false) {
+  const empresa = brand.company_name || "Online Rastreamento";
+  const texto = lembrete
+    ? `Olá, ${c.signatario_nome || ""}! Lembrete: o contrato nº ${c.numero} (${c.cliente_nome}) da ${empresa} ainda aguarda sua assinatura eletrônica.\n\nAcesse: ${url}\n\n${rodape}`
+    : `Olá, ${c.signatario_nome}! A ${empresa} enviou o contrato nº ${c.numero} (${c.cliente_nome}) para sua assinatura eletrônica.\n\nAcesse: ${url}\n\n${rodape}`;
+  const enviados: string[] = [];
+  const erros: Record<string, string> = {};
+  if (canais.whatsapp) {
+    try {
+      if (!soDigitos(c.signatario_telefone)) throw new Error("sem WhatsApp do signatário");
+      await enviarWhatsapp(admin, brand, c.signatario_telefone, texto); enviados.push("whatsapp");
+    } catch (e: any) { erros.whatsapp = e?.message ?? "Falha no WhatsApp"; }
+  }
+  if (canais.email) {
+    try {
+      if (!String(c.signatario_email || "").includes("@")) throw new Error("sem e-mail do signatário");
+      await enviarEmail(admin, brand, c.signatario_email, `${lembrete ? "Lembrete: " : ""}Contrato nº ${c.numero} para assinatura — ${empresa}`,
+        `${escHtml(texto).replace(/\n/g, "<br/>").replace(escHtml(url), `<a href="${escHtml(url)}">${escHtml(url)}</a>`)}`);
+      enviados.push("email");
+    } catch (e: any) { erros.email = e?.message ?? "Falha no e-mail"; }
+  }
+  return { enviados, erros };
+}
+
+// ------------------------------------------------------------------ ações em lote (lista)
+const MODOS_REENVIO = ["autentique", "whatsapp", "email", "whatsapp_email"] as const;
+
+/**
+ * Reenvia para assinatura os contratos selecionados que ainda aguardam assinatura.
+ * Modo "autentique": o próprio Autentique reenvia o convite. Modos WhatsApp/e-mail: o link
+ * (do Autentique, gerado por signatário, ou o link próprio do Gestão Online) sai pela Central.
+ */
+export const reenviarContratosLote = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ ids: z.array(z.string().uuid()).min(1).max(200), modo: z.enum(MODOS_REENVIO) }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context as any;
+    await assertContratos(supabase);
+    const admin = await adminDb();
+    const brand = await marca(admin);
+    const { data: lista } = await admin.from("contratos").select("*").in("id", data.ids);
+    const canais = { whatsapp: data.modo === "whatsapp" || data.modo === "whatsapp_email", email: data.modo === "email" || data.modo === "whatsapp_email" };
+    const resultado: { id: string; numero: number; ok: boolean; detalhe: string }[] = [];
+    const inicio = Date.now();
+    for (const c of lista || []) {
+      if (Date.now() - inicio > 22_000) { resultado.push({ id: c.id, numero: c.numero, ok: false, detalhe: "não deu tempo nesta rodada: reenvie de novo" }); continue; }
       try {
-        await enviarEmail(admin, brand, c.signatario_email, `Contrato nº ${c.numero} para assinatura — ${empresa}`,
-          `${escHtml(texto).replace(/\n/g, "<br/>").replace(escHtml(url), `<a href="${escHtml(url)}">${escHtml(url)}</a>`)}`);
-        enviados.push("email");
-      } catch (e: any) { erros.email = e?.message ?? "Falha no e-mail"; }
+        if (c.status !== "enviado") throw new Error(c.status === "rascunho" ? "ainda é rascunho (envie pela tela do contrato)" : `está ${c.status}`);
+        if (c.provedor === "autentique") {
+          const { reenviarAssinaturasAutentique, linkAssinaturaAutentique } = await import("@/lib/autentique.server");
+          const papeis: any[] = Array.isArray(c.provedor_signatarios) ? c.provedor_signatarios : [];
+          const contratante = papeis.find((p) => p.papel === "contratante");
+          if (!contratante?.public_id) throw new Error("signatário do Autentique não identificado");
+          if (data.modo === "autentique") {
+            await reenviarAssinaturasAutentique([contratante.public_id]);
+            await evento(admin, c.id, "reenviado", "Convite reenviado pelo Autentique", userId);
+            resultado.push({ id: c.id, numero: c.numero, ok: true, detalhe: "reenviado pelo Autentique" });
+            continue;
+          }
+          const link = (await linkAssinaturaAutentique(contratante.public_id)) || c.provedor_link;
+          if (!link) throw new Error("o Autentique não devolveu o link de assinatura");
+          const r = await mandarLink(admin, brand, c, link, canais, "A assinatura é feita na plataforma Autentique.", true);
+          if (!r.enviados.length) throw new Error(Object.values(r.erros).join("; "));
+          await evento(admin, c.id, "reenviado", `Link do Autentique reenviado por ${r.enviados.join(" e ")}`, userId);
+          resultado.push({ id: c.id, numero: c.numero, ok: true, detalhe: `link do Autentique por ${r.enviados.join(" e ")}${Object.keys(r.erros).length ? ` (falhou: ${Object.values(r.erros).join("; ")})` : ""}` });
+          continue;
+        }
+        if (data.modo === "autentique") throw new Error("contrato com assinatura própria: escolha WhatsApp ou e-mail");
+        const url = `${baseUrl(brand)}/contrato/${c.token}`;
+        const r = await mandarLink(admin, brand, c, url, canais, "Para abrir, informe seu CPF. A assinatura é confirmada com um código enviado a você.", true);
+        if (!r.enviados.length) throw new Error(Object.values(r.erros).join("; "));
+        await evento(admin, c.id, "reenviado", `Reenviado por ${r.enviados.join(" e ")}`, userId);
+        resultado.push({ id: c.id, numero: c.numero, ok: true, detalhe: `por ${r.enviados.join(" e ")}${Object.keys(r.erros).length ? ` (falhou: ${Object.values(r.erros).join("; ")})` : ""}` });
+      } catch (e: any) {
+        resultado.push({ id: c.id, numero: c.numero, ok: false, detalhe: String(e?.message ?? e).replace(/^Autentique: /, "Autentique: ").replace("too_many_resent_emails", "o Autentique já reenviou há pouco tempo") });
+      }
     }
-    return { url, enviados, erros };
+    return { resultado };
+  });
+
+/** Marca os contratos selecionados como de cliente ou de fornecedor. */
+export const categorizarContratos = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ ids: z.array(z.string().uuid()).min(1).max(500), categoria: z.enum(["cliente", "fornecedor"]) }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context as any;
+    await assertContratos(supabase);
+    const admin = await adminDb();
+    const { data: lista, error } = await admin.from("contratos").update({ categoria: data.categoria }).in("id", data.ids).neq("categoria", data.categoria).select("id");
+    if (error) throw new Error(`${error.message}. Confira se a migração 0061 foi aplicada.`);
+    const rotulo = data.categoria === "fornecedor" ? "fornecedor" : "cliente";
+    if (lista?.length) await admin.from("contratos_eventos").insert(lista.map((c: any) => ({ contrato_id: c.id, tipo: "categoria", descricao: `Marcado como contrato de ${rotulo}`, user_id: userId })));
+    return { alterados: lista?.length ?? 0 };
+  });
+
+/** Pastas em uso no Gestão Online e pastas da conta do Autentique (se conectada). */
+export const pastasContratos = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertContratos((context as any).supabase);
+    const admin = await adminDb();
+    const { data } = await admin.from("contratos").select("pasta").not("pasta", "is", null).limit(5000);
+    const locais: string[] = [...new Set<string>((data || []).map((x: any) => String(x.pasta)))].sort((a, b) => a.localeCompare(b, "pt-BR"));
+    let autentique: { id: string; name: string; path: string | null }[] = [];
+    let erroAutentique: string | null = null;
+    try {
+      const { autentiqueConfigurado, listarPastasAutentique } = await import("@/lib/autentique.server");
+      if (await autentiqueConfigurado()) autentique = await listarPastasAutentique();
+    } catch (e: any) { erroAutentique = String(e?.message ?? e); }
+    return { locais, autentique, erroAutentique } as { locais: string[]; autentique: { id: string; name: string; path: string | null }[]; erroAutentique: string | null };
+  });
+
+/**
+ * Move os contratos selecionados para uma pasta (vazio tira da pasta). Nos contratos do Autentique,
+ * move também lá (cria a pasta com o mesmo nome se não existir), quando `noAutentique` for verdadeiro.
+ */
+export const moverContratosPasta = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ ids: z.array(z.string().uuid()).min(1).max(500), pasta: z.string().trim().max(80), noAutentique: z.boolean() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context as any;
+    await assertContratos(supabase);
+    const admin = await adminDb();
+    const pasta = data.pasta || null;
+    const { data: lista } = await admin.from("contratos").select("id, numero, provedor, provedor_documento_id, provedor_pasta_id, pasta").in("id", data.ids);
+    let pastaAut: { id: string } | null = null;
+    let erroPasta: string | null = null;
+    const doAutentique = (lista || []).filter((c: any) => c.provedor === "autentique" && c.provedor_documento_id);
+    if (data.noAutentique && doAutentique.length && pasta) {
+      try {
+        const { listarPastasAutentique, criarPastaAutentique } = await import("@/lib/autentique.server");
+        const todas = await listarPastasAutentique();
+        pastaAut = todas.find((p) => p.name.trim().toLowerCase() === pasta.toLowerCase()) ?? (await criarPastaAutentique(pasta));
+      } catch (e: any) { erroPasta = String(e?.message ?? e); }
+    }
+    let movidos = 0, noAutentique = 0;
+    const falhasAutentique: string[] = [];
+    const inicio = Date.now();
+    for (const c of lista || []) {
+      const upd: Record<string, unknown> = { pasta };
+      if (data.noAutentique && c.provedor === "autentique" && c.provedor_documento_id && (pastaAut || !pasta) && !erroPasta && Date.now() - inicio < 22_000) {
+        try {
+          const { moverDocumentoAutentique } = await import("@/lib/autentique.server");
+          await moverDocumentoAutentique(c.provedor_documento_id, pastaAut?.id ?? null, c.provedor_pasta_id);
+          upd.provedor_pasta_id = pastaAut?.id ?? null;
+          noAutentique++;
+        } catch (e: any) { falhasAutentique.push(`nº ${c.numero}: ${String(e?.message ?? e)}`); }
+      }
+      const { error } = await admin.from("contratos").update(upd).eq("id", c.id);
+      if (error) throw new Error(`${error.message}. Confira se a migração 0061 foi aplicada.`);
+      if ((c.pasta ?? null) !== pasta) await evento(admin, c.id, "pasta", pasta ? `Movido para a pasta "${pasta}"` : "Retirado da pasta", userId);
+      movidos++;
+    }
+    return { movidos, noAutentique, falhasAutentique: erroPasta ? [`pasta no Autentique: ${erroPasta}`] : falhasAutentique };
   });
 
 export const cancelarContrato = createServerFn({ method: "POST" })

@@ -24,6 +24,7 @@ import {
   type DadosContrato, type Veiculo, type SituacaoContrato,
 } from "@/lib/contratos";
 import { EQUIPAMENTOS_PADRAO } from "@/lib/contratos-modelos";
+import { AcoesLote } from "./acoes-lote";
 import { ajustarContratoImportado, assinarInterno, atualizarAutentique, buscarClienteGsystem, cancelarContrato, enviarAutentique, enviarContrato, prepararModelos, previaContrato, statusAutentique } from "@/lib/contratos.functions";
 import { CONTRATO_CSS } from "./contrato-css";
 
@@ -40,6 +41,8 @@ type Contrato = {
   testemunhas: { nome: string; cpf: string; assinado_em: string; ip: string | null }[]; cancelado_motivo: string | null; created_at: string;
   provedor: "proprio" | "autentique"; provedor_documento_id: string | null; provedor_link: string | null; provedor_verificacao: string | null;
   provedor_sandbox: boolean; arquivo_assinado_url: string | null; assinatura_geo: string | null;
+  pasta?: string | null;
+  categoria?: "cliente" | "fornecedor" | null;
 };
 const COLS = "id, numero, status, cliente_nome, cliente_documento, dados, vigencia_inicio, vigencia_meses, renovacao_automatica, valor_mensal, valor_implantacao, signatario_nome, signatario_cpf, signatario_email, signatario_telefone, conteudo_html, hash_sha256, token, enviado_em, visualizado_em, assinado_em, assinatura_nome, assinatura_ip, assinatura_user_agent, assinatura_canal, contratada_assinado_nome, contratada_assinado_em, contratada_ip, testemunhas, cancelado_motivo, created_at, provedor, provedor_documento_id, provedor_link, provedor_verificacao, provedor_sandbox, arquivo_assinado_url, assinatura_geo";
 
@@ -84,16 +87,28 @@ function Lista() {
   const [f, setF] = useState("all");
   const [editar, setEditar] = useState<Contrato | "novo" | null>(null);
   const [abrir, setAbrir] = useState<Contrato | null>(null);
+  const [pasta, setPasta] = useState("all");
+  const [cat, setCat] = useState<"all" | "cliente" | "fornecedor">("all");
+  const [sel, setSel] = useState<string[]>([]);
   const { data: contratos = [], isLoading } = useQuery({
     queryKey: ["contratos"],
-    queryFn: async () => ((await db.from("contratos").select(COLS).order("numero", { ascending: false }).limit(2000)).data || []) as Contrato[],
+    queryFn: async () => {
+      // A coluna "pasta" vem da migração 0061; sem ela a lista continua funcionando.
+      let r = await db.from("contratos").select(`${COLS}, pasta, categoria`).order("numero", { ascending: false }).limit(2000);
+      if (r.error) r = await db.from("contratos").select(COLS).order("numero", { ascending: false }).limit(2000);
+      return (r.data || []) as Contrato[];
+    },
   });
   const linhas = useMemo(() => contratos.filter((c) => {
     const s = situacao(c, hoje);
     if (f !== "all" && s !== f) return false;
+    if (cat !== "all" && (c.categoria ?? "cliente") !== cat) return false;
+    if (pasta === "sem" ? !!c.pasta : pasta !== "all" && c.pasta !== pasta) return false;
     const t = q.trim().toLowerCase();
     return !t || `${c.numero} ${c.cliente_nome} ${c.cliente_documento}`.toLowerCase().includes(t);
-  }), [contratos, q, f, hoje]);
+  }), [contratos, q, f, hoje, pasta, cat]);
+  const pastas = useMemo(() => [...new Set(contratos.map((c) => c.pasta).filter(Boolean) as string[])].sort((a, b) => a.localeCompare(b, "pt-BR")), [contratos]);
+  const todosMarcados = linhas.length > 0 && linhas.every((c) => sel.includes(c.id));
   const contar = (s: SituacaoContrato) => contratos.filter((c) => situacao(c, hoje) === s).length;
 
   return (
@@ -117,18 +132,38 @@ function Lista() {
             {(Object.keys(STATUS_LABEL) as SituacaoContrato[]).map((s) => <SelectItem key={s} value={s}>{STATUS_LABEL[s]}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Select value={cat} onValueChange={(v) => setCat(v as any)}>
+          <SelectTrigger className="w-[170px]"><SelectValue /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Clientes e fornecedores</SelectItem>
+            <SelectItem value="cliente">Contratos com clientes ({contratos.filter((c) => (c.categoria ?? "cliente") === "cliente").length})</SelectItem>
+            <SelectItem value="fornecedor">Contratos com fornecedores ({contratos.filter((c) => c.categoria === "fornecedor").length})</SelectItem>
+          </SelectContent>
+        </Select>
+        {pastas.length > 0 && (
+          <Select value={pasta} onValueChange={setPasta}>
+            <SelectTrigger className="w-[190px]"><SelectValue /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas as pastas</SelectItem>
+              <SelectItem value="sem">Sem pasta</SelectItem>
+              {pastas.map((p) => <SelectItem key={p} value={p}>{p}</SelectItem>)}
+            </SelectContent>
+          </Select>
+        )}
         <Button onClick={() => setEditar("novo")}><Plus className="h-4 w-4 mr-1" />Novo contrato</Button>
       </div>
+      <AcoesLote selecionados={contratos.filter((c) => sel.includes(c.id))} pastasLocais={pastas} onLimpar={() => setSel([])} />
       <Card>
         {isLoading ? <Loader2 className="h-5 w-5 animate-spin m-4" /> : (
           <Table>
-            <TableHeader><TableRow><TableHead>Nº</TableHead><TableHead>Cliente</TableHead><TableHead>Situação</TableHead><TableHead>Vigência</TableHead><TableHead>Enviado</TableHead><TableHead>Assinado</TableHead></TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead className="w-8"><Checkbox checked={todosMarcados} onCheckedChange={(v) => setSel(v ? [...new Set([...sel, ...linhas.map((c) => c.id)])] : sel.filter((id) => !linhas.some((c) => c.id === id)))} aria-label="Marcar todos" /></TableHead><TableHead>Nº</TableHead><TableHead>Cliente</TableHead><TableHead>Situação</TableHead><TableHead>Vigência</TableHead><TableHead>Enviado</TableHead><TableHead>Assinado</TableHead></TableRow></TableHeader>
             <TableBody>
-              {linhas.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-8">Nenhum contrato.</TableCell></TableRow>}
+              {linhas.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-8">Nenhum contrato.</TableCell></TableRow>}
               {linhas.map((c) => (
                 <TableRow key={c.id} className="cursor-pointer" onClick={() => (c.status === "rascunho" ? setEditar(c) : setAbrir(c))}>
+                  <TableCell onClick={(e) => e.stopPropagation()}><Checkbox checked={sel.includes(c.id)} onCheckedChange={(v) => setSel((x) => (v ? [...x, c.id] : x.filter((id) => id !== c.id)))} aria-label={`Marcar contrato ${c.numero}`} /></TableCell>
                   <TableCell>{c.numero}</TableCell>
-                  <TableCell className="font-medium">{c.cliente_nome}<div className="text-xs text-muted-foreground">{formatarDoc(c.cliente_documento)}</div></TableCell>
+                  <TableCell className="font-medium">{c.cliente_nome}<div className="text-xs text-muted-foreground">{formatarDoc(c.cliente_documento)}{c.provedor === "autentique" && <Badge variant="outline" className="ml-2 text-[10px]">Autentique</Badge>}{c.categoria === "fornecedor" && <Badge variant="outline" className="ml-1 text-[10px] border-violet-500/50 text-violet-700">Fornecedor</Badge>}{c.pasta && <Badge variant="secondary" className="ml-1 text-[10px]">{c.pasta}</Badge>}</div></TableCell>
                   <TableCell><SituacaoBadge s={situacao(c, hoje)} /></TableCell>
                   <TableCell className="whitespace-nowrap">{c.vigencia_inicio ? `${formatDataBR(c.vigencia_inicio)} → ${formatDataBR(fimVigencia(c.vigencia_inicio, c.vigencia_meses, c.renovacao_automatica, hoje))}` : "—"}</TableCell>
                   <TableCell>{dh(c.enviado_em)}</TableCell>

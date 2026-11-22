@@ -169,3 +169,42 @@ export async function listarDocumentosAutentique(page: number, limit = 60) {
   }`, { limit, page });
   return data.documents as { total: number; data: any[] };
 }
+
+/** Reenvia o convite de assinatura pelo próprio Autentique (mesmo canal do envio). */
+export async function reenviarAssinaturasAutentique(publicIds: string[]) {
+  const data = await consulta(`mutation { resendSignatures(public_ids: ${JSON.stringify(publicIds)}) }`);
+  return data?.resendSignatures === true;
+}
+
+/** Gera o link de assinatura de um signatário, para mandar por outro canal (WhatsApp/e-mail do Gestão Online). */
+export async function linkAssinaturaAutentique(publicId: string): Promise<string | null> {
+  const data = await consulta(`mutation { createLinkToSignature(public_id: ${JSON.stringify(publicId)}) { short_link } }`);
+  return data?.createLinkToSignature?.short_link ?? null;
+}
+
+/** Pastas da conta (primeira página grande; o Autentique pagina). */
+export async function listarPastasAutentique(): Promise<{ id: string; name: string; path: string | null }[]> {
+  const out: { id: string; name: string; path: string | null }[] = [];
+  for (let page = 1; page <= 10; page++) {
+    const data = await consulta(`query { folders(limit: 100, page: ${page}, display_children: true) { data { id name path subfolders { id name path } } has_more_pages } }`);
+    const f = data?.folders;
+    for (const x of f?.data || []) {
+      out.push({ id: x.id, name: x.name, path: x.path ?? null });
+      for (const s of x.subfolders || []) out.push({ id: s.id, name: s.name, path: s.path ?? null });
+    }
+    if (!f?.has_more_pages) break;
+  }
+  return out;
+}
+
+export async function criarPastaAutentique(nome: string): Promise<{ id: string; name: string }> {
+  const data = await consulta(`mutation ($folder: FolderInput!) { createFolder(folder: $folder) { id name } }`, { folder: { name: nome } });
+  return data.createFolder;
+}
+
+/** Move o documento para a pasta (null tira da pasta). `atual` é a pasta onde ele está, se conhecida. */
+export async function moverDocumentoAutentique(documentoId: string, pastaId: string | null, atual?: string | null) {
+  const args = [`document_id: ${JSON.stringify(documentoId)}`, `folder_id: ${pastaId ? JSON.stringify(pastaId) : "null"}`];
+  if (atual) args.push(`current_folder_id: ${JSON.stringify(atual)}`);
+  await consulta(`mutation { moveDocumentToFolder(${args.join(", ")}) }`);
+}

@@ -243,6 +243,8 @@ export const EVENTO_LABEL: Record<string, string> = {
   recusado: "Recusado pelo signatário",
   importado: "Importado do Autentique",
   ajustado: "Dados do contrato completados",
+  pasta: "Pasta alterada",
+  categoria: "Categoria alterada",
 };
 
 /** Código de 6 dígitos. */
