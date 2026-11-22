@@ -16,10 +16,8 @@ export const Route = createFileRoute("/api/public/hooks/autentique")({
         }
         let ev: any = null;
         try { ev = JSON.parse(corpo); } catch { return new Response("json inválido", { status: 400 }); }
-        const e = ev?.event ?? ev;
-        const tipo = String(e?.type ?? "");
-        const data = e?.data ?? {};
-        const docId: string | undefined = data?.object === "document" ? data.id : data?.document?.id ?? data?.document_id ?? data?.document;
+        const { documentoDoWebhook } = await import("@/lib/contratos");
+        const { tipo, docId } = documentoDoWebhook(ev);
         if (!docId || !/^(signature|document)\./.test(tipo)) return new Response("ignorado", { status: 200 });
         try {
           const { sincronizarPorDocumento } = await import("@/lib/contratos-autentique.server");

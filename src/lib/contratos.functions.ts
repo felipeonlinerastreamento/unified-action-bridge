@@ -417,8 +417,10 @@ export const integracaoAutentique = createServerFn({ method: "POST" })
     const { supabase, userId } = context as any;
     await assertGestor(supabase, userId); // não depende das tabelas de Contratos existirem
     const { configAutentique, contaAutentique } = await import("@/lib/autentique.server");
-    const host = getRequestHeader("x-forwarded-host") || getRequestHeader("host");
-    const webhookUrl = host ? `https://${host}/api/public/hooks/autentique` : "/api/public/hooks/autentique";
+    // Endereço público de produção: o da prévia do Lovable exige login e o Autentique não consegue entregar lá.
+    const host = getRequestHeader("x-forwarded-host") || getRequestHeader("host") || "";
+    const hostPublico = !host || /lovable|localhost|127\.0\.0\.1/i.test(host) ? "gestao.onlinerastreamento.com.br" : host;
+    const webhookUrl = `https://${hostPublico}/api/public/hooks/autentique`;
     const cfg = await configAutentique();
     const base = {
       configurado: !!cfg.token, origemToken: cfg.origemToken, finalToken: cfg.token ? cfg.token.slice(-4) : null,
@@ -443,11 +445,21 @@ export const integracaoAutentique = createServerFn({ method: "POST" })
 
 export const importarAutentique = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
-  .handler(async ({ context }) => {
+  .inputValidator((d) => z.object({ pagina: z.number().int().min(1).max(200).default(1) }).parse(d ?? {}))
+  .handler(async ({ data, context }) => {
     const { supabase, userId } = context as any;
     await assertContratos(supabase);
     const { importarDocumentosAutentique } = await import("@/lib/contratos-autentique.server");
-    return importarDocumentosAutentique(userId);
+    return importarDocumentosAutentique(userId, data.pagina);
+  });
+
+/** Consulta no Autentique os contratos ainda pendentes (quando o webhook não chegou). */
+export const sincronizarPendentesAutentiqueFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertContratos((context as any).supabase);
+    const { sincronizarPendentesAutentique } = await import("@/lib/contratos-autentique.server");
+    return sincronizarPendentesAutentique();
   });
 
 export const ajustarContratoImportado = createServerFn({ method: "POST" })

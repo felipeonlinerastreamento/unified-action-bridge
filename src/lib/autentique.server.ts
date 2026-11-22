@@ -91,8 +91,10 @@ export async function criarDocumentoAutentique(opts: { nome: string; pdf: Uint8A
   return data.createDocument as { id: string; signatures: { public_id: string; name: string | null; email: string | null; action: { name: string } | null; link: { short_link: string } | null }[] };
 }
 
-const CONSULTAR = `query ($id: UUID!) {
-  document(id: $id) {
+// O id vai escrito na própria consulta (string JSON): os ids do Autentique nem sempre são UUID,
+// e declarar `$id: UUID!` faz a API recusar ids no formato de hash.
+const consultarQuery = (id: string) => `query {
+  document(id: ${JSON.stringify(id)}) {
     id name
     files { original signed }
     signatures {
@@ -109,7 +111,7 @@ export async function consultarDocumentoAutentique(id: string) {
   const res = await fetch(URL_API, {
     method: "POST",
     headers: { Authorization: `Bearer ${await token()}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ query: CONSULTAR, variables: { id } }),
+    body: JSON.stringify({ query: consultarQuery(id) }),
   });
   const data = await lerResposta(res);
   return data.document as any;

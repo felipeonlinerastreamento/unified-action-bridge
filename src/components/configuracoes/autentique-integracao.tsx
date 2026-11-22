@@ -10,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { useAuth } from "@/hooks/use-auth";
-import { importarAutentique, integracaoAutentique, salvarConfigAutentique } from "@/lib/contratos.functions";
+import { importarAutentique, integracaoAutentique, salvarConfigAutentique, sincronizarPendentesAutentiqueFn } from "@/lib/contratos.functions";
 
 const dh = (iso?: string | null) => (iso ? new Date(iso).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo", dateStyle: "short", timeStyle: "short" }) : "nenhum ainda");
 
@@ -21,6 +21,9 @@ export function AutentiqueIntegracao() {
   const status = useServerFn(integracaoAutentique);
   const salvar = useServerFn(salvarConfigAutentique);
   const importar = useServerFn(importarAutentique);
+  const sincPend = useServerFn(sincronizarPendentesAutentiqueFn);
+  const [progresso, setProgresso] = useState<string | null>(null);
+  const [sincronizando, setSincronizando] = useState(false);
   const q = useQuery({ queryKey: ["autentique-integracao"], queryFn: () => status(), retry: false });
   const s = q.data as any;
   const [token, setToken] = useState("");
@@ -43,12 +46,35 @@ export function AutentiqueIntegracao() {
   };
   const doImportar = async () => {
     setImportando(true);
+    let novos = 0, existentes = 0, total = 0;
     try {
-      const r = await importar();
-      toast.success(`${r.novos} contrato(s) importado(s) do Autentique; ${r.existentes} já estavam no painel (${r.total} na conta).`);
+      let pagina: number | null = 1;
+      while (pagina) {
+        setProgresso(`Importando… ${novos + existentes}${total ? ` de ${total}` : ""}`);
+        const r: any = await importar({ data: { pagina } });
+        novos += r.novos; existentes += r.existentes; total = r.total || total;
+        pagina = r.proximaPagina ?? null;
+      }
+      toast.success(`${novos} contrato(s) importado(s) do Autentique; ${existentes} já estavam no painel (${total} na conta).`);
       q.refetch();
-    } catch (e: any) { toast.error(e?.message ?? "Falha ao importar do Autentique."); }
-    finally { setImportando(false); }
+    } catch (e: any) {
+      toast.error(`${e?.message ?? "Falha ao importar do Autentique."}${novos ? ` (${novos} já tinham sido importados; clique de novo para continuar)` : ""}`);
+    } finally { setImportando(false); setProgresso(null); }
+  };
+  const doSincronizar = async () => {
+    setSincronizando(true);
+    let verificados = 0, assinados = 0, cancelados = 0, erros = 0;
+    let ultimoErro: string | null = null;
+    try {
+      for (let volta = 0; volta < 20; volta++) {
+        const r: any = await sincPend();
+        verificados += r.verificados; assinados += r.assinados; cancelados += r.cancelados; erros += r.erros; ultimoErro = r.ultimoErro ?? ultimoErro;
+        if (!r.faltam || r.verificados === 0) break;
+      }
+      (erros ? toast.error : toast.success)(`${verificados} contrato(s) conferido(s) no Autentique: ${assinados} assinado(s), ${cancelados} recusado(s)${erros ? `, ${erros} com erro — ${ultimoErro}` : ""}.`);
+      q.refetch();
+    } catch (e: any) { toast.error(e?.message ?? "Falha ao sincronizar."); }
+    finally { setSincronizando(false); }
   };
 
   // Situação sempre visível: carregando, erro, sem chave, chave recusada ou conectado.
@@ -130,7 +156,8 @@ export function AutentiqueIntegracao() {
 
         <div className="flex flex-wrap gap-2">
           <Button variant="outline" size="sm" onClick={() => q.refetch()} disabled={q.isFetching}><RefreshCw className="h-4 w-4 mr-1" />Testar conexão</Button>
-          {s?.conta && <Button size="sm" onClick={doImportar} disabled={importando}>{importando ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Download className="h-4 w-4 mr-1" />}Importar contratos do Autentique</Button>}
+          {s?.conta && <Button size="sm" onClick={doImportar} disabled={importando}>{importando ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Download className="h-4 w-4 mr-1" />}{progresso ?? "Importar contratos do Autentique"}</Button>}
+          {s?.conta && <Button size="sm" variant="outline" onClick={doSincronizar} disabled={sincronizando}>{sincronizando ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1" />}Sincronizar pendentes</Button>}
         </div>
       </CardContent>
     </Card>

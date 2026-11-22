@@ -92,7 +92,9 @@ export async function sincronizarAutentique(contratoId: string): Promise<{ statu
   for (const s of doc.signatures || []) {
     const papel = papelDe(s.public_id);
     const nome = s.user?.name || s.name || "";
-    if (s.rejected && papel === "contratante" && c.status === "enviado") {
+    if (s.rejected && papel === "contratante" && c.status === "enviado" && !upd.status) {
+      // Recusa encerra o contrato (antes só gerava evento e repetia a cada sincronização).
+      Object.assign(upd, { status: "cancelado", cancelado_motivo: `Recusado no Autentique por ${nome}${s.rejected.reason ? `: ${s.rejected.reason}` : ""}` });
       novosEventos.push(["recusado", `${nome} recusou no Autentique${s.rejected.reason ? `: ${s.rejected.reason}` : ""}`, s.rejected.ip ?? null]);
     }
     if (s.viewed && papel === "contratante" && !c.visualizado_em) {
@@ -100,7 +102,7 @@ export async function sincronizarAutentique(contratoId: string): Promise<{ statu
       novosEventos.push(["visualizado", `Aberto no Autentique por ${nome}`, s.viewed.ip ?? null]);
     }
     if (!s.signed) continue;
-    if (papel === "contratante" && !c.assinado_em) {
+    if (papel === "contratante" && !c.assinado_em && upd.status !== "cancelado") {
       Object.assign(upd, {
         status: "assinado", assinado_em: quando(s.signed), assinatura_nome: nome, assinatura_ip: s.signed.ip ?? null,
         assinatura_canal: `autentique${c.provedor_verificacao && c.provedor_verificacao !== "nenhuma" ? `:${c.provedor_verificacao}` : ""}`,
@@ -139,53 +141,97 @@ export async function sincronizarPorDocumento(documentoId: string) {
  * Traz para o painel os documentos que já existem na conta do Autentique (contratos antigos).
  * Cada documento vira um contrato "importado" (sem texto congelado; o PDF fica no Autentique).
  * Não repete: documentos já ligados a um contrato são pulados.
+ * Roda em etapas de ~20 s (o servidor corta requisições longas): devolve `proximaPagina`
+ * enquanto houver mais, e a tela chama de novo a partir dela.
  */
-export async function importarDocumentosAutentique(userId: string) {
+export async function importarDocumentosAutentique(userId: string, paginaInicial = 1) {
   const { contaAutentique, listarDocumentosAutentique } = await import("@/lib/autentique.server");
+  const inicio = Date.now();
   const conta = await contaAutentique();
   const emailConta = String(conta?.email || "").toLowerCase();
+  const POR_PAGINA = 30;
   let novos = 0, existentes = 0, total = 0;
-  for (let page = 1; page <= 50; page++) {
-    const r = await listarDocumentosAutentique(page, 60);
+  let page = paginaInicial;
+  let proximaPagina: number | null = null;
+  for (; page <= 200; page++) {
+    const r = await listarDocumentosAutentique(page, POR_PAGINA);
     total = r.total ?? total;
     const docs = r.data || [];
     if (!docs.length) break;
-    const ids = docs.map((d: any) => d.id);
-    const { data: ja } = await db.from("contratos").select("provedor_documento_id").in("provedor_documento_id", ids);
+    const ids = docs.map((d: any) => String(d.id));
+    const { data: ja, error: eJa } = await db.from("contratos").select("provedor_documento_id").in("provedor_documento_id", ids);
+    if (eJa) throw new Error(eJa.message);
     const jaSet = new Set((ja || []).map((x: any) => x.provedor_documento_id));
+    const linhas: Record<string, unknown>[] = [];
     for (const d of docs) {
-      if (jaSet.has(d.id)) { existentes++; continue; }
-      const sigs: any[] = d.signatures || [];
-      const assinantes = sigs.filter((s) => (s.action?.name ?? "SIGN") !== "APPROVE");
-      const daConta = (s: any) => String(s.email || s.user?.email || "").toLowerCase() === emailConta;
-      const contratante = assinantes.find((s) => !daConta(s)) ?? assinantes[0] ?? null;
-      const contratada = assinantes.find((s) => daConta(s)) ?? null;
-      const recusado = sigs.find((s) => s.rejected);
-      const todosAssinaram = assinantes.length > 0 && assinantes.every((s) => s.signed);
-      const status = recusado ? "cancelado" : todosAssinaram ? "assinado" : "enviado";
-      const nomeContratante = contratante?.user?.name || contratante?.name || null;
-      const row: Record<string, unknown> = {
-        status, cliente_nome: d.name || "Documento do Autentique", cliente_documento: "",
-        dados: { importado: true, origem: "autentique" }, provedor: "autentique", provedor_documento_id: d.id,
-        provedor_link: contratante?.link?.short_link ?? null,
-        provedor_signatarios: sigs.map((s) => ({ public_id: s.public_id, nome: s.user?.name || s.name, papel: s === contratante ? "contratante" : s === contratada ? "contratada" : "outro" })),
-        signatario_nome: nomeContratante, signatario_email: contratante?.email || contratante?.user?.email || null,
-        enviado_em: d.created_at ? new Date(d.created_at).toISOString() : null,
-        visualizado_em: contratante?.viewed?.created_at ? new Date(contratante.viewed.created_at).toISOString() : null,
-        arquivo_assinado_url: d.files?.signed ?? null,
-        created_by: userId,
-      };
-      if (contratante?.signed) Object.assign(row, { assinado_em: new Date(contratante.signed.created_at).toISOString(), assinatura_nome: nomeContratante, assinatura_ip: contratante.signed.ip ?? null, assinatura_canal: "autentique" });
-      if (contratada?.signed) Object.assign(row, { contratada_assinado_nome: contratada.user?.name || contratada.name, contratada_assinado_em: new Date(contratada.signed.created_at).toISOString(), contratada_ip: contratada.signed.ip ?? null });
-      if (recusado) row.cancelado_motivo = `Recusado no Autentique${recusado.rejected?.reason ? `: ${recusado.rejected.reason}` : ""}`;
-      const { data: ins, error } = await db.from("contratos").insert(row).select("id").single();
-      if (error) throw new Error(error.message);
-      await evento(ins.id, "importado", `Importado do Autentique (documento ${d.id}, criado em ${d.created_at ?? "—"})`, userId);
-      novos++;
+      if (jaSet.has(String(d.id))) { existentes++; continue; }
+      linhas.push(linhaImportada(d, emailConta, userId));
     }
-    if (page * 60 >= (r.total ?? 0)) break;
+    if (linhas.length) {
+      const { data: ins, error } = await db.from("contratos").insert(linhas).select("id, provedor_documento_id, enviado_em");
+      if (error) throw new Error(`Falha ao gravar contratos importados: ${error.message}`);
+      const eventos = (ins || []).map((x: any) => ({
+        contrato_id: x.id, tipo: "importado", user_id: userId,
+        descricao: `Importado do Autentique (documento ${x.provedor_documento_id}, criado em ${x.enviado_em ?? "—"})`,
+      }));
+      if (eventos.length) await db.from("contratos_eventos").insert(eventos);
+      novos += ins?.length ?? 0;
+    }
+    if (page * POR_PAGINA >= (r.total ?? 0)) break;
+    if (Date.now() - inicio > 20_000) { proximaPagina = page + 1; break; }
   }
-  return { novos, existentes, total };
+  return { novos, existentes, total, proximaPagina };
+}
+
+function linhaImportada(d: any, emailConta: string, userId: string): Record<string, unknown> {
+  const sigs: any[] = d.signatures || [];
+  const assinantes = sigs.filter((s) => (s.action?.name ?? "SIGN") !== "APPROVE");
+  const daConta = (s: any) => String(s.email || s.user?.email || "").toLowerCase() === emailConta;
+  const contratante = assinantes.find((s) => !daConta(s)) ?? assinantes[0] ?? null;
+  const contratada = assinantes.find((s) => daConta(s)) ?? null;
+  const recusado = sigs.find((s) => s.rejected);
+  const todosAssinaram = assinantes.length > 0 && assinantes.every((s) => s.signed);
+  const status = recusado ? "cancelado" : todosAssinaram ? "assinado" : "enviado";
+  const nomeContratante = contratante?.user?.name || contratante?.name || null;
+  const iso = (v: any) => (v ? new Date(v).toISOString() : null);
+  const row: Record<string, unknown> = {
+    status, cliente_nome: d.name || "Documento do Autentique", cliente_documento: "",
+    dados: { importado: true, origem: "autentique" }, provedor: "autentique", provedor_documento_id: String(d.id),
+    provedor_link: contratante?.link?.short_link ?? null,
+    provedor_signatarios: sigs.map((s) => ({ public_id: s.public_id, nome: s.user?.name || s.name, papel: s === contratante ? "contratante" : s === contratada ? "contratada" : "outro" })),
+    signatario_nome: nomeContratante, signatario_email: contratante?.email || contratante?.user?.email || null,
+    enviado_em: iso(d.created_at),
+    visualizado_em: iso(contratante?.viewed?.created_at),
+    arquivo_assinado_url: d.files?.signed ?? null,
+    created_by: userId,
+  };
+  if (contratante?.signed) Object.assign(row, { assinado_em: iso(contratante.signed.created_at), assinatura_nome: nomeContratante, assinatura_ip: contratante.signed.ip ?? null, assinatura_canal: "autentique" });
+  if (contratada?.signed) Object.assign(row, { contratada_assinado_nome: contratada.user?.name || contratada.name, contratada_assinado_em: iso(contratada.signed.created_at), contratada_ip: contratada.signed.ip ?? null });
+  if (recusado) row.cancelado_motivo = `Recusado no Autentique${recusado.rejected?.reason ? `: ${recusado.rejected.reason}` : ""}`;
+  return row;
+}
+
+/**
+ * Consulta no Autentique todos os contratos ainda "enviados" (para quando o webhook não chegou).
+ * Etapas de ~20 s; devolve quantos faltam.
+ */
+export async function sincronizarPendentesAutentique() {
+  const inicio = Date.now();
+  const { data: pend, error } = await db.from("contratos").select("id").eq("provedor", "autentique").eq("status", "enviado")
+    .not("provedor_documento_id", "is", null).order("enviado_em", { ascending: true }).limit(500);
+  if (error) throw new Error(error.message);
+  let verificados = 0, assinados = 0, cancelados = 0, erros = 0;
+  let ultimoErro: string | null = null;
+  for (const c of pend || []) {
+    if (Date.now() - inicio > 20_000) break;
+    try {
+      const r = await sincronizarAutentique(c.id);
+      verificados++;
+      if (r.status === "assinado") assinados++;
+      if (r.status === "cancelado") cancelados++;
+    } catch (e: any) { erros++; ultimoErro = String(e?.message ?? e); }
+  }
+  return { pendentes: pend?.length ?? 0, verificados, assinados, cancelados, erros, ultimoErro, faltam: (pend?.length ?? 0) - verificados - erros };
 }
 
 /** Contratos importados não têm os dados do sistema: permite completar cliente e vigência. */

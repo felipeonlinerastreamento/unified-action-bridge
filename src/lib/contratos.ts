@@ -283,3 +283,21 @@ export function telefoneInternacional(tel: string): string | null {
   if ((d.length === 12 || d.length === 13) && d.startsWith("55")) return `+${d}`;
   return null;
 }
+
+/**
+ * Tipo do evento e id do documento de um aviso (webhook) do Autentique.
+ * Aceita os dois formatos da documentação: recurso direto em `event.data`
+ * ou dentro de `event.data.object`. Em `signature.*` o documento vem em `data.document`.
+ */
+export function documentoDoWebhook(ev: any): { tipo: string; docId: string | null } {
+  const e = ev?.event ?? ev ?? {};
+  const tipo = String(e?.type ?? "");
+  const d0 = e?.data ?? {};
+  const r = d0 && typeof d0.object === "object" && d0.object !== null ? d0.object : d0;
+  const tipoObj = typeof r?.object === "string" ? r.object : tipo.split(".")[0];
+  const doc = r?.document;
+  const id = tipoObj === "document"
+    ? r?.id
+    : (typeof doc === "object" && doc !== null ? doc.id : doc) ?? r?.document_id ?? null;
+  return { tipo, docId: id ? String(id) : null };
+}

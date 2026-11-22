@@ -104,3 +104,20 @@ describe("PDF e Autentique", () => {
     assert.equal(telefoneInternacional("123"), null);
   });
 });
+
+import { documentoDoWebhook } from "./contratos";
+describe("webhook do Autentique", () => {
+  it("document.* com o recurso direto em data", () => {
+    assert.deepEqual(documentoDoWebhook({ event: { type: "document.finished", data: { object: "document", id: "asc7d2" } } }), { tipo: "document.finished", docId: "asc7d2" });
+  });
+  it("signature.* traz o documento em data.document", () => {
+    assert.deepEqual(documentoDoWebhook({ event: { type: "signature.accepted", data: { object: "signature", public_id: "f89", document: "doc1" } } }), { tipo: "signature.accepted", docId: "doc1" });
+  });
+  it("formato com o recurso dentro de data.object", () => {
+    assert.equal(documentoDoWebhook({ event: { type: "signature.viewed", data: { object: { public_id: "x", document: { id: "doc2" } } } } }).docId, "doc2");
+    assert.equal(documentoDoWebhook({ event: { type: "document.updated", data: { object: { id: "doc3" } } } }).docId, "doc3");
+  });
+  it("sem documento fica nulo", () => {
+    assert.equal(documentoDoWebhook({ event: { type: "member.created", data: { user: {} } } }).docId, null);
+  });
+});
