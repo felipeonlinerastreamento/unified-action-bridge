@@ -100,8 +100,8 @@ export const URL_TO_MENU_SLUG: Record<string, string> = {
 };
 
 // Itens do grupo "Aplicações" do menu lateral (a Agenda entra com seus submenus).
-export const APPLICATION_MENU_URLS = ["/painel-tv", "/assistente-ia", "/agenda", "/gamificacao"] as const;
-export const APPLICATION_MENU_SLUGS = ["painel-tv", "assistente-ia", "gamificacao"];
+export const APPLICATION_MENU_URLS = ["/painel-tv", "/assistente-ia", "/reconnect", "/agenda", "/gamificacao"] as const;
+export const APPLICATION_MENU_SLUGS = ["painel-tv", "assistente-ia", "reconnect", "gamificacao"];
 
 export function isApplicationPath(pathname: string): boolean {
   return APPLICATION_MENU_URLS.some((url) => pathname === url || pathname.startsWith(`${url}/`));

@@ -77,7 +77,6 @@ const mainItems = [
   { title: "Empresas", url: "/empresas", icon: Building2 },
   { title: "Estoque", url: "/estoque", icon: Boxes },
   { title: "Contratos", url: "/contratos", icon: FileSignature },
-  { title: "Reconnect", url: "/reconnect", icon: WifiOff },
   { title: "Relatórios", url: "/relatorios", icon: BarChart3 },
   
   { title: "Chat com Operadores", url: "/chat-operadores", icon: MessageCircle },
@@ -153,7 +152,8 @@ export function AppSidebar() {
   const showAssistente = canSeeUrl("/assistente-ia");
   const showAgenda = visibleAgendaItems.length > 0;
   const showGamificacao = canSeeGamification({ isAdmin });
-  const showApps = showPainelTv || showAssistente || showAgenda || showGamificacao;
+  const showReconnect = canSeeUrl("/reconnect");
+  const showApps = showPainelTv || showAssistente || showAgenda || showGamificacao || showReconnect;
   const isAppsActive = isApplicationPath(location.pathname);
   const [appsOpen, setAppsOpen] = useState(isAppsActive);
   const [agendaOpen, setAgendaOpen] = useState(isAgendaActive);
@@ -162,6 +162,7 @@ export function AppSidebar() {
   const appLinks = [
     { show: showPainelTv, title: "Painel TV", url: "/painel-tv", icon: Monitor },
     { show: showAssistente, title: "Assistente IA", url: "/assistente-ia", icon: Bot },
+    { show: showReconnect, title: "Reconnect", url: "/reconnect", icon: WifiOff },
   ];
 
 
@@ -275,7 +276,7 @@ export function AppSidebar() {
                 </SidebarMenuItem>
               )}
 
-              {/* Aplicações: Painel TV, Assistente IA, Agenda (com submenus) e Gamificação */}
+              {/* Aplicações: Painel TV, Assistente IA, Reconnect, Agenda (com submenus) e Gamificação */}
               {showApps && (
                 <Collapsible open={appsOpen} onOpenChange={setAppsOpen} className="group/apps">
                   <SidebarMenuItem>
