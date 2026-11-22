@@ -66,12 +66,12 @@ export async function enviarPeloAutentique(opts: {
   }));
   const { error } = await db.from("contratos").update({
     status: "enviado", provedor: "autentique", provedor_documento_id: doc.id, provedor_link: contratante?.link?.short_link ?? null,
-    provedor_signatarios: papeis, provedor_verificacao: opts.verificacao, provedor_sandbox: autentiqueSandbox(),
+    provedor_signatarios: papeis, provedor_verificacao: opts.verificacao, provedor_sandbox: await autentiqueSandbox(),
     conteudo_html: html, hash_sha256: hash, enviado_em: new Date().toISOString(),
     modelos_versao: { licenciamento: opts.modelos.contrato.versao, termo_adesao: opts.modelos.termo.versao },
   }).eq("id", c.id).eq("status", "rascunho");
   if (error) throw new Error(error.message);
-  await evento(c.id, "enviado", `Autentique${autentiqueSandbox() ? " (teste)" : ""} — documento ${doc.id}, ${opts.canal === "email" ? "e-mail" : "WhatsApp"}, verificação ${opts.verificacao}. SHA-256 ${hash}`, opts.userId);
+  await evento(c.id, "enviado", `Autentique${(await autentiqueSandbox()) ? " (teste)" : ""} — documento ${doc.id}, ${opts.canal === "email" ? "e-mail" : "WhatsApp"}, verificação ${opts.verificacao}. SHA-256 ${hash}`, opts.userId);
   return { documentoId: doc.id, link: contratante?.link?.short_link ?? null };
 }
 
