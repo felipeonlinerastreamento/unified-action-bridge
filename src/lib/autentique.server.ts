@@ -100,3 +100,41 @@ export async function webhookValido(corpo: string, assinatura: string | null): P
   for (let i = 0; i < hex.length; i++) diff |= hex.charCodeAt(i) ^ a.charCodeAt(i);
   return diff === 0;
 }
+
+async function consulta(query: string, variables: Record<string, unknown> = {}) {
+  const res = await fetch(URL_API, {
+    method: "POST",
+    headers: { Authorization: `Bearer ${token()}`, "Content-Type": "application/json" },
+    body: JSON.stringify({ query, variables }),
+  });
+  return lerResposta(res);
+}
+
+/** Conta ligada à chave (para a tela de Integrações). */
+export async function contaAutentique() {
+  const data = await consulta(`query { me { name email organization { name cnpj } subscription { has_premium_features documents credits } } }`);
+  return data.me as { name: string; email: string; organization?: { name: string; cnpj: string | null } | null; subscription?: { has_premium_features: boolean; documents: number | null; credits: number | null } | null };
+}
+
+/** Lista documentos da conta (página começa em 1). */
+export async function listarDocumentosAutentique(page: number, limit = 60) {
+  const data = await consulta(`query ($limit: Int!, $page: Int!) {
+    documents(limit: $limit, page: $page) {
+      total
+      data {
+        id name created_at
+        files { original signed }
+        signatures {
+          public_id name email created_at
+          action { name }
+          link { short_link }
+          user { name email }
+          viewed { created_at ip }
+          signed { created_at ip }
+          rejected { created_at ip reason }
+        }
+      }
+    }
+  }`, { limit, page });
+  return data.documents as { total: number; data: any[] };
+}

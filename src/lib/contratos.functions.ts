@@ -27,7 +27,8 @@ async function sha256(texto: string): Promise<string> {
 
 async function assertContratos(supabase: any) {
   const { data, error } = await supabase.rpc("contratos_allowed");
-  if (error || data !== true) throw new Error("Você não tem acesso a Contratos.");
+  if (error) throw new Error(`Não foi possível conferir o acesso a Contratos: ${error.message}. Confira se as migrações 0053 e 0054 foram aplicadas no banco.`);
+  if (data !== true) throw new Error("Você não tem acesso a Contratos.");
 }
 
 async function evento(admin: Admin, contratoId: string, tipo: string, descricao: string | null, userId: string | null = null) {
@@ -399,4 +400,49 @@ export const atualizarAutentique = createServerFn({ method: "POST" })
     await assertContratos((context as any).supabase);
     const { sincronizarAutentique } = await import("@/lib/contratos-autentique.server");
     return sincronizarAutentique(data.id);
+  });
+
+/** Status da integração para Configurações › Integrações. */
+export const integracaoAutentique = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertContratos((context as any).supabase);
+    const { autentiqueConfigurado, autentiqueSandbox, contaAutentique } = await import("@/lib/autentique.server");
+    const host = getRequestHeader("x-forwarded-host") || getRequestHeader("host");
+    const webhookUrl = host ? `https://${host}/api/public/hooks/autentique` : "/api/public/hooks/autentique";
+    const base = { configurado: autentiqueConfigurado(), sandbox: autentiqueSandbox(), segredoWebhook: !!process.env.AUTENTIQUE_WEBHOOK_SECRET, webhookUrl };
+    if (!base.configurado) return { ...base, conta: null, erro: null };
+    try {
+      const conta = await contaAutentique();
+      const admin = await adminDb();
+      const { count } = await admin.from("contratos").select("id", { count: "exact", head: true }).eq("provedor", "autentique");
+      const { data: ult } = await admin.from("contratos_eventos").select("created_at").in("tipo", ["assinado_contratante", "assinado_contratada", "visualizado", "recusado"]).order("created_at", { ascending: false }).limit(1).maybeSingle();
+      return { ...base, conta, erro: null, contratosNoPainel: count ?? 0, ultimoRetorno: ult?.created_at ?? null };
+    } catch (e: any) {
+      return { ...base, conta: null, erro: String(e?.message ?? e) };
+    }
+  });
+
+export const importarAutentique = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase, userId } = context as any;
+    await assertContratos(supabase);
+    const { importarDocumentosAutentique } = await import("@/lib/contratos-autentique.server");
+    return importarDocumentosAutentique(userId);
+  });
+
+export const ajustarContratoImportado = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({
+    id: z.string().uuid(), cliente_nome: z.string().trim().min(2).max(200), cliente_documento: z.string().max(20),
+    vigencia_inicio: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(), vigencia_meses: z.number().int().min(1).max(120), renovacao_automatica: z.boolean(),
+  }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context as any;
+    await assertContratos(supabase);
+    const { ajustarImportado } = await import("@/lib/contratos-autentique.server");
+    const { id, ...campos } = data;
+    await ajustarImportado(id, { ...campos, cliente_documento: soDigitos(campos.cliente_documento) }, userId);
+    return { ok: true };
   });

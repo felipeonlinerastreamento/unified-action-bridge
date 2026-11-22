@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { AutentiqueIntegracao } from "@/components/configuracoes/autentique-integracao";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
 import { AppLayout } from "@/components/app-layout";
@@ -104,6 +105,7 @@ function ConfiguracoesIndexPage() {
         </div>
         <GsystemConnectionTest />
         <GsystemForceSync />
+        <AutentiqueIntegracao />
         <ChannelsConfig />
         <EmailChannelsConfig />
       </div>

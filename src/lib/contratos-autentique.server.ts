@@ -134,3 +134,65 @@ export async function sincronizarPorDocumento(documentoId: string) {
   if (!c) return null;
   return sincronizarAutentique(c.id);
 }
+
+/**
+ * Traz para o painel os documentos que já existem na conta do Autentique (contratos antigos).
+ * Cada documento vira um contrato "importado" (sem texto congelado; o PDF fica no Autentique).
+ * Não repete: documentos já ligados a um contrato são pulados.
+ */
+export async function importarDocumentosAutentique(userId: string) {
+  const { contaAutentique, listarDocumentosAutentique } = await import("@/lib/autentique.server");
+  const conta = await contaAutentique();
+  const emailConta = String(conta?.email || "").toLowerCase();
+  let novos = 0, existentes = 0, total = 0;
+  for (let page = 1; page <= 50; page++) {
+    const r = await listarDocumentosAutentique(page, 60);
+    total = r.total ?? total;
+    const docs = r.data || [];
+    if (!docs.length) break;
+    const ids = docs.map((d: any) => d.id);
+    const { data: ja } = await db.from("contratos").select("provedor_documento_id").in("provedor_documento_id", ids);
+    const jaSet = new Set((ja || []).map((x: any) => x.provedor_documento_id));
+    for (const d of docs) {
+      if (jaSet.has(d.id)) { existentes++; continue; }
+      const sigs: any[] = d.signatures || [];
+      const assinantes = sigs.filter((s) => (s.action?.name ?? "SIGN") !== "APPROVE");
+      const daConta = (s: any) => String(s.email || s.user?.email || "").toLowerCase() === emailConta;
+      const contratante = assinantes.find((s) => !daConta(s)) ?? assinantes[0] ?? null;
+      const contratada = assinantes.find((s) => daConta(s)) ?? null;
+      const recusado = sigs.find((s) => s.rejected);
+      const todosAssinaram = assinantes.length > 0 && assinantes.every((s) => s.signed);
+      const status = recusado ? "cancelado" : todosAssinaram ? "assinado" : "enviado";
+      const nomeContratante = contratante?.user?.name || contratante?.name || null;
+      const row: Record<string, unknown> = {
+        status, cliente_nome: d.name || "Documento do Autentique", cliente_documento: "",
+        dados: { importado: true, origem: "autentique" }, provedor: "autentique", provedor_documento_id: d.id,
+        provedor_link: contratante?.link?.short_link ?? null,
+        provedor_signatarios: sigs.map((s) => ({ public_id: s.public_id, nome: s.user?.name || s.name, papel: s === contratante ? "contratante" : s === contratada ? "contratada" : "outro" })),
+        signatario_nome: nomeContratante, signatario_email: contratante?.email || contratante?.user?.email || null,
+        enviado_em: d.created_at ? new Date(d.created_at).toISOString() : null,
+        visualizado_em: contratante?.viewed?.created_at ? new Date(contratante.viewed.created_at).toISOString() : null,
+        arquivo_assinado_url: d.files?.signed ?? null,
+        created_by: userId,
+      };
+      if (contratante?.signed) Object.assign(row, { assinado_em: new Date(contratante.signed.created_at).toISOString(), assinatura_nome: nomeContratante, assinatura_ip: contratante.signed.ip ?? null, assinatura_canal: "autentique" });
+      if (contratada?.signed) Object.assign(row, { contratada_assinado_nome: contratada.user?.name || contratada.name, contratada_assinado_em: new Date(contratada.signed.created_at).toISOString(), contratada_ip: contratada.signed.ip ?? null });
+      if (recusado) row.cancelado_motivo = `Recusado no Autentique${recusado.rejected?.reason ? `: ${recusado.rejected.reason}` : ""}`;
+      const { data: ins, error } = await db.from("contratos").insert(row).select("id").single();
+      if (error) throw new Error(error.message);
+      await evento(ins.id, "importado", `Importado do Autentique (documento ${d.id}, criado em ${d.created_at ?? "—"})`, userId);
+      novos++;
+    }
+    if (page * 60 >= (r.total ?? 0)) break;
+  }
+  return { novos, existentes, total };
+}
+
+/** Contratos importados não têm os dados do sistema: permite completar cliente e vigência. */
+export async function ajustarImportado(id: string, campos: { cliente_nome: string; cliente_documento: string; vigencia_inicio: string | null; vigencia_meses: number; renovacao_automatica: boolean }, userId: string) {
+  const { data: c } = await db.from("contratos").select("id, dados").eq("id", id).maybeSingle();
+  if (!c?.dados?.importado) throw new Error("Só contratos importados podem ser ajustados assim.");
+  const { error } = await db.from("contratos").update(campos).eq("id", id);
+  if (error) throw new Error(error.message);
+  await evento(id, "ajustado", `Dados completados: ${campos.cliente_nome}, vigência ${campos.vigencia_inicio ?? "—"} (${campos.vigencia_meses} meses)`, userId);
+}

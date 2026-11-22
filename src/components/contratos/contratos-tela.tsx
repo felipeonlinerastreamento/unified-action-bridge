@@ -24,7 +24,7 @@ import {
   type DadosContrato, type Veiculo, type SituacaoContrato,
 } from "@/lib/contratos";
 import { EQUIPAMENTOS_PADRAO } from "@/lib/contratos-modelos";
-import { assinarInterno, atualizarAutentique, buscarClienteGsystem, cancelarContrato, enviarAutentique, enviarContrato, prepararModelos, previaContrato, statusAutentique } from "@/lib/contratos.functions";
+import { ajustarContratoImportado, assinarInterno, atualizarAutentique, buscarClienteGsystem, cancelarContrato, enviarAutentique, enviarContrato, prepararModelos, previaContrato, statusAutentique } from "@/lib/contratos.functions";
 import { CONTRATO_CSS } from "./contrato-css";
 
 const db = supabase as any; // tabelas novas ainda fora dos tipos gerados
@@ -408,6 +408,7 @@ function Detalhe({ contrato, onClose }: { contrato: Contrato; onClose: () => voi
           <div><div className="text-xs text-muted-foreground">Aberto pelo cliente</div>{dh(c.visualizado_em)}</div>
         </div>
         {c.status === "cancelado" && <p className="text-sm text-destructive">Cancelado: {c.cancelado_motivo}</p>}
+        {(c.dados as any)?.importado && <AjusteImportado c={c} onSalvo={atualizar} />}
 
         {c.status === "enviado" && c.provedor !== "autentique" && (
           <Card><CardContent className="p-3 flex flex-wrap items-center gap-3 text-sm">
@@ -530,5 +531,37 @@ function Modelos() {
         </Card>
       ))}
     </div>
+  );
+}
+
+// ------------------------------------------------------------------ contratos importados do Autentique
+function AjusteImportado({ c, onSalvo }: { c: Contrato; onSalvo: () => void }) {
+  const ajustar = useServerFn(ajustarContratoImportado);
+  const [f, setF] = useState({
+    cliente_nome: c.cliente_nome, cliente_documento: c.cliente_documento ? formatarDoc(c.cliente_documento) : "",
+    vigencia_inicio: c.vigencia_inicio ?? (c.assinado_em ? c.assinado_em.slice(0, 10) : ""), vigencia_meses: String(c.vigencia_meses || 12), renovacao: c.renovacao_automatica,
+  });
+  const [salvando, setSalvando] = useState(false);
+  const salvar = async () => {
+    setSalvando(true);
+    try {
+      await ajustar({ data: { id: c.id, cliente_nome: f.cliente_nome, cliente_documento: f.cliente_documento, vigencia_inicio: f.vigencia_inicio || null, vigencia_meses: Number(f.vigencia_meses) || 12, renovacao_automatica: f.renovacao } });
+      toast.success("Dados do contrato importado salvos."); onSalvo();
+    } catch (e: any) { toast.error(e?.message ?? "Falha ao salvar."); } finally { setSalvando(false); }
+  };
+  return (
+    <Card><CardContent className="p-3 space-y-2 text-sm">
+      <div className="font-medium">Importado do Autentique — complete cliente e vigência para os alertas de renovação</div>
+      <div className="grid gap-2 sm:grid-cols-5 items-end">
+        <div className="sm:col-span-2"><Label>Cliente</Label><Input value={f.cliente_nome} onChange={(e) => setF({ ...f, cliente_nome: e.target.value })} /></div>
+        <div><Label>CPF/CNPJ</Label><Input value={f.cliente_documento} onChange={(e) => setF({ ...f, cliente_documento: e.target.value })} /></div>
+        <div><Label>Início vigência</Label><Input type="date" value={f.vigencia_inicio} onChange={(e) => setF({ ...f, vigencia_inicio: e.target.value })} /></div>
+        <div><Label>Meses</Label><Input inputMode="numeric" value={f.vigencia_meses} onChange={(e) => setF({ ...f, vigencia_meses: e.target.value.replace(/\D/g, "") })} /></div>
+      </div>
+      <div className="flex items-center gap-3">
+        <label className="flex items-center gap-2"><Switch checked={f.renovacao} onCheckedChange={(v) => setF({ ...f, renovacao: v })} />Renovação automática</label>
+        <Button size="sm" onClick={salvar} disabled={salvando}>{salvando && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}Salvar</Button>
+      </div>
+    </CardContent></Card>
   );
 }
