@@ -241,6 +241,8 @@ export const EVENTO_LABEL: Record<string, string> = {
   assinado_testemunha: "Assinado por testemunha",
   cancelado: "Contrato cancelado",
   recusado: "Recusado pelo signatário",
+  importado: "Importado do Autentique",
+  ajustado: "Dados do contrato completados",
 };
 
 /** Código de 6 dígitos. */
