@@ -260,3 +260,31 @@ export async function sendNewMail(
   });
   if (!res.ok) throw friendlyError("Falha ao enviar e-mail", res.status, await res.json().catch(() => ({})));
 }
+
+/** E-mails da caixa de entrada recebidos depois de `desdeIso` (mais antigos primeiro), só com anexo. */
+export async function listMessagesSince(ctx: MailboxContext, desdeIso: string, limit = 30): Promise<OutlookMessage[]> {
+  const params = new URLSearchParams({
+    "$filter": `receivedDateTime ge ${new Date(desdeIso).toISOString()} and hasAttachments eq true`,
+    "$orderby": "receivedDateTime asc",
+    "$top": String(limit),
+    "$select": "id,internetMessageId,subject,bodyPreview,from,receivedDateTime,hasAttachments,isRead",
+  });
+  const base = mailboxPath(ctx.mailbox, ctx.connectedEmail);
+  const res = await fetch(`${GATEWAY_URL}${base}/mailFolders/inbox/messages?${params.toString()}`, { headers: getAuthHeaders(ctx.connectionKey) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw friendlyError("Falha ao ler a caixa de entrada", res.status, data);
+  return (data?.value ?? []) as OutlookMessage[];
+}
+
+export type OutlookAnexo = { id: string; name: string; contentType: string; size: number; contentBytes: string; isInline?: boolean };
+
+/** Anexos de arquivo de um e-mail (conteúdo em base64). */
+export async function listFileAttachments(ctx: MailboxContext, messageId: string): Promise<OutlookAnexo[]> {
+  const base = mailboxPath(ctx.mailbox, ctx.connectedEmail);
+  const res = await fetch(`${GATEWAY_URL}${base}/messages/${encodeURIComponent(messageId)}/attachments`, { headers: getAuthHeaders(ctx.connectionKey) });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw friendlyError("Falha ao ler os anexos", res.status, data);
+  return ((data?.value ?? []) as any[])
+    .filter((a) => String(a["@odata.type"] || "").toLowerCase().includes("fileattachment") && a.contentBytes)
+    .map((a) => ({ id: a.id, name: a.name || "anexo", contentType: a.contentType || "application/octet-stream", size: a.size || 0, contentBytes: a.contentBytes, isInline: !!a.isInline }));
+}

@@ -34,6 +34,16 @@ export type Lanc = {
   revisado: boolean;
   observacao: string | null;
   created_at: string;
+  // Fornecedores / aprovação (migração 0065)
+  fornecedor_id?: string | null;
+  valor_esperado?: number | null;
+  conferencia?: { mes: string | null; status: string; diferenca: number | null; pct: number | null; itens: { descricao: string; quantidade: number; unitario: number; subtotal: number; fonte: string }[]; anteriores: { media: number; pct: number; aumentou: boolean } | null; em: string } | null;
+  aprovacao?: "pendente" | "aprovado" | "reprovado" | null;
+  aprovado_por?: string | null;
+  aprovado_em?: string | null;
+  aprovacao_obs?: string | null;
+  dda_chave?: string | null;
+  nota_chave?: string | null;
 };
 export type Cat = { id: string; nome: string; tipo: "despesa" | "receita"; grupo_dre: string; ativo: boolean; ordem: number };
 export type Emp = { id: string; codigo: string; nome: string; cnpj: string | null; ativo: boolean };

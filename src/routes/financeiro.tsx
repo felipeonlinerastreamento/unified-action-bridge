@@ -12,6 +12,8 @@ import { ComprovantesTab } from "@/components/financeiro/comprovantes-tab";
 import { FluxoTab, DreTab } from "@/components/financeiro/relatorios-tabs";
 import { ConciliacaoTab } from "@/components/financeiro/conciliacao-tab";
 import { CadastrosTab } from "@/components/financeiro/cadastros-tab";
+import { FornecedoresTab } from "@/components/financeiro/fornecedores-tab";
+import { AprovacoesTab } from "@/components/financeiro/aprovacoes-tab";
 
 type FinSearch = { tab?: string };
 
@@ -49,6 +51,7 @@ function FinanceiroContent() {
   }
 
   const aRevisar = data.lancamentos.filter((l) => !l.revisado).length;
+  const aAprovar = data.lancamentos.filter((l) => l.tipo === "pagar" && l.aprovacao === "pendente" && l.status !== "cancelado").length;
   return (
     <div className="space-y-4">
       <div>
@@ -61,6 +64,8 @@ function FinanceiroContent() {
           <TabsTrigger value="painel">Painel</TabsTrigger>
           <TabsTrigger value="pagar">Contas a pagar</TabsTrigger>
           <TabsTrigger value="receber">Contas a receber</TabsTrigger>
+          <TabsTrigger value="aprovacoes">Aprovações{aAprovar > 0 && <Badge variant="destructive" className="ml-1 h-5 px-1.5">{aAprovar}</Badge>}</TabsTrigger>
+          <TabsTrigger value="fornecedores">Fornecedores</TabsTrigger>
           <TabsTrigger value="comprovantes">Comprovantes{aRevisar > 0 && <Badge variant="destructive" className="ml-1 h-5 px-1.5">{aRevisar}</Badge>}</TabsTrigger>
           <TabsTrigger value="fluxo">Fluxo de caixa</TabsTrigger>
           <TabsTrigger value="dre">DRE</TabsTrigger>
@@ -74,6 +79,8 @@ function FinanceiroContent() {
             <TabsContent value="painel" className="mt-4"><PainelTab lancamentos={data.lancamentos} categorias={data.categorias} onRevisar={() => setTab("comprovantes")} /></TabsContent>
             <TabsContent value="pagar" className="mt-4"><LancamentosTab tipo="pagar" lancamentos={data.lancamentos} categorias={data.categorias} empresas={data.empresas} /></TabsContent>
             <TabsContent value="receber" className="mt-4"><LancamentosTab tipo="receber" lancamentos={data.lancamentos} categorias={data.categorias} empresas={data.empresas} /></TabsContent>
+            <TabsContent value="aprovacoes" className="mt-4"><AprovacoesTab lancamentos={data.lancamentos} /></TabsContent>
+            <TabsContent value="fornecedores" className="mt-4"><FornecedoresTab lancamentos={data.lancamentos} categorias={data.categorias} empresas={data.empresas} /></TabsContent>
             <TabsContent value="comprovantes" className="mt-4"><ComprovantesTab lancamentos={data.lancamentos} categorias={data.categorias} empresas={data.empresas} /></TabsContent>
             <TabsContent value="fluxo" className="mt-4"><FluxoTab lancamentos={data.lancamentos} contas={data.contas} /></TabsContent>
             <TabsContent value="dre" className="mt-4"><DreTab lancamentos={data.lancamentos} categorias={data.categorias} /></TabsContent>

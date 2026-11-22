@@ -74,6 +74,8 @@ export function LancamentosTab({ tipo, lancamentos, categorias, empresas }: { ti
   const total = rows.reduce((s, l) => s + Number(l.valor || 0), 0);
 
   const marcarPago = async (l: Lanc) => {
+    if (l.tipo === "pagar" && (l.aprovacao === "pendente" || l.aprovacao === "reprovado")
+      && !confirm(l.aprovacao === "pendente" ? "Esta conta ainda não foi aprovada para pagamento. Marcar como paga mesmo assim?" : "Esta conta foi REPROVADA para pagamento. Marcar como paga mesmo assim?")) return;
     const { error } = await fin.from("fin_lancamentos").update({ status: "pago", data_pagamento: hoje, valor_pago: l.valor }).eq("id", l.id);
     if (error) toast.error(error.message); else { toast.success(tipo === "receber" ? "Marcado como recebido." : "Marcado como pago."); invalidate(); }
   };
@@ -156,7 +158,7 @@ export function LancamentosTab({ tipo, lancamentos, categorias, empresas }: { ti
               return (
                 <TableRow key={l.id} className="cursor-pointer" onClick={() => setEdit(l)}>
                   <TableCell className="whitespace-nowrap">{formatDataBR(l.vencimento)}</TableCell>
-                  <TableCell className="font-medium">{l.contraparte ?? "—"}{!l.revisado && <Badge variant="outline" className="ml-2 text-[10px]">A revisar</Badge>}{l.origem === "gsystem" && <Badge variant="outline" className="ml-2 text-[10px]">GSystem</Badge>}</TableCell>
+                  <TableCell className="font-medium">{l.contraparte ?? "—"}{!l.revisado && <Badge variant="outline" className="ml-2 text-[10px]">A revisar</Badge>}{l.origem === "gsystem" && <Badge variant="outline" className="ml-2 text-[10px]">GSystem</Badge>}{l.origem === "email" && <Badge variant="outline" className="ml-2 text-[10px]">E-mail</Badge>}{l.origem === "dda" && <Badge variant="outline" className="ml-2 text-[10px]">DDA</Badge>}{l.aprovacao === "pendente" && <Badge variant="outline" className="ml-2 text-[10px] border-amber-500 text-amber-700">Aguardando aprovação</Badge>}{l.aprovacao === "aprovado" && <Badge variant="outline" className="ml-2 text-[10px] border-emerald-500 text-emerald-700">Aprovado</Badge>}{l.aprovacao === "reprovado" && <Badge variant="destructive" className="ml-2 text-[10px]">Reprovado</Badge>}{(l.conferencia?.status === "acima" || l.conferencia?.status === "abaixo") && <Badge variant="outline" className="ml-2 text-[10px] border-red-500 text-red-700" title={`Esperado ${formatBRL(l.valor_esperado ?? 0)}`}>{l.conferencia.status === "acima" ? "↑" : "↓"} esperado</Badge>}</TableCell>
                   <TableCell className="max-w-[260px] truncate" title={l.descricao ?? ""}>{l.descricao ?? "—"}</TableCell>
                   <TableCell>{catById.get(l.categoria_id ?? "")?.nome ?? <span className="text-muted-foreground">—</span>}</TableCell>
                   <TableCell>{empById.get(l.empresa_id ?? "")?.codigo ?? "—"}</TableCell>

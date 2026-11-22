@@ -106,7 +106,7 @@ function Lista() {
   const [soDivergentes, setSoDivergentes] = useState(false);
   const finFn = useServerFn(financeiroContratosFn);
   const { data: fin } = useQuery({ queryKey: ["contratos-financeiro"], queryFn: () => finFn(), retry: false, staleTime: 5 * 60_000 });
-  const finPor = (fin?.permitido ? fin.porContrato : {}) as Record<string, { status: string; contrato: number | null; realizado: number | null; diferenca: number | null; pct: number | null; origem: string }>;
+  const finPor = useMemo(() => (fin?.permitido ? fin.porContrato : {}), [fin]) as Record<string, { status: string; contrato: number | null; realizado: number | null; diferenca: number | null; pct: number | null; origem: string }>;
   const [sel, setSel] = useState<string[]>([]);
   const { data: contratos = [], isLoading } = useQuery({
     queryKey: ["contratos"],

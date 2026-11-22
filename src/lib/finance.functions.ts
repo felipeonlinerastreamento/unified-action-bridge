@@ -24,7 +24,7 @@ export type LeituraComprovante = {
   confianca: number;
 };
 
-function promptLeitura(categorias: string[], empresas: { codigo: string; nome: string; cnpj?: string | null }[]) {
+export function promptLeitura(categorias: string[], empresas: { codigo: string; nome: string; cnpj?: string | null }[]) {
   return (
     "Você lê comprovantes fiscais e boletos de uma empresa brasileira (rastreamento veicular) e devolve os dados para o contas a pagar. " +
     "Responda SOMENTE um JSON com as chaves: contraparte (quem recebe: fornecedor/beneficiário/estabelecimento), documento_contraparte (CNPJ/CPF dele), " +
