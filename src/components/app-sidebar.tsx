@@ -1,6 +1,6 @@
 import logoPin from "@/assets/logo-online-pin.png";
 import logoFull from "@/assets/logo-online-horizontal.png";
-import { Wallet } from "lucide-react";
+import { Wallet, WifiOff } from "lucide-react";
 import { useFinanceAccess } from "@/components/financeiro/use-fin";
 import {
   LayoutDashboard,
@@ -77,6 +77,7 @@ const mainItems = [
   { title: "Empresas", url: "/empresas", icon: Building2 },
   { title: "Estoque", url: "/estoque", icon: Boxes },
   { title: "Contratos", url: "/contratos", icon: FileSignature },
+  { title: "Reconnect", url: "/reconnect", icon: WifiOff },
   { title: "Relatórios", url: "/relatorios", icon: BarChart3 },
   
   { title: "Chat com Operadores", url: "/chat-operadores", icon: MessageCircle },

@@ -400,6 +400,13 @@
       "when": 1795311796579,
       "tag": "0056_financeiro_gsystem_faturas",
       "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1795313537673,
+      "tag": "0057_reconnect",
+      "breakpoints": true
     }
   ]
 }

@@ -23,6 +23,7 @@ import { Route as DashboardRouteImport } from './routes/dashboard'
 import { Route as EmpresasRouteImport } from './routes/empresas'
 import { Route as EstoqueRouteImport } from './routes/estoque'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
+import { Route as ReconnectRouteImport } from './routes/reconnect'
 import { Route as GamificacaoRouteImport } from './routes/gamificacao'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as PainelTvRouteImport } from './routes/painel-tv'
@@ -150,6 +151,11 @@ const EstoqueRoute = EstoqueRouteImport.update({
 const FinanceiroRoute = FinanceiroRouteImport.update({
   id: '/financeiro',
   path: '/financeiro',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReconnectRoute = ReconnectRouteImport.update({
+  id: '/reconnect',
+  path: '/reconnect',
   getParentRoute: () => rootRouteImport,
 } as any)
 const GamificacaoRoute = GamificacaoRouteImport.update({
@@ -476,6 +482,7 @@ export interface FileRoutesByFullPath {
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
   '/financeiro': typeof FinanceiroRoute
+  '/reconnect': typeof ReconnectRoute
   '/gamificacao': typeof GamificacaoRouteWithChildren
   '/mcp': typeof McpRoute
   '/painel-tv': typeof PainelTvRoute
@@ -548,6 +555,7 @@ export interface FileRoutesByTo {
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
   '/financeiro': typeof FinanceiroRoute
+  '/reconnect': typeof ReconnectRoute
   '/mcp': typeof McpRoute
   '/painel-tv': typeof PainelTvRoute
   '/redefinir-senha': typeof RedefinirSenhaRoute
@@ -622,6 +630,7 @@ export interface FileRoutesById {
   '/empresas': typeof EmpresasRoute
   '/estoque': typeof EstoqueRoute
   '/financeiro': typeof FinanceiroRoute
+  '/reconnect': typeof ReconnectRoute
   '/gamificacao': typeof GamificacaoRouteWithChildren
   '/mcp': typeof McpRoute
   '/painel-tv': typeof PainelTvRoute
@@ -698,6 +707,7 @@ export interface FileRouteTypes {
     | '/empresas'
     | '/estoque'
     | '/financeiro'
+    | '/reconnect'
     | '/gamificacao'
     | '/mcp'
     | '/painel-tv'
@@ -770,6 +780,7 @@ export interface FileRouteTypes {
     | '/empresas'
     | '/estoque'
     | '/financeiro'
+    | '/reconnect'
     | '/mcp'
     | '/painel-tv'
     | '/redefinir-senha'
@@ -843,6 +854,7 @@ export interface FileRouteTypes {
     | '/empresas'
     | '/estoque'
     | '/financeiro'
+    | '/reconnect'
     | '/gamificacao'
     | '/mcp'
     | '/painel-tv'
@@ -918,6 +930,7 @@ export interface RootRouteChildren {
   EmpresasRoute: typeof EmpresasRoute
   EstoqueRoute: typeof EstoqueRoute
   FinanceiroRoute: typeof FinanceiroRoute
+  ReconnectRoute: typeof ReconnectRoute
   GamificacaoRoute: typeof GamificacaoRouteWithChildren
   McpRoute: typeof McpRoute
   PainelTvRoute: typeof PainelTvRoute
@@ -1043,6 +1056,13 @@ declare module '@tanstack/react-router' {
       path: '/financeiro'
       fullPath: '/financeiro'
       preLoaderRoute: typeof FinanceiroRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reconnect': {
+      id: '/reconnect'
+      path: '/reconnect'
+      fullPath: '/reconnect'
+      preLoaderRoute: typeof ReconnectRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/gamificacao': {
@@ -1565,6 +1585,7 @@ const rootRouteChildren: RootRouteChildren = {
   EmpresasRoute: EmpresasRoute,
   EstoqueRoute: EstoqueRoute,
   FinanceiroRoute: FinanceiroRoute,
+  ReconnectRoute: ReconnectRoute,
   GamificacaoRoute: GamificacaoRouteWithChildren,
   McpRoute: McpRoute,
   PainelTvRoute: PainelTvRoute,
