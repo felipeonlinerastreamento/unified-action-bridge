@@ -6536,6 +6536,479 @@ export type Database = {
         }
         Relationships: []
       }
+      rc_activity_logs: {
+        Row: {
+          action: string
+          created_at: string
+          details: Json
+          id: string
+          legacy_user_id: string | null
+          user_email: string
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: Json
+          id?: string
+          legacy_user_id?: string | null
+          user_email?: string
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: Json
+          id?: string
+          legacy_user_id?: string | null
+          user_email?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      rc_bulk_send_logs: {
+        Row: {
+          batch_id: string
+          channels: Json
+          client_id: string
+          client_name: string
+          created_at: string
+          error_message: string
+          id: string
+          plates: Json
+          sent_by: string
+          status: string
+          template_name: string
+        }
+        Insert: {
+          batch_id?: string
+          channels?: Json
+          client_id: string
+          client_name: string
+          created_at?: string
+          error_message?: string
+          id?: string
+          plates?: Json
+          sent_by?: string
+          status?: string
+          template_name?: string
+        }
+        Update: {
+          batch_id?: string
+          channels?: Json
+          client_id?: string
+          client_name?: string
+          created_at?: string
+          error_message?: string
+          id?: string
+          plates?: Json
+          sent_by?: string
+          status?: string
+          template_name?: string
+        }
+        Relationships: []
+      }
+      rc_clients: {
+        Row: {
+          company_id: string | null
+          created_at: string
+          emails: Json
+          id: string
+          name: string
+          name_key: string
+          phones: Json
+          updated_at: string
+          vehicle_count: number
+        }
+        Insert: {
+          company_id?: string | null
+          created_at?: string
+          emails?: Json
+          id?: string
+          name: string
+          name_key: string
+          phones?: Json
+          updated_at?: string
+          vehicle_count?: number
+        }
+        Update: {
+          company_id?: string | null
+          created_at?: string
+          emails?: Json
+          id?: string
+          name?: string
+          name_key?: string
+          phones?: Json
+          updated_at?: string
+          vehicle_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rc_clients_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rc_import_history: {
+        Row: {
+          id: string
+          imported_at: string
+          imported_by: string
+          new_vehicles: number
+          recovered_count: number
+          skipped_count: number
+          skipped_details: Json
+          total_rows: number
+          updated_vehicles: number
+          user_id: string | null
+          warning_count: number
+          warning_details: Json
+        }
+        Insert: {
+          id?: string
+          imported_at?: string
+          imported_by?: string
+          new_vehicles?: number
+          recovered_count?: number
+          skipped_count?: number
+          skipped_details?: Json
+          total_rows?: number
+          updated_vehicles?: number
+          user_id?: string | null
+          warning_count?: number
+          warning_details?: Json
+        }
+        Update: {
+          id?: string
+          imported_at?: string
+          imported_by?: string
+          new_vehicles?: number
+          recovered_count?: number
+          skipped_count?: number
+          skipped_details?: Json
+          total_rows?: number
+          updated_vehicles?: number
+          user_id?: string | null
+          warning_count?: number
+          warning_details?: Json
+        }
+        Relationships: []
+      }
+      rc_import_templates: {
+        Row: {
+          created_at: string
+          id: string
+          mapping: Json
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mapping?: Json
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mapping?: Json
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      rc_legacy_chats: {
+        Row: {
+          assigned_to: string | null
+          contact_name: string
+          created_at: string
+          id: string
+          last_message_at: string | null
+          messages: Json
+          phone: string
+          status: string
+        }
+        Insert: {
+          assigned_to?: string | null
+          contact_name?: string
+          created_at?: string
+          id: string
+          last_message_at?: string | null
+          messages?: Json
+          phone: string
+          status?: string
+        }
+        Update: {
+          assigned_to?: string | null
+          contact_name?: string
+          created_at?: string
+          id?: string
+          last_message_at?: string | null
+          messages?: Json
+          phone?: string
+          status?: string
+        }
+        Relationships: []
+      }
+      rc_message_templates: {
+        Row: {
+          body: string
+          created_at: string
+          created_by: string | null
+          id: string
+          is_closing_template: boolean
+          name: string
+          subject: string
+          updated_at: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_closing_template?: boolean
+          name: string
+          subject?: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_closing_template?: boolean
+          name?: string
+          subject?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      rc_notification_logs: {
+        Row: {
+          batch_id: string
+          channels: Json
+          client_id: string
+          client_name: string
+          created_at: string
+          error_message: string
+          id: string
+          plates: Json
+          sent_at: string
+          sent_by: string
+          status: string
+          template_name: string
+        }
+        Insert: {
+          batch_id?: string
+          channels?: Json
+          client_id: string
+          client_name: string
+          created_at?: string
+          error_message?: string
+          id?: string
+          plates?: Json
+          sent_at?: string
+          sent_by: string
+          status?: string
+          template_name?: string
+        }
+        Update: {
+          batch_id?: string
+          channels?: Json
+          client_id?: string
+          client_name?: string
+          created_at?: string
+          error_message?: string
+          id?: string
+          plates?: Json
+          sent_at?: string
+          sent_by?: string
+          status?: string
+          template_name?: string
+        }
+        Relationships: []
+      }
+      rc_recovered_vehicles: {
+        Row: {
+          client_id: string | null
+          client_name: string
+          created_at: string
+          id: string
+          last_days_offline: number
+          plate: string
+          recovered_at: string
+        }
+        Insert: {
+          client_id?: string | null
+          client_name: string
+          created_at?: string
+          id?: string
+          last_days_offline?: number
+          plate: string
+          recovered_at?: string
+        }
+        Update: {
+          client_id?: string | null
+          client_name?: string
+          created_at?: string
+          id?: string
+          last_days_offline?: number
+          plate?: string
+          recovered_at?: string
+        }
+        Relationships: []
+      }
+      rc_settings: {
+        Row: {
+          email_channel_id: string | null
+          id: number
+          legacy_import_counts: Json
+          legacy_imported_at: string | null
+          updated_at: string
+          whatsapp_channel_id: string | null
+        }
+        Insert: {
+          email_channel_id?: string | null
+          id?: number
+          legacy_import_counts?: Json
+          legacy_imported_at?: string | null
+          updated_at?: string
+          whatsapp_channel_id?: string | null
+        }
+        Update: {
+          email_channel_id?: string | null
+          id?: number
+          legacy_import_counts?: Json
+          legacy_imported_at?: string | null
+          updated_at?: string
+          whatsapp_channel_id?: string | null
+        }
+        Relationships: []
+      }
+      rc_skipped_rows: {
+        Row: {
+          created_at: string
+          id: string
+          imported_at: string
+          raw_client: string
+          raw_plate: string
+          reason: string
+          row_number: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          imported_at?: string
+          raw_client?: string
+          raw_plate?: string
+          reason?: string
+          row_number: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          imported_at?: string
+          raw_client?: string
+          raw_plate?: string
+          reason?: string
+          row_number?: number
+        }
+        Relationships: []
+      }
+      rc_vehicle_annotations: {
+        Row: {
+          client_id: string | null
+          client_name: string
+          created_at: string
+          created_by: string | null
+          created_by_email: string
+          id: string
+          observation: string
+          plate: string
+        }
+        Insert: {
+          client_id?: string | null
+          client_name?: string
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string
+          id?: string
+          observation: string
+          plate: string
+        }
+        Update: {
+          client_id?: string | null
+          client_name?: string
+          created_at?: string
+          created_by?: string | null
+          created_by_email?: string
+          id?: string
+          observation?: string
+          plate?: string
+        }
+        Relationships: []
+      }
+      rc_vehicles: {
+        Row: {
+          battery_voltage: string
+          client_id: string
+          client_name: string
+          created_at: string
+          days_offline: number
+          id: string
+          import_date: string
+          imported_at: string
+          incidences: number
+          last_communication: string | null
+          notifications: number
+          observation: string
+          plate: string
+          recovery_count: number
+          status: string
+          was_recovered: boolean
+        }
+        Insert: {
+          battery_voltage?: string
+          client_id: string
+          client_name: string
+          created_at?: string
+          days_offline?: number
+          id?: string
+          import_date?: string
+          imported_at?: string
+          incidences?: number
+          last_communication?: string | null
+          notifications?: number
+          observation?: string
+          plate: string
+          recovery_count?: number
+          status?: string
+          was_recovered?: boolean
+        }
+        Update: {
+          battery_voltage?: string
+          client_id?: string
+          client_name?: string
+          created_at?: string
+          days_offline?: number
+          id?: string
+          import_date?: string
+          imported_at?: string
+          incidences?: number
+          last_communication?: string | null
+          notifications?: number
+          observation?: string
+          plate?: string
+          recovery_count?: number
+          status?: string
+          was_recovered?: boolean
+        }
+        Relationships: []
+      }
       sector_groups: {
         Row: {
           allowed_menus: string[] | null
@@ -9343,6 +9816,7 @@ export type Database = {
       }
       presence_end_session: { Args: never; Returns: undefined }
       presence_heartbeat: { Args: never; Returns: undefined }
+      reconnect_allowed: { Args: never; Returns: boolean }
       set_equipment_kit_item: {
         Args: { _accessory: string; _codigo: string; _qtd: number }
         Returns: undefined
