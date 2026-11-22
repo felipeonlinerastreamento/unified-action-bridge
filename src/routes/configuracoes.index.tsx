@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { AutentiqueIntegracao } from "@/components/configuracoes/autentique-integracao";
+import { BomControleIntegracao } from "@/components/configuracoes/bomcontrole-integracao";
 import { EmailFinanceiroIntegracao } from "@/components/configuracoes/email-financeiro-integracao";
 import { useState, useEffect } from "react";
 import { useAuth } from "@/hooks/use-auth";
@@ -108,6 +109,7 @@ function ConfiguracoesIndexPage() {
         <GsystemForceSync />
         <AutentiqueIntegracao />
         <EmailFinanceiroIntegracao />
+        <BomControleIntegracao />
         <ChannelsConfig />
         <EmailChannelsConfig />
       </div>

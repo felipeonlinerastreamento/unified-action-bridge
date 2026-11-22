@@ -477,6 +477,13 @@
       "when": 1795380409646,
       "tag": "0067_financeiro_fornecedores",
       "breakpoints": true
+    },
+    {
+      "idx": 68,
+      "version": "7",
+      "when": 1795384653023,
+      "tag": "0068_financeiro_bomcontrole",
+      "breakpoints": true
     }
   ]
 }
