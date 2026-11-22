@@ -44,10 +44,12 @@ export type Lanc = {
   aprovacao_obs?: string | null;
   dda_chave?: string | null;
   nota_chave?: string | null;
+  // Agenda de pagamentos (migração 0066)
+  data_programada?: string | null;
 };
 export type Cat = { id: string; nome: string; tipo: "despesa" | "receita"; grupo_dre: string; ativo: boolean; ordem: number };
 export type Emp = { id: string; codigo: string; nome: string; cnpj: string | null; ativo: boolean };
-export type Conta = { id: string; nome: string; banco: string | null; empresa_id: string | null; saldo_inicial: number; ativo: boolean };
+export type Conta = { id: string; nome: string; banco: string | null; empresa_id: string | null; saldo_inicial: number; saldo_inicial_data?: string | null; ativo: boolean };
 
 /** Acesso ao Financeiro: só quem está em fin_acesso (Felipe e Patrícia). */
 export function useFinanceAccess() {

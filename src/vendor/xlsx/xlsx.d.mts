@@ -2,3 +2,4 @@
 // sem mexer nas dependências do projeto. Carregue sempre por import() dinâmico.
 export declare const read: any;
 export declare const utils: any;
+export declare const writeFile: any;
