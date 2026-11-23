@@ -7,6 +7,7 @@ export const DEFAULT_CONNECTION_KEY = "MICROSOFT_OUTLOOK_API_KEY";
 /** Nomes possíveis de chaves de conexão do Outlook vinculadas ao projeto. */
 const CONNECTION_KEY_NAMES = [
   "MICROSOFT_OUTLOOK_API_KEY",
+  "MICROSOFT_OUTLOOK_API_KEY_1",
   "MICROSOFT_OUTLOOK_API_KEY_2",
   "MICROSOFT_OUTLOOK_API_KEY_3",
   "MICROSOFT_OUTLOOK_API_KEY_4",
