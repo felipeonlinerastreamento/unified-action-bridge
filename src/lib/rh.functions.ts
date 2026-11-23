@@ -45,7 +45,7 @@ export const rhLinkArquivo = createServerFn({ method: "POST" })
     return { url: s.signedUrl as string };
   });
 
-/** Cria a ficha de cada usuário ativo do sistema que ainda não está no RH. */
+/** Cria a ficha de cada usuário ativo do sistema que ainda não está no RH e mantém nome/nascimento em dia. */
 export const rhImportarUsuarios = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
@@ -55,8 +55,19 @@ export const rhImportarUsuarios = createServerFn({ method: "POST" })
     const db = await adminDb();
     const { data: perfis, error } = await db.from("profiles").select("user_id, name, birth_date, is_active").eq("is_active", true);
     if (error) throw error;
-    const { data: ja } = await db.from("rh_colaboradores").select("user_id");
+    const { data: ja } = await db.from("rh_colaboradores").select("id, user_id, nome, data_nascimento");
     const tem = new Set((ja || []).map((x: any) => x.user_id).filter(Boolean));
+    // Mantém nome e nascimento iguais aos do usuário do sistema.
+    const perfilDe = new Map((perfis || []).map((p: any) => [p.user_id, p]));
+    let atualizados = 0;
+    for (const c of ja || []) {
+      const p: any = c.user_id ? perfilDe.get(c.user_id) : null;
+      if (!p) continue;
+      const mud: any = {};
+      if (p.name && p.name !== c.nome) mud.nome = p.name;
+      if (p.birth_date && !c.data_nascimento) mud.data_nascimento = p.birth_date;
+      if (Object.keys(mud).length) { await db.from("rh_colaboradores").update({ ...mud, updated_at: new Date().toISOString() }).eq("id", c.id); atualizados++; }
+    }
     const { data: setores } = await db.from("user_sector_assignments").select("user_id, sector_id");
     const setorDe = new Map((setores || []).map((s: any) => [s.user_id, s.sector_id]));
     const novos = (perfis || []).filter((p: any) => !tem.has(p.user_id)).map((p: any) => ({
@@ -66,7 +77,7 @@ export const rhImportarUsuarios = createServerFn({ method: "POST" })
       const { error: e2 } = await db.from("rh_colaboradores").insert(novos);
       if (e2) throw e2;
     }
-    return { criados: novos.length, existentes: tem.size };
+    return { criados: novos.length, existentes: tem.size, atualizados };
   });
 
 /** Desativa o acesso ao sistema do colaborador desligado (profiles.is_active = false). */

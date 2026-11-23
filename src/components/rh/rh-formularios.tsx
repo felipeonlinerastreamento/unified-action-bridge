@@ -20,11 +20,12 @@ function Campo({ label, children, className }: { label: string; children: React.
 }
 
 export function ColabSelect({ colabs, value, onChange, incluirDesligados = false }: { colabs: ColabRh[]; value: string; onChange: (v: string) => void; incluirDesligados?: boolean }) {
+  // Mesmos usuários do sistema (cada usuário ativo tem a sua ficha), mais quem foi cadastrado só no RH.
   const lista = colabs.filter((c) => incluirDesligados || c.situacao !== "desligado").sort((a, b) => a.nome.localeCompare(b.nome));
   return (
     <Select value={value || NONE} onValueChange={(v) => onChange(v === NONE ? "" : v)}>
       <SelectTrigger><SelectValue placeholder="Colaborador" /></SelectTrigger>
-      <SelectContent>{lista.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
+      <SelectContent>{lista.map((c) => <SelectItem key={c.id} value={c.id}>{c.nome}{c.user_id ? "" : " (sem usuário)"}</SelectItem>)}</SelectContent>
     </Select>
   );
 }
