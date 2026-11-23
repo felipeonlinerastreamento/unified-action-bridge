@@ -5,7 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2 } from "lucide-react";
+import { Loader2, Paperclip, X } from "lucide-react";
+import { useServerFn } from "@tanstack/react-start";
+import { anexarArquivoLancamento } from "@/lib/finance.functions";
 import { toast } from "sonner";
 import { TIPOS_DOCUMENTO, parseValorBR } from "@/lib/finance";
 import { fin, useFinInvalidate, type Cat, type Emp, type Lanc } from "./use-fin";
@@ -20,8 +22,11 @@ export function LancamentoDialog({
   const invalidate = useFinInvalidate();
   const [busy, setBusy] = useState(false);
   const [f, setF] = useState<any>({});
+  const [arquivo, setArquivo] = useState<File | null>(null);
+  const anexar = useServerFn(anexarArquivoLancamento);
   useEffect(() => {
     if (!open) return;
+    setArquivo(null);
     setF(lanc ? { ...lanc, valor: String(lanc.valor ?? "").replace(".", ",") } : {
       tipo, status: "aberto", valor: "", empresa_id: empresas.find((e) => e.codigo === "OR")?.id ?? null,
     });
@@ -44,10 +49,21 @@ export function LancamentoDialog({
       numero_documento: f.numero_documento || null, linha_digitavel: f.linha_digitavel || null, observacao: f.observacao || null,
       revisado: true,
     };
-    const res = lanc ? await fin.from("fin_lancamentos").update(payload).eq("id", lanc.id) : await fin.from("fin_lancamentos").insert(payload);
-    setBusy(false);
-    if (res.error) { toast.error(res.error.message); return; }
+    if (arquivo && arquivo.size > 15 * 1024 * 1024) { setBusy(false); toast.error("Arquivo maior que 15 MB."); return; }
+    const res = lanc
+      ? await fin.from("fin_lancamentos").update(payload).eq("id", lanc.id).select("id").single()
+      : await fin.from("fin_lancamentos").insert(payload).select("id").single();
+    if (res.error) { setBusy(false); toast.error(res.error.message); return; }
     toast.success(lanc ? "Lançamento atualizado." : "Lançamento criado.");
+    if (arquivo) {
+      try {
+        const base64 = await paraBase64(arquivo);
+        const r: any = await anexar({ data: { lancamentoId: res.data.id, nome: arquivo.name, mime: arquivo.type || "application/octet-stream", base64 } });
+        if (r.drive) toast.success(`Anexo salvo no Google Drive (pasta ${r.pasta}).`);
+        else toast.warning(r.aviso ?? "Anexo salvo só no sistema.");
+      } catch (e: any) { toast.error(`O lançamento foi salvo, mas o anexo falhou: ${e?.message ?? e}`); }
+    }
+    setBusy(false);
     invalidate();
     onClose();
   };
@@ -114,6 +130,18 @@ export function LancamentoDialog({
           <div><Label>Forma de pagamento</Label><Input value={f.forma_pagamento ?? ""} onChange={(e) => set("forma_pagamento", e.target.value)} placeholder="Boleto, Pix, cartão..." /></div>
           <div><Label>Nº do documento</Label><Input value={f.numero_documento ?? ""} onChange={(e) => set("numero_documento", e.target.value)} /></div>
           <div className="col-span-2"><Label>Linha digitável</Label><Input value={f.linha_digitavel ?? ""} onChange={(e) => set("linha_digitavel", e.target.value)} /></div>
+          <div className="col-span-2">
+            <Label>Anexo (nota, boleto, comprovante)</Label>
+            {lanc?.arquivo_nome && !arquivo && <p className="text-xs text-muted-foreground mb-1">Atual: {lanc.arquivo_nome}{lanc.arquivo_url ? " (no Google Drive)" : ""}. Escolha outro para substituir.</p>}
+            {arquivo ? (
+              <div className="flex items-center gap-2 rounded-md border px-3 py-2"><Paperclip className="h-4 w-4" /><span className="truncate flex-1">{arquivo.name}</span>
+                <span className="text-xs text-muted-foreground">{(arquivo.size / 1024).toFixed(0)} KB</span>
+                <Button size="icon" variant="ghost" className="h-6 w-6" onClick={() => setArquivo(null)}><X className="h-4 w-4" /></Button></div>
+            ) : (
+              <Input type="file" accept=".pdf,.xml,image/*" onChange={(e) => setArquivo(e.target.files?.[0] ?? null)} />
+            )}
+            <p className="text-[11px] text-muted-foreground mt-1">Vai para o Google Drive em 00-Comprovantes Gerais, na pasta do mês, e fica ligado ao lançamento.</p>
+          </div>
           <div className="col-span-2"><Label>Observação</Label><Textarea rows={2} value={f.observacao ?? ""} onChange={(e) => set("observacao", e.target.value)} /></div>
         </div>
         <DialogFooter>
@@ -123,4 +151,14 @@ export function LancamentoDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+/** Lê o arquivo como base64 (sem o prefixo data:). */
+function paraBase64(file: File): Promise<string> {
+  return new Promise((ok, erro) => {
+    const r = new FileReader();
+    r.onload = () => ok(String(r.result).split(",")[1] ?? "");
+    r.onerror = () => erro(r.error ?? new Error("Falha ao ler o arquivo."));
+    r.readAsDataURL(file);
+  });
 }
