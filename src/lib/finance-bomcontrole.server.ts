@@ -13,6 +13,8 @@ import { formatarDocumento } from "./finance-gsystem";
 const BASE = "https://apinewintegracao.bomcontrole.com.br/integracao";
 const CHAVE = "BOMCONTROLE_API_KEY";
 const POR_PAGINA = 100;
+/** Prefixo do erro de limite de chamadas, reconhecido pela tela para esperar e repetir. */
+export const LIMITE_BC = "LIMITE_BOMCONTROLE";
 
 async function adminDb(): Promise<any> {
   const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
@@ -55,7 +57,16 @@ async function bcGet(caminho: string, params: Record<string, string | number | b
   const { chave } = await configBomControle();
   if (!chave) throw new Error("Chave da API do Bom Controle não configurada. Cadastre em Configurações › Integrações.");
   const qs = new URLSearchParams(Object.entries(params).map(([k, v]) => [k, String(v)]));
-  const res = await fetch(`${BASE}/${caminho}?${qs}`, { headers: { Authorization: `ApiKey ${chave}`, Accept: "application/json" } });
+  // O Bom Controle limita chamadas por minuto (HTTP 429 "Too Many Requests"): espera e tenta de novo,
+  // dentro do tempo da requisição; se ainda assim estourar, a tela espera mais e repete a mesma página.
+  let res: Response = null as any;
+  for (let tentativa = 0; ; tentativa++) {
+    res = await fetch(`${BASE}/${caminho}?${qs}`, { headers: { Authorization: `ApiKey ${chave}`, Accept: "application/json" } });
+    if (res.status !== 429 || tentativa >= 2) break;
+    const ra = Number(res.headers.get("retry-after"));
+    await new Promise((r) => setTimeout(r, Math.min(Number.isFinite(ra) && ra > 0 ? ra * 1000 : 4000 * (tentativa + 1), 8000)));
+  }
+  if (res.status === 429) throw new Error(`${LIMITE_BC}: o Bom Controle pediu uma pausa (muitas consultas seguidas).`);
   const txt = await res.text();
   let json: any = null;
   try { json = JSON.parse(txt); } catch { /* não-JSON */ }

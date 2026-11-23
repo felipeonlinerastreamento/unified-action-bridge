@@ -70,7 +70,25 @@ function Cartao() {
         let pagina: number | null = 1;
         while (pagina) {
           setProgresso(`${gravar ? "Importando" : "Conferindo"} ${nomeMes(j.mes)} (${i + 1} de ${janelas.length})${pagina > 1 ? ` · página ${pagina}` : ""}…`);
-          const r: any = await importar({ data: { de: j.de, ate: j.ate, pagina, gravar, incluirClientesGsystem } });
+          let r: any = null;
+          for (let tentativa = 1; ; tentativa++) {
+            try {
+              r = await importar({ data: { de: j.de, ate: j.ate, pagina, gravar, incluirClientesGsystem } });
+              break;
+            } catch (e: any) {
+              const msg = String(e?.message ?? "");
+              if (!/LIMITE_BOMCONTROLE|Too Many Requests/i.test(msg) || tentativa >= 6) {
+                throw new Error(/LIMITE_BOMCONTROLE|Too Many Requests/i.test(msg)
+                  ? "O Bom Controle continua limitando as consultas. Aguarde alguns minutos e rode de novo (nada é duplicado)."
+                  : msg);
+              }
+              for (let s = 30; s > 0; s--) {
+                setProgresso(`Bom Controle pediu uma pausa (limite de consultas). Continuando em ${s}s… (${nomeMes(j.mes)}, tentativa ${tentativa + 1})`);
+                await new Promise((res) => setTimeout(res, 1000));
+              }
+            }
+          }
+          await new Promise((res) => setTimeout(res, 1200)); // folga entre consultas para não estourar o limite
           t.lidos += r.lidos; t.novos += r.novos; t.atualizados += r.atualizados; t.ignoradosGsystem += r.ignoradosGsystem;
           t.clientesGsystem += r.clientesGsystem; t.ignoradosOutros += r.ignoradosOutros;
           r.categoriasNovas.forEach((c: string) => t.categoriasNovas.add(c));
