@@ -624,6 +624,12 @@ const CHIP_ENDPOINT_CANDIDATES = [
   "/linhas",
 ];
 
+function textoStatus(v: any): string | null {
+  if (v == null || v === "") return null;
+  if (typeof v === "object") return textoStatus(v.DisplayName ?? v.Descricao ?? v.Nome ?? v.Status ?? v.Valor ?? null);
+  return String(v);
+}
+
 function normalizeEquipItem(c: any) {
   const ativadoFalse = c?.Ativado === false || c?.ativado === false;
   return {
@@ -631,7 +637,8 @@ function normalizeEquipItem(c: any) {
     descricao: c?.Descricao ?? c?.descricao ?? c?.DisplayName ?? c?.Modelo ?? c?.Nome ?? "",
     modelo: c?.Modelo ?? c?.modelo ?? c?.Tipo ?? c?.Categoria ?? "",
     identificador: c?.Serial ?? c?.serial ?? c?.IMEI ?? c?.imei ?? c?.ICCID ?? c?.iccid ?? c?.Numero ?? c?.numero ?? c?.Codigo ?? "",
-    status: c?.Status ?? c?.status ?? (ativadoFalse ? "Inativo" : "Disponível"),
+    // O GSystem às vezes manda o status como objeto ({ Codigo, DisplayName: "Sem equipamento" }) ou em "Situacao".
+    status: textoStatus(c?.Status ?? c?.status ?? c?.Situacao ?? c?.situacao ?? c?.StatusChip) ?? (ativadoFalse ? "Inativo" : "Disponível"),
     vinculo: c?.Veiculo ?? c?.veiculo ?? c?.Cliente ?? c?.cliente ?? c?.VinculadoA ?? null,
     raw: c,
   };

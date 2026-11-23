@@ -17,7 +17,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { GsystemEquipamentosSyncTab } from "@/components/estoque/gsystem-equipamentos-sync-tab";
-import { classificarStatusEstoque as classifyStatus } from "@/lib/estoque-kpis";
+import { classificarStatusEstoque as classifyStatus, normStatus } from "@/lib/estoque-kpis";
+const normStatusTxt = (s: unknown) => normStatus(String(s ?? "")).replace(/[_-]+/g, " ");
 import { EquipChipsTab, EditMenu, fetchAll as fetchEquipMirror, type Row as MirrorRow } from "@/components/estoque/equip-chips-tab";
 import { AccessoryCatalogTab } from "@/components/estoque/accessory-catalog-tab";
 import { VinculosHistoricoTab } from "@/components/estoque/vinculos-historico-tab";
@@ -291,17 +292,25 @@ function EstoquePage() {
   const equipFiltered = filterCadastros(equipItems).filter((it) => !isPairedEquip(it));
   // Chip: a situação vem do vínculo, não só do status do GSystem (que usa nomes variados, como "Ativo" ou "Habilitado"
   // para linha ligada). Em uso = está num equipamento do espelho ou o próprio GSystem aponta equipamento/placa.
+  const temId = (v: any): boolean => {
+    if (v == null) return false;
+    if (typeof v !== "object") return String(v).trim() !== "" && String(v).trim() !== "0";
+    return ["Codigo", "Id", "Key", "Serie", "Serial", "IMEI", "Equipamento", "DisplayName", "Placa"].some((k) => temId(v[k]));
+  };
   const chipLigado = (it: CadastroItem) => {
     const r: any = (it as any).raw ?? {};
-    const eq = r.Equipamento ?? r.EquipamentoCodigo ?? r.Rastreador ?? r.Veiculo ?? r.Placa ?? null;
-    return !!(eq && (typeof eq !== "object" || Object.keys(eq).length));
+    return [r.Equipamento, r.EquipamentoCodigo, r.Rastreador, r.Veiculo, r.Placa].some(temId);
   };
+  // Quando o próprio GSystem diz que o chip está solto ("Sem equipamento", "Disponível", "Estoque"...),
+  // vale o status dele, mesmo que a cópia local dos equipamentos esteja desatualizada.
+  const chipSoltoPeloStatus = (it: CadastroItem) => /sem equip|dispon|estoque|desvincul|sem vinculo|livre/.test(normStatusTxt(it.status));
   const classificarChip = (it: CadastroItem) => {
     const c = classifyStatus(it.status);
     if (c === "inativo") return "inativo";
+    if (chipSoltoPeloStatus(it)) return "disponivel";
     return isChipInUse(it) || chipLigado(it) ? "vinculado" : "disponivel";
   };
-  const chipFiltered = filterCadastros(chipItems, classificarChip).filter((it) => !isChipInUse(it));
+  const chipFiltered = filterCadastros(chipItems, classificarChip).filter((it) => chipSoltoPeloStatus(it) || !isChipInUse(it));
   const chipStatusResumo = Object.entries(chipItems.reduce<Record<string, number>>((m, it) => {
     const k = `${it.status || "sem status"} → ${({ disponivel: "solto", vinculado: "em uso", inativo: "inativo" } as Record<string, string>)[classificarChip(it)] ?? "?"}`;
     m[k] = (m[k] ?? 0) + 1; return m;
