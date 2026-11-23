@@ -326,6 +326,41 @@ export const registrarImportacaoBomControleFn = createServerFn({ method: "POST" 
     return { ok: true };
   });
 
+// ----- Inadimplência ---------------------------------------------------------------
+
+export const atualizarClientesFinanceiroFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase } = context as any;
+    await assertFinance(supabase);
+    const { atualizarClientesFinanceiro } = await import("@/lib/finance-inadimplencia.server");
+    return atualizarClientesFinanceiro();
+  });
+
+export const reguaCobrancaFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ simular: z.boolean() }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context as any;
+    await assertFinance(supabase);
+    const { executarReguaCobranca } = await import("@/lib/finance-inadimplencia.server");
+    return executarReguaCobranca({ simular: data.simular, manual: true, limite: 60 });
+  });
+
+export const enviarCobrancaClienteFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({
+    documento: z.string().min(11).max(20),
+    whatsapp: z.boolean(),
+    email: z.boolean(),
+    texto: z.string().max(4000).optional().nullable(),
+  }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context as any;
+    await assertFinance(supabase);
+    const { enviarCobrancaCliente } = await import("@/lib/finance-inadimplencia.server");
+    return enviarCobrancaCliente(data.documento, { whatsapp: data.whatsapp, email: data.email }, userId, data.texto);
+  });
 // ----- Anexo do lançamento (bucket + Google Drive) ------------------------------------
 
 /**
