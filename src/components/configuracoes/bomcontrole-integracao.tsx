@@ -19,10 +19,10 @@ import {
 
 type Totais = {
   resumo: Record<string, LinhaResumo>;
-  novos: number; atualizados: number; ignoradosGsystem: number; clientesGsystem: number; ignoradosOutros: number;
+  lidos: number; novos: number; atualizados: number; ignoradosGsystem: number; clientesGsystem: number; ignoradosOutros: number;
   categoriasNovas: Set<string>; empresasSemCadastro: Set<string>;
 };
-const vazio = (): Totais => ({ resumo: {}, novos: 0, atualizados: 0, ignoradosGsystem: 0, clientesGsystem: 0, ignoradosOutros: 0, categoriasNovas: new Set(), empresasSemCadastro: new Set() });
+const vazio = (): Totais => ({ resumo: {}, lidos: 0, novos: 0, atualizados: 0, ignoradosGsystem: 0, clientesGsystem: 0, ignoradosOutros: 0, categoriasNovas: new Set(), empresasSemCadastro: new Set() });
 const hojeSP = () => new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
 const nomeMes = (m: string) => { const [a, mm] = m.split("-"); return `${mm}/${a}`; };
 
@@ -71,7 +71,7 @@ function Cartao() {
         while (pagina) {
           setProgresso(`${gravar ? "Importando" : "Conferindo"} ${nomeMes(j.mes)} (${i + 1} de ${janelas.length})${pagina > 1 ? ` · página ${pagina}` : ""}…`);
           const r: any = await importar({ data: { de: j.de, ate: j.ate, pagina, gravar, incluirClientesGsystem } });
-          t.novos += r.novos; t.atualizados += r.atualizados; t.ignoradosGsystem += r.ignoradosGsystem;
+          t.lidos += r.lidos; t.novos += r.novos; t.atualizados += r.atualizados; t.ignoradosGsystem += r.ignoradosGsystem;
           t.clientesGsystem += r.clientesGsystem; t.ignoradosOutros += r.ignoradosOutros;
           r.categoriasNovas.forEach((c: string) => t.categoriasNovas.add(c));
           r.empresasSemCadastro.forEach((c: string) => t.empresasSemCadastro.add(c));
@@ -189,6 +189,7 @@ function Cartao() {
               </Table>
             </div>
             <ul className="text-sm text-muted-foreground list-disc pl-5 space-y-1">
+              <li>{resultado.t.lidos} linha(s) lida(s) do Bom Controle no período.{resultado.t.lidos === 0 ? " O Bom Controle não devolveu nada: confira se a chave tem acesso ao módulo Financeiro e à empresa certa." : ""}</li>
               <li>{resultado.tipo === "previa" ? `${resultado.t.novos} lançamento(s) novo(s) serão gravados.` : `${resultado.t.novos} gravado(s); ${resultado.t.atualizados} baixa(s) atualizada(s).`}</li>
               {resultado.t.clientesGsystem > 0 && <li>{resultado.t.clientesGsystem} recebível(is) de clientes do GSystem sem fatura igual ficaram de fora (ligue a opção acima para incluir).</li>}
               {resultado.t.ignoradosOutros > 0 && <li>{resultado.t.ignoradosOutros} linha(s) ignorada(s) (transferências entre contas ou valor zero).</li>}
