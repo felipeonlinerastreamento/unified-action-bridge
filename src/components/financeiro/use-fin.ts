@@ -46,6 +46,9 @@ export type Lanc = {
   nota_chave?: string | null;
   // Agenda de pagamentos (migração 0066)
   data_programada?: string | null;
+  // Inadimplência (migração 0070)
+  perda_provavel?: boolean | null;
+  promessa_pagamento?: string | null;
 };
 export type Cat = { id: string; nome: string; tipo: "despesa" | "receita"; grupo_dre: string; ativo: boolean; ordem: number };
 export type Emp = { id: string; codigo: string; nome: string; cnpj: string | null; ativo: boolean };

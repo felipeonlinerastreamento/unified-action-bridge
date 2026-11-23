@@ -23,6 +23,7 @@ export type ClienteCarteira = {
   receita_mensal: number;
   vencidas_valor: number;
   vencidas_qtd: number;
+  vencidas_dias?: number | null; // atraso da fatura mais antiga (migração 0070)
   classe: Classe;
   classe_manual?: Classe | null;
   primeira_fatura_em?: string | null;
@@ -146,7 +147,12 @@ export function sugestoesCliente(c: ClienteCarteira, hoje: string): Sugestao[] {
     const avisado = (c.rc_notificadas ?? 0) > 0 ? " Já foi avisado e não voltou:" : "";
     out.push({ roteiro: d > 20 ? "retencao" : "revisao", prioridade: d > 20 ? 1 : 2, texto: `${c.rc_placas_paradas} placa(s) sem comunicação há até ${d} dias (Reconnect).${avisado} ligar, entender o motivo e agendar a manutenção.` });
   }
-  if (c.vencidas_qtd > 0) out.push({ roteiro: "financeiro", prioridade: 1, texto: `${c.vencidas_qtd} fatura(s) vencida(s): contato amigável, confirmar se recebeu o boleto e se há problema no serviço.` });
+  if (c.vencidas_qtd > 0) {
+    const dias = c.vencidas_dias ?? null;
+    const atraso = dias != null ? ` (a mais antiga há ${dias} dia(s))` : "";
+    const alerta = classe === "A" && dias != null && dias > 15 ? " Cliente classe A: priorizar antes que vire cancelamento;" : "";
+    out.push({ roteiro: "financeiro", prioridade: 1, texto: `${c.vencidas_qtd} fatura(s) vencida(s)${atraso}:${alerta} contato amigável, confirmar se recebeu o boleto e se há problema no serviço.` });
+  }
   if (!c.diagnostico_em) {
     out.push({ roteiro: "primeiro_contato", prioridade: classe === "A" ? 1 : 2, texto: "Fazer o primeiro contato e o diagnóstico (decisor, frota total e interesses)." });
   }

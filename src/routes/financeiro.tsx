@@ -15,6 +15,7 @@ import { CadastrosTab } from "@/components/financeiro/cadastros-tab";
 import { FornecedoresTab } from "@/components/financeiro/fornecedores-tab";
 import { AprovacoesTab } from "@/components/financeiro/aprovacoes-tab";
 import { AgendaTab } from "@/components/financeiro/agenda-tab";
+import { InadimplenciaTab } from "@/components/financeiro/inadimplencia-tab";
 
 type FinSearch = { tab?: string };
 
@@ -65,6 +66,7 @@ function FinanceiroContent() {
           <TabsTrigger value="painel">Painel</TabsTrigger>
           <TabsTrigger value="pagar">Contas a pagar</TabsTrigger>
           <TabsTrigger value="receber">Contas a receber</TabsTrigger>
+          <TabsTrigger value="inadimplencia">Inadimplência</TabsTrigger>
           <TabsTrigger value="agenda">Agenda de pagamentos</TabsTrigger>
           <TabsTrigger value="aprovacoes">Aprovações{aAprovar > 0 && <Badge variant="destructive" className="ml-1 h-5 px-1.5">{aAprovar}</Badge>}</TabsTrigger>
           <TabsTrigger value="fornecedores">Fornecedores</TabsTrigger>
@@ -81,6 +83,7 @@ function FinanceiroContent() {
             <TabsContent value="painel" className="mt-4"><PainelTab lancamentos={data.lancamentos} categorias={data.categorias} onRevisar={() => setTab("comprovantes")} /></TabsContent>
             <TabsContent value="pagar" className="mt-4"><LancamentosTab tipo="pagar" lancamentos={data.lancamentos} categorias={data.categorias} empresas={data.empresas} /></TabsContent>
             <TabsContent value="receber" className="mt-4"><LancamentosTab tipo="receber" lancamentos={data.lancamentos} categorias={data.categorias} empresas={data.empresas} /></TabsContent>
+            <TabsContent value="inadimplencia" className="mt-4"><InadimplenciaTab lancamentos={data.lancamentos} /></TabsContent>
             <TabsContent value="agenda" className="mt-4"><AgendaTab lancamentos={data.lancamentos} contas={data.contas} /></TabsContent>
             <TabsContent value="aprovacoes" className="mt-4"><AprovacoesTab lancamentos={data.lancamentos} /></TabsContent>
             <TabsContent value="fornecedores" className="mt-4"><FornecedoresTab lancamentos={data.lancamentos} categorias={data.categorias} empresas={data.empresas} /></TabsContent>

@@ -40,11 +40,11 @@ export async function atualizarCarteiraPosVenda(): Promise<{ ok: boolean; client
       if (!data || data.length < 1000) break;
     }
 
-    type Acc = { nome: string; key: string | null; receita3m: number; vencVal: number; vencQtd: number; primeira: string | null };
+    type Acc = { nome: string; key: string | null; receita3m: number; vencVal: number; vencQtd: number; vencAntigo: string | null; primeira: string | null };
     const porDoc = new Map<string, Acc>();
     const acc = (doc: string, nome: string, key: string | null) => {
       let a = porDoc.get(doc);
-      if (!a) { a = { nome, key, receita3m: 0, vencVal: 0, vencQtd: 0, primeira: null }; porDoc.set(doc, a); }
+      if (!a) { a = { nome, key, receita3m: 0, vencVal: 0, vencQtd: 0, vencAntigo: null, primeira: null }; porDoc.set(doc, a); }
       return a;
     };
     for (const f of fats) {
@@ -54,13 +54,17 @@ export async function atualizarCarteiraPosVenda(): Promise<{ ok: boolean; client
       if (f.status === "cancelado") continue;
       const ref = f.vencimento || f.data_emissao;
       if (ref && ref >= de && ref < ate) a.receita3m += Number(f.valor || 0);
-      if (f.status === "aberto" && f.vencimento && f.vencimento < hoje) { a.vencVal += Number(f.valor || 0); a.vencQtd++; }
+      if (f.status === "aberto" && f.vencimento && f.vencimento < hoje) {
+        a.vencVal += Number(f.valor || 0); a.vencQtd++;
+        if (!a.vencAntigo || f.vencimento < a.vencAntigo) a.vencAntigo = f.vencimento;
+      }
       if (ref && (!a.primeira || ref < a.primeira)) a.primeira = ref;
     }
 
     // Base do GSystem: todo PJ entra, mesmo sem faturamento recente.
     let pj = 0;
-    for (const raw of await listGSystemClientes()) {
+    const brutosGsystem = await listGSystemClientes();
+    for (const raw of brutosGsystem) {
       const c = clienteDoGsystem(raw);
       if (!c) continue;
       if (c.documento.length === 14) { pj++; acc(c.documento, c.nome, c.key); }
@@ -71,6 +75,13 @@ export async function atualizarCarteiraPosVenda(): Promise<{ ok: boolean; client
       .filter(([doc, a]) => doc.length === 14 || a.receita3m > 0 || a.vencQtd > 0)
       .map(([doc, a]) => ({ documento: doc, nome: a.nome, key: a.key, receita: Math.round((a.receita3m / 3) * 100) / 100, a }));
     const abc = classificarABC(linhas.map((l) => ({ documento: l.documento, receita_mensal: l.receita })));
+    // Situação e contatos dos clientes no Financeiro (aba Inadimplência); falha aqui não derruba a carteira.
+    try {
+      const { atualizarClientesFinanceiro } = await import("@/lib/finance-inadimplencia.server");
+      await atualizarClientesFinanceiro(brutosGsystem);
+    } catch { /* migração 0070 ainda não aplicada */ }
+    // A coluna vencidas_dias vem da migração 0070; sem ela, grava como antes.
+    const comDias = !(await db.from("crm_posvenda_carteira").select("vencidas_dias").limit(1)).error;
     const agora = new Date().toISOString();
     const rows = linhas.map((l) => ({
       documento: l.documento,
@@ -79,6 +90,7 @@ export async function atualizarCarteiraPosVenda(): Promise<{ ok: boolean; client
       receita_mensal: l.receita,
       vencidas_valor: Math.round(l.a.vencVal * 100) / 100,
       vencidas_qtd: l.a.vencQtd,
+      ...(comDias ? { vencidas_dias: l.a.vencAntigo ? Math.round((Date.parse(`${hoje}T00:00:00Z`) - Date.parse(`${l.a.vencAntigo}T00:00:00Z`)) / 86_400_000) : null } : {}),
       primeira_fatura_em: l.a.primeira,
       classe: abc.get(l.documento) ?? "C",
       atualizado_em: agora,
