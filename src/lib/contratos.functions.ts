@@ -3,6 +3,7 @@
  * + hash SHA-256 do texto congelado) e assinatura interna (CONTRATADA e testemunhas).
  * As funções públicas (página /contrato/$token) usam service role e só liberam o texto após o CPF.
  */
+import { basePublica } from "@/lib/public-url";
 import { createServerFn } from "@tanstack/react-start";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
@@ -41,12 +42,7 @@ async function marca(admin: Admin) {
 }
 
 function baseUrl(brand: any): string {
-  let base = String(brand?.public_base_url || "").trim();
-  if (!base) {
-    const host = getRequestHeader("x-forwarded-host") || getRequestHeader("host");
-    base = host ? `https://${host}` : "";
-  }
-  return base.replace(/\/$/, "");
+  return basePublica(brand?.public_base_url);
 }
 
 /** Modelos atuais; na primeira vez grava os modelos convertidos dos documentos da empresa. */

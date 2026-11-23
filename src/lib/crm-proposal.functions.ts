@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { basePublica } from "@/lib/public-url";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -143,11 +144,7 @@ export const sendProposalToClient = createServerFn({ method: "POST" })
     }).select("id, token").single();
     if (linkErr || !link) throw new Error(linkErr?.message || "Falha ao criar o link da proposta.");
 
-    let base = (settings.public_base_url || "").trim();
-    if (!base) {
-      const host = getRequestHeader("x-forwarded-host") || getRequestHeader("host");
-      base = host ? `https://${host}` : "";
-    }
+    const base = basePublica(settings.public_base_url);
     const url = buildProposalUrl(base, link.token);
     const vars = buildTemplateVars(snapshot, settings.company_name, url);
 

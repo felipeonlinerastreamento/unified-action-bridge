@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { basePublica } from "@/lib/public-url";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
@@ -75,7 +76,7 @@ export function SendProposalDialog({
     enabled: open,
     queryFn: async () => {
       const { data } = await supabase.from("crm_proposal_settings").select("public_base_url").eq("id", "default").maybeSingle();
-      return (data?.public_base_url as string) || window.location.origin;
+      return basePublica(data?.public_base_url as string);
     },
   });
 

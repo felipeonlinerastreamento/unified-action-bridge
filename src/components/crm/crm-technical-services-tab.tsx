@@ -1,4 +1,5 @@
 import { techStageLabel } from "@/lib/technical-service-cycle";
+import { basePublica } from "@/lib/public-url";
 import { useMemo, useState } from "react";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useServerFn } from "@tanstack/react-start";
@@ -81,7 +82,7 @@ export function CrmTechnicalServicesTab() {
     },
     staleTime: 10 * 60_000,
   });
-  const linkOf = (t: any) => buildTermUrl(brand?.public_base_url || window.location.origin, t.token);
+  const linkOf = (t: any) => buildTermUrl(basePublica(brand?.public_base_url), t.token);
 
   const tecnicosQuery = useQuery({
     queryKey: ["si-technicians"],

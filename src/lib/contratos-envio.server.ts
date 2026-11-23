@@ -2,6 +2,7 @@
  * Envio de links e avisos de Contratos pelo WhatsApp da Central e pela caixa de e-mail do Gestão Online.
  * Server-only e sem depender da requisição (serve para as telas e para a rotina diária).
  */
+import { basePublica as baseDoDominio } from "@/lib/public-url";
 import { soDigitos } from "@/lib/contratos";
 import type { ModoEnvio } from "@/lib/contratos-automacao";
 
@@ -15,7 +16,7 @@ export async function marcaContratos(admin: Admin) {
 
 /** Endereço público dos links: o configurado no CRM, senão o domínio de produção. */
 export function basePublica(brand: any): string {
-  const base = String(brand?.public_base_url || "").trim() || HOST_PUBLICO;
+  const base = baseDoDominio(brand?.public_base_url);
   return base.replace(/\/$/, "");
 }
 

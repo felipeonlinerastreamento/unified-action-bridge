@@ -1,4 +1,5 @@
 import { createServerFn } from "@tanstack/react-start";
+import { basePublica } from "@/lib/public-url";
 import { getRequestHeader } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
@@ -49,15 +50,9 @@ export async function isManager(context: { supabase: any; userId: string }) {
 }
 
 function publicBase(brand: { public_base_url?: string | null }) {
-  let base = (brand.public_base_url || "").trim();
-  if (!base) {
-    const host = getRequestHeader("x-forwarded-host") || getRequestHeader("host");
-    base = host ? `https://${host}` : "";
-  }
-  return base;
+  return basePublica(brand.public_base_url);
 }
 
-/** Envia o link do termo por WhatsApp e/ou e-mail; devolve canais enviados e erros. */
 /** Protocolo do atendimento ligado ao termo (service_tickets.protocol_number), para exibir no padrão #11150. */
 async function protocolOfTicket(admin: Admin, ticketId: string | null | undefined): Promise<number | null> {
   if (!ticketId) return null;
@@ -65,6 +60,7 @@ async function protocolOfTicket(admin: Admin, ticketId: string | null | undefine
   return (data as any)?.protocol_number ?? null;
 }
 
+/** Envia o link do termo por WhatsApp e/ou e-mail; devolve canais enviados e erros. */
 async function deliverTerm(
   admin: Admin,
   userId: string,
