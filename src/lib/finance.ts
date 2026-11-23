@@ -72,6 +72,9 @@ export function mesAnterior(mes: string): string {
   return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}-01`;
 }
 
+/** Linha do DRE (competência) para receitas marcadas como perda provável na aba Inadimplência. */
+export const GRUPO_PERDA = "Perdas com inadimplência (provável)";
+
 export type LinhaDre = { grupo: string; tipo: "receita" | "despesa"; atual: number; anterior: number };
 
 /**
@@ -98,6 +101,12 @@ export function calcularDre(
     if (comp === mes) linha.atual += Number(l.valor || 0);
     else linha.anterior += Number(l.valor || 0);
     map.set(key, linha);
+    // Receita marcada como perda provável: a mesma quantia entra como despesa (a receita fica, a perda aparece separada).
+    if (tipo === "receita" && (l as any).perda_provavel && l.status !== "pago") {
+      const lp = map.get(`despesa|${GRUPO_PERDA}`) ?? { grupo: GRUPO_PERDA, tipo: "despesa" as const, atual: 0, anterior: 0 };
+      if (comp === mes) lp.atual += Number(l.valor || 0); else lp.anterior += Number(l.valor || 0);
+      map.set(`despesa|${GRUPO_PERDA}`, lp);
+    }
   }
   const linhas = [...map.values()].sort((a, b) => (a.tipo === b.tipo ? b.atual - a.atual : a.tipo === "receita" ? -1 : 1));
   const soma = (t: "receita" | "despesa", k: "atual" | "anterior") => linhas.filter((x) => x.tipo === t).reduce((s, x) => s + x[k], 0);
@@ -144,6 +153,13 @@ export function calcularDreMensal(lancamentos: FinLancamento[], categorias: FinC
     linha.valores[pos.get(m)!] += v;
     linha.total += v;
     linhas.set(key, linha);
+    if (regime === "competencia" && tipo === "receita" && (l as any).perda_provavel && l.status !== "pago") {
+      const kp = `despesa|${GRUPO_PERDA}`;
+      const lp = linhas.get(kp) ?? { grupo: GRUPO_PERDA, tipo: "despesa" as const, valores: meses.map(() => 0), total: 0 };
+      lp.valores[pos.get(m)!] += v;
+      lp.total += v;
+      linhas.set(kp, lp);
+    }
   }
   const arr = [...linhas.values()]
     .map((x) => ({ ...x, valores: x.valores.map(round2), total: round2(x.total) }))

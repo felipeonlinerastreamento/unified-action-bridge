@@ -79,6 +79,7 @@ import { Route as ApiPublicEmailPollRouteImport } from './routes/api.public.emai
 import { Route as ApiPublicSystemHealthScanRouteImport } from './routes/api.public.system-health-scan'
 import { Route as ApiPublicHooksAutentiqueRouteImport } from './routes/api.public.hooks.autentique'
 import { Route as ApiPublicHooksContratosDiarioRouteImport } from './routes/api.public.hooks.contratos-diario'
+import { Route as ApiPublicHooksFinanceiroCobrancaRouteImport } from './routes/api.public.hooks.financeiro-cobranca'
 import { Route as ApiPublicHooksFinanceiroEmailRouteImport } from './routes/api.public.hooks.financeiro-email'
 import { Route as ApiPublicHooksSyncGsystemEquipamentosRouteImport } from './routes/api.public.hooks.sync-gsystem-equipamentos'
 import { Route as ApiPublicHooksSyncGsystemFaturasRouteImport } from './routes/api.public.hooks.sync-gsystem-faturas'
@@ -452,6 +453,12 @@ const ApiPublicHooksContratosDiarioRoute =
     path: '/api/public/hooks/contratos-diario',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksFinanceiroCobrancaRoute =
+  ApiPublicHooksFinanceiroCobrancaRouteImport.update({
+    id: '/api/public/hooks/financeiro-cobranca',
+    path: '/api/public/hooks/financeiro-cobranca',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksFinanceiroEmailRoute =
   ApiPublicHooksFinanceiroEmailRouteImport.update({
     id: '/api/public/hooks/financeiro-email',
@@ -558,6 +565,7 @@ export interface FileRoutesByFullPath {
   '/api/public/system-health-scan': typeof ApiPublicSystemHealthScanRoute
   '/api/public/hooks/autentique': typeof ApiPublicHooksAutentiqueRoute
   '/api/public/hooks/contratos-diario': typeof ApiPublicHooksContratosDiarioRoute
+  '/api/public/hooks/financeiro-cobranca': typeof ApiPublicHooksFinanceiroCobrancaRoute
   '/api/public/hooks/financeiro-email': typeof ApiPublicHooksFinanceiroEmailRoute
   '/api/public/hooks/sync-gsystem-equipamentos': typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   '/api/public/hooks/sync-gsystem-faturas': typeof ApiPublicHooksSyncGsystemFaturasRoute
@@ -633,6 +641,7 @@ export interface FileRoutesByTo {
   '/api/public/system-health-scan': typeof ApiPublicSystemHealthScanRoute
   '/api/public/hooks/autentique': typeof ApiPublicHooksAutentiqueRoute
   '/api/public/hooks/contratos-diario': typeof ApiPublicHooksContratosDiarioRoute
+  '/api/public/hooks/financeiro-cobranca': typeof ApiPublicHooksFinanceiroCobrancaRoute
   '/api/public/hooks/financeiro-email': typeof ApiPublicHooksFinanceiroEmailRoute
   '/api/public/hooks/sync-gsystem-equipamentos': typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   '/api/public/hooks/sync-gsystem-faturas': typeof ApiPublicHooksSyncGsystemFaturasRoute
@@ -712,6 +721,7 @@ export interface FileRoutesById {
   '/api/public/system-health-scan': typeof ApiPublicSystemHealthScanRoute
   '/api/public/hooks/autentique': typeof ApiPublicHooksAutentiqueRoute
   '/api/public/hooks/contratos-diario': typeof ApiPublicHooksContratosDiarioRoute
+  '/api/public/hooks/financeiro-cobranca': typeof ApiPublicHooksFinanceiroCobrancaRoute
   '/api/public/hooks/financeiro-email': typeof ApiPublicHooksFinanceiroEmailRoute
   '/api/public/hooks/sync-gsystem-equipamentos': typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   '/api/public/hooks/sync-gsystem-faturas': typeof ApiPublicHooksSyncGsystemFaturasRoute
@@ -792,6 +802,7 @@ export interface FileRouteTypes {
     | '/api/public/system-health-scan'
     | '/api/public/hooks/autentique'
     | '/api/public/hooks/contratos-diario'
+    | '/api/public/hooks/financeiro-cobranca'
     | '/api/public/hooks/financeiro-email'
     | '/api/public/hooks/sync-gsystem-equipamentos'
     | '/api/public/hooks/sync-gsystem-faturas'
@@ -867,6 +878,7 @@ export interface FileRouteTypes {
     | '/api/public/system-health-scan'
     | '/api/public/hooks/autentique'
     | '/api/public/hooks/contratos-diario'
+    | '/api/public/hooks/financeiro-cobranca'
     | '/api/public/hooks/financeiro-email'
     | '/api/public/hooks/sync-gsystem-equipamentos'
     | '/api/public/hooks/sync-gsystem-faturas'
@@ -945,6 +957,7 @@ export interface FileRouteTypes {
     | '/api/public/system-health-scan'
     | '/api/public/hooks/autentique'
     | '/api/public/hooks/contratos-diario'
+    | '/api/public/hooks/financeiro-cobranca'
     | '/api/public/hooks/financeiro-email'
     | '/api/public/hooks/sync-gsystem-equipamentos'
     | '/api/public/hooks/sync-gsystem-faturas'
@@ -990,6 +1003,7 @@ export interface RootRouteChildren {
   ApiPublicSystemHealthScanRoute: typeof ApiPublicSystemHealthScanRoute
   ApiPublicHooksAutentiqueRoute: typeof ApiPublicHooksAutentiqueRoute
   ApiPublicHooksContratosDiarioRoute: typeof ApiPublicHooksContratosDiarioRoute
+  ApiPublicHooksFinanceiroCobrancaRoute: typeof ApiPublicHooksFinanceiroCobrancaRoute
   ApiPublicHooksFinanceiroEmailRoute: typeof ApiPublicHooksFinanceiroEmailRoute
   ApiPublicHooksSyncGsystemEquipamentosRoute: typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   ApiPublicHooksSyncGsystemFaturasRoute: typeof ApiPublicHooksSyncGsystemFaturasRoute
@@ -1490,6 +1504,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksContratosDiarioRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/financeiro-cobranca': {
+      id: '/api/public/hooks/financeiro-cobranca'
+      path: '/api/public/hooks/financeiro-cobranca'
+      fullPath: '/api/public/hooks/financeiro-cobranca'
+      preLoaderRoute: typeof ApiPublicHooksFinanceiroCobrancaRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/financeiro-email': {
       id: '/api/public/hooks/financeiro-email'
       path: '/api/public/hooks/financeiro-email'
@@ -1671,6 +1692,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicSystemHealthScanRoute: ApiPublicSystemHealthScanRoute,
   ApiPublicHooksAutentiqueRoute: ApiPublicHooksAutentiqueRoute,
   ApiPublicHooksContratosDiarioRoute: ApiPublicHooksContratosDiarioRoute,
+  ApiPublicHooksFinanceiroCobrancaRoute: ApiPublicHooksFinanceiroCobrancaRoute,
   ApiPublicHooksFinanceiroEmailRoute: ApiPublicHooksFinanceiroEmailRoute,
   ApiPublicHooksSyncGsystemEquipamentosRoute:
     ApiPublicHooksSyncGsystemEquipamentosRoute,
@@ -1682,13 +1704,3 @@ const rootRouteChildren: RootRouteChildren = {
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { startInstance } from './start.ts'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-    config: Awaited<ReturnType<typeof startInstance.getOptions>>
-  }
-}
