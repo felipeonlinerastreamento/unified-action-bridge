@@ -540,6 +540,13 @@
       "when": 1795467257500,
       "tag": "0076_teste_sem_protocolo",
       "breakpoints": true
+    },
+    {
+      "idx": 77,
+      "version": "7",
+      "when": 1795467504632,
+      "tag": "0077_contratos_setores_avisos",
+      "breakpoints": true
     }
   ]
 }

@@ -1819,10 +1819,13 @@ export type Database = {
           indices: Json
           lembrete_ativo: boolean
           lembrete_avisar_responsavel: boolean
+          lembrete_avisar_setores: string[]
           lembrete_dias: number[]
           lembrete_modo: string
+          proposta_avisar_setores: string[]
           proposta_cria_rascunho: boolean
           reajuste_ativo: boolean
+          reajuste_avisar_setores: string[]
           reajuste_aviso_dias: number
           reajuste_fixo_pct: number
           reajuste_indice: string
@@ -1833,6 +1836,7 @@ export type Database = {
           updated_by: string | null
           vencimento_ativo: boolean
           vencimento_avisar_responsavel: boolean
+          vencimento_avisar_setores: string[]
           vencimento_avisar_usuarios: string[]
           vencimento_dias: number[]
           vencimento_fornecedores: boolean
@@ -1843,10 +1847,13 @@ export type Database = {
           indices?: Json
           lembrete_ativo?: boolean
           lembrete_avisar_responsavel?: boolean
+          lembrete_avisar_setores?: string[]
           lembrete_dias?: number[]
           lembrete_modo?: string
+          proposta_avisar_setores?: string[]
           proposta_cria_rascunho?: boolean
           reajuste_ativo?: boolean
+          reajuste_avisar_setores?: string[]
           reajuste_aviso_dias?: number
           reajuste_fixo_pct?: number
           reajuste_indice?: string
@@ -1857,6 +1864,7 @@ export type Database = {
           updated_by?: string | null
           vencimento_ativo?: boolean
           vencimento_avisar_responsavel?: boolean
+          vencimento_avisar_setores?: string[]
           vencimento_avisar_usuarios?: string[]
           vencimento_dias?: number[]
           vencimento_fornecedores?: boolean
@@ -1867,10 +1875,13 @@ export type Database = {
           indices?: Json
           lembrete_ativo?: boolean
           lembrete_avisar_responsavel?: boolean
+          lembrete_avisar_setores?: string[]
           lembrete_dias?: number[]
           lembrete_modo?: string
+          proposta_avisar_setores?: string[]
           proposta_cria_rascunho?: boolean
           reajuste_ativo?: boolean
+          reajuste_avisar_setores?: string[]
           reajuste_aviso_dias?: number
           reajuste_fixo_pct?: number
           reajuste_indice?: string
@@ -1881,6 +1892,7 @@ export type Database = {
           updated_by?: string | null
           vencimento_ativo?: boolean
           vencimento_avisar_responsavel?: boolean
+          vencimento_avisar_setores?: string[]
           vencimento_avisar_usuarios?: string[]
           vencimento_dias?: number[]
           vencimento_fornecedores?: boolean
@@ -8409,6 +8421,9 @@ export type Database = {
           technical_term_override_by: string | null
           technical_term_override_reason: string | null
           test_result: string | null
+          teste_sem_protocolo_em: string | null
+          teste_sem_protocolo_justificativa: string | null
+          teste_sem_protocolo_por: string | null
           tracking_code: string | null
           updated_at: string
         }
@@ -8456,6 +8471,9 @@ export type Database = {
           technical_term_override_by?: string | null
           technical_term_override_reason?: string | null
           test_result?: string | null
+          teste_sem_protocolo_em?: string | null
+          teste_sem_protocolo_justificativa?: string | null
+          teste_sem_protocolo_por?: string | null
           tracking_code?: string | null
           updated_at?: string
         }
@@ -8503,6 +8521,9 @@ export type Database = {
           technical_term_override_by?: string | null
           technical_term_override_reason?: string | null
           test_result?: string | null
+          teste_sem_protocolo_em?: string | null
+          teste_sem_protocolo_justificativa?: string | null
+          teste_sem_protocolo_por?: string | null
           tracking_code?: string | null
           updated_at?: string
         }
@@ -10856,6 +10877,10 @@ export type Database = {
         Returns: undefined
       }
       can_access_finance: { Args: never; Returns: boolean }
+      chamado_eh_servico_tecnico: {
+        Args: { _category: string; _tech_stage: string }
+        Returns: boolean
+      }
       contratos_allowed: { Args: never; Returns: boolean }
       crm_tab_allowed: { Args: { _tab: string }; Returns: boolean }
       delete_technical_term_type: { Args: { _id: string }; Returns: string }
@@ -10976,6 +11001,7 @@ export type Database = {
         Args: { _accessory: string; _codigo: string; _qtd: number }
         Returns: undefined
       }
+      setor_principal_do_usuario: { Args: { _user: string }; Returns: string }
       sidebar_counters: { Args: never; Returns: Json }
       sys_can_monitor: { Args: never; Returns: boolean }
       sys_cron_runs: { Args: never; Returns: Json }
