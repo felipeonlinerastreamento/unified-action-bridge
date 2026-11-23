@@ -212,7 +212,7 @@ function EstoquePage() {
   }, [localItems]);
 
   // ----- Filtering helpers for cadastros -----
-  function filterCadastros(items: CadastroItem[]): CadastroItem[] {
+  function filterCadastros(items: CadastroItem[], classificar: (it: CadastroItem) => string = (it) => classifyStatus(it.status)): CadastroItem[] {
     return items.filter((it) => {
       const hay = [it.descricao, it.identificador, it.modelo, it.key, it.status, it.vinculo]
         .filter(Boolean).join(" ").toLowerCase();
@@ -223,7 +223,7 @@ function EstoquePage() {
         term.split(/\s+/).every((w) => hay.includes(w)) ||
         (termCompact.length >= 3 && hayCompact.includes(termCompact));
       const matchesModel = modelFilter === "all" || it.modelo === modelFilter;
-      const cls = classifyStatus(it.status);
+      const cls = classificar(it);
       const matchesStatus =
         statusFilter === "all" ||
         (statusFilter === "disponivel" && cls === "disponivel") ||
@@ -289,7 +289,23 @@ function EstoquePage() {
   }, [mirrorQuery.data]);
 
   const equipFiltered = filterCadastros(equipItems).filter((it) => !isPairedEquip(it));
-  const chipFiltered = filterCadastros(chipItems).filter((it) => !isChipInUse(it));
+  // Chip: a situação vem do vínculo, não só do status do GSystem (que usa nomes variados, como "Ativo" ou "Habilitado"
+  // para linha ligada). Em uso = está num equipamento do espelho ou o próprio GSystem aponta equipamento/placa.
+  const chipLigado = (it: CadastroItem) => {
+    const r: any = (it as any).raw ?? {};
+    const eq = r.Equipamento ?? r.EquipamentoCodigo ?? r.Rastreador ?? r.Veiculo ?? r.Placa ?? null;
+    return !!(eq && (typeof eq !== "object" || Object.keys(eq).length));
+  };
+  const classificarChip = (it: CadastroItem) => {
+    const c = classifyStatus(it.status);
+    if (c === "inativo") return "inativo";
+    return isChipInUse(it) || chipLigado(it) ? "vinculado" : "disponivel";
+  };
+  const chipFiltered = filterCadastros(chipItems, classificarChip).filter((it) => !isChipInUse(it));
+  const chipStatusResumo = Object.entries(chipItems.reduce<Record<string, number>>((m, it) => {
+    const k = `${it.status || "sem status"} → ${({ disponivel: "solto", vinculado: "em uso", inativo: "inativo" } as Record<string, string>)[classificarChip(it)] ?? "?"}`;
+    m[k] = (m[k] ?? 0) + 1; return m;
+  }, {})).sort((a, b) => b[1] - a[1]);
 
   // Filter GSystem vehicles
   const filteredVeiculos = veiculos.filter((v: any) => {
@@ -537,6 +553,11 @@ function EstoquePage() {
 
           {/* Chips tab */}
           <TabsContent value="chips">
+            {chipItems.length > 0 && (
+              <p className="text-xs text-muted-foreground mb-2">
+                {chipItems.length} chip(s) no GSystem · {chipItems.filter((it) => classificarChip(it) === "disponivel").length} solto(s) (sem equipamento) · status recebidos: {chipStatusResumo.slice(0, 8).map(([k, n]) => `${k} (${n})`).join(" · ")}
+              </p>
+            )}
             <CadastrosTable
               icon={<Wifi className="h-8 w-8 mx-auto mb-2 opacity-50" />}
               loading={chipsQuery.isLoading}
