@@ -650,7 +650,8 @@ function nextCursorOf(res: any): string | undefined {
 
 function itemsOf(res: any): any[] {
   if (Array.isArray(res)) return res;
-  const arr = res?.data ?? res?.Data ?? res?.Items ?? res?.items ?? res?.resultado;
+  const arr = res?.data ?? res?.Data ?? res?.Items ?? res?.items ?? res?.resultado
+    ?? (res && typeof res === "object" ? Object.values(res).find((v) => Array.isArray(v) && v.length > 0 && typeof (v as any[])[0] === "object") : undefined);
   return Array.isArray(arr) ? arr : [];
 }
 
@@ -673,7 +674,7 @@ async function fetchAllPages(
   // Recomeça com Limit=100 para pegar páginas cheias; se falhar, usa a resposta original.
   let res: any;
   try {
-    res = await fetcher(`${ep}?Limit=100`);
+    res = await fetcher(ep.includes("?") ? ep : `${ep}?Limit=100`);
   } catch {
     res = firstResult;
   }
@@ -682,7 +683,7 @@ async function fetchAllPages(
   for (let page = 0; cursor && page < 200; page++) {
     const qs = new URLSearchParams({ Limit: "100", Cursor: cursor });
     try {
-      res = await fetcher(`${ep}?${qs.toString()}`);
+      res = await fetcher(`${ep.split("?")[0]}?${qs.toString()}`);
     } catch {
       break;
     }
@@ -700,7 +701,9 @@ async function probeEndpoints(
   endpoints: string[]
 ): Promise<{ matchedEndpoint: string | null; items: any[]; tried: Array<{ endpoint: string; status: string }> }> {
   const tried: Array<{ endpoint: string; status: string }> = [];
-  for (const ep of endpoints) {
+  // Cada endpoint é tentado puro e com paginação (?Limit=100): no GSystem, /chips sem Limit responde null.
+  const tentativas = endpoints.flatMap((ep) => (ep.includes("?") ? [ep] : [ep, `${ep}?Limit=100`]));
+  for (const ep of tentativas) {
     try {
       const result = await fetcher(ep);
       if (Array.isArray(result)) {
@@ -710,7 +713,8 @@ async function probeEndpoints(
         }
       } else if (result && typeof result === "object") {
         // Some APIs wrap arrays in { data: [...] } or { Items: [...] }
-        const arr = (result as any).data ?? (result as any).Data ?? (result as any).Items ?? (result as any).items ?? (result as any).resultado;
+        const arr = (result as any).data ?? (result as any).Data ?? (result as any).Items ?? (result as any).items ?? (result as any).resultado
+          ?? Object.values(result as any).find((v) => Array.isArray(v) && v.length > 0 && typeof v[0] === "object");
         if (Array.isArray(arr)) {
           if (arr.length > 0) {
             // A API do GSystem pagina (Limit/Cursor): sem percorrer as páginas só vinha a primeira,
@@ -721,7 +725,7 @@ async function probeEndpoints(
           }
           tried.push({ endpoint: ep, status: `ok (0 itens, wrapped)` });
         } else {
-          tried.push({ endpoint: ep, status: "resposta não-array" });
+          tried.push({ endpoint: ep, status: `resposta não-array (${Object.keys(result as any).slice(0, 6).join(", ") || "vazia"})` });
         }
       } else {
         tried.push({ endpoint: ep, status: "resposta vazia" });
