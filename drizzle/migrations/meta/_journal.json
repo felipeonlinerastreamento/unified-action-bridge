@@ -533,6 +533,13 @@
       "when": 1795466972431,
       "tag": "0075_servico_tecnico_fila_finalizador",
       "breakpoints": true
+    },
+    {
+      "idx": 76,
+      "version": "7",
+      "when": 1795467257500,
+      "tag": "0076_teste_sem_protocolo",
+      "breakpoints": true
     }
   ]
 }
