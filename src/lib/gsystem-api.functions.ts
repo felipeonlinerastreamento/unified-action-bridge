@@ -660,6 +660,7 @@ async function fetchAllPages(
   fetcher: (endpoint: string, method?: string, body?: unknown) => Promise<any>,
   ep: string,
   firstResult: any,
+  prazo = Date.now() + 20_000,
 ): Promise<any[]> {
   const out: any[] = [];
   const seen = new Set<string>();
@@ -680,7 +681,8 @@ async function fetchAllPages(
   }
   push(itemsOf(res));
   let cursor = nextCursorOf(res);
-  for (let page = 0; cursor && page < 200; page++) {
+  // Para antes do limite de tempo do servidor (senão o navegador recebe "NetworkError").
+  for (let page = 0; cursor && page < 200 && Date.now() < prazo; page++) {
     const qs = new URLSearchParams({ Limit: "100", Cursor: cursor });
     try {
       res = await fetcher(`${ep.split("?")[0]}?${qs.toString()}`);
@@ -702,8 +704,10 @@ async function probeEndpoints(
 ): Promise<{ matchedEndpoint: string | null; items: any[]; tried: Array<{ endpoint: string; status: string }> }> {
   const tried: Array<{ endpoint: string; status: string }> = [];
   // Cada endpoint é tentado puro e com paginação (?Limit=100): no GSystem, /chips sem Limit responde null.
-  const tentativas = endpoints.flatMap((ep) => (ep.includes("?") ? [ep] : [ep, `${ep}?Limit=100`]));
+  const tentativas = endpoints.flatMap((ep) => (ep.includes("?") ? [ep] : [`${ep}?Limit=100`, ep]));
+  const inicio = Date.now();
   for (const ep of tentativas) {
+    if (Date.now() - inicio > 15_000) { tried.push({ endpoint: ep, status: "pulado (tempo)" }); continue; }
     try {
       const result = await fetcher(ep);
       if (Array.isArray(result)) {
@@ -719,7 +723,7 @@ async function probeEndpoints(
           if (arr.length > 0) {
             // A API do GSystem pagina (Limit/Cursor): sem percorrer as páginas só vinha a primeira,
             // e os itens disponíveis (ex.: chips soltos) ficavam de fora.
-            const all = await fetchAllPages(fetcher, ep, result);
+            const all = await fetchAllPages(fetcher, ep, result, inicio + 22_000);
             tried.push({ endpoint: ep, status: `ok (${all.length} itens, paginado)` });
             return { matchedEndpoint: ep, items: all, tried };
           }
