@@ -519,6 +519,13 @@
       "when": 1795446285747,
       "tag": "0073_rh",
       "breakpoints": true
+    },
+    {
+      "idx": 74,
+      "version": "7",
+      "when": 1795450053086,
+      "tag": "0074_contratos_setores_avisos",
+      "breakpoints": true
     }
   ]
 }

@@ -74,6 +74,8 @@ function Tela() {
         proposta_cria_rascunho: c.proposta_cria_rascunho, financeiro_tolerancia_pct: Number(c.financeiro_tolerancia_pct) || 0,
         reajuste_ativo: c.reajuste_ativo, reajuste_indice: c.reajuste_indice, reajuste_fixo_pct: Number(c.reajuste_fixo_pct) || 0,
         reajuste_aviso_dias: Math.max(1, Number(c.reajuste_aviso_dias) || 30), reajuste_mensagem: c.reajuste_mensagem,
+        lembrete_avisar_setores: c.lembrete_avisar_setores ?? [], vencimento_avisar_setores: c.vencimento_avisar_setores ?? [],
+        reajuste_avisar_setores: c.reajuste_avisar_setores ?? [], proposta_avisar_setores: c.proposta_avisar_setores ?? [],
       } });
       toast.success("Regras de Contratos salvas.");
       q.refetch();
@@ -102,6 +104,25 @@ function Tela() {
   if (q.isLoading) return <Loader2 className="h-5 w-5 animate-spin" />;
   if (q.error) return <p className="text-sm text-destructive">{(q.error as Error).message}</p>;
   const usuarios: { id: string; nome: string }[] = q.data?.usuarios ?? [];
+  const setores: { id: string; nome: string }[] = q.data?.setores ?? [];
+  const Setores = ({ campo, titulo }: { campo: "lembrete_avisar_setores" | "vencimento_avisar_setores" | "reajuste_avisar_setores" | "proposta_avisar_setores"; titulo: string }) => {
+    const sel = c[campo] ?? [];
+    return (
+      <div className="sm:col-span-2">
+        <Label className="text-xs">{titulo}</Label>
+        {setores.length === 0 ? <p className="text-xs text-muted-foreground">Nenhum setor cadastrado.</p> : (
+          <div className="mt-1 flex flex-wrap gap-1">
+            {setores.map((s) => {
+              const on = sel.includes(s.id);
+              return <Button key={s.id} type="button" size="sm" variant={on ? "default" : "outline"} className="h-7 text-xs"
+                onClick={() => set(campo, on ? sel.filter((x) => x !== s.id) : [...sel, s.id])}>{s.nome}</Button>;
+            })}
+          </div>
+        )}
+        <p className="text-[11px] text-muted-foreground mt-1">Todos os usuários ativos dos setores marcados recebem a notificação no sistema.</p>
+      </div>
+    );
+  };
   const resumo: any = (q.data?.cfg as any)?.ultima_rotina_resumo;
 
   return (
@@ -132,6 +153,7 @@ function Tela() {
               <SelectContent>{MODOS.map((m) => <SelectItem key={m.v} value={m.v}>{m.t}</SelectItem>)}</SelectContent>
             </Select></div>
           <label className="flex items-center gap-2 sm:col-span-2"><Checkbox checked={c.lembrete_avisar_responsavel} onCheckedChange={(v) => set("lembrete_avisar_responsavel", !!v)} />Avisar quem criou o contrato (notificação no sistema)</label>
+          <Setores campo="lembrete_avisar_setores" titulo="Avisar também os setores" />
         </CardContent>
       </Card>
 
@@ -147,8 +169,9 @@ function Tela() {
               <label className="flex items-center gap-2"><Checkbox checked={c.vencimento_fornecedores} onCheckedChange={(v) => set("vencimento_fornecedores", !!v)} />Incluir contratos com fornecedores</label>
             </div>
           </div>
+          <div className="grid sm:grid-cols-2"><Setores campo="vencimento_avisar_setores" titulo="Setores avisados do vencimento" /></div>
           <div>
-            <Label>Avisar também (vencimento e reajuste)</Label>
+            <Label>Avisar também estes usuários (vencimento e reajuste)</Label>
             <div className="mt-1 max-h-40 overflow-y-auto rounded border p-2 grid gap-1 sm:grid-cols-2">
               {usuarios.map((u) => (
                 <label key={u.id} className="flex items-center gap-2 text-xs"><Checkbox checked={c.vencimento_avisar_usuarios.includes(u.id)}
@@ -163,6 +186,7 @@ function Tela() {
         <CardHeader className="pb-2"><CardTitle className="text-base flex items-center gap-2"><FileSignature className="h-4 w-4" />Contrato a partir da proposta aceita
           <Switch className="ml-auto" checked={c.proposta_cria_rascunho} onCheckedChange={(v) => set("proposta_cria_rascunho", v)} /></CardTitle>
           <CardDescription>Quando o cliente aceita a proposta no CRM, cria o rascunho do contrato com cliente, CNPJ, contato e valores, e avisa o vendedor para revisar e enviar.</CardDescription></CardHeader>
+        <CardContent className="grid sm:grid-cols-2 text-sm"><Setores campo="proposta_avisar_setores" titulo="Avisar também os setores" /></CardContent>
       </Card>
 
       <Card>
@@ -196,6 +220,7 @@ function Tela() {
           </div>
           <div><Label>Mensagem ao cliente</Label><Textarea rows={4} value={c.reajuste_mensagem} onChange={(e) => set("reajuste_mensagem", e.target.value)} />
             <p className="text-[11px] text-muted-foreground mt-1">Variáveis: {VARIAVEIS_REAJUSTE.join(" ")}</p></div>
+          <div className="grid sm:grid-cols-2"><Setores campo="reajuste_avisar_setores" titulo="Setores avisados do reajuste" /></div>
           <p className="text-[11px] text-muted-foreground">Os índices vêm das séries do Banco Central (IPCA 433, IGP-M 189, INPC 188) e são atualizados uma vez por dia pela rotina.</p>
         </CardContent>
       </Card>

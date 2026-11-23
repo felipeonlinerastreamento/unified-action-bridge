@@ -23,12 +23,17 @@ export const lerConfigContratosFn = createServerFn({ method: "POST" })
     await assertGestor(supabase, userId);
     const { lerConfigContratos } = await import("@/lib/contratos-automacao.server");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
-    const [cfg, { data: usuarios }, { data: existe, error }] = await Promise.all([
+    const [cfg, { data: usuarios }, { data: existe, error }, { data: setores }] = await Promise.all([
       lerConfigContratos(),
       (supabaseAdmin as any).from("profiles").select("user_id, name").eq("is_active", true).order("name"),
       (supabaseAdmin as any).from("contratos_config").select("id").eq("id", 1).maybeSingle(),
+      (supabaseAdmin as any).from("sectors").select("id, name").eq("is_active", true).order("name"),
     ]);
-    return { cfg, usuarios: (usuarios || []).map((u: any) => ({ id: u.user_id, nome: u.name })), pronto: !error && !!existe, erro: error?.message ?? null };
+    return {
+      cfg, pronto: !error && !!existe, erro: error?.message ?? null,
+      usuarios: (usuarios || []).map((u: any) => ({ id: u.user_id as string, nome: u.name as string })),
+      setores: (setores || []).map((x: any) => ({ id: x.id as string, nome: x.name as string })),
+    };
   });
 
 const modo = z.enum(["autentique", "whatsapp", "email", "whatsapp_email"]);
@@ -43,13 +48,17 @@ export const salvarConfigContratosFn = createServerFn({ method: "POST" })
     proposta_cria_rascunho: z.boolean(), financeiro_tolerancia_pct: z.number().min(0).max(100),
     reajuste_ativo: z.boolean(), reajuste_indice: z.enum(["IPCA", "IGPM", "INPC", "FIXO"]), reajuste_fixo_pct: z.number().min(-50).max(100),
     reajuste_aviso_dias: z.number().int().min(1).max(180), reajuste_mensagem: z.string().trim().min(10).max(2000),
+    lembrete_avisar_setores: z.array(z.string().uuid()).max(50).default([]),
+    vencimento_avisar_setores: z.array(z.string().uuid()).max(50).default([]),
+    reajuste_avisar_setores: z.array(z.string().uuid()).max(50).default([]),
+    proposta_avisar_setores: z.array(z.string().uuid()).max(50).default([]),
   }).parse(d))
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context as any;
     await assertGestor(supabase, userId);
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { error } = await (supabaseAdmin as any).from("contratos_config").update({ ...data, updated_by: userId, updated_at: new Date().toISOString() }).eq("id", 1);
-    if (error) throw new Error(`${error.message}. Confira se a migração 0062 foi aplicada.`);
+    if (error) throw new Error(/avisar_setores/.test(error.message) ? "Os setores dos avisos precisam da migração 0074 aplicada no banco." : `${error.message}. Confira se a migração 0062 foi aplicada.`);
     return { ok: true };
   });
 

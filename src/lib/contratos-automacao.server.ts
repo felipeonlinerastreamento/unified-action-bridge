@@ -20,8 +20,26 @@ export async function lerConfigContratos(): Promise<ConfigContratos & { ultima_r
   return { ...CONFIG_PADRAO, ...(data || {}), financeiro_tolerancia_pct: Number(data?.financeiro_tolerancia_pct ?? CONFIG_PADRAO.financeiro_tolerancia_pct), reajuste_fixo_pct: Number(data?.reajuste_fixo_pct ?? 0) };
 }
 
-async function notificar(usuarios: (string | null | undefined)[], titulo: string, mensagem: string, contratoId: string) {
-  const ids = [...new Set(usuarios.filter(Boolean) as string[])];
+/** Usuários ativos dos setores escolhidos (cache por execução). */
+const cacheSetores = new Map<string, string[]>();
+async function usuariosDosSetores(setores: string[] | null | undefined): Promise<string[]> {
+  const lista = [...new Set((setores || []).filter(Boolean))];
+  if (!lista.length) return [];
+  const chave = lista.sort().join(",");
+  if (cacheSetores.has(chave)) return cacheSetores.get(chave)!;
+  const { data } = await db.from("user_sector_assignments").select("user_id").in("sector_id", lista);
+  const ids = [...new Set((data || []).map((r: any) => r.user_id as string))];
+  let ativos: string[] = [];
+  if (ids.length) {
+    const { data: perfis } = await db.from("profiles").select("user_id, is_active").in("user_id", ids);
+    ativos = (perfis || []).filter((p: any) => p.is_active !== false).map((p: any) => p.user_id);
+  }
+  cacheSetores.set(chave, ativos);
+  return ativos;
+}
+
+async function notificar(usuarios: (string | null | undefined)[], titulo: string, mensagem: string, contratoId: string, setores?: string[] | null) {
+  const ids = [...new Set([...(usuarios.filter(Boolean) as string[]), ...(await usuariosDosSetores(setores))])];
   if (!ids.length) return 0;
   await db.from("notifications").insert(ids.map((user_id) => ({ user_id, type: "contrato", title: titulo, message: mensagem, metadata: { contrato_id: contratoId } })));
   return ids.length;
@@ -95,9 +113,9 @@ export async function rotinaDiariaContratos(limiteMs = 50_000) {
         }
         // Conta a etapa mesmo com falha, para não insistir todo dia; o responsável é avisado.
         await db.from("contratos").update({ lembretes_enviados: etapa, ultimo_lembrete_em: new Date().toISOString() }).eq("id", c.id);
-        if (cfg.lembrete_avisar_responsavel) {
-          await notificar([c.created_by], "⏳ Contrato sem assinatura",
-            `O contrato nº ${c.numero} (${c.cliente_nome}) está há ${diasDesdeEnvio} dias sem assinatura. ${ok ? `Lembrete ${etapa} enviado ao cliente.` : `O lembrete ${etapa} não pôde ser enviado: ${motivo}.`}`, c.id);
+        if (cfg.lembrete_avisar_responsavel || cfg.lembrete_avisar_setores?.length) {
+          await notificar([cfg.lembrete_avisar_responsavel ? c.created_by : null], "⏳ Contrato sem assinatura",
+            `O contrato nº ${c.numero} (${c.cliente_nome}) está há ${diasDesdeEnvio} dias sem assinatura. ${ok ? `Lembrete ${etapa} enviado ao cliente.` : `O lembrete ${etapa} não pôde ser enviado: ${motivo}.`}`, c.id, cfg.lembrete_avisar_setores);
         }
       }
     }
@@ -115,7 +133,7 @@ export async function rotinaDiariaContratos(limiteMs = 50_000) {
       const tipo = c.categoria === "fornecedor" ? "fornecedor" : "cliente";
       await notificar([cfg.vencimento_avisar_responsavel ? c.created_by : null, ...cfg.vencimento_avisar_usuarios],
         `📅 Contrato vence em ${a.diasAteFim} dia(s)`,
-        `Contrato nº ${c.numero} com ${tipo} ${c.cliente_nome} termina em ${a.fim.split("-").reverse().join("/")}${c.renovacao_automatica !== false ? " (renovação automática)" : ""}. ${tipo === "fornecedor" ? "Decida se renova, renegocia ou cancela." : "Combine a renovação com o cliente."}`, c.id);
+        `Contrato nº ${c.numero} com ${tipo} ${c.cliente_nome} termina em ${a.fim.split("-").reverse().join("/")}${c.renovacao_automatica !== false ? " (renovação automática)" : ""}. ${tipo === "fornecedor" ? "Decida se renova, renegocia ou cancela." : "Combine a renovação com o cliente."}`, c.id, cfg.vencimento_avisar_setores);
       const avisos = { ...(c.avisos_enviados || {}) };
       for (const k of a.chaves) avisos[k] = new Date().toISOString();
       await db.from("contratos").update({ avisos_enviados: avisos }).eq("id", c.id);
@@ -133,7 +151,7 @@ export async function rotinaDiariaContratos(limiteMs = 50_000) {
       const chave = `reaj:${r.data}`;
       if ((c.avisos_enviados || {})[chave]) continue;
       await notificar([c.created_by, ...cfg.vencimento_avisar_usuarios], "📈 Reajuste de contrato",
-        `Contrato nº ${c.numero} (${c.cliente_nome}) faz aniversário em ${r.data.split("-").reverse().join("/")}. ${pct != null && r.valorAtual != null ? `${INDICE_LABEL[cfg.reajuste_indice]} ${pct.toLocaleString("pt-BR")}%: de R$ ${r.valorAtual.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} para R$ ${r.valorNovo!.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}.` : "Confira o valor."} Aplique em Contratos › Reajustes.`, c.id);
+        `Contrato nº ${c.numero} (${c.cliente_nome}) faz aniversário em ${r.data.split("-").reverse().join("/")}. ${pct != null && r.valorAtual != null ? `${INDICE_LABEL[cfg.reajuste_indice]} ${pct.toLocaleString("pt-BR")}%: de R$ ${r.valorAtual.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} para R$ ${r.valorNovo!.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}.` : "Confira o valor."} Aplique em Contratos › Reajustes.`, c.id, cfg.reajuste_avisar_setores);
       await db.from("contratos").update({ avisos_enviados: { ...(c.avisos_enviados || {}), [chave]: new Date().toISOString() } }).eq("id", c.id);
       reajustes++;
     }
@@ -159,7 +177,7 @@ export async function criarRascunhoDaProposta(linkId: string, snapshot: any, don
     }).select("id, numero").single();
     if (error) { if (!/duplicate|unique/i.test(error.message)) console.error("[contratos] rascunho da proposta:", error.message); return null; }
     await db.from("contratos_eventos").insert({ contrato_id: data.id, tipo: "criado", descricao: "Rascunho criado a partir da proposta aceita no CRM", user_id: donoId });
-    if (donoId) await notificar([donoId], "📝 Contrato pronto para revisar", `A proposta aceita de ${r.cliente_nome} virou o rascunho do contrato nº ${data.numero}. Confira os dados e envie para assinatura.`, data.id);
+    await notificar([donoId], "📝 Contrato pronto para revisar", `A proposta aceita de ${r.cliente_nome} virou o rascunho do contrato nº ${data.numero}. Confira os dados e envie para assinatura.`, data.id, cfg.proposta_avisar_setores);
     return data;
   } catch (e: any) {
     console.error("[contratos] rascunho da proposta:", e?.message ?? e);

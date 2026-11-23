@@ -26,6 +26,11 @@ export type ConfigContratos = {
   reajuste_aviso_dias: number;
   reajuste_mensagem: string;
   indices: Partial<Record<Indice, { pct: number; ate: string; atualizado_em: string }>>;
+  /** Setores avisados (todos os usuários ativos de cada setor). */
+  lembrete_avisar_setores: string[];
+  vencimento_avisar_setores: string[];
+  reajuste_avisar_setores: string[];
+  proposta_avisar_setores: string[];
 };
 
 export const CONFIG_PADRAO: ConfigContratos = {
@@ -35,6 +40,7 @@ export const CONFIG_PADRAO: ConfigContratos = {
   reajuste_ativo: true, reajuste_indice: "IPCA", reajuste_fixo_pct: 0, reajuste_aviso_dias: 30,
   reajuste_mensagem: "Olá, {contato}! Conforme o contrato nº {numero}, a mensalidade de {cliente} será reajustada em {percentual} ({indice} acumulado em 12 meses) a partir de {data}: de {valor_atual} para {valor_novo}. Qualquer dúvida, estamos à disposição.",
   indices: {},
+  lembrete_avisar_setores: [], vencimento_avisar_setores: [], reajuste_avisar_setores: [], proposta_avisar_setores: [],
 };
 
 export const INDICE_LABEL: Record<Indice, string> = { IPCA: "IPCA", IGPM: "IGP-M", INPC: "INPC", FIXO: "Percentual fixo" };
