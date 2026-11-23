@@ -269,3 +269,59 @@ export const sincronizarFaturasGsystem = createServerFn({ method: "POST" })
     const { syncFaturasGsystem } = await import("@/lib/finance-gsystem-sync.server");
     return syncFaturasGsystem(40_000);
   });
+
+// ----- Bom Controle (importação pela API) ------------------------------------------
+
+export const integracaoBomControle = createServerFn({ method: "GET" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase } = context as any;
+    await assertFinance(supabase);
+    const { situacaoBomControle, testarBomControle } = await import("@/lib/finance-bomcontrole.server");
+    const s = await situacaoBomControle();
+    const teste = s.configurado ? await testarBomControle() : null;
+    return { ...s, conectado: !!teste?.ok, erro: teste?.erro ?? null };
+  });
+
+export const salvarChaveBomControleFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ chave: z.string().trim().max(1000) }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context as any;
+    await assertFinance(supabase);
+    const { salvarChaveBomControle, testarBomControle } = await import("@/lib/finance-bomcontrole.server");
+    await salvarChaveBomControle(data.chave, userId);
+    if (!data.chave) return { ok: false, erro: null };
+    const t = await testarBomControle();
+    return { ok: t.ok, erro: t.erro };
+  });
+
+export const importarBomControleFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({
+    de: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    ate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+    pagina: z.number().int().min(1).max(10_000),
+    gravar: z.boolean(),
+    incluirClientesGsystem: z.boolean().default(false),
+  }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context as any;
+    await assertFinance(supabase);
+    const { processarPaginaBomControle } = await import("@/lib/finance-bomcontrole.server");
+    return processarPaginaBomControle({ ...data, userId });
+  });
+
+export const registrarImportacaoBomControleFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({
+    de: z.string(), ate: z.string(), novos: z.number(), atualizados: z.number(),
+    ignoradosGsystem: z.number(), ignoradosOutros: z.number(), totalPagar: z.number(), totalReceber: z.number(),
+  }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context as any;
+    await assertFinance(supabase);
+    const { registrarImportacao } = await import("@/lib/finance-bomcontrole.server");
+    await registrarImportacao({ ...data, userId });
+    return { ok: true };
+  });
