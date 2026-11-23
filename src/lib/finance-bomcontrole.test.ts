@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { converterParcela, ehDuplicataGsystem, janelasImportacao, somarResumo } from "./finance-bomcontrole";
 
 const base = {
-  IdMovimentacaoFinanceiraParcela: 123,
+  IdMovimentacaoFinanceiraParcela: "6D330157-9f59-46c6-b4e3-0012d07f1d0d",
   Debito: true,
   DataVencimento: "2026-03-10T00:00:00",
   DataCompetencia: "2026-02-15T00:00:00",
@@ -23,6 +23,7 @@ const base = {
 
 test("converte despesa em aberto", () => {
   const l = converterParcela(base)!;
+  assert.equal(l.parcelaId, "6d330157-9f59-46c6-b4e3-0012d07f1d0d");
   assert.equal(l.tipo, "pagar");
   assert.equal(l.valor, 1500.5);
   assert.equal(l.status, "aberto");

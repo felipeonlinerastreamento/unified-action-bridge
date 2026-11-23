@@ -484,6 +484,13 @@
       "when": 1795384653023,
       "tag": "0068_financeiro_bomcontrole",
       "breakpoints": true
+    },
+    {
+      "idx": 69,
+      "version": "7",
+      "when": 1795439255397,
+      "tag": "0069_bomcontrole_parcela_guid",
+      "breakpoints": true
     }
   ]
 }

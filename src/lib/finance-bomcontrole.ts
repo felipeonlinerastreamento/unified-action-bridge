@@ -9,7 +9,7 @@ import { normalizarData, round2 } from "./finance";
 export type ParcelaBomControle = Record<string, any>;
 
 export type LancamentoBomControle = {
-  parcelaId: number;
+  parcelaId: string; // GUID da parcela no Bom Controle
   tipo: "pagar" | "receber";
   contraparte: string | null;
   documento: string | null; // só números
@@ -56,8 +56,9 @@ export function ehTransferencia(p: ParcelaBomControle): boolean {
 
 /** Converte a parcela do Bom Controle; null quando não serve (sem id, valor zero, transferência). */
 export function converterParcela(p: ParcelaBomControle): LancamentoBomControle | null {
-  const id = Number(p.IdMovimentacaoFinanceiraParcela);
-  if (!Number.isFinite(id) || id <= 0) return null;
+  // O id da parcela é um GUID (texto), ex.: "6d330157-9f59-46c6-b4e3-0012d07f1d0d".
+  const id = texto(p.IdMovimentacaoFinanceiraParcela)?.toLowerCase() ?? null;
+  if (!id || id === "0" || /^0{8}-/.test(id)) return null;
   if (ehTransferencia(p)) return null;
   const valor = round2(Math.abs(numero(p.Valor))); // ValorDefinitivo é só um indicador (booleano)
   if (!valor) return null;

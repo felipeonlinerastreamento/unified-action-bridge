@@ -109,8 +109,8 @@ export async function processarPaginaBomControle(opts: {
     dataInicio: `${opts.de} 00:00:00`, dataTermino: `${opts.ate} 23:59:59`, tipoData: "DataPadrao",
     buscarTransferencias: false, "paginacao.itensPorPagina": POR_PAGINA, "paginacao.numeroDaPagina": opts.pagina,
   });
-  const itens: any[] = Array.isArray(r?.Itens) ? r.Itens : Array.isArray(r) ? r : [];
-  const totalItens = Number(r?.TotalItens ?? itens.length);
+  const itens: any[] = Array.isArray(r?.Itens) ? r.Itens : Array.isArray(r?.itens) ? r.itens : Array.isArray(r) ? r : [];
+  const totalItens = Number(r?.TotalItens ?? r?.totalItens ?? itens.length);
   const convertidos: LancamentoBomControle[] = [];
   let ignoradosOutros = 0;
   for (const it of itens) {
@@ -136,8 +136,8 @@ export async function processarPaginaBomControle(opts: {
   const { data: existentes, error: e1 } = ids.length
     ? await db.from("fin_lancamentos").select("id, bomcontrole_parcela_id, status").in("bomcontrole_parcela_id", ids)
     : { data: [], error: null };
-  if (e1) throw new Error(`${e1.message}. Confira se a migração 0068 foi aplicada.`);
-  const porId = new Map<number, any>((existentes || []).map((e: any) => [Number(e.bomcontrole_parcela_id), e]));
+  if (e1) throw new Error(`${e1.message}. Confira se as migrações 0068 e 0069 foram aplicadas.`);
+  const porId = new Map<string, any>((existentes || []).map((e: any) => [String(e.bomcontrole_parcela_id).toLowerCase(), e]));
 
   const [{ data: cats }, { data: empresas }, { data: contas }] = await Promise.all([
     db.from("fin_categorias").select("id, nome, tipo"),
