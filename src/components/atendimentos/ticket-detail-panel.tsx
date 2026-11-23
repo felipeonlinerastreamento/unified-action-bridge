@@ -717,6 +717,8 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
 
   const updateStatus = async (newStatus: string, observation?: string, financial?: { notes: string } | null) => {
     if (!ticket?.id) return;
+    // Justificativa da finalização manual (admin/gestor fora do fluxo técnico): vai para os comentários.
+    let justificativaManual: string | null = null;
 
     if (newStatus === "finalizado" && !ticket.is_recurring) {
       // Protocolo de serviço técnico: só finaliza pelo fluxo (teste "Serviço
@@ -726,8 +728,8 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
           toast.error("Protocolo de serviço técnico só finaliza pelo fluxo: teste \"Serviço concluído\" ou encerramento por recusa do termo.");
           return;
         }
-        const reason = window.prompt("Finalização fora do fluxo do serviço técnico.\nInforme a justificativa (mín. 10 caracteres):");
-        if (!reason || reason.trim().length < 10) {
+        const reason = (observation || "").trim();
+        if (reason.length < 10) {
           toast.error("Finalização cancelada: justificativa obrigatória (mín. 10 caracteres).");
           return;
         }
@@ -736,10 +738,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
           .update({ technical_term_override_reason: reason.trim() } as any)
           .eq("id", ticket.id);
         if (ovErr) { toast.error("Erro ao registrar justificativa: " + ovErr.message); return; }
-        await supabase.from("ticket_comments").insert({
-          ticket_id: ticket.id, user_id: (await supabase.auth.getUser()).data.user?.id, comment_type: "status_change",
-          content: `Protocolo de serviço técnico finalizado fora do fluxo. Justificativa: ${reason.trim()}`,
-        } as any);
+        justificativaManual = reason;
       }
     }
 
@@ -835,6 +834,13 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
       if (!res.ok) {
         toast.error("Erro ao finalizar: " + (res.error || "desconhecido"));
         return;
+      }
+      if (justificativaManual) {
+        const { error: jErr } = await supabase.from("ticket_comments").insert({
+          ticket_id: ticket.id, user_id: userId, comment_type: "comentario",
+          content: `Finalização manual (fora do fluxo do serviço técnico). Justificativa: ${justificativaManual}`,
+        } as any);
+        if (jErr) toast.error("Chamado finalizado, mas a justificativa não foi gravada nos comentários: " + jErr.message);
       }
       if (financial?.notes) {
         const { error: finErr } = await supabase
@@ -1138,6 +1144,7 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
   if (!ticket) return null;
 
   const canFinalize = ticket.status !== "finalizado";
+  const precisaJustificativa = !ticket.is_recurring && !!(ticket as any).tech_stage && (hasRole("admin") || hasRole("gestor"));
   const canReopen = ticket.status === "finalizado";
 
   return (
@@ -1911,6 +1918,18 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
                 : "Esta ação encerrará o ticket. Você poderá reabri-lo depois, se necessário."}
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {!ticket.is_recurring && precisaJustificativa && (
+            <div className="space-y-1">
+              <p className="text-sm font-medium">Justificativa da finalização manual</p>
+              <p className="text-xs text-muted-foreground">Protocolo de serviço técnico fora do fluxo (teste "Serviço concluído" ou recusa do termo). A justificativa fica registrada nos comentários do chamado.</p>
+              <Textarea
+                value={finalizeObservation}
+                onChange={(e) => setFinalizeObservation(e.target.value)}
+                placeholder="Justificativa obrigatória (mín. 10 caracteres)..."
+                className="min-h-[80px] text-sm"
+              />
+            </div>
+          )}
           {ticket.is_recurring && (
             <Textarea
               value={finalizeObservation}
@@ -1938,9 +1957,9 @@ export function TicketDetailPanel({ ticket, open, onClose, onRefetch, profiles }
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction
-              disabled={(ticket.is_recurring && !finalizeObservation.trim()) || (finalizeFinancial && !finalizeFinancialNotes.trim())}
+              disabled={(ticket.is_recurring && !finalizeObservation.trim()) || (precisaJustificativa && finalizeObservation.trim().length < 10) || (finalizeFinancial && !finalizeFinancialNotes.trim())}
               onClick={(e) => {
-                if (ticket.is_recurring && !finalizeObservation.trim()) {
+                if ((ticket.is_recurring && !finalizeObservation.trim()) || (precisaJustificativa && finalizeObservation.trim().length < 10)) {
                   e.preventDefault();
                   return;
                 }
