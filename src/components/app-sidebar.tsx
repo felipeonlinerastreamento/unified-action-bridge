@@ -250,6 +250,17 @@ export function AppSidebar() {
                 </SidebarMenuItem>
               ))}
 
+              {isAdmin && (
+                <SidebarMenuItem>
+                  <SidebarMenuButton asChild isActive={location.pathname.startsWith("/rh")} tooltip="RH">
+                    <Link to="/rh">
+                      <UserCog className="h-4 w-4" />
+                      <span>RH</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              )}
+
               {canFinance && (
                 <SidebarMenuItem>
                   <SidebarMenuButton asChild isActive={location.pathname.startsWith("/financeiro")} tooltip="Financeiro">

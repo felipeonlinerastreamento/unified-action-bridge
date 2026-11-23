@@ -29,6 +29,7 @@ import { Route as PainelTvRouteImport } from './routes/painel-tv'
 import { Route as ReconnectRouteImport } from './routes/reconnect'
 import { Route as RedefinirSenhaRouteImport } from './routes/redefinir-senha'
 import { Route as RelatoriosRouteImport } from './routes/relatorios'
+import { Route as RhRouteImport } from './routes/rh'
 import { Route as TratativasRouteImport } from './routes/tratativas'
 import { Route as Char91DotwellKnownChar93OauthProtectedResourceRouteImport } from './routes/[.well-known]/oauth-protected-resource'
 import { Route as AgendaIndexRouteImport } from './routes/agenda.index'
@@ -81,6 +82,7 @@ import { Route as ApiPublicHooksAutentiqueRouteImport } from './routes/api.publi
 import { Route as ApiPublicHooksContratosDiarioRouteImport } from './routes/api.public.hooks.contratos-diario'
 import { Route as ApiPublicHooksFinanceiroCobrancaRouteImport } from './routes/api.public.hooks.financeiro-cobranca'
 import { Route as ApiPublicHooksFinanceiroEmailRouteImport } from './routes/api.public.hooks.financeiro-email'
+import { Route as ApiPublicHooksRhDiarioRouteImport } from './routes/api.public.hooks.rh-diario'
 import { Route as ApiPublicHooksSyncGsystemEquipamentosRouteImport } from './routes/api.public.hooks.sync-gsystem-equipamentos'
 import { Route as ApiPublicHooksSyncGsystemFaturasRouteImport } from './routes/api.public.hooks.sync-gsystem-faturas'
 import { Route as ApiPublicZapiWebhookChannelIdRouteImport } from './routes/api.public.zapi-webhook.$channelId'
@@ -185,6 +187,11 @@ const RedefinirSenhaRoute = RedefinirSenhaRouteImport.update({
 const RelatoriosRoute = RelatoriosRouteImport.update({
   id: '/relatorios',
   path: '/relatorios',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const RhRoute = RhRouteImport.update({
+  id: '/rh',
+  path: '/rh',
   getParentRoute: () => rootRouteImport,
 } as any)
 const TratativasRoute = TratativasRouteImport.update({
@@ -465,6 +472,11 @@ const ApiPublicHooksFinanceiroEmailRoute =
     path: '/api/public/hooks/financeiro-email',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksRhDiarioRoute = ApiPublicHooksRhDiarioRouteImport.update({
+  id: '/api/public/hooks/rh-diario',
+  path: '/api/public/hooks/rh-diario',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiPublicHooksSyncGsystemEquipamentosRoute =
   ApiPublicHooksSyncGsystemEquipamentosRouteImport.update({
     id: '/api/public/hooks/sync-gsystem-equipamentos',
@@ -515,6 +527,7 @@ export interface FileRoutesByFullPath {
   '/reconnect': typeof ReconnectRoute
   '/redefinir-senha': typeof RedefinirSenhaRoute
   '/relatorios': typeof RelatoriosRoute
+  '/rh': typeof RhRoute
   '/tratativas': typeof TratativasRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/agenda/atividades': typeof AgendaAtividadesRoute
@@ -567,6 +580,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/contratos-diario': typeof ApiPublicHooksContratosDiarioRoute
   '/api/public/hooks/financeiro-cobranca': typeof ApiPublicHooksFinanceiroCobrancaRoute
   '/api/public/hooks/financeiro-email': typeof ApiPublicHooksFinanceiroEmailRoute
+  '/api/public/hooks/rh-diario': typeof ApiPublicHooksRhDiarioRoute
   '/api/public/hooks/sync-gsystem-equipamentos': typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   '/api/public/hooks/sync-gsystem-faturas': typeof ApiPublicHooksSyncGsystemFaturasRoute
   '/api/public/zapi-webhook/$channelId': typeof ApiPublicZapiWebhookChannelIdRoute
@@ -591,6 +605,7 @@ export interface FileRoutesByTo {
   '/reconnect': typeof ReconnectRoute
   '/redefinir-senha': typeof RedefinirSenhaRoute
   '/relatorios': typeof RelatoriosRoute
+  '/rh': typeof RhRoute
   '/tratativas': typeof TratativasRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/agenda/atividades': typeof AgendaAtividadesRoute
@@ -643,6 +658,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/contratos-diario': typeof ApiPublicHooksContratosDiarioRoute
   '/api/public/hooks/financeiro-cobranca': typeof ApiPublicHooksFinanceiroCobrancaRoute
   '/api/public/hooks/financeiro-email': typeof ApiPublicHooksFinanceiroEmailRoute
+  '/api/public/hooks/rh-diario': typeof ApiPublicHooksRhDiarioRoute
   '/api/public/hooks/sync-gsystem-equipamentos': typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   '/api/public/hooks/sync-gsystem-faturas': typeof ApiPublicHooksSyncGsystemFaturasRoute
   '/api/public/zapi-webhook/$channelId': typeof ApiPublicZapiWebhookChannelIdRoute
@@ -671,6 +687,7 @@ export interface FileRoutesById {
   '/reconnect': typeof ReconnectRoute
   '/redefinir-senha': typeof RedefinirSenhaRoute
   '/relatorios': typeof RelatoriosRoute
+  '/rh': typeof RhRoute
   '/tratativas': typeof TratativasRoute
   '/.well-known/oauth-protected-resource': typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   '/agenda/atividades': typeof AgendaAtividadesRoute
@@ -723,6 +740,7 @@ export interface FileRoutesById {
   '/api/public/hooks/contratos-diario': typeof ApiPublicHooksContratosDiarioRoute
   '/api/public/hooks/financeiro-cobranca': typeof ApiPublicHooksFinanceiroCobrancaRoute
   '/api/public/hooks/financeiro-email': typeof ApiPublicHooksFinanceiroEmailRoute
+  '/api/public/hooks/rh-diario': typeof ApiPublicHooksRhDiarioRoute
   '/api/public/hooks/sync-gsystem-equipamentos': typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   '/api/public/hooks/sync-gsystem-faturas': typeof ApiPublicHooksSyncGsystemFaturasRoute
   '/api/public/zapi-webhook/$channelId': typeof ApiPublicZapiWebhookChannelIdRoute
@@ -752,6 +770,7 @@ export interface FileRouteTypes {
     | '/reconnect'
     | '/redefinir-senha'
     | '/relatorios'
+    | '/rh'
     | '/tratativas'
     | '/.well-known/oauth-protected-resource'
     | '/agenda/atividades'
@@ -804,6 +823,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/contratos-diario'
     | '/api/public/hooks/financeiro-cobranca'
     | '/api/public/hooks/financeiro-email'
+    | '/api/public/hooks/rh-diario'
     | '/api/public/hooks/sync-gsystem-equipamentos'
     | '/api/public/hooks/sync-gsystem-faturas'
     | '/api/public/zapi-webhook/$channelId'
@@ -828,6 +848,7 @@ export interface FileRouteTypes {
     | '/reconnect'
     | '/redefinir-senha'
     | '/relatorios'
+    | '/rh'
     | '/tratativas'
     | '/.well-known/oauth-protected-resource'
     | '/agenda/atividades'
@@ -880,6 +901,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/contratos-diario'
     | '/api/public/hooks/financeiro-cobranca'
     | '/api/public/hooks/financeiro-email'
+    | '/api/public/hooks/rh-diario'
     | '/api/public/hooks/sync-gsystem-equipamentos'
     | '/api/public/hooks/sync-gsystem-faturas'
     | '/api/public/zapi-webhook/$channelId'
@@ -907,6 +929,7 @@ export interface FileRouteTypes {
     | '/reconnect'
     | '/redefinir-senha'
     | '/relatorios'
+    | '/rh'
     | '/tratativas'
     | '/.well-known/oauth-protected-resource'
     | '/agenda/atividades'
@@ -959,6 +982,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/contratos-diario'
     | '/api/public/hooks/financeiro-cobranca'
     | '/api/public/hooks/financeiro-email'
+    | '/api/public/hooks/rh-diario'
     | '/api/public/hooks/sync-gsystem-equipamentos'
     | '/api/public/hooks/sync-gsystem-faturas'
     | '/api/public/zapi-webhook/$channelId'
@@ -987,6 +1011,7 @@ export interface RootRouteChildren {
   ReconnectRoute: typeof ReconnectRoute
   RedefinirSenhaRoute: typeof RedefinirSenhaRoute
   RelatoriosRoute: typeof RelatoriosRoute
+  RhRoute: typeof RhRoute
   TratativasRoute: typeof TratativasRoute
   Char91DotwellKnownChar93OauthProtectedResourceRoute: typeof Char91DotwellKnownChar93OauthProtectedResourceRoute
   AtendimentosTarefasRoute: typeof AtendimentosTarefasRoute
@@ -1005,6 +1030,7 @@ export interface RootRouteChildren {
   ApiPublicHooksContratosDiarioRoute: typeof ApiPublicHooksContratosDiarioRoute
   ApiPublicHooksFinanceiroCobrancaRoute: typeof ApiPublicHooksFinanceiroCobrancaRoute
   ApiPublicHooksFinanceiroEmailRoute: typeof ApiPublicHooksFinanceiroEmailRoute
+  ApiPublicHooksRhDiarioRoute: typeof ApiPublicHooksRhDiarioRoute
   ApiPublicHooksSyncGsystemEquipamentosRoute: typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   ApiPublicHooksSyncGsystemFaturasRoute: typeof ApiPublicHooksSyncGsystemFaturasRoute
   ApiPublicZapiWebhookChannelIdRoute: typeof ApiPublicZapiWebhookChannelIdRoute
@@ -1152,6 +1178,13 @@ declare module '@tanstack/react-router' {
       path: '/relatorios'
       fullPath: '/relatorios'
       preLoaderRoute: typeof RelatoriosRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/rh': {
+      id: '/rh'
+      path: '/rh'
+      fullPath: '/rh'
+      preLoaderRoute: typeof RhRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/tratativas': {
@@ -1518,6 +1551,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksFinanceiroEmailRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/rh-diario': {
+      id: '/api/public/hooks/rh-diario'
+      path: '/api/public/hooks/rh-diario'
+      fullPath: '/api/public/hooks/rh-diario'
+      preLoaderRoute: typeof ApiPublicHooksRhDiarioRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/sync-gsystem-equipamentos': {
       id: '/api/public/hooks/sync-gsystem-equipamentos'
       path: '/api/public/hooks/sync-gsystem-equipamentos'
@@ -1675,6 +1715,7 @@ const rootRouteChildren: RootRouteChildren = {
   ReconnectRoute: ReconnectRoute,
   RedefinirSenhaRoute: RedefinirSenhaRoute,
   RelatoriosRoute: RelatoriosRoute,
+  RhRoute: RhRoute,
   TratativasRoute: TratativasRoute,
   Char91DotwellKnownChar93OauthProtectedResourceRoute:
     Char91DotwellKnownChar93OauthProtectedResourceRoute,
@@ -1694,6 +1735,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksContratosDiarioRoute: ApiPublicHooksContratosDiarioRoute,
   ApiPublicHooksFinanceiroCobrancaRoute: ApiPublicHooksFinanceiroCobrancaRoute,
   ApiPublicHooksFinanceiroEmailRoute: ApiPublicHooksFinanceiroEmailRoute,
+  ApiPublicHooksRhDiarioRoute: ApiPublicHooksRhDiarioRoute,
   ApiPublicHooksSyncGsystemEquipamentosRoute:
     ApiPublicHooksSyncGsystemEquipamentosRoute,
   ApiPublicHooksSyncGsystemFaturasRoute: ApiPublicHooksSyncGsystemFaturasRoute,
