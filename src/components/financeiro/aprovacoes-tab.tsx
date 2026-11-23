@@ -130,8 +130,11 @@ export function AprovacoesTab({ lancamentos }: { lancamentos: Lanc[] }) {
       </Card>
 
       <div className="grid gap-4 xl:grid-cols-2">
-        <EmailCard />
         <DdaCard />
+        <Card><CardContent className="p-3 text-sm text-muted-foreground flex items-start gap-2">
+          <Mail className="h-4 w-4 mt-0.5 shrink-0" />
+          <span>A leitura do e-mail do financeiro (caixa, conta Microsoft, Ler agora e histórico) fica em <a href="/configuracoes" className="underline text-foreground">Configurações › Integrações</a>.</span>
+        </CardContent></Card>
       </div>
       <EvidenciasCard />
 
@@ -147,7 +150,8 @@ export function AprovacoesTab({ lancamentos }: { lancamentos: Lanc[] }) {
   );
 }
 
-function EmailCard() {
+/** E-mail do financeiro: exibido em Configurações › Integrações (só para quem tem acesso ao Financeiro). */
+export function EmailFinanceiroCard() {
   const qc = useQueryClient();
   const invalidate = useFinInvalidate();
   const testar = useServerFn(statusEmailFinanceiroFn);
