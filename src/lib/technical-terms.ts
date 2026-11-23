@@ -1,3 +1,4 @@
+import { formatProtocol } from "./protocol-format";
 // Regras puras do termo de serviço técnico (aceite do responsável da frota
 // antes de abrir solicitação na Agenda). Sem dependências de servidor.
 
@@ -136,7 +137,7 @@ export const TERM_MESSAGE_VARS: { key: string; label: string; sample: string }[]
   { key: "placa", label: "Placa do veículo", sample: "ABC1D23" },
   { key: "servico", label: "Tipo de serviço", sample: "Instalação" },
   { key: "link", label: "Link do aceite", sample: "https://exemplo.com/termo-servico/…" },
-  { key: "numero", label: "Número do termo", sample: "TST-00012" },
+  { key: "numero", label: "Número do termo", sample: "#11150" },
   { key: "empresa", label: "Nome da nossa empresa", sample: "Online Rastreamento" },
 ];
 
@@ -231,7 +232,14 @@ export function statusAfterDecision(decision: "accept" | "reject"): TechnicalTer
   return decision === "accept" ? "aceito" : "recusado";
 }
 
-export function termNumberLabel(seq: number | null | undefined): string {
+/**
+ * Número exibido do termo: o protocolo do atendimento no padrão do sistema (#11150).
+ * Só usa a sequência própria (TST-00005) quando o termo não está ligado a um atendimento.
+ */
+export function termNumberLabel(seq: number | null | undefined, protocolNumber?: number | string | null): string {
+  if (protocolNumber !== null && protocolNumber !== undefined && String(protocolNumber).trim() !== "") {
+    return `#${formatProtocol(protocolNumber)}`;
+  }
   return seq ? `TST-${String(seq).padStart(5, "0")}` : "";
 }
 
@@ -246,6 +254,7 @@ export function buildTermUrl(baseUrl: string, token: string): string {
 /** Descrição enviada ao Seu Instalador com o checklist e o aceite. */
 export function buildSchedulingDescription(term: {
   seq?: number | null;
+  protocol_number?: number | string | null;
   service_type: TechnicalServiceType;
   service_label?: string | null;
   description?: string | null;
@@ -254,7 +263,7 @@ export function buildSchedulingDescription(term: {
   responded_at?: string | null;
   equipment_id?: string | null;
 }): string {
-  const lines = [`${serviceTypeLabel(term.service_type, null, term.service_label)} — termo ${termNumberLabel(term.seq)} aceito`];
+  const lines = [`${serviceTypeLabel(term.service_type, null, term.service_label)} — termo ${termNumberLabel(term.seq, term.protocol_number)} aceito`];
   if (term.responder_name) {
     const when = term.responded_at ? new Date(term.responded_at).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }) : "";
     lines.push(`Aceite: ${term.responder_name}${when ? ` em ${when}` : ""}`);

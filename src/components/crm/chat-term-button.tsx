@@ -33,7 +33,7 @@ export function ChatTermButton({ ticketId, onSend }: { ticketId: string | null; 
     const key = `${term.id}:${term.status}`;
     if (last.current && last.current !== key && ["aceito", "recusado"].includes(term.status)) {
       const fn = term.status === "aceito" ? toast.success : toast.error;
-      fn(`Termo ${termNumberLabel(term.seq)} ${term.status} por ${term.responder_name ?? "responsável"}.`);
+      fn(`Termo ${termNumberLabel(term.seq, data?.ticket?.protocol_number)} ${term.status} por ${term.responder_name ?? "responsável"}.`);
     }
     last.current = key;
   }, [term?.id, term?.status]);
@@ -56,7 +56,7 @@ export function ChatTermButton({ ticketId, onSend }: { ticketId: string | null; 
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80 space-y-2" align="start">
-        <p className="text-sm font-medium">{termNumberLabel(term.seq)} — {term.service_label ?? term.service_type}</p>
+        <p className="text-sm font-medium">{termNumberLabel(term.seq, data?.ticket?.protocol_number)} — {term.service_label ?? term.service_type}</p>
         {term.term_label && <p className="text-xs text-muted-foreground">Termo de aceite: {term.term_label}</p>}
         <p className="text-xs text-muted-foreground">
           Responsável: {term.responsible_name}

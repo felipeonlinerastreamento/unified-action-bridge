@@ -101,7 +101,7 @@ export function CrmTechnicalServicesTab() {
     return (terms as any[]).filter((t) => {
       if (t.status !== filter) return false;
       if (!q) return true;
-      return [t.client_name, t.plate, t.responsible_name, t.equipment_id, termNumberLabel(t.seq), t.service_tickets?.protocol_number ? String(t.service_tickets.protocol_number).padStart(5, "0") : ""]
+      return [t.client_name, t.plate, t.responsible_name, t.equipment_id, termNumberLabel(t.seq, t.service_tickets?.protocol_number), t.service_tickets?.protocol_number ? String(t.service_tickets.protocol_number).padStart(5, "0") : ""]
         .some((v) => String(v || "").toLowerCase().includes(q));
     });
   }, [terms, filter, search]);
@@ -181,11 +181,10 @@ export function CrmTechnicalServicesTab() {
               <CardContent className="p-4 flex flex-col lg:flex-row lg:items-center gap-3">
                 <div className="flex-1 min-w-0 space-y-1">
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="font-mono text-xs text-muted-foreground">{termNumberLabel(t.seq)}</span>
+                    <span className="font-mono text-xs text-muted-foreground">{termNumberLabel(t.seq, t.service_tickets?.protocol_number)}</span>
                     <Badge variant="outline">{serviceTypeLabel(t.service_type, null, t.service_label)}</Badge>
                     <Badge variant={STATUS_VARIANT[t.status as TechnicalTermStatus]}>{TERM_STATUS_LABELS[t.status as TechnicalTermStatus]}</Badge>
                     {t.service_tickets?.tech_stage && <Badge variant="secondary">Protocolo: {techStageLabel(t.service_tickets.tech_stage)}</Badge>}
-                    {t.service_tickets?.protocol_number && <span className="text-xs text-muted-foreground">Chamado #{String(t.service_tickets.protocol_number).padStart(5, "0")}</span>}
                   </div>
                   <p className="font-medium truncate">{t.client_name || "Cliente não informado"}{t.plate ? ` — ${t.plate}` : ""}</p>
                   <p className="text-xs text-muted-foreground">
@@ -229,7 +228,7 @@ export function CrmTechnicalServicesTab() {
           {detail && (
             <>
               <DialogHeader>
-                <DialogTitle>{termNumberLabel(detail.seq)} — {serviceTypeLabel(detail.service_type, null, detail.service_label)}</DialogTitle>
+                <DialogTitle>{termNumberLabel(detail.seq, detail.service_tickets?.protocol_number)} — {serviceTypeLabel(detail.service_type, null, detail.service_label)}</DialogTitle>
               </DialogHeader>
               <div className="space-y-3 text-sm">
                 <Badge variant={STATUS_VARIANT[detail.status as TechnicalTermStatus]}>{TERM_STATUS_LABELS[detail.status as TechnicalTermStatus]}</Badge>

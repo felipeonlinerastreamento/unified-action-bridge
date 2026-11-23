@@ -22,6 +22,7 @@ interface Props {
     id: string;
     status?: string;
     tech_stage?: string | null;
+    protocol_number?: number | null;
     category?: string | null;
     company_id?: string | null;
     plate?: string | null;
@@ -83,7 +84,7 @@ export function TicketTechnicalTermSection({ ticket, categories }: Props) {
       )}
       {terms.map((t: any) => (
         <div key={t.id} className="flex flex-wrap items-center gap-2 text-xs">
-          <span className="font-mono text-muted-foreground">{termNumberLabel(t.seq)}</span>
+          <span className="font-mono text-muted-foreground">{termNumberLabel(t.seq, ticket.protocol_number)}</span>
           <Badge variant="outline">{serviceTypeLabel(t.service_type, null, t.service_label)}</Badge>
           {t.term_label && t.term_label !== t.service_label && <span className="text-muted-foreground">{t.term_label}</span>}
           <Badge variant={t.status === "recusado" ? "destructive" : t.status === "aceito" ? "default" : "secondary"}>

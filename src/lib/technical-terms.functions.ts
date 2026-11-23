@@ -58,6 +58,13 @@ function publicBase(brand: { public_base_url?: string | null }) {
 }
 
 /** Envia o link do termo por WhatsApp e/ou e-mail; devolve canais enviados e erros. */
+/** Protocolo do atendimento ligado ao termo (service_tickets.protocol_number), para exibir no padrão #11150. */
+async function protocolOfTicket(admin: Admin, ticketId: string | null | undefined): Promise<number | null> {
+  if (!ticketId) return null;
+  const { data } = await admin.from("service_tickets").select("protocol_number").eq("id", ticketId).maybeSingle();
+  return (data as any)?.protocol_number ?? null;
+}
+
 async function deliverTerm(
   admin: Admin,
   userId: string,
@@ -79,7 +86,7 @@ async function deliverTerm(
     cliente: term.client_name || "",
     placa: term.plate || "—",
     servico: serviceTypeLabel(term.service_type, null, term.service_label || type?.label),
-    numero: termNumberLabel(term.seq),
+    numero: termNumberLabel(term.seq, await protocolOfTicket(admin, term.ticket_id)),
     empresa: brand.company_name,
     link: url,
   };
@@ -239,7 +246,7 @@ export const createTechnicalTerm = createServerFn({ method: "POST" })
         ticket_id: data.ticketId,
         user_id: userId,
         comment_type: "status_change",
-        content: `Termo de ${serviceLabel} ${termNumberLabel(term.seq)} (${cfg.label}) enviado para aceite de ${data.responsibleName}${res.sent.length ? ` (${res.sent.join(" e ")})` : ""}.`,
+        content: `Termo de ${serviceLabel} ${termNumberLabel(term.seq, await protocolOfTicket(supabaseAdmin, data.ticketId))} (${cfg.label}) enviado para aceite de ${data.responsibleName}${res.sent.length ? ` (${res.sent.join(" e ")})` : ""}.`,
       });
     }
     return { id: term.id as string, url: res.url, sent: res.sent, errors: res.errors };
@@ -312,7 +319,7 @@ export async function markTermScheduled(termId: string, userId: string, kind: st
       ticket_id: term.ticket_id,
       user_id: userId,
       comment_type: "status_change",
-      content: `Termo ${termNumberLabel(term.seq)} enviado para agendamento no Seu Instalador${ref ? ` (ref. ${ref})` : ""}.`,
+      content: `Termo ${termNumberLabel(term.seq, await protocolOfTicket(supabaseAdmin, term.ticket_id))} enviado para agendamento no Seu Instalador${ref ? ` (ref. ${ref})` : ""}.`,
     });
   }
 }
@@ -328,14 +335,14 @@ export const getPublicTerm = createServerFn({ method: "GET" })
   .handler(async ({ data }) => {
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const { data: term } = await supabaseAdmin.from("technical_service_terms")
-      .select("status, service_type, service_label, seq").eq("token", data.token).maybeSingle();
+      .select("status, service_type, service_label, seq, ticket_id").eq("token", data.token).maybeSingle();
     if (!term) return null;
     const brand = await loadBrandSettings(supabaseAdmin);
     return {
       status: term.status as TechnicalTermStatus,
       serviceType: term.service_type as TechnicalServiceType,
       serviceLabel: serviceTypeLabel(term.service_type, null, term.service_label),
-      number: termNumberLabel(term.seq),
+      number: termNumberLabel(term.seq, await protocolOfTicket(supabaseAdmin, term.ticket_id)),
       branding: brandingFrom(brand),
     };
   });
@@ -360,7 +367,7 @@ export const unlockPublicTerm = createServerFn({ method: "POST" })
     return {
       status: t.status as TechnicalTermStatus,
       canRespond: canRespondTerm(t.status as TechnicalTermStatus),
-      number: termNumberLabel(t.seq),
+      number: termNumberLabel(t.seq, await protocolOfTicket(supabaseAdmin, t.ticket_id)),
       serviceType: t.service_type as TechnicalServiceType,
       serviceLabel: serviceTypeLabel(t.service_type, null, t.service_label),
       title: t.term_title as string,
@@ -417,7 +424,7 @@ export const respondToTerm = createServerFn({ method: "POST" })
     if (!updated?.length) throw new Error("Este termo já foi respondido.");
 
     const label = serviceTypeLabel(t.service_type, null, t.service_label);
-    const summary = `${responderName} (CPF ${maskCpf(cpf)}) ${data.decision === "accept" ? "aceitou" : "recusou"} o termo ${termNumberLabel(t.seq)} de ${label}${t.plate ? ` — ${t.plate}` : ""}.${data.note ? ` Obs.: ${data.note}` : ""}`;
+    const summary = `${responderName} (CPF ${maskCpf(cpf)}) ${data.decision === "accept" ? "aceitou" : "recusou"} o termo ${termNumberLabel(t.seq, await protocolOfTicket(supabaseAdmin, t.ticket_id))} de ${label}${t.plate ? ` — ${t.plate}` : ""}.${data.note ? ` Obs.: ${data.note}` : ""}`;
     if (t.ticket_id) {
       await supabaseAdmin.from("ticket_comments").insert({
         ticket_id: t.ticket_id, user_id: null, comment_type: "status_change", content: summary,
@@ -545,7 +552,7 @@ export const reissueRefusedTerm = createServerFn({ method: "POST" })
     if (term.ticket_id) {
       await supabaseAdmin.from("ticket_comments").insert({
         ticket_id: term.ticket_id, user_id: context.userId, comment_type: "status_change",
-        content: `Termo recusado ${termNumberLabel(old.seq)} reenviado como ${termNumberLabel(term.seq)}.`,
+        content: `Termo recusado do protocolo ${termNumberLabel(old.seq, await protocolOfTicket(supabaseAdmin, term.ticket_id))} reenviado com novo link de aceite.`,
       });
     }
     return { id: term.id as string, sent: res.sent, errors: res.errors };

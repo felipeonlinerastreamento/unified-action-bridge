@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import {
   allowedServiceTypes,
+  termNumberLabel,
   categoryRequirementOptions,
   serviceTypeLabel,
   slugifyTermKey,
@@ -142,4 +143,12 @@ test("sem termo padrão ativo para o tipo, nenhum termo vem marcado", () => {
 
 test("categoria que exige um termo específico pré-seleciona esse termo", () => {
   assert.equal(defaultTermFor("instalacao", catalog, "manutencao"), "manutencao");
+});
+
+test("termNumberLabel usa o protocolo do atendimento (#11150) e só cai na sequência TST sem atendimento", () => {
+  assert.equal(termNumberLabel(5, 11150), "#11150");
+  assert.equal(termNumberLabel(5, "11150"), "#11150");
+  assert.equal(termNumberLabel(5, 812), "#00812");
+  assert.equal(termNumberLabel(5, null), "TST-00005");
+  assert.equal(termNumberLabel(null, undefined), "");
 });
