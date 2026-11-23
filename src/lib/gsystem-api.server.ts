@@ -258,6 +258,17 @@ export async function gsystemApiFetch(
 /**
  * Clear the cached token (useful if we get 401 errors)
  */
+/** GET bruto para diagnóstico: devolve o status HTTP e um trecho da resposta, sem interpretar. */
+export async function gsystemRawGet(endpoint: string): Promise<{ status: number; body: string }> {
+  const token = await authenticate();
+  const res = await fetchWithTimeout(`${GSYSTEM_API_BASE}${endpoint}`, {
+    method: "GET",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
+  });
+  const text = await res.text().catch(() => "");
+  return { status: res.status, body: text.slice(0, 400) };
+}
+
 export function clearGsystemToken() {
   cachedToken = null;
   tokenExpiry = 0;

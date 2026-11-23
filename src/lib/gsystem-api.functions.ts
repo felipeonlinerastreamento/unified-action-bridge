@@ -615,6 +615,22 @@ const EQUIP_ENDPOINT_CANDIDATES = [
   "/aparelhos",
 ];
 
+/** Variações de /chips testadas quando a lista simples volta vazia (null). */
+const CHIP_VARIANTES = [
+  "/chips?Limit=100&Cursor=",
+  "/chips?Status=Sem_Equipamento",
+  "/chips?Limit=100&Status=Sem_Equipamento",
+  "/chips?Status=Ativo",
+  "/chips?Ativo=true",
+  "/chips?Pagina=1&Limit=100",
+  "/chips?Page=1&PageSize=100",
+  "/chips/disponiveis",
+  "/chips/estoque",
+  "/chips/listar",
+  "/equipamentos/chips",
+  "/cadastros/chips",
+];
+
 const CHIP_ENDPOINT_CANDIDATES = [
   "/chips",
   "/chip",
@@ -760,11 +776,36 @@ export const discoverChips = createServerFn({ method: "POST" })
   .handler(async () => {
     const { gsystemApiFetch } = await import("@/lib/gsystem-api.server");
     const probe = await probeEndpoints(gsystemApiFetch, CHIP_ENDPOINT_CANDIDATES);
-    return {
-      matchedEndpoint: probe.matchedEndpoint,
-      items: probe.items.map(normalizeEquipItem),
-      tried: probe.tried,
-    };
+    if (probe.matchedEndpoint) {
+      return { matchedEndpoint: probe.matchedEndpoint, items: probe.items.map(normalizeEquipItem), tried: probe.tried };
+    }
+    // /chips responde null sem filtro: tenta variações de filtro/paginação e mostra o status HTTP e o
+    // começo da resposta de cada uma, para descobrir o formato que o GSystem aceita.
+    const { gsystemRawGet } = await import("@/lib/gsystem-api.server");
+    const tried = [...probe.tried];
+    const inicio = Date.now();
+    for (const ep of CHIP_VARIANTES) {
+      if (Date.now() - inicio > 12_000) { tried.push({ endpoint: ep, status: "pulado (tempo)" }); continue; }
+      try {
+        const r = await gsystemRawGet(ep);
+        let json: any = null;
+        try { json = JSON.parse(r.body.length < 400 ? r.body : ""); } catch { /* trecho */ }
+        if (r.status === 200 && r.body && r.body !== "null") {
+          const full = await gsystemApiFetch(ep).catch(() => null);
+          const arr = Array.isArray(full) ? full : (full?.Items ?? full?.items ?? full?.data ?? full?.Data
+            ?? (full && typeof full === "object" ? Object.values(full).find((v) => Array.isArray(v) && v.length > 0) : null));
+          if (Array.isArray(arr) && arr.length > 0) {
+            const all = Array.isArray(full) ? arr : await fetchAllPages(gsystemApiFetch, ep, full, inicio + 25_000);
+            tried.push({ endpoint: ep, status: `ok (${all.length} itens)` });
+            return { matchedEndpoint: ep, items: all.map(normalizeEquipItem), tried };
+          }
+        }
+        tried.push({ endpoint: ep, status: `HTTP ${r.status} · ${json === null && !r.body ? "vazio" : r.body.slice(0, 160)}` });
+      } catch (e: any) {
+        tried.push({ endpoint: ep, status: String(e?.message || e).slice(0, 120) });
+      }
+    }
+    return { matchedEndpoint: null, items: [] as any[], tried };
   });
 
 export const listEquipamentosFromVeiculos = createServerFn({ method: "POST" })
