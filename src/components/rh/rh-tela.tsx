@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useServerFn } from "@tanstack/react-start";
 import { toast } from "sonner";
 import { AlertTriangle, Cake, CalendarDays, ChevronLeft, ChevronRight, Loader2, Paperclip, Plus, Printer, Send, Trash2, UserMinus, Users } from "lucide-react";
@@ -54,6 +54,19 @@ export function RhTela() {
   const q = useRhDados();
   const [tab, setTab] = useState("painel");
   const [modal, setModal] = useState<Modal>(null);
+  // Os colaboradores são os usuários do sistema: quem estiver ativo e ainda sem ficha ganha uma automaticamente.
+  const sincronizar = useServerFn(rhImportarUsuarios);
+  const recarregarRh = useRhRecarregar();
+  const sincronizado = useRef(false);
+  useEffect(() => {
+    const d = q.data;
+    if (!d || sincronizado.current) return;
+    sincronizado.current = true;
+    const comFicha = new Map(d.colabs.filter((c) => c.user_id).map((c) => [c.user_id, c]));
+    const precisa = d.perfis.some((p) => (p.is_active && !comFicha.has(p.user_id)) || (comFicha.get(p.user_id) && comFicha.get(p.user_id)!.nome !== p.name));
+    if (!precisa) return;
+    sincronizar().then((r: any) => { if (r.criados || r.atualizados) recarregarRh(); }).catch(() => { /* segue sem sincronizar */ });
+  }, [q.data, sincronizar, recarregarRh]);
   if (q.isLoading) return <Loader2 className="h-5 w-5 animate-spin" />;
   if (q.error || !q.data) return <Card className="border-amber-500"><CardContent className="pt-4 text-sm">Não foi possível carregar o RH: {(q.error as Error)?.message}. Confira se a migração 0072 foi aplicada no Lovable.</CardContent></Card>;
   const d = q.data;
@@ -217,7 +230,7 @@ function Colaboradores({ d, setModal }: { d: Dados; setModal: (m: Modal) => void
             setImportando(true);
             try { const r: any = await importar(); toast.success(r.criados ? `${r.criados} colaborador(es) trazido(s) dos usuários do sistema. Complete as fichas (admissão, cargo, contrato).` : "Todos os usuários ativos já estão no RH."); recarregar(); }
             catch (e: any) { toast.error(e?.message ?? "Falha."); } finally { setImportando(false); }
-          }}>{importando ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Users className="h-4 w-4 mr-1" />}Trazer usuários do sistema</Button>
+          }}>{importando ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Users className="h-4 w-4 mr-1" />}Sincronizar com os usuários</Button>
           <Button size="sm" onClick={() => setModal({ t: "colab" })}><Plus className="h-4 w-4 mr-1" />Novo colaborador</Button>
         </div>
       </div></CardHeader>
@@ -227,14 +240,17 @@ function Colaboradores({ d, setModal }: { d: Dados; setModal: (m: Modal) => void
           <TableBody>
             {lista.map((c) => (
               <TableRow key={c.id} className="cursor-pointer" onClick={() => setModal({ t: "ficha", id: c.id })}>
-                <TableCell className="font-medium">{c.nome}{!c.data_admissao && <Badge variant="outline" className="ml-2 text-[10px]">Completar ficha</Badge>}</TableCell>
+                <TableCell className="font-medium">{c.nome}
+                  {!c.user_id && <Badge variant="outline" className="ml-2 text-[10px]">Sem usuário no sistema</Badge>}
+                  {c.user_id && d.perfis.find((p) => p.user_id === c.user_id)?.is_active === false && c.situacao !== "desligado" && <Badge variant="outline" className="ml-2 text-[10px] border-amber-500 text-amber-700">Acesso desativado</Badge>}
+                  {!c.data_admissao && <Badge variant="outline" className="ml-2 text-[10px]">Completar ficha</Badge>}</TableCell>
                 <TableCell>{c.cargo ?? "—"}</TableCell><TableCell>{setorNome(c.setor_id)}</TableCell><TableCell>{TIPOS_CONTRATO[c.tipo_contrato ?? "clt"]}</TableCell>
                 <TableCell>{dataBR(c.data_admissao)}</TableCell>
                 <TableCell><Badge variant="outline" className={SIT_COLAB[c.situacao].cls}>{SIT_COLAB[c.situacao].texto}</Badge></TableCell>
                 <TableCell className="text-right tabular-nums">{formatarMinutos(saldo.get(c.id) ?? 0)}</TableCell>
               </TableRow>
             ))}
-            {!lista.length && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">Nenhum colaborador. Use "Trazer usuários do sistema" ou "Novo colaborador".</TableCell></TableRow>}
+            {!lista.length && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">Nenhum colaborador. Os usuários ativos do sistema entram aqui sozinhos; quem não usa o sistema entra por "Novo colaborador".</TableCell></TableRow>}
           </TableBody>
         </Table>
       </CardContent>
