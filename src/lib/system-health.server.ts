@@ -162,20 +162,24 @@ async function checkGsystem(): Promise<IntegrationCheck> {
   const since = new Date(Date.now() - 60 * 60_000).toISOString();
   const { data } = await supabaseAdmin
     .from("integration_logs")
-    .select("status_code, error_message, created_at")
+    .select("endpoint, status_code, error_code, error_message, created_at")
     .gte("created_at", since)
     .order("created_at", { ascending: false })
-    .limit(100);
-  const rows = (data || []) as any[];
+    .limit(200);
+  // Só chamadas do GSystem (o rastreio dos Correios grava na mesma tabela) e só falha real do serviço:
+  // sem resposta, autenticação, limite ou erro 5xx. 404/422 é pedido errado, não GSystem fora do ar.
+  const { chamadaDoGsystem, falhaDoGsystem } = await import("@/lib/system-health-alerts");
+  const rows = ((data || []) as any[]).filter(chamadaDoGsystem).slice(0, 100);
   if (!rows.length) {
     return { key: "gsystem", label: "GSystem", status: "unknown", responseMs: null, detail: "Sem chamadas na última hora." };
   }
-  const errors = rows.filter((r) => (r.status_code || 0) >= 400 || r.error_message);
+  const errors = rows.filter(falhaDoGsystem);
   const pct = Math.round((errors.length / rows.length) * 100);
   return {
     key: "gsystem",
     label: "GSystem",
-    status: pct >= 50 ? "down" : pct > 0 ? "warn" : "ok",
+    // Poucas chamadas não bastam para dizer que caiu: uma falha em 2 chamadas não é 50% de verdade.
+    status: rows.length >= 5 && pct >= 50 ? "down" : pct > 0 ? "warn" : "ok",
     responseMs: null,
     detail: `${rows.length} chamadas na última hora, ${errors.length} com falha (${pct}%).`,
   };
@@ -303,11 +307,14 @@ export async function collectSystemHealth(force = false): Promise<SystemHealth> 
     const d1 = new Date(Date.now() - 24 * 3600_000).toISOString();
     const { data } = await supabaseAdmin
       .from("integration_logs")
-      .select("endpoint, status_code, error_message, created_at")
+      .select("endpoint, status_code, error_code, error_message, created_at")
       .gte("created_at", d7)
       .order("created_at", { ascending: false })
       .limit(1000);
-    const rows = ((data || []) as any[]).filter((r) => (r.status_code || 0) >= 400 || r.error_message);
+    // Só falha real (sem resposta, autenticação, limite, 5xx). Rastreio dos Correios com código
+    // inexistente e pedidos 404/422 não são "integração com problema".
+    const { chamadaDoGsystem, falhaDoGsystem } = await import("@/lib/system-health-alerts");
+    const rows = ((data || []) as any[]).filter((r) => chamadaDoGsystem(r) && falhaDoGsystem(r));
     result.failures.last7d = rows.length;
     result.failures.last24h = rows.filter((r) => r.created_at >= d1).length;
     const map = new Map<string, { service: string; count: number; lastError: string | null; lastAt: string | null }>();

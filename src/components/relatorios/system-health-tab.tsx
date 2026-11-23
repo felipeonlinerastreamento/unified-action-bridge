@@ -99,6 +99,7 @@ export function SystemHealthTab({ isAdmin }: { isAdmin: boolean }) {
     db_growth_limit_mb: settings.db_growth_limit_mb ?? 2048,
     cron_stale_minutes: settings.cron_stale_minutes ?? 15,
     integration_errors_per_hour: settings.integration_errors_per_hour ?? 10,
+    integration_fail_threshold: settings.integration_fail_threshold ?? 2,
     alerts_enabled: settings.alerts_enabled ?? true,
   };
 
@@ -448,6 +449,12 @@ export function SystemHealthTab({ isAdmin }: { isAdmin: boolean }) {
                 <Label className="text-xs">Falhas por hora toleradas</Label>
                 <Input type="number" value={current.integration_errors_per_hour}
                   onChange={(e) => setForm({ ...current, integration_errors_per_hour: Number(e.target.value) })} />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs">Verificações seguidas antes de avisar</Label>
+                <Input type="number" min={1} max={10} value={current.integration_fail_threshold}
+                  onChange={(e) => setForm({ ...current, integration_fail_threshold: Number(e.target.value) })} />
+                <p className="text-[11px] text-muted-foreground">Evita aviso por falha passageira. O "normalizado" também espera o mesmo número de verificações boas.</p>
               </div>
               <div className="flex items-center gap-2 pt-5">
                 <Switch checked={!!current.alerts_enabled}

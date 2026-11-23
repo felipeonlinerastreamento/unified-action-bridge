@@ -25,6 +25,7 @@ const settingsSchema = z.object({
   db_growth_limit_mb: z.number().int().min(100).max(1000000),
   cron_stale_minutes: z.number().int().min(2).max(1440),
   integration_errors_per_hour: z.number().int().min(1).max(1000),
+  integration_fail_threshold: z.number().int().min(1).max(10).optional(),
   alerts_enabled: z.boolean(),
   mute_hours: z.number().min(0).max(24).optional(),
 });
@@ -47,6 +48,7 @@ export const saveSystemHealthSettings = createServerFn({ method: "POST" })
       db_growth_limit_mb: data.db_growth_limit_mb,
       cron_stale_minutes: data.cron_stale_minutes,
       integration_errors_per_hour: data.integration_errors_per_hour,
+      ...(data.integration_fail_threshold ? { integration_fail_threshold: data.integration_fail_threshold } : {}),
       alerts_enabled: data.alerts_enabled,
       ...(data.mute_hours !== undefined ? { muted_until } : {}),
     };

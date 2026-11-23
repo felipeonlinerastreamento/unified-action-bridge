@@ -134,53 +134,47 @@ async function runScan() {
     });
   }
 
-  // Estado atual dos alertas
+  // Estado atual dos alertas. Contra falso positivo (ver src/lib/system-health-alerts.ts): avisa só depois de
+  // `integration_fail_threshold` verificações seguidas com o problema, dá como normalizado só depois do mesmo
+  // número de verificações boas, e um problema que oscilou nas últimas 6 h espera durar 1 h antes de avisar de novo.
+  const { decidirAlertas } = await import("@/lib/system-health-alerts");
+  const limite = Number(s.integration_fail_threshold ?? 2);
   const { data: openRows } = await supabaseAdmin
     .from("system_health_alert_log")
-    .select("id, alert_key")
+    .select("id, alert_key, title, opened_at, metadata")
     .eq("is_open", true);
-  const open = new Map(((openRows || []) as any[]).map((r) => [r.alert_key, r.id]));
-  const currentKeys = new Set(issues.map((i) => i.key));
+  const abertos = ((openRows || []) as any[]).map((r) => ({ id: r.id, key: r.alert_key, opened_at: r.opened_at, metadata: r.metadata }));
+  const { data: recentes } = await supabaseAdmin
+    .from("system_health_alert_log")
+    .select("alert_key, metadata")
+    .eq("is_open", false)
+    .gte("resolved_at", new Date(Date.now() - 6 * 3600_000).toISOString());
+  const oscilaram = new Set(((recentes || []) as any[]).filter((r) => r.metadata?.notified).map((r) => r.alert_key as string));
+  const porChave = new Map(issues.map((i) => [i.key, i]));
+  const titulo = new Map(abertos.map((a) => [a.key, ((openRows || []) as any[]).find((r) => r.id === a.id)?.title]));
 
   let created = 0;
-  for (const issue of issues) {
-    if (open.has(issue.key)) {
-      await supabaseAdmin
-        .from("system_health_alert_log")
-        .update({ last_seen_at: new Date().toISOString(), message: issue.message } as any)
-        .eq("id", open.get(issue.key));
-      continue;
-    }
-    await supabaseAdmin.from("system_health_alert_log").insert({
-      alert_key: issue.key,
-      severity: issue.severity,
-      title: issue.title,
-      message: issue.message,
-    } as any);
-    created++;
-    if (alertsEnabled && !muted) await notifyManagers(issue);
-  }
-
   let resolved = 0;
-  for (const [key, id] of open.entries()) {
-    if (currentKeys.has(key)) continue;
-    await supabaseAdmin
-      .from("system_health_alert_log")
-      .update({ is_open: false, resolved_at: new Date().toISOString() } as any)
-      .eq("id", id);
-    resolved++;
-    if (alertsEnabled && !muted) {
-      const { data: row } = await supabaseAdmin
-        .from("system_health_alert_log")
-        .select("title")
-        .eq("id", id)
-        .maybeSingle();
-      await notifyManagers({
-        key,
-        severity: "warning",
-        title: "Situação normalizada",
-        message: `${(row as any)?.title || key} voltou ao normal.`,
-      });
+  for (const acao of decidirAlertas({ problemas: [...porChave.keys()], abertos, oscilaram, limite, agora: Date.now() })) {
+    const issue = porChave.get(acao.key);
+    if (acao.tipo === "abrir" && issue) {
+      await supabaseAdmin.from("system_health_alert_log").insert({
+        alert_key: issue.key, severity: issue.severity, title: issue.title, message: issue.message, metadata: acao.metadata,
+      } as any);
+      created++;
+    } else if (acao.tipo === "atualizar") {
+      await supabaseAdmin.from("system_health_alert_log")
+        .update({ last_seen_at: new Date().toISOString(), metadata: acao.metadata, ...(issue ? { message: issue.message } : {}) } as any)
+        .eq("id", acao.id);
+    } else if (acao.tipo === "fechar") {
+      await supabaseAdmin.from("system_health_alert_log").update({ is_open: false, resolved_at: new Date().toISOString() } as any).eq("id", acao.id);
+      resolved++;
+    }
+    if (!acao.notificar || !alertsEnabled || muted) continue;
+    if (acao.tipo === "fechar") {
+      await notifyManagers({ key: acao.key, severity: "warning", title: "Situação normalizada", message: `${titulo.get(acao.key) || acao.key} voltou ao normal.` });
+    } else if (issue) {
+      await notifyManagers(issue);
     }
   }
 
