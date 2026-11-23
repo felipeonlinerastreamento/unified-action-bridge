@@ -526,6 +526,13 @@
       "when": 1795450053086,
       "tag": "0074_contratos_setores_avisos",
       "breakpoints": true
+    },
+    {
+      "idx": 75,
+      "version": "7",
+      "when": 1795466972431,
+      "tag": "0075_servico_tecnico_fila_finalizador",
+      "breakpoints": true
     }
   ]
 }
