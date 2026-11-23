@@ -168,3 +168,46 @@ export async function getDriveContext(question: string): Promise<string | null> 
 
   return `Documentos internos encontrados no Google Drive da empresa (use-os como fonte principal para responder):\n\n${parts.join("\n\n")}`;
 }
+
+// ----- Gravação (Financeiro: anexos de lançamentos) ---------------------------------
+
+export const driveConfigurado = () => headers() !== null;
+
+async function driveJson(res: Response, oque: string) {
+  const txt = await res.text();
+  let json: any = null;
+  try { json = JSON.parse(txt); } catch { /* não-JSON */ }
+  if (!res.ok) throw new Error(`Google Drive (${oque}): ${json?.error?.message || txt.slice(0, 200) || `HTTP ${res.status}`}`);
+  return json;
+}
+
+/** Acha a subpasta pelo nome dentro de `parentId`; cria se não existir. */
+export async function pastaDrive(parentId: string, nome: string): Promise<string> {
+  const h = headers();
+  if (!h) throw new Error("Google Drive não conectado (LOVABLE_API_KEY / GOOGLE_DRIVE_API_KEY).");
+  const q = `'${parentId}' in parents and name = '${nome.replace(/'/g, "\\'")}' and mimeType = 'application/vnd.google-apps.folder' and trashed = false`;
+  const params = new URLSearchParams({ q, fields: "files(id,name)", pageSize: "1", includeItemsFromAllDrives: "true", supportsAllDrives: "true" });
+  const achou = await driveJson(await fetch(`${GATEWAY}/drive/v3/files?${params}`, { headers: h }), "buscar pasta");
+  if (achou?.files?.[0]?.id) return achou.files[0].id;
+  const criada = await driveJson(await fetch(`${GATEWAY}/drive/v3/files?supportsAllDrives=true&fields=id`, {
+    method: "POST", headers: { ...h, "Content-Type": "application/json" },
+    body: JSON.stringify({ name: nome, mimeType: "application/vnd.google-apps.folder", parents: [parentId] }),
+  }), "criar pasta");
+  return criada.id;
+}
+
+/** Envia um arquivo para a pasta do Drive; devolve id e link de visualização. */
+export async function enviarArquivoDrive(parentId: string, nome: string, mime: string, bytes: Uint8Array): Promise<{ id: string; url: string }> {
+  const h = headers();
+  if (!h) throw new Error("Google Drive não conectado (LOVABLE_API_KEY / GOOGLE_DRIVE_API_KEY).");
+  const limite = `fin${Math.random().toString(36).slice(2)}`;
+  const enc = new TextEncoder();
+  const meta = enc.encode(`--${limite}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify({ name: nome, parents: [parentId] })}\r\n--${limite}\r\nContent-Type: ${mime}\r\n\r\n`);
+  const fim = enc.encode(`\r\n--${limite}--`);
+  const corpo = new Uint8Array(meta.length + bytes.length + fim.length);
+  corpo.set(meta, 0); corpo.set(bytes, meta.length); corpo.set(fim, meta.length + bytes.length);
+  const r = await driveJson(await fetch(`${GATEWAY}/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,webViewLink`, {
+    method: "POST", headers: { ...h, "Content-Type": `multipart/related; boundary=${limite}` }, body: corpo,
+  }), "enviar arquivo");
+  return { id: r.id, url: r.webViewLink || `https://drive.google.com/file/d/${r.id}/view` };
+}

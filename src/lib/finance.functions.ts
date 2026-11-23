@@ -361,3 +361,57 @@ export const enviarCobrancaClienteFn = createServerFn({ method: "POST" })
     const { enviarCobrancaCliente } = await import("@/lib/finance-inadimplencia.server");
     return enviarCobrancaCliente(data.documento, { whatsapp: data.whatsapp, email: data.email }, userId, data.texto);
   });
+// ----- Anexo do lançamento (bucket + Google Drive) ------------------------------------
+
+/**
+ * Anexa um arquivo a um lançamento: guarda no bucket fin-comprovantes (sempre) e envia ao Google Drive
+ * na pasta "00-Comprovantes Gerais" › mês (quando o Drive estiver conectado). Se o Drive falhar, o anexo
+ * continua no sistema e a resposta traz o aviso.
+ */
+export const anexarArquivoLancamento = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({
+    lancamentoId: z.string().uuid(),
+    nome: z.string().min(1).max(300),
+    mime: z.string().max(120),
+    base64: z.string().min(10).max(20_000_000),
+  }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase } = context as any;
+    await assertFinance(supabase);
+    const { data: l, error } = await supabase.from("fin_lancamentos")
+      .select("id, contraparte, tipo_documento, data_emissao, vencimento, drive_file_id").eq("id", data.lancamentoId).maybeSingle();
+    if (error || !l) throw new Error("Lançamento não encontrado.");
+    const bytes = Uint8Array.from(Buffer.from(data.base64, "base64"));
+    if (bytes.length > 15 * 1024 * 1024) throw new Error("Arquivo maior que 15 MB.");
+    const { nomeArquivoAnexo, pastaDoMes, PASTA_COMPROVANTES_PADRAO } = await import("@/lib/finance-anexo");
+    const dataRef = l.data_emissao || l.vencimento || hojeSPServidor();
+    const nome = nomeArquivoAnexo({ contraparte: l.contraparte, tipoDocumento: l.tipo_documento, data: dataRef, nomeOriginal: data.nome, mime: data.mime });
+    const mime = data.mime || "application/octet-stream";
+
+    const path = `anexos/${l.id}/${Date.now()}_${nome}`;
+    const up = await supabase.storage.from("fin-comprovantes").upload(path, bytes, { contentType: mime, upsert: false });
+    if (up.error) throw new Error(`Não foi possível guardar o arquivo: ${up.error.message}`);
+    const atualizar: any = { arquivo_nome: nome, arquivo_path: path };
+
+    let drive: { id: string; url: string } | null = null;
+    let aviso: string | null = null;
+    try {
+      const g = await import("@/lib/google-drive.server");
+      if (!g.driveConfigurado()) throw new Error("Google Drive não está conectado ao sistema.");
+      const raiz = process.env.FIN_DRIVE_PASTA_ID || PASTA_COMPROVANTES_PADRAO;
+      const pasta = await g.pastaDrive(raiz, pastaDoMes(dataRef));
+      drive = await g.enviarArquivoDrive(pasta, nome, mime, bytes);
+      atualizar.arquivo_url = drive.url;
+      if (!l.drive_file_id) atualizar.drive_file_id = drive.id;
+    } catch (e: any) {
+      aviso = `Arquivo salvo no sistema, mas não foi para o Google Drive: ${String(e?.message ?? e).slice(0, 200)}`;
+    }
+    const { error: e2 } = await supabase.from("fin_lancamentos").update(atualizar).eq("id", l.id);
+    if (e2) throw new Error(e2.message);
+    return { nome, drive: !!drive, url: drive?.url ?? null, pasta: pastaDoMes(dataRef), aviso };
+  });
+
+function hojeSPServidor() {
+  return new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+}
