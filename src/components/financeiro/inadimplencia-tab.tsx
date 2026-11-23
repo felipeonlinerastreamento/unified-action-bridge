@@ -24,11 +24,14 @@ import {
 import { atualizarClientesFinanceiroFn, enviarCobrancaClienteFn, reguaCobrancaFn } from "@/lib/finance.functions";
 import { fin, useFinInvalidate, type Lanc } from "./use-fin";
 import { useAbrirAnexo } from "./lancamentos-tab";
+import { NegativacoesCliente, ProtestoSerasaTab, useDocsNegativados } from "./protesto-serasa";
+import { NOME_ORGAO } from "@/lib/finance-negativacao";
 
 const TIPOS_ACAO: Record<string, string> = {
   contato: "Contato", promessa: "Promessa de pagamento", acordo: "Acordo / parcelamento", nota: "Anotação",
   perda: "Marcado como perda provável", perda_desfeita: "Perda provável desfeita", bloqueio: "Bloqueio / suspensão",
   desbloqueio: "Desbloqueio", regua: "Régua automática",
+  negativacao: "Serasa / SPC", protesto: "Protesto", baixa: "Baixa de protesto / negativação", anuencia: "Carta de anuência",
 };
 const RESULTADOS: Record<string, string> = {
   sem_resposta: "Sem resposta", vai_pagar: "Vai pagar", contestou: "Contestou a cobrança",
@@ -105,14 +108,17 @@ export function InadimplenciaTab({ lancamentos }: { lancamentos: Lanc[] }) {
           <TabsTrigger value="clientes">Clientes em atraso ({lista.length})</TabsTrigger>
           <TabsTrigger value="sugestoes">Sugestões ({lista.filter((c) => c.sugestoes.some((s) => s !== "sem_contato")).length})</TabsTrigger>
           <TabsTrigger value="evolucao">Evolução</TabsTrigger>
+          <TabsTrigger value="protesto">Protesto e Serasa</TabsTrigger>
           <TabsTrigger value="regua">Régua de cobrança</TabsTrigger>
         </TabsList>
         <TabsContent value="clientes" className="mt-4"><ListaClientes lista={lista} onAbrir={setAberto} /></TabsContent>
         <TabsContent value="sugestoes" className="mt-4"><Sugestoes lista={lista} cfg={cfg} onAbrir={setAberto} /></TabsContent>
         <TabsContent value="evolucao" className="mt-4"><Evolucao ind={ind} /></TabsContent>
+        <TabsContent value="protesto" className="mt-4"><ProtestoSerasaTab lancamentos={lancamentos} lista={lista} onAbrirCliente={setAberto}
+          criterio={{ diasMinimo: Number(config.data?.neg_dias_minimo ?? 60), valorMinimo: Number(config.data?.neg_valor_minimo ?? 100), prazoDiasUteis: Number(config.data?.prazo_baixa_dias_uteis ?? 5) }} /></TabsContent>
         <TabsContent value="regua" className="mt-4"><Regua cfg={config.data} /></TabsContent>
       </Tabs>
-      {cliente && <ClienteDialog c={cliente} acoes={(acoes.data ?? []).filter((a) => a.documento === (cliente.documento ?? cliente.chave))} fc={(clientes.data ?? []).find((x) => x.documento === cliente.documento) ?? null} onFechar={() => setAberto(null)} />}
+      {cliente && <ClienteDialog lista={lista} lancamentos={lancamentos} c={cliente} acoes={(acoes.data ?? []).filter((a) => a.documento === (cliente.documento ?? cliente.chave))} fc={(clientes.data ?? []).find((x) => x.documento === cliente.documento) ?? null} onFechar={() => setAberto(null)} />}
     </div>
   );
 }
@@ -149,6 +155,7 @@ function Indicadores({ ind }: { ind: ReturnType<typeof indicadoresInadimplencia>
 }
 
 function ListaClientes({ lista, onAbrir }: { lista: ClienteInadimplente[]; onAbrir: (k: string) => void }) {
+  const negativados = useDocsNegativados();
   const [busca, setBusca] = useState("");
   const [situacao, setSituacao] = useState("todos");
   const [faixa, setFaixa] = useState<"todas" | Faixa>("todas");
@@ -195,6 +202,7 @@ function ListaClientes({ lista, onAbrir }: { lista: ClienteInadimplente[]; onAbr
                 <TableCell className="space-x-1">
                   {c.promessa && <Badge variant="outline" className={c.promessa.quebrada ? "border-red-500 text-red-700" : "border-emerald-500 text-emerald-700"}>{c.promessa.quebrada ? "Promessa vencida" : `Promessa ${formatDataBR(c.promessa.data)}`}</Badge>}
                   {c.acordo && <Badge variant="outline">Acordo</Badge>}
+                  {c.documento && (negativados.get(c.documento) ?? []).map((o) => <Badge key={o} variant="outline" className="border-red-500 text-red-700">{o === "protesto" ? "Protestado" : NOME_ORGAO[o]}</Badge>)}
                   {c.reguaPausada && <Badge variant="outline">Régua pausada</Badge>}
                   {c.sugestoes.includes("sem_contato") && <Badge variant="outline" className="text-muted-foreground">Sem contato</Badge>}
                 </TableCell>
@@ -291,6 +299,7 @@ function Regua({ cfg }: { cfg: any }) {
     whatsapp_channel_id: cfg?.whatsapp_channel_id ?? "", email_channel_id: cfg?.email_channel_id ?? "",
     valor_minimo: String(cfg?.valor_minimo ?? 0), so_ativos: !!cfg?.so_ativos,
     dias_bloqueio: String(cfg?.dias_bloqueio ?? 30), dias_perda: String(cfg?.dias_perda ?? 180),
+    neg_dias_minimo: String(cfg?.neg_dias_minimo ?? 60), neg_valor_minimo: String(cfg?.neg_valor_minimo ?? 100), prazo_baixa_dias_uteis: String(cfg?.prazo_baixa_dias_uteis ?? 5),
   };
   const set = (k: string, v: any) => setForm({ ...atual, [k]: v });
   const [busy, setBusy] = useState<string | null>(null);
@@ -309,7 +318,12 @@ function Regua({ cfg }: { cfg: any }) {
         mensagem_antes: atual.mensagem_antes.trim() || null, mensagem_atraso: atual.mensagem_atraso.trim() || null,
         whatsapp_channel_id: atual.whatsapp_channel_id || null, email_channel_id: atual.email_channel_id || null,
         valor_minimo: Number(String(atual.valor_minimo).replace(",", ".")) || 0, so_ativos: atual.so_ativos,
-        dias_bloqueio: Number(atual.dias_bloqueio) || 30, dias_perda: Number(atual.dias_perda) || 180, updated_at: new Date().toISOString(),
+        dias_bloqueio: Number(atual.dias_bloqueio) || 30, dias_perda: Number(atual.dias_perda) || 180,
+        ...(cfg && "neg_dias_minimo" in cfg ? {
+          neg_dias_minimo: Number(atual.neg_dias_minimo) || 60, neg_valor_minimo: Number(String(atual.neg_valor_minimo).replace(",", ".")) || 0,
+          prazo_baixa_dias_uteis: Number(atual.prazo_baixa_dias_uteis) || 5,
+        } : {}),
+        updated_at: new Date().toISOString(),
       });
       if (error) throw error;
       toast.success(atual.ativo ? "Régua salva e ligada: roda todo dia às 09:05." : "Régua salva (desligada).");
@@ -386,6 +400,9 @@ function Regua({ cfg }: { cfg: any }) {
             <label className="flex items-center gap-2 text-sm pt-6"><Switch checked={atual.so_ativos} onCheckedChange={(v) => set("so_ativos", v)} />Não mandar para clientes inativos</label>
             <div><Label>Sugerir bloqueio a partir de (dias)</Label><Input type="number" value={atual.dias_bloqueio} onChange={(e) => set("dias_bloqueio", e.target.value)} /></div>
             <div><Label>Sugerir perda provável a partir de (dias)</Label><Input type="number" value={atual.dias_perda} onChange={(e) => set("dias_perda", e.target.value)} /></div>
+            <div><Label>Candidato a protesto/Serasa a partir de (dias)</Label><Input type="number" value={atual.neg_dias_minimo} onChange={(e) => set("neg_dias_minimo", e.target.value)} /></div>
+            <div><Label>… e saldo a partir de (R$)</Label><Input value={atual.neg_valor_minimo} onChange={(e) => set("neg_valor_minimo", e.target.value)} /></div>
+            <div><Label>Prazo para dar baixa após o pagamento (dias úteis)</Label><Input type="number" value={atual.prazo_baixa_dias_uteis} onChange={(e) => set("prazo_baixa_dias_uteis", e.target.value)} /></div>
           </div>
           <div className="grid gap-3 lg:grid-cols-2">
             <div><Label>Mensagem antes do vencimento</Label><Textarea rows={4} placeholder={MENSAGEM_ANTES_PADRAO} value={atual.mensagem_antes} onChange={(e) => set("mensagem_antes", e.target.value)} /></div>
@@ -435,7 +452,7 @@ function Regua({ cfg }: { cfg: any }) {
   );
 }
 
-function ClienteDialog({ c, acoes, fc, onFechar }: { c: ClienteInadimplente; acoes: AcaoCobranca[]; fc: ClienteFin | null; onFechar: () => void }) {
+function ClienteDialog({ c, acoes, fc, onFechar, lista, lancamentos }: { c: ClienteInadimplente; acoes: AcaoCobranca[]; fc: ClienteFin | null; onFechar: () => void; lista: ClienteInadimplente[]; lancamentos: Lanc[] }) {
   const qc = useQueryClient();
   const invalidate = useFinInvalidate();
   const abrirAnexo = useAbrirAnexo();
@@ -603,6 +620,8 @@ function ClienteDialog({ c, acoes, fc, onFechar }: { c: ClienteInadimplente; aco
             <Button size="sm" onClick={() => registrar()} disabled={!!busy}>{busy === "acao" && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}Registrar</Button>
           </div>
         </div>
+
+        <div className="rounded-md border p-3"><NegativacoesCliente cliente={c} lista={lista} lancamentos={lancamentos} /></div>
 
         <div className="space-y-2">
           <div className="text-sm font-medium">Histórico de cobrança</div>
