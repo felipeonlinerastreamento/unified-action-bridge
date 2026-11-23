@@ -30,11 +30,18 @@ export async function configBomControle() {
     const { data } = await (await adminDb()).from("integracoes_segredos").select("valor").eq("chave", CHAVE).maybeSingle();
     salva = data?.valor ?? null;
   } catch { /* sem tabela: só ambiente */ }
-  cache = { em: Date.now(), chave: env || salva, origem: env ? "ambiente" : salva ? "tela" : null };
+  const c = env || salva;
+  cache = { em: Date.now(), chave: c ? limparChave(c) : null, origem: env ? "ambiente" : salva ? "tela" : null };
   return cache;
 }
 
-export async function salvarChaveBomControle(chave: string, userId: string) {
+/** Limpa o que costuma vir junto ao colar: "ApiKey " na frente, aspas, espaços e quebras de linha. */
+export function limparChave(c: string): string {
+  return c.replace(/[\s"'“”‘’]+/g, " ").trim().replace(/^(authorization:\s*)?(apikey|bearer)\s+/i, "").replace(/\s+/g, "");
+}
+
+export async function salvarChaveBomControle(chaveBruta: string, userId: string) {
+  const chave = limparChave(chaveBruta);
   const db = await adminDb();
   if (!chave) await db.from("integracoes_segredos").delete().eq("chave", CHAVE);
   else {
@@ -54,7 +61,9 @@ async function bcGet(caminho: string, params: Record<string, string | number | b
   try { json = JSON.parse(txt); } catch { /* não-JSON */ }
   if (!res.ok) {
     const msg = json?.Message || json?.message || json?.Mensagem || txt.slice(0, 200) || `HTTP ${res.status}`;
-    throw new Error(res.status === 401 || res.status === 403 ? `Bom Controle recusou a chave (${res.status}).` : `Bom Controle: ${msg}`);
+    throw new Error(res.status === 401 || res.status === 403
+      ? `Bom Controle recusou a chave (${res.status}). Confira no Bom Controle (Configurações › Configuração de API Key) se a chave está ativa, se foi copiada inteira pelo botão "Copiar API Key" e se tem acesso ao módulo Financeiro e à empresa certa.${msg && !/^HTTP/.test(msg) ? ` Resposta: ${String(msg).slice(0, 150)}` : ""}`
+      : `Bom Controle: ${msg}`);
   }
   return json;
 }
