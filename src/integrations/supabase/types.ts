@@ -2694,6 +2694,7 @@ export type Database = {
           ultimo_contato_em: string | null
           ultimo_nps: number | null
           ultimo_sentimento: string | null
+          vencidas_dias: number | null
           vencidas_qtd: number
           vencidas_valor: number
         }
@@ -2724,6 +2725,7 @@ export type Database = {
           ultimo_contato_em?: string | null
           ultimo_nps?: number | null
           ultimo_sentimento?: string | null
+          vencidas_dias?: number | null
           vencidas_qtd?: number
           vencidas_valor?: number
         }
@@ -2754,6 +2756,7 @@ export type Database = {
           ultimo_contato_em?: string | null
           ultimo_nps?: number | null
           ultimo_sentimento?: string | null
+          vencidas_dias?: number | null
           vencidas_qtd?: number
           vencidas_valor?: number
         }
@@ -3703,6 +3706,48 @@ export type Database = {
         }
         Relationships: []
       }
+      fin_bomcontrole_importacoes: {
+        Row: {
+          ate: string
+          atualizados: number
+          created_at: string
+          created_by: string | null
+          de: string
+          id: string
+          ignorados_gsystem: number
+          ignorados_outros: number
+          novos: number
+          total_pagar: number
+          total_receber: number
+        }
+        Insert: {
+          ate: string
+          atualizados?: number
+          created_at?: string
+          created_by?: string | null
+          de: string
+          id?: string
+          ignorados_gsystem?: number
+          ignorados_outros?: number
+          novos?: number
+          total_pagar?: number
+          total_receber?: number
+        }
+        Update: {
+          ate?: string
+          atualizados?: number
+          created_at?: string
+          created_by?: string | null
+          de?: string
+          id?: string
+          ignorados_gsystem?: number
+          ignorados_outros?: number
+          novos?: number
+          total_pagar?: number
+          total_receber?: number
+        }
+        Relationships: []
+      }
       fin_categorias: {
         Row: {
           ativo: boolean
@@ -3732,6 +3777,212 @@ export type Database = {
           tipo?: string
         }
         Relationships: []
+      }
+      fin_clientes: {
+        Row: {
+          ativo_gsystem: boolean | null
+          atualizado_gsystem_em: string | null
+          documento: string
+          email: string | null
+          email_cobranca: string | null
+          gsystem_key: string | null
+          nome: string | null
+          observacao: string | null
+          regua_pausada: boolean
+          situacao_gsystem: string | null
+          telefone: string | null
+          telefone_cobranca: string | null
+          updated_at: string
+        }
+        Insert: {
+          ativo_gsystem?: boolean | null
+          atualizado_gsystem_em?: string | null
+          documento: string
+          email?: string | null
+          email_cobranca?: string | null
+          gsystem_key?: string | null
+          nome?: string | null
+          observacao?: string | null
+          regua_pausada?: boolean
+          situacao_gsystem?: string | null
+          telefone?: string | null
+          telefone_cobranca?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ativo_gsystem?: boolean | null
+          atualizado_gsystem_em?: string | null
+          documento?: string
+          email?: string | null
+          email_cobranca?: string | null
+          gsystem_key?: string | null
+          nome?: string | null
+          observacao?: string | null
+          regua_pausada?: boolean
+          situacao_gsystem?: string | null
+          telefone?: string | null
+          telefone_cobranca?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      fin_cobranca_acoes: {
+        Row: {
+          canal: string | null
+          cliente_nome: string | null
+          created_at: string
+          created_by: string | null
+          data_promessa: string | null
+          documento: string
+          id: string
+          lancamento_ids: string[]
+          observacao: string | null
+          parcelas: number | null
+          primeiro_vencimento: string | null
+          resultado: string | null
+          tipo: string
+          valor: number | null
+        }
+        Insert: {
+          canal?: string | null
+          cliente_nome?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_promessa?: string | null
+          documento: string
+          id?: string
+          lancamento_ids?: string[]
+          observacao?: string | null
+          parcelas?: number | null
+          primeiro_vencimento?: string | null
+          resultado?: string | null
+          tipo: string
+          valor?: number | null
+        }
+        Update: {
+          canal?: string | null
+          cliente_nome?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_promessa?: string | null
+          documento?: string
+          id?: string
+          lancamento_ids?: string[]
+          observacao?: string | null
+          parcelas?: number | null
+          primeiro_vencimento?: string | null
+          resultado?: string | null
+          tipo?: string
+          valor?: number | null
+        }
+        Relationships: []
+      }
+      fin_cobranca_config: {
+        Row: {
+          ativo: boolean
+          dias_bloqueio: number
+          dias_perda: number
+          email_channel_id: string | null
+          id: number
+          mensagem_antes: string | null
+          mensagem_atraso: string | null
+          neg_dias_minimo: number
+          neg_valor_minimo: number
+          passos: Json
+          prazo_baixa_dias_uteis: number
+          so_ativos: boolean
+          ultima_execucao: Json | null
+          ultima_execucao_em: string | null
+          updated_at: string
+          updated_by: string | null
+          valor_minimo: number
+          whatsapp_channel_id: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          dias_bloqueio?: number
+          dias_perda?: number
+          email_channel_id?: string | null
+          id?: number
+          mensagem_antes?: string | null
+          mensagem_atraso?: string | null
+          neg_dias_minimo?: number
+          neg_valor_minimo?: number
+          passos?: Json
+          prazo_baixa_dias_uteis?: number
+          so_ativos?: boolean
+          ultima_execucao?: Json | null
+          ultima_execucao_em?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          valor_minimo?: number
+          whatsapp_channel_id?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          dias_bloqueio?: number
+          dias_perda?: number
+          email_channel_id?: string | null
+          id?: number
+          mensagem_antes?: string | null
+          mensagem_atraso?: string | null
+          neg_dias_minimo?: number
+          neg_valor_minimo?: number
+          passos?: Json
+          prazo_baixa_dias_uteis?: number
+          so_ativos?: boolean
+          ultima_execucao?: Json | null
+          ultima_execucao_em?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          valor_minimo?: number
+          whatsapp_channel_id?: string | null
+        }
+        Relationships: []
+      }
+      fin_cobranca_envios: {
+        Row: {
+          canal: string
+          created_at: string
+          destino: string | null
+          documento: string | null
+          erro: string | null
+          id: string
+          lancamento_id: string
+          passo: string
+          status: string
+        }
+        Insert: {
+          canal: string
+          created_at?: string
+          destino?: string | null
+          documento?: string | null
+          erro?: string | null
+          id?: string
+          lancamento_id: string
+          passo: string
+          status: string
+        }
+        Update: {
+          canal?: string
+          created_at?: string
+          destino?: string | null
+          documento?: string | null
+          erro?: string | null
+          id?: string
+          lancamento_id?: string
+          passo?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fin_cobranca_envios_lancamento_id_fkey"
+            columns: ["lancamento_id"]
+            isOneToOne: false
+            referencedRelation: "fin_lancamentos"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       fin_contas_bancarias: {
         Row: {
@@ -4142,6 +4393,7 @@ export type Database = {
           arquivo_nome: string | null
           arquivo_path: string | null
           arquivo_url: string | null
+          bomcontrole_parcela_id: string | null
           categoria_id: string | null
           competencia: string | null
           conferencia: Json | null
@@ -4169,8 +4421,11 @@ export type Database = {
           numero_documento: string | null
           observacao: string | null
           origem: string
+          perda_marcada_em: string | null
+          perda_provavel: boolean
           programado_em: string | null
           programado_por: string | null
+          promessa_pagamento: string | null
           revisado: boolean
           status: string
           tipo: string
@@ -4189,6 +4444,7 @@ export type Database = {
           arquivo_nome?: string | null
           arquivo_path?: string | null
           arquivo_url?: string | null
+          bomcontrole_parcela_id?: string | null
           categoria_id?: string | null
           competencia?: string | null
           conferencia?: Json | null
@@ -4216,8 +4472,11 @@ export type Database = {
           numero_documento?: string | null
           observacao?: string | null
           origem?: string
+          perda_marcada_em?: string | null
+          perda_provavel?: boolean
           programado_em?: string | null
           programado_por?: string | null
+          promessa_pagamento?: string | null
           revisado?: boolean
           status?: string
           tipo?: string
@@ -4236,6 +4495,7 @@ export type Database = {
           arquivo_nome?: string | null
           arquivo_path?: string | null
           arquivo_url?: string | null
+          bomcontrole_parcela_id?: string | null
           categoria_id?: string | null
           competencia?: string | null
           conferencia?: Json | null
@@ -4263,8 +4523,11 @@ export type Database = {
           numero_documento?: string | null
           observacao?: string | null
           origem?: string
+          perda_marcada_em?: string | null
+          perda_provavel?: boolean
           programado_em?: string | null
           programado_por?: string | null
+          promessa_pagamento?: string | null
           revisado?: boolean
           status?: string
           tipo?: string
@@ -4305,6 +4568,81 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      fin_negativacoes: {
+        Row: {
+          anuencia_emitida_em: string | null
+          cartorio: string | null
+          cidade_uf: string | null
+          cliente_nome: string | null
+          created_at: string
+          created_by: string | null
+          custo: number | null
+          data_baixa: string | null
+          data_envio: string | null
+          data_inclusao: string | null
+          data_quitacao: string | null
+          documento: string
+          id: string
+          lancamento_ids: string[]
+          motivo_cancelamento: string | null
+          observacao: string | null
+          orgao: string
+          protocolo: string | null
+          situacao: string
+          updated_at: string
+          updated_by: string | null
+          valor: number
+        }
+        Insert: {
+          anuencia_emitida_em?: string | null
+          cartorio?: string | null
+          cidade_uf?: string | null
+          cliente_nome?: string | null
+          created_at?: string
+          created_by?: string | null
+          custo?: number | null
+          data_baixa?: string | null
+          data_envio?: string | null
+          data_inclusao?: string | null
+          data_quitacao?: string | null
+          documento: string
+          id?: string
+          lancamento_ids?: string[]
+          motivo_cancelamento?: string | null
+          observacao?: string | null
+          orgao: string
+          protocolo?: string | null
+          situacao?: string
+          updated_at?: string
+          updated_by?: string | null
+          valor?: number
+        }
+        Update: {
+          anuencia_emitida_em?: string | null
+          cartorio?: string | null
+          cidade_uf?: string | null
+          cliente_nome?: string | null
+          created_at?: string
+          created_by?: string | null
+          custo?: number | null
+          data_baixa?: string | null
+          data_envio?: string | null
+          data_inclusao?: string | null
+          data_quitacao?: string | null
+          documento?: string
+          id?: string
+          lancamento_ids?: string[]
+          motivo_cancelamento?: string | null
+          observacao?: string | null
+          orgao?: string
+          protocolo?: string | null
+          situacao?: string
+          updated_at?: string
+          updated_by?: string | null
+          valor?: number
+        }
+        Relationships: []
       }
       gamif_activity_checklist: {
         Row: {
@@ -7396,6 +7734,435 @@ export type Database = {
         }
         Relationships: []
       }
+      rh_ausencias: {
+        Row: {
+          arquivo_nome: string | null
+          arquivo_path: string | null
+          colaborador_id: string
+          created_at: string
+          created_by: string | null
+          data_fim: string
+          data_inicio: string
+          desconta: boolean
+          id: string
+          minutos: number | null
+          observacao: string | null
+          situacao: string
+          tipo: string
+        }
+        Insert: {
+          arquivo_nome?: string | null
+          arquivo_path?: string | null
+          colaborador_id: string
+          created_at?: string
+          created_by?: string | null
+          data_fim: string
+          data_inicio: string
+          desconta?: boolean
+          id?: string
+          minutos?: number | null
+          observacao?: string | null
+          situacao?: string
+          tipo: string
+        }
+        Update: {
+          arquivo_nome?: string | null
+          arquivo_path?: string | null
+          colaborador_id?: string
+          created_at?: string
+          created_by?: string | null
+          data_fim?: string
+          data_inicio?: string
+          desconta?: boolean
+          id?: string
+          minutos?: number | null
+          observacao?: string | null
+          situacao?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rh_ausencias_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "rh_colaboradores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rh_banco_horas: {
+        Row: {
+          colaborador_id: string
+          created_at: string
+          created_by: string | null
+          data: string
+          id: string
+          minutos: number
+          observacao: string | null
+          tipo: string
+        }
+        Insert: {
+          colaborador_id: string
+          created_at?: string
+          created_by?: string | null
+          data: string
+          id?: string
+          minutos: number
+          observacao?: string | null
+          tipo?: string
+        }
+        Update: {
+          colaborador_id?: string
+          created_at?: string
+          created_by?: string | null
+          data?: string
+          id?: string
+          minutos?: number
+          observacao?: string | null
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rh_banco_horas_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "rh_colaboradores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rh_checklists: {
+        Row: {
+          colaborador_id: string
+          concluido_em: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          itens: Json
+          tipo: string
+        }
+        Insert: {
+          colaborador_id: string
+          concluido_em?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          itens?: Json
+          tipo: string
+        }
+        Update: {
+          colaborador_id?: string
+          concluido_em?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          itens?: Json
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rh_checklists_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "rh_colaboradores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rh_colaboradores: {
+        Row: {
+          cargo: string | null
+          contato_emergencia: string | null
+          cpf: string | null
+          created_at: string
+          created_by: string | null
+          data_admissao: string | null
+          data_desligamento: string | null
+          data_nascimento: string | null
+          email: string | null
+          endereco: string | null
+          gestor_user_id: string | null
+          id: string
+          jornada: string | null
+          motivo_desligamento: string | null
+          nome: string
+          observacao: string | null
+          salario: number | null
+          setor_id: string | null
+          situacao: string
+          telefone: string | null
+          tipo_contrato: string
+          updated_at: string
+          user_id: string | null
+        }
+        Insert: {
+          cargo?: string | null
+          contato_emergencia?: string | null
+          cpf?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_admissao?: string | null
+          data_desligamento?: string | null
+          data_nascimento?: string | null
+          email?: string | null
+          endereco?: string | null
+          gestor_user_id?: string | null
+          id?: string
+          jornada?: string | null
+          motivo_desligamento?: string | null
+          nome: string
+          observacao?: string | null
+          salario?: number | null
+          setor_id?: string | null
+          situacao?: string
+          telefone?: string | null
+          tipo_contrato?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Update: {
+          cargo?: string | null
+          contato_emergencia?: string | null
+          cpf?: string | null
+          created_at?: string
+          created_by?: string | null
+          data_admissao?: string | null
+          data_desligamento?: string | null
+          data_nascimento?: string | null
+          email?: string | null
+          endereco?: string | null
+          gestor_user_id?: string | null
+          id?: string
+          jornada?: string | null
+          motivo_desligamento?: string | null
+          nome?: string
+          observacao?: string | null
+          salario?: number | null
+          setor_id?: string | null
+          situacao?: string
+          telefone?: string | null
+          tipo_contrato?: string
+          updated_at?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
+      rh_config: {
+        Row: {
+          aviso_email: string | null
+          aviso_whatsapp: string | null
+          avisos_ativos: boolean
+          banco_horas_alerta_min: number
+          dias_aviso_documento: number
+          dias_aviso_ferias: number
+          faltas_alerta_dias: number
+          faltas_alerta_qtd: number
+          id: number
+          itens_admissao: Json
+          itens_desligamento: Json
+          ultima_execucao_em: string | null
+          updated_at: string
+        }
+        Insert: {
+          aviso_email?: string | null
+          aviso_whatsapp?: string | null
+          avisos_ativos?: boolean
+          banco_horas_alerta_min?: number
+          dias_aviso_documento?: number
+          dias_aviso_ferias?: number
+          faltas_alerta_dias?: number
+          faltas_alerta_qtd?: number
+          id?: number
+          itens_admissao?: Json
+          itens_desligamento?: Json
+          ultima_execucao_em?: string | null
+          updated_at?: string
+        }
+        Update: {
+          aviso_email?: string | null
+          aviso_whatsapp?: string | null
+          avisos_ativos?: boolean
+          banco_horas_alerta_min?: number
+          dias_aviso_documento?: number
+          dias_aviso_ferias?: number
+          faltas_alerta_dias?: number
+          faltas_alerta_qtd?: number
+          id?: number
+          itens_admissao?: Json
+          itens_desligamento?: Json
+          ultima_execucao_em?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      rh_cron_token: {
+        Row: {
+          created_at: string
+          id: number
+          token: string
+        }
+        Insert: {
+          created_at?: string
+          id?: number
+          token: string
+        }
+        Update: {
+          created_at?: string
+          id?: number
+          token?: string
+        }
+        Relationships: []
+      }
+      rh_documentos: {
+        Row: {
+          arquivo_nome: string | null
+          arquivo_path: string | null
+          colaborador_id: string
+          created_at: string
+          created_by: string | null
+          emissao: string | null
+          id: string
+          numero: string | null
+          observacao: string | null
+          tipo: string
+          validade: string | null
+        }
+        Insert: {
+          arquivo_nome?: string | null
+          arquivo_path?: string | null
+          colaborador_id: string
+          created_at?: string
+          created_by?: string | null
+          emissao?: string | null
+          id?: string
+          numero?: string | null
+          observacao?: string | null
+          tipo: string
+          validade?: string | null
+        }
+        Update: {
+          arquivo_nome?: string | null
+          arquivo_path?: string | null
+          colaborador_id?: string
+          created_at?: string
+          created_by?: string | null
+          emissao?: string | null
+          id?: string
+          numero?: string | null
+          observacao?: string | null
+          tipo?: string
+          validade?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rh_documentos_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "rh_colaboradores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rh_ferias: {
+        Row: {
+          abono_dias: number
+          aquisitivo_inicio: string
+          colaborador_id: string
+          created_at: string
+          created_by: string | null
+          data_fim: string
+          data_inicio: string
+          id: string
+          observacao: string | null
+          situacao: string
+        }
+        Insert: {
+          abono_dias?: number
+          aquisitivo_inicio: string
+          colaborador_id: string
+          created_at?: string
+          created_by?: string | null
+          data_fim: string
+          data_inicio: string
+          id?: string
+          observacao?: string | null
+          situacao?: string
+        }
+        Update: {
+          abono_dias?: number
+          aquisitivo_inicio?: string
+          colaborador_id?: string
+          created_at?: string
+          created_by?: string | null
+          data_fim?: string
+          data_inicio?: string
+          id?: string
+          observacao?: string | null
+          situacao?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rh_ferias_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "rh_colaboradores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      rh_ocorrencias: {
+        Row: {
+          arquivo_nome: string | null
+          arquivo_path: string | null
+          ciente_em: string | null
+          colaborador_id: string
+          created_at: string
+          created_by: string | null
+          data: string
+          descricao: string | null
+          dias_suspensao: number | null
+          id: string
+          motivo: string
+          tipo: string
+        }
+        Insert: {
+          arquivo_nome?: string | null
+          arquivo_path?: string | null
+          ciente_em?: string | null
+          colaborador_id: string
+          created_at?: string
+          created_by?: string | null
+          data: string
+          descricao?: string | null
+          dias_suspensao?: number | null
+          id?: string
+          motivo: string
+          tipo: string
+        }
+        Update: {
+          arquivo_nome?: string | null
+          arquivo_path?: string | null
+          ciente_em?: string | null
+          colaborador_id?: string
+          created_at?: string
+          created_by?: string | null
+          data?: string
+          descricao?: string | null
+          dias_suspensao?: number | null
+          id?: string
+          motivo?: string
+          tipo?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "rh_ocorrencias_colaborador_id_fkey"
+            columns: ["colaborador_id"]
+            isOneToOne: false
+            referencedRelation: "rh_colaboradores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sector_groups: {
         Row: {
           allowed_menus: string[] | null
@@ -10204,6 +10971,7 @@ export type Database = {
       presence_end_session: { Args: never; Returns: undefined }
       presence_heartbeat: { Args: never; Returns: undefined }
       reconnect_allowed: { Args: never; Returns: boolean }
+      rh_allowed: { Args: never; Returns: boolean }
       set_equipment_kit_item: {
         Args: { _accessory: string; _codigo: string; _qtd: number }
         Returns: undefined
