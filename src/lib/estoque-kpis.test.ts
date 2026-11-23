@@ -34,3 +34,20 @@ describe("estoque KPIs", () => {
     expect(normalizePlate("tzb-8b08")).toBe("TZB8B08");
   });
 });
+
+import { classificarStatusEstoque } from "./estoque-kpis";
+describe("classificarStatusEstoque", () => {
+  it("equipamento sem chip e chip sem equipamento contam como disponíveis", () => {
+    for (const st of ["Disponível", "Sem_Chip", "Sem Equipamento", "Sem_Equipamento", "Estoque", "Desvinculado", "Ativo", "Ativado"]) {
+      expect(classificarStatusEstoque(st)).toBe("disponivel");
+    }
+  });
+  it("vinculado, inativo e vazio", () => {
+    expect(classificarStatusEstoque("Vinculado")).toBe("vinculado");
+    expect(classificarStatusEstoque("Em uso")).toBe("vinculado");
+    expect(classificarStatusEstoque("Inativo")).toBe("inativo");
+    expect(classificarStatusEstoque("Cancelado")).toBe("inativo");
+    expect(classificarStatusEstoque("")).toBe("outro");
+  });
+});
+

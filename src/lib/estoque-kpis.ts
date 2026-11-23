@@ -58,3 +58,19 @@ export function summaryByModel(items: EquipRaw[]) {
 export function normalizePlate(p: string): string {
   return String(p ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "");
 }
+
+/**
+ * Situação de um equipamento ou chip nas abas Equipamentos e Chips (filtro "Disponíveis").
+ * O GSystem usa vários nomes: "Disponível", "Sem_Chip" (equipamento sem chip), "Sem_Equipamento"
+ * (chip solto), "Estoque", "Desvinculado"... Todos esses estão disponíveis para formar o par.
+ * Só é "vinculado" o que está em uso num veículo; inativo/cancelado/bloqueado fica à parte.
+ */
+export function classificarStatusEstoque(raw: unknown): "disponivel" | "vinculado" | "inativo" | "outro" {
+  const s = normStatus(String(raw ?? "")).replace(/[_-]+/g, " ");
+  if (!s) return "outro";
+  if (/inativ|cancel|bloque|suspens|baixad|descart|defeit/.test(s)) return "inativo";
+  if (/dispon|sem chip|sem equip|sem vinculo|estoque|livre|desvincul|nao vinculad|aguardando/.test(s)) return "disponivel";
+  if (/vincul|em uso|instalad/.test(s)) return "vinculado";
+  if (/^ativ/.test(s)) return "disponivel"; // chip/equipamento "Ativo/Ativado" sem par: o par em uso já sai pelo espelho
+  return "outro";
+}

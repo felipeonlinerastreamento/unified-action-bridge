@@ -17,6 +17,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { GsystemEquipamentosSyncTab } from "@/components/estoque/gsystem-equipamentos-sync-tab";
+import { classificarStatusEstoque as classifyStatus } from "@/lib/estoque-kpis";
 import { EquipChipsTab, EditMenu, fetchAll as fetchEquipMirror, type Row as MirrorRow } from "@/components/estoque/equip-chips-tab";
 import { AccessoryCatalogTab } from "@/components/estoque/accessory-catalog-tab";
 import { VinculosHistoricoTab } from "@/components/estoque/vinculos-historico-tab";
@@ -54,15 +55,6 @@ const EQUIP_CANDIDATES = [
   "Equipamento_Rastreador",
 ];
 const CHIP_CANDIDATES = ["Chips", "Chip", "SIM", "SimCard", "Linhas", "Linha"];
-
-function classifyStatus(raw: string): "disponivel" | "vinculado" | "inativo" | "outro" {
-  const s = String(raw || "").trim().toLowerCase();
-  if (!s) return "outro";
-  if (s.includes("dispon")) return "disponivel";
-  if (s.includes("inativ")) return "inativo";
-  if (s.includes("vincul") || s.includes("uso") || s.includes("ativ")) return "vinculado";
-  return "outro";
-}
 
 function EstoquePage() {
   const { isAuthenticated, isLoading, hasRole } = useAuth();
@@ -219,8 +211,6 @@ function EstoquePage() {
     return Array.from(models).sort();
   }, [localItems]);
 
-  if (isLoading || !isAuthenticated) return null;
-
   // ----- Filtering helpers for cadastros -----
   function filterCadastros(items: CadastroItem[]): CadastroItem[] {
     return items.filter((it) => {
@@ -361,6 +351,9 @@ function EstoquePage() {
     (tab === "equipamentos" && equipQuery.isLoading) ||
     (tab === "chips" && chipsQuery.isLoading) ||
     (tab === "veiculos" && veiculosLoading);
+
+  // Depois de todos os hooks: retornar antes deles muda a ordem dos hooks entre renderizações.
+  if (isLoading || !isAuthenticated) return null;
 
   return (
     <AppLayout>
