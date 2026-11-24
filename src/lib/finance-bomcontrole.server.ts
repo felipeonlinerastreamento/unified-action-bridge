@@ -237,9 +237,21 @@ export async function processarPaginaBomControle(opts: {
       });
     }
     if (inserir.length) {
-      const { error } = await db.from("fin_lancamentos").upsert(inserir, { onConflict: "bomcontrole_parcela_id", ignoreDuplicates: true });
-      if (error) throw new Error(`Falha ao gravar: ${error.message}`);
-      novos = inserir.length;
+      // Índice único da parcela é parcial (WHERE … IS NOT NULL), então ON CONFLICT não serve:
+      // as já existentes saíram acima (porId); aqui só tira repetidas da mesma página e insere.
+      const unicos = [...new Map(inserir.map((r) => [r.bomcontrole_parcela_id, r])).values()];
+      const { error } = await db.from("fin_lancamentos").insert(unicos);
+      if (error && /duplicate key|unique/i.test(error.message)) {
+        // Corrida rara (outra rodada gravou antes): grava uma a uma, pulando as que já existem.
+        for (const r of unicos) {
+          const { error: e1 } = await db.from("fin_lancamentos").insert(r);
+          if (!e1) novos++; else if (!/duplicate key|unique/i.test(e1.message)) throw new Error(`Falha ao gravar: ${e1.message}`);
+        }
+      } else if (error) {
+        throw new Error(`Falha ao gravar: ${error.message}`);
+      } else {
+        novos = unicos.length;
+      }
     }
   } else {
     novos = classificados.filter((c) => c.situacao === "novo").length;
