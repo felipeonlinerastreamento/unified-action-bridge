@@ -90,7 +90,10 @@ export async function testarBomControle(): Promise<{ ok: boolean; erro: string |
     });
     return { ok: true, erro: null, total: Number(r?.TotalItens ?? 0) };
   } catch (e: any) {
-    return { ok: false, erro: String(e?.message ?? e), total: null };
+    const msg = String(e?.message ?? e);
+    // Limite de consultas não é chave recusada: a chave funciona, só está esperando a vez.
+    if (/LIMITE_BOMCONTROLE|Too Many Requests|429/i.test(msg)) return { ok: true, erro: null, total: null };
+    return { ok: false, erro: msg, total: null };
   }
 }
 

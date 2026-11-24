@@ -279,6 +279,9 @@ export const integracaoBomControle = createServerFn({ method: "GET" })
     await assertFinance(supabase);
     const { situacaoBomControle, testarBomControle } = await import("@/lib/finance-bomcontrole.server");
     const s = await situacaoBomControle();
+    // Com a importação em segundo plano rodando, não gasta consulta da API só para testar a chave.
+    const { data: sync } = await (supabase as any).from("fin_bomcontrole_sync").select("ativo").eq("id", 1).maybeSingle();
+    if (s.configurado && sync?.ativo) return { ...s, conectado: true, erro: null };
     const teste = s.configurado ? await testarBomControle() : null;
     return { ...s, conectado: !!teste?.ok, erro: teste?.erro ?? null };
   });
