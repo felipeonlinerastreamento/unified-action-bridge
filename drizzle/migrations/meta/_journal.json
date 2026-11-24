@@ -582,6 +582,13 @@
       "when": 1795562218457,
       "tag": "0082_bomcontrole_segundo_plano",
       "breakpoints": true
+    },
+    {
+      "idx": 83,
+      "version": "7",
+      "when": 1795562455459,
+      "tag": "0083_apply_pending_0082",
+      "breakpoints": true
     }
   ]
 }

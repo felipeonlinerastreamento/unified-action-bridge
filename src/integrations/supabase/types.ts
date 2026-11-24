@@ -3796,6 +3796,54 @@ export type Database = {
         }
         Relationships: []
       }
+      fin_bomcontrole_sync: {
+        Row: {
+          ativo: boolean
+          atualizado_em: string | null
+          concluido_em: string | null
+          id: number
+          idx: number
+          incluir_clientes_gsystem: boolean
+          iniciado_em: string | null
+          janelas: Json
+          pagina: number
+          proximo_em: string | null
+          totais: Json
+          ultimo_erro: string | null
+          user_id: string | null
+        }
+        Insert: {
+          ativo?: boolean
+          atualizado_em?: string | null
+          concluido_em?: string | null
+          id?: number
+          idx?: number
+          incluir_clientes_gsystem?: boolean
+          iniciado_em?: string | null
+          janelas?: Json
+          pagina?: number
+          proximo_em?: string | null
+          totais?: Json
+          ultimo_erro?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          ativo?: boolean
+          atualizado_em?: string | null
+          concluido_em?: string | null
+          id?: number
+          idx?: number
+          incluir_clientes_gsystem?: boolean
+          iniciado_em?: string | null
+          janelas?: Json
+          pagina?: number
+          proximo_em?: string | null
+          totais?: Json
+          ultimo_erro?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       fin_categorias: {
         Row: {
           ativo: boolean
