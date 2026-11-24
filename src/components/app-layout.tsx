@@ -13,6 +13,7 @@ import { ChatInactivityAlert } from "@/components/chat-inactivity-alert";
 import { MessageTriggerAlert } from "@/components/message-trigger-alert";
 import { TicketAssignmentAlert } from "@/components/ticket-assignment-alert";
 import { ChatAvailabilityToggle } from "@/components/chat-availability-toggle";
+import { ModoTesteBotao, ModoTesteFaixa } from "@/components/modo-teste";
 import { usePresence } from "@/hooks/use-presence";
 import { useOperatorSoundNotifications } from "@/hooks/use-operator-sound-notifications";
 import { useUserPermissions } from "@/hooks/use-user-permissions";
@@ -71,9 +72,11 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <div className="min-h-screen flex w-full">
           <AppSidebar />
           <div className="flex-1 flex flex-col min-w-0">
+            <ModoTesteFaixa />
             <header className="h-12 flex items-center justify-between border-b px-4 shrink-0">
               <SidebarTrigger />
               <div className="flex items-center gap-2">
+                <ModoTesteBotao />
                 <ChatAvailabilityToggle />
                 <NotificationsBell />
               </div>

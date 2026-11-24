@@ -186,6 +186,13 @@ export async function replyToMessage(
   images: InlineImage[] = [],
   replyAll = false,
 ): Promise<void> {
+  {
+    const { modoTesteAtivo, registrarPrevia } = await import("@/lib/modo-teste.server");
+    if (modoTesteAtivo()) {
+      await registrarPrevia({ canal: "email", destino: ctx.mailbox ?? null, resumo: `Resposta de e-mail (${replyAll ? "a todos" : "remetente"})`, conteudo: htmlToPlainText(html), detalhe: { messageId } });
+      return;
+    }
+  }
   const base = mailboxPath(ctx.mailbox, ctx.connectedEmail);
   const headers = getAuthHeaders(ctx.connectionKey);
   // 1) cria rascunho de resposta
@@ -241,6 +248,13 @@ export async function sendNewMail(
   ctx: MailboxContext,
   opts: { to: string[]; subject: string; html: string; images?: InlineImage[] },
 ): Promise<void> {
+  {
+    const { modoTesteAtivo, registrarPrevia } = await import("@/lib/modo-teste.server");
+    if (modoTesteAtivo()) {
+      await registrarPrevia({ canal: "email", destino: opts.to.join(", "), resumo: `E-mail: ${opts.subject}`, conteudo: htmlToPlainText(opts.html) });
+      return;
+    }
+  }
   const base = mailboxPath(ctx.mailbox, ctx.connectedEmail);
   const message: Record<string, unknown> = {
     subject: opts.subject,

@@ -213,6 +213,13 @@ export async function gsystemApiFetch(
   method = "GET",
   body?: unknown
 ): Promise<any> {
+  if (method.toUpperCase() !== "GET") {
+    const { modoTesteAtivo, registrarPrevia, resumoCorpo, ModoTesteBloqueado } = await import("@/lib/modo-teste.server");
+    if (modoTesteAtivo()) {
+      await registrarPrevia({ canal: "gsystem", destino: endpoint, resumo: `GSystem ${method.toUpperCase()} ${endpoint}`, conteudo: resumoCorpo(body), bloqueado: true });
+      throw new ModoTesteBloqueado(`a gravação no GSystem (${method.toUpperCase()} ${endpoint})`);
+    }
+  }
   const token = await authenticate();
   const url = `${GSYSTEM_API_BASE}${endpoint}`;
 

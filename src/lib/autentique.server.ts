@@ -79,6 +79,7 @@ export async function criarDocumentoAutentique(opts: { nome: string; pdf: Uint8A
     if (s.verificacao) base.security_verifications = [{ type: s.verificacao }];
     return base;
   });
+  await bloquearEmModoTeste(`criar documento "${opts.nome}"`, { signers });
   const form = new FormData();
   form.append("operations", JSON.stringify({
     query: CRIAR,
@@ -132,7 +133,16 @@ export async function webhookValido(corpo: string, assinatura: string | null): P
   return diff === 0;
 }
 
+/** Modo teste: nada é gravado no Autentique (prévia registrada e erro claro para a tela). */
+async function bloquearEmModoTeste(oque: string, detalhe: unknown) {
+  const { modoTesteAtivo, registrarPrevia, resumoCorpo, ModoTesteBloqueado } = await import("@/lib/modo-teste.server");
+  if (!modoTesteAtivo()) return;
+  await registrarPrevia({ canal: "autentique", resumo: `Autentique: ${oque}`, conteudo: resumoCorpo(detalhe), bloqueado: true });
+  throw new ModoTesteBloqueado(`o envio ao Autentique (${oque})`);
+}
+
 async function consulta(query: string, variables: Record<string, unknown> = {}) {
+  if (/^\s*mutation\b/.test(query)) await bloquearEmModoTeste(query.trim().split(/[({\s]/).slice(0, 3).join(" "), variables);
   const res = await fetch(URL_API, {
     method: "POST",
     headers: { Authorization: `Bearer ${await token()}`, "Content-Type": "application/json" },

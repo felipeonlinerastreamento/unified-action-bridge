@@ -92,6 +92,21 @@ export async function zapiFetch(
   body?: unknown,
   opts?: { timeoutMs?: number; retryOnNetworkError?: boolean; maxAttempts?: number }
 ): Promise<any> {
+  // Modo teste: mensagens não saem; viram prévia e devolvem sucesso simulado.
+  if (method !== "GET" && /^\/send-/.test(path)) {
+    const { modoTesteAtivo, registrarPrevia } = await import("@/lib/modo-teste.server");
+    if (modoTesteAtivo()) {
+      const b: any = body ?? {};
+      await registrarPrevia({
+        canal: "whatsapp", destino: String(b.phone ?? ""),
+        resumo: `WhatsApp ${path.replace("/send-", "")} para ${b.phone ?? "?"}`,
+        conteudo: typeof b.message === "string" ? b.message : (b.caption ?? b.fileName ?? b.document?.slice?.(0, 60) ?? null),
+        detalhe: { canal: channel.id ?? null, path },
+      });
+      const id = `teste-${Date.now()}`;
+      return { zaapId: id, messageId: id, id, teste: true };
+    }
+  }
   // Content-Type só quando há corpo: em consultas GET o cabeçalho provocava
   // redirecionamento em loop na borda da Z-API.
   const headers: Record<string, string> = {};
