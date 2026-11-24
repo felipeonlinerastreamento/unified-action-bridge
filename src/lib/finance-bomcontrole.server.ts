@@ -285,3 +285,82 @@ export async function situacaoBomControle() {
     ultima: ultima ?? null,
   };
 }
+
+// ------------------------------------------------------------------ importação em segundo plano
+// A API do Bom Controle aceita ~5 consultas por minuto e o período tem dezenas de páginas, então a
+// importação completa roda no servidor: o pg_cron chama o hook a cada minuto e cada chamada processa
+// algumas páginas, guardando onde parou em fin_bomcontrole_sync. Gravação idempotente (bomcontrole_parcela_id).
+
+type TotaisSync = { lidos: number; novos: number; atualizados: number; ignoradosGsystem: number; clientesGsystem: number; ignoradosOutros: number; totalPagar: number; totalReceber: number };
+const totaisVazios = (): TotaisSync => ({ lidos: 0, novos: 0, atualizados: 0, ignoradosGsystem: 0, clientesGsystem: 0, ignoradosOutros: 0, totalPagar: 0, totalReceber: 0 });
+
+export async function iniciarImportacaoSegundoPlano(opts: { incluirClientesGsystem: boolean; userId: string }) {
+  const db = await adminDb();
+  const { janelasImportacao } = await import("@/lib/finance-bomcontrole");
+  const hoje = new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
+  const agora = new Date().toISOString();
+  const { error } = await db.from("fin_bomcontrole_sync").upsert({
+    id: 1, ativo: true, janelas: janelasImportacao(hoje), idx: 0, pagina: 1,
+    incluir_clientes_gsystem: opts.incluirClientesGsystem, user_id: opts.userId, totais: totaisVazios(),
+    iniciado_em: agora, atualizado_em: agora, concluido_em: null, proximo_em: null, ultimo_erro: null,
+  }, { onConflict: "id" });
+  if (error) throw new Error(/fin_bomcontrole_sync/.test(error.message) ? "Aplique a migração 0082 (importação em segundo plano)." : error.message);
+  // Já processa a primeira leva, sem esperar o agendador.
+  return rodadaBomControle(20_000);
+}
+
+export async function pararImportacaoSegundoPlano() {
+  const db = await adminDb();
+  await db.from("fin_bomcontrole_sync").update({ ativo: false, atualizado_em: new Date().toISOString(), ultimo_erro: "Interrompida pelo usuário." }).eq("id", 1);
+}
+
+/** Uma rodada: processa páginas até o tempo acabar ou o Bom Controle pedir pausa. */
+export async function rodadaBomControle(tempoMs = 45_000): Promise<{ ok: boolean; ativo: boolean; paginas: number; pausa?: boolean; erro?: string }> {
+  const db = await adminDb();
+  const { data: st } = await db.from("fin_bomcontrole_sync").select("*").eq("id", 1).maybeSingle();
+  if (!st?.ativo) return { ok: true, ativo: false, paginas: 0 };
+  if (st.proximo_em && Date.parse(st.proximo_em) > Date.now()) return { ok: true, ativo: true, paginas: 0, pausa: true };
+
+  const janelas: { de: string; ate: string; mes: string }[] = st.janelas ?? [];
+  const tot: TotaisSync = { ...totaisVazios(), ...(st.totais ?? {}) };
+  let idx: number = st.idx ?? 0;
+  let pagina: number = st.pagina ?? 1;
+  const inicio = Date.now();
+  let paginas = 0;
+  const salvar = async (extra: Record<string, unknown> = {}) =>
+    db.from("fin_bomcontrole_sync").update({ idx, pagina, totais: tot, atualizado_em: new Date().toISOString(), ...extra }).eq("id", 1);
+
+  while (idx < janelas.length && Date.now() - inicio < tempoMs) {
+    const j = janelas[idx];
+    try {
+      const r = await processarPaginaBomControle({ de: j.de, ate: j.ate, pagina, gravar: true, incluirClientesGsystem: !!st.incluir_clientes_gsystem, userId: st.user_id });
+      paginas++;
+      tot.lidos += r.lidos; tot.novos += r.novos; tot.atualizados += r.atualizados;
+      tot.ignoradosGsystem += r.ignoradosGsystem; tot.clientesGsystem += r.clientesGsystem; tot.ignoradosOutros += r.ignoradosOutros;
+      for (const l of Object.values(r.resumo)) { tot.totalPagar += l.pagarTotal || 0; tot.totalReceber += l.receberTotal || 0; }
+      if (r.proximaPagina) pagina = r.proximaPagina; else { idx++; pagina = 1; }
+      await salvar({ ultimo_erro: null });
+      await new Promise((res) => setTimeout(res, 1500));
+    } catch (e: any) {
+      const msg = String(e?.message ?? e);
+      if (/LIMITE_BOMCONTROLE|Too Many Requests|429/i.test(msg)) {
+        await salvar({ proximo_em: new Date(Date.now() + 60_000).toISOString(), ultimo_erro: null });
+        return { ok: true, ativo: true, paginas, pausa: true };
+      }
+      await salvar({ ultimo_erro: msg.slice(0, 500), proximo_em: new Date(Date.now() + 120_000).toISOString() });
+      return { ok: false, ativo: true, paginas, erro: msg };
+    }
+  }
+  if (idx >= janelas.length) {
+    await salvar({ ativo: false, concluido_em: new Date().toISOString(), proximo_em: null });
+    if (janelas.length) {
+      await registrarImportacao({
+        de: janelas[0].de, ate: janelas[janelas.length - 1].ate, novos: tot.novos, atualizados: tot.atualizados,
+        ignoradosGsystem: tot.ignoradosGsystem, ignoradosOutros: tot.ignoradosOutros,
+        totalPagar: tot.totalPagar, totalReceber: tot.totalReceber, userId: st.user_id,
+      }).catch(() => {});
+    }
+    return { ok: true, ativo: false, paginas };
+  }
+  return { ok: true, ativo: true, paginas };
+}

@@ -415,3 +415,23 @@ export const anexarArquivoLancamento = createServerFn({ method: "POST" })
 function hojeSPServidor() {
   return new Date().toLocaleDateString("en-CA", { timeZone: "America/Sao_Paulo" });
 }
+
+// ----- Bom Controle em segundo plano ----------------------------------------
+export const iniciarBomControleFundoFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator((d) => z.object({ incluirClientesGsystem: z.boolean().default(false) }).parse(d))
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context as any;
+    await assertFinance(supabase);
+    const { iniciarImportacaoSegundoPlano } = await import("@/lib/finance-bomcontrole.server");
+    return iniciarImportacaoSegundoPlano({ incluirClientesGsystem: data.incluirClientesGsystem, userId });
+  });
+
+export const pararBomControleFundoFn = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    await assertFinance((context as any).supabase);
+    const { pararImportacaoSegundoPlano } = await import("@/lib/finance-bomcontrole.server");
+    await pararImportacaoSegundoPlano();
+    return { ok: true };
+  });

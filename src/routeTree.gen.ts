@@ -82,6 +82,7 @@ import { Route as ApiPublicHooksAutentiqueRouteImport } from './routes/api.publi
 import { Route as ApiPublicHooksContratosDiarioRouteImport } from './routes/api.public.hooks.contratos-diario'
 import { Route as ApiPublicHooksFinanceiroCobrancaRouteImport } from './routes/api.public.hooks.financeiro-cobranca'
 import { Route as ApiPublicHooksFinanceiroEmailRouteImport } from './routes/api.public.hooks.financeiro-email'
+import { Route as ApiPublicHooksFinanceiroBomcontroleRouteImport } from './routes/api.public.hooks.financeiro-bomcontrole'
 import { Route as ApiPublicHooksRhDiarioRouteImport } from './routes/api.public.hooks.rh-diario'
 import { Route as ApiPublicHooksSyncGsystemEquipamentosRouteImport } from './routes/api.public.hooks.sync-gsystem-equipamentos'
 import { Route as ApiPublicHooksSyncGsystemFaturasRouteImport } from './routes/api.public.hooks.sync-gsystem-faturas'
@@ -472,6 +473,12 @@ const ApiPublicHooksFinanceiroEmailRoute =
     path: '/api/public/hooks/financeiro-email',
     getParentRoute: () => rootRouteImport,
   } as any)
+const ApiPublicHooksFinanceiroBomcontroleRoute =
+  ApiPublicHooksFinanceiroBomcontroleRouteImport.update({
+    id: '/api/public/hooks/financeiro-bomcontrole',
+    path: '/api/public/hooks/financeiro-bomcontrole',
+    getParentRoute: () => rootRouteImport,
+  } as any)
 const ApiPublicHooksRhDiarioRoute = ApiPublicHooksRhDiarioRouteImport.update({
   id: '/api/public/hooks/rh-diario',
   path: '/api/public/hooks/rh-diario',
@@ -580,6 +587,7 @@ export interface FileRoutesByFullPath {
   '/api/public/hooks/contratos-diario': typeof ApiPublicHooksContratosDiarioRoute
   '/api/public/hooks/financeiro-cobranca': typeof ApiPublicHooksFinanceiroCobrancaRoute
   '/api/public/hooks/financeiro-email': typeof ApiPublicHooksFinanceiroEmailRoute
+  '/api/public/hooks/financeiro-bomcontrole': typeof ApiPublicHooksFinanceiroBomcontroleRoute
   '/api/public/hooks/rh-diario': typeof ApiPublicHooksRhDiarioRoute
   '/api/public/hooks/sync-gsystem-equipamentos': typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   '/api/public/hooks/sync-gsystem-faturas': typeof ApiPublicHooksSyncGsystemFaturasRoute
@@ -658,6 +666,7 @@ export interface FileRoutesByTo {
   '/api/public/hooks/contratos-diario': typeof ApiPublicHooksContratosDiarioRoute
   '/api/public/hooks/financeiro-cobranca': typeof ApiPublicHooksFinanceiroCobrancaRoute
   '/api/public/hooks/financeiro-email': typeof ApiPublicHooksFinanceiroEmailRoute
+  '/api/public/hooks/financeiro-bomcontrole': typeof ApiPublicHooksFinanceiroBomcontroleRoute
   '/api/public/hooks/rh-diario': typeof ApiPublicHooksRhDiarioRoute
   '/api/public/hooks/sync-gsystem-equipamentos': typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   '/api/public/hooks/sync-gsystem-faturas': typeof ApiPublicHooksSyncGsystemFaturasRoute
@@ -740,6 +749,7 @@ export interface FileRoutesById {
   '/api/public/hooks/contratos-diario': typeof ApiPublicHooksContratosDiarioRoute
   '/api/public/hooks/financeiro-cobranca': typeof ApiPublicHooksFinanceiroCobrancaRoute
   '/api/public/hooks/financeiro-email': typeof ApiPublicHooksFinanceiroEmailRoute
+  '/api/public/hooks/financeiro-bomcontrole': typeof ApiPublicHooksFinanceiroBomcontroleRoute
   '/api/public/hooks/rh-diario': typeof ApiPublicHooksRhDiarioRoute
   '/api/public/hooks/sync-gsystem-equipamentos': typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   '/api/public/hooks/sync-gsystem-faturas': typeof ApiPublicHooksSyncGsystemFaturasRoute
@@ -823,6 +833,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/contratos-diario'
     | '/api/public/hooks/financeiro-cobranca'
     | '/api/public/hooks/financeiro-email'
+    | '/api/public/hooks/financeiro-bomcontrole'
     | '/api/public/hooks/rh-diario'
     | '/api/public/hooks/sync-gsystem-equipamentos'
     | '/api/public/hooks/sync-gsystem-faturas'
@@ -901,6 +912,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/contratos-diario'
     | '/api/public/hooks/financeiro-cobranca'
     | '/api/public/hooks/financeiro-email'
+    | '/api/public/hooks/financeiro-bomcontrole'
     | '/api/public/hooks/rh-diario'
     | '/api/public/hooks/sync-gsystem-equipamentos'
     | '/api/public/hooks/sync-gsystem-faturas'
@@ -982,6 +994,7 @@ export interface FileRouteTypes {
     | '/api/public/hooks/contratos-diario'
     | '/api/public/hooks/financeiro-cobranca'
     | '/api/public/hooks/financeiro-email'
+    | '/api/public/hooks/financeiro-bomcontrole'
     | '/api/public/hooks/rh-diario'
     | '/api/public/hooks/sync-gsystem-equipamentos'
     | '/api/public/hooks/sync-gsystem-faturas'
@@ -1030,6 +1043,7 @@ export interface RootRouteChildren {
   ApiPublicHooksContratosDiarioRoute: typeof ApiPublicHooksContratosDiarioRoute
   ApiPublicHooksFinanceiroCobrancaRoute: typeof ApiPublicHooksFinanceiroCobrancaRoute
   ApiPublicHooksFinanceiroEmailRoute: typeof ApiPublicHooksFinanceiroEmailRoute
+  ApiPublicHooksFinanceiroBomcontroleRoute: typeof ApiPublicHooksFinanceiroBomcontroleRoute
   ApiPublicHooksRhDiarioRoute: typeof ApiPublicHooksRhDiarioRoute
   ApiPublicHooksSyncGsystemEquipamentosRoute: typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   ApiPublicHooksSyncGsystemFaturasRoute: typeof ApiPublicHooksSyncGsystemFaturasRoute
@@ -1551,6 +1565,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicHooksFinanceiroEmailRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/public/hooks/financeiro-bomcontrole': {
+      id: '/api/public/hooks/financeiro-bomcontrole'
+      path: '/api/public/hooks/financeiro-bomcontrole'
+      fullPath: '/api/public/hooks/financeiro-bomcontrole'
+      preLoaderRoute: typeof ApiPublicHooksFinanceiroBomcontroleRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/public/hooks/rh-diario': {
       id: '/api/public/hooks/rh-diario'
       path: '/api/public/hooks/rh-diario'
@@ -1735,6 +1756,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPublicHooksContratosDiarioRoute: ApiPublicHooksContratosDiarioRoute,
   ApiPublicHooksFinanceiroCobrancaRoute: ApiPublicHooksFinanceiroCobrancaRoute,
   ApiPublicHooksFinanceiroEmailRoute: ApiPublicHooksFinanceiroEmailRoute,
+  ApiPublicHooksFinanceiroBomcontroleRoute: ApiPublicHooksFinanceiroBomcontroleRoute,
   ApiPublicHooksRhDiarioRoute: ApiPublicHooksRhDiarioRoute,
   ApiPublicHooksSyncGsystemEquipamentosRoute:
     ApiPublicHooksSyncGsystemEquipamentosRoute,

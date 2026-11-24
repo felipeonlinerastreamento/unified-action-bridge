@@ -10,11 +10,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { useFinanceAccess } from "@/components/financeiro/use-fin";
+import { useFinanceAccess, fin } from "@/components/financeiro/use-fin";
 import { formatBRL } from "@/lib/finance";
 import { janelasImportacao, type LinhaResumo } from "@/lib/finance-bomcontrole";
 import {
-  importarBomControleFn, integracaoBomControle, registrarImportacaoBomControleFn, salvarChaveBomControleFn,
+  importarBomControleFn, integracaoBomControle, iniciarBomControleFundoFn, pararBomControleFundoFn, registrarImportacaoBomControleFn, salvarChaveBomControleFn,
 } from "@/lib/finance.functions";
 
 type Totais = {
@@ -177,6 +177,7 @@ function Cartao() {
                 {rodando === "importar" ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Download className="h-4 w-4 mr-1" />}Importar</Button>
             </div>
             {progresso && <p className="text-sm text-muted-foreground">{progresso}</p>}
+            <ImportacaoFundo incluirClientesGsystem={incluirClientesGsystem} rodandoTela={!!rodando} />
           </div>
         )}
 
@@ -218,5 +219,75 @@ function Cartao() {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+
+/**
+ * Importação completa no servidor: o Bom Controle aceita poucas consultas por minuto e são dezenas de
+ * páginas, então roda em segundo plano (agendador a cada minuto) e pode fechar a tela.
+ */
+function ImportacaoFundo({ incluirClientesGsystem, rodandoTela }: { incluirClientesGsystem: boolean; rodandoTela: boolean }) {
+  const iniciar = useServerFn(iniciarBomControleFundoFn);
+  const parar = useServerFn(pararBomControleFundoFn);
+  const [ocupado, setOcupado] = useState(false);
+  const q = useQuery({
+    queryKey: ["bomcontrole-fundo"],
+    queryFn: async () => {
+      const { data, error } = await fin.from("fin_bomcontrole_sync").select("*").eq("id", 1).maybeSingle();
+      if (error) return null;
+      return data as any;
+    },
+    refetchInterval: (qq) => ((qq.state.data as any)?.ativo ? 10_000 : false),
+  });
+  const st = q.data;
+  if (q.isLoading) return null;
+  if (st === null) return <p className="text-xs text-muted-foreground">Importação em segundo plano: aplique a migração 0082.</p>;
+  const janelas: any[] = st?.janelas ?? [];
+  const t = st?.totais ?? {};
+  const pct = janelas.length ? Math.round(((st.idx ?? 0) / janelas.length) * 100) : 0;
+  const mesAtual = janelas[st?.idx ?? 0]?.mes;
+  const comecar = async () => {
+    if (!window.confirm("Importar todos os lançamentos do Bom Controle (12 meses para trás e 12 para frente) em segundo plano? Pode levar de 30 a 60 minutos; você pode fechar a tela. Reimportar não duplica.")) return;
+    setOcupado(true);
+    try {
+      await iniciar({ data: { incluirClientesGsystem } });
+      toast.success("Importação iniciada. Acompanhe aqui; pode fechar a tela.");
+      q.refetch();
+    } catch (e: any) { toast.error(e?.message ?? "Falha ao iniciar."); }
+    finally { setOcupado(false); }
+  };
+  const interromper = async () => {
+    setOcupado(true);
+    try { await parar(); q.refetch(); } finally { setOcupado(false); }
+  };
+  return (
+    <div className="rounded-md border p-3 space-y-2 bg-muted/30">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <div className="text-sm">
+          <b>Importação completa em segundo plano</b> (recomendado) — roda no servidor respeitando o limite do Bom Controle; não precisa deixar a tela aberta.
+        </div>
+        {st?.ativo
+          ? <Button size="sm" variant="outline" onClick={interromper} disabled={ocupado}>Interromper</Button>
+          : <Button size="sm" onClick={comecar} disabled={ocupado || rodandoTela}>{ocupado ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Download className="h-4 w-4 mr-1" />}Importar tudo em segundo plano</Button>}
+      </div>
+      {st?.ativo && (
+        <div className="space-y-1">
+          <div className="h-2 rounded bg-muted overflow-hidden"><div className="h-2 bg-primary" style={{ width: `${pct}%` }} /></div>
+          <p className="text-xs text-muted-foreground">
+            {pct}% · mês {mesAtual ? nomeMes(mesAtual) : "—"} ({(st.idx ?? 0) + 1} de {janelas.length}), página {st.pagina}
+            {st.proximo_em && Date.parse(st.proximo_em) > Date.now() ? " · aguardando o limite do Bom Controle" : ""}
+            {" · "}lidos {t.lidos ?? 0}, novos {t.novos ?? 0}, atualizados {t.atualizados ?? 0}, já no GSystem {t.ignoradosGsystem ?? 0}
+          </p>
+        </div>
+      )}
+      {!st?.ativo && st?.concluido_em && (
+        <p className="text-xs text-muted-foreground">
+          Última importação completa em {new Date(st.concluido_em).toLocaleString("pt-BR")}: {t.lidos ?? 0} lidos, {t.novos ?? 0} novos, {t.atualizados ?? 0} atualizados,
+          {" "}{t.ignoradosGsystem ?? 0} já vindos do GSystem, {t.clientesGsystem ?? 0} de clientes do GSystem não importados.
+        </p>
+      )}
+      {st?.ultimo_erro && <p className="text-xs text-destructive">Último erro: {st.ultimo_erro}</p>}
+    </div>
   );
 }
