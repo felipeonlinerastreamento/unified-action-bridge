@@ -37,7 +37,7 @@ export function useFornecedores() {
 }
 
 export const TIPO_EVIDENCIA: Record<string, string> = {
-  regra_alterada: "Regra alterada", valor_divergente: "Valor diferente do esperado", aumento_valor: "Aumento de valor",
+  regra_alterada: "Regra alterada", valor_divergente: "Valor diferente do esperado", aumento_valor: "Aumento de valor", tributo_divergente: "CBS/IBS com conta errada",
   boleto_fora_dda: "Boleto fora do DDA", dda_sem_cobranca: "DDA sem cobrança", aprovacao: "Aprovação", pagamento: "Pagamento",
 };
 
@@ -80,6 +80,7 @@ export function FornecedoresTab({ lancamentos, categorias, empresas }: { lancame
 
   return (
     <div className="space-y-3">
+      <CreditosCbsIbs lancamentos={lancamentos} />
       <div className="flex flex-wrap gap-2 items-center">
         <p className="text-sm text-muted-foreground flex-1 min-w-[260px]">Cadastre como cada fornecedor cobra. As cobranças que chegam pelo e-mail ou pelo DDA são conferidas contra essa regra e as diferenças viram evidência.</p>
         {sugestoes.length > 0 && <Button variant="outline" onClick={() => setSugerir(true)}><UserPlus className="h-4 w-4 mr-1" />Das contas a pagar ({sugestoes.length})</Button>}
@@ -324,5 +325,51 @@ function HistoricoFornecedor({ f, lancamentos, onClose }: { f: Fornecedor; lanca
         </Card>
       </DialogContent>
     </Dialog>
+  );
+}
+
+
+/** Lucro Real: CBS/IBS destacados nas notas de fornecedores (lidos do XML) = crédito a aproveitar. */
+function CreditosCbsIbs({ lancamentos }: { lancamentos: Lanc[] }) {
+  const porMes = useMemo(() => {
+    const m = new Map<string, { notas: number; base: number; cbs: number; ibs: number; divergentes: number }>();
+    for (const l of lancamentos as any[]) {
+      if (l.tipo !== "pagar" || (l.cbs_valor == null && l.ibs_valor == null)) continue;
+      const mes = String(l.competencia || l.data_emissao || l.vencimento || "").slice(0, 7);
+      if (!mes) continue;
+      const a = m.get(mes) ?? { notas: 0, base: 0, cbs: 0, ibs: 0, divergentes: 0 };
+      a.notas++; a.base += Number(l.rtc_base) || 0; a.cbs += Number(l.cbs_valor) || 0; a.ibs += Number(l.ibs_valor) || 0;
+      if (l.rtc_dados?.divergencias?.length) a.divergentes++;
+      m.set(mes, a);
+    }
+    return [...m.entries()].sort((a, b) => b[0].localeCompare(a[0])).slice(0, 6);
+  }, [lancamentos]);
+  if (!porMes.length) return null;
+  return (
+    <Card>
+      <CardHeader className="pb-2"><CardTitle className="text-base">Créditos de CBS/IBS das notas de fornecedores</CardTitle></CardHeader>
+      <CardContent className="space-y-2">
+        <p className="text-xs text-muted-foreground">
+          Lidos do XML das notas que chegam no financeiro@. No Lucro Real, a CBS e o IBS pagos nas compras viram crédito. A conferência confere base × alíquota de cada item;
+          a classificação tributária (CST/cClassTrib) e o direito ao crédito devem ser validados pelo contador.
+        </p>
+        <Table>
+          <TableHeader><TableRow><TableHead>Competência</TableHead><TableHead className="text-right">Notas</TableHead><TableHead className="text-right">Base</TableHead><TableHead className="text-right">CBS</TableHead><TableHead className="text-right">IBS</TableHead><TableHead className="text-right">Crédito total</TableHead><TableHead>Conferência</TableHead></TableRow></TableHeader>
+          <TableBody>
+            {porMes.map(([mes, a]) => (
+              <TableRow key={mes}>
+                <TableCell>{mes.slice(5)}/{mes.slice(0, 4)}</TableCell>
+                <TableCell className="text-right">{a.notas}</TableCell>
+                <TableCell className="text-right">{formatBRL(a.base)}</TableCell>
+                <TableCell className="text-right">{formatBRL(a.cbs)}</TableCell>
+                <TableCell className="text-right">{formatBRL(a.ibs)}</TableCell>
+                <TableCell className="text-right font-medium">{formatBRL(a.cbs + a.ibs)}</TableCell>
+                <TableCell>{a.divergentes ? <Badge variant="destructive">{a.divergentes} nota(s) com conta errada</Badge> : <Badge variant="outline">ok</Badge>}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
   );
 }

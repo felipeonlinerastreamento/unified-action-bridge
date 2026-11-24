@@ -3,6 +3,7 @@
  * conferência das cobranças com evidências, leitura da caixa financeiro@, aprovação e importação do DDA.
  * As regras puras ficam em finance-fornecedores.ts.
  */
+import { lerTributosRtc, resumoRtc, type TributosRtc } from "@/lib/finance-rtc";
 import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import {
   acharFornecedor, aumentoVsAnteriores, calcularEsperado, casarDda, competenciaDaCobranca, conferirCobranca, contarEquipamentos,
@@ -175,9 +176,15 @@ export async function lerEmailFinanceiro(limiteMs = 50_000) {
     try {
       const anexos = (await listFileAttachments(ctx, m.id)).filter((a) => ["pdf", "xml", "png", "jpg", "jpeg", "webp"].includes(ext(a.name)) && !(a.isInline && a.size < 30_000));
       const notas: NotaXml[] = [];
+      const tributosDaNota = new Map<NotaXml, TributosRtc>();
       for (const a of anexos.filter((x) => ext(x.name) === "xml")) {
-        const n = lerXmlNota(Buffer.from(a.contentBytes, "base64").toString("utf8"));
-        if (n) notas.push(n);
+        const texto = Buffer.from(a.contentBytes, "base64").toString("utf8");
+        const n = lerXmlNota(texto);
+        if (n) {
+          notas.push(n);
+          const t = lerTributosRtc(texto);
+          if (t) tributosDaNota.set(n, t);
+        }
       }
       const docs = anexos.filter((x) => ext(x.name) !== "xml").sort((a, b) => Number(/boleto|fatura|cobran/i.test(b.name)) - Number(/boleto|fatura|cobran/i.test(a.name)));
       if (!notas.length && !docs.length) {
@@ -215,7 +222,7 @@ export async function lerEmailFinanceiro(limiteMs = 50_000) {
       const empresa = forn?.empresa_id ?? (emps || []).find((e: any) => e.codigo === leitura?.empresa || (nota?.destinatario_cnpj && soDigitos(e.cnpj) === nota.destinatario_cnpj))?.id ?? null;
       const comp = competenciaDaCobranca(nota?.emissao || leitura?.data_emissao || (m.receivedDateTime ?? "").slice(0, 10), forn?.competencia_ref ?? "anterior");
 
-      const { data: novo, error } = await db.from("fin_lancamentos").insert({
+      const linhaLanc: Record<string, unknown> = {
         tipo: "pagar", origem: "email", email_message_id: m.id, fornecedor_id: forn?.id ?? null,
         empresa_id: empresa, categoria_id: categoria,
         contraparte: forn?.nome || nota?.emitente_nome || leitura?.contraparte || remetente,
@@ -224,13 +231,31 @@ export async function lerEmailFinanceiro(limiteMs = 50_000) {
         competencia: comp ? `${comp}-01` : null,
         tipo_documento: linha ? "boleto" : nota ? "nota_fiscal" : leitura?.tipo_documento || "fatura",
         numero_documento: nota?.numero || leitura?.numero_documento || null, linha_digitavel: leitura?.linha_digitavel || null,
+        ...(nota && tributosDaNota.get(nota) ? {
+          rtc_base: tributosDaNota.get(nota)!.base, cbs_valor: tributosDaNota.get(nota)!.cbs, ibs_valor: tributosDaNota.get(nota)!.ibs,
+          rtc_dados: { ...tributosDaNota.get(nota)!, itens: tributosDaNota.get(nota)!.itens.slice(0, 50) },
+        } : {}),
         nota_chave: nota?.chave ?? null, arquivo_nome: principal?.split("/").pop() ?? null, arquivo_path: principal,
         ia_confianca: leitura?.confianca ?? (nota ? 1 : null), revisado: false,
         aprovacao: forn && forn.exige_aprovacao === false ? null : "pendente",
         observacao: `E-mail de ${remetente ?? "?"} em ${(m.receivedDateTime ?? "").slice(0, 16).replace("T", " ")}: "${m.subject ?? ""}". Anexos: ${caminhos.map((c) => c.split("/").pop()).join(", ")}${!forn ? ". Fornecedor não cadastrado: cadastre em Financeiro › Fornecedores para conferir a cobrança." : ""}`,
-      }).select("id").single();
+      };
+      let { data: novo, error } = await db.from("fin_lancamentos").insert(linhaLanc).select("id").single();
+      if (error && /rtc_|cbs_valor|ibs_valor/.test(error.message)) {
+        // Migração 0080 ainda não aplicada: grava sem os campos de CBS/IBS.
+        for (const c of ["rtc_base", "cbs_valor", "ibs_valor", "rtc_dados"]) delete linhaLanc[c];
+        ({ data: novo, error } = await db.from("fin_lancamentos").insert(linhaLanc).select("id").single());
+      }
       if (error) throw new Error(error.message);
       if (forn) await conferirLancamento(novo.id);
+      const trib = nota ? tributosDaNota.get(nota) : undefined;
+      if (trib?.divergencias.length) {
+        await evidencia({
+          fornecedor_id: forn?.id ?? null, lancamento_id: novo.id, tipo: "tributo_divergente",
+          titulo: `CBS/IBS da nota ${nota?.numero ?? ""} não bate com base × alíquota`,
+          descricao: resumoRtc(trib), dados: { divergencias: trib.divergencias, chave: nota?.chave ?? null },
+        });
+      }
       await db.from("fin_email_mensagens").insert({ ...registro, status: "lancado", anexos: anexos.length, lancamento_id: novo.id });
       lancados++;
     } catch (e: any) {

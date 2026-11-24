@@ -49,7 +49,7 @@ export function AgendaTab({ lancamentos, contas }: { lancamentos: Lanc[]; contas
       const out: Record<string, string[]> = {};
       const lista = todos.map((l) => l.id);
       for (let i = 0; i < lista.length; i += 200) {
-        const { data } = await fin.from("fin_evidencias").select("lancamento_id, tipo, titulo").in("lancamento_id", lista.slice(i, i + 200)).in("tipo", ["boleto_fora_dda", "valor_divergente", "aumento_valor"]);
+        const { data } = await fin.from("fin_evidencias").select("lancamento_id, tipo, titulo").in("lancamento_id", lista.slice(i, i + 200)).in("tipo", ["boleto_fora_dda", "valor_divergente", "aumento_valor", "tributo_divergente"]);
         for (const e of data || []) (out[e.lancamento_id] ??= []).push(e.titulo);
       }
       return out;
