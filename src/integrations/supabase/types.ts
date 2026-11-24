@@ -58,6 +58,8 @@ export type Database = {
           auto_summary_enabled: boolean
           fallback_message: string
           forbidden_topics: string
+          ia_oportunidades_ativo: boolean
+          ia_oportunidades_confianca: number
           id: string
           is_enabled: boolean
           response_format: string
@@ -72,6 +74,8 @@ export type Database = {
           auto_summary_enabled?: boolean
           fallback_message?: string
           forbidden_topics?: string
+          ia_oportunidades_ativo?: boolean
+          ia_oportunidades_confianca?: number
           id?: string
           is_enabled?: boolean
           response_format?: string
@@ -86,6 +90,8 @@ export type Database = {
           auto_summary_enabled?: boolean
           fallback_message?: string
           forbidden_topics?: string
+          ia_oportunidades_ativo?: boolean
+          ia_oportunidades_confianca?: number
           id?: string
           is_enabled?: boolean
           response_format?: string
@@ -1628,6 +1634,7 @@ export type Database = {
           enviado_em: string | null
           hash_sha256: string | null
           id: string
+          is_teste: boolean
           lembretes_enviados: number
           modelos_versao: Json | null
           numero: number
@@ -1682,6 +1689,7 @@ export type Database = {
           enviado_em?: string | null
           hash_sha256?: string | null
           id?: string
+          is_teste?: boolean
           lembretes_enviados?: number
           modelos_versao?: Json | null
           numero?: number
@@ -1736,6 +1744,7 @@ export type Database = {
           enviado_em?: string | null
           hash_sha256?: string | null
           id?: string
+          is_teste?: boolean
           lembretes_enviados?: number
           modelos_versao?: Json | null
           numero?: number
@@ -2220,6 +2229,7 @@ export type Database = {
           expected_close_date: string | null
           expected_value: number | null
           id: string
+          is_teste: boolean
           loss_reason: string | null
           notes: string | null
           opportunity_type: string
@@ -2249,6 +2259,7 @@ export type Database = {
           expected_close_date?: string | null
           expected_value?: number | null
           id?: string
+          is_teste?: boolean
           loss_reason?: string | null
           notes?: string | null
           opportunity_type?: string
@@ -2278,6 +2289,7 @@ export type Database = {
           expected_close_date?: string | null
           expected_value?: number | null
           id?: string
+          is_teste?: boolean
           loss_reason?: string | null
           notes?: string | null
           opportunity_type?: string
@@ -2682,6 +2694,8 @@ export type Database = {
         Row: {
           ativo: boolean
           atualizado_em: string
+          chamados_90d: number | null
+          chamados_atrasados: number | null
           classe: string
           classe_manual: string | null
           created_at: string
@@ -2703,6 +2717,10 @@ export type Database = {
           rc_placas_paradas: number
           receita_mensal: number
           responsavel_id: string | null
+          risco_em: string | null
+          risco_motivos: Json | null
+          risco_nivel: string | null
+          risco_nota: number | null
           ultimo_contato_em: string | null
           ultimo_nps: number | null
           ultimo_sentimento: string | null
@@ -2713,6 +2731,8 @@ export type Database = {
         Insert: {
           ativo?: boolean
           atualizado_em?: string
+          chamados_90d?: number | null
+          chamados_atrasados?: number | null
           classe?: string
           classe_manual?: string | null
           created_at?: string
@@ -2734,6 +2754,10 @@ export type Database = {
           rc_placas_paradas?: number
           receita_mensal?: number
           responsavel_id?: string | null
+          risco_em?: string | null
+          risco_motivos?: Json | null
+          risco_nivel?: string | null
+          risco_nota?: number | null
           ultimo_contato_em?: string | null
           ultimo_nps?: number | null
           ultimo_sentimento?: string | null
@@ -2744,6 +2768,8 @@ export type Database = {
         Update: {
           ativo?: boolean
           atualizado_em?: string
+          chamados_90d?: number | null
+          chamados_atrasados?: number | null
           classe?: string
           classe_manual?: string | null
           created_at?: string
@@ -2765,6 +2791,10 @@ export type Database = {
           rc_placas_paradas?: number
           receita_mensal?: number
           responsavel_id?: string | null
+          risco_em?: string | null
+          risco_motivos?: Json | null
+          risco_nivel?: string | null
+          risco_nota?: number | null
           ultimo_contato_em?: string | null
           ultimo_nps?: number | null
           ultimo_sentimento?: string | null
@@ -2856,6 +2886,7 @@ export type Database = {
           expires_at: string | null
           first_viewed_at: string | null
           id: string
+          is_teste: boolean
           last_viewed_at: string | null
           opportunity_id: string
           quote_id: string | null
@@ -2882,6 +2913,7 @@ export type Database = {
           expires_at?: string | null
           first_viewed_at?: string | null
           id?: string
+          is_teste?: boolean
           last_viewed_at?: string | null
           opportunity_id: string
           quote_id?: string | null
@@ -2908,6 +2940,7 @@ export type Database = {
           expires_at?: string | null
           first_viewed_at?: string | null
           id?: string
+          is_teste?: boolean
           last_viewed_at?: string | null
           opportunity_id?: string
           quote_id?: string | null
@@ -3222,6 +3255,7 @@ export type Database = {
           description: string | null
           due_date: string | null
           id: string
+          is_teste: boolean
           metadata: Json | null
           priority: string
           source_id: string | null
@@ -3242,6 +3276,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          is_teste?: boolean
           metadata?: Json | null
           priority?: string
           source_id?: string | null
@@ -3262,6 +3297,7 @@ export type Database = {
           description?: string | null
           due_date?: string | null
           id?: string
+          is_teste?: boolean
           metadata?: Json | null
           priority?: string
           source_id?: string | null
@@ -4407,6 +4443,7 @@ export type Database = {
           arquivo_url: string | null
           bomcontrole_parcela_id: string | null
           categoria_id: string | null
+          cbs_valor: number | null
           competencia: string | null
           conferencia: Json | null
           conta_bancaria_id: string | null
@@ -4427,6 +4464,7 @@ export type Database = {
           gsystem_cliente_key: string | null
           gsystem_fatura_key: string | null
           ia_confianca: number | null
+          ibs_valor: number | null
           id: string
           linha_digitavel: string | null
           nota_chave: string | null
@@ -4439,6 +4477,8 @@ export type Database = {
           programado_por: string | null
           promessa_pagamento: string | null
           revisado: boolean
+          rtc_base: number | null
+          rtc_dados: Json | null
           status: string
           tipo: string
           tipo_documento: string | null
@@ -4458,6 +4498,7 @@ export type Database = {
           arquivo_url?: string | null
           bomcontrole_parcela_id?: string | null
           categoria_id?: string | null
+          cbs_valor?: number | null
           competencia?: string | null
           conferencia?: Json | null
           conta_bancaria_id?: string | null
@@ -4478,6 +4519,7 @@ export type Database = {
           gsystem_cliente_key?: string | null
           gsystem_fatura_key?: string | null
           ia_confianca?: number | null
+          ibs_valor?: number | null
           id?: string
           linha_digitavel?: string | null
           nota_chave?: string | null
@@ -4490,6 +4532,8 @@ export type Database = {
           programado_por?: string | null
           promessa_pagamento?: string | null
           revisado?: boolean
+          rtc_base?: number | null
+          rtc_dados?: Json | null
           status?: string
           tipo?: string
           tipo_documento?: string | null
@@ -4509,6 +4553,7 @@ export type Database = {
           arquivo_url?: string | null
           bomcontrole_parcela_id?: string | null
           categoria_id?: string | null
+          cbs_valor?: number | null
           competencia?: string | null
           conferencia?: Json | null
           conta_bancaria_id?: string | null
@@ -4529,6 +4574,7 @@ export type Database = {
           gsystem_cliente_key?: string | null
           gsystem_fatura_key?: string | null
           ia_confianca?: number | null
+          ibs_valor?: number | null
           id?: string
           linha_digitavel?: string | null
           nota_chave?: string | null
@@ -4541,6 +4587,8 @@ export type Database = {
           programado_por?: string | null
           promessa_pagamento?: string | null
           revisado?: boolean
+          rtc_base?: number | null
+          rtc_dados?: Json | null
           status?: string
           tipo?: string
           tipo_documento?: string | null
@@ -6127,6 +6175,42 @@ export type Database = {
         }
         Relationships: []
       }
+      margem_config: {
+        Row: {
+          custo_chamado: number
+          custo_chip_mensal: number
+          custo_equipamento_padrao: number
+          custo_visita: number
+          id: number
+          imposto_pct: number
+          updated_at: string
+          updated_by: string | null
+          vida_util_meses: number
+        }
+        Insert: {
+          custo_chamado?: number
+          custo_chip_mensal?: number
+          custo_equipamento_padrao?: number
+          custo_visita?: number
+          id?: number
+          imposto_pct?: number
+          updated_at?: string
+          updated_by?: string | null
+          vida_util_meses?: number
+        }
+        Update: {
+          custo_chamado?: number
+          custo_chip_mensal?: number
+          custo_equipamento_padrao?: number
+          custo_visita?: number
+          id?: number
+          imposto_pct?: number
+          updated_at?: string
+          updated_by?: string | null
+          vida_util_meses?: number
+        }
+        Relationships: []
+      }
       message_trigger_logs: {
         Row: {
           acknowledged_at: string | null
@@ -6262,6 +6346,27 @@ export type Database = {
           transfer_sector_id?: string | null
           transfer_sector_name?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      modo_teste: {
+        Row: {
+          ativo: boolean
+          desde: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ativo?: boolean
+          desde?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ativo?: boolean
+          desde?: string | null
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -8402,6 +8507,7 @@ export type Database = {
           financial_requested_by: string | null
           hide_service_templates: boolean
           id: string
+          is_teste: boolean
           liberacao_date: string | null
           notes: string | null
           opened_by: string | null
@@ -8452,6 +8558,7 @@ export type Database = {
           financial_requested_by?: string | null
           hide_service_templates?: boolean
           id?: string
+          is_teste?: boolean
           liberacao_date?: string | null
           notes?: string | null
           opened_by?: string | null
@@ -8502,6 +8609,7 @@ export type Database = {
           financial_requested_by?: string | null
           hide_service_templates?: boolean
           id?: string
+          is_teste?: boolean
           liberacao_date?: string | null
           notes?: string | null
           opened_by?: string | null
@@ -8988,6 +9096,7 @@ export type Database = {
           equipment_id: string | null
           first_viewed_at: string | null
           id: string
+          is_teste: boolean
           last_viewed_at: string | null
           no_response_notified_at: string | null
           plate: string | null
@@ -9036,6 +9145,7 @@ export type Database = {
           equipment_id?: string | null
           first_viewed_at?: string | null
           id?: string
+          is_teste?: boolean
           last_viewed_at?: string | null
           no_response_notified_at?: string | null
           plate?: string | null
@@ -9084,6 +9194,7 @@ export type Database = {
           equipment_id?: string | null
           first_viewed_at?: string | null
           id?: string
+          is_teste?: boolean
           last_viewed_at?: string | null
           no_response_notified_at?: string | null
           plate?: string | null
@@ -9289,6 +9400,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      teste_envios: {
+        Row: {
+          bloqueado: boolean
+          canal: string
+          conteudo: string | null
+          created_at: string
+          destino: string | null
+          detalhe: Json | null
+          id: string
+          resumo: string | null
+          user_id: string | null
+        }
+        Insert: {
+          bloqueado?: boolean
+          canal: string
+          conteudo?: string | null
+          created_at?: string
+          destino?: string | null
+          detalhe?: Json | null
+          id?: string
+          resumo?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          bloqueado?: boolean
+          canal?: string
+          conteudo?: string | null
+          created_at?: string
+          destino?: string | null
+          detalhe?: Json | null
+          id?: string
+          resumo?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
       }
       teste_equipamento_settings: {
         Row: {
@@ -10884,6 +11031,7 @@ export type Database = {
       contratos_allowed: { Args: never; Returns: boolean }
       crm_tab_allowed: { Args: { _tab: string }; Returns: boolean }
       delete_technical_term_type: { Args: { _id: string }; Returns: string }
+      em_modo_teste: { Args: { _user?: string }; Returns: boolean }
       gamif_apply_auto_rules: { Args: { _day?: string }; Returns: number }
       gamif_cancel_duel: { Args: { _id: string }; Returns: undefined }
       gamif_decide_redemption: {
@@ -10972,6 +11120,7 @@ export type Database = {
         Args: { _task_id: string; _user_id: string }
         Returns: boolean
       }
+      limpar_dados_teste: { Args: never; Returns: Json }
       list_channels_safe: {
         Args: never
         Returns: {
