@@ -1,4 +1,5 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
+import { detectarOportunidadeChat } from "@/lib/ia-oportunidades.functions";
 import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import ReactMarkdown from "react-markdown";
@@ -2792,6 +2793,10 @@ function CentralPage() {
           .join("\n");
         void gerarResumoAtendimento({ data: { ticketId: ticketForProtocol.id, transcript } }).catch((e: any) =>
           console.warn("[Finalize] resumo IA falhou:", e?.message),
+        );
+        // Conversa vira venda: a IA procura oportunidade e cria no CRM (só se ativado no Assistente IA).
+        void detectarOportunidadeChat({ data: { ticketId: ticketForProtocol.id, transcript } }).catch((e: any) =>
+          console.warn("[Finalize] oportunidade IA falhou:", e?.message),
         );
       }
       return { success: true, ticketId: ticketForProtocol?.id || null, escalateGestao: !!escalateGestao, pendingResolve };

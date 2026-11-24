@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { MargemTab } from "@/components/financeiro/margem-tab";
 import { useState } from "react";
 import { Wallet, Loader2, Lock } from "lucide-react";
 import { AppLayout } from "@/components/app-layout";
@@ -73,6 +74,7 @@ function FinanceiroContent() {
           <TabsTrigger value="comprovantes">Comprovantes{aRevisar > 0 && <Badge variant="destructive" className="ml-1 h-5 px-1.5">{aRevisar}</Badge>}</TabsTrigger>
           <TabsTrigger value="fluxo">Fluxo de caixa</TabsTrigger>
           <TabsTrigger value="dre">DRE</TabsTrigger>
+          <TabsTrigger value="margem">Margem por cliente</TabsTrigger>
           <TabsTrigger value="conciliacao">Conciliação</TabsTrigger>
           <TabsTrigger value="cadastros">Categorias</TabsTrigger>
         </TabsList>
@@ -90,6 +92,7 @@ function FinanceiroContent() {
             <TabsContent value="comprovantes" className="mt-4"><ComprovantesTab lancamentos={data.lancamentos} categorias={data.categorias} empresas={data.empresas} /></TabsContent>
             <TabsContent value="fluxo" className="mt-4"><FluxoTab lancamentos={data.lancamentos} contas={data.contas} /></TabsContent>
             <TabsContent value="dre" className="mt-4"><DreTab lancamentos={data.lancamentos} categorias={data.categorias} /></TabsContent>
+            <TabsContent value="margem" className="mt-4"><MargemTab /></TabsContent>
             <TabsContent value="conciliacao" className="mt-4"><ConciliacaoTab lancamentos={data.lancamentos} contas={data.contas} empresas={data.empresas} /></TabsContent>
             <TabsContent value="cadastros" className="mt-4"><CadastrosTab categorias={data.categorias} empresas={data.empresas} /></TabsContent>
           </>

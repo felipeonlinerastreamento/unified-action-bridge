@@ -110,6 +110,11 @@ export async function atualizarCarteiraPosVenda(): Promise<{ ok: boolean; client
       const { sincronizarRiscoReconnect } = await import("@/lib/reconnect-risco.server");
       await sincronizarRiscoReconnect();
     } catch { /* Reconnect ainda sem tabelas */ }
+    // Placar de risco de cancelamento e planos de retenção (migração 0078; falha não derruba a carteira).
+    try {
+      const { atualizarRiscoCancelamento } = await import("@/lib/risco-margem.server");
+      await atualizarRiscoCancelamento();
+    } catch { /* migração 0078 ainda não aplicada */ }
     return { ok: true, clientes: rows.length, pj, comReceita: linhas.filter((l) => l.receita > 0).length };
   } catch (e: any) {
     return { ok: false, clientes: 0, pj: 0, comReceita: 0, error: String(e?.message ?? e).slice(0, 500) };

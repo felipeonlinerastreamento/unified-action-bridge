@@ -216,6 +216,13 @@ export async function runCrmDailyJob() {
   }
 
   summary.followups = await notifyProposalFollowups();
+  // Placar de risco de cancelamento: recalcula todo dia e abre planos de retenção (migração 0078).
+  try {
+    const { atualizarRiscoCancelamento } = await import("@/lib/risco-margem.server");
+    const r = await atualizarRiscoCancelamento();
+    summary.retencao = r.planos;
+  } catch { /* migração 0078 ainda não aplicada */ }
+
   return summary;
 }
 

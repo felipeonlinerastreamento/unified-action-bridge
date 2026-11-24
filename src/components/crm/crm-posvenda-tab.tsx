@@ -16,7 +16,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { formatBRL, formatDataBR, hojeSP } from "@/lib/finance";
-import { atualizarCarteira } from "@/lib/posvenda.functions";
+import { atualizarCarteira, recalcularRisco } from "@/lib/posvenda.functions";
+import { NOME_SINAL, LIMIAR_ALTO, LIMIAR_MEDIO, type MotivoRisco } from "@/lib/risco-cancelamento";
 import {
   CADENCIA_LABEL, CANAIS, INTERESSES, ROTEIROS, classeDe, metricasPosVenda, proximoContato, resumoPorClasse,
   riscoDe, saudeCliente, situacaoContato, somaDias, sugestoesCliente,
@@ -118,12 +119,14 @@ export function CrmPosVendaTab() {
         <Tabs defaultValue="agenda">
           <TabsList className="flex-wrap h-auto">
             <TabsTrigger value="agenda">Agenda</TabsTrigger>
+            <TabsTrigger value="risco">Risco de cancelamento</TabsTrigger>
             <TabsTrigger value="carteira">Carteira</TabsTrigger>
             <TabsTrigger value="painel">Painel</TabsTrigger>
             <TabsTrigger value="historico">Histórico</TabsTrigger>
             <TabsTrigger value="roteiros">Roteiros</TabsTrigger>
           </TabsList>
           <TabsContent value="agenda" className="mt-4"><Agenda carteira={carteira} hoje={hoje} onRegistrar={(cli, roteiro) => setRegistrar({ cli, roteiro })} onAbrir={setDetalhe} /></TabsContent>
+          <TabsContent value="risco" className="mt-4"><RiscoCancelamento carteira={carteira} onAbrir={setDetalhe} onRecalculado={recarregar} /></TabsContent>
           <TabsContent value="carteira" className="mt-4"><Carteira carteira={carteira} hoje={hoje} onAbrir={setDetalhe} /></TabsContent>
           <TabsContent value="painel" className="mt-4"><Painel carteira={carteira} contatos={contatos} hoje={hoje} /></TabsContent>
           <TabsContent value="historico" className="mt-4"><Historico carteira={carteira} contatos={contatos} /></TabsContent>
@@ -198,6 +201,82 @@ function Agenda({ carteira, hoje, onRegistrar, onAbrir }: { carteira: Cli[]; hoj
           </CardContent>
         </Card>
       ))}
+    </div>
+  );
+}
+
+// ------------------------------------------------------------------ Risco de cancelamento
+function RiscoCancelamento({ carteira, onAbrir, onRecalculado }: { carteira: Cli[]; onAbrir: (c: Cli) => void; onRecalculado: () => void }) {
+  const recalc = useServerFn(recalcularRisco);
+  const [rodando, setRodando] = useState(false);
+  const [nivel, setNivel] = useState<"alto" | "medio" | "todos">("alto");
+  const comNota = carteira.filter((c: any) => c.risco_nota != null) as (Cli & { risco_nota: number; risco_motivos?: MotivoRisco[] | null; risco_em?: string | null })[];
+  const altos = comNota.filter((c) => c.risco_nota >= LIMIAR_ALTO);
+  const medios = comNota.filter((c) => c.risco_nota >= LIMIAR_MEDIO && c.risco_nota < LIMIAR_ALTO);
+  const lista = (nivel === "alto" ? altos : nivel === "medio" ? medios : comNota.filter((c) => c.risco_nota > 0))
+    .slice().sort((a, b) => b.risco_nota - a.risco_nota || b.receita_mensal - a.receita_mensal).slice(0, 300);
+  const receitaRisco = altos.reduce((s, c) => s + (c.receita_mensal || 0), 0);
+  const ultima = comNota.map((c) => c.risco_em).filter(Boolean).sort().pop();
+  const rodar = async () => {
+    setRodando(true);
+    try {
+      const r = await recalc();
+      if (!r.ok) throw new Error(r.error || "Falha ao calcular.");
+      toast.success(`Risco calculado para ${r.clientes} clientes: ${r.altos} em risco alto, ${r.planos} plano(s) de retenção novo(s).`);
+      onRecalculado();
+    } catch (e: any) { toast.error(e?.message ?? "Não foi possível calcular o risco."); }
+    finally { setRodando(false); }
+  };
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm text-muted-foreground max-w-3xl">
+          Nota de 0 a 100 (quanto maior, mais perto de cancelar) com boleto atrasado, placas sem comunicação, satisfação, chamados dos últimos 90 dias,
+          chamados atrasados e tempo sem contato. A partir de {LIMIAR_ALTO} o sistema cria um <b>plano de retenção</b> em CRM › Tarefas para o responsável.
+          Recalcula todo dia e a cada atualização da carteira{ultima ? ` · última: ${new Date(ultima).toLocaleString("pt-BR")}` : ""}.
+        </p>
+        <Button variant="outline" onClick={rodar} disabled={rodando}>{rodando ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <RefreshCw className="h-4 w-4 mr-1" />}Recalcular risco</Button>
+      </div>
+      {comNota.length === 0 ? (
+        <Card><CardContent className="p-6 text-sm text-muted-foreground">O placar ainda não foi calculado. Clique em <b>Recalcular risco</b>.</CardContent></Card>
+      ) : (
+        <>
+          <div className="grid gap-2 sm:grid-cols-3">
+            <Card><CardContent className="p-3"><div className="text-xs text-muted-foreground">Risco alto ({LIMIAR_ALTO}+)</div><div className="text-2xl font-semibold text-destructive">{altos.length}</div></CardContent></Card>
+            <Card><CardContent className="p-3"><div className="text-xs text-muted-foreground">Atenção ({LIMIAR_MEDIO}–{LIMIAR_ALTO - 1})</div><div className="text-2xl font-semibold text-amber-600">{medios.length}</div></CardContent></Card>
+            <Card><CardContent className="p-3"><div className="text-xs text-muted-foreground">Receita mensal em risco alto</div><div className="text-2xl font-semibold">{formatBRL(receitaRisco)}</div></CardContent></Card>
+          </div>
+          <div className="flex gap-2">
+            <Button size="sm" variant={nivel === "alto" ? "default" : "outline"} onClick={() => setNivel("alto")}>Risco alto ({altos.length})</Button>
+            <Button size="sm" variant={nivel === "medio" ? "default" : "outline"} onClick={() => setNivel("medio")}>Atenção ({medios.length})</Button>
+            <Button size="sm" variant={nivel === "todos" ? "default" : "outline"} onClick={() => setNivel("todos")}>Todos com sinais</Button>
+          </div>
+          <Card>
+            <Table>
+              <TableHeader><TableRow>
+                <TableHead>Cliente</TableHead><TableHead>Classe</TableHead><TableHead className="text-right">Receita/mês</TableHead><TableHead>Risco</TableHead><TableHead>Sinais</TableHead>
+              </TableRow></TableHeader>
+              <TableBody>
+                {lista.map((c) => (
+                  <TableRow key={c.id} className="cursor-pointer" onClick={() => onAbrir(c)}>
+                    <TableCell className="font-medium">{c.nome}</TableCell>
+                    <TableCell><ClasseBadge c={classeDe(c)} /></TableCell>
+                    <TableCell className="text-right whitespace-nowrap">{formatBRL(c.receita_mensal)}</TableCell>
+                    <TableCell>
+                      <Badge variant={c.risco_nota >= LIMIAR_ALTO ? "destructive" : "outline"} className={c.risco_nota >= LIMIAR_MEDIO && c.risco_nota < LIMIAR_ALTO ? "border-amber-500 text-amber-600" : ""}>{c.risco_nota}/100</Badge>
+                    </TableCell>
+                    <TableCell className="text-xs">
+                      {(c.risco_motivos ?? []).map((m, i) => (
+                        <div key={i}><b>{NOME_SINAL[m.sinal]}</b> (+{m.pontos}): {m.texto}</div>
+                      ))}
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
+        </>
+      )}
     </div>
   );
 }

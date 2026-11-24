@@ -11,3 +11,14 @@ export const atualizarCarteira = createServerFn({ method: "POST" })
     const { atualizarCarteiraPosVenda } = await import("@/lib/posvenda-carteira.server");
     return atualizarCarteiraPosVenda();
   });
+
+/** Recalcula o placar de risco de cancelamento (e abre planos de retenção). Quem tem a aba Pós-venda. */
+export const recalcularRisco = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .handler(async ({ context }) => {
+    const { supabase } = context as any;
+    const { data, error } = await supabase.rpc("crm_tab_allowed", { _tab: "posvenda" });
+    if (error || data !== true) throw new Error("Você não tem acesso ao Pós-venda.");
+    const { atualizarRiscoCancelamento } = await import("@/lib/risco-margem.server");
+    return atualizarRiscoCancelamento();
+  });

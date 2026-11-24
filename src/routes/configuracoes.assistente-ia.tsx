@@ -73,6 +73,7 @@ function AssistenteIaConfigPage() {
   const [fallbackMessage, setFallbackMessage] = useState("");
   const [suggestReplyEnabled, setSuggestReplyEnabled] = useState(true);
   const [autoSummaryEnabled, setAutoSummaryEnabled] = useState(false);
+  const [oportunidadesEnabled, setOportunidadesEnabled] = useState(true);
   const [savingBehavior, setSavingBehavior] = useState(false);
   const [uploading, setUploading] = useState(false);
 
@@ -110,6 +111,7 @@ function AssistenteIaConfigPage() {
       setFallbackMessage(row.fallback_message || "");
       setSuggestReplyEnabled(row.suggest_reply_enabled ?? true);
       setAutoSummaryEnabled(row.auto_summary_enabled ?? false);
+      setOportunidadesEnabled(row.ia_oportunidades_ativo ?? true);
     }
   }
 
@@ -122,7 +124,7 @@ function AssistenteIaConfigPage() {
     const { data: sess } = await supabase.auth.getSession();
     const { error } = await supabase
       .from("ai_assistant_config")
-      .update({
+      .update(({
         tone,
         response_format: responseFormat,
         temperature: normalizeTemperature(temperature),
@@ -130,9 +132,10 @@ function AssistenteIaConfigPage() {
         fallback_message: fallbackMessage,
         suggest_reply_enabled: suggestReplyEnabled,
         auto_summary_enabled: autoSummaryEnabled,
+        ia_oportunidades_ativo: oportunidadesEnabled,
         updated_at: new Date().toISOString(),
         updated_by: sess.session?.user?.id || null,
-      })
+      }) as any)
       .eq("id", configId);
     if (error) toast.error(error.message);
     else toast.success("Comportamento da IA salvo!");
@@ -516,6 +519,13 @@ function AssistenteIaConfigPage() {
                     <p className="text-xs text-muted-foreground">Ao finalizar um chat na Central, a IA grava um resumo de 2 a 3 linhas como comentário no chamado.</p>
                   </div>
                   <Switch id="ai-summary" checked={autoSummaryEnabled} onCheckedChange={setAutoSummaryEnabled} />
+                </div>
+                <div className="flex items-center justify-between gap-4 rounded-lg border p-4">
+                  <div className="space-y-1">
+                    <Label htmlFor="ai-oport" className="text-sm font-medium">Oportunidades de venda nas conversas</Label>
+                    <p className="text-xs text-muted-foreground">Ao finalizar um chat, a IA procura interesse de compra (mais veículos, câmera, telemetria, upgrade, indicação). Se achar, cria a oportunidade em CRM › Oportunidades com a proposta sugerida e avisa o responsável.</p>
+                  </div>
+                  <Switch id="ai-oport" checked={oportunidadesEnabled} onCheckedChange={setOportunidadesEnabled} />
                 </div>
               </CardContent>
             </Card>

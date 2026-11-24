@@ -71,7 +71,7 @@ export function CrmTasksTab() {
   });
 
   const priorityColor: any = { urgente: "destructive", alta: "default", media: "secondary", baixa: "outline" };
-  const typeIcon: any = { birthday: "🎂", renewal: "📄", postsale: "📞", recurring: "🔁", followup: "✉️", churn: "⚠️", nps: "⭐" };
+  const typeIcon: any = { birthday: "🎂", renewal: "📄", postsale: "📞", recurring: "🔁", followup: "✉️", churn: "⚠️", nps: "⭐", retencao: "🛟", oportunidade_ia: "💡" };
 
   return (
     <div className="space-y-4">
