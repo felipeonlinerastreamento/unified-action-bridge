@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { buildNotificationMessage } from "@/lib/reconnect";
-import { destinatariosPorNotificacao, unirEmails, unirTelefones } from "@/lib/contato-notificacoes";
+import { destinatariosPorNotificacao } from "@/lib/contato-notificacoes";
 
 async function assertReconnect(supabase: any) {
   const { data, error } = await supabase.rpc("reconnect_allowed");
@@ -40,14 +40,15 @@ export const enviarNotificacaoReconnect = createServerFn({ method: "POST" })
     ]);
     if (!client) throw new Error("Cliente não encontrado no Reconnect.");
     if (!tpl) throw new Error("Modelo de mensagem não encontrado.");
-    // Destinatários: contatos do cliente no Reconnect + contatos da empresa marcados "Veículo sem comunicação".
+    // Destinatários: só os contatos da empresa ligada marcados "Veículo sem comunicação" (Empresas › Contatos).
     let daEmpresa = { phones: [] as string[], emails: [] as string[] };
     if (client.company_id) {
-      const { data: comp } = await supabase.from("companies").select("contacts").eq("id", client.company_id).maybeSingle();
-      daEmpresa = destinatariosPorNotificacao(comp?.contacts, "sem_comunicacao");
+      const { data: comp } = await supabaseAdmin.from("companies").select("contacts").eq("id", client.company_id).maybeSingle();
+      daEmpresa = destinatariosPorNotificacao((comp as any)?.contacts, "sem_comunicacao");
     }
-    const phones: string[] = unirTelefones(client.phones || [], daEmpresa.phones);
-    const emails: string[] = unirEmails(client.emails || [], daEmpresa.emails);
+    const semEmpresa = !client.company_id;
+    const phones: string[] = daEmpresa.phones;
+    const emails: string[] = daEmpresa.emails;
     // A planilha pode trazer a placa dentro do texto ("I/BYD-DOLPHIN-MINI-TCL5A74", "SSO-3F57-(53)"):
     // a mensagem lista só a placa, sem repetir.
     const { extrairPlaca } = await import("./reconnect");
@@ -58,7 +59,7 @@ export const enviarNotificacaoReconnect = createServerFn({ method: "POST" })
 
     if (data.channels.includes("whatsapp")) {
       try {
-        if (!phones.length) throw new Error("Cliente sem telefone cadastrado.");
+        if (!phones.length) throw new Error(semEmpresa ? "Cliente sem empresa ligada no cadastro de Empresas." : "Nenhum contato da empresa marcado \"Veículo sem comunicação\" com telefone.");
         let channelId = settings?.whatsapp_channel_id as string | null;
         if (!channelId) {
           const { data: ch } = await supabaseAdmin.from("channels").select("id").eq("is_active", true).not("zapi_instance_id", "is", null).order("created_at").limit(1).maybeSingle();
@@ -87,7 +88,7 @@ export const enviarNotificacaoReconnect = createServerFn({ method: "POST" })
 
     if (data.channels.includes("email")) {
       try {
-        if (!emails.length) throw new Error("Cliente sem e-mail cadastrado.");
+        if (!emails.length) throw new Error(semEmpresa ? "Cliente sem empresa ligada no cadastro de Empresas." : "Nenhum contato da empresa marcado \"Veículo sem comunicação\" com e-mail.");
         const q = supabaseAdmin.from("email_channels").select("email_address, connection_key");
         const { data: ch } = settings?.email_channel_id
           ? await q.eq("id", settings.email_channel_id).maybeSingle()
@@ -174,4 +175,79 @@ export const resultadoReconnect = createServerFn({ method: "POST" })
     const base = await dadosResultadoReconnect(data.de, data.ate, comReceita);
     const m = metricasReconnect({ ...base, de: data.de, ate: data.ate });
     return { ...m, comReceita, vinculados: base.vinculados };
+  });
+
+/** Empresas ligadas aos clientes do Reconnect: nome e contatos marcados "Veículo sem comunicação". */
+export const contatosEmpresasReconnect = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ ids: z.array(z.string().uuid()).max(5000) }).parse)
+  .handler(async ({ data, context }) => {
+    await assertReconnect((context as any).supabase);
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const out: Record<string, { nome: string; phones: string[]; emails: string[]; nomes: string[] }> = {};
+    for (let i = 0; i < data.ids.length; i += 200) {
+      const { data: rows } = await supabaseAdmin.from("companies").select("id, name, contacts").in("id", data.ids.slice(i, i + 200));
+      for (const e of (rows || []) as any[]) {
+        const d = destinatariosPorNotificacao(e.contacts, "sem_comunicacao");
+        out[e.id] = { nome: e.name, phones: d.phones, emails: d.emails, nomes: d.nomes };
+      }
+    }
+    return out;
+  });
+
+/**
+ * Unifica os clientes do Reconnect com o cadastro de Empresas (admin/gestor):
+ * liga cada cliente à empresa (já ligado, nome igual, nome aproximado único ou escolha manual) e leva
+ * os telefones/e-mails do cliente para os contatos da empresa marcados "Veículo sem comunicação"
+ * (só marca quando o número/e-mail já existe; senão cadastra). Sem `aplicar`, só devolve a prévia.
+ */
+export const unificarContatosReconnect = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(z.object({ aplicar: z.boolean(), manuais: z.record(z.string().min(1).max(64), z.string().uuid()).optional() }).parse)
+  .handler(async ({ data, context }) => {
+    const { supabase, userId } = context as any;
+    await assertReconnect(supabase);
+    const [adm, ges] = await Promise.all([
+      supabase.rpc("has_role", { _user_id: userId, _role: "admin" }),
+      supabase.rpc("has_role", { _user_id: userId, _role: "gestor" }),
+    ]);
+    if (adm.data !== true && ges.data !== true) throw new Error("Só admin ou gestor podem unificar os contatos com Empresas.");
+    const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
+    const lerTodas = async (tabela: string, cols: string) => {
+      const out: any[] = [];
+      for (let de = 0; ; de += 1000) {
+        const { data: rows, error } = await supabaseAdmin.from(tabela as any).select(cols).order("id").range(de, de + 999);
+        if (error) throw new Error(`${tabela}: ${error.message}`);
+        out.push(...(rows || []));
+        if (!rows || rows.length < 1000) break;
+      }
+      return out;
+    };
+    const [clientes, empresas] = await Promise.all([
+      lerTodas("rc_clients", "id, name, company_id, phones, emails, vehicle_count"),
+      lerTodas("companies", "id, name, contacts"),
+    ]);
+    const { planejarUnificacao } = await import("./reconnect-contatos");
+    const plano = planejarUnificacao(clientes, empresas, data.manuais ?? {});
+    if (!data.aplicar) return { aplicado: false, ...plano, empresas: plano.empresas.map(({ contacts: _c, ...e }) => e) };
+
+    const porCliente = new Map(clientes.map((c: any) => [c.id, c]));
+    for (const v of plano.vinculos) {
+      if (porCliente.get(v.clientId)?.company_id === v.companyId) continue;
+      const { error } = await supabaseAdmin.from("rc_clients" as any).update({ company_id: v.companyId }).eq("id", v.clientId);
+      if (error) throw new Error(`Ligar cliente: ${error.message}`);
+    }
+    for (const e of plano.empresas) {
+      const { error } = await supabaseAdmin.from("companies").update({ contacts: e.contacts as any }).eq("id", e.companyId);
+      if (error) throw new Error(`Contatos de ${e.companyName}: ${error.message}`);
+      // Telefones novos também entram em company_phones (identifica a empresa nas conversas da Central);
+      // número que já pertence a outra empresa fica onde está (a coluna é única).
+      const novos = e.cadastrados.filter((x) => !x.includes("@"));
+      if (novos.length) await supabaseAdmin.from("company_phones").upsert(novos.map((phone_number) => ({ company_id: e.companyId, phone_number, contact_name: "Contato Reconnect" })) as any, { onConflict: "phone_number", ignoreDuplicates: true });
+    }
+    await supabase.from("rc_activity_logs").insert({
+      user_id: userId, action: "unificacao_empresas",
+      details: { totais: plano.totais, naoIdentificados: plano.naoIdentificados.map((n) => n.name), manuais: Object.keys(data.manuais ?? {}).length },
+    });
+    return { aplicado: true, ...plano, empresas: plano.empresas.map(({ contacts: _c, ...e }) => e) };
   });

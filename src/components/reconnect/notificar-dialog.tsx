@@ -78,10 +78,15 @@ export function NotificarDialog({ client, vehicles, templates, onClose }: { clie
             <label className="flex items-center gap-2"><Checkbox checked={canais.includes("email")} onCheckedChange={() => toggle("email")} disabled={!dest.emails.length} /><Mail className="h-4 w-4" /> E-mail ({dest.emails.length})</label>
           </div>
           {(dest.phones.length > 0 || dest.emails.length > 0) && (
-            <p className="text-[11px] text-muted-foreground">Vai para: {[...dest.phones, ...dest.emails].join(", ")}{client.empresa_nomes?.length ? ` · inclui contatos da empresa marcados "Veículo sem comunicação" (${client.empresa_nomes.join(", ")})` : ""}</p>
+            <p className="text-[11px] text-muted-foreground">Vai para: {[...dest.phones, ...dest.emails].join(", ")}{client.empresa_nomes?.length ? ` (contatos da empresa: ${client.empresa_nomes.join(", ")})` : ""}</p>
           )}
           {tpl && <pre className="whitespace-pre-wrap rounded bg-muted p-2 text-xs max-h-40 overflow-y-auto">{buildNotificationMessage(tpl.body, client.name, [...new Set(plates.map((p) => extrairPlaca(p) || p))])}</pre>}
-          <p className="text-[11px] text-muted-foreground">O WhatsApp sai pelo canal da Central (as respostas do cliente chegam lá) e o e-mail pela caixa cadastrada no Gestão Online.</p>
+          {!dest.phones.length && !dest.emails.length && (
+            <p className="text-xs text-amber-600">{client.company_id
+              ? "A empresa não tem contato marcado \"Veículo sem comunicação\". Marque em Empresas › Contatos."
+              : "Cliente sem empresa ligada. Ligue em Reconnect › Configurações › Contatos das notificações."}</p>
+          )}
+          <p className="text-[11px] text-muted-foreground">Os destinos são os contatos da empresa marcados "Veículo sem comunicação" (Empresas › Contatos). O WhatsApp sai pelo canal da Central (as respostas do cliente chegam lá) e o e-mail pela caixa cadastrada no Gestão Online.</p>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={onClose}>Cancelar</Button>
