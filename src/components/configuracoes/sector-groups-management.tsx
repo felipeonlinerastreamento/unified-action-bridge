@@ -22,7 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { Plus, Pencil, Trash2, FolderTree, Loader2, ChevronDown, ChevronRight, Building2, ShieldCheck } from "lucide-react";
-import { MENU_CATALOG, MENU_SECTION_LABELS, menuSectionOf } from "@/lib/menu-catalog";
+import { MENU_CATALOG, MENU_SECTION_LABELS, menuSectionOf, DEFAULT_OPERATOR_MENUS } from "@/lib/menu-catalog";
 
 interface SectorGroup {
   id: string;
@@ -157,6 +157,31 @@ export function SectorGroupsManagement() {
   });
 
   // Sector CRUD
+  /** Menus são do grupo do setor. Setor sem grupo ganha um grupo próprio (mesmo nome) para liberar menus. */
+  const menusDoSetor = async (s: Sector) => {
+    try {
+      let g = groups.find((x) => x.id === s.group_id);
+      if (!g) {
+        const { data, error } = await supabase.from("sector_groups")
+          .insert({ name: s.name, description: `Acessos do setor ${s.name}`, is_active: true, allowed_menus: DEFAULT_OPERATOR_MENUS } as any)
+          .select("*").single();
+        if (error) throw error;
+        const { error: e2 } = await supabase.from("sectors").update({ group_id: (data as any).id }).eq("id", s.id);
+        if (e2) throw e2;
+        g = data as any;
+        queryClient.invalidateQueries({ queryKey: ["sector-groups"] });
+        queryClient.invalidateQueries({ queryKey: ["local-sectors"] });
+        toast.success(`Grupo "${s.name}" criado para o setor. Marque os menus liberados e salve.`);
+      } else {
+        const outros = sectors.filter((x) => x.group_id === g!.id && x.id !== s.id).length;
+        if (outros > 0) toast.info(`Os menus são do grupo "${g.name}" e valem também para os outros ${outros} setor(es) dele.`);
+      }
+      openEdit(g!);
+    } catch (e: any) {
+      toast.error(e?.message || "Não foi possível abrir os menus do setor.");
+    }
+  };
+
   const resetSectorForm = () => { setSectorName(""); setSectorDescription(""); setSectorGroupId("none"); setSectorIsActive(true); setEditingSector(null); };
   
   const openCreateSector = (groupId: string) => {
@@ -303,6 +328,7 @@ export function SectorGroupsManagement() {
                                     checked={s.is_active}
                                     onCheckedChange={(checked) => toggleSectorMutation.mutate({ id: s.id, active: checked })}
                                   />
+                                  <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => menusDoSetor(s)}>Menus</Button>
                                   <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditSector(s)}>
                                     <Pencil className="h-3 w-3" />
                                   </Button>
@@ -338,6 +364,7 @@ export function SectorGroupsManagement() {
                           checked={s.is_active}
                           onCheckedChange={(checked) => toggleSectorMutation.mutate({ id: s.id, active: checked })}
                         />
+                        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => menusDoSetor(s)}>Liberar menus</Button>
                         <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditSector(s)}>
                           <Pencil className="h-3 w-3" />
                         </Button>
@@ -410,7 +437,7 @@ export function SectorGroupsManagement() {
                     checked={restrictMenus}
                     onCheckedChange={(c) => {
                       setRestrictMenus(c);
-                      if (!c) setAllowedMenus([]);
+                      setAllowedMenus(c ? (allowedMenus.length ? allowedMenus : DEFAULT_OPERATOR_MENUS) : []);
                     }}
                   />
                   <div className="space-y-0.5">
@@ -418,7 +445,7 @@ export function SectorGroupsManagement() {
                       Restringir menus do sistema
                     </Label>
                     <p className="text-[11px] text-muted-foreground">
-                      Quando desligado, o grupo usa o conjunto padrão de menus para operadores.
+                      Quando desligado, o grupo usa o conjunto padrão de menus para operadores (marcados abaixo). Marcar ou desmarcar qualquer menu já liga a restrição.
                     </p>
                   </div>
                 </div>
@@ -440,7 +467,7 @@ export function SectorGroupsManagement() {
                         <div key={cat} className="rounded-md border border-border">
                           <div className="flex items-center justify-between bg-muted/20 px-3 py-2">
                             <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">{catLabel}</span>
-                            <Button type="button" variant="ghost" size="sm" className="h-6 text-xs" disabled={!restrictMenus} onClick={toggleAll} aria-label={`${allChecked ? "Desmarcar" : "Marcar"} todos de ${catLabel}`}>
+                            <Button type="button" variant="ghost" size="sm" className="h-6 text-xs" onClick={() => { if (!restrictMenus) { setRestrictMenus(true); setAllowedMenus(DEFAULT_OPERATOR_MENUS); } toggleAll(); }} aria-label={`${allChecked ? "Desmarcar" : "Marcar"} todos de ${catLabel}`}>
                               {allChecked ? "Desmarcar todos" : "Marcar todos"}
                             </Button>
                           </div>
@@ -450,12 +477,12 @@ export function SectorGroupsManagement() {
                               return (
                                 <label key={m.slug} className="flex items-center gap-2 text-sm cursor-pointer hover:bg-muted/40 rounded px-2 py-1">
                                   <Checkbox
-                                    disabled={!restrictMenus}
-                                    checked={checked}
+                                    checked={restrictMenus ? checked : DEFAULT_OPERATOR_MENUS.includes(m.slug)}
                                     onCheckedChange={(c) => {
-                                      setAllowedMenus((prev) =>
-                                        c === true ? Array.from(new Set([...prev, m.slug])) : prev.filter((s) => s !== m.slug)
-                                      );
+                                      // Marcar/desmarcar já liga a restrição, partindo do conjunto padrão.
+                                      const base = restrictMenus ? allowedMenus : DEFAULT_OPERATOR_MENUS;
+                                      if (!restrictMenus) setRestrictMenus(true);
+                                      setAllowedMenus(c === true ? Array.from(new Set([...base, m.slug])) : base.filter((s) => s !== m.slug));
                                     }}
                                   />
                                   <span>{cat === "agenda" ? m.label.replace("Agenda — ", "") : cat === "crm" ? m.label.replace("CRM — ", "") : m.label}</span>
