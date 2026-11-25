@@ -20,6 +20,7 @@ import { buildNotificationMessage, extrairPlaca, getCriticality, normalizeClient
 import { destinosCliente, logRc, rc, upsertEmBlocos, useRcInvalidate, type RcClient, type RcImportTemplate, type RcRecovered, type RcTemplate } from "./use-rc";
 import { Crit } from "./painel-tab";
 import { NotificarDialog } from "./notificar-dialog";
+import { HistoricoNotificacoes } from "./historico-notificacoes";
 
 const fmt = (iso?: string | null) => (iso ? new Date(iso).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }) : "—");
 const lista = (s: string) => s.split(/[,;\n]+/).map((x) => x.trim()).filter(Boolean);
@@ -105,7 +106,7 @@ export function NotificacoesTab({ clients, vehicles, templates }: { clients: RcC
   const [resultados, setResultados] = useState<{ nome: string; ok: boolean; detalhe: string }[] | null>(null);
   const { data: historico = [] } = useQuery({
     queryKey: ["rc-notifications"],
-    queryFn: async () => ((await rc.from("rc_notification_logs").select("*").order("sent_at", { ascending: false }).limit(500)).data || []) as any[],
+    queryFn: async () => ((await rc.from("rc_notification_logs").select("*").order("sent_at", { ascending: false }).limit(5000)).data || []) as any[],
   });
   const alvo = useMemo(() => {
     const m = new Map<string, string[]>();
@@ -119,7 +120,6 @@ export function NotificacoesTab({ clients, vehicles, templates }: { clients: RcC
     : !sel.length ? "Marque ao menos um cliente."
     : !tplId ? (usaveis.length ? "Escolha o modelo de mensagem." : "Cadastre um modelo de mensagem na aba Mensagens.")
     : !canais.length ? "Marque WhatsApp e/ou E-mail."
-    : !comContato.length ? "Os clientes marcados não têm telefone/e-mail para os canais escolhidos (cadastre na aba Clientes)."
     : null;
 
   const tplSel = usaveis.find((t) => t.id === tplId);
@@ -130,6 +130,16 @@ export function NotificacoesTab({ clients, vehicles, templates }: { clients: RcC
     const itens = comContato;
     const res: { nome: string; ok: boolean; detalhe: string }[] = [];
     setResultados([]);
+    const semContato = selecionados.filter((a) => !itens.includes(a));
+    if (semContato.length) {
+      const tpl = usaveis.find((t) => t.id === tplId);
+      const canaisTxt = canais.map((c) => (c === "whatsapp" ? "WhatsApp" : "e-mail")).join("/");
+      await rc.from("rc_notification_logs").insert(semContato.map(({ c, plates }) => ({
+        client_id: c.id, client_name: c.name, sent_by: "Envio em massa", plates: [...new Set(plates)], channels: [],
+        template_name: tpl?.name ?? "", status: "error", error_message: `Cliente sem contato (${canaisTxt}) cadastrado.`, batch_id: batchId,
+      })));
+      for (const { c } of semContato) res.push({ nome: c.name, ok: false, detalhe: `Sem contato (${canaisTxt}) — registrado no histórico.` });
+    }
     for (let i = 0; i < itens.length; i++) {
       setProgresso(`Enviando ${i + 1}/${itens.length}: ${itens[i].c.name}`);
       const dest = destinosCliente(itens[i].c);
@@ -149,7 +159,8 @@ export function NotificacoesTab({ clients, vehicles, templates }: { clients: RcC
     setProgresso(null);
     const ok = res.filter((x) => x.ok).length;
     (ok === res.length ? toast.success : toast.error)(`Envio concluído: ${ok} de ${res.length} cliente(s) notificado(s).`);
-    if (ok) setSel((x) => x.filter((id) => !itens.some((it, i) => it.c.id === id && res[i]?.ok)));
+    const enviados = new Set(itens.filter((it) => res.some((r) => r.ok && r.nome === it.c.name)).map((it) => it.c.id));
+    if (enviados.size) setSel((x) => x.filter((id) => !enviados.has(id)));
     invalidate();
   };
 
@@ -196,7 +207,7 @@ export function NotificacoesTab({ clients, vehicles, templates }: { clients: RcC
             <div className="space-y-3 text-sm">
               <p className="text-xs text-muted-foreground">
                 Modelo <b>{tplSel?.name}</b> · canais: {canais.map((c) => (c === "whatsapp" ? "WhatsApp" : "E-mail")).join(" e ")}.
-                {selecionados.length > comContato.length && ` ${selecionados.length - comContato.length} cliente(s) marcado(s) sem contato para esses canais ficam de fora.`}
+                {selecionados.length > comContato.length && ` ${selecionados.length - comContato.length} cliente(s) marcado(s) sem contato para esses canais não recebem e ficam registrados no histórico como não enviados.`}
               </p>
               <div className="max-h-64 overflow-y-auto rounded border divide-y">
                 {comContato.map(({ c, plates }) => {
@@ -232,7 +243,7 @@ export function NotificacoesTab({ clients, vehicles, templates }: { clients: RcC
             {!resultados ? (
               <>
                 <Button variant="outline" onClick={() => setConfirmar(false)}>Cancelar</Button>
-                <Button onClick={enviarLote} disabled={!comContato.length}><Send className="h-4 w-4 mr-1" />Confirmar envio</Button>
+                <Button onClick={enviarLote} disabled={!selecionados.length}><Send className="h-4 w-4 mr-1" />Confirmar envio</Button>
               </>
             ) : (
               <Button onClick={() => setConfirmar(false)} disabled={!!progresso}>Fechar</Button>
@@ -240,25 +251,7 @@ export function NotificacoesTab({ clients, vehicles, templates }: { clients: RcC
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      <Card>
-        <CardHeader className="pb-2"><CardTitle className="text-sm">Histórico de notificações</CardTitle></CardHeader>
-        <Table>
-          <TableHeader><TableRow><TableHead>Quando</TableHead><TableHead>Cliente</TableHead><TableHead>Placas</TableHead><TableHead>Canais</TableHead><TableHead>Modelo</TableHead><TableHead>Por</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
-          <TableBody>
-            {historico.map((h) => (
-              <TableRow key={h.id}>
-                <TableCell className="text-xs whitespace-nowrap">{fmt(h.sent_at)}</TableCell>
-                <TableCell className="text-xs">{h.client_name}</TableCell>
-                <TableCell className="text-xs max-w-[220px] truncate" title={(h.plates || []).join(", ")}>{(h.plates || []).length}</TableCell>
-                <TableCell className="text-xs">{(h.channels || []).join(", ")}</TableCell>
-                <TableCell className="text-xs">{h.template_name}</TableCell>
-                <TableCell className="text-xs">{h.sent_by}</TableCell>
-                <TableCell className="text-xs" title={h.error_message}>{h.status === "error" ? <Badge variant="destructive">Erro</Badge> : h.status === "partial" ? <Badge variant="secondary">Parcial</Badge> : <Badge variant="outline">OK</Badge>}</TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
+      <HistoricoNotificacoes historico={historico} />
     </div>
   );
 }
