@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { NOTIFICACOES_CONTATO, notificacoesDoContato, type NotificacaoContato } from "@/lib/contato-notificacoes";
+import { ContatosTabela } from "@/components/empresas/contatos-tabela";
+import { notificacoesDoContato, type NotificacaoContato } from "@/lib/contato-notificacoes";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
@@ -633,7 +634,7 @@ function EmpresasPage() {
 
       {/* Dialog for create/edit */}
       <Dialog open={isDialogOpen} onOpenChange={(open) => { if (!open) { resetForm(); } setIsDialogOpen(open); }}>
-        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingCompany ? "Editar Empresa" : "Nova Empresa"}
@@ -761,112 +762,14 @@ function EmpresasPage() {
                 Marque em "Recebe" quais avisos vão para cada contato. Pode marcar o mesmo aviso em vários contatos: todos recebem
                 (ex.: o Reconnect envia os eventos de veículo sem comunicação para os contatos marcados).
               </p>
-              {formContacts.map((contact, idx) => (
-                <div key={idx} className="flex flex-wrap items-center gap-2 rounded border p-2">
-                  <Input
-                    value={contact.name}
-                    onChange={(e) => {
-                      const c = [...formContacts];
-                      c[idx] = { ...c[idx], name: e.target.value };
-                      setFormContacts(c);
-                    }}
-                    placeholder="Nome"
-                    className="flex-1 min-w-[140px]"
-                  />
-                  <Input
-                    value={contact.phone}
-                    onChange={(e) => {
-                      const c = [...formContacts];
-                      c[idx] = { ...c[idx], phone: e.target.value };
-                      setFormContacts(c);
-                    }}
-                    placeholder="Telefone"
-                    className="w-40"
-                  />
-                  <Input
-                    value={contact.sector}
-                    onChange={(e) => {
-                      const c = [...formContacts];
-                      c[idx] = { ...c[idx], sector: e.target.value };
-                      setFormContacts(c);
-                    }}
-                    placeholder="Setor"
-                    className="w-32"
-                  />
-                  <Input
-                    value={contact.email}
-                    onChange={(e) => {
-                      const c = [...formContacts];
-                      c[idx] = { ...c[idx], email: e.target.value };
-                      setFormContacts(c);
-                    }}
-                    placeholder="E-mail"
-                    className="flex-1 min-w-[160px]"
-                  />
-                  <label className="flex items-center gap-1.5 text-xs whitespace-nowrap cursor-pointer">
-                    <Checkbox
-                      checked={!!contact.is_prime}
-                      onCheckedChange={(v) => {
-                        const c = [...formContacts];
-                        c[idx] = { ...c[idx], is_prime: v === true };
-                        setFormContacts(c);
-                      }}
-                    />
-                    Prime (prioridade na fila)
-                  </label>
-                  {formContacts.length > 1 && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() =>
-                        setFormContacts(formContacts.filter((_, i) => i !== idx))
-                      }
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  )}
-                  <div className="flex w-full flex-wrap items-center gap-3 pl-1 text-xs text-muted-foreground">
-                    <span>Recebe:</span>
-                    {NOTIFICACOES_CONTATO.map((n) => (
-                      <label key={n.key} className="flex items-center gap-1.5 whitespace-nowrap cursor-pointer text-foreground">
-                        <Checkbox
-                          checked={(contact.notificacoes || []).includes(n.key)}
-                          onCheckedChange={(v) => {
-                            const c = [...formContacts];
-                            const atual = c[idx].notificacoes || [];
-                            c[idx] = { ...c[idx], notificacoes: v === true ? [...new Set([...atual, n.key])] : atual.filter((k) => k !== n.key) };
-                            setFormContacts(c);
-                          }}
-                        />
-                        {n.label}
-                      </label>
-                    ))}
-                  </div>
-                  <div className="w-full space-y-1">
-                    <Textarea
-                      value={contact.observacao || ""}
-                      onChange={(e) => {
-                        const c = [...formContacts];
-                        c[idx] = { ...c[idx], observacao: e.target.value };
-                        setFormContacts(c);
-                      }}
-                      onBlur={() => salvarObservacao(idx)}
-                      maxLength={2000}
-                      rows={2}
-                      placeholder="Observação sobre este contato (ex.: melhor horário, só falar sobre financeiro...)"
-                      className="text-xs min-h-[48px]"
-                    />
-                    <p className="text-[11px] text-muted-foreground">
-                      {salvandoObs === idx
-                        ? "Salvando observação..."
-                        : contatoGravado(idx)
-                          ? "A observação é salva ao sair do campo."
-                          : "Contato novo ou alterado: a observação é gravada ao salvar a empresa."}
-                    </p>
-                  </div>
-                </div>
-              ))}
-
+              <ContatosTabela
+                contatos={formContacts}
+                onChange={setFormContacts}
+                salvarObservacao={salvarObservacao}
+                contatoGravado={contatoGravado}
+                salvandoObs={salvandoObs}
+                empresaNome={editingCompany?.name}
+              />
             </TabsContent>
 
             <TabsContent value="instrucoes" className="space-y-2 mt-4">
