@@ -19,6 +19,10 @@ import {
   type AvaliacaoNeg, type LancNeg, type Negativacao, type Orgao, type SituacaoVisivel,
 } from "@/lib/finance-negativacao";
 import { fin, type Lanc } from "./use-fin";
+import { useTableColumns } from "@/components/data-table/use-table-columns";
+import { ColumnFilterHeader } from "@/components/data-table/column-filter-header";
+import { TableToolbar } from "@/components/data-table/table-toolbar";
+import type { TableColumn } from "@/lib/table-columns";
 
 export type CriterioNeg = { diasMinimo: number; valorMinimo: number; prazoDiasUteis: number };
 
@@ -73,6 +77,19 @@ export function ProtestoSerasaTab({ lancamentos, lista, criterio, onAbrirCliente
     (orgao === "todos" || n.orgao === orgao) &&
     (sit === "todos" || (sit === "abertos" ? !["baixado", "cancelado"].includes(a.visivel) : a.visivel === sit)));
 
+  type Av = (typeof avaliadas)[number];
+  const colunas: TableColumn<Av>[] = [
+    { id: "cliente", label: "Cliente", value: ({ n }) => n.cliente_nome ?? n.documento ?? "" },
+    { id: "documento", label: "CPF/CNPJ", value: ({ n }) => n.documento ?? "" },
+    { id: "orgao", label: "Órgão", value: ({ n }) => NOME_ORGAO[n.orgao] },
+    { id: "situacao", label: "Situação", value: ({ a }) => VISIVEL[a.visivel].texto },
+    { id: "valor", label: "Valor", value: ({ n }) => Number(n.valor) },
+    { id: "datas", label: "Datas", value: ({ n }) => [n.data_envio && `Envio ${formatDataBR(n.data_envio)}`, n.data_inclusao && `Inclusão ${formatDataBR(n.data_inclusao)}`, n.data_baixa && `Baixa ${formatDataBR(n.data_baixa)}`].filter(Boolean).join(" · ") },
+    { id: "protocolo", label: "Protocolo", value: ({ n }) => [n.protocolo, n.cartorio].filter(Boolean).join(" · ") },
+  ];
+  const tabela = useTableColumns("fin-negativacoes", colunas, filtrados);
+  const th = (id: string) => <ColumnFilterHeader column={colunas.find((c) => c.id === id)!} state={tabela} />;
+
   if (q.error) return <Card className="border-amber-500"><CardContent className="pt-4 text-sm">Aplique a migração 0071 no Lovable para usar esta parte.</CardContent></Card>;
 
   return (
@@ -123,11 +140,12 @@ export function ProtestoSerasaTab({ lancamentos, lista, criterio, onAbrirCliente
             <Button size="sm" onClick={() => setNovo("vazio")}><Plus className="h-4 w-4 mr-1" />Novo registro</Button>
           </div>
         </CardHeader>
-        <CardContent className="overflow-x-auto">
+        <CardContent className="overflow-x-auto space-y-2">
+          <TableToolbar state={tabela} fileName="protesto-serasa" semColunas count={tabela.filteredRows.length}><div className="mr-auto text-xs">{th("documento")}</div></TableToolbar>
           <Table>
-            <TableHeader><TableRow><TableHead>Cliente</TableHead><TableHead>Órgão</TableHead><TableHead>Situação</TableHead><TableHead className="text-right">Valor</TableHead><TableHead>Datas</TableHead><TableHead>Protocolo</TableHead><TableHead /></TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead>{th("cliente")}</TableHead><TableHead>{th("orgao")}</TableHead><TableHead>{th("situacao")}</TableHead><TableHead className="text-right">{th("valor")}</TableHead><TableHead>{th("datas")}</TableHead><TableHead>{th("protocolo")}</TableHead><TableHead /></TableRow></TableHeader>
             <TableBody>
-              {filtrados.map(({ n, a }) => (
+              {tabela.filteredRows.map(({ n, a }) => (
                 <TableRow key={n.id}>
                   <TableCell className="font-medium"><button className="text-left hover:underline" onClick={() => { const c = lista.find((x) => x.documento === n.documento); if (c) onAbrirCliente(c.chave); }}>{n.cliente_nome ?? n.documento}</button><div className="text-[11px] text-muted-foreground">{n.documento}</div></TableCell>
                   <TableCell>{NOME_ORGAO[n.orgao]}</TableCell>
@@ -142,7 +160,7 @@ export function ProtestoSerasaTab({ lancamentos, lista, criterio, onAbrirCliente
                   <TableCell className="text-right"><AcoesRegistro n={n} a={a} onEditar={() => setEditar(n)} onCarta={() => setCarta(n)} /></TableCell>
                 </TableRow>
               ))}
-              {!filtrados.length && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">Nenhum registro.</TableCell></TableRow>}
+              {!tabela.filteredRows.length && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">Nenhum registro.</TableCell></TableRow>}
             </TableBody>
           </Table>
         </CardContent>

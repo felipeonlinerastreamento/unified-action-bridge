@@ -26,6 +26,10 @@ import { fin, useFinInvalidate, type Lanc } from "./use-fin";
 import { useAbrirAnexo } from "./lancamentos-tab";
 import { NegativacoesCliente, ProtestoSerasaTab, useDocsNegativados } from "./protesto-serasa";
 import { NOME_ORGAO } from "@/lib/finance-negativacao";
+import { useTableColumns } from "@/components/data-table/use-table-columns";
+import { ColumnFilterHeader } from "@/components/data-table/column-filter-header";
+import { TableToolbar } from "@/components/data-table/table-toolbar";
+import type { TableColumn } from "@/lib/table-columns";
 
 const TIPOS_ACAO: Record<string, string> = {
   contato: "Contato", promessa: "Promessa de pagamento", acordo: "Acordo / parcelamento", nota: "Anotação",
@@ -166,7 +170,27 @@ function ListaClientes({ lista, onAbrir }: { lista: ClienteInadimplente[]; onAbr
     (faixa === "todas" || c.faixa === faixa) &&
     (!soSemAcao || !c.ultimaAcao || c.ultimaAcao.tipo === "regua") &&
     (!q || c.nome.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().includes(q) || (c.documento ?? "").includes(q.replace(/\D/g, "") || "§")));
-  const total = filtrada.reduce((s, c) => s + c.valor, 0);
+  const sinais = (c: ClienteInadimplente) => [
+    c.promessa ? (c.promessa.quebrada ? "Promessa vencida" : "Promessa") : "",
+    c.acordo ? "Acordo" : "",
+    ...(c.documento ? (negativados.get(c.documento) ?? []).map((o) => (o === "protesto" ? "Protestado" : NOME_ORGAO[o])) : []),
+    c.reguaPausada ? "Régua pausada" : "",
+    c.sugestoes.includes("sem_contato") ? "Sem contato" : "",
+  ].filter(Boolean).join(", ");
+  const colunas: TableColumn<ClienteInadimplente>[] = [
+    { id: "cliente", label: "Cliente", value: (c) => c.nome },
+    { id: "documento", label: "CPF/CNPJ", value: (c) => c.documento ?? "" },
+    { id: "situacao", label: "Situação", value: (c) => SITUACAO[c.situacao].texto },
+    { id: "vencido", label: "Vencido", value: (c) => c.valor },
+    { id: "faturas", label: "Faturas", value: (c) => c.qtd },
+    { id: "atraso", label: "Atraso", value: (c) => c.diasMaisAntigo },
+    { id: "contato", label: "Último contato", value: (c) => (c.ultimaAcao ? TIPOS_ACAO[c.ultimaAcao.tipo] ?? c.ultimaAcao.tipo : "") },
+    { id: "sinais", label: "Sinais", value: sinais },
+  ];
+  const tabela = useTableColumns("fin-inadimplencia", colunas, filtrada);
+  const visiveis = tabela.filteredRows;
+  const th = (id: string) => <ColumnFilterHeader column={colunas.find((c) => c.id === id)!} state={tabela} />;
+  const total = visiveis.reduce((s, c) => s + c.valor, 0);
   return (
     <Card>
       <CardHeader className="pb-3">
@@ -181,17 +205,18 @@ function ListaClientes({ lista, onAbrir }: { lista: ClienteInadimplente[]; onAbr
               <SelectItem value="todas">Todas as faixas</SelectItem>{FAIXAS.map((f) => <SelectItem key={f} value={f}>{NOME_FAIXA[f]}</SelectItem>)}
             </SelectContent></Select></div>
           <label className="flex items-center gap-2 text-sm pb-2"><Checkbox checked={soSemAcao} onCheckedChange={(v) => setSoSemAcao(!!v)} />Sem contato registrado</label>
-          <div className="ml-auto text-sm text-muted-foreground pb-2">{filtrada.length} cliente(s) · <b className="text-foreground">{formatBRL(total)}</b></div>
+          <div className="ml-auto text-sm text-muted-foreground pb-2">{visiveis.length} cliente(s) · <b className="text-foreground">{formatBRL(total)}</b></div>
         </div>
+        <TableToolbar state={tabela} fileName="inadimplencia" semColunas><div className="mr-auto text-xs">{th("documento")}</div></TableToolbar>
       </CardHeader>
       <CardContent className="overflow-x-auto">
         <Table>
           <TableHeader><TableRow>
-            <TableHead>Cliente</TableHead><TableHead>Situação</TableHead><TableHead className="text-right">Vencido</TableHead>
-            <TableHead className="text-right">Faturas</TableHead><TableHead className="text-right">Atraso</TableHead><TableHead>Último contato</TableHead><TableHead>Sinais</TableHead>
+            <TableHead>{th("cliente")}</TableHead><TableHead>{th("situacao")}</TableHead><TableHead className="text-right">{th("vencido")}</TableHead>
+            <TableHead className="text-right">{th("faturas")}</TableHead><TableHead className="text-right">{th("atraso")}</TableHead><TableHead>{th("contato")}</TableHead><TableHead>{th("sinais")}</TableHead>
           </TableRow></TableHeader>
           <TableBody>
-            {filtrada.slice(0, 500).map((c) => (
+            {visiveis.slice(0, 500).map((c) => (
               <TableRow key={c.chave} className="cursor-pointer" onClick={() => onAbrir(c.chave)}>
                 <TableCell className="font-medium">{c.nome}<div className="text-[11px] text-muted-foreground">{c.documento ?? "sem CPF/CNPJ"}</div></TableCell>
                 <TableCell><Badge variant="outline" className={SITUACAO[c.situacao].cls} title={c.situacaoTexto ?? undefined}>{SITUACAO[c.situacao].texto}</Badge></TableCell>
@@ -208,10 +233,10 @@ function ListaClientes({ lista, onAbrir }: { lista: ClienteInadimplente[]; onAbr
                 </TableCell>
               </TableRow>
             ))}
-            {!filtrada.length && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">Nenhum cliente em atraso com esses filtros.</TableCell></TableRow>}
+            {!visiveis.length && <TableRow><TableCell colSpan={7} className="text-center text-muted-foreground py-6">Nenhum cliente em atraso com esses filtros.</TableCell></TableRow>}
           </TableBody>
         </Table>
-        {filtrada.length > 500 && <p className="text-xs text-muted-foreground mt-2">Mostrando os 500 maiores. Use os filtros para ver os demais.</p>}
+        {visiveis.length > 500 && <p className="text-xs text-muted-foreground mt-2">Mostrando os 500 maiores. Use os filtros para ver os demais.</p>}
       </CardContent>
     </Card>
   );
@@ -306,7 +331,16 @@ function Regua({ cfg }: { cfg: any }) {
   const [previa, setPrevia] = useState<any[] | null>(null);
   const canaisWa = useQuery({ queryKey: ["fin-canais-wa"], queryFn: async () => (await fin.from("channels").select("id, name").eq("is_active", true).not("zapi_instance_id", "is", null).order("name")).data ?? [] });
   const canaisEmail = useQuery({ queryKey: ["fin-canais-email"], queryFn: async () => (await fin.from("email_channels").select("id, email_address").order("email_address")).data ?? [] });
-  const envios = useQuery({ queryKey: ["fin-cobranca-envios"], queryFn: async () => (await fin.from("fin_cobranca_envios").select("*").order("created_at", { ascending: false }).limit(100)).data ?? [], retry: false });
+  const envios = useQuery({ queryKey: ["fin-cobranca-envios"], queryFn: async () => (await fin.from("fin_cobranca_envios").select("*").order("created_at", { ascending: false }).limit(500)).data ?? [], retry: false });
+  const colEnvios: TableColumn<any>[] = [
+    { id: "quando", label: "Quando", value: (e) => dataHora(e.created_at) },
+    { id: "passo", label: "Passo", value: (e) => (Number(e.passo) < 0 ? `${-Number(e.passo)} dia(s) antes` : `D+${e.passo}`) },
+    { id: "canal", label: "Canal", value: (e) => (e.canal === "whatsapp" ? "WhatsApp" : "E-mail") },
+    { id: "destino", label: "Destino", value: (e) => e.destino ?? "" },
+    { id: "situacao", label: "Situação", value: (e) => (e.status === "enviado" ? "Enviado" : e.status === "sem_contato" ? "Sem contato" : "Erro") },
+  ];
+  const tabEnvios = useTableColumns("fin-cobranca-envios", colEnvios, (envios.data ?? []) as any[]);
+  const thE = (id: string) => <ColumnFilterHeader column={colEnvios.find((c) => c.id === id)!} state={tabEnvios} />;
 
   const salvar = async () => {
     setBusy("salvar");
@@ -434,11 +468,12 @@ function Regua({ cfg }: { cfg: any }) {
       </Card>
       <Card>
         <CardHeader className="pb-2"><CardTitle className="text-sm">Últimos envios</CardTitle></CardHeader>
-        <CardContent className="overflow-x-auto">
+        <CardContent className="overflow-x-auto space-y-2">
+          <TableToolbar state={tabEnvios} fileName="regua-envios" semColunas count={tabEnvios.filteredRows.length} />
           <Table>
-            <TableHeader><TableRow><TableHead>Quando</TableHead><TableHead>Passo</TableHead><TableHead>Canal</TableHead><TableHead>Destino</TableHead><TableHead>Situação</TableHead></TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead>{thE("quando")}</TableHead><TableHead>{thE("passo")}</TableHead><TableHead>{thE("canal")}</TableHead><TableHead>{thE("destino")}</TableHead><TableHead>{thE("situacao")}</TableHead></TableRow></TableHeader>
             <TableBody>
-              {(envios.data ?? []).map((e: any) => (
+              {tabEnvios.filteredRows.map((e: any) => (
                 <TableRow key={e.id}><TableCell>{dataHora(e.created_at)}</TableCell><TableCell>{Number(e.passo) < 0 ? `${-Number(e.passo)} dia(s) antes` : `D+${e.passo}`}</TableCell>
                   <TableCell>{e.canal === "whatsapp" ? "WhatsApp" : "E-mail"}</TableCell><TableCell className="text-xs">{e.destino ?? "—"}</TableCell>
                   <TableCell>{e.status === "enviado" ? <Badge variant="outline" className="border-emerald-500 text-emerald-700">Enviado</Badge> : e.status === "sem_contato" ? <Badge variant="outline">Sem contato</Badge> : <Badge variant="destructive" title={e.erro ?? ""}>Erro</Badge>}</TableCell></TableRow>

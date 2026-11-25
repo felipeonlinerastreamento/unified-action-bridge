@@ -17,6 +17,10 @@ import { formatBRL, formatDataBR, hojeSP } from "@/lib/finance";
 import { CANAL_LABEL, SERVICO_LABEL, TIPO_REGRA_LABEL, normalizarRegras, soDigitos, type Regra, type TipoServico } from "@/lib/finance-fornecedores";
 import { simularCobrancaFn } from "@/lib/finance-fornecedores.functions";
 import { fin, type Cat, type Emp, type Lanc } from "./use-fin";
+import { useTableColumns } from "@/components/data-table/use-table-columns";
+import { ColumnFilterHeader } from "@/components/data-table/column-filter-header";
+import { TableToolbar } from "@/components/data-table/table-toolbar";
+import type { TableColumn } from "@/lib/table-columns";
 
 export type Fornecedor = {
   id: string; nome: string; documento: string | null; emails: string[]; categoria_id: string | null; empresa_id: string | null;
@@ -70,6 +74,20 @@ export function FornecedoresTab({ lancamentos, categorias, empresas }: { lancame
     return [...m.values()].sort((a, b) => b.qtd - a.qtd).slice(0, 50);
   }, [lancamentos, fornecedores]);
 
+  const ultima = (f: Fornecedor) => lancamentos.filter((l) => l.fornecedor_id === f.id).sort((a, b) => String(b.vencimento).localeCompare(String(a.vencimento)))[0];
+  const colunas = useMemo<TableColumn<Fornecedor>[]>(() => [
+    { id: "fornecedor", label: "Fornecedor", value: (f) => f.nome },
+    { id: "documento", label: "CNPJ", value: (f) => f.documento || "" },
+    { id: "regra", label: "Como cobra", value: (f) => (f.regras.length ? f.regras.map((r) => TIPO_REGRA_LABEL[r.tipo]).join(" + ") : "sem regra") },
+    { id: "categoria", label: "Categoria", value: (f) => catNome(f.categoria_id) },
+    { id: "tolerancia", label: "Tolerância", value: (f) => Number(f.tolerancia_pct) },
+    { id: "ultima", label: "Última cobrança", value: (f) => { const u = ultima(f); return u ? formatDataBR(u.vencimento) : ""; } },
+    { id: "ativo", label: "Ativo", value: (f) => (f.ativo ? "Sim" : "Não") },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [lancamentos, categorias]);
+  const tabela = useTableColumns("fin-fornecedores", colunas, fornecedores);
+  const th = (id: string) => <ColumnFilterHeader column={colunas.find((c) => c.id === id)!} state={tabela} />;
+
   const excluir = async (f: Fornecedor) => {
     if (!confirm(`Excluir o fornecedor ${f.nome}? As contas e evidências dele continuam guardadas.`)) return;
     const { error } = await fin.from("fin_fornecedores").delete().eq("id", f.id);
@@ -86,14 +104,17 @@ export function FornecedoresTab({ lancamentos, categorias, empresas }: { lancame
         {sugestoes.length > 0 && <Button variant="outline" onClick={() => setSugerir(true)}><UserPlus className="h-4 w-4 mr-1" />Das contas a pagar ({sugestoes.length})</Button>}
         <Button onClick={() => setEdit({ ...vazio(), emailsTxt: "" })}><Plus className="h-4 w-4 mr-1" />Novo fornecedor</Button>
       </div>
+      <TableToolbar state={tabela} fileName="fornecedores" semColunas count={tabela.filteredRows.length}>
+        <div className="mr-auto flex items-center gap-4 text-xs">{th("documento")}{th("ativo")}</div>
+      </TableToolbar>
       <Card>
         {q.isLoading ? <Loader2 className="h-5 w-5 animate-spin m-4" /> : (
           <Table>
-            <TableHeader><TableRow><TableHead>Fornecedor</TableHead><TableHead>Como cobra</TableHead><TableHead>Categoria</TableHead><TableHead>Tolerância</TableHead><TableHead>Última cobrança</TableHead><TableHead className="w-28" /></TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead>{th("fornecedor")}</TableHead><TableHead>{th("regra")}</TableHead><TableHead>{th("categoria")}</TableHead><TableHead>{th("tolerancia")}</TableHead><TableHead>{th("ultima")}</TableHead><TableHead className="w-28" /></TableRow></TableHeader>
             <TableBody>
               {fornecedores.length === 0 && <TableRow><TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-8">Nenhum fornecedor cadastrado.</TableCell></TableRow>}
-              {fornecedores.map((f) => {
-                const ult = lancamentos.filter((l) => l.fornecedor_id === f.id).sort((a, b) => String(b.vencimento).localeCompare(String(a.vencimento)))[0];
+              {tabela.filteredRows.map((f) => {
+                const ult = ultima(f);
                 return (
                   <TableRow key={f.id} className={f.ativo ? "" : "opacity-60"}>
                     <TableCell className="font-medium">{f.nome}<div className="text-xs text-muted-foreground">{f.documento || "sem CNPJ"}{f.emails.length ? ` · ${f.emails.join(", ")}` : ""}</div></TableCell>

@@ -18,6 +18,10 @@ import { formatBRL, formatDataBR } from "@/lib/finance";
 import { lerPlanilhaDda, type ItemDda } from "@/lib/finance-fornecedores";
 import { conferirLancamentoFn, decidirAprovacaoFn, importarDdaFn, lerEmailAgoraFn, statusEmailFinanceiroFn } from "@/lib/finance-fornecedores.functions";
 import { fin, useFinInvalidate, type Lanc } from "./use-fin";
+import { useTableColumns } from "@/components/data-table/use-table-columns";
+import { ColumnFilterHeader } from "@/components/data-table/column-filter-header";
+import { TableToolbar } from "@/components/data-table/table-toolbar";
+import type { TableColumn } from "@/lib/table-columns";
 import { useAbrirAnexo } from "./lancamentos-tab";
 import { TIPO_EVIDENCIA, useFornecedores } from "./fornecedores-tab";
 
@@ -51,6 +55,20 @@ export function AprovacoesTab({ lancamentos }: { lancamentos: Lanc[] }) {
     },
   });
 
+  const conferenciaTxt = (l: Lanc) => { const c = l.conferencia; return !c || c.status === "sem_regra" ? "sem regra" : c.status === "ok" ? "confere" : c.status === "acima" ? "acima do esperado" : "abaixo do esperado"; };
+  const colunas = useMemo<TableColumn<Lanc>[]>(() => [
+    { id: "vencimento", label: "Vencimento", value: (l) => formatDataBR(l.vencimento) },
+    { id: "fornecedor", label: "Fornecedor", value: (l) => fornNome(l.fornecedor_id) ?? l.contraparte ?? "" },
+    { id: "cobrado", label: "Cobrado", value: (l) => Number(l.valor || 0) },
+    { id: "esperado", label: "Esperado", value: (l) => (l.valor_esperado != null ? Number(l.valor_esperado) : null) },
+    { id: "conferencia", label: "Conferência", value: conferenciaTxt },
+    { id: "alertas", label: "Alertas", value: (l) => (evidPorLanc[l.id] ?? []).filter((e: any) => e.tipo !== "aprovacao").map((e: any) => TIPO_EVIDENCIA[e.tipo] ?? e.tipo).join(", ") },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [forn.data, evidPorLanc]);
+  const tabela = useTableColumns("fin-aprovacoes", colunas, pend);
+  const lista = tabela.filteredRows;
+  const th = (id: string) => <ColumnFilterHeader column={colunas.find((c) => c.id === id)!} state={tabela} />;
+
   const aprovar = async (ids: string[]) => {
     setBusy(true);
     try { await decidir({ data: { ids, decisao: "aprovado" } }); toast.success(`${ids.length} conta(s) aprovada(s) para pagamento.`); setSel([]); invalidate(); }
@@ -78,14 +96,15 @@ export function AprovacoesTab({ lancamentos }: { lancamentos: Lanc[] }) {
             <Button size="sm" variant="outline" disabled={!sel.length || busy} onClick={() => setReprovar(sel)}><X className="h-4 w-4 mr-1" />Reprovar</Button>
           </div>
         </CardHeader>
+        <div className="px-4 pb-2"><TableToolbar state={tabela} fileName="aprovacoes" semColunas /></div>
         <Table>
           <TableHeader><TableRow>
-            <TableHead className="w-8"><Checkbox checked={pend.length > 0 && sel.length === pend.length} onCheckedChange={(v) => setSel(v ? pend.map((p) => p.id) : [])} /></TableHead>
-            <TableHead className="w-6" /><TableHead>Vencimento</TableHead><TableHead>Fornecedor</TableHead><TableHead className="text-right">Cobrado</TableHead><TableHead className="text-right">Esperado</TableHead><TableHead>Conferência</TableHead><TableHead>Alertas</TableHead><TableHead />
+            <TableHead className="w-8"><Checkbox checked={lista.length > 0 && lista.every((p) => sel.includes(p.id))} onCheckedChange={(v) => setSel(v ? lista.map((p) => p.id) : [])} /></TableHead>
+            <TableHead className="w-6" /><TableHead>{th("vencimento")}</TableHead><TableHead>{th("fornecedor")}</TableHead><TableHead className="text-right">{th("cobrado")}</TableHead><TableHead className="text-right">{th("esperado")}</TableHead><TableHead>{th("conferencia")}</TableHead><TableHead>{th("alertas")}</TableHead><TableHead />
           </TableRow></TableHeader>
           <TableBody>
-            {!pend.length && <TableRow><TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-8">Nada aguardando aprovação.</TableCell></TableRow>}
-            {pend.map((l) => {
+            {!lista.length && <TableRow><TableCell colSpan={9} className="text-center text-sm text-muted-foreground py-8">{pend.length ? "Nada com esses filtros." : "Nada aguardando aprovação."}</TableCell></TableRow>}
+            {lista.map((l) => {
               const ev = evidPorLanc[l.id] ?? [];
               const c = l.conferencia;
               return (

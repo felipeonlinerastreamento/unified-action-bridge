@@ -8,6 +8,17 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Plus } from "lucide-react";
 import { toast } from "sonner";
 import { fin, useFinInvalidate, type Cat, type Emp } from "./use-fin";
+import { useTableColumns } from "@/components/data-table/use-table-columns";
+import { ColumnFilterHeader } from "@/components/data-table/column-filter-header";
+import { TableToolbar } from "@/components/data-table/table-toolbar";
+import type { TableColumn } from "@/lib/table-columns";
+
+const COLUNAS_CAT: TableColumn<Cat>[] = [
+  { id: "nome", label: "Nome", value: (c) => c.nome },
+  { id: "tipo", label: "Tipo", value: (c) => (c.tipo === "receita" ? "Receita" : "Despesa") },
+  { id: "grupo", label: "Grupo do DRE", value: (c) => c.grupo_dre },
+  { id: "ativa", label: "Ativa", value: (c) => (c.ativo ? "Sim" : "Não") },
+];
 
 const GRUPOS = ["Receita bruta", "Outras receitas", "Custo dos serviços", "Impostos", "Pessoal", "Despesas comerciais", "Despesas administrativas", "Despesas operacionais", "Despesas financeiras", "Outras despesas"];
 
@@ -15,6 +26,9 @@ export function CadastrosTab({ categorias, empresas }: { categorias: Cat[]; empr
   const invalidate = useFinInvalidate();
   const [nova, setNova] = useState({ nome: "", tipo: "despesa", grupo_dre: "Despesas operacionais" });
   const [emp, setEmp] = useState({ codigo: "", nome: "" });
+
+  const tabela = useTableColumns("fin-categorias", COLUNAS_CAT, categorias);
+  const th = (id: string) => <ColumnFilterHeader column={COLUNAS_CAT.find((c) => c.id === id)!} state={tabela} />;
 
   const upd = async (tabela: string, id: string, patch: any) => {
     const { error } = await fin.from(tabela).update(patch).eq("id", id);
@@ -48,10 +62,11 @@ export function CadastrosTab({ categorias, empresas }: { categorias: Cat[]; empr
             </Select>
             <Button onClick={criarCat}><Plus className="h-4 w-4 mr-1" />Adicionar</Button>
           </div>
+          <TableToolbar state={tabela} fileName="categorias" semColunas count={tabela.filteredRows.length} />
           <Table>
-            <TableHeader><TableRow><TableHead>Nome</TableHead><TableHead>Tipo</TableHead><TableHead>Grupo do DRE</TableHead><TableHead>Ativa</TableHead></TableRow></TableHeader>
+            <TableHeader><TableRow><TableHead>{th("nome")}</TableHead><TableHead>{th("tipo")}</TableHead><TableHead>{th("grupo")}</TableHead><TableHead>{th("ativa")}</TableHead></TableRow></TableHeader>
             <TableBody>
-              {categorias.map((c) => (
+              {tabela.filteredRows.map((c) => (
                 <TableRow key={c.id}>
                   <TableCell><Input className="h-8" defaultValue={c.nome} onBlur={(e) => e.target.value.trim() && e.target.value !== c.nome && upd("fin_categorias", c.id, { nome: e.target.value.trim() })} /></TableCell>
                   <TableCell className="text-sm">{c.tipo === "receita" ? "Receita" : "Despesa"}</TableCell>

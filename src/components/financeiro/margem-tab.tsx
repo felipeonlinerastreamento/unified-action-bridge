@@ -13,6 +13,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { formatBRL } from "@/lib/finance";
 import { faixaMargem, type ConfigMargem } from "@/lib/margem-cliente";
 import { margemPorClienteFn, salvarConfigMargemFn } from "@/lib/margem.functions";
+import { useTableColumns } from "@/components/data-table/use-table-columns";
+import { ColumnFilterHeader } from "@/components/data-table/column-filter-header";
+import { TableToolbar } from "@/components/data-table/table-toolbar";
+import type { TableColumn } from "@/lib/table-columns";
 
 const CAMPOS: { k: keyof ConfigMargem; label: string; ajuda: string }[] = [
   { k: "custo_chip_mensal", label: "Custo do chip por mês (R$)", ajuda: "Por equipamento com chip." },
@@ -36,6 +40,23 @@ export function MargemTab() {
     return (q.data?.linhas ?? []).filter((l) =>
       (!t || `${l.nome} ${l.documento}`.toLowerCase().includes(t)) && (faixa === "todas" || faixaMargem(l) === faixa));
   }, [q.data, busca, faixa]);
+
+  type LinhaM = (typeof linhas)[number];
+  const colunas = useMemo<TableColumn<LinhaM>[]>(() => [
+    { id: "cliente", label: "Cliente", value: (l) => l.nome },
+    { id: "classe", label: "Classe", value: (l) => l.classe },
+    { id: "veiculos", label: "Veíc./chips", value: (l) => l.veiculos },
+    { id: "receita", label: "Receita", value: (l) => l.receita },
+    { id: "chips", label: "Chips", value: (l) => l.chips },
+    { id: "equip", label: "Equip.", value: (l) => l.equipamentos },
+    { id: "visitas", label: "Visitas", value: (l) => l.visitas },
+    { id: "atend", label: "Atend.", value: (l) => l.atendimento },
+    { id: "impostos", label: "Impostos", value: (l) => l.impostos },
+    { id: "margem", label: "Margem", value: (l) => l.margem },
+    { id: "risco", label: "Risco", value: (l) => l.risco_nota ?? null },
+  ], []);
+  const tabela = useTableColumns("fin-margem", colunas, linhas);
+  const th = (id: string) => <ColumnFilterHeader column={colunas.find((c) => c.id === id)!} state={tabela} />;
 
   const tot = useMemo(() => {
     const ls = q.data?.linhas ?? [];
@@ -94,15 +115,18 @@ export function MargemTab() {
         <Button size="sm" variant={faixa === "prejuizo" ? "default" : "outline"} onClick={() => setFaixa("prejuizo")}>Prejuízo</Button>
         <Button size="sm" variant={faixa === "apertada" ? "default" : "outline"} onClick={() => setFaixa("apertada")}>Margem &lt; 20%</Button>
       </div>
+      <TableToolbar state={tabela} fileName="margem-por-cliente" semColunas count={tabela.filteredRows.length}>
+        <div className="mr-auto flex items-center gap-4 text-xs">{th("classe")}</div>
+      </TableToolbar>
       <Card>
         <Table>
           <TableHeader><TableRow>
-            <TableHead>Cliente</TableHead><TableHead className="text-right">Veíc./chips</TableHead><TableHead className="text-right">Receita</TableHead>
-            <TableHead className="text-right">Chips</TableHead><TableHead className="text-right">Equip.</TableHead><TableHead className="text-right">Visitas</TableHead>
-            <TableHead className="text-right">Atend.</TableHead><TableHead className="text-right">Impostos</TableHead><TableHead className="text-right">Margem</TableHead><TableHead>Risco</TableHead>
+            <TableHead>{th("cliente")}</TableHead><TableHead className="text-right">{th("veiculos")}</TableHead><TableHead className="text-right">{th("receita")}</TableHead>
+            <TableHead className="text-right">{th("chips")}</TableHead><TableHead className="text-right">{th("equip")}</TableHead><TableHead className="text-right">{th("visitas")}</TableHead>
+            <TableHead className="text-right">{th("atend")}</TableHead><TableHead className="text-right">{th("impostos")}</TableHead><TableHead className="text-right">{th("margem")}</TableHead><TableHead>{th("risco")}</TableHead>
           </TableRow></TableHeader>
           <TableBody>
-            {linhas.slice(0, 500).map((l) => {
+            {tabela.filteredRows.slice(0, 500).map((l) => {
               const f = faixaMargem(l);
               return (
                 <TableRow key={l.id}>

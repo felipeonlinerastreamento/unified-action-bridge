@@ -16,6 +16,10 @@ import { dataPlanejada, linhaLote, montarAgenda, saldoProjetado, semana } from "
 import { useAuth } from "@/hooks/use-auth";
 import { fin, useFinInvalidate, type Conta, type Lanc } from "./use-fin";
 import { useAbrirAnexo } from "./lancamentos-tab";
+import { useTableColumns } from "@/components/data-table/use-table-columns";
+import { ColumnFilterHeader } from "@/components/data-table/column-filter-header";
+import { TableToolbar } from "@/components/data-table/table-toolbar";
+import type { TableColumn } from "@/lib/table-columns";
 
 const DIA_SEMANA = ["domingo", "segunda", "terça", "quarta", "quinta", "sexta", "sábado"];
 const nomeDia = (iso: string) => DIA_SEMANA[new Date(`${iso}T12:00:00Z`).getUTCDay()];
@@ -34,8 +38,27 @@ export function AgendaTab({ lancamentos, contas }: { lancamentos: Lanc[]; contas
   const [valorDlg, setValorDlg] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const agenda = useMemo(() => montarAgenda(lancamentos, per.de, per.ate, hoje), [lancamentos, per.de, per.ate, hoje]);
   const contaNome = (id: string | null) => (id ? contas.find((c) => c.id === id)?.nome ?? "Conta removida" : "Sem conta definida");
+  // Filtros por coluna: aplicados aos pagamentos do período antes de agrupar por dia e conta.
+  const agendaBase = useMemo(() => montarAgenda(lancamentos, per.de, per.ate, hoje), [lancamentos, per.de, per.ate, hoje]);
+  const itensBase = useMemo(() => agendaBase.dias.flatMap((d) => d.contas.flatMap((c) => c.itens)), [agendaBase]);
+  const colunas = useMemo<TableColumn<Lanc>[]>(() => [
+    { id: "favorecido", label: "Favorecido", value: (l) => l.contraparte ?? "" },
+    { id: "descricao", label: "Descrição", value: (l) => l.descricao ?? "" },
+    { id: "vencimento", label: "Vencimento", value: (l) => formatDataBR(l.vencimento) },
+    { id: "forma", label: "Forma", value: (l) => (l.linha_digitavel ? "boleto" : l.tipo_documento ?? "") },
+    { id: "valor", label: "Valor", value: (l) => Number(l.valor || 0) },
+    { id: "conta", label: "Conta", value: (l) => contaNome(l.conta_bancaria_id) },
+    { id: "programado", label: "Data programada", value: (l) => formatDataBR(dataPlanejada(l)) },
+  ], [contas]);
+  const tabela = useTableColumns("fin-agenda", colunas, itensBase);
+  const agenda = useMemo(() => {
+    if (!tabela.activeFilters) return agendaBase;
+    const base = new Set(itensBase.map((l) => l.id));
+    const ok = new Set(tabela.filteredRows.map((l) => l.id));
+    return montarAgenda(lancamentos.filter((l) => !base.has(l.id) || ok.has(l.id)), per.de, per.ate, hoje);
+  }, [agendaBase, itensBase, tabela.activeFilters, tabela.filteredRows, lancamentos, per.de, per.ate, hoje]);
+  const th = (id: string) => <ColumnFilterHeader column={colunas.find((c) => c.id === id)!} state={tabela} />;
   const todos = agenda.dias.flatMap((d) => d.contas.flatMap((c) => c.itens));
   const selecionados = todos.filter((l) => sel.includes(l.id));
   const totalSel = selecionados.reduce((s, l) => s + Number(l.valor || 0), 0);
@@ -164,10 +187,13 @@ export function AgendaTab({ lancamentos, contas }: { lancamentos: Lanc[]; contas
           <CardTitle className="text-sm">Pagamentos de {formatDataBR(per.de)} a {formatDataBR(per.ate)}</CardTitle>
           {!sel.length && todos.length > 0 && <Button size="sm" variant="outline" onClick={exportar}><Download className="h-4 w-4 mr-1" />Exportar tudo</Button>}
         </CardHeader>
+        <div className="px-4 pb-2"><TableToolbar state={tabela} fileName="agenda-pagamentos" semColunas>
+          <div className="mr-auto flex items-center gap-4 text-xs">{th("conta")}{th("programado")}</div>
+        </TableToolbar></div>
         <Table>
           <TableHeader><TableRow>
             <TableHead className="w-8"><Checkbox checked={todos.length > 0 && sel.length === todos.length} onCheckedChange={(v) => setSel(v ? todos.map((l) => l.id) : [])} /></TableHead>
-            <TableHead>Favorecido</TableHead><TableHead>Descrição</TableHead><TableHead>Vencimento</TableHead><TableHead>Forma</TableHead><TableHead className="text-right">Valor</TableHead><TableHead />
+            <TableHead>{th("favorecido")}</TableHead><TableHead>{th("descricao")}</TableHead><TableHead>{th("vencimento")}</TableHead><TableHead>{th("forma")}</TableHead><TableHead className="text-right">{th("valor")}</TableHead><TableHead />
           </TableRow></TableHeader>
           <TableBody>
             {agenda.dias.length === 0 && <TableRow><TableCell colSpan={7} className="text-center text-sm text-muted-foreground py-8">Nenhum pagamento aprovado no período.</TableCell></TableRow>}

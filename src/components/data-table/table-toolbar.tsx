@@ -5,8 +5,10 @@ import { ExportExcelButton } from "./export-excel-button";
 import type { TableColumnsState } from "./use-table-columns";
 
 /** Column picker + "limpar filtros de coluna" + Excel export, shown above a table. */
-export function TableToolbar<T>({ state, fileName, count, children }: {
+export function TableToolbar<T>({ state, fileName, count, children, semColunas }: {
   state: TableColumnsState<T>; fileName: string; count?: number; children?: React.ReactNode;
+  /** Tabelas de layout fixo (agrupadas): só filtros e exportação, sem escolher colunas. */
+  semColunas?: boolean;
 }) {
   return (
     <div className="flex flex-wrap items-center justify-end gap-2">
@@ -19,7 +21,7 @@ export function TableToolbar<T>({ state, fileName, count, children }: {
           <X className="h-4 w-4 mr-1" /> Limpar filtros de coluna ({state.activeFilters})
         </Button>
       )}
-      <ColumnPicker state={state} />
+      {!semColunas && <ColumnPicker state={state} />}
       <ExportExcelButton state={state} fileName={fileName} />
     </div>
   );

@@ -5,6 +5,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { calcularDreMensal, fluxoDeCaixa, formatBRL, formatDataBR, hojeSP, mesAnterior, mesDe, mesesDoAno, type RegimeDre } from "@/lib/finance";
 import type { Cat, Conta, Lanc } from "./use-fin";
+import { useTableColumns } from "@/components/data-table/use-table-columns";
+import { ColumnFilterHeader } from "@/components/data-table/column-filter-header";
+import { TableToolbar } from "@/components/data-table/table-toolbar";
+import type { TableColumn } from "@/lib/table-columns";
 
 export function FluxoTab({ lancamentos, contas }: { lancamentos: Lanc[]; contas: Conta[] }) {
   const hoje = hojeSP();
@@ -15,6 +19,16 @@ export function FluxoTab({ lancamentos, contas }: { lancamentos: Lanc[]; contas:
   const pontos = useMemo(() => fluxoDeCaixa(lancamentos, agr, saldoInicial, de || undefined, ate || undefined), [lancamentos, agr, saldoInicial, de, ate]);
   const rotulo = (p: string) => (agr === "mes" ? `${p.slice(5, 7)}/${p.slice(0, 4)}` : agr === "semana" ? `Semana de ${formatDataBR(p)}` : formatDataBR(p));
   const max = Math.max(1, ...pontos.map((p) => Math.max(p.entradas, p.saidas)));
+  type Ponto = (typeof pontos)[number];
+  const colunas: TableColumn<Ponto>[] = [
+    { id: "periodo", label: "Período", value: (p) => rotulo(p.periodo) },
+    { id: "entradas", label: "Entradas", value: (p) => p.entradas },
+    { id: "saidas", label: "Saídas", value: (p) => p.saidas },
+    { id: "saldo", label: "Saldo", value: (p) => p.saldo },
+    { id: "negativo", label: "Saldo negativo", value: (p) => (p.saldo < 0 ? "Sim" : "Não") },
+  ];
+  const tabela = useTableColumns("fin-fluxo", colunas, pontos);
+  const th = (id: string) => <ColumnFilterHeader column={colunas.find((c) => c.id === id)!} state={tabela} />;
 
   return (
     <div className="space-y-3">
@@ -34,20 +48,21 @@ export function FluxoTab({ lancamentos, contas }: { lancamentos: Lanc[]; contas:
         </CardContent>
       </Card>
       <p className="text-xs text-muted-foreground">Pagos entram na data do pagamento; em aberto entram no vencimento (projeção). Cancelados não entram.</p>
+      <TableToolbar state={tabela} fileName="fluxo-de-caixa" semColunas><div className="mr-auto text-xs">{th("negativo")}</div></TableToolbar>
       <Card>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Período</TableHead>
-              <TableHead className="text-right">Entradas</TableHead>
-              <TableHead className="text-right">Saídas</TableHead>
+              <TableHead>{th("periodo")}</TableHead>
+              <TableHead className="text-right">{th("entradas")}</TableHead>
+              <TableHead className="text-right">{th("saidas")}</TableHead>
               <TableHead className="w-[30%]" />
-              <TableHead className="text-right">Saldo</TableHead>
+              <TableHead className="text-right">{th("saldo")}</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
             {pontos.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Sem movimentos no período.</TableCell></TableRow>}
-            {pontos.map((p) => (
+            {tabela.filteredRows.map((p) => (
               <TableRow key={p.periodo}>
                 <TableCell>{rotulo(p.periodo)}</TableCell>
                 <TableCell className="text-right text-emerald-600">{formatBRL(p.entradas)}</TableCell>

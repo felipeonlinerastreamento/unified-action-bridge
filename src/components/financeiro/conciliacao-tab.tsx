@@ -10,6 +10,10 @@ import { Upload, Link2, Undo2, Plus, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { formatBRL, formatDataBR, parseCsvExtrato, parseOfx, sugerirConciliacao } from "@/lib/finance";
 import { fin, useFinInvalidate, type Conta, type Emp, type Lanc } from "./use-fin";
+import { useTableColumns } from "@/components/data-table/use-table-columns";
+import { ColumnFilterHeader } from "@/components/data-table/column-filter-header";
+import { TableToolbar } from "@/components/data-table/table-toolbar";
+import type { TableColumn } from "@/lib/table-columns";
 
 type Item = { id: string; conta_bancaria_id: string; data: string; valor: number; descricao: string | null; fit_id: string | null; lancamento_id: string | null };
 
@@ -34,7 +38,25 @@ export function ConciliacaoTab({ lancamentos, contas, empresas }: { lancamentos:
   const conciliados = useMemo(() => new Set(itens.map((i) => i.lancamento_id).filter(Boolean) as string[]), [itens]);
   const lancById = useMemo(() => new Map(lancamentos.map((l) => [l.id, l])), [lancamentos]);
   const candidatos = useMemo(() => lancamentos.map((l) => ({ ...l, ja_conciliado: conciliados.has(l.id) })), [lancamentos, conciliados]);
-  const visiveis = itens.filter((i) => (mostrar === "pendentes" ? !i.lancamento_id : !!i.lancamento_id));
+  const base = useMemo(() => itens.filter((i) => (mostrar === "pendentes" ? !i.lancamento_id : !!i.lancamento_id)), [itens, mostrar]);
+  const lancTxt = (i: Item) => {
+    const l = i.lancamento_id ? lancById.get(i.lancamento_id) : null;
+    if (l) return `${l.contraparte ?? l.descricao ?? "—"} · venc. ${formatDataBR(l.vencimento)}`;
+    const sug = sugerirConciliacao({ data: i.data, valor: Number(i.valor), descricao: i.descricao ?? "" }, candidatos);
+    const s2 = sug ? lancById.get(sug.lancamentoId) : null;
+    return s2 ? `Sugestão: ${s2.contraparte ?? s2.descricao ?? "—"}` : "Sem correspondência";
+  };
+  const colunas = useMemo<TableColumn<Item>[]>(() => [
+    { id: "data", label: "Data", value: (i) => formatDataBR(i.data) },
+    { id: "historico", label: "Histórico do banco", value: (i) => i.descricao ?? "" },
+    { id: "valor", label: "Valor", value: (i) => Number(i.valor) },
+    { id: "sentido", label: "Sentido", value: (i) => (Number(i.valor) < 0 ? "Saída" : "Entrada") },
+    { id: "lancamento", label: "Lançamento", value: lancTxt },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [lancById, candidatos]);
+  const tabela = useTableColumns("fin-conciliacao", colunas, base);
+  const visiveis = tabela.filteredRows;
+  const th = (id: string) => <ColumnFilterHeader column={colunas.find((c) => c.id === id)!} state={tabela} />;
 
   const criarConta = async () => {
     if (!novaConta.trim()) return;
@@ -106,11 +128,12 @@ export function ConciliacaoTab({ lancamentos, contas, empresas }: { lancamentos:
           <div className="flex gap-2">
             <Button size="sm" variant={mostrar === "pendentes" ? "default" : "outline"} onClick={() => setMostrar("pendentes")}>Pendentes <Badge variant="secondary" className="ml-1">{itens.filter((i) => !i.lancamento_id).length}</Badge></Button>
             <Button size="sm" variant={mostrar === "conciliados" ? "default" : "outline"} onClick={() => setMostrar("conciliados")}>Conciliados</Button>
+            <div className="ml-auto flex items-center gap-3 text-xs">{th("sentido")}<TableToolbar state={tabela} fileName="conciliacao" semColunas count={visiveis.length} /></div>
           </div>
           <Card>
             <Table>
               <TableHeader>
-                <TableRow><TableHead>Data</TableHead><TableHead>Histórico do banco</TableHead><TableHead className="text-right">Valor</TableHead><TableHead>Lançamento</TableHead><TableHead className="w-10" /></TableRow>
+                <TableRow><TableHead>{th("data")}</TableHead><TableHead>{th("historico")}</TableHead><TableHead className="text-right">{th("valor")}</TableHead><TableHead>{th("lancamento")}</TableHead><TableHead className="w-10" /></TableRow>
               </TableHeader>
               <TableBody>
                 {visiveis.length === 0 && <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-8">Nada aqui.</TableCell></TableRow>}
