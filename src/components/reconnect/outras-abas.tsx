@@ -15,7 +15,7 @@ import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { useAuth } from "@/hooks/use-auth";
 import { canaisReconnect, enviarNotificacaoReconnect } from "@/lib/reconnect.functions";
-import { getCriticality, normalizeClientKey, todaySP, type Criticidade, type VehicleRow } from "@/lib/reconnect";
+import { getCriticality, normalizeClientKey, sessaoAtual, todaySP, type Criticidade, type VehicleRow } from "@/lib/reconnect";
 import { logRc, rc, upsertEmBlocos, useRcInvalidate, type RcClient, type RcImportTemplate, type RcRecovered, type RcTemplate } from "./use-rc";
 import { Crit } from "./painel-tab";
 import { NotificarDialog } from "./notificar-dialog";
@@ -28,8 +28,7 @@ export function ClientesTab({ clients, vehicles, templates }: { clients: RcClien
   const invalidate = useRcInvalidate();
   const [q, setQ] = useState("");
   const [notificar, setNotificar] = useState<RcClient | null>(null);
-  const hoje = todaySP();
-  const ativos = vehicles.filter((v) => v.import_date === hoje);
+  const ativos = useMemo(() => sessaoAtual(vehicles), [vehicles]);
   const porCliente = useMemo(() => {
     const m = new Map<string, VehicleRow[]>();
     for (const v of ativos) m.set(v.client_id, [...(m.get(v.client_id) ?? []), v]);
@@ -69,7 +68,7 @@ export function ClientesTab({ clients, vehicles, templates }: { clients: RcClien
       </CardContent></Card>
       <Card>
         <Table>
-          <TableHeader><TableRow><TableHead>Cliente</TableHead><TableHead>Placas hoje</TableHead><TableHead>E-mails</TableHead><TableHead>Telefones (WhatsApp)</TableHead><TableHead /></TableRow></TableHeader>
+          <TableHeader><TableRow><TableHead>Cliente</TableHead><TableHead>Placas (última importação)</TableHead><TableHead>E-mails</TableHead><TableHead>Telefones (WhatsApp)</TableHead><TableHead /></TableRow></TableHeader>
           <TableBody>
             {rows.map((c) => (
               <TableRow key={c.id}>
@@ -93,6 +92,8 @@ export function NotificacoesTab({ clients, vehicles, templates }: { clients: RcC
   const enviar = useServerFn(enviarNotificacaoReconnect);
   const invalidate = useRcInvalidate();
   const hoje = todaySP();
+  const sessao = useMemo(() => sessaoAtual(vehicles), [vehicles]);
+  const dataSessao = sessao[0]?.import_date ?? "";
   const [crits, setCrits] = useState<Criticidade[]>(["red", "orange"]);
   const [tplId, setTplId] = useState("");
   const [canais, setCanais] = useState<("whatsapp" | "email")[]>(["whatsapp", "email"]);
@@ -104,13 +105,22 @@ export function NotificacoesTab({ clients, vehicles, templates }: { clients: RcC
   });
   const alvo = useMemo(() => {
     const m = new Map<string, string[]>();
-    for (const v of vehicles) if (v.import_date === hoje && crits.includes(getCriticality(v.days_offline))) m.set(v.client_id, [...(m.get(v.client_id) ?? []), v.plate]);
+    for (const v of sessao) if (crits.includes(getCriticality(v.days_offline))) m.set(v.client_id, [...(m.get(v.client_id) ?? []), v.plate]);
     return clients.filter((c) => m.has(c.id)).map((c) => ({ c, plates: m.get(c.id)! }));
-  }, [vehicles, clients, crits, hoje]);
+  }, [sessao, clients, crits]);
+  const usaveis = templates.filter((t) => !t.is_closing_template);
+  const selecionados = alvo.filter((a) => sel.includes(a.c.id));
+  const comContato = selecionados.filter(({ c }) => canais.some((x) => (x === "whatsapp" ? (c.phones || []).length : (c.emails || []).length)));
+  const motivo = !alvo.length ? null
+    : !sel.length ? "Marque ao menos um cliente."
+    : !tplId ? (usaveis.length ? "Escolha o modelo de mensagem." : "Cadastre um modelo de mensagem na aba Mensagens.")
+    : !canais.length ? "Marque WhatsApp e/ou E-mail."
+    : !comContato.length ? "Os clientes marcados não têm telefone/e-mail para os canais escolhidos (cadastre na aba Clientes)."
+    : null;
 
   const enviarLote = async () => {
     const batchId = crypto.randomUUID();
-    const itens = alvo.filter((a) => sel.includes(a.c.id));
+    const itens = selecionados;
     let ok = 0;
     for (let i = 0; i < itens.length; i++) {
       setProgresso(`Enviando ${i + 1}/${itens.length}: ${itens[i].c.name}`);
@@ -138,15 +148,16 @@ export function NotificacoesTab({ clients, vehicles, templates }: { clients: RcC
             ))}
             <Select value={tplId} onValueChange={setTplId}>
               <SelectTrigger className="h-8 w-[220px]"><SelectValue placeholder="Modelo de mensagem" /></SelectTrigger>
-              <SelectContent>{templates.filter((t) => !t.is_closing_template).map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
+              <SelectContent>{usaveis.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
             </Select>
             <label className="flex items-center gap-1"><Checkbox checked={canais.includes("whatsapp")} onCheckedChange={(v) => setCanais((x) => (v ? [...x, "whatsapp"] : x.filter((y) => y !== "whatsapp")))} />WhatsApp</label>
             <label className="flex items-center gap-1"><Checkbox checked={canais.includes("email")} onCheckedChange={(v) => setCanais((x) => (v ? [...x, "email"] : x.filter((y) => y !== "email")))} />E-mail</label>
           </div>
           <div className="flex items-center gap-2">
-            <Button size="sm" variant="outline" onClick={() => setSel(sel.length === alvo.length ? [] : alvo.map((a) => a.c.id))}>{sel.length === alvo.length && alvo.length ? "Desmarcar todos" : "Marcar todos"}</Button>
-            <span className="text-xs text-muted-foreground">{sel.length} de {alvo.length} cliente(s)</span>
-            <Button size="sm" className="ml-auto" disabled={!sel.length || !tplId || !canais.length || !!progresso} onClick={enviarLote}>
+            <Button size="sm" variant="outline" disabled={!alvo.length} onClick={() => setSel(selecionados.length === alvo.length ? [] : alvo.map((a) => a.c.id))}>{selecionados.length === alvo.length && alvo.length ? "Desmarcar todos" : "Marcar todos"}</Button>
+            <span className="text-xs text-muted-foreground">{selecionados.length} de {alvo.length} cliente(s){dataSessao && ` · importação de ${dataSessao === hoje ? "hoje" : dataSessao.split("-").reverse().join("/")}`}</span>
+            {motivo && !progresso && <span className="text-xs text-amber-600">{motivo}</span>}
+            <Button size="sm" className="ml-auto" disabled={!!motivo || !selecionados.length || !!progresso} onClick={enviarLote}>
               {progresso ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Send className="h-4 w-4 mr-1" />}{progresso ?? "Enviar"}
             </Button>
           </div>
@@ -158,7 +169,7 @@ export function NotificacoesTab({ clients, vehicles, templates }: { clients: RcC
                 <span className="text-muted-foreground">{plates.length} placa(s) · {(c.phones || []).length} tel · {(c.emails || []).length} e-mail</span>
               </label>
             ))}
-            {alvo.length === 0 && <p className="p-3 text-xs text-muted-foreground">Nenhum cliente com placas nessas faixas hoje.</p>}
+            {alvo.length === 0 && <p className="p-3 text-xs text-muted-foreground">{sessao.length ? "Nenhum cliente com placas nessas faixas na última importação." : "Nenhuma planilha importada ainda — importe no Painel."}</p>}
           </div>
         </CardContent>
       </Card>
