@@ -9,7 +9,7 @@ import { supabaseAdmin } from "@/integrations/supabase/client.server";
 import { hojeSP } from "@/lib/finance";
 import {
   listaDeFaturas, clienteDoGsystem, converterFatura, atualizacaoDeFatura, formatarDocumento, deveImportar,
-  type ClienteGsystem, type FaturaGsystem,
+  respostaDeFaturasConfiavel, faturasBaixadasNoGsystem, type ClienteGsystem, type FaturaGsystem,
 } from "@/lib/finance-gsystem";
 
 const SYNC_ID = "faturas";
@@ -30,12 +30,13 @@ export type ResultadoSyncFaturas = {
   error?: string;
 };
 
-async function faturasDoCliente(c: ClienteGsystem): Promise<any[]> {
+async function faturasDoCliente(c: ClienteGsystem): Promise<{ lista: any[]; confiavel: boolean }> {
   try {
-    return listaDeFaturas(await gsystemApiFetch(`/faturas/${encodeURIComponent(c.documento)}`));
+    const resp = await gsystemApiFetch(`/faturas/${encodeURIComponent(c.documento)}`);
+    return { lista: listaDeFaturas(resp), confiavel: respostaDeFaturasConfiavel(resp) };
   } catch (e: any) {
-    // Cliente sem faturas costuma voltar 404.
-    if (/\[404\]/.test(String(e?.message ?? e))) return [];
+    // Cliente sem faturas (em aberto) costuma voltar 404.
+    if (/\[404\]/.test(String(e?.message ?? e))) return { lista: [], confiavel: true };
     throw e;
   }
 }
@@ -147,15 +148,31 @@ export async function syncFaturasGsystem(
       }
     };
 
+    // Faturas que sumiram da lista de abertas do GSystem foram pagas lá: dá baixa aqui.
+    const baixarSumidas = async (c: ClienteGsystem, recebidas: Set<string>): Promise<number> => {
+      const { data: abertas } = await db.from("fin_lancamentos")
+        .select("id, gsystem_fatura_key, vencimento")
+        .eq("origem", "gsystem").eq("status", "aberto").eq("documento_contraparte", formatarDocumento(c.documento));
+      const ids = faturasBaixadasNoGsystem((abertas || []) as any[], recebidas, hoje);
+      if (!ids.length) return 0;
+      const { error } = await db.from("fin_lancamentos").update({
+        status: "pago", data_pagamento: hoje,
+        observacao: `Baixa detectada no GSystem em ${hoje.split("-").reverse().join("/")} (a fatura saiu da lista de faturas em aberto; data exata do pagamento não informada pela API).`,
+      }).in("id", ids);
+      if (error) throw error;
+      return ids.length;
+    };
+
     while (indice < clientes.length && Date.now() - inicio < limiteMs) {
       const lote = clientes.slice(indice, indice + CONCORRENCIA);
       await Promise.all(
         lote.map(async (c) => {
           try {
-            const faturas = (await faturasDoCliente(c))
-              .map((f) => converterFatura(f, c))
-              .filter((f): f is FaturaGsystem => !!f && deveImportar(f, hoje));
+            const resp = await faturasDoCliente(c);
+            const todas = resp.lista.map((f) => converterFatura(f, c)).filter((f): f is FaturaGsystem => !!f);
+            const faturas = todas.filter((f) => deveImportar(f, hoje));
             await gravar(c, faturas);
+            if (resp.confiavel) atualizadas += await baixarSumidas(c, new Set(todas.map((f) => f.chave)));
           } catch (e: any) {
             erros++;
             ultimoErro = `${c.nome}: ${String(e?.message ?? e)}`.slice(0, 500);

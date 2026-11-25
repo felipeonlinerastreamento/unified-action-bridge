@@ -36,6 +36,29 @@ const texto = (v: any): string | null => (v == null ? null : String(v).trim() ||
 const data = (v: any): string | null => (v == null ? null : normalizarData(String(v)));
 
 /** Tira a lista de faturas da resposta (array puro ou dentro de Items/Data/...). */
+/** A resposta do GSystem é uma lista de faturas reconhecível (array ou campo de lista)? */
+export function respostaDeFaturasConfiavel(resp: any): boolean {
+  if (Array.isArray(resp)) return true;
+  return ["Items", "items", "Faturas", "faturas", "Data", "data", "Dados", "dados", "Resultado", "resultado"].some((k) => Array.isArray(resp?.[k]));
+}
+
+/**
+ * O endpoint /faturas/{doc} do GSystem só devolve faturas EM ABERTO: quando o cliente paga, a fatura
+ * some da lista. Então, numa resposta confiável, o que temos em aberto (origem GSystem) e não veio mais
+ * foi baixado lá. Só considera faturas já vencidas ou do mês corrente (evita confundir com falha parcial)
+ * e nunca mexe em baixa/cancelamento feitos no Financeiro.
+ */
+export function faturasBaixadasNoGsystem(
+  abertasNossas: { id: string; gsystem_fatura_key: string; vencimento: string | null }[],
+  chavesRecebidas: Set<string>,
+  hoje: string,
+): string[] {
+  const fimMes = `${hoje.slice(0, 7)}-31`;
+  return abertasNossas
+    .filter((l) => !chavesRecebidas.has(l.gsystem_fatura_key) && !!l.vencimento && l.vencimento <= fimMes)
+    .map((l) => l.id);
+}
+
 export function listaDeFaturas(resp: any): any[] {
   if (Array.isArray(resp)) return resp;
   for (const k of ["Items", "items", "Faturas", "faturas", "Data", "data", "Dados", "dados", "Resultado", "resultado"]) {

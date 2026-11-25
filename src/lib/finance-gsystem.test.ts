@@ -101,3 +101,18 @@ describe("deveImportar", () => {
     assert.equal(deveImportar({ status: "pago", vencimento: "2025-01-01", dataPagamento: null }, "2026-01-05"), true);
   });
 });
+
+it("fatura que sumiu da lista de abertas do GSystem é dada como baixada (só vencidas ou do mês)", async () => {
+  const { faturasBaixadasNoGsystem, respostaDeFaturasConfiavel } = await import("./finance-gsystem");
+  const nossas = [
+    { id: "a", gsystem_fatura_key: "gs:1", vencimento: "2026-10-10" }, // sumiu → baixada
+    { id: "b", gsystem_fatura_key: "gs:2", vencimento: "2026-11-10" }, // ainda veio → aberta
+    { id: "c", gsystem_fatura_key: "gs:3", vencimento: "2026-12-10" }, // futura sumida → não mexe
+    { id: "d", gsystem_fatura_key: "gs:4", vencimento: "2026-11-30" }, // do mês, sumiu → baixada
+  ];
+  assert.deepEqual(faturasBaixadasNoGsystem(nossas, new Set(["gs:2"]), "2026-11-24"), ["a", "d"]);
+  assert.equal(respostaDeFaturasConfiavel([]), true);
+  assert.equal(respostaDeFaturasConfiavel({ Items: [] }), true);
+  assert.equal(respostaDeFaturasConfiavel({ success: true }), false);
+  assert.equal(respostaDeFaturasConfiavel(null), false);
+});
