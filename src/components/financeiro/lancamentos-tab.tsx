@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { Fragment, useMemo, useState } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -14,6 +14,16 @@ import { linkComprovante } from "@/lib/finance.functions";
 import { fin, useFinInvalidate, type Cat, type Emp, type Lanc } from "./use-fin";
 import { LancamentoDialog } from "./lancamento-dialog";
 import { GsystemSyncCard } from "./gsystem-sync-card";
+import { useTableColumns } from "@/components/data-table/use-table-columns";
+import { ColumnFilterHeader } from "@/components/data-table/column-filter-header";
+import { TableToolbar } from "@/components/data-table/table-toolbar";
+import type { TableColumn } from "@/lib/table-columns";
+
+export const ORIGEM_LABEL: Record<string, string> = {
+  drive: "Claude (Drive)", gsystem: "GSystem", email: "E-mail", dda: "DDA", bomcontrole: "Bom Controle", manual: "Manual",
+};
+export const origemLabel = (o?: string | null) => (o ? ORIGEM_LABEL[o] ?? o : "Manual");
+const APROVACAO_LABEL: Record<string, string> = { pendente: "Aguardando", aprovado: "Aprovado", reprovado: "Reprovado" };
 
 export const STATUS_LABEL: Record<string, string> = { aberto: "Aberto", vencido: "Vencido", pago: "Pago", cancelado: "Cancelado" };
 export function StatusBadge({ s, tipo }: { s: string; tipo?: string }) {
@@ -77,7 +87,30 @@ export function LancamentosTab({ tipo, lancamentos, categorias, empresas }: { ti
     return filtradas;
   }, [lancamentos, tipo, q, fStatus, fCat, fEmp, de, ate, hoje, catById]);
 
-  const total = rows.reduce((s, l) => s + Number(l.valor || 0), 0);
+  const colunas = useMemo<TableColumn<Lanc>[]>(() => [
+    { id: "vencimento", label: "Vencimento", value: (l) => formatDataBR(l.vencimento) },
+    { id: "pagamento", label: tipo === "receber" ? "Recebimento" : "Pagamento", value: (l) => (l.data_pagamento ? formatDataBR(l.data_pagamento) : ""), defaultHidden: true },
+    { id: "contraparte", label: tipo === "pagar" ? "Fornecedor" : "Cliente", value: (l) => l.contraparte ?? "" },
+    { id: "documento", label: "CPF/CNPJ", value: (l) => l.documento_contraparte ?? "", defaultHidden: true },
+    { id: "descricao", label: "Descrição", value: (l) => l.descricao ?? "" },
+    { id: "categoria", label: "Categoria", value: (l) => catById.get(l.categoria_id ?? "")?.nome ?? "Sem categoria" },
+    { id: "empresa", label: "Empresa", value: (l) => empById.get(l.empresa_id ?? "")?.codigo ?? "" },
+    { id: "valor", label: "Valor", value: (l) => Number(l.valor || 0) },
+    { id: "status", label: "Status", value: (l) => { const st = statusVisivel(l, hoje); return st === "pago" && tipo === "receber" ? "Recebido" : STATUS_LABEL[st] ?? st; } },
+    { id: "origem", label: "Origem", value: (l) => origemLabel(l.origem) },
+    ...(tipo === "pagar" ? [{ id: "aprovacao", label: "Aprovação", value: (l: Lanc) => (l.aprovacao ? APROVACAO_LABEL[l.aprovacao] ?? l.aprovacao : "Não exige") }] : []),
+    { id: "revisado", label: "Revisado", value: (l) => (l.revisado ? "Sim" : "A revisar"), defaultHidden: true },
+    { id: "lancado", label: "Lançado em", value: (l) => ((l as any).created_at ? formatDataBR(String((l as any).created_at).slice(0, 10)) : ""), defaultHidden: true },
+    { id: "acoes", label: "", value: () => "", data: false },
+  ], [tipo, catById, empById, hoje]);
+  const tabela = useTableColumns(`fin-lancamentos-${tipo}`, colunas, rows);
+  const visiveis = tabela.filteredRows;
+  const total = visiveis.reduce((s, l) => s + Number(l.valor || 0), 0);
+  const ocultosPorStatus = fStatus === "all" ? 0 : lancamentos.filter((l) => l.tipo === tipo).length - lancamentos.filter((l) => {
+    if (l.tipo !== tipo) return false;
+    const st = statusVisivel(l, hoje);
+    return fStatus === "pendentes" ? st === "aberto" || st === "vencido" : st === fStatus;
+  }).length;
 
   const marcarPago = async (l: Lanc) => {
     if (l.tipo === "pagar" && (l.aprovacao === "pendente" || l.aprovacao === "reprovado")
@@ -136,40 +169,57 @@ export function LancamentosTab({ tipo, lancamentos, categorias, empresas }: { ti
         </CardContent>
       </Card>
 
-      <div className="text-sm text-muted-foreground flex justify-between">
-        <span>{rows.length} lançamento(s)</span>
+      <div className="text-sm text-muted-foreground flex flex-wrap justify-between gap-2">
+        <span>
+          {visiveis.length} lançamento(s)
+          {ocultosPorStatus > 0 && (
+            <> · <button type="button" className="underline" onClick={() => setFStatus("all")}>{ocultosPorStatus} com outro status ocultos (ver todos)</button></>
+          )}
+        </span>
         <span>Total: <b className="text-foreground">{formatBRL(total)}</b></span>
       </div>
 
+      <TableToolbar state={tabela} fileName={tipo === "pagar" ? "contas-a-pagar" : "contas-a-receber"} />
       <Card>
         <Table>
           <TableHeader>
             <TableRow>
-              <TableHead>Vencimento</TableHead>
-              <TableHead>{tipo === "pagar" ? "Fornecedor" : "Cliente"}</TableHead>
-              <TableHead>Descrição</TableHead>
-              <TableHead>Categoria</TableHead>
-              <TableHead>Empresa</TableHead>
-              <TableHead className="text-right">Valor</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead className="w-10" />
+              {tabela.visibleColumns.map((c) => (
+                <TableHead key={c.id} className={c.id === "valor" ? "text-right" : c.id === "acoes" ? "w-10" : ""}>
+                  {c.data === false ? null : <ColumnFilterHeader column={c} state={tabela} />}
+                </TableHead>
+              ))}
             </TableRow>
           </TableHeader>
           <TableBody>
-            {rows.length === 0 && (
-              <TableRow><TableCell colSpan={8} className="text-center text-sm text-muted-foreground py-8">Nenhum lançamento.</TableCell></TableRow>
+            {visiveis.length === 0 && (
+              <TableRow><TableCell colSpan={tabela.visibleColumns.length} className="text-center text-sm text-muted-foreground py-8">Nenhum lançamento.</TableCell></TableRow>
             )}
-            {rows.map((l) => {
+            {visiveis.map((l) => {
               const s = statusVisivel(l, hoje);
+              const celulas: Record<string, React.ReactNode> = {
+                vencimento: <TableCell key="vencimento" className="whitespace-nowrap">{formatDataBR(l.vencimento)}</TableCell>,
+                pagamento: <TableCell key="pagamento" className="whitespace-nowrap">{l.data_pagamento ? formatDataBR(l.data_pagamento) : "—"}</TableCell>,
+                documento: <TableCell key="documento" className="whitespace-nowrap text-xs">{l.documento_contraparte ?? "—"}</TableCell>,
+                origem: <TableCell key="origem"><Badge variant="outline" className="text-[10px]">{origemLabel(l.origem)}</Badge></TableCell>,
+                aprovacao: <TableCell key="aprovacao" className="text-xs">{l.aprovacao ? APROVACAO_LABEL[l.aprovacao] ?? l.aprovacao : "—"}</TableCell>,
+                revisado: <TableCell key="revisado" className="text-xs">{l.revisado ? "Sim" : "A revisar"}</TableCell>,
+                lancado: <TableCell key="lancado" className="text-xs whitespace-nowrap">{(l as any).created_at ? formatDataBR(String((l as any).created_at).slice(0, 10)) : "—"}</TableCell>,
+              };
               return (
                 <TableRow key={l.id} className="cursor-pointer" onClick={() => setEdit(l)}>
-                  <TableCell className="whitespace-nowrap">{formatDataBR(l.vencimento)}</TableCell>
-                  <TableCell className="font-medium">{l.contraparte ?? "—"}{!l.revisado && <Badge variant="outline" className="ml-2 text-[10px]">A revisar</Badge>}{l.origem === "gsystem" && <Badge variant="outline" className="ml-2 text-[10px]">GSystem</Badge>}{l.origem === "email" && <Badge variant="outline" className="ml-2 text-[10px]">E-mail</Badge>}{l.origem === "dda" && <Badge variant="outline" className="ml-2 text-[10px]">DDA</Badge>}{l.origem === "bomcontrole" && <Badge variant="outline" className="ml-2 text-[10px]">Bom Controle</Badge>}{l.aprovacao === "pendente" && <Badge variant="outline" className="ml-2 text-[10px] border-amber-500 text-amber-700">Aguardando aprovação</Badge>}{l.aprovacao === "aprovado" && <Badge variant="outline" className="ml-2 text-[10px] border-emerald-500 text-emerald-700">Aprovado</Badge>}{l.aprovacao === "reprovado" && <Badge variant="destructive" className="ml-2 text-[10px]">Reprovado</Badge>}{(l.conferencia?.status === "acima" || l.conferencia?.status === "abaixo") && <Badge variant="outline" className="ml-2 text-[10px] border-red-500 text-red-700" title={`Esperado ${formatBRL(l.valor_esperado ?? 0)}`}>{l.conferencia.status === "acima" ? "↑" : "↓"} esperado</Badge>}</TableCell>
-                  <TableCell className="max-w-[260px] truncate" title={l.descricao ?? ""}>{l.descricao ?? "—"}</TableCell>
-                  <TableCell>{catById.get(l.categoria_id ?? "")?.nome ?? <span className="text-muted-foreground">—</span>}</TableCell>
-                  <TableCell>{empById.get(l.empresa_id ?? "")?.codigo ?? "—"}</TableCell>
-                  <TableCell className="text-right font-semibold whitespace-nowrap">{formatBRL(l.valor)}</TableCell>
-                  <TableCell><StatusBadge s={s} tipo={tipo} /></TableCell>
+                  {tabela.visibleColumns.map((c) => celulas[c.id] ?? <Fragment key={c.id}>{CelulaFixa(c.id)}</Fragment>)}
+                </TableRow>
+              );
+              function CelulaFixa(id: string) {
+                switch (id) {
+                  case "contraparte": return <TableCell className="font-medium">{l.contraparte ?? "—"}{!l.revisado && <Badge variant="outline" className="ml-2 text-[10px]">A revisar</Badge>}{l.origem === "gsystem" && <Badge variant="outline" className="ml-2 text-[10px]">GSystem</Badge>}{l.origem === "email" && <Badge variant="outline" className="ml-2 text-[10px]">E-mail</Badge>}{l.origem === "dda" && <Badge variant="outline" className="ml-2 text-[10px]">DDA</Badge>}{l.origem === "bomcontrole" && <Badge variant="outline" className="ml-2 text-[10px]">Bom Controle</Badge>}{l.aprovacao === "pendente" && <Badge variant="outline" className="ml-2 text-[10px] border-amber-500 text-amber-700">Aguardando aprovação</Badge>}{l.aprovacao === "aprovado" && <Badge variant="outline" className="ml-2 text-[10px] border-emerald-500 text-emerald-700">Aprovado</Badge>}{l.aprovacao === "reprovado" && <Badge variant="destructive" className="ml-2 text-[10px]">Reprovado</Badge>}{(l.conferencia?.status === "acima" || l.conferencia?.status === "abaixo") && <Badge variant="outline" className="ml-2 text-[10px] border-red-500 text-red-700" title={`Esperado ${formatBRL(l.valor_esperado ?? 0)}`}>{l.conferencia.status === "acima" ? "↑" : "↓"} esperado</Badge>}</TableCell>;
+                  case "descricao": return <TableCell className="max-w-[260px] truncate" title={l.descricao ?? ""}>{l.descricao ?? "—"}</TableCell>;
+                  case "categoria": return <TableCell>{catById.get(l.categoria_id ?? "")?.nome ?? <span className="text-muted-foreground">—</span>}</TableCell>;
+                  case "empresa": return <TableCell>{empById.get(l.empresa_id ?? "")?.codigo ?? "—"}</TableCell>;
+                  case "valor": return <TableCell className="text-right font-semibold whitespace-nowrap">{formatBRL(l.valor)}</TableCell>;
+                  case "status": return <TableCell><StatusBadge s={s} tipo={tipo} /></TableCell>;
+                  case "acoes": return (
                   <TableCell onClick={(e) => e.stopPropagation()}>
                     <DropdownMenu>
                       <DropdownMenuTrigger asChild><Button size="icon" variant="ghost" className="h-7 w-7"><MoreHorizontal className="h-4 w-4" /></Button></DropdownMenuTrigger>
@@ -185,8 +235,10 @@ export function LancamentosTab({ tipo, lancamentos, categorias, empresas }: { ti
                       </DropdownMenuContent>
                     </DropdownMenu>
                   </TableCell>
-                </TableRow>
-              );
+                  );
+                  default: return null;
+                }
+              }
             })}
           </TableBody>
         </Table>
