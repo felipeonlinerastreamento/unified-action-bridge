@@ -617,6 +617,13 @@
       "when": 1795617321462,
       "tag": "0087_limpar_teste_sem_sql_dinamico",
       "breakpoints": true
+    },
+    {
+      "idx": 88,
+      "version": "7",
+      "when": 1795619132937,
+      "tag": "0088_apply_pending_0087",
+      "breakpoints": true
     }
   ]
 }
