@@ -17,80 +17,19 @@ import { useServerFn } from "@tanstack/react-start";
 import { useAuth } from "@/hooks/use-auth";
 import { canaisReconnect, enviarNotificacaoReconnect } from "@/lib/reconnect.functions";
 import { buildNotificationMessage, extrairPlaca, getCriticality, normalizeClientKey, sessaoAtual, todaySP, type Criticidade, type VehicleRow } from "@/lib/reconnect";
-import { destinosCliente, logRc, rc, upsertEmBlocos, useRcInvalidate, type RcClient, type RcImportTemplate, type RcRecovered, type RcTemplate } from "./use-rc";
+import { destinosCliente, motivoSemEnvioCliente, logRc, rc, upsertEmBlocos, useRcInvalidate, type RcClient, type RcImportTemplate, type RcRecovered, type RcTemplate } from "./use-rc";
 import { Crit } from "./painel-tab";
-import { NotificarDialog } from "./notificar-dialog";
+import { UnificacaoEmpresas } from "./unificacao-empresas";
 import { HistoricoNotificacoes } from "./historico-notificacoes";
 
 const fmt = (iso?: string | null) => (iso ? new Date(iso).toLocaleString("pt-BR", { timeZone: "America/Sao_Paulo" }) : "—");
 const lista = (s: string) => s.split(/[,;\n]+/).map((x) => x.trim()).filter(Boolean);
 
 // ---------------------------------------------------------------------------
-export function ClientesTab({ clients, vehicles, templates }: { clients: RcClient[]; vehicles: VehicleRow[]; templates: RcTemplate[] }) {
-  const invalidate = useRcInvalidate();
-  const [q, setQ] = useState("");
-  const [notificar, setNotificar] = useState<RcClient | null>(null);
-  const ativos = useMemo(() => sessaoAtual(vehicles), [vehicles]);
-  const porCliente = useMemo(() => {
-    const m = new Map<string, VehicleRow[]>();
-    for (const v of ativos) m.set(v.client_id, [...(m.get(v.client_id) ?? []), v]);
-    return m;
-  }, [ativos]);
-  const rows = clients.filter((c) => {
-    const t = q.trim().toLowerCase();
-    return !t || `${c.name} ${(c.emails || []).join(" ")} ${(c.phones || []).join(" ")}`.toLowerCase().includes(t);
-  });
-  const salvar = async (c: RcClient, campo: "emails" | "phones", valor: string) => {
-    const novo = lista(valor);
-    if (JSON.stringify(novo) === JSON.stringify(c[campo] || [])) return;
-    const { error } = await rc.from("rc_clients").update({ [campo]: novo, updated_at: new Date().toISOString() }).eq("id", c.id);
-    if (error) toast.error(error.message); else { toast.success("Contato salvo."); invalidate(); }
-  };
-  const semVinculo = clients.filter((c) => !c.company_id).length;
-  const ligar = async () => {
-    const { data: comps } = await rc.from("companies").select("id, name").limit(5000);
-    const map = new Map((comps || []).map((c: any) => [normalizeClientKey(c.name), c.id]));
-    let n = 0;
-    for (const c of clients.filter((x) => !x.company_id)) {
-      const id = map.get(normalizeClientKey(c.name));
-      if (id) { await rc.from("rc_clients").update({ company_id: id }).eq("id", c.id); n++; }
-    }
-    toast.success(`${n} cliente(s) ligado(s) aos clientes do Gestão Online pelo nome.`);
-    invalidate();
-  };
-  return (
-    <div className="space-y-3">
-      <Card><CardContent className="p-3 flex flex-wrap items-center gap-2">
-        <div className="relative flex-1 min-w-[220px]">
-          <Search className="h-4 w-4 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-          <Input className="pl-8" placeholder="Buscar cliente, e-mail ou telefone..." value={q} onChange={(e) => setQ(e.target.value)} />
-        </div>
-        <span className="text-xs text-muted-foreground">{clients.length} cliente(s) · {semVinculo} sem vínculo com o Gestão Online</span>
-        <Button size="sm" variant="outline" onClick={ligar}><Link2 className="h-4 w-4 mr-1" />Ligar pelo nome</Button>
-      </CardContent></Card>
-      <Card>
-        <Table>
-          <TableHeader><TableRow><TableHead>Cliente</TableHead><TableHead>Placas (última importação)</TableHead><TableHead>E-mails</TableHead><TableHead>Telefones (WhatsApp)</TableHead><TableHead /></TableRow></TableHeader>
-          <TableBody>
-            {rows.map((c) => (
-              <TableRow key={c.id}>
-                <TableCell className="font-medium">{c.name}{c.company_id && <Badge variant="outline" className="ml-2 text-[10px]">Gestão Online</Badge>}
-                  {!!c.empresa_nomes?.length && <div className="text-[11px] font-normal text-muted-foreground">+ contatos da empresa: {c.empresa_nomes.join(", ")}</div>}</TableCell>
-                <TableCell>{porCliente.get(c.id)?.length ?? 0}</TableCell>
-                <TableCell><Input className="h-7 text-xs" defaultValue={(c.emails || []).join(", ")} onBlur={(e) => salvar(c, "emails", e.target.value)} placeholder="e-mail, e-mail" /></TableCell>
-                <TableCell><Input className="h-7 text-xs" defaultValue={(c.phones || []).join(", ")} onBlur={(e) => salvar(c, "phones", e.target.value)} placeholder="31999999999" /></TableCell>
-                <TableCell><Button size="icon" variant="ghost" className="h-7 w-7" disabled={!porCliente.get(c.id)?.length} onClick={() => setNotificar(c)} title="Notificar"><Send className="h-4 w-4" /></Button></TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </Card>
-      <NotificarDialog client={notificar} vehicles={notificar ? porCliente.get(notificar.id) ?? [] : []} templates={templates} onClose={() => setNotificar(null)} />
-    </div>
-  );
-}
+type AlvoPlaca = { plate: string; dias: number; anotacao: string };
+type Alvo = { c: RcClient; placas: AlvoPlaca[] };
+const chaveP = (clientId: string, plate: string) => `${clientId}|${plate}`;
 
-// ---------------------------------------------------------------------------
 export function NotificacoesTab({ clients, vehicles, templates }: { clients: RcClient[]; vehicles: VehicleRow[]; templates: RcTemplate[] }) {
   const enviar = useServerFn(enviarNotificacaoReconnect);
   const invalidate = useRcInvalidate();
@@ -100,52 +39,76 @@ export function NotificacoesTab({ clients, vehicles, templates }: { clients: RcC
   const [crits, setCrits] = useState<Criticidade[]>(["red", "orange"]);
   const [tplId, setTplId] = useState("");
   const [canais, setCanais] = useState<("whatsapp" | "email")[]>(["whatsapp", "email"]);
+  const [pularAnotacao, setPularAnotacao] = useState(true);
   const [sel, setSel] = useState<string[]>([]);
   const [progresso, setProgresso] = useState<string | null>(null);
   const [confirmar, setConfirmar] = useState(false);
+  // Na confirmação: clientes e placas tirados do envio.
+  const [foraClientes, setForaClientes] = useState<Set<string>>(new Set());
+  const [foraPlacas, setForaPlacas] = useState<Set<string>>(new Set());
   const [resultados, setResultados] = useState<{ nome: string; ok: boolean; detalhe: string }[] | null>(null);
   const { data: historico = [] } = useQuery({
     queryKey: ["rc-notifications"],
     queryFn: async () => ((await rc.from("rc_notification_logs").select("*").order("sent_at", { ascending: false }).limit(5000)).data || []) as any[],
   });
-  const alvo = useMemo(() => {
-    const m = new Map<string, string[]>();
-    for (const v of sessao) if (crits.includes(getCriticality(v.days_offline))) m.set(v.client_id, [...(m.get(v.client_id) ?? []), v.plate]);
-    return clients.filter((c) => m.has(c.id)).map((c) => ({ c, plates: m.get(c.id)! }));
+  // Placas da última importação nas faixas escolhidas, sem repetir a mesma placa no cliente.
+  const todos = useMemo<Alvo[]>(() => {
+    const m = new Map<string, Map<string, AlvoPlaca>>();
+    for (const v of sessao) {
+      if (!crits.includes(getCriticality(v.days_offline))) continue;
+      const pl = extrairPlaca(v.plate) || v.plate;
+      const mm = m.get(v.client_id) ?? new Map<string, AlvoPlaca>();
+      const ant = mm.get(pl);
+      const anot = String(v.observation ?? "").trim();
+      mm.set(pl, { plate: pl, dias: Math.max(ant?.dias ?? 0, Number(v.days_offline) || 0), anotacao: ant?.anotacao || anot });
+      m.set(v.client_id, mm);
+    }
+    return clients.filter((c) => m.has(c.id)).map((c) => ({ c, placas: [...m.get(c.id)!.values()].sort((x, y) => y.dias - x.dias) }));
   }, [sessao, clients, crits]);
+  const placasComAnotacao = todos.reduce((s, a) => s + a.placas.filter((p) => p.anotacao).length, 0);
+  const alvo = useMemo<Alvo[]>(
+    () => (pularAnotacao ? todos.map((a) => ({ ...a, placas: a.placas.filter((p) => !p.anotacao) })).filter((a) => a.placas.length) : todos),
+    [todos, pularAnotacao],
+  );
   const usaveis = templates.filter((t) => !t.is_closing_template);
   const selecionados = alvo.filter((a) => sel.includes(a.c.id));
-  const comContato = selecionados.filter(({ c }) => canais.some((x) => (x === "whatsapp" ? destinosCliente(c).phones.length : destinosCliente(c).emails.length)));
+  const podeReceber = (c: RcClient) => !motivoSemEnvioCliente(c, canais);
   const motivo = !alvo.length ? null
     : !sel.length ? "Marque ao menos um cliente."
     : !tplId ? (usaveis.length ? "Escolha o modelo de mensagem." : "Cadastre um modelo de mensagem na aba Mensagens.")
     : !canais.length ? "Marque WhatsApp e/ou E-mail."
     : null;
-
   const tplSel = usaveis.find((t) => t.id === tplId);
+
+  // O que realmente vai sair depois das escolhas na confirmação.
+  const finais = selecionados
+    .filter((a) => !foraClientes.has(a.c.id) && podeReceber(a.c))
+    .map((a) => ({ ...a, placas: a.placas.filter((p) => !foraPlacas.has(chaveP(a.c.id, p.plate))) }))
+    .filter((a) => a.placas.length);
+  const semDestino = selecionados.filter((a) => !podeReceber(a.c));
+
+  const abrirConfirmacao = () => { setResultados(null); setForaClientes(new Set()); setForaPlacas(new Set()); setConfirmar(true); };
+  const alternar = (set: Set<string>, k: string, setter: (s: Set<string>) => void) => { const n = new Set(set); if (n.has(k)) n.delete(k); else n.add(k); setter(n); };
 
   // Só envia depois da confirmação no diálogo; o resultado de cada cliente (inclusive o erro) fica na tela.
   const enviarLote = async () => {
     const batchId = crypto.randomUUID();
-    const itens = comContato;
+    const itens = finais;
     const res: { nome: string; ok: boolean; detalhe: string }[] = [];
     setResultados([]);
-    const semContato = selecionados.filter((a) => !itens.includes(a));
-    if (semContato.length) {
-      const tpl = usaveis.find((t) => t.id === tplId);
-      const canaisTxt = canais.map((c) => (c === "whatsapp" ? "WhatsApp" : "e-mail")).join("/");
-      await rc.from("rc_notification_logs").insert(semContato.map(({ c, plates }) => ({
-        client_id: c.id, client_name: c.name, sent_by: "Envio em massa", plates: [...new Set(plates)], channels: [],
-        template_name: tpl?.name ?? "", status: "error", error_message: `Cliente sem contato (${canaisTxt}) cadastrado.`, batch_id: batchId,
+    if (semDestino.length) {
+      await rc.from("rc_notification_logs").insert(semDestino.map(({ c, placas }) => ({
+        client_id: c.id, client_name: c.name, sent_by: "Envio em massa", plates: placas.map((p) => p.plate), channels: [],
+        template_name: tplSel?.name ?? "", status: "error", error_message: motivoSemEnvioCliente(c, canais), batch_id: batchId,
       })));
-      for (const { c } of semContato) res.push({ nome: c.name, ok: false, detalhe: `Sem contato (${canaisTxt}) — registrado no histórico.` });
+      for (const { c } of semDestino) res.push({ nome: c.name, ok: false, detalhe: `${motivoSemEnvioCliente(c, canais)} — registrado no histórico.` });
     }
     for (let i = 0; i < itens.length; i++) {
       setProgresso(`Enviando ${i + 1}/${itens.length}: ${itens[i].c.name}`);
       const dest = destinosCliente(itens[i].c);
       const ch = canais.filter((x) => (x === "whatsapp" ? dest.phones.length : dest.emails.length));
       try {
-        const r: any = await enviar({ data: { clientId: itens[i].c.id, plates: [...new Set(itens[i].plates)], templateId: tplId, channels: ch, batchId } });
+        const r: any = await enviar({ data: { clientId: itens[i].c.id, plates: itens[i].placas.map((p) => p.plate), templateId: tplId, channels: ch, batchId } });
         const partes = [
           r.whatsapp && (r.whatsapp.ok ? `WhatsApp: ${r.whatsapp.enviados} enviado(s)${r.whatsapp.erro ? ` (falhas: ${r.whatsapp.erro})` : ""}` : `WhatsApp falhou: ${r.whatsapp.erro}`),
           r.email && (r.email.ok ? `E-mail: ${r.email.enviados} destinatário(s)` : `E-mail falhou: ${r.email.erro}`),
@@ -164,6 +127,8 @@ export function NotificacoesTab({ clients, vehicles, templates }: { clients: RcC
     invalidate();
   };
 
+  const totalPlacasFinais = finais.reduce((s, a) => s + a.placas.length, 0);
+
   return (
     <div className="space-y-4">
       <Card>
@@ -179,52 +144,70 @@ export function NotificacoesTab({ clients, vehicles, templates }: { clients: RcC
             </Select>
             <label className="flex items-center gap-1"><Checkbox checked={canais.includes("whatsapp")} onCheckedChange={(v) => setCanais((x) => (v ? [...x, "whatsapp"] : x.filter((y) => y !== "whatsapp")))} />WhatsApp</label>
             <label className="flex items-center gap-1"><Checkbox checked={canais.includes("email")} onCheckedChange={(v) => setCanais((x) => (v ? [...x, "email"] : x.filter((y) => y !== "email")))} />E-mail</label>
+            <label className="flex items-center gap-1" title="Placas com texto na coluna Anotação do Painel"><Checkbox checked={pularAnotacao} onCheckedChange={(v) => setPularAnotacao(v === true)} />Não enviar placas com anotação{placasComAnotacao ? ` (${placasComAnotacao})` : ""}</label>
           </div>
           <div className="flex items-center gap-2">
             <Button size="sm" variant="outline" disabled={!alvo.length} onClick={() => setSel(selecionados.length === alvo.length ? [] : alvo.map((a) => a.c.id))}>{selecionados.length === alvo.length && alvo.length ? "Desmarcar todos" : "Marcar todos"}</Button>
             <span className="text-xs text-muted-foreground">{selecionados.length} de {alvo.length} cliente(s){dataSessao && ` · importação de ${dataSessao === hoje ? "hoje" : dataSessao.split("-").reverse().join("/")}`}</span>
             {motivo && !progresso && <span className="text-xs text-amber-600">{motivo}</span>}
-            <Button size="sm" className="ml-auto" disabled={!!motivo || !selecionados.length || !!progresso} onClick={() => { setResultados(null); setConfirmar(true); }}>
+            <Button size="sm" className="ml-auto" disabled={!!motivo || !selecionados.length || !!progresso} onClick={abrirConfirmacao}>
               {progresso ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Send className="h-4 w-4 mr-1" />}{progresso ?? "Enviar"}
             </Button>
           </div>
           <div className="max-h-64 overflow-y-auto rounded border divide-y">
-            {alvo.map(({ c, plates }) => (
-              <label key={c.id} className="flex items-center gap-2 px-2 py-1.5 text-xs">
-                <Checkbox checked={sel.includes(c.id)} onCheckedChange={(v) => setSel((x) => (v ? [...x, c.id] : x.filter((y) => y !== c.id)))} />
-                <span className="font-medium flex-1">{c.name}</span>
-                <span className="text-muted-foreground">{plates.length} placa(s) · {destinosCliente(c).phones.length} tel · {destinosCliente(c).emails.length} e-mail</span>
-              </label>
-            ))}
+            {alvo.map(({ c, placas }) => {
+              const d = destinosCliente(c);
+              const m = motivoSemEnvioCliente(c, canais);
+              return (
+                <label key={c.id} className="flex items-center gap-2 px-2 py-1.5 text-xs">
+                  <Checkbox checked={sel.includes(c.id)} onCheckedChange={(v) => setSel((x) => (v ? [...x, c.id] : x.filter((y) => y !== c.id)))} />
+                  <span className="font-medium flex-1">{c.empresa_nome || c.name}{c.empresa_nome && c.empresa_nome !== c.name && <span className="font-normal text-muted-foreground"> (planilha: {c.name})</span>}</span>
+                  {m ? <span className="text-amber-600">{m}</span> : <span className="text-muted-foreground">{placas.length} placa(s) · {d.phones.length} tel · {d.emails.length} e-mail</span>}
+                </label>
+              );
+            })}
             {alvo.length === 0 && <p className="p-3 text-xs text-muted-foreground">{sessao.length ? "Nenhum cliente com placas nessas faixas na última importação." : "Nenhuma planilha importada ainda — importe no Painel."}</p>}
           </div>
         </CardContent>
       </Card>
       <Dialog open={confirmar} onOpenChange={(o) => { if (!progresso) setConfirmar(o); }}>
         <DialogContent className="max-w-2xl">
-          <DialogHeader><DialogTitle>{resultados ? "Resultado do envio" : `Confirmar envio para ${comContato.length} cliente(s)`}</DialogTitle></DialogHeader>
+          <DialogHeader><DialogTitle>{resultados ? "Resultado do envio" : `Confirmar envio: ${finais.length} cliente(s), ${totalPlacasFinais} placa(s)`}</DialogTitle></DialogHeader>
           {!resultados ? (
             <div className="space-y-3 text-sm">
               <p className="text-xs text-muted-foreground">
                 Modelo <b>{tplSel?.name}</b> · canais: {canais.map((c) => (c === "whatsapp" ? "WhatsApp" : "E-mail")).join(" e ")}.
-                {selecionados.length > comContato.length && ` ${selecionados.length - comContato.length} cliente(s) marcado(s) sem contato para esses canais não recebem e ficam registrados no histórico como não enviados.`}
+                Desmarque o cliente ou a placa que não deve receber.
+                {semDestino.length > 0 && ` ${semDestino.length} cliente(s) sem contato marcado "Veículo sem comunicação" (ou sem empresa ligada) não recebem e ficam registrados no histórico como não enviados.`}
               </p>
-              <div className="max-h-64 overflow-y-auto rounded border divide-y">
-                {comContato.map(({ c, plates }) => {
+              <div className="max-h-80 overflow-y-auto rounded border divide-y">
+                {selecionados.filter((a) => podeReceber(a.c)).map(({ c, placas }) => {
                   const d = destinosCliente(c);
                   const para = [...(canais.includes("whatsapp") ? d.phones : []), ...(canais.includes("email") ? d.emails : [])];
+                  const fora = foraClientes.has(c.id);
                   return (
-                    <div key={c.id} className="px-2 py-1.5 text-xs">
-                      <div className="font-medium">{c.name} <span className="font-normal text-muted-foreground">· {new Set(plates.map((p) => extrairPlaca(p) || p)).size} placa(s)</span></div>
-                      <div className="text-muted-foreground break-all">Para: {para.join(", ")}</div>
+                    <div key={c.id} className={`px-2 py-1.5 text-xs ${fora ? "opacity-50" : ""}`}>
+                      <label className="flex items-center gap-2 font-medium">
+                        <Checkbox checked={!fora} onCheckedChange={() => alternar(foraClientes, c.id, setForaClientes)} />
+                        {c.empresa_nome || c.name}
+                      </label>
+                      <div className="text-muted-foreground break-all pl-6">Para: {para.join(", ")}</div>
+                      <div className="flex flex-wrap gap-x-3 gap-y-1 pl-6 pt-1">
+                        {placas.map((p) => (
+                          <label key={p.plate} className="flex items-center gap-1" title={p.anotacao || undefined}>
+                            <Checkbox disabled={fora} checked={!foraPlacas.has(chaveP(c.id, p.plate))} onCheckedChange={() => alternar(foraPlacas, chaveP(c.id, p.plate), setForaPlacas)} />
+                            <span className="font-mono">{p.plate}</span><span className="text-muted-foreground">{p.dias}d{p.anotacao ? " · anotação" : ""}</span>
+                          </label>
+                        ))}
+                      </div>
                     </div>
                   );
                 })}
               </div>
-              {tplSel && comContato[0] && (
+              {tplSel && finais[0] && (
                 <div>
-                  <Label className="text-xs">Prévia ({comContato[0].c.name})</Label>
-                  <pre className="whitespace-pre-wrap rounded bg-muted p-2 text-xs max-h-40 overflow-y-auto">{buildNotificationMessage(tplSel.body, comContato[0].c.name, [...new Set(comContato[0].plates.map((p) => extrairPlaca(p) || p))])}</pre>
+                  <Label className="text-xs">Prévia ({finais[0].c.empresa_nome || finais[0].c.name})</Label>
+                  <pre className="whitespace-pre-wrap rounded bg-muted p-2 text-xs max-h-40 overflow-y-auto">{buildNotificationMessage(tplSel.body, finais[0].c.name, finais[0].placas.map((p) => p.plate))}</pre>
                 </div>
               )}
             </div>
@@ -243,7 +226,7 @@ export function NotificacoesTab({ clients, vehicles, templates }: { clients: RcC
             {!resultados ? (
               <>
                 <Button variant="outline" onClick={() => setConfirmar(false)}>Cancelar</Button>
-                <Button onClick={enviarLote} disabled={!selecionados.length}><Send className="h-4 w-4 mr-1" />Confirmar envio</Button>
+                <Button onClick={enviarLote} disabled={!finais.length && !semDestino.length}><Send className="h-4 w-4 mr-1" />Confirmar envio</Button>
               </>
             ) : (
               <Button onClick={() => setConfirmar(false)} disabled={!!progresso}>Fechar</Button>
@@ -451,6 +434,7 @@ export function ConfigTab({ importTemplates }: { importTemplates: RcImportTempla
 
   return (
     <div className="grid gap-4 xl:grid-cols-2">
+      {(isAdmin || hasRole("gestor")) && <div className="xl:col-span-2"><UnificacaoEmpresas /></div>}
       <Card>
         <CardHeader className="pb-2"><CardTitle className="text-sm">Canais das notificações</CardTitle></CardHeader>
         <CardContent className="space-y-3 text-sm">

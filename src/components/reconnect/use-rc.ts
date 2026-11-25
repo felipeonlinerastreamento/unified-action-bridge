@@ -1,35 +1,36 @@
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import type { ClientRow, VehicleRow } from "@/lib/reconnect";
-import { destinatariosPorNotificacao, unirEmails, unirTelefones } from "@/lib/contato-notificacoes";
+import { contatosEmpresasReconnect } from "@/lib/reconnect.functions";
+import { motivoSemEnvio } from "@/lib/reconnect-contatos";
 
 // Tabelas rc_* ainda não estão nos tipos gerados até a migração 0057 ser aplicada.
 export const rc = supabase as any;
 
 export type RcClient = ClientRow & {
   company_id: string | null; created_at: string;
-  /** Contatos da empresa (Empresas › Contatos) marcados "Veículo sem comunicação". */
-  empresa_phones?: string[]; empresa_emails?: string[]; empresa_nomes?: string[];
+  /** Empresa ligada (Empresas) e seus contatos marcados "Veículo sem comunicação". */
+  empresa_nome?: string; empresa_phones?: string[]; empresa_emails?: string[]; empresa_nomes?: string[];
 };
 
-/** Todos os destinos de um cliente: os do Reconnect + os contatos marcados na empresa. */
+/** Destinos de um cliente: só os contatos da empresa marcados "Veículo sem comunicação". */
 export function destinosCliente(c: RcClient) {
-  return { phones: unirTelefones(c.phones || [], c.empresa_phones || []), emails: unirEmails(c.emails || [], c.empresa_emails || []) };
+  return { phones: c.empresa_phones || [], emails: c.empresa_emails || [] };
 }
+export const motivoSemEnvioCliente = (c: RcClient, canais: ("whatsapp" | "email")[]) => motivoSemEnvio(c, canais);
 
 async function comContatosDaEmpresa(clients: RcClient[]): Promise<RcClient[]> {
   const ids = [...new Set(clients.map((c) => c.company_id).filter(Boolean))] as string[];
-  const porEmpresa = new Map<string, unknown>();
-  for (let i = 0; i < ids.length; i += 200) {
-    const { data } = await rc.from("companies").select("id, contacts").in("id", ids.slice(i, i + 200));
-    for (const e of data || []) porEmpresa.set(e.id, e.contacts);
-  }
+  if (!ids.length) return clients;
+  // Pelo servidor: quem usa o Reconnect pode não ter leitura direta da tabela de empresas.
+  const porEmpresa = await contatosEmpresasReconnect({ data: { ids } });
   return clients.map((c) => {
-    if (!c.company_id) return c;
-    const d = destinatariosPorNotificacao(porEmpresa.get(c.company_id), "sem_comunicacao");
-    return { ...c, empresa_phones: d.phones, empresa_emails: d.emails, empresa_nomes: d.nomes };
+    const e = c.company_id ? porEmpresa[c.company_id] : undefined;
+    if (!e) return c;
+    return { ...c, empresa_nome: e.nome, empresa_phones: e.phones, empresa_emails: e.emails, empresa_nomes: e.nomes };
   });
 }
+
 export type RcTemplate = { id: string; name: string; subject: string; body: string; is_closing_template: boolean };
 export type RcImportTemplate = { id: string; name: string; mapping: { plate: string; client: string; lastCommunication: string; batteryVoltage: string } };
 export type RcRecovered = { id: string; plate: string; client_name: string; client_id: string | null; last_days_offline: number; recovered_at: string };

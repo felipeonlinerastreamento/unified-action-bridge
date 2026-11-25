@@ -6,7 +6,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useRcAccess, useRcData } from "@/components/reconnect/use-rc";
 import { PainelTab } from "@/components/reconnect/painel-tab";
 import { ResultadosTab } from "@/components/reconnect/resultados-tab";
-import { ClientesTab, ConfigTab, MensagensTab, NotificacoesTab, RecuperadosTab } from "@/components/reconnect/outras-abas";
+import { ConfigTab, MensagensTab, NotificacoesTab, RecuperadosTab } from "@/components/reconnect/outras-abas";
 
 export const Route = createFileRoute("/reconnect")({
   head: () => ({ meta: [{ title: "Reconnect | Gestão Online" }] }),
@@ -49,7 +49,6 @@ function ReconnectTela() {
       <Tabs defaultValue="painel">
         <TabsList className="flex-wrap h-auto">
           <TabsTrigger value="painel">Painel</TabsTrigger>
-          <TabsTrigger value="clientes">Clientes</TabsTrigger>
           <TabsTrigger value="notificacoes">Notificações</TabsTrigger>
           <TabsTrigger value="resultados">Resultados</TabsTrigger>
           <TabsTrigger value="recuperados">Recuperados</TabsTrigger>
@@ -59,7 +58,6 @@ function ReconnectTela() {
         {d.isLoading ? <Loader2 className="h-5 w-5 animate-spin mt-4" /> : (
           <>
             <TabsContent value="painel" className="mt-4"><PainelTab {...d} /></TabsContent>
-            <TabsContent value="clientes" className="mt-4"><ClientesTab clients={d.clients} vehicles={d.vehicles} templates={d.templates} /></TabsContent>
             <TabsContent value="notificacoes" className="mt-4"><NotificacoesTab clients={d.clients} vehicles={d.vehicles} templates={d.templates} /></TabsContent>
             <TabsContent value="resultados" className="mt-4"><ResultadosTab /></TabsContent>
             <TabsContent value="recuperados" className="mt-4"><RecuperadosTab recovered={d.recovered} /></TabsContent>
