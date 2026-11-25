@@ -16,7 +16,7 @@ import { useServerFn } from "@tanstack/react-start";
 import { useAuth } from "@/hooks/use-auth";
 import { canaisReconnect, enviarNotificacaoReconnect } from "@/lib/reconnect.functions";
 import { getCriticality, normalizeClientKey, sessaoAtual, todaySP, type Criticidade, type VehicleRow } from "@/lib/reconnect";
-import { logRc, rc, upsertEmBlocos, useRcInvalidate, type RcClient, type RcImportTemplate, type RcRecovered, type RcTemplate } from "./use-rc";
+import { destinosCliente, logRc, rc, upsertEmBlocos, useRcInvalidate, type RcClient, type RcImportTemplate, type RcRecovered, type RcTemplate } from "./use-rc";
 import { Crit } from "./painel-tab";
 import { NotificarDialog } from "./notificar-dialog";
 
@@ -72,7 +72,8 @@ export function ClientesTab({ clients, vehicles, templates }: { clients: RcClien
           <TableBody>
             {rows.map((c) => (
               <TableRow key={c.id}>
-                <TableCell className="font-medium">{c.name}{c.company_id && <Badge variant="outline" className="ml-2 text-[10px]">Gestão Online</Badge>}</TableCell>
+                <TableCell className="font-medium">{c.name}{c.company_id && <Badge variant="outline" className="ml-2 text-[10px]">Gestão Online</Badge>}
+                  {!!c.empresa_nomes?.length && <div className="text-[11px] font-normal text-muted-foreground">+ contatos da empresa: {c.empresa_nomes.join(", ")}</div>}</TableCell>
                 <TableCell>{porCliente.get(c.id)?.length ?? 0}</TableCell>
                 <TableCell><Input className="h-7 text-xs" defaultValue={(c.emails || []).join(", ")} onBlur={(e) => salvar(c, "emails", e.target.value)} placeholder="e-mail, e-mail" /></TableCell>
                 <TableCell><Input className="h-7 text-xs" defaultValue={(c.phones || []).join(", ")} onBlur={(e) => salvar(c, "phones", e.target.value)} placeholder="31999999999" /></TableCell>
@@ -110,7 +111,7 @@ export function NotificacoesTab({ clients, vehicles, templates }: { clients: RcC
   }, [sessao, clients, crits]);
   const usaveis = templates.filter((t) => !t.is_closing_template);
   const selecionados = alvo.filter((a) => sel.includes(a.c.id));
-  const comContato = selecionados.filter(({ c }) => canais.some((x) => (x === "whatsapp" ? (c.phones || []).length : (c.emails || []).length)));
+  const comContato = selecionados.filter(({ c }) => canais.some((x) => (x === "whatsapp" ? destinosCliente(c).phones.length : destinosCliente(c).emails.length)));
   const motivo = !alvo.length ? null
     : !sel.length ? "Marque ao menos um cliente."
     : !tplId ? (usaveis.length ? "Escolha o modelo de mensagem." : "Cadastre um modelo de mensagem na aba Mensagens.")
@@ -124,7 +125,8 @@ export function NotificacoesTab({ clients, vehicles, templates }: { clients: RcC
     let ok = 0;
     for (let i = 0; i < itens.length; i++) {
       setProgresso(`Enviando ${i + 1}/${itens.length}: ${itens[i].c.name}`);
-      const ch = canais.filter((x) => (x === "whatsapp" ? (itens[i].c.phones || []).length : (itens[i].c.emails || []).length));
+      const dest = destinosCliente(itens[i].c);
+      const ch = canais.filter((x) => (x === "whatsapp" ? dest.phones.length : dest.emails.length));
       if (!ch.length) continue;
       try {
         const r: any = await enviar({ data: { clientId: itens[i].c.id, plates: itens[i].plates, templateId: tplId, channels: ch, batchId } });
@@ -166,7 +168,7 @@ export function NotificacoesTab({ clients, vehicles, templates }: { clients: RcC
               <label key={c.id} className="flex items-center gap-2 px-2 py-1.5 text-xs">
                 <Checkbox checked={sel.includes(c.id)} onCheckedChange={(v) => setSel((x) => (v ? [...x, c.id] : x.filter((y) => y !== c.id)))} />
                 <span className="font-medium flex-1">{c.name}</span>
-                <span className="text-muted-foreground">{plates.length} placa(s) · {(c.phones || []).length} tel · {(c.emails || []).length} e-mail</span>
+                <span className="text-muted-foreground">{plates.length} placa(s) · {destinosCliente(c).phones.length} tel · {destinosCliente(c).emails.length} e-mail</span>
               </label>
             ))}
             {alvo.length === 0 && <p className="p-3 text-xs text-muted-foreground">{sessao.length ? "Nenhum cliente com placas nessas faixas na última importação." : "Nenhuma planilha importada ainda — importe no Painel."}</p>}
