@@ -351,14 +351,34 @@ function EmpresasPage() {
           const nome = String(p.contact_name || "").trim();
           if (digits && nome && !nameByDigits.has(digits)) nameByDigits.set(digits, nome);
         }
-        const { error } = await supabase.from("company_phones").insert(
-          phoneNumbers.map((phone_number) => ({
-            company_id: companyId,
-            phone_number,
-            contact_name: nameByDigits.get(phone_number.replace(/\D/g, "")) || null,
-          }))
+        // O número é único no sistema (identifica a empresa no Chat): o que já pertence a outra
+        // empresa não é regravado aqui, e a empresa é salva mesmo assim, com um aviso.
+        const { data: deOutras } = await supabase
+          .from("company_phones")
+          .select("phone_number, company_id, companies(name)")
+          .in("phone_number", phoneNumbers)
+          .neq("company_id", companyId);
+        const ocupados = new Map<string, string>(
+          (deOutras || []).map((r: any) => [r.phone_number as string, (r.companies?.name as string) || "outra empresa"]),
         );
-        if (error) throw error;
+        const livres = phoneNumbers.filter((n) => !ocupados.has(n));
+        if (livres.length) {
+          const { error } = await supabase.from("company_phones").insert(
+            livres.map((phone_number) => ({
+              company_id: companyId,
+              phone_number,
+              contact_name: nameByDigits.get(phone_number.replace(/\D/g, "")) || null,
+            }))
+          );
+          if (error) throw error;
+        }
+        if (ocupados.size) {
+          toast.warning(
+            `Empresa salva. ${ocupados.size} telefone(s) já ligado(s) a outra empresa não foram vinculados a esta: ` +
+              [...ocupados].map(([n, emp]) => `${n} (${emp})`).join(", "),
+            { duration: 12000 },
+          );
+        }
       }
 
       // Sync service templates: delete marked, update existing, insert new
