@@ -313,3 +313,73 @@ export const listAllProfiles = createServerFn({ method: "POST" })
       .order("name", { ascending: true });
     return (data || []).filter((p: any) => p.user_id);
   });
+
+/**
+ * Diagnóstico de login (admin): mostra o e-mail real da conta, confirmação, bloqueio e perfil, e
+ * — se informada a senha — testa o login de verdade (cliente público, sem sessão). Com `corrigir`,
+ * confirma o e-mail, tira o bloqueio de quem está ativo e (se informada) grava a senha antes do teste.
+ */
+export const diagnosticoAcessoUsuario = createServerFn({ method: "POST" })
+  .middleware([requireSupabaseAuth])
+  .inputValidator(
+    z.object({
+      targetUserId: z.string().uuid(),
+      senha: z.string().min(6).max(128).optional(),
+      corrigir: z.boolean().default(false),
+    }).parse
+  )
+  .handler(async ({ data, context }) => {
+    await requireAdmin(context.supabase, context.userId);
+    const { data: u, error } = await supabaseAdmin.auth.admin.getUserById(data.targetUserId);
+    if (error || !u?.user) throw new Error("Conta de acesso não encontrada para este usuário.");
+    const { data: perfil } = await supabaseAdmin.from("profiles").select("name, is_active").eq("user_id", data.targetUserId).maybeSingle();
+    const user: any = u.user;
+    const banidoAte = user.banned_until && Date.parse(user.banned_until) > Date.now() ? user.banned_until : null;
+    const ativo = perfil?.is_active !== false;
+    const problemas: string[] = [];
+    if (!user.email_confirmed_at) problemas.push("E-mail da conta não confirmado.");
+    if (banidoAte) problemas.push(ativo ? "Conta bloqueada no login, embora o usuário esteja ativo no sistema." : "Usuário inativo (acesso bloqueado).");
+    if (!ativo && !banidoAte) problemas.push("Usuário marcado como inativo no sistema.");
+    if (user.email !== (user.email ?? "").trim().toLowerCase()) problemas.push("E-mail da conta com maiúsculas ou espaços.");
+
+    const corrigido: string[] = [];
+    if (data.corrigir) {
+      const patch: Record<string, unknown> = {};
+      if (!user.email_confirmed_at) { patch.email_confirm = true; corrigido.push("e-mail confirmado"); }
+      if (banidoAte && ativo) { patch.ban_duration = "none"; corrigido.push("bloqueio removido"); }
+      if (data.senha) { patch.password = data.senha; corrigido.push("senha gravada"); }
+      if (Object.keys(patch).length) {
+        const { error: e2 } = await supabaseAdmin.auth.admin.updateUserById(data.targetUserId, patch as any);
+        if (e2) throw new Error(`Erro ao corrigir: ${e2.message}`);
+      }
+    }
+
+    let teste: { ok: boolean; mensagem: string } | null = null;
+    if (data.senha) {
+      const url = process.env.SUPABASE_URL;
+      const chave = process.env.SUPABASE_PUBLISHABLE_KEY || process.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      if (url && chave) {
+        const { createClient } = await import("@supabase/supabase-js");
+        const anon = createClient(url, chave, { auth: { persistSession: false, autoRefreshToken: false } });
+        const r = await anon.auth.signInWithPassword({ email: user.email, password: data.senha });
+        teste = r.error
+          ? { ok: false, mensagem: r.error.message }
+          : { ok: true, mensagem: "Login funcionou com este e-mail e senha." };
+        if (!r.error) await anon.auth.signOut().catch(() => {});
+      } else {
+        teste = { ok: false, mensagem: "Não foi possível testar (chave pública do servidor ausente)." };
+      }
+    }
+
+    return {
+      emailConta: user.email as string,
+      nome: perfil?.name ?? null,
+      ativo,
+      confirmado: !!user.email_confirmed_at,
+      banidoAte,
+      ultimoLogin: user.last_sign_in_at ?? null,
+      problemas,
+      corrigido,
+      teste,
+    };
+  });

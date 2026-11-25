@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import { AppLayout } from "@/components/app-layout";
@@ -25,7 +25,7 @@ import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { listGSystemUsers, listAllOpenChats } from "@/lib/gsystem.functions";
 import { getGSystemColaboradores } from "@/lib/gsystem-api.functions";
-import { createUser, updateUserRole, updateUserName, deleteUser, resetUserPassword, updateUserGroup, setUserActive, getUserEmail, updateUserEmail } from "@/lib/user-admin.functions";
+import { createUser, updateUserRole, updateUserName, deleteUser, resetUserPassword, updateUserGroup, setUserActive, getUserEmail, updateUserEmail, diagnosticoAcessoUsuario } from "@/lib/user-admin.functions";
 import { toast } from "sonner";
 import {
   Users, Link as LinkIcon, Unlink, Loader2, Bot, Clock, Headphones,
@@ -298,17 +298,28 @@ function UsuariosConfigPage() {
     onError: (e: Error) => toast.error(e.message),
   });
 
+  const [diagAcesso, setDiagAcesso] = useState<Awaited<ReturnType<typeof diagnosticoAcessoUsuario>> | null>(null);
+  // Redefinir = grava a senha, confirma o e-mail, tira bloqueio indevido e TESTA o login de verdade.
   const resetMutation = useMutation({
     mutationFn: async () => {
       const target = editDialogOpen ? editUserId : resetUserId;
-      if (!target || !resetPassword) return;
-      return resetUserPassword({ data: { targetUserId: target, newPassword: resetPassword } });
+      if (!target || !resetPassword) return null;
+      return diagnosticoAcessoUsuario({ data: { targetUserId: target, senha: resetPassword, corrigir: true } });
     },
-    onSuccess: () => {
-      toast.success("Senha redefinida com sucesso");
+    onSuccess: (r) => {
+      if (!r) return;
+      setDiagAcesso(r);
+      if (r.teste?.ok) toast.success(`Senha redefinida e testada: o login com ${r.emailConta} funcionou.`);
+      else toast.error(`Senha gravada, mas o teste de login falhou: ${r.teste?.mensagem ?? "sem detalhe"}`);
       setResetDialogOpen(false);
       setResetPassword("");
     },
+    onError: (e: Error) => toast.error(e.message),
+  });
+  useEffect(() => { setDiagAcesso(null); }, [editUserId]);
+  const diagMutation = useMutation({
+    mutationFn: async (target: string) => diagnosticoAcessoUsuario({ data: { targetUserId: target, corrigir: false } }),
+    onSuccess: (r) => setDiagAcesso(r),
     onError: (e: Error) => toast.error(e.message),
   });
 
@@ -851,7 +862,21 @@ function UsuariosConfigPage() {
                       {resetMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}
                       Redefinir
                     </Button>
+                    <Button variant="ghost" disabled={diagMutation.isPending} onClick={() => diagMutation.mutate(editUserId)}>
+                      {diagMutation.isPending && <Loader2 className="h-4 w-4 animate-spin mr-1" />}Diagnosticar acesso
+                    </Button>
                   </div>
+                  <p className="text-[11px] text-muted-foreground">Ao redefinir, o sistema também confirma o e-mail, tira bloqueio indevido e testa o login com a nova senha.</p>
+                  {diagAcesso && (
+                    <div className="text-xs rounded bg-muted p-2 space-y-0.5">
+                      <div>E-mail de login: <b>{diagAcesso.emailConta}</b></div>
+                      <div>Ativo: {diagAcesso.ativo ? "sim" : "não"} · E-mail confirmado: {diagAcesso.confirmado ? "sim" : "não"} · Bloqueado: {diagAcesso.banidoAte ? "sim" : "não"}</div>
+                      <div>Último login: {diagAcesso.ultimoLogin ? new Date(diagAcesso.ultimoLogin).toLocaleString("pt-BR") : "nunca"}</div>
+                      {diagAcesso.problemas.length > 0 && <div className="text-destructive">Problemas: {diagAcesso.problemas.join(" ")}</div>}
+                      {diagAcesso.corrigido.length > 0 && <div>Corrigido: {diagAcesso.corrigido.join(", ")}</div>}
+                      {diagAcesso.teste && <div className={diagAcesso.teste.ok ? "text-emerald-700" : "text-destructive"}>Teste de login: {diagAcesso.teste.mensagem}</div>}
+                    </div>
+                  )}
                 </div>
 
                 <div className="flex flex-wrap gap-2 rounded-lg border border-destructive/40 p-3">
