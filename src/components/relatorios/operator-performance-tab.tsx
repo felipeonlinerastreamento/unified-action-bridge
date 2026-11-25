@@ -361,6 +361,15 @@ export function OperatorPerformanceTab({ dateFrom, dateTo }: Props) {
     return [...ativos].filter((id) => nomes.has(id)).map((id) => ({ operatorId: id, operatorName: nomes.get(id)!, valores: v.get(id)! }));
   }, [operators, productivity, tmpr, startDelay, idleness, quality, filteredMessages, silence, sessoes, oportunidades, contatosPosVenda]);
   const boletins = useMemo(() => montarBoletins(valoresOperadores, pesos), [valoresOperadores, pesos]);
+  const setoresPorOperador = useMemo(() => {
+    const m: Record<string, string[]> = {};
+    for (const row of sectorHeadcountRows as any[]) {
+      const nome = row?.sectors?.name;
+      if (!row?.user_id || !nome) continue;
+      (m[row.user_id] ??= []).includes(nome) || m[row.user_id].push(nome);
+    }
+    return m;
+  }, [sectorHeadcountRows]);
 
   const detalheOperador = useMemo(() => (id: string) => {
     const meusTickets = (filteredTickets as any[]).filter((t) => t.assigned_to === id);
@@ -509,7 +518,7 @@ export function OperatorPerformanceTab({ dateFrom, dateTo }: Props) {
           {isLoading ? (
             <div className="flex items-center justify-center py-12 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin mr-2" /> Carregando métricas...</div>
           ) : (
-            <ComparativoOperadores boletins={boletins} valores={valoresOperadores} pesos={pesos} onPesos={setPesos} />
+            <ComparativoOperadores boletins={boletins} valores={valoresOperadores} pesos={pesos} onPesos={setPesos} setoresPorOperador={setoresPorOperador} />
           )}
         </TabsContent>
         <TabsContent value="equipe" className="mt-4 space-y-4">

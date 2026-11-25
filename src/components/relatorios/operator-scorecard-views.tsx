@@ -3,7 +3,8 @@ import {
   CartesianGrid, Line, LineChart, PolarAngleAxis, PolarGrid, PolarRadiusAxis, Radar, RadarChart,
   ReferenceLine, Scatter, ScatterChart, XAxis, YAxis, ZAxis, Legend, Tooltip,
 } from "recharts";
-import { ArrowDown, ArrowUp, Minus, Printer, ThumbsUp, Target } from "lucide-react";
+import { ArrowDown, ArrowUp, Filter, Minus, Printer, ThumbsUp, Target, X } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -18,7 +19,7 @@ import { ColumnFilterHeader } from "@/components/data-table/column-filter-header
 import { TableToolbar } from "@/components/data-table/table-toolbar";
 import type { TableColumn } from "@/lib/table-columns";
 import {
-  DEF, DIMENSOES, METRICAS, PESOS_PADRAO, comparacaoMedia, formatarValor, mediaEquipe,
+  DEF, DIMENSOES, METRICAS, PESOS_PADRAO, comparacaoMedia, formatarValor, mediaEquipe, montarBoletins,
   type Boletim, type Dimensao, type MetricaId, type ValoresOperador,
 } from "@/lib/operator-scorecard";
 import { formatDuration } from "@/lib/operator-metrics";
@@ -222,18 +223,37 @@ export function BoletimIndividual({ boletins, valores, detalhe, operadorId, onOp
 }
 
 // ---------------------------------------------------------------------------
-export function ComparativoOperadores({ boletins, valores, pesos, onPesos }: {
+const SEM_SETOR = "Sem setor";
+
+export function ComparativoOperadores({ boletins: boletinsTodos, valores: valoresTodos, pesos, onPesos, setoresPorOperador = {} }: {
   boletins: Boletim[];
   valores: ValoresOperador[];
   pesos: Record<Dimensao, number>;
   onPesos: (p: Record<Dimensao, number>) => void;
+  /** Setores de cada operador (Configurações › Setores), para o filtro. */
+  setoresPorOperador?: Record<string, string[]>;
 }) {
+  const [setoresSel, setSetoresSel] = useState<string[]>([]);
+  const setoresDoOp = (id: string) => (setoresPorOperador[id]?.length ? setoresPorOperador[id] : [SEM_SETOR]);
+  const setoresDisponiveis = useMemo(
+    () => [...new Set(valoresTodos.flatMap((v) => setoresDoOp(v.operatorId)))].sort((a, b) => (a === SEM_SETOR ? 1 : b === SEM_SETOR ? -1 : a.localeCompare(b, "pt-BR"))),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [valoresTodos, setoresPorOperador],
+  );
+  // Com setores escolhidos, notas e médias são calculadas só entre os operadores desses setores.
+  const valores = useMemo(
+    () => (setoresSel.length ? valoresTodos.filter((v) => setoresDoOp(v.operatorId).some((x) => setoresSel.includes(x))) : valoresTodos),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [valoresTodos, setoresSel, setoresPorOperador],
+  );
+  const boletins = useMemo(() => (setoresSel.length ? montarBoletins(valores, pesos) : boletinsTodos), [setoresSel, valores, pesos, boletinsTodos]);
   const media = useMemo(() => mediaEquipe(valores), [valores]);
   const [escolhidos, setEscolhidos] = useState<string[]>([]);
   const [metricaRanking, setMetricaRanking] = useState<"nota" | MetricaId>("nota");
 
   const colunas = useMemo<TableColumn<Boletim>[]>(() => [
     { id: "operador", label: "Operador", value: (b) => b.operatorName },
+    { id: "setor", label: "Setor", value: (b) => setoresDoOp(b.operatorId).join(", ") },
     { id: "nota", label: "Nota", value: (b) => b.nota },
     { id: "quadrante", label: "Perfil", value: (b) => b.quadrante ?? "" },
     ...DIMENSOES.map((d) => ({ id: `dim_${d.id}`, label: d.rotulo, value: (b: Boletim) => b.dimensoes[d.id] ?? null, defaultHidden: d.id === "negocio" })),
@@ -263,6 +283,7 @@ export function ComparativoOperadores({ boletins, valores, pesos, onPesos }: {
 
   const celula = (b: Boletim, id: string) => {
     if (id === "operador") return <TableCell key={id} className="text-xs font-medium whitespace-nowrap">{b.operatorName}</TableCell>;
+    if (id === "setor") return <TableCell key={id} className="text-xs text-muted-foreground">{setoresDoOp(b.operatorId).join(", ")}</TableCell>;
     if (id === "nota") return <TableCell key={id} className={`text-xs font-semibold ${corNota(b.nota)}`}>{b.nota ?? "—"}</TableCell>;
     if (id === "quadrante") return <TableCell key={id} className="text-xs">{b.quadrante ? <Badge variant={COR_QUADRANTE[b.quadrante] as any}>{b.quadrante}</Badge> : "—"}</TableCell>;
     if (id.startsWith("dim_")) { const v = b.dimensoes[id.slice(4) as Dimensao]; return <TableCell key={id} className={`text-xs ${corNota(v)}`}>{v ?? "—"}</TableCell>; }
@@ -279,6 +300,37 @@ export function ComparativoOperadores({ boletins, valores, pesos, onPesos }: {
 
   return (
     <div className="space-y-4">
+      <Card>
+        <CardContent className="flex flex-wrap items-center gap-2 py-3 text-sm">
+          <span className="text-xs font-medium">Setores:</span>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" size="sm" className="h-8">
+                <Filter className="h-3.5 w-3.5 mr-1" />
+                {setoresSel.length === 0 ? "Todos os setores" : setoresSel.length === 1 ? setoresSel[0] : `${setoresSel.length} setores`}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-64 p-2" align="start">
+              <div className="max-h-72 overflow-y-auto space-y-1">
+                {setoresDisponiveis.map((st) => (
+                  <label key={st} className="flex items-center gap-2 rounded px-1 py-1 text-sm hover:bg-muted cursor-pointer">
+                    <Checkbox checked={setoresSel.includes(st)} onCheckedChange={(v) => setSetoresSel((x) => (v === true ? [...x, st] : x.filter((y) => y !== st)))} />
+                    {st}
+                    <span className="ml-auto text-xs text-muted-foreground">{valoresTodos.filter((v) => setoresDoOp(v.operatorId).includes(st)).length}</span>
+                  </label>
+                ))}
+              </div>
+              {setoresSel.length > 0 && <Button variant="ghost" size="sm" className="mt-1 w-full" onClick={() => setSetoresSel([])}>Limpar (todos os setores)</Button>}
+            </PopoverContent>
+          </Popover>
+          {setoresSel.map((st) => (
+            <Badge key={st} variant="secondary" className="cursor-pointer" onClick={() => setSetoresSel((x) => x.filter((y) => y !== st))}>{st} <X className="h-3 w-3 ml-1" /></Badge>
+          ))}
+          <span className="text-xs text-muted-foreground">
+            {valores.length} operador(es){setoresSel.length > 0 && " · notas, médias e ranking calculados só entre os operadores desses setores"}
+          </span>
+        </CardContent>
+      </Card>
       <Card>
         <CardHeader className="pb-2"><CardTitle className="text-sm">Pesos da nota composta</CardTitle></CardHeader>
         <CardContent className="flex flex-wrap items-end gap-3">
