@@ -196,7 +196,7 @@ export const contatosEmpresasReconnect = createServerFn({ method: "POST" })
   });
 
 /**
- * Unifica os clientes do Reconnect com o cadastro de Empresas (admin/gestor):
+ * Unifica os clientes do Reconnect com o cadastro de Empresas (quem tem acesso ao Reconnect):
  * liga cada cliente à empresa (já ligado, nome igual, nome aproximado único ou escolha manual) e leva
  * os telefones/e-mails do cliente para os contatos da empresa marcados "Veículo sem comunicação"
  * (só marca quando o número/e-mail já existe; senão cadastra). Sem `aplicar`, só devolve a prévia.
@@ -206,12 +206,8 @@ export const unificarContatosReconnect = createServerFn({ method: "POST" })
   .inputValidator(z.object({ aplicar: z.boolean(), manuais: z.record(z.string().min(1).max(64), z.string().uuid()).optional() }).parse)
   .handler(async ({ data, context }) => {
     const { supabase, userId } = context as any;
+    // Liberado para quem tem acesso ao Reconnect (admin/gestor ou setor com o menu reconnect).
     await assertReconnect(supabase);
-    const [adm, ges] = await Promise.all([
-      supabase.rpc("has_role", { _user_id: userId, _role: "admin" }),
-      supabase.rpc("has_role", { _user_id: userId, _role: "gestor" }),
-    ]);
-    if (adm.data !== true && ges.data !== true) throw new Error("Só admin ou gestor podem unificar os contatos com Empresas.");
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
     const lerTodas = async (tabela: string, cols: string) => {
       const out: any[] = [];

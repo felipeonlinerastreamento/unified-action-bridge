@@ -434,7 +434,7 @@ export function ConfigTab({ importTemplates }: { importTemplates: RcImportTempla
 
   return (
     <div className="grid gap-4 xl:grid-cols-2">
-      {(isAdmin || hasRole("gestor")) && <div className="xl:col-span-2"><UnificacaoEmpresas /></div>}
+      <div className="xl:col-span-2"><UnificacaoEmpresas /></div>
       <Card>
         <CardHeader className="pb-2"><CardTitle className="text-sm">Canais das notificações</CardTitle></CardHeader>
         <CardContent className="space-y-3 text-sm">
