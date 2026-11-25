@@ -87,6 +87,7 @@ interface ServiceTemplate {
 
 function EmpresasPage() {
   const { isAuthenticated, isLoading: authLoading, user } = useAuth();
+  const [salvandoObs, setSalvandoObs] = useState<number | null>(null);
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
@@ -107,8 +108,8 @@ function EmpresasPage() {
   const [formServiceTemplates, setFormServiceTemplates] = useState<ServiceTemplate[]>([]);
   const [formPlatformIds, setFormPlatformIds] = useState<string[]>([]);
   const [formPhones, setFormPhones] = useState<string[]>([""]);
-  const [formContacts, setFormContacts] = useState<{ name: string; sector: string; phone: string; email: string; is_prime?: boolean; notificacoes?: NotificacaoContato[] }[]>([
-    { name: "", sector: "", phone: "", email: "", is_prime: false, notificacoes: [] },
+  const [formContacts, setFormContacts] = useState<{ name: string; sector: string; phone: string; email: string; is_prime?: boolean; notificacoes?: NotificacaoContato[]; observacao?: string }[]>([
+    { name: "", sector: "", phone: "", email: "", is_prime: false, notificacoes: [], observacao: "" },
   ]);
 
 
@@ -195,6 +196,7 @@ function EmpresasPage() {
             email: c.email || "",
             is_prime: !!c.is_prime,
             notificacoes: notificacoesDoContato(c),
+            observacao: c.observacao || "",
           }))
         : [];
     // Merge linked phones into the contacts list so they are editable there
@@ -212,6 +214,7 @@ function EmpresasPage() {
           email: "",
           is_prime: false,
           notificacoes: [],
+          observacao: "",
         });
         knownPhones.add(digits);
       }
@@ -249,6 +252,35 @@ function EmpresasPage() {
   const openNew = () => {
     resetForm();
     setIsDialogOpen(true);
+  };
+
+  /** Contato já gravado e sem mudança de nome/telefone/e-mail: a observação pode ser salva sozinha (qualquer usuário). */
+  const contatoGravado = (idx: number) => {
+    const orig = editingCompany?.contacts?.[idx];
+    const f = formContacts[idx];
+    if (!orig || !f) return null;
+    const dig = (x: unknown) => String(x ?? "").replace(/\D/g, "");
+    const igual = String(orig.name ?? "").trim() === f.name.trim() && dig(orig.phone) === dig(f.phone)
+      && String(orig.email ?? "").trim().toLowerCase() === f.email.trim().toLowerCase();
+    return igual ? orig : null;
+  };
+
+  const salvarObservacao = async (idx: number) => {
+    const orig = contatoGravado(idx);
+    const f = formContacts[idx];
+    if (!editingCompany || !orig || !f || (orig.observacao || "") === (f.observacao || "").trim()) return;
+    setSalvandoObs(idx);
+    const { error } = await (supabase as any).rpc("salvar_observacao_contato", {
+      _company_id: editingCompany.id, _indice: idx, _nome: orig.name ?? "", _telefone: orig.phone ?? "", _email: orig.email ?? "",
+      _observacao: f.observacao || "",
+    });
+    setSalvandoObs(null);
+    if (error) { toast.error(error.message); return; }
+    const contacts = [...(editingCompany.contacts || [])];
+    contacts[idx] = { ...contacts[idx], observacao: (f.observacao || "").trim() };
+    setEditingCompany({ ...editingCompany, contacts });
+    queryClient.invalidateQueries({ queryKey: ["companies"] });
+    toast.success("Observação salva.");
   };
 
   const saveMutation = useMutation({
@@ -719,7 +751,7 @@ function EmpresasPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() =>
-                    setFormContacts([...formContacts, { name: "", sector: "", phone: "", email: "", is_prime: false, notificacoes: [] }])
+                    setFormContacts([...formContacts, { name: "", sector: "", phone: "", email: "", is_prime: false, notificacoes: [], observacao: "" }])
                   }
                 >
                   <Plus className="h-3 w-3 mr-1" /> Adicionar
@@ -809,6 +841,28 @@ function EmpresasPage() {
                         {n.label}
                       </label>
                     ))}
+                  </div>
+                  <div className="w-full space-y-1">
+                    <Textarea
+                      value={contact.observacao || ""}
+                      onChange={(e) => {
+                        const c = [...formContacts];
+                        c[idx] = { ...c[idx], observacao: e.target.value };
+                        setFormContacts(c);
+                      }}
+                      onBlur={() => salvarObservacao(idx)}
+                      maxLength={2000}
+                      rows={2}
+                      placeholder="Observação sobre este contato (ex.: melhor horário, só falar sobre financeiro...)"
+                      className="text-xs min-h-[48px]"
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      {salvandoObs === idx
+                        ? "Salvando observação..."
+                        : contatoGravado(idx)
+                          ? "A observação é salva ao sair do campo."
+                          : "Contato novo ou alterado: a observação é gravada ao salvar a empresa."}
+                    </p>
                   </div>
                 </div>
               ))}
