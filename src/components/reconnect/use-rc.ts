@@ -77,7 +77,13 @@ export async function logRc(userId: string | undefined, action: string, details:
 /** Insere/atualiza em blocos (o servidor limita o tamanho de cada pedido). */
 export async function upsertEmBlocos(table: string, rows: any[], onConflict = "id", size = 500) {
   for (let i = 0; i < rows.length; i += size) {
-    const { error } = await rc.from(table).upsert(rows.slice(i, i + size), { onConflict });
+    // Num lote com linhas já existentes (que trazem created_at) e novas (sem), o PostgREST mandaria NULL
+    // para quem não tem a coluna. defaultToNull: false usa o valor padrão do banco; e created_at nulo sai.
+    const bloco = rows.slice(i, i + size).map((r) => {
+      if (r && typeof r === "object" && "created_at" in r && !r.created_at) { const { created_at: _c, ...rest } = r; return rest; }
+      return r;
+    });
+    const { error } = await rc.from(table).upsert(bloco, { onConflict, defaultToNull: false });
     if (error) throw new Error(`${table}: ${error.message}`);
   }
 }
