@@ -9,6 +9,8 @@ interface AuthState {
   isLoading: boolean;
   profile: { name: string; avatar_url: string | null } | null;
   roles: string[];
+  /** true depois que os papéis do usuário logado foram lidos (roles vazio antes disso não quer dizer "sem papel") */
+  rolesLoaded: boolean;
 }
 
 interface AuthContextType extends AuthState {
@@ -28,6 +30,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     isLoading: true,
     profile: null,
     roles: [],
+    rolesLoaded: false,
   });
 
   // Perfil e papéis são carregados uma vez por usuário (não a cada evento de
@@ -44,6 +47,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       ...prev,
       profile: profileRes.data ?? null,
       roles: rolesRes.data?.map((r) => r.role) ?? [],
+      rolesLoaded: !rolesRes.error,
     }));
   }, []);
 
@@ -71,7 +75,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         } else {
           loadedUserRef.current = null;
-          setState((prev) => ({ ...prev, profile: null, roles: [] }));
+          setState((prev) => ({ ...prev, profile: null, roles: [], rolesLoaded: false }));
         }
       }
     );
@@ -134,6 +138,7 @@ const defaultAuthContext: AuthContextType = {
   session: null,
   profile: null,
   roles: [],
+  rolesLoaded: false,
   isAuthenticated: false,
   isLoading: true,
   signIn: async () => { throw new Error("AuthProvider not mounted"); },

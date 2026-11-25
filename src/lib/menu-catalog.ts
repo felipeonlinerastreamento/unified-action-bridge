@@ -21,6 +21,7 @@ export const MENU_CATALOG: MenuEntry[] = [
   { slug: "estoque", label: "Estoque", category: "main" },
   { slug: "contratos", label: "Contratos", category: "main" },
   { slug: "reconnect", label: "Reconnect", category: "main" },
+  { slug: "gestao-eventos", label: "Gestão de eventos", category: "main" },
   { slug: "relatorios", label: "Relatórios", category: "main" },
   { slug: "atendimentos", label: "Atendimentos", category: "main" },
   { slug: "agenda.atividades", label: "Agenda — Atividades", category: "main" },
@@ -74,6 +75,7 @@ export const URL_TO_MENU_SLUG: Record<string, string> = {
   "/estoque": "estoque",
   "/contratos": "contratos",
   "/reconnect": "reconnect",
+  "/gestao-eventos": "gestao-eventos",
   "/relatorios": "relatorios",
   "/atendimentos": "atendimentos",
   "/agenda/atividades": "agenda.atividades",
@@ -102,8 +104,8 @@ export const URL_TO_MENU_SLUG: Record<string, string> = {
 };
 
 // Itens do grupo "Aplicações" do menu lateral (a Agenda entra com seus submenus).
-export const APPLICATION_MENU_URLS = ["/painel-tv", "/assistente-ia", "/reconnect", "/agenda", "/gamificacao"] as const;
-export const APPLICATION_MENU_SLUGS = ["painel-tv", "assistente-ia", "reconnect", "gamificacao"];
+export const APPLICATION_MENU_URLS = ["/painel-tv", "/assistente-ia", "/reconnect", "/gestao-eventos", "/agenda", "/gamificacao"] as const;
+export const APPLICATION_MENU_SLUGS = ["painel-tv", "assistente-ia", "reconnect", "gestao-eventos", "gamificacao"];
 
 export function isApplicationPath(pathname: string): boolean {
   return APPLICATION_MENU_URLS.some((url) => pathname === url || pathname.startsWith(`${url}/`));

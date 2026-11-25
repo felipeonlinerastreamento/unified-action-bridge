@@ -1,6 +1,6 @@
 import logoPin from "@/assets/logo-online-pin.png";
 import logoFull from "@/assets/logo-online-horizontal.png";
-import { Wallet, WifiOff } from "lucide-react";
+import { Wallet, WifiOff, ShieldAlert } from "lucide-react";
 import { useFinanceAccess } from "@/components/financeiro/use-fin";
 import {
   LayoutDashboard,
@@ -154,6 +154,7 @@ export function AppSidebar() {
   const showAgenda = visibleAgendaItems.length > 0;
   const showGamificacao = canSeeGamification({ isAdmin });
   const showReconnect = canSeeUrl("/reconnect");
+  const showGestaoEventos = canSeeUrl("/gestao-eventos");
   const showApps = showPainelTv || showAssistente || showAgenda || showGamificacao || showReconnect;
   const isAppsActive = isApplicationPath(location.pathname);
   const [appsOpen, setAppsOpen] = useState(isAppsActive);
@@ -164,6 +165,7 @@ export function AppSidebar() {
     { show: showPainelTv, title: "Painel TV", url: "/painel-tv", icon: Monitor },
     { show: showAssistente, title: "Assistente IA", url: "/assistente-ia", icon: Bot },
     { show: showReconnect, title: "Reconnect", url: "/reconnect", icon: WifiOff },
+    { show: showGestaoEventos, title: "Gestão de eventos", url: "/gestao-eventos", icon: ShieldAlert },
   ];
 
 

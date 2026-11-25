@@ -589,6 +589,13 @@
       "when": 1795562455459,
       "tag": "0083_apply_pending_0082",
       "breakpoints": true
+    },
+    {
+      "idx": 84,
+      "version": "7",
+      "when": 1795614318819,
+      "tag": "0084_gestao_eventos",
+      "breakpoints": true
     }
   ]
 }

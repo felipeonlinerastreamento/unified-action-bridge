@@ -37,11 +37,17 @@ function IndexPage() {
 
 function MetaRedirect() {
   const navigate = Route.useNavigate();
-  const { user } = useAuth();
+  const { user, roles, rolesLoaded } = useAuth();
 
   useEffect(() => {
     let cancelled = false;
     (async () => {
+      // Usuário de cliente (sem papel da equipe): só a Gestão de eventos.
+      if (user?.id && !rolesLoaded) return; // espera os papéis
+      if (user?.id && roles.length === 0) {
+        navigate({ to: "/gestao-eventos" });
+        return;
+      }
       if (user?.id) {
         const { data } = await supabase
           .from("profiles")
@@ -58,7 +64,7 @@ function MetaRedirect() {
     return () => {
       cancelled = true;
     };
-  }, [user?.id, navigate]);
+  }, [user?.id, roles.length, rolesLoaded, navigate]);
 
   return null;
 }

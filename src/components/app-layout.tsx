@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { useAuth } from "@/hooks/use-auth";
 import { useLocation, useNavigate } from "@tanstack/react-router";
 import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
@@ -62,7 +63,22 @@ function OpenTicketsTitleTracker() {
   return null;
 }
 
+/**
+ * Usuário de cliente da Gestão de eventos (sem papel da equipe) nunca vê o Gestão interno:
+ * vai direto para /gestao-eventos. O bloqueio real é no banco (is_active_staff) e no servidor.
+ */
+function useClienteExterno() {
+  const { isAuthenticated, isLoading, roles, rolesLoaded } = useAuth();
+  const navigate = useNavigate();
+  const externo = !isLoading && isAuthenticated && rolesLoaded && roles.length === 0;
+  useEffect(() => {
+    if (externo) navigate({ to: "/gestao-eventos", replace: true });
+  }, [externo, navigate]);
+  return externo;
+}
+
 export function AppLayout({ children }: { children: React.ReactNode }) {
+  if (useClienteExterno()) return null;
   return (
     <SidebarProvider>
       <PresenceTracker />

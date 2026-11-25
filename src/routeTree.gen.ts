@@ -24,6 +24,7 @@ import { Route as EmpresasRouteImport } from './routes/empresas'
 import { Route as EstoqueRouteImport } from './routes/estoque'
 import { Route as FinanceiroRouteImport } from './routes/financeiro'
 import { Route as GamificacaoRouteImport } from './routes/gamificacao'
+import { Route as GestaoEventosRouteImport } from './routes/gestao-eventos'
 import { Route as McpRouteImport } from './routes/mcp'
 import { Route as PainelTvRouteImport } from './routes/painel-tv'
 import { Route as ReconnectRouteImport } from './routes/reconnect'
@@ -68,6 +69,9 @@ import { Route as GamificacaoPerfilRouteImport } from './routes/gamificacao.perf
 import { Route as GamificacaoProcessosRouteImport } from './routes/gamificacao.processos'
 import { Route as GamificacaoRankingsRouteImport } from './routes/gamificacao.rankings'
 import { Route as GamificacaoSugestoesRouteImport } from './routes/gamificacao.sugestoes'
+import { Route as GestaoEventosIndexRouteImport } from './routes/gestao-eventos.index'
+import { Route as GestaoEventosFrotasRouteImport } from './routes/gestao-eventos.frotas'
+import { Route as GestaoEventosRelatorioRouteImport } from './routes/gestao-eventos.relatorio'
 import { Route as HooksRefreshTrackingRouteImport } from './routes/hooks/refresh-tracking'
 import { Route as PropostaTokenRouteImport } from './routes/proposta.$token'
 import { Route as TermoServicoTokenRouteImport } from './routes/termo-servico.$token'
@@ -78,11 +82,24 @@ import { Route as ApiPublicChatIdleScannerRouteImport } from './routes/api.publi
 import { Route as ApiPublicCrmDailyRouteImport } from './routes/api.public.crm-daily'
 import { Route as ApiPublicEmailPollRouteImport } from './routes/api.public.email-poll'
 import { Route as ApiPublicSystemHealthScanRouteImport } from './routes/api.public.system-health-scan'
+import { Route as GestaoEventosAdminApisRouteImport } from './routes/gestao-eventos.admin.apis'
+import { Route as GestaoEventosAdminClientsRouteImport } from './routes/gestao-eventos.admin.clients'
+import { Route as GestaoEventosAdminDriversRouteImport } from './routes/gestao-eventos.admin.drivers'
+import { Route as GestaoEventosAdminFleetsRouteImport } from './routes/gestao-eventos.admin.fleets'
+import { Route as GestaoEventosAdminGroupsRouteImport } from './routes/gestao-eventos.admin.groups'
+import { Route as GestaoEventosAdminImportacaoRouteImport } from './routes/gestao-eventos.admin.importacao'
+import { Route as GestaoEventosAdminNotificationsRouteImport } from './routes/gestao-eventos.admin.notifications'
+import { Route as GestaoEventosAdminRiskConfigRouteImport } from './routes/gestao-eventos.admin.risk-config'
+import { Route as GestaoEventosAdminUnmatchedEventsRouteImport } from './routes/gestao-eventos.admin.unmatched-events'
+import { Route as GestaoEventosAdminUsersRouteImport } from './routes/gestao-eventos.admin.users'
+import { Route as GestaoEventosEventosIndexRouteImport } from './routes/gestao-eventos.eventos.index'
+import { Route as GestaoEventosEventosIdRouteImport } from './routes/gestao-eventos.eventos.$id'
 import { Route as ApiPublicHooksAutentiqueRouteImport } from './routes/api.public.hooks.autentique'
 import { Route as ApiPublicHooksContratosDiarioRouteImport } from './routes/api.public.hooks.contratos-diario'
 import { Route as ApiPublicHooksFinanceiroBomcontroleRouteImport } from './routes/api.public.hooks.financeiro-bomcontrole'
 import { Route as ApiPublicHooksFinanceiroCobrancaRouteImport } from './routes/api.public.hooks.financeiro-cobranca'
 import { Route as ApiPublicHooksFinanceiroEmailRouteImport } from './routes/api.public.hooks.financeiro-email'
+import { Route as ApiPublicHooksGeSyncApisRouteImport } from './routes/api.public.hooks.ge-sync-apis'
 import { Route as ApiPublicHooksRhDiarioRouteImport } from './routes/api.public.hooks.rh-diario'
 import { Route as ApiPublicHooksSyncGsystemEquipamentosRouteImport } from './routes/api.public.hooks.sync-gsystem-equipamentos'
 import { Route as ApiPublicHooksSyncGsystemFaturasRouteImport } from './routes/api.public.hooks.sync-gsystem-faturas'
@@ -163,6 +180,11 @@ const FinanceiroRoute = FinanceiroRouteImport.update({
 const GamificacaoRoute = GamificacaoRouteImport.update({
   id: '/gamificacao',
   path: '/gamificacao',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GestaoEventosRoute = GestaoEventosRouteImport.update({
+  id: '/gestao-eventos',
+  path: '/gestao-eventos',
   getParentRoute: () => rootRouteImport,
 } as any)
 const McpRoute = McpRouteImport.update({
@@ -395,6 +417,21 @@ const GamificacaoSugestoesRoute = GamificacaoSugestoesRouteImport.update({
   path: '/sugestoes',
   getParentRoute: () => GamificacaoRoute,
 } as any)
+const GestaoEventosIndexRoute = GestaoEventosIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => GestaoEventosRoute,
+} as any)
+const GestaoEventosFrotasRoute = GestaoEventosFrotasRouteImport.update({
+  id: '/frotas',
+  path: '/frotas',
+  getParentRoute: () => GestaoEventosRoute,
+} as any)
+const GestaoEventosRelatorioRoute = GestaoEventosRelatorioRouteImport.update({
+  id: '/relatorio',
+  path: '/relatorio',
+  getParentRoute: () => GestaoEventosRoute,
+} as any)
 const HooksRefreshTrackingRoute = HooksRefreshTrackingRouteImport.update({
   id: '/hooks/refresh-tracking',
   path: '/hooks/refresh-tracking',
@@ -449,6 +486,75 @@ const ApiPublicSystemHealthScanRoute =
     path: '/api/public/system-health-scan',
     getParentRoute: () => rootRouteImport,
   } as any)
+const GestaoEventosAdminApisRoute = GestaoEventosAdminApisRouteImport.update({
+  id: '/admin/apis',
+  path: '/admin/apis',
+  getParentRoute: () => GestaoEventosRoute,
+} as any)
+const GestaoEventosAdminClientsRoute =
+  GestaoEventosAdminClientsRouteImport.update({
+    id: '/admin/clients',
+    path: '/admin/clients',
+    getParentRoute: () => GestaoEventosRoute,
+  } as any)
+const GestaoEventosAdminDriversRoute =
+  GestaoEventosAdminDriversRouteImport.update({
+    id: '/admin/drivers',
+    path: '/admin/drivers',
+    getParentRoute: () => GestaoEventosRoute,
+  } as any)
+const GestaoEventosAdminFleetsRoute =
+  GestaoEventosAdminFleetsRouteImport.update({
+    id: '/admin/fleets',
+    path: '/admin/fleets',
+    getParentRoute: () => GestaoEventosRoute,
+  } as any)
+const GestaoEventosAdminGroupsRoute =
+  GestaoEventosAdminGroupsRouteImport.update({
+    id: '/admin/groups',
+    path: '/admin/groups',
+    getParentRoute: () => GestaoEventosRoute,
+  } as any)
+const GestaoEventosAdminImportacaoRoute =
+  GestaoEventosAdminImportacaoRouteImport.update({
+    id: '/admin/importacao',
+    path: '/admin/importacao',
+    getParentRoute: () => GestaoEventosRoute,
+  } as any)
+const GestaoEventosAdminNotificationsRoute =
+  GestaoEventosAdminNotificationsRouteImport.update({
+    id: '/admin/notifications',
+    path: '/admin/notifications',
+    getParentRoute: () => GestaoEventosRoute,
+  } as any)
+const GestaoEventosAdminRiskConfigRoute =
+  GestaoEventosAdminRiskConfigRouteImport.update({
+    id: '/admin/risk-config',
+    path: '/admin/risk-config',
+    getParentRoute: () => GestaoEventosRoute,
+  } as any)
+const GestaoEventosAdminUnmatchedEventsRoute =
+  GestaoEventosAdminUnmatchedEventsRouteImport.update({
+    id: '/admin/unmatched-events',
+    path: '/admin/unmatched-events',
+    getParentRoute: () => GestaoEventosRoute,
+  } as any)
+const GestaoEventosAdminUsersRoute = GestaoEventosAdminUsersRouteImport.update({
+  id: '/admin/users',
+  path: '/admin/users',
+  getParentRoute: () => GestaoEventosRoute,
+} as any)
+const GestaoEventosEventosIndexRoute =
+  GestaoEventosEventosIndexRouteImport.update({
+    id: '/eventos/',
+    path: '/eventos/',
+    getParentRoute: () => GestaoEventosRoute,
+  } as any)
+const GestaoEventosEventosIdRoute = GestaoEventosEventosIdRouteImport.update({
+  id: '/eventos/$id',
+  path: '/eventos/$id',
+  getParentRoute: () => GestaoEventosRoute,
+} as any)
 const ApiPublicHooksAutentiqueRoute =
   ApiPublicHooksAutentiqueRouteImport.update({
     id: '/api/public/hooks/autentique',
@@ -477,6 +583,12 @@ const ApiPublicHooksFinanceiroEmailRoute =
   ApiPublicHooksFinanceiroEmailRouteImport.update({
     id: '/api/public/hooks/financeiro-email',
     path: '/api/public/hooks/financeiro-email',
+    getParentRoute: () => rootRouteImport,
+  } as any)
+const ApiPublicHooksGeSyncApisRoute =
+  ApiPublicHooksGeSyncApisRouteImport.update({
+    id: '/api/public/hooks/ge-sync-apis',
+    path: '/api/public/hooks/ge-sync-apis',
     getParentRoute: () => rootRouteImport,
   } as any)
 const ApiPublicHooksRhDiarioRoute = ApiPublicHooksRhDiarioRouteImport.update({
@@ -529,6 +641,7 @@ export interface FileRoutesByFullPath {
   '/estoque': typeof EstoqueRoute
   '/financeiro': typeof FinanceiroRoute
   '/gamificacao': typeof GamificacaoRouteWithChildren
+  '/gestao-eventos': typeof GestaoEventosRouteWithChildren
   '/mcp': typeof McpRoute
   '/painel-tv': typeof PainelTvRoute
   '/reconnect': typeof ReconnectRoute
@@ -570,12 +683,15 @@ export interface FileRoutesByFullPath {
   '/gamificacao/processos': typeof GamificacaoProcessosRoute
   '/gamificacao/rankings': typeof GamificacaoRankingsRoute
   '/gamificacao/sugestoes': typeof GamificacaoSugestoesRoute
+  '/gestao-eventos/frotas': typeof GestaoEventosFrotasRoute
+  '/gestao-eventos/relatorio': typeof GestaoEventosRelatorioRoute
   '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
   '/proposta/$token': typeof PropostaTokenRoute
   '/termo-servico/$token': typeof TermoServicoTokenRoute
   '/agenda/': typeof AgendaIndexRoute
   '/configuracoes/': typeof ConfiguracoesIndexRoute
   '/gamificacao/': typeof GamificacaoIndexRoute
+  '/gestao-eventos/': typeof GestaoEventosIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/api/public/auto-route-aguardando': typeof ApiPublicAutoRouteAguardandoRoute
   '/api/public/bot-auto-reply-scanner': typeof ApiPublicBotAutoReplyScannerRoute
@@ -583,11 +699,24 @@ export interface FileRoutesByFullPath {
   '/api/public/crm-daily': typeof ApiPublicCrmDailyRoute
   '/api/public/email-poll': typeof ApiPublicEmailPollRoute
   '/api/public/system-health-scan': typeof ApiPublicSystemHealthScanRoute
+  '/gestao-eventos/admin/apis': typeof GestaoEventosAdminApisRoute
+  '/gestao-eventos/admin/clients': typeof GestaoEventosAdminClientsRoute
+  '/gestao-eventos/admin/drivers': typeof GestaoEventosAdminDriversRoute
+  '/gestao-eventos/admin/fleets': typeof GestaoEventosAdminFleetsRoute
+  '/gestao-eventos/admin/groups': typeof GestaoEventosAdminGroupsRoute
+  '/gestao-eventos/admin/importacao': typeof GestaoEventosAdminImportacaoRoute
+  '/gestao-eventos/admin/notifications': typeof GestaoEventosAdminNotificationsRoute
+  '/gestao-eventos/admin/risk-config': typeof GestaoEventosAdminRiskConfigRoute
+  '/gestao-eventos/admin/unmatched-events': typeof GestaoEventosAdminUnmatchedEventsRoute
+  '/gestao-eventos/admin/users': typeof GestaoEventosAdminUsersRoute
+  '/gestao-eventos/eventos/$id': typeof GestaoEventosEventosIdRoute
+  '/gestao-eventos/eventos/': typeof GestaoEventosEventosIndexRoute
   '/api/public/hooks/autentique': typeof ApiPublicHooksAutentiqueRoute
   '/api/public/hooks/contratos-diario': typeof ApiPublicHooksContratosDiarioRoute
   '/api/public/hooks/financeiro-bomcontrole': typeof ApiPublicHooksFinanceiroBomcontroleRoute
   '/api/public/hooks/financeiro-cobranca': typeof ApiPublicHooksFinanceiroCobrancaRoute
   '/api/public/hooks/financeiro-email': typeof ApiPublicHooksFinanceiroEmailRoute
+  '/api/public/hooks/ge-sync-apis': typeof ApiPublicHooksGeSyncApisRoute
   '/api/public/hooks/rh-diario': typeof ApiPublicHooksRhDiarioRoute
   '/api/public/hooks/sync-gsystem-equipamentos': typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   '/api/public/hooks/sync-gsystem-faturas': typeof ApiPublicHooksSyncGsystemFaturasRoute
@@ -649,12 +778,15 @@ export interface FileRoutesByTo {
   '/gamificacao/processos': typeof GamificacaoProcessosRoute
   '/gamificacao/rankings': typeof GamificacaoRankingsRoute
   '/gamificacao/sugestoes': typeof GamificacaoSugestoesRoute
+  '/gestao-eventos/frotas': typeof GestaoEventosFrotasRoute
+  '/gestao-eventos/relatorio': typeof GestaoEventosRelatorioRoute
   '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
   '/proposta/$token': typeof PropostaTokenRoute
   '/termo-servico/$token': typeof TermoServicoTokenRoute
   '/agenda': typeof AgendaIndexRoute
   '/configuracoes': typeof ConfiguracoesIndexRoute
   '/gamificacao': typeof GamificacaoIndexRoute
+  '/gestao-eventos': typeof GestaoEventosIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/api/public/auto-route-aguardando': typeof ApiPublicAutoRouteAguardandoRoute
   '/api/public/bot-auto-reply-scanner': typeof ApiPublicBotAutoReplyScannerRoute
@@ -662,11 +794,24 @@ export interface FileRoutesByTo {
   '/api/public/crm-daily': typeof ApiPublicCrmDailyRoute
   '/api/public/email-poll': typeof ApiPublicEmailPollRoute
   '/api/public/system-health-scan': typeof ApiPublicSystemHealthScanRoute
+  '/gestao-eventos/admin/apis': typeof GestaoEventosAdminApisRoute
+  '/gestao-eventos/admin/clients': typeof GestaoEventosAdminClientsRoute
+  '/gestao-eventos/admin/drivers': typeof GestaoEventosAdminDriversRoute
+  '/gestao-eventos/admin/fleets': typeof GestaoEventosAdminFleetsRoute
+  '/gestao-eventos/admin/groups': typeof GestaoEventosAdminGroupsRoute
+  '/gestao-eventos/admin/importacao': typeof GestaoEventosAdminImportacaoRoute
+  '/gestao-eventos/admin/notifications': typeof GestaoEventosAdminNotificationsRoute
+  '/gestao-eventos/admin/risk-config': typeof GestaoEventosAdminRiskConfigRoute
+  '/gestao-eventos/admin/unmatched-events': typeof GestaoEventosAdminUnmatchedEventsRoute
+  '/gestao-eventos/admin/users': typeof GestaoEventosAdminUsersRoute
+  '/gestao-eventos/eventos/$id': typeof GestaoEventosEventosIdRoute
+  '/gestao-eventos/eventos': typeof GestaoEventosEventosIndexRoute
   '/api/public/hooks/autentique': typeof ApiPublicHooksAutentiqueRoute
   '/api/public/hooks/contratos-diario': typeof ApiPublicHooksContratosDiarioRoute
   '/api/public/hooks/financeiro-bomcontrole': typeof ApiPublicHooksFinanceiroBomcontroleRoute
   '/api/public/hooks/financeiro-cobranca': typeof ApiPublicHooksFinanceiroCobrancaRoute
   '/api/public/hooks/financeiro-email': typeof ApiPublicHooksFinanceiroEmailRoute
+  '/api/public/hooks/ge-sync-apis': typeof ApiPublicHooksGeSyncApisRoute
   '/api/public/hooks/rh-diario': typeof ApiPublicHooksRhDiarioRoute
   '/api/public/hooks/sync-gsystem-equipamentos': typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   '/api/public/hooks/sync-gsystem-faturas': typeof ApiPublicHooksSyncGsystemFaturasRoute
@@ -691,6 +836,7 @@ export interface FileRoutesById {
   '/estoque': typeof EstoqueRoute
   '/financeiro': typeof FinanceiroRoute
   '/gamificacao': typeof GamificacaoRouteWithChildren
+  '/gestao-eventos': typeof GestaoEventosRouteWithChildren
   '/mcp': typeof McpRoute
   '/painel-tv': typeof PainelTvRoute
   '/reconnect': typeof ReconnectRoute
@@ -732,12 +878,15 @@ export interface FileRoutesById {
   '/gamificacao/processos': typeof GamificacaoProcessosRoute
   '/gamificacao/rankings': typeof GamificacaoRankingsRoute
   '/gamificacao/sugestoes': typeof GamificacaoSugestoesRoute
+  '/gestao-eventos/frotas': typeof GestaoEventosFrotasRoute
+  '/gestao-eventos/relatorio': typeof GestaoEventosRelatorioRoute
   '/hooks/refresh-tracking': typeof HooksRefreshTrackingRoute
   '/proposta/$token': typeof PropostaTokenRoute
   '/termo-servico/$token': typeof TermoServicoTokenRoute
   '/agenda/': typeof AgendaIndexRoute
   '/configuracoes/': typeof ConfiguracoesIndexRoute
   '/gamificacao/': typeof GamificacaoIndexRoute
+  '/gestao-eventos/': typeof GestaoEventosIndexRoute
   '/.lovable/oauth/consent': typeof DotlovableOauthConsentRoute
   '/api/public/auto-route-aguardando': typeof ApiPublicAutoRouteAguardandoRoute
   '/api/public/bot-auto-reply-scanner': typeof ApiPublicBotAutoReplyScannerRoute
@@ -745,11 +894,24 @@ export interface FileRoutesById {
   '/api/public/crm-daily': typeof ApiPublicCrmDailyRoute
   '/api/public/email-poll': typeof ApiPublicEmailPollRoute
   '/api/public/system-health-scan': typeof ApiPublicSystemHealthScanRoute
+  '/gestao-eventos/admin/apis': typeof GestaoEventosAdminApisRoute
+  '/gestao-eventos/admin/clients': typeof GestaoEventosAdminClientsRoute
+  '/gestao-eventos/admin/drivers': typeof GestaoEventosAdminDriversRoute
+  '/gestao-eventos/admin/fleets': typeof GestaoEventosAdminFleetsRoute
+  '/gestao-eventos/admin/groups': typeof GestaoEventosAdminGroupsRoute
+  '/gestao-eventos/admin/importacao': typeof GestaoEventosAdminImportacaoRoute
+  '/gestao-eventos/admin/notifications': typeof GestaoEventosAdminNotificationsRoute
+  '/gestao-eventos/admin/risk-config': typeof GestaoEventosAdminRiskConfigRoute
+  '/gestao-eventos/admin/unmatched-events': typeof GestaoEventosAdminUnmatchedEventsRoute
+  '/gestao-eventos/admin/users': typeof GestaoEventosAdminUsersRoute
+  '/gestao-eventos/eventos/$id': typeof GestaoEventosEventosIdRoute
+  '/gestao-eventos/eventos/': typeof GestaoEventosEventosIndexRoute
   '/api/public/hooks/autentique': typeof ApiPublicHooksAutentiqueRoute
   '/api/public/hooks/contratos-diario': typeof ApiPublicHooksContratosDiarioRoute
   '/api/public/hooks/financeiro-bomcontrole': typeof ApiPublicHooksFinanceiroBomcontroleRoute
   '/api/public/hooks/financeiro-cobranca': typeof ApiPublicHooksFinanceiroCobrancaRoute
   '/api/public/hooks/financeiro-email': typeof ApiPublicHooksFinanceiroEmailRoute
+  '/api/public/hooks/ge-sync-apis': typeof ApiPublicHooksGeSyncApisRoute
   '/api/public/hooks/rh-diario': typeof ApiPublicHooksRhDiarioRoute
   '/api/public/hooks/sync-gsystem-equipamentos': typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   '/api/public/hooks/sync-gsystem-faturas': typeof ApiPublicHooksSyncGsystemFaturasRoute
@@ -775,6 +937,7 @@ export interface FileRouteTypes {
     | '/estoque'
     | '/financeiro'
     | '/gamificacao'
+    | '/gestao-eventos'
     | '/mcp'
     | '/painel-tv'
     | '/reconnect'
@@ -816,12 +979,15 @@ export interface FileRouteTypes {
     | '/gamificacao/processos'
     | '/gamificacao/rankings'
     | '/gamificacao/sugestoes'
+    | '/gestao-eventos/frotas'
+    | '/gestao-eventos/relatorio'
     | '/hooks/refresh-tracking'
     | '/proposta/$token'
     | '/termo-servico/$token'
     | '/agenda/'
     | '/configuracoes/'
     | '/gamificacao/'
+    | '/gestao-eventos/'
     | '/.lovable/oauth/consent'
     | '/api/public/auto-route-aguardando'
     | '/api/public/bot-auto-reply-scanner'
@@ -829,11 +995,24 @@ export interface FileRouteTypes {
     | '/api/public/crm-daily'
     | '/api/public/email-poll'
     | '/api/public/system-health-scan'
+    | '/gestao-eventos/admin/apis'
+    | '/gestao-eventos/admin/clients'
+    | '/gestao-eventos/admin/drivers'
+    | '/gestao-eventos/admin/fleets'
+    | '/gestao-eventos/admin/groups'
+    | '/gestao-eventos/admin/importacao'
+    | '/gestao-eventos/admin/notifications'
+    | '/gestao-eventos/admin/risk-config'
+    | '/gestao-eventos/admin/unmatched-events'
+    | '/gestao-eventos/admin/users'
+    | '/gestao-eventos/eventos/$id'
+    | '/gestao-eventos/eventos/'
     | '/api/public/hooks/autentique'
     | '/api/public/hooks/contratos-diario'
     | '/api/public/hooks/financeiro-bomcontrole'
     | '/api/public/hooks/financeiro-cobranca'
     | '/api/public/hooks/financeiro-email'
+    | '/api/public/hooks/ge-sync-apis'
     | '/api/public/hooks/rh-diario'
     | '/api/public/hooks/sync-gsystem-equipamentos'
     | '/api/public/hooks/sync-gsystem-faturas'
@@ -895,12 +1074,15 @@ export interface FileRouteTypes {
     | '/gamificacao/processos'
     | '/gamificacao/rankings'
     | '/gamificacao/sugestoes'
+    | '/gestao-eventos/frotas'
+    | '/gestao-eventos/relatorio'
     | '/hooks/refresh-tracking'
     | '/proposta/$token'
     | '/termo-servico/$token'
     | '/agenda'
     | '/configuracoes'
     | '/gamificacao'
+    | '/gestao-eventos'
     | '/.lovable/oauth/consent'
     | '/api/public/auto-route-aguardando'
     | '/api/public/bot-auto-reply-scanner'
@@ -908,11 +1090,24 @@ export interface FileRouteTypes {
     | '/api/public/crm-daily'
     | '/api/public/email-poll'
     | '/api/public/system-health-scan'
+    | '/gestao-eventos/admin/apis'
+    | '/gestao-eventos/admin/clients'
+    | '/gestao-eventos/admin/drivers'
+    | '/gestao-eventos/admin/fleets'
+    | '/gestao-eventos/admin/groups'
+    | '/gestao-eventos/admin/importacao'
+    | '/gestao-eventos/admin/notifications'
+    | '/gestao-eventos/admin/risk-config'
+    | '/gestao-eventos/admin/unmatched-events'
+    | '/gestao-eventos/admin/users'
+    | '/gestao-eventos/eventos/$id'
+    | '/gestao-eventos/eventos'
     | '/api/public/hooks/autentique'
     | '/api/public/hooks/contratos-diario'
     | '/api/public/hooks/financeiro-bomcontrole'
     | '/api/public/hooks/financeiro-cobranca'
     | '/api/public/hooks/financeiro-email'
+    | '/api/public/hooks/ge-sync-apis'
     | '/api/public/hooks/rh-diario'
     | '/api/public/hooks/sync-gsystem-equipamentos'
     | '/api/public/hooks/sync-gsystem-faturas'
@@ -936,6 +1131,7 @@ export interface FileRouteTypes {
     | '/estoque'
     | '/financeiro'
     | '/gamificacao'
+    | '/gestao-eventos'
     | '/mcp'
     | '/painel-tv'
     | '/reconnect'
@@ -977,12 +1173,15 @@ export interface FileRouteTypes {
     | '/gamificacao/processos'
     | '/gamificacao/rankings'
     | '/gamificacao/sugestoes'
+    | '/gestao-eventos/frotas'
+    | '/gestao-eventos/relatorio'
     | '/hooks/refresh-tracking'
     | '/proposta/$token'
     | '/termo-servico/$token'
     | '/agenda/'
     | '/configuracoes/'
     | '/gamificacao/'
+    | '/gestao-eventos/'
     | '/.lovable/oauth/consent'
     | '/api/public/auto-route-aguardando'
     | '/api/public/bot-auto-reply-scanner'
@@ -990,11 +1189,24 @@ export interface FileRouteTypes {
     | '/api/public/crm-daily'
     | '/api/public/email-poll'
     | '/api/public/system-health-scan'
+    | '/gestao-eventos/admin/apis'
+    | '/gestao-eventos/admin/clients'
+    | '/gestao-eventos/admin/drivers'
+    | '/gestao-eventos/admin/fleets'
+    | '/gestao-eventos/admin/groups'
+    | '/gestao-eventos/admin/importacao'
+    | '/gestao-eventos/admin/notifications'
+    | '/gestao-eventos/admin/risk-config'
+    | '/gestao-eventos/admin/unmatched-events'
+    | '/gestao-eventos/admin/users'
+    | '/gestao-eventos/eventos/$id'
+    | '/gestao-eventos/eventos/'
     | '/api/public/hooks/autentique'
     | '/api/public/hooks/contratos-diario'
     | '/api/public/hooks/financeiro-bomcontrole'
     | '/api/public/hooks/financeiro-cobranca'
     | '/api/public/hooks/financeiro-email'
+    | '/api/public/hooks/ge-sync-apis'
     | '/api/public/hooks/rh-diario'
     | '/api/public/hooks/sync-gsystem-equipamentos'
     | '/api/public/hooks/sync-gsystem-faturas'
@@ -1019,6 +1231,7 @@ export interface RootRouteChildren {
   EstoqueRoute: typeof EstoqueRoute
   FinanceiroRoute: typeof FinanceiroRoute
   GamificacaoRoute: typeof GamificacaoRouteWithChildren
+  GestaoEventosRoute: typeof GestaoEventosRouteWithChildren
   McpRoute: typeof McpRoute
   PainelTvRoute: typeof PainelTvRoute
   ReconnectRoute: typeof ReconnectRoute
@@ -1044,6 +1257,7 @@ export interface RootRouteChildren {
   ApiPublicHooksFinanceiroBomcontroleRoute: typeof ApiPublicHooksFinanceiroBomcontroleRoute
   ApiPublicHooksFinanceiroCobrancaRoute: typeof ApiPublicHooksFinanceiroCobrancaRoute
   ApiPublicHooksFinanceiroEmailRoute: typeof ApiPublicHooksFinanceiroEmailRoute
+  ApiPublicHooksGeSyncApisRoute: typeof ApiPublicHooksGeSyncApisRoute
   ApiPublicHooksRhDiarioRoute: typeof ApiPublicHooksRhDiarioRoute
   ApiPublicHooksSyncGsystemEquipamentosRoute: typeof ApiPublicHooksSyncGsystemEquipamentosRoute
   ApiPublicHooksSyncGsystemFaturasRoute: typeof ApiPublicHooksSyncGsystemFaturasRoute
@@ -1157,6 +1371,13 @@ declare module '@tanstack/react-router' {
       path: '/gamificacao'
       fullPath: '/gamificacao'
       preLoaderRoute: typeof GamificacaoRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/gestao-eventos': {
+      id: '/gestao-eventos'
+      path: '/gestao-eventos'
+      fullPath: '/gestao-eventos'
+      preLoaderRoute: typeof GestaoEventosRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/mcp': {
@@ -1467,6 +1688,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GamificacaoSugestoesRouteImport
       parentRoute: typeof GamificacaoRoute
     }
+    '/gestao-eventos/': {
+      id: '/gestao-eventos/'
+      path: '/'
+      fullPath: '/gestao-eventos/'
+      preLoaderRoute: typeof GestaoEventosIndexRouteImport
+      parentRoute: typeof GestaoEventosRoute
+    }
+    '/gestao-eventos/frotas': {
+      id: '/gestao-eventos/frotas'
+      path: '/frotas'
+      fullPath: '/gestao-eventos/frotas'
+      preLoaderRoute: typeof GestaoEventosFrotasRouteImport
+      parentRoute: typeof GestaoEventosRoute
+    }
+    '/gestao-eventos/relatorio': {
+      id: '/gestao-eventos/relatorio'
+      path: '/relatorio'
+      fullPath: '/gestao-eventos/relatorio'
+      preLoaderRoute: typeof GestaoEventosRelatorioRouteImport
+      parentRoute: typeof GestaoEventosRoute
+    }
     '/hooks/refresh-tracking': {
       id: '/hooks/refresh-tracking'
       path: '/hooks/refresh-tracking'
@@ -1537,6 +1779,90 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiPublicSystemHealthScanRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/gestao-eventos/admin/apis': {
+      id: '/gestao-eventos/admin/apis'
+      path: '/admin/apis'
+      fullPath: '/gestao-eventos/admin/apis'
+      preLoaderRoute: typeof GestaoEventosAdminApisRouteImport
+      parentRoute: typeof GestaoEventosRoute
+    }
+    '/gestao-eventos/admin/clients': {
+      id: '/gestao-eventos/admin/clients'
+      path: '/admin/clients'
+      fullPath: '/gestao-eventos/admin/clients'
+      preLoaderRoute: typeof GestaoEventosAdminClientsRouteImport
+      parentRoute: typeof GestaoEventosRoute
+    }
+    '/gestao-eventos/admin/drivers': {
+      id: '/gestao-eventos/admin/drivers'
+      path: '/admin/drivers'
+      fullPath: '/gestao-eventos/admin/drivers'
+      preLoaderRoute: typeof GestaoEventosAdminDriversRouteImport
+      parentRoute: typeof GestaoEventosRoute
+    }
+    '/gestao-eventos/admin/fleets': {
+      id: '/gestao-eventos/admin/fleets'
+      path: '/admin/fleets'
+      fullPath: '/gestao-eventos/admin/fleets'
+      preLoaderRoute: typeof GestaoEventosAdminFleetsRouteImport
+      parentRoute: typeof GestaoEventosRoute
+    }
+    '/gestao-eventos/admin/groups': {
+      id: '/gestao-eventos/admin/groups'
+      path: '/admin/groups'
+      fullPath: '/gestao-eventos/admin/groups'
+      preLoaderRoute: typeof GestaoEventosAdminGroupsRouteImport
+      parentRoute: typeof GestaoEventosRoute
+    }
+    '/gestao-eventos/admin/importacao': {
+      id: '/gestao-eventos/admin/importacao'
+      path: '/admin/importacao'
+      fullPath: '/gestao-eventos/admin/importacao'
+      preLoaderRoute: typeof GestaoEventosAdminImportacaoRouteImport
+      parentRoute: typeof GestaoEventosRoute
+    }
+    '/gestao-eventos/admin/notifications': {
+      id: '/gestao-eventos/admin/notifications'
+      path: '/admin/notifications'
+      fullPath: '/gestao-eventos/admin/notifications'
+      preLoaderRoute: typeof GestaoEventosAdminNotificationsRouteImport
+      parentRoute: typeof GestaoEventosRoute
+    }
+    '/gestao-eventos/admin/risk-config': {
+      id: '/gestao-eventos/admin/risk-config'
+      path: '/admin/risk-config'
+      fullPath: '/gestao-eventos/admin/risk-config'
+      preLoaderRoute: typeof GestaoEventosAdminRiskConfigRouteImport
+      parentRoute: typeof GestaoEventosRoute
+    }
+    '/gestao-eventos/admin/unmatched-events': {
+      id: '/gestao-eventos/admin/unmatched-events'
+      path: '/admin/unmatched-events'
+      fullPath: '/gestao-eventos/admin/unmatched-events'
+      preLoaderRoute: typeof GestaoEventosAdminUnmatchedEventsRouteImport
+      parentRoute: typeof GestaoEventosRoute
+    }
+    '/gestao-eventos/admin/users': {
+      id: '/gestao-eventos/admin/users'
+      path: '/admin/users'
+      fullPath: '/gestao-eventos/admin/users'
+      preLoaderRoute: typeof GestaoEventosAdminUsersRouteImport
+      parentRoute: typeof GestaoEventosRoute
+    }
+    '/gestao-eventos/eventos/': {
+      id: '/gestao-eventos/eventos/'
+      path: '/eventos'
+      fullPath: '/gestao-eventos/eventos/'
+      preLoaderRoute: typeof GestaoEventosEventosIndexRouteImport
+      parentRoute: typeof GestaoEventosRoute
+    }
+    '/gestao-eventos/eventos/$id': {
+      id: '/gestao-eventos/eventos/$id'
+      path: '/eventos/$id'
+      fullPath: '/gestao-eventos/eventos/$id'
+      preLoaderRoute: typeof GestaoEventosEventosIdRouteImport
+      parentRoute: typeof GestaoEventosRoute
+    }
     '/api/public/hooks/autentique': {
       id: '/api/public/hooks/autentique'
       path: '/api/public/hooks/autentique'
@@ -1570,6 +1896,13 @@ declare module '@tanstack/react-router' {
       path: '/api/public/hooks/financeiro-email'
       fullPath: '/api/public/hooks/financeiro-email'
       preLoaderRoute: typeof ApiPublicHooksFinanceiroEmailRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/public/hooks/ge-sync-apis': {
+      id: '/api/public/hooks/ge-sync-apis'
+      path: '/api/public/hooks/ge-sync-apis'
+      fullPath: '/api/public/hooks/ge-sync-apis'
+      preLoaderRoute: typeof ApiPublicHooksGeSyncApisRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/public/hooks/rh-diario': {
@@ -1715,6 +2048,47 @@ const GamificacaoRouteWithChildren = GamificacaoRoute._addFileChildren(
   GamificacaoRouteChildren,
 )
 
+interface GestaoEventosRouteChildren {
+  GestaoEventosFrotasRoute: typeof GestaoEventosFrotasRoute
+  GestaoEventosRelatorioRoute: typeof GestaoEventosRelatorioRoute
+  GestaoEventosIndexRoute: typeof GestaoEventosIndexRoute
+  GestaoEventosAdminApisRoute: typeof GestaoEventosAdminApisRoute
+  GestaoEventosAdminClientsRoute: typeof GestaoEventosAdminClientsRoute
+  GestaoEventosAdminDriversRoute: typeof GestaoEventosAdminDriversRoute
+  GestaoEventosAdminFleetsRoute: typeof GestaoEventosAdminFleetsRoute
+  GestaoEventosAdminGroupsRoute: typeof GestaoEventosAdminGroupsRoute
+  GestaoEventosAdminImportacaoRoute: typeof GestaoEventosAdminImportacaoRoute
+  GestaoEventosAdminNotificationsRoute: typeof GestaoEventosAdminNotificationsRoute
+  GestaoEventosAdminRiskConfigRoute: typeof GestaoEventosAdminRiskConfigRoute
+  GestaoEventosAdminUnmatchedEventsRoute: typeof GestaoEventosAdminUnmatchedEventsRoute
+  GestaoEventosAdminUsersRoute: typeof GestaoEventosAdminUsersRoute
+  GestaoEventosEventosIdRoute: typeof GestaoEventosEventosIdRoute
+  GestaoEventosEventosIndexRoute: typeof GestaoEventosEventosIndexRoute
+}
+
+const GestaoEventosRouteChildren: GestaoEventosRouteChildren = {
+  GestaoEventosFrotasRoute: GestaoEventosFrotasRoute,
+  GestaoEventosRelatorioRoute: GestaoEventosRelatorioRoute,
+  GestaoEventosIndexRoute: GestaoEventosIndexRoute,
+  GestaoEventosAdminApisRoute: GestaoEventosAdminApisRoute,
+  GestaoEventosAdminClientsRoute: GestaoEventosAdminClientsRoute,
+  GestaoEventosAdminDriversRoute: GestaoEventosAdminDriversRoute,
+  GestaoEventosAdminFleetsRoute: GestaoEventosAdminFleetsRoute,
+  GestaoEventosAdminGroupsRoute: GestaoEventosAdminGroupsRoute,
+  GestaoEventosAdminImportacaoRoute: GestaoEventosAdminImportacaoRoute,
+  GestaoEventosAdminNotificationsRoute: GestaoEventosAdminNotificationsRoute,
+  GestaoEventosAdminRiskConfigRoute: GestaoEventosAdminRiskConfigRoute,
+  GestaoEventosAdminUnmatchedEventsRoute:
+    GestaoEventosAdminUnmatchedEventsRoute,
+  GestaoEventosAdminUsersRoute: GestaoEventosAdminUsersRoute,
+  GestaoEventosEventosIdRoute: GestaoEventosEventosIdRoute,
+  GestaoEventosEventosIndexRoute: GestaoEventosEventosIndexRoute,
+}
+
+const GestaoEventosRouteWithChildren = GestaoEventosRoute._addFileChildren(
+  GestaoEventosRouteChildren,
+)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AgendaRoute: AgendaRouteWithChildren,
@@ -1731,6 +2105,7 @@ const rootRouteChildren: RootRouteChildren = {
   EstoqueRoute: EstoqueRoute,
   FinanceiroRoute: FinanceiroRoute,
   GamificacaoRoute: GamificacaoRouteWithChildren,
+  GestaoEventosRoute: GestaoEventosRouteWithChildren,
   McpRoute: McpRoute,
   PainelTvRoute: PainelTvRoute,
   ReconnectRoute: ReconnectRoute,
@@ -1758,6 +2133,7 @@ const rootRouteChildren: RootRouteChildren = {
     ApiPublicHooksFinanceiroBomcontroleRoute,
   ApiPublicHooksFinanceiroCobrancaRoute: ApiPublicHooksFinanceiroCobrancaRoute,
   ApiPublicHooksFinanceiroEmailRoute: ApiPublicHooksFinanceiroEmailRoute,
+  ApiPublicHooksGeSyncApisRoute: ApiPublicHooksGeSyncApisRoute,
   ApiPublicHooksRhDiarioRoute: ApiPublicHooksRhDiarioRoute,
   ApiPublicHooksSyncGsystemEquipamentosRoute:
     ApiPublicHooksSyncGsystemEquipamentosRoute,
