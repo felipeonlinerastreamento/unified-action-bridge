@@ -315,10 +315,11 @@ function EmpresasPage() {
         companyId = editingCompany.id;
 
         // Delete old phones
-        await supabase
+        const { error: delErr } = await supabase
           .from("company_phones")
           .delete()
           .eq("company_id", companyId);
+        if (delErr) console.warn("Não foi possível limpar os telefones antigos:", delErr.message);
       } else {
         const { data, error } = await supabase
           .from("companies")
@@ -363,12 +364,15 @@ function EmpresasPage() {
         );
         const livres = phoneNumbers.filter((n) => !ocupados.has(n));
         if (livres.length) {
-          const { error } = await supabase.from("company_phones").insert(
+          // upsert ignorando duplicados: se o número já existir (desta empresa ou de outra que a
+          // consulta não enxergou), não derruba o salvamento da empresa.
+          const { error } = await supabase.from("company_phones").upsert(
             livres.map((phone_number) => ({
               company_id: companyId,
               phone_number,
               contact_name: nameByDigits.get(phone_number.replace(/\D/g, "")) || null,
-            }))
+            })),
+            { onConflict: "phone_number", ignoreDuplicates: true },
           );
           if (error) throw error;
         }
