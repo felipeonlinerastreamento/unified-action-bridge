@@ -10,12 +10,12 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { FileSpreadsheet, Loader2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
-import { autoDetect, buildRowsFromMatrix, normalizeClientKey, planImport, type Mapping, type VehicleRow } from "@/lib/reconnect";
+import { buildRowsFromMatrix, detectHeaderRow, detectarModelo, normalizarLinhas, normalizeClientKey, planImport, MAPEAMENTO_PADRAO, type Mapping, type ModeloPlanilha, type VehicleRow } from "@/lib/reconnect";
 import { useServerFn } from "@tanstack/react-start";
 import { atualizarRiscoReconnect } from "@/lib/reconnect.functions";
 import { logRc, rc, upsertEmBlocos, useRcInvalidate, type RcClient, type RcImportTemplate } from "./use-rc";
 
-type Arquivo = { name: string; headers: string[]; rows: Record<string, unknown>[] };
+type Arquivo = { name: string; headers: string[]; rows: Record<string, unknown>[]; linhaInicial: number; modelo: ModeloPlanilha };
 const NONE = "__none__";
 
 async function lerPlanilha(file: File): Promise<Arquivo> {
@@ -29,7 +29,9 @@ async function lerPlanilha(file: File): Promise<Arquivo> {
   }
   const matrix = XLSX.utils.sheet_to_json(ws, { header: 1, raw: false, defval: "" }) as unknown[][];
   const rows = buildRowsFromMatrix(matrix).map((r) => Object.fromEntries(Object.entries(r).map(([k, v]) => [String(k).trim(), v])));
-  return { name: file.name, headers: rows.length ? Object.keys(rows[0]) : [], rows };
+  const headers = rows.length ? Object.keys(rows[0]) : [];
+  // Cada planilha é reconhecida pelo próprio cabeçalho (cada sistema tem o seu modelo).
+  return { name: file.name, headers, rows, linhaInicial: detectHeaderRow(matrix) + 2, modelo: detectarModelo(headers, rows) };
 }
 
 export type ResumoImportacao = { total: number; novos: number; atualizados: number; pulados: { rowNumber: number; rawPlate: string; rawClient: string; reason: string }[]; recuperados: number; avisos: { row: number; issue: string; value: string }[] };
@@ -43,12 +45,13 @@ export function UploadPlanilhas({ vehicles, clients, importTemplates, onResumo }
   const inputRef = useRef<HTMLInputElement>(null);
   const [arquivos, setArquivos] = useState<Arquivo[]>([]);
   const [lendo, setLendo] = useState(false);
-  const [mapping, setMapping] = useState<Mapping>({ plate: "", client: "", lastCommunication: "", batteryVoltage: "" });
-  const [descartar, setDescartar] = useState(false);
+  const [descartar, setDescartar] = useState(true);
   const [maxDias, setMaxDias] = useState(2);
   const [importando, setImportando] = useState(false);
   const [drag, setDrag] = useState(false);
-  const headers = [...new Set(arquivos.flatMap((a) => a.headers))];
+  const faltando = arquivos.filter((a) => !a.modelo.mapping.plate || !a.modelo.mapping.client);
+  const setMapArquivo = (i: number, k: keyof Mapping, v: string) =>
+    setArquivos((xs) => xs.map((a, j) => (j === i ? { ...a, modelo: { ...a.modelo, mapping: { ...a.modelo.mapping, [k]: v } } } : a)));
 
   const adicionar = async (files: FileList | File[] | null) => {
     if (!files || !(files as any).length) return;
@@ -58,10 +61,7 @@ export function UploadPlanilhas({ vehicles, clients, importTemplates, onResumo }
       for (const f of Array.from(files)) {
         try { lidos.push(await lerPlanilha(f)); } catch (e: any) { toast.error(`${f.name}: ${e?.message ?? "não foi possível ler"}`); }
       }
-      const todos = [...arquivos, ...lidos];
-      setArquivos(todos);
-      const hs = [...new Set(todos.flatMap((a) => a.headers))];
-      setMapping((m) => (m.plate && m.client ? m : autoDetect(hs)));
+      setArquivos((xs) => [...xs, ...lidos]);
     } finally {
       setLendo(false);
       if (inputRef.current) inputRef.current.value = "";
@@ -69,10 +69,12 @@ export function UploadPlanilhas({ vehicles, clients, importTemplates, onResumo }
   };
 
   const importar = async () => {
-    if (!mapping.plate || !mapping.client) { toast.error("Escolha as colunas de Placa e Cliente."); return; }
+    if (faltando.length) { toast.error(`Escolha as colunas de Placa e Cliente em: ${faltando.map((a) => a.name).join(", ")}`); return; }
     setImportando(true);
     try {
-      const rows = arquivos.flatMap((a) => a.rows);
+      // Todas as planilhas viram uma importação só (colunas padrão), cada uma lida pelo seu modelo.
+      const rows = arquivos.flatMap((a) => normalizarLinhas(a.rows, a.modelo, a.name, a.linhaInicial));
+      const mapping = MAPEAMENTO_PADRAO;
       // Dados frescos do banco antes de importar (protege e-mails/telefones e anotações).
       const [{ data: recRows }, { data: anns }, { data: comps }] = await Promise.all([
         rc.from("rc_recovered_vehicles").select("plate").limit(20000),
@@ -117,18 +119,19 @@ export function UploadPlanilhas({ vehicles, clients, importTemplates, onResumo }
     }
   };
 
-  const aplicarModelo = (id: string) => {
+  const aplicarModelo = (i: number, id: string) => {
     const t = importTemplates.find((x) => x.id === id);
-    if (t) setMapping({ plate: t.mapping.plate || "", client: t.mapping.client || "", lastCommunication: t.mapping.lastCommunication || "", batteryVoltage: t.mapping.batteryVoltage || "" });
+    if (!t) return;
+    for (const k of ["plate", "client", "lastCommunication", "batteryVoltage"] as (keyof Mapping)[]) setMapArquivo(i, k, (t.mapping as any)[k] || "");
   };
-  const Campo = ({ k, label, obrigatorio }: { k: keyof Mapping; label: string; obrigatorio?: boolean }) => (
+  const Campo = ({ i, k, label, obrigatorio }: { i: number; k: keyof Mapping; label: string; obrigatorio?: boolean }) => (
     <div className="space-y-1">
-      <Label className="text-xs">{label}{obrigatorio && " *"}</Label>
-      <Select value={mapping[k] || NONE} onValueChange={(v) => setMapping((m) => ({ ...m, [k]: v === NONE ? "" : v }))}>
-        <SelectTrigger className="h-8"><SelectValue /></SelectTrigger>
+      <Label className="text-[11px]">{label}{obrigatorio && " *"}</Label>
+      <Select value={arquivos[i].modelo.mapping[k] || NONE} onValueChange={(v) => setMapArquivo(i, k, v === NONE ? "" : v)}>
+        <SelectTrigger className="h-7 text-xs"><SelectValue /></SelectTrigger>
         <SelectContent>
           <SelectItem value={NONE}>— não usar —</SelectItem>
-          {headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
+          {arquivos[i].headers.map((h) => <SelectItem key={h} value={h}>{h}</SelectItem>)}
         </SelectContent>
       </Select>
     </div>
@@ -154,34 +157,37 @@ export function UploadPlanilhas({ vehicles, clients, importTemplates, onResumo }
       </Card>
 
       <Dialog open={arquivos.length > 0} onOpenChange={(o) => !o && !importando && setArquivos([])}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-3xl">
           <DialogHeader>
             <DialogTitle>Importar planilhas</DialogTitle>
             <DialogDescription>{arquivos.reduce((s, a) => s + a.rows.length, 0)} linha(s) em {arquivos.length} arquivo(s). Confira as colunas.</DialogDescription>
           </DialogHeader>
-          <div className="flex flex-wrap gap-1">
+          <div className="space-y-2 max-h-[50vh] overflow-auto pr-1">
             {arquivos.map((a, i) => (
-              <Badge key={i} variant="secondary" className="gap-1">{a.name} · {a.rows.length}
-                <button onClick={() => setArquivos((x) => x.filter((_, j) => j !== i))}><X className="h-3 w-3" /></button>
-              </Badge>
+              <div key={i} className="rounded border p-2 space-y-2">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-sm font-medium truncate max-w-[260px]" title={a.name}>{a.name}</span>
+                  <Badge variant="secondary">{a.rows.length} linha(s)</Badge>
+                  <Badge variant="outline">{a.modelo.nome}</Badge>
+                  {importTemplates.length > 0 && (
+                    <Select onValueChange={(id) => aplicarModelo(i, id)}>
+                      <SelectTrigger className="h-7 w-[180px] text-xs"><SelectValue placeholder="Aplicar modelo salvo" /></SelectTrigger>
+                      <SelectContent>{importTemplates.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
+                    </Select>
+                  )}
+                  <button className="ml-auto text-muted-foreground" onClick={() => setArquivos((x) => x.filter((_, j) => j !== i))} title="Tirar esta planilha"><X className="h-4 w-4" /></button>
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  <Campo i={i} k="plate" label="Placa" obrigatorio />
+                  <Campo i={i} k="client" label="Cliente" obrigatorio />
+                  <Campo i={i} k="lastCommunication" label="Última comunicação" />
+                  <Campo i={i} k="batteryVoltage" label="Bateria" />
+                </div>
+              </div>
             ))}
             <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => inputRef.current?.click()}>+ Adicionar mais planilhas</Button>
           </div>
-          {importTemplates.length > 0 && (
-            <div className="flex items-center gap-2 text-sm">
-              <span>Modelo:</span>
-              <Select onValueChange={aplicarModelo}>
-                <SelectTrigger className="h-8 w-[240px]"><SelectValue placeholder="Carregar modelo de importação" /></SelectTrigger>
-                <SelectContent>{importTemplates.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}</SelectContent>
-              </Select>
-            </div>
-          )}
-          <div className="grid grid-cols-2 gap-3">
-            <Campo k="plate" label="Placa" obrigatorio />
-            <Campo k="client" label="Cliente" obrigatorio />
-            <Campo k="lastCommunication" label="Última comunicação / dias" />
-            <Campo k="batteryVoltage" label="Tensão da bateria" />
-          </div>
+          <p className="text-[11px] text-muted-foreground">Cada planilha é lida pelo modelo do seu sistema. Placa é tirada de textos como "FIAT/STRADA TCA-8A29". Data em branco entra como <b>Sem comunicação</b>. Equipamento "Inativo" no relatório de equipamentos é ignorado.</p>
           <div className="flex items-center gap-2 text-sm rounded border p-2">
             <Checkbox id="rc-desc" checked={descartar} onCheckedChange={(v) => setDescartar(v === true)} />
             <label htmlFor="rc-desc">Descartar veículos com comunicação recente (até</label>
@@ -190,7 +196,7 @@ export function UploadPlanilhas({ vehicles, clients, importTemplates, onResumo }
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setArquivos([])} disabled={importando}>Cancelar</Button>
-            <Button onClick={importar} disabled={importando || !mapping.plate || !mapping.client}>{importando && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}Importar</Button>
+            <Button onClick={importar} disabled={importando || faltando.length > 0}>{importando && <Loader2 className="h-4 w-4 mr-1 animate-spin" />}Importar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

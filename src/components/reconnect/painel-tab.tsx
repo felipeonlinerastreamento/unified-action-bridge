@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Search, Send, RotateCcw } from "lucide-react";
 import { toast } from "sonner";
 import { useAuth } from "@/hooks/use-auth";
-import { CRITICIDADE_LABEL, getCriticality, todaySP, type Criticidade, type VehicleRow } from "@/lib/reconnect";
+import { CRITICIDADE_LABEL, getCriticality, todaySP, STATUS_SEM_COMUNICACAO, type Criticidade, type VehicleRow } from "@/lib/reconnect";
 import { logRc, rc, useRcInvalidate, type RcClient, type RcImportTemplate, type RcRecovered, type RcTemplate } from "./use-rc";
 import { UploadPlanilhas, type ResumoImportacao } from "./upload-planilhas";
 import { NotificarDialog } from "./notificar-dialog";
@@ -114,7 +114,9 @@ export function PainelTab({ vehicles, clients, recovered, templates, importTempl
               <TableRow key={v.id}>
                 <TableCell className="font-mono font-semibold">{v.plate}{v.was_recovered && <Badge variant="outline" className="ml-1 text-[10px]" title={`Já foi recuperada ${v.recovery_count}x`}>↺{v.recovery_count}</Badge>}</TableCell>
                 <TableCell className="max-w-[200px] truncate" title={v.client_name}>{v.client_name}</TableCell>
-                <TableCell><Crit dias={v.days_offline} /></TableCell>
+                <TableCell>{v.status === STATUS_SEM_COMUNICACAO
+                  ? <Badge variant="outline" className="bg-slate-500/15 text-slate-700 border-slate-500/40">Sem comunicação</Badge>
+                  : <Crit dias={v.days_offline} />}</TableCell>
                 <TableCell className="text-xs text-muted-foreground">{v.status}</TableCell>
                 <TableCell className="text-xs">{v.battery_voltage || "—"}</TableCell>
                 <TableCell>{v.incidences}</TableCell>

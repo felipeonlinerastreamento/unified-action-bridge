@@ -4,6 +4,7 @@ import {
   detectHeaderRow, buildRowsFromMatrix, autoDetect, parseDaysOffline, getCriticality, normalizeClientKey,
   planImport, buildNotificationMessage, type VehicleRow,
   chaveEmpresa, vincularCarteira, riscoPorCarteira, metricasReconnect,
+  extrairPlaca, chavePlaca, detectarModelo, normalizarLinhas, MAPEAMENTO_PADRAO,
 } from "./reconnect";
 
 const NOW = new Date("2026-11-21T15:00:00Z"); // 21/11 12:00 em São Paulo
@@ -139,5 +140,50 @@ describe("resultados e risco", () => {
     assert.equal(m.receita?.emRisco31, 500);
     assert.equal(m.receita?.recuperada, 1000);
     assert.deepEqual(m.semanas.map((s) => s.semana), ["2026-11-09"]);
+  });
+});
+
+describe("várias planilhas de sistemas diferentes", () => {
+  it("extrai a placa de textos dos relatórios", () => {
+    assert.equal(extrairPlaca("FIAT/STRADA TCA-8A29"), "TCA8A29");
+    assert.equal(extrairPlaca("MPOLO/VOLARE V10L   TZT1G65"), "TZT1G65");
+    assert.equal(extrairPlaca("CMF4102 ESCAVADEIRA"), "CMF4102");
+    assert.equal(extrairPlaca("RUI3D01   -  CM-045"), "RUI3D01");
+    assert.equal(extrairPlaca("GOL OWL-4065"), "OWL4065");
+    assert.equal(extrairPlaca("ONLINE-0181"), "ONLINE-0181");
+    assert.equal(extrairPlaca("TAG -0158"), "TAG-0158");
+    assert.equal(extrairPlaca("-"), "");
+    assert.equal(chavePlaca("TCA-8A29"), chavePlaca("tca8a29"));
+  });
+
+  it("reconhece os 4 modelos pelo cabeçalho", () => {
+    assert.equal(detectarModelo(["IMEI", "Modelo", "Cliente", "Prefixo", "Identificador", "Chip", "Último Heartbeat", "Situação", "Status"]).mapping.plate, "Identificador");
+    const u = detectarModelo(["Unidade rastreada", "Cliente", "Data da atualização", "Tempo desatualizado"]);
+    assert.equal(u.mapping.lastCommunication, "Data da atualização");
+    const v = detectarModelo(["Plate Number", "Device Number", "Status", "Fleet Name", "Last Time On Line"]);
+    assert.deepEqual([v.mapping.plate, v.mapping.client, v.mapping.lastCommunication], ["Plate Number", "Fleet Name", "Last Time On Line"]);
+    const g = detectarModelo(["Sts. GPS", "Serial", "Frota", "Placa", "Cliente", "Data/Hora", "Atraso"]);
+    assert.deepEqual([g.mapping.plate, g.mapping.lastCommunication], ["Placa", "Data/Hora"]);
+  });
+
+  it("junta planilhas, data em branco vira 'Sem comunicação' (sem descartar) e inativo é pulado", () => {
+    const now = new Date("2026-11-25T12:00:00-03:00");
+    const a = normalizarLinhas(
+      [{ "Unidade rastreada": "FIAT/STRADA TCA-8A29", Cliente: "Lok", "Data da atualização": "" },
+       { "Unidade rastreada": "GOL OWL-4065", Cliente: "Sicoob", "Data da atualização": "01/11/2026 10:00" }],
+      detectarModelo(["Unidade rastreada", "Cliente", "Data da atualização"]), "unidades.xlsx");
+    const b = normalizarLinhas(
+      [{ IMEI: "1", Cliente: "Lok", Identificador: "TCA8A29", "Último Heartbeat": "25/11/2026 09:00:00", Situação: "Ativo" },
+       { IMEI: "2", Cliente: "X", Identificador: "ABC1D23", "Último Heartbeat": "-", Situação: "Inativo" }],
+      detectarModelo(["IMEI", "Cliente", "Identificador", "Último Heartbeat", "Situação"]), "equip.xlsx", 3);
+    const plan = planImport({
+      rows: [...a, ...b], mapping: MAPEAMENTO_PADRAO, discard: { enabled: true, maxDays: 2 },
+      vehicles: [], clients: [], recoveredPlates: new Map(), annotations: new Map(), now, newId: (() => { let i = 0; return () => `id${++i}`; })(),
+    });
+    const porPlaca = Object.fromEntries(plan.vehiclesToUpsert.map((v) => [v.plate, v.status]));
+    assert.equal(porPlaca["TCA8A29"], "Sem comunicação");
+    assert.match(porPlaca["OWL4065"], /dia\(s\) sem comunicação/);
+    assert.equal(plan.warnings.filter((w) => w.severity === "error").length, 0);
+    assert.ok(plan.skipped.some((s) => /inativo/.test(s.reason) && /equip\.xlsx/.test(s.reason)));
   });
 });

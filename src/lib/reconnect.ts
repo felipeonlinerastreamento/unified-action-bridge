@@ -6,9 +6,9 @@ export type Mapping = { plate: string; lastCommunication: string; client: string
 export type Criticidade = "green" | "yellow" | "orange" | "red";
 
 export const KNOWN_MAPPINGS: Record<keyof Mapping, string[]> = {
-  plate: ["placa", "plate", "veículo", "veiculo", "identificador", "prefixo", "frota"],
-  lastCommunication: ["tempo desatualizado", "desatualizado", "última comunicação", "ultima comunicacao", "dias", "dia", "days", "heartbeat", "last communication", "data da atualização", "data do evento", "data"],
-  client: ["cliente", "client", "nome", "empresa"],
+  plate: ["placa", "plate", "unidade rastreada", "veículo", "veiculo", "identificador", "prefixo", "frota"],
+  lastCommunication: ["tempo desatualizado", "desatualizado", "última comunicação", "ultima comunicacao", "dias", "dia", "days", "heartbeat", "last communication", "last time on line", "last time", "data da atualização", "data/hora", "data do evento", "data"],
+  client: ["cliente", "client", "fleet name", "fleet", "nome", "empresa"],
   batteryVoltage: ["tensão", "tensao", "bateria", "battery", "voltage", "volt", "tensão da bateria", "tensão bateria", "bat", "vbat", "v_bat"],
 };
 
@@ -175,6 +175,10 @@ export function planImport(input: {
   const clientMap = new Map<string, ClientRow>();
   for (const c of input.clients) clientMap.set(normalizeClientKey(c.name), { ...c, emails: [...(c.emails || [])], phones: [...(c.phones || [])] });
   const newClients: ClientRow[] = [];
+  const recPorChave = new Map<string, number>();
+  for (const [pl, n] of input.recoveredPlates) recPorChave.set(chavePlaca(pl), (recPorChave.get(chavePlaca(pl)) ?? 0) + n);
+  const anotPorChave = new Map<string, string>();
+  for (const [pl, o] of input.annotations) if (!anotPorChave.has(chavePlaca(pl))) anotPorChave.set(chavePlaca(pl), o);
 
   const isFirstImportOfDay = !input.vehicles.some((v) => v.import_date === today);
   const previousDay = isFirstImportOfDay ? input.vehicles.filter((v) => v.import_date !== today) : [];
@@ -186,7 +190,8 @@ export function planImport(input: {
   const dash = (s: string) => s === "-" || s === "–" || s === "—";
 
   input.rows.forEach((row, index) => {
-    const rowNum = index + 2;
+    const rowNum = Number(row.__linha) || index + 2;
+    const arq = row.__arquivo ? ` — ${String(row.__arquivo)}` : "";
     const rawPlate = String(row[mapping.plate] ?? "").trim();
     const rawClient = String(row[mapping.client] ?? "").trim();
     const plate0 = rawPlate.toUpperCase().replace(/\s+/g, "-");
@@ -198,28 +203,32 @@ export function planImport(input: {
       else if (!plate) reason = "Placa vazia";
       else if (!clientName) reason = "Cliente vazio";
       else reason = "Linha de cabeçalho/separador";
-      skipped.push({ rowNumber: rowNum, rawPlate: rawPlate || "(vazio)", rawClient: rawClient || "(vazio)", reason });
+      skipped.push({ rowNumber: rowNum, rawPlate: rawPlate || "(vazio)", rawClient: rawClient || "(vazio)", reason: reason + arq });
+      return;
+    }
+    if (row.__pular) {
+      skipped.push({ rowNumber: rowNum, rawPlate, rawClient, reason: String(row.__pular) + arq });
       return;
     }
     const timeValue = mapping.lastCommunication ? row[mapping.lastCommunication] : "";
     const timeStr = timeValue == null ? "" : timeValue instanceof Date ? timeValue.toISOString() : String(timeValue).trim();
     const isTimeEmpty = !timeStr || timeStr === "0" || timeStr === "null" || timeStr === "undefined";
     const daysOffline = parseDaysOffline(timeValue, now);
-    const status = isTimeEmpty ? "Sem Transmissão" : `${daysOffline} dia(s) sem comunicação`;
-    if (input.discard?.enabled && daysOffline <= input.discard.maxDays) {
+    // Data em branco = o sistema de rastreamento não tem posição: "Sem comunicação" (nunca é descartado).
+    const status = isTimeEmpty ? STATUS_SEM_COMUNICACAO : `${daysOffline} dia(s) sem comunicação`;
+    if (input.discard?.enabled && !isTimeEmpty && daysOffline <= input.discard.maxDays) {
       skipped.push({ rowNumber: rowNum, rawPlate, rawClient, reason: `Descartado: ${daysOffline} dia(s) sem comunicação (filtro ≤ ${input.discard.maxDays} dias)` });
       return;
     }
-    if (mapping.lastCommunication && isTimeEmpty) {
-      warnings.push({ row: rowNum, column: mapping.lastCommunication, value: "(vazio)", issue: "⚠️ Data de comunicação ausente", suggestion: `Preencha a coluna "${mapping.lastCommunication}" na linha ${rowNum} da planilha`, severity: "error" });
-    } else if (!isTimeEmpty && daysOffline === 0 && !/(\d+)\s*dias?/i.test(timeStr) && !parseDateString(timeStr, now)) {
+    if (!isTimeEmpty && daysOffline === 0 && !/(\d+)\s*dias?/i.test(timeStr) && !parseDateString(timeStr, now)) {
       warnings.push({ row: rowNum, column: mapping.lastCommunication || "Última Comunicação", value: timeStr.slice(0, 30), issue: "⚠️ Formato de data não reconhecido", suggestion: "Verifique o formato da data nesta célula", severity: "warning" });
     }
     const lastComm = new Date(now.getTime() - daysOffline * 86_400_000).toISOString();
     const battery = mapping.batteryVoltage ? String(row[mapping.batteryVoltage] ?? "").trim() : "";
-    seenPlates.add(plate);
+    seenPlates.add(chavePlaca(plate));
 
-    const existing = list.find((v) => v.plate === plate && v.import_date === today);
+    const pk = chavePlaca(plate);
+    const existing = list.find((v) => chavePlaca(v.plate) === pk && v.import_date === today);
     if (existing) {
       existing.days_offline = daysOffline;
       existing.last_communication = lastComm;
@@ -237,11 +246,11 @@ export function planImport(input: {
       clientMap.set(key, client);
       newClients.push(client);
     }
-    const prevCount = input.recoveredPlates.get(plate) ?? 0;
-    const previous = input.vehicles.find((v) => v.plate === plate && v.import_date !== today);
+    const prevCount = recPorChave.get(pk) ?? 0;
+    const previous = input.vehicles.find((v) => chavePlaca(v.plate) === pk && v.import_date !== today);
     const v: VehicleRow = {
       id: newId(), plate, last_communication: lastComm, days_offline: daysOffline, client_name: clientName, client_id: client.id,
-      observation: previous?.observation ?? input.annotations.get(plate) ?? "", incidences: 1, notifications: previous?.notifications ?? 0,
+      observation: previous?.observation ?? anotPorChave.get(pk) ?? "", incidences: 1, notifications: previous?.notifications ?? 0,
       battery_voltage: battery, imported_at: now.toISOString(), was_recovered: prevCount > 0, recovery_count: prevCount, status, import_date: today,
     };
     list.push(v);
@@ -253,8 +262,9 @@ export function planImport(input: {
   if (isFirstImportOfDay) {
     const seenPrev = new Set<string>();
     for (const v of previousDay) {
-      if (seenPlates.has(v.plate) || seenPrev.has(v.plate)) continue;
-      seenPrev.add(v.plate);
+      const k = chavePlaca(v.plate);
+      if (seenPlates.has(k) || seenPrev.has(k)) continue;
+      seenPrev.add(k);
       recovered.push({ plate: v.plate, client_name: v.client_name, client_id: v.client_id, last_days_offline: v.days_offline });
     }
   }
@@ -429,4 +439,81 @@ export function metricasReconnect(input: {
         }
       : null,
   };
+}
+
+
+// ------------------------------------------------------------------ várias planilhas, vários sistemas
+export const STATUS_SEM_COMUNICACAO = "Sem comunicação";
+
+/** Chave de comparação da placa: só letras e números (TCA-8A29 = TCA8A29). */
+export function chavePlaca(p: string): string {
+  return String(p ?? "").toUpperCase().replace(/[^A-Z0-9]/g, "");
+}
+
+const PLACA_RE = /(?<![A-Z0-9])([A-Z]{3})[-\s]?(\d[A-Z0-9]\d{2})(?![A-Z0-9])/g;
+
+/**
+ * Placa dentro de textos como "FIAT/STRADA TCA-8A29", "CMF4102 ESCAVADEIRA" ou "RUI3D01 - CM-045"
+ * (padrão antigo e Mercosul; pega a última ocorrência). Sem placa reconhecível, devolve o texto limpo
+ * (ex.: "ONLINE-0181", "EH07"), para não perder o veículo.
+ */
+export function extrairPlaca(raw: unknown): string {
+  const t = String(raw ?? "").toUpperCase().replace(/\s+/g, " ").trim();
+  if (!t || t === "-" || t === "–" || t === "—") return "";
+  const achados = [...t.matchAll(PLACA_RE)];
+  if (achados.length) { const m = achados[achados.length - 1]; return `${m[1]}${m[2]}`; }
+  return t.replace(/\s*\/\s*/g, "/").replace(/\s*-\s*/g, "-").replace(/\s+/g, "-");
+}
+
+export type ModeloPlanilha = { nome: string; mapping: Mapping; situacao?: string };
+
+const tem = (hs: string[], nome: string) => hs.find((h) => h.trim().toLowerCase() === nome.toLowerCase());
+
+/** Reconhece os relatórios dos sistemas de rastreamento usados (pelo cabeçalho). */
+export function detectarModelo(headers: string[], rows: Record<string, unknown>[] = []): ModeloPlanilha {
+  const h = headers;
+  if (tem(h, "IMEI") && tem(h, "Identificador") && tem(h, "Último Heartbeat")) {
+    return { nome: "Relatório de Equipamentos (heartbeat)", mapping: { plate: tem(h, "Identificador")!, client: tem(h, "Cliente") ?? "", lastCommunication: tem(h, "Último Heartbeat")!, batteryVoltage: "" }, situacao: tem(h, "Situação") };
+  }
+  if (tem(h, "Unidade rastreada") && tem(h, "Data da atualização")) {
+    return { nome: "Unidades rastreadas desatualizadas", mapping: { plate: tem(h, "Unidade rastreada")!, client: tem(h, "Cliente") ?? "", lastCommunication: tem(h, "Data da atualização")!, batteryVoltage: "" } };
+  }
+  if (tem(h, "Plate Number") && tem(h, "Last Time On Line")) {
+    return { nome: "Vehicle List", mapping: { plate: tem(h, "Plate Number")!, client: tem(h, "Fleet Name") ?? "", lastCommunication: tem(h, "Last Time On Line")!, batteryVoltage: "" } };
+  }
+  if (tem(h, "Placa") && tem(h, "Data/Hora") && tem(h, "Serial")) {
+    return { nome: "Grid de veículos", mapping: { plate: tem(h, "Placa")!, client: tem(h, "Cliente") ?? "", lastCommunication: tem(h, "Data/Hora")!, batteryVoltage: "" } };
+  }
+  const m = autoDetect(h);
+  // Se a coluna de data escolhida veio toda vazia, usa outra candidata que tenha dados.
+  if (m.lastCommunication && rows.length && rows.every((r) => !String(r[m.lastCommunication] ?? "").trim())) {
+    const alt = h.find((c) => c !== m.lastCommunication && KNOWN_MAPPINGS.lastCommunication.some((k) => c.toLowerCase().includes(k)) && rows.some((r) => String(r[c] ?? "").trim()));
+    if (alt) m.lastCommunication = alt;
+  }
+  return { nome: "Outro formato (colunas reconhecidas pelo nome)", mapping: m };
+}
+
+/** Colunas padrão das linhas já normalizadas (todas as planilhas juntas numa importação só). */
+export const MAPEAMENTO_PADRAO: Mapping = { plate: "Placa", client: "Cliente", lastCommunication: "Última comunicação", batteryVoltage: "Bateria" };
+
+/**
+ * Converte as linhas de uma planilha para as colunas padrão, com a placa extraída, o arquivo e a
+ * linha de origem (para o relatório de puladas). Equipamento inativo (coluna Situação) é pulado.
+ */
+export function normalizarLinhas(rows: Record<string, unknown>[], modelo: ModeloPlanilha, arquivo: string, linhaInicial = 2): Record<string, unknown>[] {
+  const m = modelo.mapping;
+  return rows.map((r, i) => {
+    const sit = modelo.situacao ? String(r[modelo.situacao] ?? "").trim().toLowerCase() : "";
+    const data = m.lastCommunication ? r[m.lastCommunication] : "";
+    const dataTxt = String(data ?? "").trim();
+    return {
+      Placa: m.plate ? extrairPlaca(r[m.plate]) : "",
+      Cliente: m.client ? String(r[m.client] ?? "").trim() : "",
+      "Última comunicação": dataTxt === "-" || dataTxt === "–" ? "" : data,
+      Bateria: m.batteryVoltage ? r[m.batteryVoltage] : "",
+      __arquivo: arquivo,
+      __linha: linhaInicial + i,
+      ...(/inativ|desativ/.test(sit) ? { __pular: "Equipamento inativo no sistema de rastreamento" } : {}),
+    };
+  });
 }
