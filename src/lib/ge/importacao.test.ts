@@ -5,6 +5,8 @@ import { chaveEmpresa, lerArquivo, lerCsv, remapearUsuarios, tabelaDoArquivo, va
 test("reconhece a tabela pelo nome do arquivo", () => {
   assert.equal(tabelaDoArquivo("vehicles_rows.csv"), "vehicles");
   assert.equal(tabelaDoArquivo("ge_events (2).csv"), "events");
+  assert.equal(tabelaDoArquivo("clients-export-2026-11-25_11-03-46.csv"), "clients");
+  assert.equal(tabelaDoArquivo("client_event_type_settings-export-2026-11-25_11-03-46 (1).csv"), "client_event_type_settings");
   assert.equal(tabelaDoArquivo("unmatched_events.csv"), null);
   assert.equal(tabelaDoArquivo("foo.csv"), null);
 });

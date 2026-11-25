@@ -57,7 +57,7 @@ export const COLUNAS_USUARIO: Partial<Record<TabelaGe, string[]>> = {
 
 /** Descobre a tabela pelo nome do arquivo ("vehicles_rows.csv", "ge_events.json", "events (1).csv"). */
 export function tabelaDoArquivo(nome: string): TabelaGe | null {
-  const base = nome.toLowerCase().replace(/\.(csv|json)$/i, "").replace(/\s*\(\d+\)$/, "").replace(/^ge_/, "").replace(/_rows$/, "").replace(/^public\./, "");
+  const base = nome.toLowerCase().replace(/\.(csv|json)$/i, "").replace(/\s*\(\d+\)$/, "").replace(/-export-[\d_-]+$/, "").replace(/^ge_/, "").replace(/_rows$/, "").replace(/^public\./, "");
   return (ORDEM_TABELAS as readonly string[]).includes(base) ? (base as TabelaGe) : null;
 }
 

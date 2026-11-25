@@ -1251,8 +1251,8 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON public.ge_event_analyses TO authenticate
 GRANT ALL ON public.ge_event_analyses TO service_role;
 ALTER TABLE public.ge_event_analyses ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "platform admin all analyses" ON public.ge_event_analyses FOR ALL TO authenticated USING (public.ge_is_platform_admin(auth.uid())) WITH CHECK (public.ge_is_platform_admin(auth.uid()));
-CREATE POLICY "users view accessible analyses" ON public.ge_event_analyses FOR SELECT TO authenticated USING (public.ge_user_can_access_client(auth.uid(), client_id) AND EXISTS (SELECT 1 FROM public.ge_events e WHERE e.id = event_analyses.event_id));
-CREATE POLICY "users create accessible analyses" ON public.ge_event_analyses FOR INSERT TO authenticated WITH CHECK (analyzed_by_user_id = auth.uid() AND public.ge_user_can_access_client(auth.uid(), client_id) AND EXISTS (SELECT 1 FROM public.ge_events e WHERE e.id = event_analyses.event_id));
+CREATE POLICY "users view accessible analyses" ON public.ge_event_analyses FOR SELECT TO authenticated USING (public.ge_user_can_access_client(auth.uid(), client_id) AND EXISTS (SELECT 1 FROM public.ge_events e WHERE e.id = ge_event_analyses.event_id));
+CREATE POLICY "users create accessible analyses" ON public.ge_event_analyses FOR INSERT TO authenticated WITH CHECK (analyzed_by_user_id = auth.uid() AND public.ge_user_can_access_client(auth.uid(), client_id) AND EXISTS (SELECT 1 FROM public.ge_events e WHERE e.id = ge_event_analyses.event_id));
 CREATE TRIGGER trg_event_analyses_updated BEFORE UPDATE ON public.ge_event_analyses FOR EACH ROW EXECUTE FUNCTION public.ge_set_updated_at();
 
 -- =====================================================================================
