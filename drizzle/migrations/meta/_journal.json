@@ -596,6 +596,13 @@
       "when": 1795614318819,
       "tag": "0084_gestao_eventos",
       "breakpoints": true
+    },
+    {
+      "idx": 85,
+      "version": "7",
+      "when": 1795615238216,
+      "tag": "0085_contato_observacao",
+      "breakpoints": true
     }
   ]
 }

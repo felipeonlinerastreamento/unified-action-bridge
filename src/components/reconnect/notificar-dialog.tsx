@@ -9,7 +9,7 @@ import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { enviarNotificacaoReconnect } from "@/lib/reconnect.functions";
 import { buildNotificationMessage, type VehicleRow } from "@/lib/reconnect";
-import { useRcInvalidate, type RcClient, type RcTemplate } from "./use-rc";
+import { destinosCliente, useRcInvalidate, type RcClient, type RcTemplate } from "./use-rc";
 
 export function NotificarDialog({ client, vehicles, templates, onClose }: { client: RcClient | null; vehicles: VehicleRow[]; templates: RcTemplate[]; onClose: () => void }) {
   const enviar = useServerFn(enviarNotificacaoReconnect);
@@ -25,14 +25,16 @@ export function NotificarDialog({ client, vehicles, templates, onClose }: { clie
     setPlates(vehicles.map((v) => v.plate));
     setTplId(usaveis[0]?.id ?? "");
     const c: ("whatsapp" | "email")[] = [];
-    if ((client.phones || []).length) c.push("whatsapp");
-    if ((client.emails || []).length) c.push("email");
+    const d = destinosCliente(client);
+    if (d.phones.length) c.push("whatsapp");
+    if (d.emails.length) c.push("email");
     setCanais(c);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [client?.id]);
 
   if (!client) return null;
   const tpl = templates.find((t) => t.id === tplId);
+  const dest = destinosCliente(client);
   const toggle = (c: "whatsapp" | "email") => setCanais((x) => (x.includes(c) ? x.filter((y) => y !== c) : [...x, c]));
 
   const submit = async () => {
@@ -72,9 +74,12 @@ export function NotificarDialog({ client, vehicles, templates, onClose }: { clie
             </Select>
           </div>
           <div className="flex gap-4">
-            <label className="flex items-center gap-2"><Checkbox checked={canais.includes("whatsapp")} onCheckedChange={() => toggle("whatsapp")} disabled={!(client.phones || []).length} /><MessageCircle className="h-4 w-4" /> WhatsApp ({(client.phones || []).length})</label>
-            <label className="flex items-center gap-2"><Checkbox checked={canais.includes("email")} onCheckedChange={() => toggle("email")} disabled={!(client.emails || []).length} /><Mail className="h-4 w-4" /> E-mail ({(client.emails || []).length})</label>
+            <label className="flex items-center gap-2"><Checkbox checked={canais.includes("whatsapp")} onCheckedChange={() => toggle("whatsapp")} disabled={!dest.phones.length} /><MessageCircle className="h-4 w-4" /> WhatsApp ({dest.phones.length})</label>
+            <label className="flex items-center gap-2"><Checkbox checked={canais.includes("email")} onCheckedChange={() => toggle("email")} disabled={!dest.emails.length} /><Mail className="h-4 w-4" /> E-mail ({dest.emails.length})</label>
           </div>
+          {(dest.phones.length > 0 || dest.emails.length > 0) && (
+            <p className="text-[11px] text-muted-foreground">Vai para: {[...dest.phones, ...dest.emails].join(", ")}{client.empresa_nomes?.length ? ` · inclui contatos da empresa marcados "Veículo sem comunicação" (${client.empresa_nomes.join(", ")})` : ""}</p>
+          )}
           {tpl && <pre className="whitespace-pre-wrap rounded bg-muted p-2 text-xs max-h-40 overflow-y-auto">{buildNotificationMessage(tpl.body, client.name, plates)}</pre>}
           <p className="text-[11px] text-muted-foreground">O WhatsApp sai pelo canal da Central (as respostas do cliente chegam lá) e o e-mail pela caixa cadastrada no Gestão Online.</p>
         </div>

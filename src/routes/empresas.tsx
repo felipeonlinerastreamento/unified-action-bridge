@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { NOTIFICACOES_CONTATO, notificacoesDoContato, type NotificacaoContato } from "@/lib/contato-notificacoes";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
@@ -86,6 +87,7 @@ interface ServiceTemplate {
 
 function EmpresasPage() {
   const { isAuthenticated, isLoading: authLoading, user } = useAuth();
+  const [salvandoObs, setSalvandoObs] = useState<number | null>(null);
   const queryClient = useQueryClient();
   const [searchTerm, setSearchTerm] = useState("");
   const [editingCompany, setEditingCompany] = useState<Company | null>(null);
@@ -106,8 +108,8 @@ function EmpresasPage() {
   const [formServiceTemplates, setFormServiceTemplates] = useState<ServiceTemplate[]>([]);
   const [formPlatformIds, setFormPlatformIds] = useState<string[]>([]);
   const [formPhones, setFormPhones] = useState<string[]>([""]);
-  const [formContacts, setFormContacts] = useState<{ name: string; sector: string; phone: string; email: string; is_prime?: boolean }[]>([
-    { name: "", sector: "", phone: "", email: "", is_prime: false },
+  const [formContacts, setFormContacts] = useState<{ name: string; sector: string; phone: string; email: string; is_prime?: boolean; notificacoes?: NotificacaoContato[]; observacao?: string }[]>([
+    { name: "", sector: "", phone: "", email: "", is_prime: false, notificacoes: [], observacao: "" },
   ]);
 
 
@@ -193,6 +195,8 @@ function EmpresasPage() {
             phone: c.phone || "",
             email: c.email || "",
             is_prime: !!c.is_prime,
+            notificacoes: notificacoesDoContato(c),
+            observacao: c.observacao || "",
           }))
         : [];
     // Merge linked phones into the contacts list so they are editable there
@@ -209,6 +213,8 @@ function EmpresasPage() {
           phone: p,
           email: "",
           is_prime: false,
+          notificacoes: [],
+          observacao: "",
         });
         knownPhones.add(digits);
       }
@@ -248,13 +254,42 @@ function EmpresasPage() {
     setIsDialogOpen(true);
   };
 
+  /** Contato já gravado e sem mudança de nome/telefone/e-mail: a observação pode ser salva sozinha (qualquer usuário). */
+  const contatoGravado = (idx: number) => {
+    const orig = editingCompany?.contacts?.[idx];
+    const f = formContacts[idx];
+    if (!orig || !f) return null;
+    const dig = (x: unknown) => String(x ?? "").replace(/\D/g, "");
+    const igual = String(orig.name ?? "").trim() === f.name.trim() && dig(orig.phone) === dig(f.phone)
+      && String(orig.email ?? "").trim().toLowerCase() === f.email.trim().toLowerCase();
+    return igual ? orig : null;
+  };
+
+  const salvarObservacao = async (idx: number) => {
+    const orig = contatoGravado(idx);
+    const f = formContacts[idx];
+    if (!editingCompany || !orig || !f || (orig.observacao || "") === (f.observacao || "").trim()) return;
+    setSalvandoObs(idx);
+    const { error } = await (supabase as any).rpc("salvar_observacao_contato", {
+      _company_id: editingCompany.id, _indice: idx, _nome: orig.name ?? "", _telefone: orig.phone ?? "", _email: orig.email ?? "",
+      _observacao: f.observacao || "",
+    });
+    setSalvandoObs(null);
+    if (error) { toast.error(error.message); return; }
+    const contacts = [...(editingCompany.contacts || [])];
+    contacts[idx] = { ...contacts[idx], observacao: (f.observacao || "").trim() };
+    setEditingCompany({ ...editingCompany, contacts });
+    queryClient.invalidateQueries({ queryKey: ["companies"] });
+    toast.success("Observação salva.");
+  };
+
   const saveMutation = useMutation({
     mutationFn: async () => {
       const emails = formEmails
         .split(",")
         .map((e) => e.trim())
         .filter(Boolean);
-      const contacts = formContacts.filter((c) => c.name.trim() || c.phone.trim());
+      const contacts = formContacts.filter((c) => c.name.trim() || c.phone.trim() || c.email.trim());
       const companyData = {
         name: formName.trim(),
         cnpj: formCnpj.trim() || null,
@@ -716,14 +751,18 @@ function EmpresasPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() =>
-                    setFormContacts([...formContacts, { name: "", sector: "", phone: "", email: "", is_prime: false }])
+                    setFormContacts([...formContacts, { name: "", sector: "", phone: "", email: "", is_prime: false, notificacoes: [], observacao: "" }])
                   }
                 >
                   <Plus className="h-3 w-3 mr-1" /> Adicionar
                 </Button>
               </div>
+              <p className="text-xs text-muted-foreground">
+                Marque em "Recebe" quais avisos vão para cada contato. Pode marcar o mesmo aviso em vários contatos: todos recebem
+                (ex.: o Reconnect envia os eventos de veículo sem comunicação para os contatos marcados).
+              </p>
               {formContacts.map((contact, idx) => (
-                <div key={idx} className="flex flex-wrap items-center gap-2">
+                <div key={idx} className="flex flex-wrap items-center gap-2 rounded border p-2">
                   <Input
                     value={contact.name}
                     onChange={(e) => {
@@ -786,6 +825,45 @@ function EmpresasPage() {
                       <X className="h-4 w-4" />
                     </Button>
                   )}
+                  <div className="flex w-full flex-wrap items-center gap-3 pl-1 text-xs text-muted-foreground">
+                    <span>Recebe:</span>
+                    {NOTIFICACOES_CONTATO.map((n) => (
+                      <label key={n.key} className="flex items-center gap-1.5 whitespace-nowrap cursor-pointer text-foreground">
+                        <Checkbox
+                          checked={(contact.notificacoes || []).includes(n.key)}
+                          onCheckedChange={(v) => {
+                            const c = [...formContacts];
+                            const atual = c[idx].notificacoes || [];
+                            c[idx] = { ...c[idx], notificacoes: v === true ? [...new Set([...atual, n.key])] : atual.filter((k) => k !== n.key) };
+                            setFormContacts(c);
+                          }}
+                        />
+                        {n.label}
+                      </label>
+                    ))}
+                  </div>
+                  <div className="w-full space-y-1">
+                    <Textarea
+                      value={contact.observacao || ""}
+                      onChange={(e) => {
+                        const c = [...formContacts];
+                        c[idx] = { ...c[idx], observacao: e.target.value };
+                        setFormContacts(c);
+                      }}
+                      onBlur={() => salvarObservacao(idx)}
+                      maxLength={2000}
+                      rows={2}
+                      placeholder="Observação sobre este contato (ex.: melhor horário, só falar sobre financeiro...)"
+                      className="text-xs min-h-[48px]"
+                    />
+                    <p className="text-[11px] text-muted-foreground">
+                      {salvandoObs === idx
+                        ? "Salvando observação..."
+                        : contatoGravado(idx)
+                          ? "A observação é salva ao sair do campo."
+                          : "Contato novo ou alterado: a observação é gravada ao salvar a empresa."}
+                    </p>
+                  </div>
                 </div>
               ))}
 
