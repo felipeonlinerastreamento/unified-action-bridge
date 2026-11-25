@@ -10,12 +10,13 @@ import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Plus, Search, Send, Trash2, Upload, Link2 } from "lucide-react";
+import { Loader2, Plus, Search, Send, Trash2, Upload, Link2, CheckCircle2, XCircle } from "lucide-react";
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { useAuth } from "@/hooks/use-auth";
 import { canaisReconnect, enviarNotificacaoReconnect } from "@/lib/reconnect.functions";
-import { getCriticality, normalizeClientKey, sessaoAtual, todaySP, type Criticidade, type VehicleRow } from "@/lib/reconnect";
+import { buildNotificationMessage, extrairPlaca, getCriticality, normalizeClientKey, sessaoAtual, todaySP, type Criticidade, type VehicleRow } from "@/lib/reconnect";
 import { destinosCliente, logRc, rc, upsertEmBlocos, useRcInvalidate, type RcClient, type RcImportTemplate, type RcRecovered, type RcTemplate } from "./use-rc";
 import { Crit } from "./painel-tab";
 import { NotificarDialog } from "./notificar-dialog";
@@ -100,6 +101,8 @@ export function NotificacoesTab({ clients, vehicles, templates }: { clients: RcC
   const [canais, setCanais] = useState<("whatsapp" | "email")[]>(["whatsapp", "email"]);
   const [sel, setSel] = useState<string[]>([]);
   const [progresso, setProgresso] = useState<string | null>(null);
+  const [confirmar, setConfirmar] = useState(false);
+  const [resultados, setResultados] = useState<{ nome: string; ok: boolean; detalhe: string }[] | null>(null);
   const { data: historico = [] } = useQuery({
     queryKey: ["rc-notifications"],
     queryFn: async () => ((await rc.from("rc_notification_logs").select("*").order("sent_at", { ascending: false }).limit(500)).data || []) as any[],
@@ -119,23 +122,34 @@ export function NotificacoesTab({ clients, vehicles, templates }: { clients: RcC
     : !comContato.length ? "Os clientes marcados não têm telefone/e-mail para os canais escolhidos (cadastre na aba Clientes)."
     : null;
 
+  const tplSel = usaveis.find((t) => t.id === tplId);
+
+  // Só envia depois da confirmação no diálogo; o resultado de cada cliente (inclusive o erro) fica na tela.
   const enviarLote = async () => {
     const batchId = crypto.randomUUID();
-    const itens = selecionados;
-    let ok = 0;
+    const itens = comContato;
+    const res: { nome: string; ok: boolean; detalhe: string }[] = [];
+    setResultados([]);
     for (let i = 0; i < itens.length; i++) {
       setProgresso(`Enviando ${i + 1}/${itens.length}: ${itens[i].c.name}`);
       const dest = destinosCliente(itens[i].c);
       const ch = canais.filter((x) => (x === "whatsapp" ? dest.phones.length : dest.emails.length));
-      if (!ch.length) continue;
       try {
-        const r: any = await enviar({ data: { clientId: itens[i].c.id, plates: itens[i].plates, templateId: tplId, channels: ch, batchId } });
-        if (r.channels?.length) ok++;
-      } catch { /* fica no histórico como erro */ }
+        const r: any = await enviar({ data: { clientId: itens[i].c.id, plates: [...new Set(itens[i].plates)], templateId: tplId, channels: ch, batchId } });
+        const partes = [
+          r.whatsapp && (r.whatsapp.ok ? `WhatsApp: ${r.whatsapp.enviados} enviado(s)${r.whatsapp.erro ? ` (falhas: ${r.whatsapp.erro})` : ""}` : `WhatsApp falhou: ${r.whatsapp.erro}`),
+          r.email && (r.email.ok ? `E-mail: ${r.email.enviados} destinatário(s)` : `E-mail falhou: ${r.email.erro}`),
+        ].filter(Boolean);
+        res.push({ nome: itens[i].c.name, ok: !!r.channels?.length, detalhe: partes.join(" · ") || "Nada enviado." });
+      } catch (e: any) {
+        res.push({ nome: itens[i].c.name, ok: false, detalhe: e?.message ?? "Falha ao enviar." });
+      }
+      setResultados([...res]);
     }
     setProgresso(null);
-    setSel([]);
-    toast.success(`Envio em massa concluído: ${ok} de ${itens.length} cliente(s) notificado(s).`);
+    const ok = res.filter((x) => x.ok).length;
+    (ok === res.length ? toast.success : toast.error)(`Envio concluído: ${ok} de ${res.length} cliente(s) notificado(s).`);
+    if (ok) setSel((x) => x.filter((id) => !itens.some((it, i) => it.c.id === id && res[i]?.ok)));
     invalidate();
   };
 
@@ -159,7 +173,7 @@ export function NotificacoesTab({ clients, vehicles, templates }: { clients: RcC
             <Button size="sm" variant="outline" disabled={!alvo.length} onClick={() => setSel(selecionados.length === alvo.length ? [] : alvo.map((a) => a.c.id))}>{selecionados.length === alvo.length && alvo.length ? "Desmarcar todos" : "Marcar todos"}</Button>
             <span className="text-xs text-muted-foreground">{selecionados.length} de {alvo.length} cliente(s){dataSessao && ` · importação de ${dataSessao === hoje ? "hoje" : dataSessao.split("-").reverse().join("/")}`}</span>
             {motivo && !progresso && <span className="text-xs text-amber-600">{motivo}</span>}
-            <Button size="sm" className="ml-auto" disabled={!!motivo || !selecionados.length || !!progresso} onClick={enviarLote}>
+            <Button size="sm" className="ml-auto" disabled={!!motivo || !selecionados.length || !!progresso} onClick={() => { setResultados(null); setConfirmar(true); }}>
               {progresso ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Send className="h-4 w-4 mr-1" />}{progresso ?? "Enviar"}
             </Button>
           </div>
@@ -175,6 +189,57 @@ export function NotificacoesTab({ clients, vehicles, templates }: { clients: RcC
           </div>
         </CardContent>
       </Card>
+      <Dialog open={confirmar} onOpenChange={(o) => { if (!progresso) setConfirmar(o); }}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader><DialogTitle>{resultados ? "Resultado do envio" : `Confirmar envio para ${comContato.length} cliente(s)`}</DialogTitle></DialogHeader>
+          {!resultados ? (
+            <div className="space-y-3 text-sm">
+              <p className="text-xs text-muted-foreground">
+                Modelo <b>{tplSel?.name}</b> · canais: {canais.map((c) => (c === "whatsapp" ? "WhatsApp" : "E-mail")).join(" e ")}.
+                {selecionados.length > comContato.length && ` ${selecionados.length - comContato.length} cliente(s) marcado(s) sem contato para esses canais ficam de fora.`}
+              </p>
+              <div className="max-h-64 overflow-y-auto rounded border divide-y">
+                {comContato.map(({ c, plates }) => {
+                  const d = destinosCliente(c);
+                  const para = [...(canais.includes("whatsapp") ? d.phones : []), ...(canais.includes("email") ? d.emails : [])];
+                  return (
+                    <div key={c.id} className="px-2 py-1.5 text-xs">
+                      <div className="font-medium">{c.name} <span className="font-normal text-muted-foreground">· {new Set(plates.map((p) => extrairPlaca(p) || p)).size} placa(s)</span></div>
+                      <div className="text-muted-foreground break-all">Para: {para.join(", ")}</div>
+                    </div>
+                  );
+                })}
+              </div>
+              {tplSel && comContato[0] && (
+                <div>
+                  <Label className="text-xs">Prévia ({comContato[0].c.name})</Label>
+                  <pre className="whitespace-pre-wrap rounded bg-muted p-2 text-xs max-h-40 overflow-y-auto">{buildNotificationMessage(tplSel.body, comContato[0].c.name, [...new Set(comContato[0].plates.map((p) => extrairPlaca(p) || p))])}</pre>
+                </div>
+              )}
+            </div>
+          ) : (
+            <div className="max-h-80 overflow-y-auto rounded border divide-y text-xs">
+              {resultados.map((r, i) => (
+                <div key={i} className="flex gap-2 px-2 py-1.5">
+                  {r.ok ? <CheckCircle2 className="h-4 w-4 text-green-600 shrink-0" /> : <XCircle className="h-4 w-4 text-destructive shrink-0" />}
+                  <div><div className="font-medium">{r.nome}</div><div className="text-muted-foreground break-all">{r.detalhe}</div></div>
+                </div>
+              ))}
+              {progresso && <div className="flex items-center gap-2 px-2 py-1.5 text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin" />{progresso}</div>}
+            </div>
+          )}
+          <DialogFooter>
+            {!resultados ? (
+              <>
+                <Button variant="outline" onClick={() => setConfirmar(false)}>Cancelar</Button>
+                <Button onClick={enviarLote} disabled={!comContato.length}><Send className="h-4 w-4 mr-1" />Confirmar envio</Button>
+              </>
+            ) : (
+              <Button onClick={() => setConfirmar(false)} disabled={!!progresso}>Fechar</Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
       <Card>
         <CardHeader className="pb-2"><CardTitle className="text-sm">Histórico de notificações</CardTitle></CardHeader>
         <Table>

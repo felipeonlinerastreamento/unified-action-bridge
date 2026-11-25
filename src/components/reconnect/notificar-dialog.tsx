@@ -8,7 +8,7 @@ import { Loader2, Mail, MessageCircle } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
 import { enviarNotificacaoReconnect } from "@/lib/reconnect.functions";
-import { buildNotificationMessage, type VehicleRow } from "@/lib/reconnect";
+import { buildNotificationMessage, extrairPlaca, type VehicleRow } from "@/lib/reconnect";
 import { destinosCliente, useRcInvalidate, type RcClient, type RcTemplate } from "./use-rc";
 
 export function NotificarDialog({ client, vehicles, templates, onClose }: { client: RcClient | null; vehicles: VehicleRow[]; templates: RcTemplate[]; onClose: () => void }) {
@@ -80,7 +80,7 @@ export function NotificarDialog({ client, vehicles, templates, onClose }: { clie
           {(dest.phones.length > 0 || dest.emails.length > 0) && (
             <p className="text-[11px] text-muted-foreground">Vai para: {[...dest.phones, ...dest.emails].join(", ")}{client.empresa_nomes?.length ? ` · inclui contatos da empresa marcados "Veículo sem comunicação" (${client.empresa_nomes.join(", ")})` : ""}</p>
           )}
-          {tpl && <pre className="whitespace-pre-wrap rounded bg-muted p-2 text-xs max-h-40 overflow-y-auto">{buildNotificationMessage(tpl.body, client.name, plates)}</pre>}
+          {tpl && <pre className="whitespace-pre-wrap rounded bg-muted p-2 text-xs max-h-40 overflow-y-auto">{buildNotificationMessage(tpl.body, client.name, [...new Set(plates.map((p) => extrairPlaca(p) || p))])}</pre>}
           <p className="text-[11px] text-muted-foreground">O WhatsApp sai pelo canal da Central (as respostas do cliente chegam lá) e o e-mail pela caixa cadastrada no Gestão Online.</p>
         </div>
         <DialogFooter>

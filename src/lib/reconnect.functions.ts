@@ -20,7 +20,7 @@ export const enviarNotificacaoReconnect = createServerFn({ method: "POST" })
   .inputValidator(
     z.object({
       clientId: z.string().min(1).max(64),
-      plates: z.array(z.string().min(1).max(20)).min(1).max(300),
+      plates: z.array(z.string().trim().min(1).max(60)).min(1).max(500),
       templateId: z.string().uuid(),
       channels: z.array(z.enum(["whatsapp", "email"])).min(1).max(2),
       batchId: z.string().max(64).optional(),
@@ -48,7 +48,11 @@ export const enviarNotificacaoReconnect = createServerFn({ method: "POST" })
     }
     const phones: string[] = unirTelefones(client.phones || [], daEmpresa.phones);
     const emails: string[] = unirEmails(client.emails || [], daEmpresa.emails);
-    const message = buildNotificationMessage(tpl.body, client.name, data.plates);
+    // A planilha pode trazer a placa dentro do texto ("I/BYD-DOLPHIN-MINI-TCL5A74", "SSO-3F57-(53)"):
+    // a mensagem lista só a placa, sem repetir.
+    const { extrairPlaca } = await import("./reconnect");
+    const placasMsg = [...new Set(data.plates.map((p) => extrairPlaca(p) || p))];
+    const message = buildNotificationMessage(tpl.body, client.name, placasMsg);
     const result: { whatsapp?: { ok: boolean; enviados: number; erro?: string }; email?: { ok: boolean; enviados: number; erro?: string } } = {};
     const sentChannels: string[] = [];
 
