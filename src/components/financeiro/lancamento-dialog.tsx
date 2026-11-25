@@ -5,9 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Paperclip, X } from "lucide-react";
+import { ExternalLink, Loader2, Paperclip, X } from "lucide-react";
 import { useServerFn } from "@tanstack/react-start";
-import { anexarArquivoLancamento } from "@/lib/finance.functions";
+import { anexarArquivoLancamento, linkComprovante } from "@/lib/finance.functions";
 import { toast } from "sonner";
 import { TIPOS_DOCUMENTO, parseValorBR } from "@/lib/finance";
 import { fin, useFinInvalidate, type Cat, type Emp, type Lanc } from "./use-fin";
@@ -68,10 +68,27 @@ export function LancamentoDialog({
     onClose();
   };
 
+  const getLink = useServerFn(linkComprovante);
+  const abrirComprovante = async () => {
+    if (!lanc) return;
+    if (lanc.arquivo_url) { window.open(lanc.arquivo_url, "_blank", "noopener"); return; }
+    if (!lanc.arquivo_path) return;
+    try { const { url } = await getLink({ data: { path: lanc.arquivo_path } }); window.open(url, "_blank", "noopener"); }
+    catch (e: any) { toast.error(e?.message ?? "Não foi possível abrir o comprovante."); }
+  };
+  const temComprovante = !!(lanc?.arquivo_url || lanc?.arquivo_path);
+
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader><DialogTitle>{lanc ? "Editar lançamento" : f.tipo === "receber" ? "Nova conta a receber" : "Nova conta a pagar"}</DialogTitle></DialogHeader>
+        <DialogHeader className="flex-row items-center justify-between gap-2 space-y-0 pr-6">
+          <DialogTitle>{lanc ? "Editar lançamento" : f.tipo === "receber" ? "Nova conta a receber" : "Nova conta a pagar"}</DialogTitle>
+          {temComprovante && (
+            <Button size="sm" variant="outline" onClick={abrirComprovante}>
+              <ExternalLink className="h-4 w-4 mr-1" />{lanc?.origem === "gsystem" ? "Abrir boleto" : "Abrir comprovante"}
+            </Button>
+          )}
+        </DialogHeader>
         <div className="grid grid-cols-2 gap-3 text-sm">
           <div className="col-span-2"><Label>{f.tipo === "receber" ? "Cliente" : "Fornecedor"}</Label><Input value={f.contraparte ?? ""} onChange={(e) => set("contraparte", e.target.value)} /></div>
           <div><Label>CNPJ/CPF</Label><Input value={f.documento_contraparte ?? ""} onChange={(e) => set("documento_contraparte", e.target.value)} /></div>
@@ -132,7 +149,7 @@ export function LancamentoDialog({
           <div className="col-span-2"><Label>Linha digitável</Label><Input value={f.linha_digitavel ?? ""} onChange={(e) => set("linha_digitavel", e.target.value)} /></div>
           <div className="col-span-2">
             <Label>Anexo (nota, boleto, comprovante)</Label>
-            {lanc?.arquivo_nome && !arquivo && <p className="text-xs text-muted-foreground mb-1">Atual: {lanc.arquivo_nome}{lanc.arquivo_url ? " (no Google Drive)" : ""}. Escolha outro para substituir.</p>}
+            {lanc?.arquivo_nome && !arquivo && <p className="text-xs text-muted-foreground mb-1">Atual: <button type="button" className="underline" onClick={abrirComprovante}>{lanc.arquivo_nome}</button>{lanc.arquivo_url ? " (no Google Drive)" : ""}. Escolha outro para substituir.</p>}
             {arquivo ? (
               <div className="flex items-center gap-2 rounded-md border px-3 py-2"><Paperclip className="h-4 w-4" /><span className="truncate flex-1">{arquivo.name}</span>
                 <span className="text-xs text-muted-foreground">{(arquivo.size / 1024).toFixed(0)} KB</span>

@@ -9,6 +9,8 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSepara
 import { Plus, Search, MoreHorizontal, Check, Pencil, Trash2, Paperclip, Undo2 } from "lucide-react";
 import { toast } from "sonner";
 import { useServerFn } from "@tanstack/react-start";
+import { useQuery } from "@tanstack/react-query";
+import { supabase } from "@/integrations/supabase/client";
 import { formatBRL, formatDataBR, hojeSP, statusVisivel } from "@/lib/finance";
 import { linkComprovante } from "@/lib/finance.functions";
 import { fin, useFinInvalidate, type Cat, type Emp, type Lanc } from "./use-fin";
@@ -53,12 +55,26 @@ export function LancamentosTab({ tipo, lancamentos, categorias, empresas }: { ti
   const [fStatus, setFStatus] = useState("pendentes");
   const [fCat, setFCat] = useState("all");
   const [fEmp, setFEmp] = useState("all");
+  const [fPor, setFPor] = useState("all");
   const [de, setDe] = useState("");
   const [ate, setAte] = useState("");
   const [edit, setEdit] = useState<Lanc | null>(null);
   const [novo, setNovo] = useState(false);
   const hoje = hojeSP();
   const catById = useMemo(() => new Map(categorias.map((c) => [c.id, c])), [categorias]);
+  // Quem enviou: usuário que lançou (created_by) ou, nos automáticos, a origem (e-mail do remetente, GSystem...).
+  const { data: perfis = [] } = useQuery({
+    queryKey: ["fin-perfis-nomes"],
+    queryFn: async () => ((await supabase.from("profiles").select("user_id, name")).data ?? []) as { user_id: string; name: string }[],
+    staleTime: 5 * 60_000,
+  });
+  const nomePerfil = useMemo(() => new Map(perfis.map((p) => [p.user_id, p.name])), [perfis]);
+  const enviadoPor = (l: Lanc) => {
+    const id = (l as any).created_by as string | null;
+    if (id) { const n = nomePerfil.get(id) ?? "Usuário removido"; return l.origem === "drive" ? `${n} (pelo Claude)` : n; }
+    if (l.origem === "email") { const m = /E-mail de ([^\s]+)/.exec(l.observacao ?? ""); return m ? `E-mail ${m[1]}` : "E-mail financeiro"; }
+    return `${origemLabel(l.origem)} (automático)`;
+  };
   const empById = useMemo(() => new Map(empresas.map((e) => [e.id, e])), [empresas]);
 
   const rows = useMemo(() => {
@@ -70,6 +86,7 @@ export function LancamentosTab({ tipo, lancamentos, categorias, empresas }: { ti
       if (fStatus !== "pendentes" && fStatus !== "all" && s !== fStatus) return false;
       if (fCat !== "all" && (fCat === "none" ? l.categoria_id : l.categoria_id !== fCat)) return false;
       if (fEmp !== "all" && l.empresa_id !== fEmp) return false;
+      if (fPor !== "all" && enviadoPor(l) !== fPor) return false;
       const ref = l.vencimento || l.data_pagamento || "";
       if (de && ref < de) return false;
       if (ate && ref > ate) return false;
@@ -79,13 +96,22 @@ export function LancamentosTab({ tipo, lancamentos, categorias, empresas }: { ti
       }
       return true;
     });
+    // Contas a pagar: lançados mais recentemente primeiro.
+    if (tipo === "pagar") {
+      const ref = (l: Lanc) => String((l as any).created_at || l.vencimento || "");
+      filtradas.sort((a, b) => ref(b).localeCompare(ref(a)));
+    }
     // Contas a receber: mais recentes primeiro (vencimento, senão emissão, senão data do lançamento).
     if (tipo === "receber") {
       const ref = (l: Lanc) => String(l.vencimento || l.data_emissao || (l as any).created_at || "");
       filtradas.sort((a, b) => ref(b).localeCompare(ref(a)));
     }
     return filtradas;
-  }, [lancamentos, tipo, q, fStatus, fCat, fEmp, de, ate, hoje, catById]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lancamentos, tipo, q, fStatus, fCat, fEmp, fPor, de, ate, hoje, catById, nomePerfil]);
+  const opcoesPor = useMemo(() => [...new Set(lancamentos.filter((l) => l.tipo === tipo).map(enviadoPor))].sort((a, b) => a.localeCompare(b)),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [lancamentos, tipo, nomePerfil]);
 
   const colunas = useMemo<TableColumn<Lanc>[]>(() => [
     { id: "vencimento", label: "Vencimento", value: (l) => formatDataBR(l.vencimento) },
@@ -100,9 +126,11 @@ export function LancamentosTab({ tipo, lancamentos, categorias, empresas }: { ti
     { id: "origem", label: "Origem", value: (l) => origemLabel(l.origem) },
     ...(tipo === "pagar" ? [{ id: "aprovacao", label: "Aprovação", value: (l: Lanc) => (l.aprovacao ? APROVACAO_LABEL[l.aprovacao] ?? l.aprovacao : "Não exige") }] : []),
     { id: "revisado", label: "Revisado", value: (l) => (l.revisado ? "Sim" : "A revisar"), defaultHidden: true },
-    { id: "lancado", label: "Lançado em", value: (l) => ((l as any).created_at ? formatDataBR(String((l as any).created_at).slice(0, 10)) : ""), defaultHidden: true },
+    { id: "enviado", label: "Enviado por", value: enviadoPor },
+    { id: "lancado", label: "Lançado em", value: (l) => ((l as any).created_at ? formatDataBR(String((l as any).created_at).slice(0, 10)) : ""), defaultHidden: tipo === "receber" },
     { id: "acoes", label: "", value: () => "", data: false },
-  ], [tipo, catById, empById, hoje]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [tipo, catById, empById, hoje, nomePerfil]);
   const tabela = useTableColumns(`fin-lancamentos-${tipo}`, colunas, rows);
   const visiveis = tabela.filteredRows;
   const total = visiveis.reduce((s, l) => s + Number(l.valor || 0), 0);
@@ -163,6 +191,13 @@ export function LancamentosTab({ tipo, lancamentos, categorias, empresas }: { ti
               {empresas.map((e) => <SelectItem key={e.id} value={e.id}>{e.codigo}</SelectItem>)}
             </SelectContent>
           </Select>
+          <Select value={fPor} onValueChange={setFPor}>
+            <SelectTrigger className="w-[200px]"><SelectValue placeholder="Enviado por" /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Enviado por: todos</SelectItem>
+              {opcoesPor.map((o) => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+            </SelectContent>
+          </Select>
           <Input type="date" className="w-[150px]" value={de} onChange={(e) => setDe(e.target.value)} title="De" />
           <Input type="date" className="w-[150px]" value={ate} onChange={(e) => setAte(e.target.value)} title="Até" />
           <Button onClick={() => setNovo(true)}><Plus className="h-4 w-4 mr-1" /> Novo</Button>
@@ -204,6 +239,7 @@ export function LancamentosTab({ tipo, lancamentos, categorias, empresas }: { ti
                 origem: <TableCell key="origem"><Badge variant="outline" className="text-[10px]">{origemLabel(l.origem)}</Badge></TableCell>,
                 aprovacao: <TableCell key="aprovacao" className="text-xs">{l.aprovacao ? APROVACAO_LABEL[l.aprovacao] ?? l.aprovacao : "—"}</TableCell>,
                 revisado: <TableCell key="revisado" className="text-xs">{l.revisado ? "Sim" : "A revisar"}</TableCell>,
+                enviado: <TableCell key="enviado" className="text-xs">{enviadoPor(l)}</TableCell>,
                 lancado: <TableCell key="lancado" className="text-xs whitespace-nowrap">{(l as any).created_at ? formatDataBR(String((l as any).created_at).slice(0, 10)) : "—"}</TableCell>,
               };
               return (
