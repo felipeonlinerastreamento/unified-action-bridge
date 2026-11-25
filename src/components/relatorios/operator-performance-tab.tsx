@@ -1,4 +1,7 @@
 import { ChartFrame } from "./chart-frame";
+import { BoletimIndividual, ComparativoOperadores, usePesos, type PorCategoria, type PorHora, type Semana } from "./operator-scorecard-views";
+import { horasLogadas, montarBoletins, semanaDe, type ValoresOperador } from "@/lib/operator-scorecard";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useMemo, useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
@@ -127,7 +130,7 @@ export function OperatorPerformanceTab({ dateFrom, dateTo }: Props) {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("csat_responses")
-        .select("operator_user_id,score")
+        .select("operator_user_id,score,created_at")
         .gte("created_at", `${dateFrom}T00:00:00`)
         .lte("created_at", `${dateTo}T23:59:59`)
         .limit(10000);
@@ -175,6 +178,44 @@ export function OperatorPerformanceTab({ dateFrom, dateTo }: Props) {
         .select("user_id, sectors:sector_id(name)");
       if (error) throw error;
       return data || [];
+    },
+  });
+
+  // Horas logadas (sessões de presença), oportunidades do CRM e contatos de pós-venda no período
+  const { data: sessoes = [] } = useQuery({
+    queryKey: ["perf-sessoes", dateFrom, dateTo],
+    queryFn: async () => {
+      const { data } = await supabase
+        .from("user_presence_sessions")
+        .select("user_id, started_at, last_ping_at, ended_at")
+        .gte("started_at", `${dateFrom}T00:00:00`)
+        .lte("started_at", `${dateTo}T23:59:59`)
+        .limit(10000);
+      return (data || []) as any[];
+    },
+  });
+  const { data: oportunidades = [] } = useQuery({
+    queryKey: ["perf-oportunidades", dateFrom, dateTo],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("crm_opportunities")
+        .select("created_by, owner_id")
+        .gte("created_at", `${dateFrom}T00:00:00`)
+        .lte("created_at", `${dateTo}T23:59:59`)
+        .limit(10000);
+      return (data || []) as any[];
+    },
+  });
+  const { data: contatosPosVenda = [] } = useQuery({
+    queryKey: ["perf-posvenda", dateFrom, dateTo],
+    queryFn: async () => {
+      const { data } = await (supabase as any)
+        .from("crm_posvenda_contatos")
+        .select("user_id")
+        .gte("created_at", `${dateFrom}T00:00:00`)
+        .lte("created_at", `${dateTo}T23:59:59`)
+        .limit(10000);
+      return (data || []) as any[];
     },
   });
 
@@ -283,6 +324,90 @@ export function OperatorPerformanceTab({ dateFrom, dateTo }: Props) {
 
   const isLoading = ticketsLoading || chatsLoading || msgsLoading;
 
+  // === Boletim individual e comparativo ===
+  const [pesos, setPesos] = usePesos();
+  const [operadorBoletim, setOperadorBoletim] = useState("");
+  const valoresOperadores = useMemo<ValoresOperador[]>(() => {
+    const nomes = new Map((operators as any[]).map((o) => [o.id, o.name]));
+    const v = new Map<string, ValoresOperador["valores"]>();
+    const get = (id: string) => { if (!v.has(id)) v.set(id, {}); return v.get(id)!; };
+    for (const r of productivity) { get(r.operatorId).resolvidos = r.resolved; get(r.operatorId).tma = r.resolved ? r.tmaMs : null; }
+    for (const r of tmpr) if (r.chatsAnalyzed > 0) get(r.operatorId).tmpr = r.avgMs;
+    for (const r of startDelay) if (r.itemsAnalyzed > 0) get(r.operatorId).inicio = r.avgMs;
+    for (const r of idleness) if (r.totalChats > 0) get(r.operatorId).ociosidade = r.idleRate;
+    for (const r of quality) {
+      if (r.csatCount > 0) get(r.operatorId).csat = r.csatAvg;
+      if (r.resolved + r.reopened > 0) get(r.operatorId).reabertura = r.reopenRate;
+    }
+    const msgs = new Map<string, number>();
+    for (const m of filteredMessages as any[]) if (m.from_me && !m.is_whisper && m.sent_by_user_id) msgs.set(m.sent_by_user_id, (msgs.get(m.sent_by_user_id) ?? 0) + 1);
+    for (const [id, n] of msgs) get(id).mensagens = n;
+    const ativos = new Set(v.keys());
+    for (const r of silence.byOperator) if (r.operatorId && ativos.has(r.operatorId)) get(r.operatorId).silencio = r.silentCount;
+    for (const id of ativos) if (get(id).silencio == null) get(id).silencio = 0;
+    const horas = horasLogadas(sessoes as any);
+    const opps = new Map<string, number>();
+    for (const o of oportunidades as any[]) { const id = o.created_by || o.owner_id; if (id) opps.set(id, (opps.get(id) ?? 0) + 1); }
+    const pv = new Map<string, number>();
+    for (const c of contatosPosVenda as any[]) if (c.user_id) pv.set(c.user_id, (pv.get(c.user_id) ?? 0) + 1);
+    for (const id of new Set([...opps.keys(), ...pv.keys()])) if (nomes.has(id)) ativos.add(id);
+    for (const id of ativos) {
+      const x = get(id);
+      x.oportunidades = opps.get(id) ?? 0;
+      x.posvenda = pv.get(id) ?? 0;
+      const h = horas.get(id);
+      if (h && h > 0.25) { x.horas = h; if (x.resolvidos != null) x.porHora = x.resolvidos / h; }
+    }
+    return [...ativos].filter((id) => nomes.has(id)).map((id) => ({ operatorId: id, operatorName: nomes.get(id)!, valores: v.get(id)! }));
+  }, [operators, productivity, tmpr, startDelay, idleness, quality, filteredMessages, silence, sessoes, oportunidades, contatosPosVenda]);
+  const boletins = useMemo(() => montarBoletins(valoresOperadores, pesos), [valoresOperadores, pesos]);
+
+  const detalheOperador = useMemo(() => (id: string) => {
+    const meusTickets = (filteredTickets as any[]).filter((t) => t.assigned_to === id);
+    const meusChats = (filteredChats as any[]).filter((c) => c.assigned_to === id);
+    const fim = (x: any) => x.closed_at || x.last_message_at;
+    const finalizados = [
+      ...(source !== "chat" ? meusTickets.filter((t) => t.status === "finalizado" && t.closed_at) : []),
+      ...(source !== "atendimento" ? meusChats.filter((c) => c.status === "finalizado") : []),
+    ];
+    // Semanas
+    const semanas = new Map<string, { n: number; soma: number; csat: number[]; tmpr: number[] }>();
+    const sem = (k: string) => { if (!semanas.has(k)) semanas.set(k, { n: 0, soma: 0, csat: [], tmpr: [] }); return semanas.get(k)!; };
+    for (const x of finalizados) {
+      const s = sem(semanaDe(fim(x) || x.created_at));
+      s.n++; s.soma += Math.max(0, Date.parse(fim(x) || x.created_at) - Date.parse(x.created_at));
+    }
+    for (const c of csat as any[]) if (c.operator_user_id === id && c.score != null && c.created_at) sem(semanaDe(c.created_at)).csat.push(c.score);
+    const porSemanaChats = new Map<string, any[]>();
+    for (const c of meusChats) { const k = semanaDe(c.created_at); porSemanaChats.set(k, [...(porSemanaChats.get(k) ?? []), c]); }
+    for (const [k, cs] of porSemanaChats) {
+      const ids = new Set(cs.map((c) => c.id));
+      const r = computeFirstResponseTimes(cs, (filteredMessages as any[]).filter((m) => ids.has(m.chat_id)), operators as any).find((x) => x.operatorId === id);
+      if (r && r.chatsAnalyzed) sem(k).tmpr.push(r.avgMs);
+    }
+    const semanasOut: Semana[] = [...semanas.entries()].sort(([a], [b]) => a.localeCompare(b)).map(([semana, s]) => ({
+      semana, resolvidos: s.n, tmaMs: s.n ? s.soma / s.n : null,
+      tmprMs: s.tmpr.length ? s.tmpr[0] : null,
+      csat: s.csat.length ? s.csat.reduce((a, b) => a + b, 0) / s.csat.length : null,
+    }));
+    // Categorias (chamados finalizados), comparando com a equipe na mesma categoria
+    const tma = (lista: any[]) => lista.length ? lista.reduce((a, t) => a + Math.max(0, Date.parse(t.closed_at) - Date.parse(t.created_at)), 0) / lista.length : null;
+    const equipeFin = (filteredTickets as any[]).filter((t) => t.status === "finalizado" && t.closed_at);
+    const cats = new Map<string, any[]>();
+    for (const t of meusTickets.filter((t) => t.status === "finalizado" && t.closed_at)) { const k = t.category || "Sem categoria"; cats.set(k, [...(cats.get(k) ?? []), t]); }
+    const categorias: PorCategoria[] = [...cats.entries()].map(([categoria, lista]) => ({
+      categoria, qtd: lista.length, tmaMs: tma(lista),
+      tmaEquipeMs: tma(equipeFin.filter((t) => (t.category || "Sem categoria") === categoria)),
+    })).sort((a, b) => b.qtd - a.qtd);
+    // Horários (início dos atendimentos dele)
+    const horas: PorHora[] = Array.from({ length: 24 }, (_, hora) => ({ hora, qtd: 0 }));
+    for (const x of [...meusTickets, ...meusChats]) {
+      const h = Number(new Date(x.created_at).toLocaleString("en-US", { timeZone: "America/Sao_Paulo", hour: "numeric", hour12: false })) % 24;
+      horas[h].qtd++;
+    }
+    return { semanas: semanasOut, categorias, horas };
+  }, [filteredTickets, filteredChats, filteredMessages, csat, operators, source]);
+
   const tmprChart = tmpr.slice(0, 15).map((r) => ({
     name: r.operatorName,
     minutes: +(r.avgMs / 60000).toFixed(2),
@@ -367,6 +492,27 @@ export function OperatorPerformanceTab({ dateFrom, dateTo }: Props) {
         </CardContent>
       </Card>
 
+      <Tabs defaultValue="equipe">
+        <TabsList className="print:hidden">
+          <TabsTrigger value="equipe">Equipe</TabsTrigger>
+          <TabsTrigger value="individual">Individual</TabsTrigger>
+          <TabsTrigger value="comparativo">Comparativo</TabsTrigger>
+        </TabsList>
+        <TabsContent value="individual" className="mt-4">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin mr-2" /> Carregando métricas...</div>
+          ) : (
+            <BoletimIndividual boletins={boletins} valores={valoresOperadores} detalhe={detalheOperador} operadorId={operadorBoletim} onOperador={setOperadorBoletim} />
+          )}
+        </TabsContent>
+        <TabsContent value="comparativo" className="mt-4">
+          {isLoading ? (
+            <div className="flex items-center justify-center py-12 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin mr-2" /> Carregando métricas...</div>
+          ) : (
+            <ComparativoOperadores boletins={boletins} valores={valoresOperadores} pesos={pesos} onPesos={setPesos} />
+          )}
+        </TabsContent>
+        <TabsContent value="equipe" className="mt-4 space-y-4">
       {isLoading ? (
         <div className="flex items-center justify-center py-12 text-muted-foreground">
           <Loader2 className="h-5 w-5 animate-spin mr-2" /> Carregando métricas...
@@ -883,6 +1029,8 @@ export function OperatorPerformanceTab({ dateFrom, dateTo }: Props) {
           </Card>
         </>
       )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
