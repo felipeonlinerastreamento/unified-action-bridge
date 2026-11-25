@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
 import { buildNotificationMessage } from "@/lib/reconnect";
+import { destinatariosPorNotificacao, unirEmails, unirTelefones } from "@/lib/contato-notificacoes";
 
 async function assertReconnect(supabase: any) {
   const { data, error } = await supabase.rpc("reconnect_allowed");
@@ -31,7 +32,7 @@ export const enviarNotificacaoReconnect = createServerFn({ method: "POST" })
     const { supabaseAdmin } = await import("@/integrations/supabase/client.server");
 
     const [{ data: client }, { data: tpl }, { data: closing }, { data: settings }, { data: prof }] = await Promise.all([
-      supabase.from("rc_clients").select("id, name, emails, phones").eq("id", data.clientId).maybeSingle(),
+      supabase.from("rc_clients").select("id, name, emails, phones, company_id").eq("id", data.clientId).maybeSingle(),
       supabase.from("rc_message_templates").select("name, subject, body").eq("id", data.templateId).maybeSingle(),
       supabase.from("rc_message_templates").select("body").eq("is_closing_template", true).maybeSingle(),
       supabase.from("rc_settings").select("whatsapp_channel_id, email_channel_id").eq("id", 1).maybeSingle(),
@@ -39,8 +40,14 @@ export const enviarNotificacaoReconnect = createServerFn({ method: "POST" })
     ]);
     if (!client) throw new Error("Cliente não encontrado no Reconnect.");
     if (!tpl) throw new Error("Modelo de mensagem não encontrado.");
-    const phones: string[] = (client.phones || []).map(String).filter((p: string) => p.replace(/\D/g, "").length >= 10);
-    const emails: string[] = (client.emails || []).map(String).filter((e: string) => /@/.test(e));
+    // Destinatários: contatos do cliente no Reconnect + contatos da empresa marcados "Veículo sem comunicação".
+    let daEmpresa = { phones: [] as string[], emails: [] as string[] };
+    if (client.company_id) {
+      const { data: comp } = await supabase.from("companies").select("contacts").eq("id", client.company_id).maybeSingle();
+      daEmpresa = destinatariosPorNotificacao(comp?.contacts, "sem_comunicacao");
+    }
+    const phones: string[] = unirTelefones(client.phones || [], daEmpresa.phones);
+    const emails: string[] = unirEmails(client.emails || [], daEmpresa.emails);
     const message = buildNotificationMessage(tpl.body, client.name, data.plates);
     const result: { whatsapp?: { ok: boolean; enviados: number; erro?: string }; email?: { ok: boolean; enviados: number; erro?: string } } = {};
     const sentChannels: string[] = [];

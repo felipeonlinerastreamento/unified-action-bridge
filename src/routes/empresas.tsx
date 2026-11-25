@@ -1,4 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
+import { NOTIFICACOES_CONTATO, notificacoesDoContato, type NotificacaoContato } from "@/lib/contato-notificacoes";
 import { useState } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
@@ -106,8 +107,8 @@ function EmpresasPage() {
   const [formServiceTemplates, setFormServiceTemplates] = useState<ServiceTemplate[]>([]);
   const [formPlatformIds, setFormPlatformIds] = useState<string[]>([]);
   const [formPhones, setFormPhones] = useState<string[]>([""]);
-  const [formContacts, setFormContacts] = useState<{ name: string; sector: string; phone: string; email: string; is_prime?: boolean }[]>([
-    { name: "", sector: "", phone: "", email: "", is_prime: false },
+  const [formContacts, setFormContacts] = useState<{ name: string; sector: string; phone: string; email: string; is_prime?: boolean; notificacoes?: NotificacaoContato[] }[]>([
+    { name: "", sector: "", phone: "", email: "", is_prime: false, notificacoes: [] },
   ]);
 
 
@@ -193,6 +194,7 @@ function EmpresasPage() {
             phone: c.phone || "",
             email: c.email || "",
             is_prime: !!c.is_prime,
+            notificacoes: notificacoesDoContato(c),
           }))
         : [];
     // Merge linked phones into the contacts list so they are editable there
@@ -209,6 +211,7 @@ function EmpresasPage() {
           phone: p,
           email: "",
           is_prime: false,
+          notificacoes: [],
         });
         knownPhones.add(digits);
       }
@@ -254,7 +257,7 @@ function EmpresasPage() {
         .split(",")
         .map((e) => e.trim())
         .filter(Boolean);
-      const contacts = formContacts.filter((c) => c.name.trim() || c.phone.trim());
+      const contacts = formContacts.filter((c) => c.name.trim() || c.phone.trim() || c.email.trim());
       const companyData = {
         name: formName.trim(),
         cnpj: formCnpj.trim() || null,
@@ -716,14 +719,18 @@ function EmpresasPage() {
                   variant="ghost"
                   size="sm"
                   onClick={() =>
-                    setFormContacts([...formContacts, { name: "", sector: "", phone: "", email: "", is_prime: false }])
+                    setFormContacts([...formContacts, { name: "", sector: "", phone: "", email: "", is_prime: false, notificacoes: [] }])
                   }
                 >
                   <Plus className="h-3 w-3 mr-1" /> Adicionar
                 </Button>
               </div>
+              <p className="text-xs text-muted-foreground">
+                Marque em "Recebe" quais avisos vão para cada contato. Pode marcar o mesmo aviso em vários contatos: todos recebem
+                (ex.: o Reconnect envia os eventos de veículo sem comunicação para os contatos marcados).
+              </p>
               {formContacts.map((contact, idx) => (
-                <div key={idx} className="flex flex-wrap items-center gap-2">
+                <div key={idx} className="flex flex-wrap items-center gap-2 rounded border p-2">
                   <Input
                     value={contact.name}
                     onChange={(e) => {
@@ -786,6 +793,23 @@ function EmpresasPage() {
                       <X className="h-4 w-4" />
                     </Button>
                   )}
+                  <div className="flex w-full flex-wrap items-center gap-3 pl-1 text-xs text-muted-foreground">
+                    <span>Recebe:</span>
+                    {NOTIFICACOES_CONTATO.map((n) => (
+                      <label key={n.key} className="flex items-center gap-1.5 whitespace-nowrap cursor-pointer text-foreground">
+                        <Checkbox
+                          checked={(contact.notificacoes || []).includes(n.key)}
+                          onCheckedChange={(v) => {
+                            const c = [...formContacts];
+                            const atual = c[idx].notificacoes || [];
+                            c[idx] = { ...c[idx], notificacoes: v === true ? [...new Set([...atual, n.key])] : atual.filter((k) => k !== n.key) };
+                            setFormContacts(c);
+                          }}
+                        />
+                        {n.label}
+                      </label>
+                    ))}
+                  </div>
                 </div>
               ))}
 
